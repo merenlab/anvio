@@ -1,0 +1,488 @@
+{
+    "version": "0.2.1",
+    "tree-type": "circlephylogram",
+    "order-by": "tnf-cov:euclidean:ward",
+    "current-view": "mean_coverage_Q2Q3",
+    "angle-min": "0",
+    "angle-max": "270",
+    "tree-radius": "1592",
+    "tree-height": "0",
+    "tree-width": "0",
+    "layer-margin": "15",
+    "outer-ring-height": "60",
+    "outer-ring-margin": "30",
+    "edge-normalization": false,
+    "custom-layer-margin": false,
+    "show-grid-for-bins": false,
+    "grid-color": "#FFFFFF",
+    "grid-width": "1",
+    "samples-order": "custom",
+    "max-font-size": "60",
+    "optimize-speed": true,
+    "show-bin-labels": true,
+    "bin-labels-font-size": "128",
+    "autorotate-bin-labels": true,
+    "bin-labels-angle": "0",
+    "background-opacity": "0.3",
+    "max-font-size-label": "120",
+    "layer-order": [
+        "__parent__",
+        "num_genes",
+        "avg_gene_length",
+        "ratio_coding",
+        "length",
+        "gc_content",
+        "s01",
+        "s02",
+        "s03",
+        "s04",
+        "s05"
+    ],
+    "categorical_data_colors": {},
+    "stack_bar_colors": {},
+    "layers": {
+        "num_genes": {
+            "color": "#414141",
+            "height": "0",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "avg_gene_length": {
+            "color": "#414141",
+            "height": "0",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "ratio_coding": {
+            "color": "#414141",
+            "height": "0",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "length": {
+            "color": "#414141",
+            "height": "80",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "gc_content": {
+            "color": "#004a0f",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "s01": {
+            "color": "#000000",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "s02": {
+            "color": "#000000",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "s03": {
+            "color": "#000000",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "s04": {
+            "color": "#000000",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "s05": {
+            "color": "#000000",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "__parent__": {
+            "height": "50",
+            "margin": "15"
+        }
+    },
+    "views": {
+        "mean_coverage": {
+            "num_genes": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1",
+                    "disabled": false
+                }
+            },
+            "avg_gene_length": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1131",
+                    "disabled": false
+                }
+            },
+            "ratio_coding": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.9903677758318739",
+                    "disabled": false
+                }
+            },
+            "length": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1142",
+                    "disabled": false
+                }
+            },
+            "gc_content": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.5306479859894921",
+                    "disabled": false
+                }
+            },
+            "s01": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.0248464006991225",
+                    "disabled": false
+                }
+            },
+            "s02": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.2009759670401325",
+                    "disabled": false
+                }
+            },
+            "s03": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.2059320953885284",
+                    "disabled": false
+                }
+            },
+            "s04": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.0314685994290373",
+                    "disabled": false
+                }
+            },
+            "s05": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.028811183977592",
+                    "disabled": false
+                }
+            },
+            "__parent__": {
+                "min": {
+                    "disabled": false
+                },
+                "max": {
+                    "disabled": false
+                }
+            }
+        },
+        "variability": {
+            "num_genes": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1",
+                    "disabled": false
+                }
+            },
+            "avg_gene_length": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1131",
+                    "disabled": false
+                }
+            },
+            "ratio_coding": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.9903677758318739",
+                    "disabled": false
+                }
+            },
+            "length": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1142",
+                    "disabled": false
+                }
+            },
+            "gc_content": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.5306479859894921",
+                    "disabled": false
+                }
+            },
+            "s01": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "52.63157894736842",
+                    "disabled": false
+                }
+            },
+            "s02": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "52.63157894736842",
+                    "disabled": false
+                }
+            },
+            "s03": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "52.63157894736842",
+                    "disabled": false
+                }
+            },
+            "s04": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "52.63157894736842",
+                    "disabled": false
+                }
+            },
+            "s05": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "52.63157894736842",
+                    "disabled": false
+                }
+            },
+            "__parent__": {
+                "min": {
+                    "disabled": false
+                },
+                "max": {
+                    "disabled": false
+                }
+            }
+        },
+        "mean_coverage_Q2Q3": {
+            "num_genes": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1",
+                    "disabled": false
+                }
+            },
+            "avg_gene_length": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1131",
+                    "disabled": false
+                }
+            },
+            "ratio_coding": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.9903677758318739",
+                    "disabled": false
+                }
+            },
+            "length": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1142",
+                    "disabled": false
+                }
+            },
+            "gc_content": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "0.5306479859894921",
+                    "disabled": false
+                }
+            },
+            "s01": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.027705919825578",
+                    "disabled": false
+                }
+            },
+            "s02": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.216064348565922",
+                    "disabled": false
+                }
+            },
+            "s03": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.214417714906972",
+                    "disabled": false
+                }
+            },
+            "s04": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.0339155873127144",
+                    "disabled": false
+                }
+            },
+            "s05": {
+                "normalization": "log",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "2.029447635651737",
+                    "disabled": false
+                }
+            },
+            "__parent__": {
+                "min": {
+                    "disabled": false
+                },
+                "max": {
+                    "disabled": false
+                }
+            }
+        }
+    },
+    "samples-categorical-colors": {},
+    "samples-stack-bar-colors": {},
+    "samples-edge-length-normalization": true,
+    "samples-ignore-branch-length": false,
+    "samples-tree-height": "400",
+    "samples-layer-order": [],
+    "samples-layers": {}
+}

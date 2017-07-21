@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Summarizer for anvi'o SAAVs over protein structures."""
+
+import sys
+
+import anvio
+import anvio.terminal as terminal
+import anvio.summarizer as summarizer
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    summary = summarizer.SAAVsAndProteinStructuresSummary(args)
+    summary.process()
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generate a static web site for SAAVs and protein structures.")
+
+    groupA = parser.add_argument_group("WORK WITH ANVI'O DATABASES", "Show us the data.")
+    groupB = parser.add_argument_group('WORK WITH FLAT FILES', "Much inferior, but still OK.")
+    groupC = parser.add_argument_group('INPUT/OUTPUT', "Read from here, write to there.")
+    groupD = parser.add_argument_group('ADDITIONAL STUFF', "Little conveniences.")
+
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db', {'required': False}))
+
+    groupB.add_argument('--genes', type=str, help="Genes file.")
+    groupB.add_argument('--samples', type=str, help="Samples file.")
+
+    groupC.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'required': True}))
+    groupC.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
+
+    groupD.add_argument('--soft-link-images', default=False, action="store_true", help="By default, your imaeges\
+                        will be copied in the output directory to create a fully self-contained output (so you can\
+                        send it to your colleagues and they would have everything they need to browse the output).\
+                        Alternatively you can use this flag to avoid copying images in the output directory (it\
+                        would make the output less portable, but it would take less time and space to generate it).")
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

@@ -54,7 +54,7 @@ class COGs:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads')
         self.contigs_db_path = A('contigs_db')
-        self.search_with = A('search_with')
+        self.search_with = A('search_with') or 'diamond'
         self.temp_dir_path = A('temporary_dir_path')
         self.sensitive = A('sensitive')
 
@@ -104,6 +104,7 @@ class COGs:
             self.remove_temp_dir_path = False
 
         self.run.info('COG data directory', self.COG_data_dir)
+        self.run.info('Searching with', self.search_with)
         self.run.info('Directory to store temporary files', self.temp_dir_path)
         self.run.info('Directory will be removed after the run', self.remove_temp_dir_path)
 

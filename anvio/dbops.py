@@ -1472,6 +1472,9 @@ class ProfileSuperclass(object):
                                 represented in this profile database. Are you sure you are looking for it\
                                 in the right database?" % split_name)
 
+        self.progress.new('Recovering variabilit information for split')
+        self.progress.update('...')
+
         profile_db = ProfileDatabase(self.profile_db_path)
         split_variability_information = list(profile_db.db.get_some_rows_from_table_as_dict(t.variable_nts_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values())
         profile_db.disconnect()
@@ -1486,13 +1489,16 @@ class ProfileSuperclass(object):
             d[sample_name] = {'variability': {0: {}, 1: {}, 2: {}, 3: {}}, 'competing_nucleotides': {}}
 
         for e in split_variability_information:
-            e = utils.insert_consensus_and_departure_fields(e, engine='NT')
+            frequencies = utils.get_variabile_item_frequencies(e, engine='NT')
+            e['n2n1ratio'], e['consensus'], e['departure_from_consensus'] = utils.get_consensus_and_departure_data(frequencies)
 
             if skip_outlier_SNVs and e['cov_outlier_in_contig']:
                 continue
 
             d[e['sample_id']]['variability'][e['base_pos_in_codon']][e['pos']] = e['departure_from_reference']
             d[e['sample_id']]['competing_nucleotides'][e['pos']] = e
+
+        self.progress.end()
 
         return d
 
@@ -3695,7 +3701,7 @@ def is_contigs_db(db_path):
 
 def is_pan_or_profile_db(db_path):
     if get_db_type(db_path) not in ['pan', 'profile']:
-        raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble.")
+        raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble." % db_path)
 
 
 def is_profile_db(db_path):

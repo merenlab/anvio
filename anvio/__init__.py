@@ -807,6 +807,12 @@ D = {
                       the scipy.cluster module. Up tp you really. But then you can't use %(default)s\
                       anymore, and you would have to leave anvi'o right now."}
                 ),
+    'input-dir': (
+            ['-i', '--input-dir'],
+            {'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "Directory path for input files"}
+                ),
     'output-dir': (
             ['-o', '--output-dir'],
             {'metavar': 'DIR_PATH',
