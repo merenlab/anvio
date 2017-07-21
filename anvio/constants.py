@@ -69,6 +69,8 @@ AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': '
                                     'Ser': 'S', 'Thr': 'T', 'Trp': 'W', 'Tyr': 'Y',
                                     'Val': 'V'})
 
+amino_acids = list(AA_to_single_letter_code.keys())
+
 codon_to_AA = Counter({'ATA': 'Ile', 'ATC': 'Ile', 'ATT': 'Ile', 'ATG': 'Met',
                        'ACA': 'Thr', 'ACC': 'Thr', 'ACG': 'Thr', 'ACT': 'Thr',
                        'AAC': 'Asn', 'AAT': 'Asn', 'AAA': 'Lys', 'AAG': 'Lys',

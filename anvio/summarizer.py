@@ -27,8 +27,10 @@ import anvio.summarizer as summarizer
 import os
 import sys
 import gzip
+import glob
 import numpy
 import shutil
+import hashlib
 import mistune
 import textwrap
 
@@ -356,6 +358,224 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         output_file_obj.close()
 
         self.progress.end()
+
+
+class SAAVsAndProteinStructuresSummary:
+    """Creates an über dictionary of 'summary' for anvi'o profiles."""
+    def __init__(self, args=None, r=run, p=progress):
+        self.run = run
+        self.progress = progress
+
+        self.args = args
+
+        self.summary = {}
+        self.summary_type = 'saav'
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.profile_db_path = A('profile_db')
+        self.contigs_db_path = A('contigs_db')
+        self.samples_db_path = A('samples_information_db')
+        self.input_directory = A('input_dir')
+        self.output_directory = A('output_dir')
+        self.soft_link_images = A('soft_link_images')
+
+        self.genes_file_path = A('genes')
+        self.samples_file_path = A('samples')
+
+        # dicts that will be recovered from input files
+        self.genes = None
+        self.samples = None
+        self.views = None
+
+        # dicts that will be recovered by traversing the input directory
+        self.perspectives = {}
+
+        # dicts that will be populated by the init function
+        self.by_view = {}
+        self.samples_per_view = {}
+
+        self.initialized = False
+        self.sanity_checked = False
+
+
+    def sanity_check(self):
+        init_from_databases = False
+        if self.profile_db_path or self.contigs_db_path or self.samples_db_path:
+            init_from_databases = True
+
+        self.input_directory = os.path.abspath(self.input_directory)
+        filesnpaths.is_file_exists(self.input_directory)
+
+        if init_from_databases:
+            if not self.profile_db_path or not self.contigs_db_path or not self.samples_db_path:
+                raise ConfigError("If you want to initialize from databases, you must provide all of them: profile db\
+                                   contigs db, and samples db.")
+
+            if self.genes_file_path or self.samples_file_path:
+                raise ConfigError("Well, if you want initialize from databases, you should not provide any genes or\
+                                   samples files.")
+        else:
+            # this fallback code could have been inside init instead of sanity check function
+            # but calling os.path.join can raise exception if input_directory is None, it should checked first.
+            self.genes_file_path = self.genes_file_path or os.path.join(self.input_directory, '.gene_list.txt')
+            self.samples_file_path = self.samples_file_path or os.path.join(self.input_directory, '.sample_groups.txt')
+
+            if not filesnpaths.is_file_exists(self.genes_file_path, dont_raise=True):
+                raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
+                                   anvi'o looks for '.gene_list.txt' in input directory." % self.genes_file_path)
+
+            if not filesnpaths.is_file_exists(self.samples_file_path, dont_raise=True):
+                raise ConfigError("Anvi'o could not find sample groups file '%s'. If you did not provided any as a parameter \
+                                   anvi'o looks for '.sample_groups.txt' in input directory." % self.samples_file_path)
+
+            filesnpaths.is_file_tab_delimited(self.genes_file_path)
+            filesnpaths.is_file_tab_delimited(self.samples_file_path)
+
+        self.run.info('Input source', 'Databases' if init_from_databases else 'Flat files')
+
+        if not self.output_directory or not self.input_directory:
+            raise ConfigError("You must declare both input and output directories.")
+
+        if self.output_directory == self.input_directory:
+            raise ConfigError("The input and the output directories can't be the same.")
+
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory)
+        filesnpaths.gen_output_directory(self.output_directory)
+        filesnpaths.gen_output_directory(os.path.join(self.output_directory, 'images'))
+
+        self.run.info('Input directory', self.input_directory)
+        self.run.info('Output directory', self.output_directory)
+
+        self.sanity_checked = True
+
+
+    def init_from_databases(self):
+        raise ConfigError("Initializing from databases is not yet impemented.")
+
+        DatabasesMetaclass.__init__(self, self.args, self.run, self.progress)
+
+        # now recover these:
+        self.genes = {}
+        self.samples = {}
+        self.views = {}
+
+
+    def init_from_files(self):
+        self.genes = utils.get_TAB_delimited_file_as_dictionary(self.genes_file_path)
+        self.samples = utils.get_TAB_delimited_file_as_dictionary(self.samples_file_path)
+        self.views = utils.get_columns_of_TAB_delim_file(self.samples_file_path)
+
+
+    def init(self):
+        self.sanity_check()
+
+        if self.profile_db_path:
+            self.init_from_databases()
+        else:
+            self.init_from_files()
+
+        self.perspectives = [os.path.basename(d) for d in glob.glob('%s/*' % self.input_directory) if os.path.isdir(d)]
+
+        self.run.info('Num genes', len(self.genes))
+        self.run.info('Num samples', len(self.samples))
+        self.run.info('Sample views', ', '.join(self.views))
+        self.run.info('Gene views', ', '.join(self.perspectives))
+        self.run.info('Images soft linked', self.soft_link_images, mc='red' if self.soft_link_images else 'yellow')
+
+        if(len(self.genes)) > 50:
+            self.run.warning('You seem to have a lot of genes to process. Nice. The output may be quite large,\
+                              just so you know :/')
+
+        self.summary['meta'] = {'summary_type': self.summary_type,
+                                'output_directory': self.output_directory,
+                                'images_soft_linked': self.soft_link_images,
+                                'anvio_version': anvio.__version__}
+
+        # populate dicts
+        self.populate_samples_per_view_dict()
+        self.populate_by_view_dict()
+
+        views_and_variables = {}
+        for view in self.samples_per_view:
+            views_and_variables[view] = sorted(self.samples_per_view[view].keys())
+
+        self.summary['data'] = {'gene_names': sorted(list(self.genes.keys())),
+                                'samples': self.samples,
+                                'by_view': self.by_view,
+                                'views_and_variables': views_and_variables,
+                                'views': sorted(self.samples_per_view.keys()),
+                                'perspectives': sorted(self.perspectives),
+                                'genes': self.genes,
+                                'samples_per_view': self.samples_per_view}
+
+        self.initialized = True
+
+
+    def populate_samples_per_view_dict(self):
+        self.progress.new('Populating samples per view data')
+        self.progress.update('...')
+
+        self.samples_per_view = {}
+
+        for view in self.views:
+            self.progress.update('Working on "%s" ...' % view)
+            self.samples_per_view[view] = {}
+            for sample in self.samples:
+                r = self.samples[sample][view]
+                if r not in self.samples_per_view[view]:
+                    self.samples_per_view[view][r] = []
+
+                self.samples_per_view[view][r].append(sample)
+
+        self.progress.end()
+
+    def populate_by_view_dict(self):
+        """This one connects the actual data and images.
+        
+           It also copies data into the output directory, or creates soft links.
+        """
+
+        self.progress.new('Populating views dict')
+
+        image_path_template = "%(input_directory)s/%(perspective)s/Images/%(gene)s/sample_%(sample)s.pse.png"
+
+        gene_names = sorted(self.genes.keys())
+        num_genes = len(gene_names)
+        for index in range(0, num_genes):
+            gene = gene_names[index]
+            self.progress.update("gene '%s' (%d of %d) ..." % (str(gene), index + 1, num_genes))
+            self.by_view[gene] = {}
+            for view in self.samples_per_view.keys():
+                self.by_view[gene][view] = {}
+                for perspective in self.perspectives:
+                    self.by_view[gene][view][perspective] = {}
+                    for variable in sorted(self.samples_per_view[view].keys()):
+                        self.by_view[gene][view][perspective][variable] = {}
+                        for sample in self.samples_per_view[view][variable]:
+                            image_path = image_path_template % {'input_directory': self.input_directory,
+                                                                'gene': str(gene),
+                                                                'sample': sample,
+                                                                'perspective': perspective}
+
+                            # if user wants a fully populated output directory, update the image_path variable
+                            if not self.soft_link_images:
+                                new_image_path = 'images/%s_%s_%s.png' % (str(gene), sample, hashlib.sha1(image_path.encode('utf-8')).hexdigest())
+                                shutil.copyfile(os.path.join(self.input_directory, image_path), os.path.join(self.output_directory, new_image_path))
+                                image_path = new_image_path
+
+                            self.by_view[gene][view][perspective][variable][sample] = image_path
+
+        self.progress.end()
+
+
+    def process(self):
+        if not self.initialized:
+            self.init()
+
+        if not self.sanity_checked:
+            self.sanity_check()
+
+        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=False)
 
 
 class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
