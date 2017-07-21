@@ -403,6 +403,9 @@ class SAAVsAndProteinStructuresSummary:
         if self.profile_db_path or self.contigs_db_path or self.samples_db_path:
             init_from_databases = True
 
+        self.input_directory = os.path.abspath(self.input_directory)
+        filesnpaths.is_file_exists(self.input_directory)
+
         if init_from_databases:
             if not self.profile_db_path or not self.contigs_db_path or not self.samples_db_path:
                 raise ConfigError("If you want to initialize from databases, you must provide all of them: profile db\
@@ -412,9 +415,18 @@ class SAAVsAndProteinStructuresSummary:
                 raise ConfigError("Well, if you want initialize from databases, you should not provide any genes or\
                                    samples files.")
         else:
-            if not self.genes_file_path or not self.samples_file_path:
-                raise ConfigError("If you want to initialize from files, you must provide both genes file and samples\
-                                   file.")
+            # this fallback code could have been inside init instead of sanity check function
+            # but calling os.path.join can raise exception if input_directory is None, it should checked first.
+            self.genes_file_path = self.genes_file_path or os.path.join(self.input_directory, '.gene_list.txt')
+            self.samples_file_path = self.samples_file_path or os.path.join(self.input_directory, '.sample_groups.txt')
+
+            if not filesnpaths.is_file_exists(self.genes_file_path, dont_raise=True):
+                raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
+                                   anvi'o looks for '.gene_list.txt' in input directory." % self.genes_file_path)
+
+            if not filesnpaths.is_file_exists(self.samples_file_path, dont_raise=True):
+                raise ConfigError("Anvi'o could not find sample groups file '%s'. If you did not provided any as a parameter \
+                                   anvi'o looks for '.sample_groups.txt' in input directory." % self.samples_file_path)
 
             filesnpaths.is_file_tab_delimited(self.genes_file_path)
             filesnpaths.is_file_tab_delimited(self.samples_file_path)
@@ -430,9 +442,6 @@ class SAAVsAndProteinStructuresSummary:
         self.output_directory = filesnpaths.check_output_directory(self.output_directory)
         filesnpaths.gen_output_directory(self.output_directory)
         filesnpaths.gen_output_directory(os.path.join(self.output_directory, 'images'))
-
-        self.input_directory = os.path.abspath(self.input_directory)
-        filesnpaths.is_file_exists(self.input_directory)
 
         self.run.info('Input directory', self.input_directory)
         self.run.info('Output directory', self.output_directory)
