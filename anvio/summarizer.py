@@ -392,6 +392,7 @@ class SAAVsAndProteinStructuresSummary:
 
         # dicts that will be populated by the init function
         self.by_view = {}
+        self.legends = {}
         self.samples_per_view = {}
 
         self.initialized = False
@@ -506,7 +507,8 @@ class SAAVsAndProteinStructuresSummary:
                                 'views': sorted(self.samples_per_view.keys()),
                                 'perspectives': sorted(self.perspectives),
                                 'genes': self.genes,
-                                'samples_per_view': self.samples_per_view}
+                                'samples_per_view': self.samples_per_view,
+                                'legends': self.legends}
 
         self.initialized = True
 
@@ -548,14 +550,9 @@ class SAAVsAndProteinStructuresSummary:
 
 
     def populate_by_view_dict(self):
-        """This one connects the actual data and images.
-        
-           It also copies data into the output directory, or creates soft links.
-        """
+        """This one connects the actual data and images."""
 
         self.progress.new('Populating views dict')
-
-        color_legend_path_template = "%(input_directory)s/%(perspective)s/Legends/color/%(gene)s/%(perspective)s_%(gene)s_color_legend.txt"
 
         gene_names = sorted(self.genes.keys())
         num_genes = len(gene_names)
@@ -563,9 +560,13 @@ class SAAVsAndProteinStructuresSummary:
             gene = gene_names[index]
             self.progress.update("gene '%s' (%d of %d) ..." % (str(gene), index + 1, num_genes))
             self.by_view[gene] = {}
+            self.legends[gene] = {}
             for view in self.samples_per_view.keys():
                 self.by_view[gene][view] = {}
                 for perspective in self.perspectives:
+                    if perspective not in self.legends[gene]:
+                        self.legends[gene][perspective] = {}
+
                     self.by_view[gene][view][perspective] = {}
                     for variable in sorted(self.samples_per_view[view].keys()):
                         self.by_view[gene][view][perspective][variable] = {}
@@ -590,7 +591,20 @@ class SAAVsAndProteinStructuresSummary:
 
                         self.by_view[gene][view][perspective][variable]['__merged__'] = image_path
 
+                    self.legends[gene][perspective] = self.get_legend_as_dict(gene, perspective)
+
         self.progress.end()
+
+    def get_legend_as_dict(self, gene, perspective):        
+        color_legend_path_template = "%(input_directory)s/%(perspective)s/Legends/color/%(perspective)s_%(gene)s_color_legend.txt"
+
+        legend_content = utils.get_TAB_delimited_file_as_dictionary(color_legend_path_template % 
+                                                                        {'input_directory': self.input_directory,
+                                                                        'gene': str(gene),
+                                                                        'perspective': perspective})
+
+        return legend_content
+
 
 
     def process(self):

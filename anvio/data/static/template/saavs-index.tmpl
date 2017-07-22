@@ -136,6 +136,19 @@
                                                         <div role="tabpanel" class="tab-pane fade${ (index==0) ? ' in active' : '' }" id="${gene}-${view}-${perspective}">
                                                             <table class="table table-striped sortable" id="tblGrid_bin">
                                                                 <tbody>
+                                                                    <tr>
+                                                                        <td style="vertical-align: middle; width: 10px;"><b>Color Legend</b></td>
+                                                                        <td>
+                                                                            ${ Object.keys(saav_data["legends"][gene][perspective]).map(legend =>`
+                                                                                <div class="legend-item">
+                                                                                  <div class="color-box" style="background-color: ${ saav_data["legends"][gene][perspective][legend]['hex'] };">
+                                                                                  </div>
+                                                                                  <span title="${ legend }">${ legend }</span>
+                                                                                </div>
+                                                                            `).join('')}
+                                                                        </td>
+                                                                    </tr>
+
                                                                      ${ saav_data["views_and_variables"][view].map(variable =>`
                                                                     <tr>
                                                                         <td style="vertical-align: middle; width: 10px;"><b>${variable}</b></td>
