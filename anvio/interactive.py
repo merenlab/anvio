@@ -439,8 +439,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_refine_mode(self):
         self.split_names_of_interest = set([])
-        self.is_merged = int(self.p_meta['merged'])
-        self.clustering_configs = constants.clustering_configs['merged' if self.is_merged else 'single']
+        self.is_merged = self.p_meta['merged']
+        self.is_blank = self.p_meta['blank']
+        self.clustering_configs = constants.clustering_configs['merged' if self.is_merged else 'blank' if self.is_blank else 'single']
 
         progress.new('Initializing')
         progress.update('Getting split names')
