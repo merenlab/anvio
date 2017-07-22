@@ -51,6 +51,7 @@ progress = terminal.Progress()
 # increase maximum size of form data to 100 MB
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100
 
+
 class BottleApplication(Bottle):
     def __init__(self, interactive, args, mock_request=None, mock_response=None):
         super(BottleApplication, self).__init__()
@@ -77,11 +78,13 @@ class BottleApplication(Bottle):
     def register_hooks(self):
         self.add_hook('before_request', self.set_default_headers)
 
+
     def set_default_headers(self):
         response.set_header('Content-Type', 'application/json')
         response.set_header('Pragma', 'no-cache')
         response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
         response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+
 
     def register_routes(self):
         self.route('/',                                        callback=self.redirect_to_app)
@@ -113,10 +116,20 @@ class BottleApplication(Bottle):
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
 
+
     def run_application(self, ip, port):
         try:
             server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
             server_process.start()
+
+            if self.args.export_svg:
+                try:
+                    utils.run_selenium_and_export_svg("http://%s:%d/app/index.html" % (ip, port), self.args.export_svg, run)
+                except Exception as e:
+                    print(e)
+                finally:
+                    server_process.terminate()
+                    sys.exit(0)
 
             if not self.args.server_only:
                 webbrowser.open_new("http://%s:%d" % (ip, port))
@@ -128,8 +141,10 @@ class BottleApplication(Bottle):
             server_process.terminate()
             sys.exit(0)
 
+
     def redirect_to_app(self):
         redirect('/app/index.html?rand=' + self.random_hash(8))
+
 
     def send_static(self, filename):
         ret = static_file(filename, root=self.static_dir)
@@ -162,6 +177,7 @@ class BottleApplication(Bottle):
             ret.headers['Content-Length'] = buff.getbuffer().nbytes
 
         return ret
+
 
     def get_news(self):
         ret = []
@@ -198,9 +214,11 @@ class BottleApplication(Bottle):
 
         return json.dumps(ret)
 
+
     def random_hash(self, size=8):
         r = random.getrandbits(size * 4)
         return '{1:0{0}x}'.format(size, r)
+
 
     def send_data(self, name):
         if name == "init":
@@ -231,8 +249,10 @@ class BottleApplication(Bottle):
         elif name == "session_id":
             return json.dumps(self.unique_session_id)
 
+
     def get_view_data(self, view_id):
         return json.dumps(self.interactive.views[view_id])
+
 
     def get_items_ordering(self, items_ordering_id):
         if items_ordering_id in self.interactive.p_meta['clusterings']:
@@ -359,6 +379,7 @@ class BottleApplication(Bottle):
 
         return json.dumps(data)
 
+
     def get_index_total_previous_and_next_items(self, item_name):
         previous_item_name = None
         next_item_name = None
@@ -375,6 +396,7 @@ class BottleApplication(Bottle):
         total = len(self.interactive.displayed_item_names_ordered)
 
         return index, total, previous_item_name, next_item_name
+
 
     def completeness(self):
         completeness_sources = {}
@@ -548,7 +570,7 @@ class BottleApplication(Bottle):
             ret.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
             return ret
         else:
-            return json.dumps({'error': 'Something failed. This is what we know: %s' % e})
+            return json.dumps({'error': 'The server has no idea how to handle the mode "%s" :/' % self.interactive.mode})
 
 
     def get_sequence_for_gene_call(self, gene_callers_id):
@@ -676,8 +698,10 @@ class BottleApplication(Bottle):
         message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (self.interactive.collection_name)
         return json.dumps({'status': 0, 'message': message})
 
+
     def get_available_phylogeny_programs(self):
         return json.dumps(list(drivers.driver_modules['phylogeny'].keys()))
+
 
     def generate_tree(self):
         pcs = set(request.forms.getall('pcs[]'))
@@ -707,6 +731,7 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1, 'message': message})
 
         return json.dumps({'status': 0, 'tree': tree_text})
+
 
     def upload_project(self):
         try:
@@ -780,7 +805,3 @@ class BottleApplication(Bottle):
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
-
-
-
-        
