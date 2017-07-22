@@ -529,6 +529,24 @@ class SAAVsAndProteinStructuresSummary:
 
         self.progress.end()
 
+    def copy_image_and_return_path(self, variables=None):
+        image_path_template = None
+        if variables['image_type'] == 'sample':
+            image_path_template = "%(input_directory)s/%(perspective)s/Images/%(gene)s/%(image_type)s_%(sample)s.pse.png"
+        elif variables['image_type'] == 'merged':
+            image_path_template = "%(input_directory)s/%(perspective)s/Images/%(gene)s/%(image_type)s_%(view)s_%(variable)s.pse.png"
+
+        image_path = image_path_template % variables
+
+        # if user wants a fully populated output directory, update the image_path variable
+        if not self.soft_link_images:
+            new_image_path = 'images/%s_%s_%s.png' % (str(gene), sample, hashlib.sha1(image_path.encode('utf-8')).hexdigest())
+            shutil.copyfile(os.path.join(self.input_directory, image_path), os.path.join(self.output_directory, new_image_path))
+            image_path = new_image_path
+
+        return image_path
+
+
     def populate_by_view_dict(self):
         """This one connects the actual data and images.
         
@@ -537,7 +555,7 @@ class SAAVsAndProteinStructuresSummary:
 
         self.progress.new('Populating views dict')
 
-        image_path_template = "%(input_directory)s/%(perspective)s/Images/%(gene)s/sample_%(sample)s.pse.png"
+        color_legend_path_template = "%(input_directory)s/%(perspective)s/Legends/color/%(gene)s/%(perspective)s_%(gene)s_color_legend.txt"
 
         gene_names = sorted(self.genes.keys())
         num_genes = len(gene_names)
@@ -552,18 +570,25 @@ class SAAVsAndProteinStructuresSummary:
                     for variable in sorted(self.samples_per_view[view].keys()):
                         self.by_view[gene][view][perspective][variable] = {}
                         for sample in self.samples_per_view[view][variable]:
-                            image_path = image_path_template % {'input_directory': self.input_directory,
-                                                                'gene': str(gene),
-                                                                'sample': sample,
-                                                                'perspective': perspective}
-
-                            # if user wants a fully populated output directory, update the image_path variable
-                            if not self.soft_link_images:
-                                new_image_path = 'images/%s_%s_%s.png' % (str(gene), sample, hashlib.sha1(image_path.encode('utf-8')).hexdigest())
-                                shutil.copyfile(os.path.join(self.input_directory, image_path), os.path.join(self.output_directory, new_image_path))
-                                image_path = new_image_path
+                            image_path = self.copy_image_and_return_path(variables= {'input_directory': self.input_directory,
+                                                                                            'gene': str(gene),
+                                                                                            'sample': sample,
+                                                                                            'perspective': perspective,
+                                                                                            'image_type': 'sample',
+                                                                                            'view': view,
+                                                                                            'variable': variable})
 
                             self.by_view[gene][view][perspective][variable][sample] = image_path
+
+                        image_path = self.copy_image_and_return_path(variables= {'input_directory': self.input_directory,
+                                                                                        'gene': str(gene),
+                                                                                        'sample': sample,
+                                                                                        'perspective': perspective,
+                                                                                        'image_type': 'merged',
+                                                                                        'view': view,
+                                                                                        'variable': variable})
+
+                        self.by_view[gene][view][perspective][variable]['__merged__'] = image_path
 
         self.progress.end()
 
