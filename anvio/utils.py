@@ -529,17 +529,16 @@ def restore_alignment(sequence, alignment_summary):
         raise ConfigError("Sequence must be of type str or bytes. What you sent is of %s :/" % type(sequence))
 
     in_gap = alignment_summary[0] == '-'
-    in_nt = not in_gap
 
     alignment = ''
     for part in [int(p) for p in alignment_summary.split('|')[1:]]:
         if in_gap:
             alignment += '-' * part
-            in_gap, in_nt = False, True
+            in_gap = False
         else:
             for i in range(0, part):
                 alignment += sequence.pop(0)
-            in_gap, in_nt = True, False
+            in_gap = True
 
     return alignment
 
@@ -1547,7 +1546,6 @@ def get_pruned_HMM_hits_dict(hmm_hits_dict):
         contig_name = e['contig_name']
         start = e['start'] if e['start'] < e['stop'] else e['stop']
         stop = e['stop'] if e['start'] < e['stop'] else e['start']
-        e_value = e['e_value']
         length = stop - start
 
         if contig_name not in hits_per_contig:
@@ -1743,7 +1741,7 @@ def run_selenium_and_export_svg(url, output_file_path, run=run):
     driver.get(url)
 
     try:
-        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID,"draw_delta_time"), "objects drawn in"))
+        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID, "title-panel-second-line"), "Current view"))
     except TimeoutException:
         print("Timeout occured, could not get the SVG drawing in 600 seconds.")
         driver.quit()
