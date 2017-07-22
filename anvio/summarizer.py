@@ -598,12 +598,6 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.gene_level_coverage_stats_available = False
         self.non_single_copy_gene_hmm_data_available = False
 
-        self.collection_dict = {}
-        self.bins_info_dict = {}
-        self.initialized = False
-
-
-    def init(self):
         DatabasesMetaclass.__init__(self, self.args, self.run, self.progress)
         SummarizerSuperClass.__init__(self, self.args, self.run, self.progress)
 
@@ -613,6 +607,12 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
         self.init_splits_taxonomy(self.taxonomic_level)
 
+        self.collection_dict = {}
+        self.bins_info_dict = {}
+        self.initialized = False
+
+
+    def init(self):
         # init profile data for colletion.
         self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
 
