@@ -107,7 +107,9 @@ class GenomeDescriptions:
         # find out hmm_sources that occur in all genomes
         hmm_sources_in_all_genomes = copy.deepcopy(hmm_sources_found)
         for genome_name in self.genomes:
-            [hmm_sources_in_all_genomes.remove(s) for s in hmm_sources_found if s not in self.genomes[genome_name]['hmm_sources_info']]
+            for hmm_source in hmm_sources_found:
+                if hmm_source not in self.genomes[genome_name]['hmm_sources_info'] and hmm_source in hmm_sources_in_all_genomes:
+                    hmm_sources_in_all_genomes.remove(hmm_source)
 
         if not len(hmm_sources_in_all_genomes):
             if dont_raise:
