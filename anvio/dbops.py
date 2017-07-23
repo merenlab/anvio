@@ -2673,6 +2673,10 @@ class TablesForGeneCalls(Table):
         # by default we assume that this is a pristine run. but if the user sends a dictionary
         append_to_the_db = False
 
+        if gene_calls_dict is not None and not len(gene_calls_dict):
+            # the gene calls dict is empty. there is nothing to do here.
+            return
+
         if (not input_file_path and not gene_calls_dict) or (input_file_path and gene_calls_dict):
             raise ConfigError("You must provide either an input file, or an gene calls dict to process external\
                                gene calls. You called `use_external_gene_calls_to_populate_genes_in_contigs_table`\
@@ -2998,14 +3002,7 @@ class TablesForHMMHits(Table):
                 search_results_dict = parser.get_search_results()
 
             if not len(search_results_dict):
-                run.info_single("The HMM source '%s' returned 0 hits. Moving on without it..." % source, nl_before=1)
-
-                if not self.debug:
-                    commander.clean_tmp_dirs()
-                    for v in list(target_files_dict.values()):
-                        os.remove(v)
-
-                return
+                run.info_single("The HMM source '%s' returned 0 hits. SAD (but it's stil OK)." % source, nl_before=1)
 
 
             if context == 'CONTIG':
@@ -3104,9 +3101,6 @@ class TablesForHMMHits(Table):
         # break into multiple pieces due to arbitrary split boundaries. while doing that, we will add the 'source' info
         # into the dictionary, so it perfectly matches to the table structure
 
-        if not len(search_results_dict):
-            return
-
         for entry_id in search_results_dict:
             hit = search_results_dict[entry_id]
 
@@ -3122,6 +3116,11 @@ class TablesForHMMHits(Table):
         # push information about this search result into serach_info table.
         db_entries = [source, reference, kind_of_search, domain, ', '.join(all_genes)]
         contigs_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
+
+        # if our search results were empty, we can return from here.
+        if not len(search_results_dict):
+            contigs_db.disconnect()
+            return
 
         # then populate serach_data table for each contig.
         db_entries = []
