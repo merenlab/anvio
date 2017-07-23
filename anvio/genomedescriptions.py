@@ -17,7 +17,6 @@ import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
-import anvio.ccollections as ccollections
 import anvio.summarizer as summarizer
 import anvio.ccollections as ccollections
 
