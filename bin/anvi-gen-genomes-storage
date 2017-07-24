@@ -29,11 +29,6 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Create a genome storage from internal or external genomes for a pan genome analysis.")
 
-    groupC = parser.add_argument_group("OUTPUT", "Give it a nice name. Must end with '-GENOMES.h5'. This is primarily due to the fact\
-                                                  that there are other .h5 files used throughout anvi'o and it would be better to\
-                                                  distinguish this very special file from them.")
-    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
-
     groupA = parser.add_argument_group('EXTERNAL GENOMES', "External genomes listed as anvi'o contigs databases. As in, you have one\
                                                     or more genomes say from NCBI you want to work with, and you created an\
                                                     anvi'o contigs database for each one of them.")
@@ -41,6 +36,14 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group("INTERNAL GENOMES", "Genome bins stored in an anvi'o profile databases as collections.")
     groupB.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+
+    groupC = parser.add_argument_group("PRO STUFF", "Things you may not have to change. But you never know (unless you read the help).")
+    groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
+
+    groupD = parser.add_argument_group("OUTPUT", "Give it a nice name. Must end with '-GENOMES.h5'. This is primarily due to the fact\
+                                                  that there are other .h5 files used throughout anvi'o and it would be better to\
+                                                  distinguish this very special file from them.")
+    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
     args = parser.parse_args()
 
