@@ -1310,8 +1310,11 @@ class Bin:
         output_file_obj.close()
 
 
-def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None, gene_caller=constants.default_gene_caller):
+def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None, gene_caller=None):
     """Returns an info dict for a given contigs db"""
+
+    if not gene_caller:
+        gene_caller = constants.default_gene_caller
 
     class Args:
         def __init__(self):
