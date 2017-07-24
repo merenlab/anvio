@@ -531,6 +531,7 @@ class SAAVsAndProteinStructuresSummary:
 
         self.progress.end()
 
+
     def copy_image_and_return_path(self, variables=None):
         image_path_template = None
         if variables['image_type'] == 'sample':
@@ -1309,8 +1310,11 @@ class Bin:
         output_file_obj.close()
 
 
-def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None):
+def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None, gene_caller=None):
     """Returns an info dict for a given contigs db"""
+
+    if not gene_caller:
+        gene_caller = constants.default_gene_caller
 
     class Args:
         def __init__(self):
@@ -1323,22 +1327,35 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     progress.verbose = False
     c = ContigsSuperclass(args, r=run, p=progress)
 
-    info_dict = {'path': contigs_db_path}
+    info_dict = {'path': contigs_db_path,
+                 'gene_caller_ids': set([])}
 
     for key in c.a_meta:
         info_dict[key] = c.a_meta[key]
 
+    gene_calls_not_reported = set([])
+
     # Two different strategies here depending on whether we work with a given set if split ids or
     # everything in the contigs database.
+    ADD = lambda g: info_dict['gene_caller_ids'].add(g) if c.genes_in_contigs_dict[g]['source'] == gene_caller else gene_calls_not_reported.add(g)
+
     if split_names:
         split_names = set(split_names)
         c.init_split_sequences()
         seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
-        info_dict['gene_caller_ids'] = set([e['gene_callers_id'] for e in list(c.genes_in_splits.values()) if e['split'] in split_names])
+        for e in list(c.genes_in_splits.values()):
+            if e['split'] in split_names:
+                ADD(e['gene_callers_id'])
     else:
         c.init_contig_sequences()
         seq = ''.join([e['sequence'] for e in list(c.contig_sequences.values())])
-        info_dict['gene_caller_ids'] = list(c.genes_in_contigs_dict.keys())
+
+        for g in c.genes_in_contigs_dict:
+            ADD(g)
+
+    if len(gene_calls_not_reported):
+        run.info_single('Contigs db info summary will not include %d gene calls that were not identified by "%s", which \
+                         was the default source gene caller.' % (len(gene_calls_not_reported), gene_caller))
 
     info_dict['gc_content'] = seqlib.Composition(seq).GC_content
     info_dict['total_length'] = len(seq)

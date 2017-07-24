@@ -52,6 +52,7 @@ class GenomeDescriptions:
         self.input_file_for_external_genomes = A('external_genomes')
         self.list_hmm_sources = A('list_hmm_sources')          # <<< these two are look out of place, but if the args requests
         self.list_available_gene_names = A('list_available_gene_names') #     for information about HMMs, this is the bets place to set them
+        self.gene_caller = A('gene_caller')
 
         if self.input_file_for_internal_genomes or self.input_file_for_external_genomes:
             self.read_genome_paths_from_input_files()
@@ -269,7 +270,7 @@ class GenomeDescriptions:
 
             self.progress.update('working on %s' % (genome_name))
 
-            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'])
+            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], gene_caller=self.gene_caller)
 
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
@@ -312,7 +313,9 @@ class GenomeDescriptions:
                 # here we are using the get_contigs_db_info_dict function WITH split names we found in the collection
                 # which returns a partial summary from the contigs database focusing only those splits. a small workaround
                 # to be able to use the same funciton for bins in collections:
-                summary_from_contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names=split_names_of_interest)
+                summary_from_contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], \
+                                                                                      split_names=split_names_of_interest, \
+                                                                                      gene_caller=self.gene_caller)
                 for key in summary_from_contigs_db_summary:
                     c[key] = summary_from_contigs_db_summary[key]
 
