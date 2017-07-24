@@ -145,7 +145,7 @@ function redrawBins()
                 end.angle + end.size / 2,
                 beginning_of_layers,
                 (show_grid) ? total_radius + outer_ring_margin + outer_ring_size : total_radius,
-                (end.angle - start.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+                (Math.abs(end.angle - start.angle) + start.size / 2 + end.size / 2 > Math.PI) ? 1 : 0,
                 color,
                 (show_grid) ? 0 : 0.1,
                 false);

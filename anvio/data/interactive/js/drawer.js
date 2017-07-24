@@ -1143,7 +1143,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
                 _last.angle + _last.size / 2,
                 this.layer_boundaries[layer.order][0],
                 this.layer_boundaries[layer.order][1],
-                (_last.angle - _first.angle + _first.size / 2 + _last.size / 2 > Math.PI) ? 1:0, // large arc flag
+                (Math.abs(_last.angle - _first.angle) + _first.size / 2 + _last.size / 2 > Math.PI) ? 1:0, // large arc flag
                 _bgcolor,
                 _opacity,
                 false);
