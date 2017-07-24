@@ -567,7 +567,7 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
     if (this.settings['tree-type'] == 'circlephylogram')
     {
         if (p.order == 0) {
-            p.angle = p.size / 2;
+            p.angle = Math.min(Math.toRadians(this.settings['angle-min']), Math.toRadians(this.settings['angle-max'])) + p.size / 2;
         } else {
             var prev_leaf = order_to_node_map[p.order - 1];
             p.angle = prev_leaf.angle + prev_leaf.size / 2 + p.size / 2;
