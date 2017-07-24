@@ -601,34 +601,25 @@ class SAAVsAndProteinStructuresSummary:
     def get_legend_as_dict(self, gene, perspective):
         """
         does a global legend exist? does it have less than 15 colors? if not, load gene-specific legend for each gene
+
+        for single legends id is a gene_id, for global legend it is string constant "global"
         """
 
-        global_color_legend_path_template = "%(input_directory)s/%(perspective)s/Legends/color/%(perspective)s_global_color_legend.txt"
-        global_color_legend_path = global_color_legend_path_template % {'input_directory' : self.input_directory,
-                                                                        'perspective'     : perspective}
+        color_legend_path_template = "%(input_directory)s/%(perspective)s/Legends/color/%(perspective)s_%(id)s_color_legend.txt"
+
+        global_color_legend_path = color_legend_path_template % {'input_directory' : self.input_directory,
+                                                                 'id'              : 'global',
+                                                                 'perspective'     : perspective}
 
         if os.path.isfile(global_color_legend_path):
             global_legend_content = utils.get_TAB_delimited_file_as_dictionary(global_color_legend_path)
             if len(global_legend_content) <= 15:
-            #   use global legend
-                legend_content = global_legend_content
-                
-            else:
-            #   use gene-specific legend
-                color_legend_path_template = "%(input_directory)s/%(perspective)s/Legends/color/%(perspective)s_%(gene)s_color_legend.txt"
-                legend_content = utils.get_TAB_delimited_file_as_dictionary(color_legend_path_template % 
-                                                                            {'input_directory': self.input_directory,
-                                                                            'gene': str(gene),
-                                                                            'perspective': perspective})
-        else:
-        #   use gene-specific legend
-            color_legend_path_template = "%(input_directory)s/%(perspective)s/Legends/color/%(perspective)s_%(gene)s_color_legend.txt"
-            legend_content = utils.get_TAB_delimited_file_as_dictionary(color_legend_path_template % 
-                                                                        {'input_directory': self.input_directory,
-                                                                        'gene': str(gene),
-                                                                        'perspective': perspective})
-        return legend_content
+                return global_legend_content
 
+        return utils.get_TAB_delimited_file_as_dictionary(color_legend_path_template % 
+                                                                    {'input_directory': self.input_directory,
+                                                                    'id': str(gene),
+                                                                    'perspective': perspective})
 
     def process(self):
         if not self.initialized:
