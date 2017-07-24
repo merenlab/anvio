@@ -29,6 +29,8 @@ single_default = "tnf"
 merged_default = "tnf-cov"
 pan_default="presence-absence"
 
+default_gene_caller = "prodigal"
+
 max_num_items_for_hierarchical_clustering = 20000
 
 # default methods for hierarchical cluster analyses

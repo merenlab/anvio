@@ -199,6 +199,14 @@ D = {
                       'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name'\
                       can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection."}
                 ),
+    'gene-caller': (
+            ['--gene-caller'],
+            {'metavar': 'GENE-CALLER',
+             'help': "The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one)\
+                      requires an explicit mentioning of which one to use. The default is '%s', but it will not be enough if you\
+                      if you were a rebel adn have used `--external-gene-callers` or something." % constants.default_gene_caller}
+                ),
+
     'ignore-internal-stop-codons': (
             ['--ignore-internal-stop-codons'],
             {'default': False,
