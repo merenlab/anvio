@@ -132,12 +132,30 @@ class Table(object):
 
         sequences_fasta = u.FastaOutput(output_file_path)
 
+        seq_ids_not_reported = set([])
+
         for seq_id in sequences_table:
-            sequences_fasta.write_id(seq_id)
-            sequences_fasta.write_seq(sequences_table[seq_id]['sequence'], split=False)
+            if len(sequences_table[seq_id]['sequence']):
+                sequences_fasta.write_id(seq_id)
+                sequences_fasta.write_seq(sequences_table[seq_id]['sequence'], split=False)
+            else:
+                seq_ids_not_reported.add(seq_id)
 
         self.progress.end()
-        self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table)))
+
+        if len(seq_ids_not_reported):
+            self.run.warning("%d entries in the sequences table had blank sequences :/ This should never\
+                             happen, but it does happen because anvi'o is not as good as it should be. We\
+                             opened an issue here: https://github.com/merenlab/anvio/issues/565, and we\
+                             are determined to work on this. If this is like mid-2018 and you run into this error\
+                             please find an anvi'o developer and make them feel embarrassed. If it is earlier than\
+                             that, please let us know about this, and we will tell you about what you should be\
+                             careful about your downstream analyses to be perfect given the best we know at the time.\
+                             This is a very minor issue due to on-the-fly addition of Ribosomal RNA gene calls to the\
+                             contigs database, and will likely will not affect anything major. But still. Get in touch\
+                             with us if you have any questions." % len(seq_ids_not_reported))
+
+        self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table) - len(seq_ids_not_reported)))
         self.run.info('FASTA', output_file_path)
 
         return output_file_path
