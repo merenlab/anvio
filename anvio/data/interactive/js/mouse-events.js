@@ -185,15 +185,25 @@ function lineContextMenuHandler(event) {
 
         return false;
     } else {
-        if (collapsedNodes.indexOf(id_to_node_map[context_menu_target_id].label) == -1) {
-            $('.menuItemCollapse').show();
-            $('.menuItemExpand').hide();
-        } else {
+
+        var is_collapsed = (collapsedNodes.indexOf(id_to_node_map[context_menu_target_id].label) > -1);
+        var is_ctrl_pressed = ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey);
+
+        if (is_collapsed) {
             $('.menuItemCollapse').hide();
             $('.menuItemExpand').show();
+        } else {
+            $('.menuItemCollapse').show();
+            $('.menuItemExpand').hide();
         }
-        $('#branch_right_click_menu').show();
-        $('#branch_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
+
+        if (is_collapsed || is_ctrl_pressed) {
+            $('#branch_right_click_menu').show();
+            $('#branch_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
+        } else {
+            var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
+            removeBranchFromBin(fake_event);
+        }
     }
 
     return false;
