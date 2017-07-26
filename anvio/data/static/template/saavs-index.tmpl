@@ -111,12 +111,38 @@
     function generate_panel_content(element, gene) {
         var parent = $(element).closest('.panel');
 
-        //var functions = saav_data['genes_info'][gene]['functions'];
+        var has_functions = saav_data['genes_info'].hasOwnProperty(gene);
+        var functions = {};
+
+        if (has_functions)
+            functions = saav_data['genes_info'][gene]['functions'];
 
         if ($(element).attr('has-content') != 'true') {
             $(element).attr('has-content', 'true');
             var content = `<div id="collapse-${gene}" class="panel-collapse">
                            <div class="panel-body">
+                            ${ (has_functions) ? `
+                                <table class="table table-striped">
+                                   <thead>
+                                      <tr>
+                                         <th>Source</th>
+                                         <th>Accession</th>
+                                         <th>Annotation</th>
+                                      </tr>
+                                   </thead>
+                                   <tbody>
+                                    ${ Object.keys(functions).map(source => `
+                                        ${ (functions[source]) ? `
+                                          <tr>
+                                             <td><b>${ source }</b></td>
+                                             <td>${ functions[source][0] }</td>
+                                             <td><em>${ functions[source][1] }</em></td>
+                                          </tr>
+                                         ` : ``}
+                                      `).join('')}
+                                   </tbody>
+                                </table>
+                            ` : `` }
                             ${ Object.keys(saav_data["samples_per_view"]).map(view =>`
                             <div class="panel panel-default">
                                 <div class="panel-heading">
