@@ -227,7 +227,7 @@ function checkNews() {
                 }
                 $('#news-panel-inner').append('<div class="news-item"> \
                                               <h1>' + ((hash_found) ? '' : '<span class="blue-dot">') + '</span>'+news_item['title']+'</h1> \
-                                              <span class="news-date">'+news_item['date']+'</span>'+marked(news_item['content'])+'</div>')
+                                              <span class="news-date">'+news_item['date']+'</span>'+renderMarkdown(news_item['content'])+'</div>')
             }
             createCookie('news_checked', 'yes', 1); // expiration is 1 days
 
@@ -360,14 +360,8 @@ function initData() {
                     $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
                 },
                 'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
-                'parser': function(val) {
-                    var renderer = new marked.Renderer();
-
-                    renderer.link = function( href, title, text ) {
-                      return '<a target="_blank" href="'+ href +'" title="' + title + '">' + text + '</a>';
-                    }
-
-                    return marked(val, { renderer:renderer });
+                'parser': function(content) {
+                    return renderMarkdown(content);
                 },
                 'additionalButtons': [
                   [{
