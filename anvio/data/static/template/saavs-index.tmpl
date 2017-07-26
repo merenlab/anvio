@@ -181,8 +181,8 @@
     $(document).ready(function() {
         saav_data['gene_names'].forEach(function(gene) {
 
-            var func = saav_data['genes'][gene]['function'];
-            var accession = saav_data['genes'][gene]['accession'];
+            var func = saav_data['genes_info'][gene]['function'];
+            var accession = saav_data['genes_info'][gene]['accession'];
 
             var content = `<section>
                             <div class="container-fluid">
