@@ -429,8 +429,14 @@ class SAAVsAndProteinStructuresSummary:
                 raise ConfigError("Anvi'o could not find sample groups file '%s'. If you did not provided any as a parameter \
                                    anvi'o looks for '.sample_groups.txt' in input directory." % self.samples_file_path)
 
-            filesnpaths.is_file_tab_delimited(self.genes_file_path)
-            filesnpaths.is_file_tab_delimited(self.samples_file_path)
+            """ 
+                FIX: sometimes this filepaths point to files that are a
+                single column and so an error is raised. For the time being, I
+                (Evan) comment this out. It is the user's responsibility to provide
+                a proper formatted text file until this is fixed.
+            """
+            #filesnpaths.is_file_tab_delimited(self.genes_file_path)
+            #filesnpaths.is_file_tab_delimited(self.samples_file_path)
 
         self.run.info('Input source', 'Databases' if init_from_databases else 'Flat files')
 
@@ -462,9 +468,28 @@ class SAAVsAndProteinStructuresSummary:
 
 
     def init_from_files(self):
-        self.genes = utils.get_TAB_delimited_file_as_dictionary(self.genes_file_path)
-        self.samples = utils.get_TAB_delimited_file_as_dictionary(self.samples_file_path)
-        self.views = utils.get_columns_of_TAB_delim_file(self.samples_file_path)
+
+        # Assume its a single-column file. If it isn't, assume its a multi-column file
+        try: 
+            self.gene_list = list(utils.get_column_data_from_TAB_delim_file(self.genes_file_path, column_indices=[0], expected_number_of_fields=1).values())[0][1:]
+            self.genes = {}
+            for gene in self.gene_list:
+                self.genes[gene] = {}
+        except: 
+            self.genes = utils.get_TAB_delimited_file_as_dictionary(self.genes_file_path)
+
+
+        # Assume its a single-column file. If it isn't, assume its a multi-column file
+        try: 
+            self.sample_list = list(utils.get_column_data_from_TAB_delim_file(self.samples_file_path, column_indices=[0], expected_number_of_fields=1).values())[0][1:]
+            self.samples = {}
+            self.views = {}
+            for sample in self.sample_list:
+                self.samples[sample] = {}
+        except: 
+            self.samples = utils.get_TAB_delimited_file_as_dictionary(self.samples_file_path)
+            self.views = utils.get_columns_of_TAB_delim_file(self.samples_file_path)
+
 
 
     def init(self):
@@ -1489,7 +1514,7 @@ class AdHocRunGenerator:
 
     def get_output_file_path(self, file_name):
         return os.path.join(self.output_directory, file_name)
-
+#
 
     def check_output_directory(self):
         if os.path.exists(self.output_directory) and not self.delete_output_directory_if_exists:
