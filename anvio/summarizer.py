@@ -361,7 +361,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
 
 class SAAVsAndProteinStructuresSummary:
-    """Creates an über dictionary of 'summary' for anvi'o profiles."""
+    """A class to make sense of the SAAV Structure outputs."""
+
     def __init__(self, args=None, r=run, p=progress):
         self.run = run
         self.progress = progress
@@ -372,9 +373,6 @@ class SAAVsAndProteinStructuresSummary:
         self.summary_type = 'saav'
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.profile_db_path = A('profile_db')
-        self.contigs_db_path = A('contigs_db')
-        self.samples_db_path = A('samples_information_db')
         self.input_directory = A('input_dir')
         self.output_directory = A('output_dir')
         self.soft_link_images = A('soft_link_images')
@@ -400,45 +398,21 @@ class SAAVsAndProteinStructuresSummary:
 
 
     def sanity_check(self):
-        init_from_databases = False
-        if self.profile_db_path or self.contigs_db_path or self.samples_db_path:
-            init_from_databases = True
-
         self.input_directory = os.path.abspath(self.input_directory)
         filesnpaths.is_file_exists(self.input_directory)
 
-        if init_from_databases:
-            if not self.profile_db_path or not self.contigs_db_path or not self.samples_db_path:
-                raise ConfigError("If you want to initialize from databases, you must provide all of them: profile db\
-                                   contigs db, and samples db.")
+        # this fallback code could have been inside init instead of sanity check function
+        # but calling os.path.join can raise exception if input_directory is None, it should checked first.
+        self.genes_file_path = self.genes_file_path or os.path.join(self.input_directory, '.gene_list.txt')
+        self.samples_file_path = self.samples_file_path or os.path.join(self.input_directory, '.sample_groups.txt')
 
-            if self.genes_file_path or self.samples_file_path:
-                raise ConfigError("Well, if you want initialize from databases, you should not provide any genes or\
-                                   samples files.")
-        else:
-            # this fallback code could have been inside init instead of sanity check function
-            # but calling os.path.join can raise exception if input_directory is None, it should checked first.
-            self.genes_file_path = self.genes_file_path or os.path.join(self.input_directory, '.gene_list.txt')
-            self.samples_file_path = self.samples_file_path or os.path.join(self.input_directory, '.sample_groups.txt')
+        if not filesnpaths.is_file_exists(self.genes_file_path, dont_raise=True):
+            raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
+                               anvi'o looks for '.gene_list.txt' in input directory." % self.genes_file_path)
 
-            if not filesnpaths.is_file_exists(self.genes_file_path, dont_raise=True):
-                raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
-                                   anvi'o looks for '.gene_list.txt' in input directory." % self.genes_file_path)
-
-            if not filesnpaths.is_file_exists(self.samples_file_path, dont_raise=True):
-                raise ConfigError("Anvi'o could not find sample groups file '%s'. If you did not provided any as a parameter \
-                                   anvi'o looks for '.sample_groups.txt' in input directory." % self.samples_file_path)
-
-            """ 
-                FIX: sometimes this filepaths point to files that are a
-                single column and so an error is raised. For the time being, I
-                (Evan) comment this out. It is the user's responsibility to provide
-                a proper formatted text file until this is fixed.
-            """
-            #filesnpaths.is_file_tab_delimited(self.genes_file_path)
-            #filesnpaths.is_file_tab_delimited(self.samples_file_path)
-
-        self.run.info('Input source', 'Databases' if init_from_databases else 'Flat files')
+        if not filesnpaths.is_file_exists(self.samples_file_path, dont_raise=True):
+            raise ConfigError("Anvi'o could not find sample groups file '%s'. If you did not provided any as a parameter \
+                               anvi'o looks for '.sample_groups.txt' in input directory." % self.samples_file_path)
 
         if not self.output_directory or not self.input_directory:
             raise ConfigError("You must declare both input and output directories.")
@@ -456,20 +430,8 @@ class SAAVsAndProteinStructuresSummary:
         self.sanity_checked = True
 
 
-    def init_from_databases(self):
-        raise ConfigError("Initializing from databases is not yet impemented.")
-
-        DatabasesMetaclass.__init__(self, self.args, self.run, self.progress)
-
-        # now recover these:
-        self.genes = {}
-        self.samples = {}
-        self.views = {}
-
-
-    def init_from_files(self):
-
-        # Assume its a single-column file. If it isn't, assume its a multi-column file
+    def process_input(self):
+        # FIXME: Assume its a single-column file. If it isn't, assume its a multi-column file
         try: 
             self.gene_list = list(utils.get_column_data_from_TAB_delim_file(self.genes_file_path, column_indices=[0], expected_number_of_fields=1).values())[0][1:]
             self.genes = {}
@@ -478,7 +440,7 @@ class SAAVsAndProteinStructuresSummary:
         except: 
             self.genes = utils.get_TAB_delimited_file_as_dictionary(self.genes_file_path)
 
-        # Assume its a single-column file. If it isn't, assume its a multi-column file
+        # FIXME: Assume its a single-column file. If it isn't, assume its a multi-column file
         try: 
             self.sample_list = list(utils.get_column_data_from_TAB_delim_file(self.samples_file_path, column_indices=[0], expected_number_of_fields=1).values())[0][1:]
             self.samples = {}
@@ -498,10 +460,7 @@ class SAAVsAndProteinStructuresSummary:
     def init(self):
         self.sanity_check()
 
-        if self.profile_db_path:
-            self.init_from_databases()
-        else:
-            self.init_from_files()
+        self.process_input()
 
         self.perspectives = [os.path.basename(d) for d in glob.glob('%s/*' % self.input_directory) if os.path.isdir(d)]
 
