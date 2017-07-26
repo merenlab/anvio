@@ -92,6 +92,7 @@ var named_layers = {
     },
     'taxonomy': {
         'pretty_name': 'Taxonomy',
+        'type': 'color',
     },
     'num_genes': {
         'height': 0,
