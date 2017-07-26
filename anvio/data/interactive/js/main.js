@@ -1165,7 +1165,7 @@ function buildLayersTable(order, settings)
             }
             else
             {
-                var norm   = getNamedLayerDefaults(layer_name, 'norm', (mode == 'full') ? 'log' : 'none');
+                var norm   = getNamedLayerDefaults(layer_name, 'norm', (mode == 'full' || mode == 'refine') ? 'log' : 'none');
                 var min    = getNamedLayerDefaults(layer_name, 'min', 0);
                 var max    = getNamedLayerDefaults(layer_name, 'max', 0);
                 var min_disabled = getNamedLayerDefaults(layer_name, 'min_disabled', true);
