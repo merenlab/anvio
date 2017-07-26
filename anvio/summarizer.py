@@ -478,18 +478,21 @@ class SAAVsAndProteinStructuresSummary:
         except: 
             self.genes = utils.get_TAB_delimited_file_as_dictionary(self.genes_file_path)
 
-
         # Assume its a single-column file. If it isn't, assume its a multi-column file
         try: 
             self.sample_list = list(utils.get_column_data_from_TAB_delim_file(self.samples_file_path, column_indices=[0], expected_number_of_fields=1).values())[0][1:]
             self.samples = {}
-            self.views = {}
             for sample in self.sample_list:
                 self.samples[sample] = {}
         except: 
             self.samples = utils.get_TAB_delimited_file_as_dictionary(self.samples_file_path)
-            self.views = utils.get_columns_of_TAB_delim_file(self.samples_file_path)
 
+        self.views = utils.get_columns_of_TAB_delim_file(self.samples_file_path)
+
+        # add a samples view
+        self.views.append("samples")
+        for sample in self.samples:
+            self.samples[sample]["samples"] = "All"
 
 
     def init(self):
@@ -608,15 +611,17 @@ class SAAVsAndProteinStructuresSummary:
 
                             self.by_view[gene][view][perspective][variable][sample] = image_path
 
-                        image_path = self.copy_image_and_return_path(variables= {'input_directory': self.input_directory,
-                                                                                        'gene': str(gene),
-                                                                                        'sample': sample,
-                                                                                        'perspective': perspective,
-                                                                                        'image_type': 'merged',
-                                                                                        'view': view,
-                                                                                        'variable': variable})
+                        if view != "samples":
 
-                        self.by_view[gene][view][perspective][variable]['__merged__'] = image_path
+                            image_path = self.copy_image_and_return_path(variables= {'input_directory': self.input_directory,
+                                                                                            'gene': str(gene),
+                                                                                            'sample': sample,
+                                                                                            'perspective': perspective,
+                                                                                            'image_type': 'merged',
+                                                                                            'view': view,
+                                                                                            'variable': variable})
+
+                            self.by_view[gene][view][perspective][variable]['__merged__'] = image_path
 
                     self.legends[gene][perspective] = self.get_legend_as_dict(gene, perspective)
 
