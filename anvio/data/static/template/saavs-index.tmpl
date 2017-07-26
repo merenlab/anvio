@@ -111,7 +111,7 @@
     function generate_panel_content(element, gene) {
         var parent = $(element).closest('.panel');
 
-        var functions = saav_data['genes_info'][gene]['functions'];
+        //var functions = saav_data['genes_info'][gene]['functions'];
 
         if ($(element).attr('has-content') != 'true') {
             $(element).attr('has-content', 'true');
@@ -183,17 +183,19 @@
     $(document).ready(function() {
         saav_data['gene_names'].forEach(function(gene) {
 
-            var func = saav_data['genes_info'][gene]['function'];
-            var accession = saav_data['genes_info'][gene]['accession'];
+            var function_links = '';
+            if (saav_data['genes_info'].hasOwnProperty(gene)) {
+                var func = saav_data['genes_info'][gene]['function'];
+                var accession = saav_data['genes_info'][gene]['accession'];
 
+                function_links = `| <a href="https://www.google.com/search?q=${func}" target="_blank">${func}</a> | <a href="http://pfam.xfam.org/family/${accession}" target="_blank">${accession}</a>`;
+            }
             var content = `<section>
                             <div class="container-fluid">
                             <div class="panel panel-info" id="${gene}_panel">
                                 <div class="panel-heading">
                                     <h1 class="panel-title">
-                                        <a onClick="generate_panel_content(this, ${gene});" target="_self" data-toggle="collapse" data-parent="#${gene}_panel" href="#collapse-${gene}">${gene}</a> |
-                                        <a href="https://www.google.com/search?q=${func}" target="_blank">${func}</a> |
-                                        <a href="http://pfam.xfam.org/family/${accession}" target="_blank">${accession}</a>
+                                        <a onClick="generate_panel_content(this, ${gene});" target="_self" data-toggle="collapse" data-parent="#${gene}_panel" href="#collapse-${gene}">${gene}</a> ${function_links}
                                     </h1>
                                 </div>
                             </div>
