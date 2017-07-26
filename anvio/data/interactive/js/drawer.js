@@ -1033,7 +1033,7 @@ Drawer.prototype.calculate_layer_boundaries = function() {
 
         var ending_of_previous_layer = this.layer_boundaries[layer.order - 1][1];
 
-        var layer_start = ending_of_previous_layer + margin;
+        var layer_start = ending_of_previous_layer + ((height > 0) ? margin : 0);
         var layer_end   = layer_start + height;
 
         this.layer_boundaries.push([layer_start, layer_end]);
