@@ -373,6 +373,7 @@ class SAAVsAndProteinStructuresSummary:
         self.summary_type = 'saav'
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
         self.input_directory = A('input_dir')
         self.output_directory = A('output_dir')
         self.soft_link_images = A('soft_link_images')
@@ -387,6 +388,7 @@ class SAAVsAndProteinStructuresSummary:
 
         # dicts that will be recovered by traversing the input directory
         self.perspectives = {}
+        self.genes_info = {}
 
         # dicts that will be populated by the init function
         self.by_view = {}
@@ -420,10 +422,14 @@ class SAAVsAndProteinStructuresSummary:
         if self.output_directory == self.input_directory:
             raise ConfigError("The input and the output directories can't be the same.")
 
+        if self.contigs_db_path:
+            dbops.is_contigs_db(self.contigs_db_path)
+
         self.output_directory = filesnpaths.check_output_directory(self.output_directory)
         filesnpaths.gen_output_directory(self.output_directory)
         filesnpaths.gen_output_directory(os.path.join(self.output_directory, 'images'))
 
+        self.run.info('Contigs DB found', self.contigs_db_path is not None, mc='green' if self.contigs_db_path else 'red')
         self.run.info('Input directory', self.input_directory)
         self.run.info('Output directory', self.output_directory)
 
@@ -457,10 +463,66 @@ class SAAVsAndProteinStructuresSummary:
             self.samples[sample]["samples"] = "All"
 
 
+    def populate_genes_info_dict(self):
+        if not self.contigs_db_path:
+            # go populate yourself
+            return
+
+        contigs_db = dbops.ContigsSuperclass(self.args)
+
+        # let's make sure all genes are here
+        for gene_id in map(int, self.genes):
+            if gene_id not in contigs_db.genes_in_contigs_dict:
+                raise ConfigError("Gene caller id %d is not in your contigs db. You must have\
+                                   provided an irrelevant contigs database to your run.")
+
+        contigs_db.init_functions()
+
+        if len(contigs_db.gene_function_calls_dict):
+            self.run.info_single("Good news, anvi'o found functional annotations in your\
+                                  contigs database and will use them to display in the HMTL\
+                                  output. We hope we are not missing anything: %s." % \
+                                            ', '.join(contigs_db.gene_function_call_sources),
+                                            nl_before=1, nl_after=1)
+
+        # we will either of these to show on the header:
+        preferred_annotation_sources = ['Pfam', 'COG_FUNCTION', 'TIGRFAM']
+        annotation_source = None
+        for f in preferred_annotation_sources:
+            if f in contigs_db.gene_function_call_sources:
+                annotation_source = f
+                break
+
+        if annotation_source:
+            self.run.info_single("%s will be used to show summaries in section headers." % \
+                                            annotation_source, nl_after=1)
+        else:
+            self.run.info_single("Congratulations, none of the preferred functional annotation \
+                                  sources (%s) were in your contigs database :( although you \
+                                  have functions in the contigs database, your gene headers\
+                                  will look ugly. That's OK." % \
+                                            ', '.join(preferred_annotation_sources), nl_after=1)
+
+        for gene_id in map(int, self.genes):
+            f = contigs_db.gene_function_calls_dict[gene_id]
+            self.genes_info[gene_id] = {}
+
+            if annotation_source:
+                if f[annotation_source]:
+                    self.genes_info[gene_id]['function'] = f[annotation_source][1]
+                    self.genes_info[gene_id]['accession'] = f[annotation_source][0]
+                else:
+                    self.genes_info[gene_id]['function'] = 'Unknown function'
+                    self.genes_info[gene_id]['accession'] = None
+
+            self.genes_info['functions'] = f
+
+
     def init(self):
         self.sanity_check()
 
         self.process_input()
+        self.populate_genes_info_dict()
 
         self.perspectives = [os.path.basename(d) for d in glob.glob('%s/*' % self.input_directory) if os.path.isdir(d)]
 
@@ -494,6 +556,7 @@ class SAAVsAndProteinStructuresSummary:
                                 'views': sorted(self.samples_per_view.keys()),
                                 'perspectives': sorted(self.perspectives),
                                 'genes': self.genes,
+                                'genes_info': self.genes_info,
                                 'samples_per_view': self.samples_per_view,
                                 'legends': self.legends}
 
