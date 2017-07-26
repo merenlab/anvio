@@ -515,7 +515,7 @@ class SAAVsAndProteinStructuresSummary:
                     self.genes_info[gene_id]['function'] = 'Unknown function'
                     self.genes_info[gene_id]['accession'] = None
 
-            self.genes_info['functions'] = f
+            self.genes_info[gene_id]['functions'] = f
 
 
     def init(self):
