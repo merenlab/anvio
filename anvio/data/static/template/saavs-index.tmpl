@@ -121,32 +121,10 @@
             $(element).attr('has-content', 'true');
             var content = `<div id="collapse-${gene}" class="panel-collapse">
                            <div class="panel-body">
-                            ${ (has_functions) ? `
-                                <table class="table table-striped">
-                                   <thead>
-                                      <tr>
-                                         <th>Source</th>
-                                         <th>Accession</th>
-                                         <th>Annotation</th>
-                                      </tr>
-                                   </thead>
-                                   <tbody>
-                                    ${ Object.keys(functions).map(source => `
-                                        ${ (functions[source]) ? `
-                                          <tr>
-                                             <td><b>${ source }</b></td>
-                                             <td>${ functions[source][0] }</td>
-                                             <td><em>${ functions[source][1] }</em></td>
-                                          </tr>
-                                         ` : ``}
-                                      `).join('')}
-                                   </tbody>
-                                </table>
-                            ` : `` }
                             ${ Object.keys(saav_data["samples_per_view"]).map(view =>`
                             <div class="panel panel-default">
                                 <div class="panel-heading">
-                                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#${gene}-${view}_panel" href="#collapse-${gene}-${view}">${view}</a></h1>
+                                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#${gene}-${view}_panel" href="#collapse-${gene}-${view}">★ ${view}</a></h1>
                                 </div>
                                 <div id="collapse-${gene}-${view}" class="panel-collapse collapse">
                                     <div class="panel-body">
@@ -199,6 +177,31 @@
                                     </div>
                                 </div>
                             </div>`).join('')}
+
+                            ${ (has_functions) ? `
+                                <hr />
+                                <table class="table table-striped" style="border: 1px solid #ccc; background: #fff5ff;">
+                                   <thead>
+                                      <tr>
+                                         <th>Source</th>
+                                         <th>Accession</th>
+                                         <th>Annotation</th>
+                                      </tr>
+                                   </thead>
+                                   <tbody>
+                                    ${ Object.keys(functions).map(source => `
+                                        ${ (functions[source]) ? `
+                                          <tr>
+                                             <td><b>${ source }</b></td>
+                                             <td>${ functions[source][0] }</td>
+                                             <td><em>${ functions[source][1] }</em></td>
+                                          </tr>
+                                         ` : ``}
+                                      `).join('')}
+                                   </tbody>
+                                </table>
+                            ` : `` }
+
                         </div>
                         </div>`;
 
