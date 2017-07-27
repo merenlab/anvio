@@ -377,6 +377,7 @@ class SAAVsAndProteinStructuresSummary:
         self.input_directory = A('input_dir')
         self.output_directory = A('output_dir')
         self.soft_link_images = A('soft_link_images')
+        self.perspectives = A('perspectives')
 
         self.genes_file_path = A('genes')
         self.samples_file_path = A('samples')
@@ -386,8 +387,7 @@ class SAAVsAndProteinStructuresSummary:
         self.samples = None
         self.views = None
 
-        # dicts that will be recovered by traversing the input directory
-        self.perspectives = {}
+        # this will be recovered by traversing the input directory
         self.genes_info = {}
 
         # dicts that will be populated by the init function
@@ -524,13 +524,23 @@ class SAAVsAndProteinStructuresSummary:
         self.process_input()
         self.populate_genes_info_dict()
 
-        self.perspectives = [os.path.basename(d) for d in glob.glob('%s/*' % self.input_directory) if os.path.isdir(d)]
+        perspectives_found = [os.path.basename(d) for d in glob.glob('%s/*' % self.input_directory) if os.path.isdir(d)]
+
+        if self.perspectives:
+            self.perspectives = [p.strip() for p in self.perspectives.split(',') if p.strip()]
+            for perspective in self.perspectives:
+                if perspective not in perspectives_found:
+                    raise ConfigError("The perspectie you requested ('%s') is not one of the available perspectives in\
+                                       this SAAVs structure output. These are the ones that are avilable: %s" % \
+                                                                          (perspective, ', '.join(perspectives_found)))
+        else:
+            self.perspectives = perspectives_found
 
         self.run.info('Num genes', len(self.genes))
         self.run.info('Num samples', len(self.samples))
-        self.run.info('Sample views', ', '.join(self.views))
-        self.run.info('Gene views', ', '.join(self.perspectives))
-        self.run.info('Images soft linked', self.soft_link_images, mc='red' if self.soft_link_images else 'yellow')
+        self.run.info('Views', ', '.join(self.views))
+        self.run.info('Perspectives', ', '.join(self.perspectives))
+        self.run.info('Images are soft linked', self.soft_link_images, mc='red' if self.soft_link_images else 'yellow')
 
         if(len(self.genes)) > 50:
             self.run.warning('You seem to have a lot of genes to process. Nice. The output may be quite large,\

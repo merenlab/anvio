@@ -57,6 +57,12 @@ if __name__ == '__main__':
                         send it to your colleagues and they would have everything they need to browse the output).\
                         Alternatively you can use this flag to avoid copying images in the output directory (it\
                         would make the output less portable, but it would take less time and space to generate it).")
+    groupD.add_argument('--perspectives', default=None, help="By default anvi'o will use each perspective found in the\
+                        data directory to create an HTML output. Using this parameter you can limit perspectives to\
+                        the ones you are interested in by defining them as a commma-separated list. If you make a\
+                        mistake anvi'o will tell you what are the available perspectives, so don't worry.")
+
+
 
     args = parser.parse_args()
 
