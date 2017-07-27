@@ -159,9 +159,18 @@
                                                                     <tr>
                                                                         <td style="vertical-align: middle; width: 10px;"><b>${variable}</b></td>
                                                                         <td>
-                                                                            ${ (saav_data["by_view"][gene][view][perspective][variable].hasOwnProperty('__merged__')) ? `<a href="${saav_data["by_view"][gene][view][perspective][variable]['__merged__']}" target="_blank"><img src="${saav_data["by_view"][gene][view][perspective][variable]['__merged__']}" width="130px;" /></a>` : `` }
+                                                                            ${ (saav_data["by_view"][gene][view][perspective][variable].hasOwnProperty('__merged__')) ? `
+                                                                              <div class="molecule-image">
+                                                                                <a href="${saav_data["by_view"][gene][view][perspective][variable]['__merged__']}" target="_blank"><img src="${saav_data["by_view"][gene][view][perspective][variable]['__merged__']}" width="130px;" /></a><br />MERGED
+                                                                                </div>
+
+
+                                                                                ` : `` }
                                                                             ${ saav_data["samples_per_view"][view][variable].map(sample =>`
-                                                                            <a href="${saav_data["by_view"][gene][view][perspective][variable][sample]}" target="_blank"><img src="${saav_data["by_view"][gene][view][perspective][variable][sample]}" width="130px;" /></a>
+                                                                            <div class="molecule-image">
+                                                                            <a href="${saav_data["by_view"][gene][view][perspective][variable][sample]}" target="_blank"><img src="${saav_data["by_view"][gene][view][perspective][variable][sample]}" width="130px;" /></a><br />
+                                                                                ${ sample }
+                                                                            </div>
                                                                             `).join('')}
                                                                         </td>
                                                                     </tr>

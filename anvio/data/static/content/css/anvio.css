@@ -118,3 +118,9 @@ footer {
   height: 12px;
   margin-bottom: 3px;
 }
+
+.molecule-image {
+  display: inline-block;
+  text-align: center;
+  font-size: 12px;
+}
