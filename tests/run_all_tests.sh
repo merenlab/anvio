@@ -21,7 +21,11 @@ column -t $output_dir/contigs-reformat-report.txt
 # we first generate an empty contigs database using contigs.fa (keep in mind that 'contigs.fa'
 # is the original file all samples were mapped to). here we use split size of 1000 (the default split
 # size is much better for most projects. the small split size used here is simply for testing purposes)
-INFO "Generating an EMPTY contigs database"
+INFO "Generating a new contigs database with external gene calls"
+anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000 --external-gene-calls $files/example_external_gene_calls.txt
+rm -rf $output_dir/CONTIGS.db $output_dir/CONTIGS.h5
+
+INFO "Generating a new contigs database with the default gene caller"
 anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000
 
 INFO "Exporting gene calls from the contigs database"
