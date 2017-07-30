@@ -2673,11 +2673,27 @@ class TablesForGeneCalls(Table):
         # by default we assume that this is a pristine run. but if the user sends a dictionary
         append_to_the_db = False
 
-        if gene_calls_dict is not None and not len(gene_calls_dict):
-            # the gene calls dict is empty. there is nothing to do here.
-            return
+        gene_calls_found = False
+        # let's do a rigorous check whether the user provided a gene_calls_dict.
+        if (gene_calls_dict is not None and gene_calls_dict is not False):
+            if not isinstance(gene_calls_dict, dict):
+                raise ConfigError("'Use external gene calls' function received a non-empty gene_calls_dict object,\
+                                    but it is of type '%s', and not '%s'" % (type(gene_calls_dict), type({})))
 
-        if (not input_file_path and not gene_calls_dict) or (input_file_path and gene_calls_dict):
+            # congrats, we have a dict.
+            gene_calls_found = True
+
+            if not len(gene_calls_dict):
+                # but it is empty ... silly user.
+                self.run.info_single("'Use external gene calls' function found an empty gene calls dict, returning\
+                                      prematurely and assuming you know what's up. If you don't, stop here and try to\
+                                      identify what decisions you've made might have led you to this weird point your\
+                                      workflow (or 'life', totally up to you and your mood, but anvi'o thinks you've\
+                                      done great so far.", nl_before=1, nl_after=1)
+                return
+
+
+        if (not input_file_path and not gene_calls_found) or (input_file_path and gene_calls_found):
             raise ConfigError("You must provide either an input file, or an gene calls dict to process external\
                                gene calls. You called `use_external_gene_calls_to_populate_genes_in_contigs_table`\
                                with wrong parameters.")
@@ -2685,11 +2701,21 @@ class TablesForGeneCalls(Table):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress, simple=True)
 
         # take care of gene calls dict
-        if not gene_calls_dict:
+        if not gene_calls_found:
             gene_calls_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_path,
                                                                          expected_fields=t.genes_in_contigs_table_structure,
                                                                          only_expected_fields=True,
                                                                          column_mapping=[int, str, int, int, str, int, str, str])
+
+            if not len(gene_calls_dict):
+                raise ConfigError("You provided an external gene calls file, but it returned zero gene calls. Assuming that\
+                                   this is an error, anvi'o will stop here and complain. If this is not an error and you\
+                                   in fact expected this, the proper way of doing this is to use `--skip-gene-calls` flag,\
+                                   instead of providing an emtpy external gene calls file. You don't agree? You need this\
+                                   for some weird step for you weird pipeline? Let us know, and we will consider changing\
+                                   this.")
+
+            self.run.info("External gene calls", "%d gene calls recovered and will be processed." % len(gene_calls_dict))
         else:
             # FIXME: we need to make sure the gene caller ids in the incoming directory is not going to
             #        overwrite an existing gene call. Something like this would have returned the
