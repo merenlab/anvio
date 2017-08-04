@@ -59,7 +59,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        splitter.MergedProfileSplitter(args).process()
+        splitter.ProfileSplitter(args).process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
