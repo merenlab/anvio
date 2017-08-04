@@ -78,8 +78,8 @@ class COGs:
                                 database formatted under the COGs data directory for that program :/ You may need to\
                                 re-run the COGs setup, UNLESS, you set up your COG data directory somewhere else than what\
                                 anvi'o attempts to use at the moment ('%s'). If that is the case, this may be the best\
-                                time to point the right directory using the --cog-data-dir parameter." % \
-                                                                                (self.search_with, self.COG_data_dir))
+                                time to point the right directory using the --cog-data-dir parameter, or the environmental\
+                                variable 'ANVIO_COG_DATA_DIR'." % (self.search_with, self.COG_data_dir))
 
         if not aa_sequences_file_path and not self.contigs_db_path:
             raise ConfigError("You either need to provide an anvi'o contigs database path, or a FASTA file for AA\
@@ -285,15 +285,28 @@ class COGsSetup:
         self.num_threads = A('num_threads') or 1
         self.just_do_it = A('just_do_it')
         self.reset = A('reset')
-        self.COG_data_dir = cog_data_dir or A('cog_data_dir')
+        self.cog_data_source = 'unknown'
 
-        if not self.COG_data_dir:
-            self.COG_data_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COG')
+        if cog_data_dir:
+            self.COG_data_dir = cog_data_dir
+            self.cog_data_source = 'The function call.'
+        elif A('cog_data_dir'):
+            self.COG_data_dir = A('cog_data_dir')
+            self.cog_data_source = 'The command line parameter.'
+        elif 'ANVIO_COG_DATA_DIR' in os.environ:
+            self.COG_data_dir = os.environ['ANVIO_COG_DATA_DIR']
+            self.cog_data_source = 'The environmental variable.'
         else:
-            self.COG_data_dir = os.path.abspath(os.path.expanduser(self.COG_data_dir))
+            self.COG_data_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COG')
+            self.cog_data_source = "The anvi'o default."
+
+        self.COG_data_dir = os.path.abspath(os.path.expanduser(self.COG_data_dir))
 
         self.COG_data_dir_version = J(self.COG_data_dir, '.VERSION')
         self.raw_NCBI_files_dir = J(self.COG_data_dir, 'RAW_DATA_FROM_NCBI')
+
+        self.run.info('COG data directory', self.COG_data_dir)
+        self.run.info('COG data source', self.cog_data_source)
 
         self.files = {
                 'cog2003-2014.csv': {
