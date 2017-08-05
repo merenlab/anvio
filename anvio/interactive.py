@@ -863,7 +863,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_header.extend(self.additional_layers_headers)
 
             # (7) finally add hmm search results
-            if self.hmm_searches_header:
+            if self.hmm_searches_dict:
                 json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
 
             # (8) and finalize it (yay):
