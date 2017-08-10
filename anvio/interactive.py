@@ -166,27 +166,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.collection_autoload and 'default' in self.collections.collections_dict:
             self.collection_autoload = 'default'
 
-        if not self.p_meta['clusterings']:
-            if self.p_meta['db_type'] == 'pan':
-                raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
-                                   clustering of protein clusters (PCs) in it. Maybe you skipped the clustering step, maybe\
-                                   anvi'o skipped it on your behalf because you had too many PCs or something. Regardless of\
-                                   who did what, you don't get to display your pangenome at this particular instance. Sorry :/" \
-                                                            % (self.p_meta['project_name']))
-            else:
-                if self.p_meta['merged']:
-                    raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
-                                       of splits that is required by the interactive interface. It may have been generated\
-                                       by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
-                                       clustering step may have been skipped by anvi-merge because you had too many stplits\
-                                       to get the clustering in a reasonable amount of time. Please read the help menu for\
-                                       anvi-merge, and/or refer to the tutorial: \
-                                       http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
-                else:
-                    raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
-                                       that is required by the interactive interface. You must use `--cluster-contigs`\
-                                       flag for single profiles to access to this functionality. Please read the help\
-                                       menu for anvi-profile, and/or refer to the tutorial.")
+        self.check_for_clusterings()
 
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
@@ -199,9 +179,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("There is something wrong here, and anvi'o needs and adult :( Something that should\
                                never happen happened. The default clustering does not have a basic or newick type.")
 
-        # now we knot what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
+        # now we know what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
         # unnecessary splits stored in views dicts.
         self.prune_view_dicts()
+
+        self.gen_alphabetical_orders_of_items()
+        if not self.p_meta['default_clustering'] and len(self.p_meta['available_clusterings']):
+            self.p_meta['default_clustering'] = self.p_meta['available_clusterings'][0]
 
         # we are going to iterate the newick trees, and make sure that internal nodes have labels
         for clustering_name in self.p_meta['clusterings']:
@@ -215,9 +199,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                         node_counter += 1
 
                 if node_counter > 0:
-                    # if we did not changed any branch name there is no need to spend time for 
+                    # if we did not changed any branch name there is no need to spend time for
                     # serialization back to newick
-                    self.p_meta['clusterings'][clustering_name]['newick'] = tree.write(format=1) 
+                    self.p_meta['clusterings'][clustering_name]['newick'] = tree.write(format=1)
 
         # if there are any HMM search results in the contigs database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
@@ -234,11 +218,35 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.additional_layers_headers = self.additional_layers_headers + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         self.check_names_consistency()
-        self.auto_order_items_based_on_additional_layers_data()
+        self.gen_orders_for_items_based_on_additional_layers_data()
         self.convert_view_data_into_json()
 
 
-    def auto_order_items_based_on_additional_layers_data(self):
+    def check_for_clusterings(self):
+        if not self.p_meta['clusterings']:
+            if self.p_meta['db_type'] == 'pan':
+                raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
+                                   clustering of protein clusters (PCs) in it. Maybe you skipped the clustering step, maybe\
+                                   anvi'o skipped it on your behalf because you had too many PCs or something. Regardless of\
+                                   who did what, you don't get to display your pangenome at this particular instance. Sorry :/" \
+                                                            % (self.p_meta['project_name']))
+            else:
+                if self.p_meta['merged']:
+                    raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
+                                       of splits that is required by the interactive interface. It may have been generated\
+                                       by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
+                                       clustering step may have been skipped by anvi-merge because you had too many splits\
+                                       to get the clustering in a reasonable amount of time. Please read the help menu for\
+                                       anvi-merge, and/or refer to the tutorial: \
+                                       http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
+                else:
+                    raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
+                                       that is required by the interactive interface. You must use `--cluster-contigs`\
+                                       flag for single profiles to access to this functionality. Please read the help\
+                                       menu for anvi-profile, and/or refer to the tutorial.")
+
+
+    def gen_orders_for_items_based_on_additional_layers_data(self):
         if self.skip_auto_ordering:
             return
 
@@ -268,6 +276,27 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                               In the best case scenario you will see completely blank layers in your display. In the worst case scenario\
                               other things will break. Since you are a curious person, anvi'o thought you would like to know. These are\
                               the empty variables: %s." % ', '.join(['"%s"' % s for s in skipped_additional_data_layers]))
+
+
+    def gen_alphabetical_orders_of_items(self):
+        """This function populates self.p_meta with additional organizations of data, such as alphabetical ordering\
+           of data items, etc. In the interface these additional orders appear in the 'items order' combo box"""
+
+        if self.skip_auto_ordering:
+            return
+
+        self.progress.new('Additional organizations')
+        self.progress.update('...')
+
+        # add an alphabetical order:
+        self.p_meta['clusterings']['<> Alphabetical:none:none'] = {'basic': [str(i) for i in sorted(self.displayed_item_names_ordered, reverse=True)]}
+        self.p_meta['available_clusterings'].append('<> Alphabetical:none:none')
+
+        # and the reverse-alphabetical, too:
+        self.p_meta['clusterings']['<> Alphabetical_(reverse):none:none'] = {'basic': [str(i) for i in sorted(self.displayed_item_names_ordered)]}
+        self.p_meta['available_clusterings'].append('<> Alphabetical:none:none')
+
+        self.progress.end()
 
 
     def load_manual_mode(self):
@@ -335,10 +364,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.default_view = self.p_meta['default_view']
 
         # set some default organizations of data:
-        self.p_meta['clusterings'] = {'Alphabetical_(reverse):none:none': {'basic': [str(i) for i in sorted(item_names)]},
-                                      'Alphabetical:none:none': {'basic': [str(i) for i in sorted(item_names, reverse=True)]}}
-        self.p_meta['available_clusterings'] = ['Alphabetical_(reverse):none:none', 'Alphabetical:none:none']
-        self.p_meta['default_clustering'] = self.p_meta['available_clusterings'][0]
+        self.p_meta['clusterings'] = {}
+        self.p_meta['available_clusterings'] = []
+        self.p_meta['default_clustering'] = []
 
         # if we have a tree, let's make arrangements for it:
         if self.tree:
