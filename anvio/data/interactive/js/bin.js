@@ -275,6 +275,10 @@ function rebuildIntersections()
             var length = nodes.length;
             for (var cursor = 0; cursor < length; cursor++)
             {
+                if (!label_to_node_map.hasOwnProperty(nodes[cursor])) {
+                    continue;
+                }
+
                 var node = label_to_node_map[nodes[cursor]];
                 var parent = node.ancestor;
 
