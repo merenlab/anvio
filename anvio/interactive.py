@@ -261,7 +261,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 skipped_additional_data_layers.append(layer)
                 continue
 
-            item_layer_data_tuple = [(layer_type(self.additional_layers_dict[item][layer]), item) for item in self.additional_layers_dict]
+            item_layer_data_tuple = [(layer_type(self.additional_layers_dict[item][layer] \
+                                     if item in self.additional_layers_dict else ''), item) for item in self.displayed_item_names_ordered]
 
             self.p_meta['available_clusterings'].append('>> %s:none:none' % layer)
             self.p_meta['clusterings']['>> %s' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple)]}
