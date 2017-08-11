@@ -124,7 +124,7 @@
                             ${ Object.keys(saav_data["samples_per_view"]).map(view =>`
                             <div class="panel panel-default">
                                 <div class="panel-heading">
-                                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#${gene}-${view}_panel" href="#collapse-${gene}-${view}">★ ${view}</a></h1>
+                                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#${gene}-${view}_panel" href="#collapse-${gene}-${view}">★  View: '${view}'</a></h1>
                                 </div>
                                 <div id="collapse-${gene}-${view}" class="panel-collapse collapse">
                                     <div class="panel-body">
@@ -134,7 +134,7 @@
                                                     <!-- Nav tabs -->
                                                     <ul class="nav nav-tabs" role="tablist">
                                                         ${ saav_data["perspectives"].map((perspective, index) =>`
-                                                        <li role="presentation" ${ (index==0) ? 'class="active"' : '' }><a href="#${gene}-${view}-${perspective}" aria-controls="${gene}-${view}-${perspective}" role="tab" data-toggle="tab">${perspective}</a></li>`).join('')}
+                                                        <li role="presentation" ${ (index==0) ? 'class="active"' : '' }><a href="#${gene}-${view}-${perspective}" aria-controls="${gene}-${view}-${perspective}" role="tab" data-toggle="tab">Perspective: '${perspective}'</a></li>`).join('')}
                                                     </ul>
                                                     <!-- TABS -->
                                                     <div class="tab-content">
@@ -160,11 +160,9 @@
                                                                         <td style="vertical-align: middle; width: 10px;"><b>${variable}</b></td>
                                                                         <td>
                                                                             ${ (saav_data["by_view"][gene][view][perspective][variable].hasOwnProperty('__merged__')) ? `
-                                                                              <div class="molecule-image">
+                                                                              <div class="molecule-image" style="border: 1px #d2d2d2 solid; border-radius: 10px; background: #f3f3f3;">
                                                                                 <a href="${saav_data["by_view"][gene][view][perspective][variable]['__merged__']}" target="_blank"><img src="${saav_data["by_view"][gene][view][perspective][variable]['__merged__']}" width="130px;" /></a><br />MERGED
-                                                                                </div>
-
-
+                                                                               </div>
                                                                                 ` : `` }
                                                                             ${ saav_data["samples_per_view"][view][variable].map(sample =>`
                                                                             <div class="molecule-image">
@@ -233,7 +231,7 @@
                             <div class="panel panel-info" id="${gene}_panel">
                                 <div class="panel-heading">
                                     <h1 class="panel-title">
-                                        <a onClick="generate_panel_content(this, ${gene});" target="_self" data-toggle="collapse" data-parent="#${gene}_panel" href="#collapse-${gene}">${gene}</a> ${function_links}
+                                        <a onClick="generate_panel_content(this, ${gene});" target="_self" data-toggle="collapse" data-parent="#${gene}_panel" href="#collapse-${gene}">Gene ID: ${gene}</a> ${function_links}
                                     </h1>
                                 </div>
                             </div>
