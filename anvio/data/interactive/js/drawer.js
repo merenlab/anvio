@@ -65,6 +65,14 @@ Drawer.prototype.iterate_layers = function(callback) {
 Drawer.prototype.draw = function() {
     this.initialize_screen();
 
+    if (parseFloat(this.settings['angle-min']) <= 0) {
+        this.settings['angle-min'] = 0;
+    }
+
+    if (parseFloat(this.settings['angle-max']) >= 360) {
+        this.settings['angle-max'] = 359.9999999;
+    } 
+
     id_to_node_map = new Array();
     label_to_node_map = {};
     order_to_node_map = new Array();
@@ -1411,6 +1419,9 @@ Drawer.prototype.draw_layer_names = function() {
 
         if (this.settings['tree-type'] == 'circlephylogram')
         {
+            if (parseFloat(this.settings['angle-max']) > 315)
+                return;
+
             var angle_max = Math.toRadians(parseFloat(this.settings['angle-max']));
             var distance = this.layer_boundaries[layer.order][0] + (height / 2) - (font_size * 1/3);
 
