@@ -115,8 +115,19 @@ class ContigsSuperclass(object):
         self.singlecopy_gene_hmm_sources = set([])
         self.non_singlecopy_gene_hmm_sources = set([])
 
-        self.contigs_db_path = args.contigs_db
-        filesnpaths.is_file_exists(self.contigs_db_path)
+        # now all items are initialized, we will check whether we have an args.contigs_db at all.
+        # if not, we will quietly return. this commit contains some discussion about why we're doing
+        # this rather counter-intuitive thing:
+        #
+        #   https://github.com/merenlab/anvio/commit/19aa2da921c3ea184fd8202b98c8c7d7b51eefec
+        #
+        # maybe we need a better design for a more explicit handling of this situation, which is open
+        # to discussion.
+        try:
+            self.contigs_db_path = args.contigs_db
+            filesnpaths.is_file_exists(self.contigs_db_path)
+        except:
+            return
 
         self.progress.new('Loading the contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
