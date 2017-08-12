@@ -115,11 +115,8 @@ class ContigsSuperclass(object):
         self.singlecopy_gene_hmm_sources = set([])
         self.non_singlecopy_gene_hmm_sources = set([])
 
-        try:
-            self.contigs_db_path = args.contigs_db
-            filesnpaths.is_file_exists(self.contigs_db_path)
-        except:
-            return
+        self.contigs_db_path = args.contigs_db
+        filesnpaths.is_file_exists(self.contigs_db_path)
 
         self.progress.new('Loading the contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
