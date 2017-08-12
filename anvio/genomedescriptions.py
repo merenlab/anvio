@@ -82,7 +82,7 @@ class GenomeDescriptions:
 
 
     def list_HMM_info_and_quit(self):
-        hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes()
+        hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes(dont_raise=True)
 
         if self.list_hmm_sources:
             self.run.warning(None, 'HMM SOURCES COMMON TO ALL %d GENOMES' % (len(self.genomes)), lc='yellow')
@@ -367,9 +367,11 @@ class GenomeDescriptions:
         genomes_missing_hmms_for_scgs =  [g for g in self.genomes if not self.genomes[g]['hmms_for_scgs_were_run']]
         if len(genomes_missing_hmms_for_scgs):
             if len(genomes_missing_hmms_for_scgs) == len(self.genomes):
-                raise ConfigError("The contigs databases you are using for this analysis are missing HMMs for single-copy core genes. In other words,\
-                                    you don't seem to have run `anvi-run-hmms` on them. Although it is perfectly legal to have anvi'o contigs databases\
-                                    without HMMs run on SCGs, the current pangenomic workflow does not want to deal with this :( Sorry!")
+                self.run.warning("The contigs databases you are using for this analysis are missing HMMs for single-copy core genes.\
+                                  Maybe you haven't run `anvi-run-hmms` on your contigs database, or they didn't contain any hits.\
+                                  It is perfectly legal to have anvi'o contigs databases without HMMs or SCGs for things to work,\
+                                  but we wanted to give you heads up so you can have your 'aha' moment if you see funny things in\
+                                  the interface.")
             else:
                 raise ConfigError("Some of the genomes you have for this analysis are missing HMM hits for SCGs (%d of %d of them, to be precise). You\
                                     can run `anvi-run-hmms` on them to recover from this. Here is the list: %s" % \
