@@ -333,7 +333,10 @@ class GenomesDataStorage(HDF5_IO):
             raise HDF5Error("Genome '%s' is already in this data storage :/" % genome_name)
 
         for key in self.essential_genome_info:
-            self.fp['/info/genomes/%s/%s' % (genome_name, key)] = info_dict[key]
+            # the following line will add a -1 for any `key` that has the value of `None`. the reason
+            # we added this was to be able to work with contigs databases without any hmm hits for SCGs
+            # which is covered in https://github.com/merenlab/anvio/issues/573
+            self.fp['/info/genomes/%s/%s' % (genome_name, key)] = info_dict[key] if info_dict[key] is not None else -1
 
 
     def get_storage_hash(self):
