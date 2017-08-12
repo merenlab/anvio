@@ -167,17 +167,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.collection_autoload = 'default'
 
         self.check_for_clusterings()
-
-        # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
-        # need to match these names:
-        default_clustering = self.p_meta['clusterings'][self.p_meta['default_clustering']]
-        if 'newick' in default_clustering:
-            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_clustering['newick'], reverse=True)
-        elif 'basic' in default_clustering:
-            self.displayed_item_names_ordered = default_clustering['basic']
-        else:
-            raise ConfigError("There is something wrong here, and anvi'o needs and adult :( Something that should\
-                               never happen happened. The default clustering does not have a basic or newick type.")
+        self.set_displayed_item_names()
 
         # now we know what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
         # unnecessary splits stored in views dicts.
@@ -222,7 +212,29 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.convert_view_data_into_json()
 
 
+    def set_displayed_item_names(self):
+        """Sets the master list of names .. UNLESS we are in manual-mode, in which case names will be\
+           set within the function `load_manual_mode`"""
+
+        if self.mode == 'manual':
+            return
+
+        # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
+        # need to match these names:
+        default_clustering = self.p_meta['clusterings'][self.p_meta['default_clustering']]
+        if 'newick' in default_clustering:
+            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_clustering['newick'], reverse=True)
+        elif 'basic' in default_clustering:
+            self.displayed_item_names_ordered = default_clustering['basic']
+        else:
+            raise ConfigError("There is something wrong here, and anvi'o needs and adult :( Something that should\
+                               never happen happened. The default clustering does not have a basic or newick type.")
+
+
     def check_for_clusterings(self):
+        if self.mode == 'manual':
+            return
+
         if not self.p_meta['clusterings']:
             if self.p_meta['db_type'] == 'pan':
                 raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
@@ -345,14 +357,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.tree:
             filesnpaths.is_file_exists(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
-            item_names = utils.get_names_order_from_newick_tree(newick_tree_text)
+            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(newick_tree_text)
         else:
-            item_names = utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:]
+            self.displayed_item_names_ordered = utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:]
 
         # try to convert item names into integer values for proper sorting later. it's OK if it does
         # not work.
         try:
-            item_names = [int(n) for n in item_names]
+            self.displayed_item_names_ordered = [int(n) for n in self.displayed_item_names_ordered]
         except:
             pass
 
@@ -360,6 +372,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file) if self.fasta_file else None
         self.p_meta['output_dir'] = None
         self.p_meta['views'] = {}
+        self.p_meta['db_type'] = 'profile'
         self.p_meta['merged'] = True
         self.p_meta['default_view'] = 'single'
         self.default_view = self.p_meta['default_view']
@@ -388,7 +401,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # no view data is provided... it is only the tree we have. we will creaet a mock 'view data dict'
             # here using what is in the tree.
             ad_hoc_dict = {}
-            for item in item_names:
+            for item in self.displayed_item_names_ordered:
                 ad_hoc_dict[item] = {'names': str(item)}
 
             self.views[self.default_view] = {'header': ['names'],
