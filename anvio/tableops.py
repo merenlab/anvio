@@ -144,16 +144,14 @@ class Table(object):
         self.progress.end()
 
         if len(seq_ids_not_reported):
-            self.run.warning("%d entries in the sequences table had blank sequences :/ This should never\
-                             happen, but it does happen because anvi'o is not as good as it should be. We\
-                             opened an issue here: https://github.com/merenlab/anvio/issues/565, and we\
-                             are determined to work on this. If this is like mid-2018 and you run into this error\
-                             please find an anvi'o developer and make them feel embarrassed. If it is earlier than\
-                             that, please let us know about this, and we will tell you about what you should be\
-                             careful about your downstream analyses to be perfect given the best we know at the time.\
-                             This is a very minor issue due to on-the-fly addition of Ribosomal RNA gene calls to the\
-                             contigs database, and will likely will not affect anything major. But still. Get in touch\
-                             with us if you have any questions." % len(seq_ids_not_reported))
+            self.run.warning("%d entries in the sequences table had blank sequences :/ This is related to the issue\
+                             at https://github.com/merenlab/anvio/issues/565. If this is like mid-2018 and you still\
+                             get this warning, please find an anvi'o developer and make them feel embarrassed. If it\
+                             is earlier than take this as a simple warning that some gene calls in your downstream\
+                             analyses may have no sequences, and that's OK. This is a very minor issue due to on-the-fly\
+                             addition of Ribosomal RNA gene calls to the contigs database, and will likely will not\
+                             affect anything major. This warning will go away when anvi'o can seamlessly work with\
+                             multiple gene callers (which we are looking forward to implement in the future)." % len(seq_ids_not_reported))
 
         self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table) - len(seq_ids_not_reported)))
         self.run.info('FASTA', output_file_path)
