@@ -319,11 +319,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.update('...')
 
         # add an alphabetical order:
-        self.p_meta['clusterings']['<> Alphabetical:none:none'] = {'basic': [str(i) for i in sorted(self.displayed_item_names_ordered, reverse=True)]}
+        self.p_meta['clusterings']['<> Alphabetical:none:none'] = {'basic': self.displayed_item_names_ordered[::-1]}
         self.p_meta['available_clusterings'].append('<> Alphabetical:none:none')
 
         # and the reverse-alphabetical, too:
-        self.p_meta['clusterings']['<> Alphabetical_(reverse):none:none'] = {'basic': [str(i) for i in sorted(self.displayed_item_names_ordered)]}
+        self.p_meta['clusterings']['<> Alphabetical_(reverse):none:none'] = {'basic': self.displayed_item_names_ordered}
         self.p_meta['available_clusterings'].append('<> Alphabetical:none:none')
 
         self.progress.end()
@@ -374,14 +374,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.tree:
             filesnpaths.is_file_exists(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
-            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(newick_tree_text)
+            self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
         else:
-            self.displayed_item_names_ordered = utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:]
+            self.displayed_item_names_ordered = sorted(utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:])
 
         # try to convert item names into integer values for proper sorting later. it's OK if it does
         # not work.
         try:
-            self.displayed_item_names_ordered = [int(n) for n in self.displayed_item_names_ordered]
+            self.displayed_item_names_ordered = [str(s) for s in sorted([int(n) for n in self.displayed_item_names_ordered])]
         except:
             pass
 
@@ -423,8 +423,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             self.views[self.default_view] = {'header': ['names'],
                                              'dict': ad_hoc_dict}
-
-        self.displayed_item_names_ordered = list(self.views[self.default_view]['dict'].keys())
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
         self.p_meta['samples'] = self.views[self.default_view]['header']
@@ -965,6 +963,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             self.views[view] = json_object
 
+
     def store_refined_bins(self, refined_bin_data, refined_bins_info_dict):
         if 0 in [len(b) for b in list(refined_bin_data.values())]:
             raise RefineError('One or more of your bins have zero splits. If you are trying to remove this bin from your collection,\
@@ -975,7 +974,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         collection_dict = self.collections.get_collection_dict(self.collection_name)
         bins_info_dict = self.collections.get_bins_info_dict(self.collection_name)
-        
+
         progress.end()
 
         bad_bin_names = [b for b in collection_dict if (b in refined_bin_data and b not in self.ids_for_already_refined_bins)]
