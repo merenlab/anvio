@@ -116,11 +116,11 @@ class ContigsSuperclass(object):
         self.non_singlecopy_gene_hmm_sources = set([])
 
         # now all items are initialized, we will check whether we are being initialized from within
-        # an object that is in `pan` mode. if that is the case, we do not expect to find a contigs
-        # database since the pan mode will initialize a genomes storage instad. having done our part,
-        # we can quietly return from here.
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        if A('mode') == 'pan':
+        # an object that is in `pan` or `manual` mode, neither of which will have a contigs database
+        # associated with the call. so having done our part, we will quietly return from here hoping
+        # that we are not driving a developer crazy somewhere by doing so.
+        A = lambda x: self.__dict__[x] if x in self.__dict__ else None
+        if A('mode') == 'pan' or A('mode') == 'manual':
             return
 
         self.contigs_db_path = args.contigs_db
