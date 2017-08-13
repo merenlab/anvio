@@ -1196,6 +1196,7 @@ function buildLayersTable(order, settings)
                 '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
                 '        <option value="bar"{option-type-bar}>Bar</option>' +
                 '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
+                '        <option value="line"{option-type-line}>Line</option>' +
                 '    </select>' +
                 '</td>' +
                 '<td>' +

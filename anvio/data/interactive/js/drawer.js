@@ -1126,7 +1126,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         }
 
         // draw backgrounds
-        if (this.settings['tree-type']=='phylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
+        if (this.settings['tree-type']=='phylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') != 'intensity') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
         {
             drawPhylogramRectangle('layer_background_' + layer.order,
                 'all',
@@ -1140,7 +1140,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         }
 
 
-        if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
+        if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') != 'intensity') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
         {
             var _first = order_to_node_map[0];
             var _last = order_to_node_map[order_to_node_map.length - 1];
@@ -1214,6 +1214,18 @@ Drawer.prototype.draw_numerical_layers = function() {
                         1,
                         false);
                 }
+                if (layer.get_visual_attribute('type') == 'line') {
+                        if (numeric_cache.length == 0) {
+                            numeric_cache.push("M");
+                        } else {
+                            numeric_cache.push("L");
+                        }
+
+                        numeric_cache.push(
+                            this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
+                            q.xy['y']
+                            );
+                }
                 else
                 {
                     if (this.settings['optimize-speed']) {
@@ -1277,6 +1289,17 @@ Drawer.prototype.draw_numerical_layers = function() {
                         1,
                         false);
                 }
+                if (layer.get_visual_attribute('type') == 'line') {
+                        if (numeric_cache.length == 0) {
+                            numeric_cache.push("M");
+                        } else {
+                            numeric_cache.push("L");
+                        }
+
+                        var center_radius = this.layer_boundaries[layer.order][0] + this.layerdata_dict[q.label][layer.index];
+
+                        numeric_cache.push(Math.cos(q.angle) * center_radius, Math.sin(q.angle) * center_radius);
+                }
                 else
                 {
                     if (this.settings['optimize-speed']) {
@@ -1335,10 +1358,20 @@ Drawer.prototype.draw_numerical_layers = function() {
 
         if (numeric_cache.length > 0) {
             var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('stroke-width', '0');
             path.setAttribute('shape-rendering', 'auto');
             path.setAttribute('pointer-events', 'none');
-            path.setAttribute('fill', layer.get_visual_attribute('color'));
+
+            if (layer.get_visual_attribute('type') == 'line') {
+                path.setAttribute('stroke', layer.get_visual_attribute('color'));
+                path.setAttribute('stroke-width', '1px');  
+                path.setAttribute('vector-effect', 'non-scaling-stroke');
+                path.setAttribute('fill', 'none');     
+            }
+            else {
+                path.setAttribute('fill', layer.get_visual_attribute('color'));
+                path.setAttribute('stroke-width', '0');
+            }
+
             path.setAttribute('d', numeric_cache.join(' '));
             var layer_group = document.getElementById('layer_' + layer.order);
             layer_group.appendChild(path);
