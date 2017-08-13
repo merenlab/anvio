@@ -109,6 +109,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.collections = ccollections.Collections()
 
+        # if the mode has not been set from within the arguments, we will set something up here:
+        if not self.mode:
+            if self.manual_mode:
+                self.mode = 'manual'
+            elif self.collection_name or self.list_collections:
+                self.mode = 'collection'
+            else:
+                self.mode = 'full'
+
         ContigsSuperclass.__init__(self, self.args)
         self.init_splits_taxonomy(self.taxonomic_level)
 
@@ -131,23 +140,23 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
 
-        # here is where the big deal stuff takes place:
-        if not self.mode and self.manual_mode:
-            self.mode = 'manual'
-            self.run.info('Mode', self.mode, mc='red')
+        # here is where the big deal stuff takes place. depending on the mode, we will call
+        # the appropriate function for initializing the interafce class.
+        self.run.info('Interactive mode', self.mode, mc='green')
+        if self.mode == 'manual':
             self.load_manual_mode()
         elif self.mode == 'refine':
             self.load_full_mode()
             self.load_refine_mode()
         elif self.mode == 'pan':
             self.load_pan_mode()
-        elif self.collection_name or self.list_collections:
-            self.mode = 'collection'
-            self.run.info('Mode', self.mode, mc='green')
+        elif self.mode == 'collection':
             self.load_collection_mode()
-        else:
-            self.mode = 'full'
+        elif self.mode == 'full':
             self.load_full_mode()
+        else:
+            raise ConfigError("The interactive class is called with a mode that no one knows anything \
+                               about. '%s'... What kind of a mode is that anyway :/" % self.mode)
 
         # make sure the samples information database, if there is one, is in fact compatible with the profile database
         # the reason we are doing this here is because when we are in 'self.manual_mode', the self.p_meta['samples'] is
