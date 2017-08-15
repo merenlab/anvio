@@ -1195,9 +1195,9 @@ class ProfileSuperclass(object):
        if you want to make use of this class directly (i.e., not as a superclass), get an instance
        like this:
 
-            >>> class Args: None
-            >>> args = Args()
-            >>> args.profile_db = /path/to/profile
+            >>> import anvio.dbops as d
+            >>> import argparse
+            >>> args = argparse.Namespace(profile_db="/path/to/profile.db")
             >>> p = ProfileSuperclass(args)
 
        Alternatively, you can include a contigs database path (contigs_db) in args so you have access
@@ -1206,6 +1206,7 @@ class ProfileSuperclass(object):
        Alternatively, you can define a set of split names of interest:
 
             >>> args.split_names_of_interest = set([split_names])
+            >>> p = ProfileSuperclass(args)
 
        in which case some functions will initialize data only for those splits. This is one way to minimize
        the resources necessary to initialize gene_coverages if only a subset of bins in a collection is
