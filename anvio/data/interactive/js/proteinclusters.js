@@ -178,7 +178,6 @@ function createDisplay(){
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
                 text.setAttribute('class', 'sequence');
                 text.appendChild(document.createTextNode(sequence.substr(offset, sequence_wrap)));
-                console.log(sequence.substr(offset, sequence_wrap));
                 fragment.appendChild(text);
 
                 sub_y_cord = sub_y_cord + sequence_font_size * 1.5;
