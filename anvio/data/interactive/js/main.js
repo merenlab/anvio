@@ -1310,6 +1310,7 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
+    state['draw-guide-lines'] = $('#draw_guide_lines').val();
     
     // sync views object and layers table
     syncViews();
@@ -2635,6 +2636,9 @@ function loadState()
                             }
                             if (state.hasOwnProperty('background-opacity')) {
                                 $('#background_opacity').val(state['background-opacity']);
+                            }
+                            if (state.hasOwnProperty('draw-guide-lines')) {
+                                $('#draw_guide_lines').val(state['draw-guide-lines'])
                             }
 
                             // reload layers

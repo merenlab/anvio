@@ -1163,15 +1163,20 @@ Drawer.prototype.draw_guide_lines = function() {
     if (!this.has_tree)
         return;
 
+    if (this.settings['draw-guide-lines'] == 'no')
+        return;
+
     var beginning_of_layers = this.layer_boundaries[0][1];
-    var odd_even_flag = -1;
+    var odd_even_flag = 1;
 
     var n = new NodeIterator(this.tree.root);
     var q = n.Begin();
 
     while (q != null) {
         if (q.IsLeaf() && !q.collapsed) {
-            odd_even_flag = odd_even_flag * -1;
+            if (this.settings['draw-guide-lines'] == 'odd_even') {
+                odd_even_flag = odd_even_flag * -1;
+            }
             if (odd_even_flag > 0) {
                 if (this.settings['tree-type'] == 'phylogram') {
                     drawStraightGuideLine('guide_lines', q.id, q.xy, beginning_of_layers);
