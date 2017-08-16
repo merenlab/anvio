@@ -215,6 +215,7 @@ class GenomesDataStorage(HDF5_IO):
            >>> x = a.GenomesDataStorage('test.h5', 'unique_hash', create_new=True)
            >>> x.add_gene_call_data('genome_name', int_gene_caller_id,
                                     sequence = 'IMLQWIVIIYFLVINLVLFSMMGYDKKQAKRGNWRIPERRLLTIGLVGGGLGGLMGQKKFHHKTQKPVFALCYSIGVIAMISCIYLTFK',
+                                    dna_sequence = 'AATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGTCGATCG(...)',
                                     partial = 0,
                                     functions = [('PFAM', 'PFAM FUNC_1'), ('TIGRFAM', 'sik')],
                                     taxonomy_dict = {'t_phylum': 'phy', 't_class': 'clas', 't_order': 'ord', 't_family': None, 't_genus': 'genus', 't_species': 'sp'})
@@ -278,9 +279,10 @@ class GenomesDataStorage(HDF5_IO):
             raise HDF5Error('The genome "%s" does not know anything about the gene caller id "%d" :(' % (genome_name, gene_caller_id))
 
 
-    def add_gene_call_data(self, genome_name, gene_caller_id, sequence, partial=0, functions = [], taxonomy_dict = None):
+    def add_gene_call_data(self, genome_name, gene_caller_id, sequence, dna_sequence, partial=0, functions = [], taxonomy_dict = None):
         """Add a gene call in a genome into the database"""
         self.fp['/data/genomes/%s/%d/sequence' % (genome_name, gene_caller_id)] = sequence
+        self.fp['/data/genomes/%s/%d/dna_sequence' % (genome_name, gene_caller_id)] = dna_sequence
         self.fp['/data/genomes/%s/%d/length' % (genome_name, gene_caller_id)] = len(sequence)
         self.fp['/data/genomes/%s/%d/partial' % (genome_name, gene_caller_id)] = partial
 
