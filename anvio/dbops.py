@@ -806,7 +806,7 @@ class PanSuperclass(object):
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
 
 
-    def get_AA_sequences_for_PCs(self, pc_names=set([]), skip_alignments=False):
+    def get_sequences_for_PCs(self, pc_names=set([]), skip_alignments=False, report_DNA_sequences=False):
         """Returns a dictionary of sequences (aligned or not) in a given protein cluster:
 
         {
@@ -822,12 +822,15 @@ class PanSuperclass(object):
             (...)
         }
 
+        By default, it will return amino acid sequences. You can ask for DNA sequences if setting
+        the flag `report_DNA_sequences` True.
+
         """
 
         sequences = {}
 
         if not isinstance(pc_names, type(set([]))) or not pc_names:
-            raise ConfigError("pc_names for get_AA_sequences_for_PCs must be a non-empty `list`.")
+            raise ConfigError("pc_names for get_sequences_for_PCs must be a non-empty `list`.")
 
         if not self.genomes_storage_is_available:
             raise ConfigError("The pan anvi'o super class for is upset. You are attempting to get AA seqeunces for %s,\
@@ -839,7 +842,7 @@ class PanSuperclass(object):
 
         missing_pc_names = [p for p in pc_names if p not in self.protein_clusters]
         if len(missing_pc_names[0:5]):
-            raise ConfigError("get_AA_sequences_for_PCs: %d of %d PC names are missing in the pan database. Not good :/\
+            raise ConfigError("get_sequences_for_PCs: %d of %d PC names are missing in the pan database. Not good :/\
                                Here are some of the missing ones; %s" \
                                         % (len(missing_pc_names), len(pc_names), ', '.join(missing_pc_names[0:5])))
 
@@ -851,11 +854,11 @@ class PanSuperclass(object):
             for genome_name in self.protein_clusters[pc_name]:
                 sequences[pc_name][genome_name] = {}
                 for gene_callers_id in self.protein_clusters[pc_name][genome_name]:
-                    sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
+                    sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id, report_DNA_sequences=report_DNA_sequences)
 
                     if not skip_alignments and self.protein_clusters_gene_alignments_available:
                         alignment_summary = self.protein_clusters_gene_alignments[genome_name][gene_callers_id]
-                        sequence = utils.restore_alignment(sequence, alignment_summary)
+                        sequence = utils.restore_alignment(sequence, alignment_summary, from_aa_alignment_summary_to_dna=report_DNA_sequences)
 
                     sequences[pc_name][genome_name][gene_callers_id] = sequence
 
@@ -864,12 +867,12 @@ class PanSuperclass(object):
         return sequences
 
 
-    def write_AA_sequences_to_file(self, pc_names=set([]), skip_alignments=False, output_file_path=None):
+    def write_sequences_in_PCs_to_file(self, pc_names=set([]), skip_alignments=False, output_file_path=None, report_DNA_sequences=False):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
-        sequences = self.get_AA_sequences_for_PCs(pc_names=pc_names, skip_alignments=skip_alignments)
+        sequences = self.get_sequences_for_PCs(pc_names=pc_names, skip_alignments=skip_alignments, report_DNA_sequences=report_DNA_sequences)
 
         self.progress.new('Writing protein cluster seqeunces to file')
         sequence_counter = 0
@@ -886,15 +889,17 @@ class PanSuperclass(object):
 
         self.progress.end()
         output_file.close()
-        self.run.info('Output file', output_file_path, lc='green')
+
+        self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid', mc='green')
+        self.run.info('Output FASTA file', output_file_path, mc='green')
 
 
-    def write_AA_sequences_for_phylogenomics(self, pc_names=set([]), skip_alignments=False, output_file_path=None, skip_multiple_gene_calls=False):
+    def write_sequences_in_PCs_for_phylogenomics(self, pc_names=set([]), skip_alignments=False, output_file_path=None, skip_multiple_gene_calls=False, report_DNA_sequences=False):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
-        sequences = self.get_AA_sequences_for_PCs(pc_names=pc_names, skip_alignments=skip_alignments)
+        sequences = self.get_sequences_for_PCs(pc_names=pc_names, skip_alignments=skip_alignments, report_DNA_sequences=report_DNA_sequences)
 
         if not self.protein_clusters_gene_alignments_available:
             run.warning("Protein clusters did not aligned during pangenomic analysis, we are going to do it now and it may take some time.")
@@ -966,10 +971,13 @@ class PanSuperclass(object):
         for genome_name in self.genome_names:
             output_file.write('>%s\n' % genome_name)
             output_file.write(output_buffer[genome_name].getvalue())
-            output_file.write('\n\n')
+            output_file.write('\n')
             output_buffer[genome_name].close()
 
         output_file.close()
+
+        self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid', mc='green')
+        self.run.info('Output file for phylogenomics', output_file_path, mc='green')
 
 
     def init_protein_clusters_functions(self):
