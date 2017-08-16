@@ -115,6 +115,7 @@ class BottleApplication(Bottle):
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
+        self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
 
 
     def run_application(self, ip, port):
@@ -244,7 +245,8 @@ class BottleApplication(Bottle):
                                  "collectionAutoload":                 self.interactive.collection_autoload,
                                  "noPing":                             False,
                                  "inspectionAvailable":                self.interactive.auxiliary_profile_data_available,
-                                 "sequencesAvailable":                 True if self.interactive.split_sequences else False})
+                                 "sequencesAvailable":                 True if self.interactive.split_sequences else False,
+                                 "functions_initialized":              self.interactive.gene_function_calls_initiated })
 
         elif name == "session_id":
             return json.dumps(self.unique_session_id)
@@ -680,6 +682,16 @@ class BottleApplication(Bottle):
         data['index'], data['total'], data['previous_pc_name'], data['next_pc_name'] = self.get_index_total_previous_and_next_items(pc_name)
 
         return json.dumps(data)
+
+
+    def search_functions_in_splits(self):
+        try:
+            search_terms = [s.strip() for s in request.forms.get('terms').split(',')]
+            matching_split_names_dict, full_report = self.interactive.search_splits_for_gene_functions(search_terms, verbose=False)
+            return json.dumps({'status': 0, 'results': full_report})
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
 
 
     def store_refined_bins(self):

@@ -289,6 +289,11 @@ function initData() {
             $('.menuItemSequence').addClass('menu-disabled');
         }
 
+        if (!response['functions_initialized']) {
+            $('#search_functions_button').attr('disabled', true);
+            $('.functions-not-available-message').show();
+        }
+
         if (! response.noPing) {
             ping_timer = setInterval(checkBackgroundProcess, 5000);
         }
@@ -757,7 +762,7 @@ function buildLegendTables() {
         createLegendColorPanel(i); // this fills legend_content_X
     }
 
-    $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
+    $('#legend_settings, #search_tab_content').accordion({heightStyle: "content", collapsible: true});
 
     $('.colorpicker').colpick({
         layout: 'hex',
