@@ -303,15 +303,16 @@ class GenomesDataStorage(HDF5_IO):
         return d.value
 
 
-    def get_gene_sequence(self, genome_name, gene_caller_id, aa_sequence=True):
-        """Returns gene amino acid sequence if `aa_sequence` is True, else it returns DNA"""
+    def get_gene_sequence(self, genome_name, gene_caller_id, report_DNA_sequences=False):
+        """Returns gene amino acid sequence unless `report_DNA_sequences` is True."""
+
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_caller_id)
 
-        if aa_sequence:
-            d = self.fp['/data/genomes/%s/%d/aa_sequence' % (genome_name, gene_caller_id)]
-        else:
+        if report_DNA_sequences:
             d = self.fp['/data/genomes/%s/%d/dna_sequence' % (genome_name, gene_caller_id)]
+        else:
+            d = self.fp['/data/genomes/%s/%d/aa_sequence' % (genome_name, gene_caller_id)]
 
         return d.value
 
