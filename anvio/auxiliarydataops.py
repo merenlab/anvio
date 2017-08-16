@@ -208,7 +208,7 @@ class AuxiliaryDataForNtPositions(HDF5_IO):
 
 
 class GenomesDataStorage(HDF5_IO):
-    """A class to handle HDF5 operations to store and access protein sequnces in pan genome analyses.
+    """A class to handle HDF5 operations to store and access sequnces in pan genome analyses.
     
        An example:
 
@@ -279,11 +279,11 @@ class GenomesDataStorage(HDF5_IO):
             raise HDF5Error('The genome "%s" does not know anything about the gene caller id "%d" :(' % (genome_name, gene_caller_id))
 
 
-    def add_gene_call_data(self, genome_name, gene_caller_id, sequence, dna_sequence, partial=0, functions = [], taxonomy_dict = None):
+    def add_gene_call_data(self, genome_name, gene_caller_id, aa_sequence, dna_sequence, partial=0, functions = [], taxonomy_dict = None):
         """Add a gene call in a genome into the database"""
-        self.fp['/data/genomes/%s/%d/sequence' % (genome_name, gene_caller_id)] = sequence
+        self.fp['/data/genomes/%s/%d/aa_sequence' % (genome_name, gene_caller_id)] = aa_sequence
         self.fp['/data/genomes/%s/%d/dna_sequence' % (genome_name, gene_caller_id)] = dna_sequence
-        self.fp['/data/genomes/%s/%d/length' % (genome_name, gene_caller_id)] = len(sequence)
+        self.fp['/data/genomes/%s/%d/length' % (genome_name, gene_caller_id)] = len(aa_sequence)
         self.fp['/data/genomes/%s/%d/partial' % (genome_name, gene_caller_id)] = partial
 
         if taxonomy_dict:
@@ -303,11 +303,15 @@ class GenomesDataStorage(HDF5_IO):
         return d.value
 
 
-    def get_gene_sequence(self, genome_name, gene_caller_id):
+    def get_gene_sequence(self, genome_name, gene_caller_id, aa_sequence=True):
+        """Returns gene amino acid sequence if `aa_sequence` is True, else it returns DNA"""
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_caller_id)
 
-        d = self.fp['/data/genomes/%s/%d/sequence' % (genome_name, gene_caller_id)]
+        if aa_sequence:
+            d = self.fp['/data/genomes/%s/%d/aa_sequence' % (genome_name, gene_caller_id)]
+        else:
+            d = self.fp['/data/genomes/%s/%d/dna_sequence' % (genome_name, gene_caller_id)]
 
         return d.value
 
@@ -369,18 +373,18 @@ class GenomesDataStorage(HDF5_IO):
         return genomes_dict
 
 
-    def gen_combined_protein_sequences_FASTA(self, output_file_path, exclude_partial_gene_calls=False):
+    def gen_combined_aa_sequences_FASTA(self, output_file_path, exclude_partial_gene_calls=False):
         self.run.info('Exclude partial gene calls', exclude_partial_gene_calls, nl_after=1)
 
         genomes = self.get_genomes_dict()
 
-        total_num_protein_sequences = 0
-        total_num_excluded_protein_sequences = 0
+        total_num_aa_sequences = 0
+        total_num_excluded_aa_sequences = 0
 
         output_file = open(output_file_path, 'w')
 
         for genome_name in genomes:
-            self.progress.new('Storing protein sequences')
+            self.progress.new('Storing aa sequences')
             self.progress.update('%s ...' % genome_name)
 
             genome_data = self.D(genome_name)
@@ -390,15 +394,15 @@ class GenomesDataStorage(HDF5_IO):
                 partial = self.G(gene_caller_id, genome_data)['partial'].value
 
                 if exclude_partial_gene_calls and partial:
-                    total_num_excluded_protein_sequences += 1
+                    total_num_excluded_aa_sequences += 1
                     continue
 
-                sequence = self.G(gene_caller_id, genome_data)['sequence'].value
+                aa_sequence = self.G(gene_caller_id, genome_data)['aa_sequence'].value
 
                 output_file.write('>%s_%d\n' % (genomes[genome_name]['genome_hash'], int(gene_caller_id)))
-                output_file.write('%s\n' % sequence)
+                output_file.write('%s\n' % aa_sequence)
 
-                total_num_protein_sequences += 1
+                total_num_aa_sequences += 1
 
             self.progress.end()
 
@@ -406,11 +410,11 @@ class GenomesDataStorage(HDF5_IO):
 
         self.progress.new('Uniquing the output FASTA file')
         self.progress.update('...')
-        unique_proteins_FASTA_path, unique_proteins_names_file_path, unique_proteins_names_dict = utils.unique_FASTA_file(output_file_path, store_frequencies_in_deflines=False)
+        unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = utils.unique_FASTA_file(output_file_path, store_frequencies_in_deflines=False)
         self.progress.end()
 
-        self.run.info('Unique protein sequences FASTA', output_file_path)
-        self.run.info('Num protein sequences reported', '%s' % pp(total_num_protein_sequences), nl_before=1)
-        self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_protein_sequences))
+        self.run.info('Unique AA sequences FASTA', output_file_path)
+        self.run.info('Num AA sequences reported', '%s' % pp(total_num_aa_sequences), nl_before=1)
+        self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_aa_sequences))
 
-        return unique_proteins_FASTA_path, unique_proteins_names_dict
+        return unique_aas_FASTA_path, unique_aas_names_dict
