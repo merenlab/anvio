@@ -9,7 +9,7 @@ function searchContigs()
         return;
     }
     var column = $('#searchLayerList').val();
-    search_column = column;
+    search_column = layerdata[0][column];
     var operator = $('#searchOperator').val();
     
     if (operator < 6)
@@ -40,24 +40,60 @@ function searchContigs()
             continue;
 
         if (eval(_pre + row + _post)){
-            search_results.push(row);
+            search_results.push({'split': layerdata[row][0], 'value': layerdata[row][column]});
             _counter++;
         }
     }
     $('#search_result_message').html(_counter + " splits found.");
 }
 
+function searchFunctions() {
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/data/search_functions?timestamp=' + new Date().getTime(),
+        data: {terms: $('#searchFunctionsValue').val()},
+        success: function(data) {
+            if (data['status'] == 0) {
+                $('.search-message').hide();
+                $('.search-message').html('');
+
+                search_results = [];
+                search_column = 'Annotation';
+
+                for (var i=0; i < data['results'].length; i++) {
+                    // 0: gene_caller_id
+                    // 1: source
+                    // 2: annotation
+                    // 3: search term
+                    // 4: split name
+                    search_results.push({'split': data['results'][i][4], 'value': '<b>Gene caller id:</b> ' + data['results'][i][0] +
+                                                                                  '</br><b>Source:</b> ' + data['results'][i][1] +
+                                                                                  '</br><b>Annotation:</b> ' + data['results'][i][2]});
+                }
+                $('#search_result_message_functions').html(data['results'].length + " results found.");
+            } else {
+                $('.search-message').show();
+                $('.search-message').html(data['message']);
+            };
+        }
+    });
+}
+
 function showSearchResult() {
     var clear_link = '<a href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">(clear)</a>';
     $("#search-results-table-header").html('<h4>Search results ' + clear_link + '</h4>');
     $("#search-results-table-search-name").html('Split name');
-    $("#search-results-table-search-item").html(layerdata[0][search_column]);
+    $("#search-results-table-search-item").html(search_column);
 
     var rows = "";
     var _len = search_results.length;
     for (var i=0; i < _len; i++)
     {
-        rows = rows + "<tr><td data-value=" + layerdata[search_results[i]][0] + "><a href='#' class='no-link' onclick='highlightSplit(\"" + layerdata[search_results[i]][0] + "\");'>" + layerdata[search_results[i]][0] + "</a></td><td data-value=" + layerdata[search_results[i]][search_column] + ">" + layerdata[search_results[i]][search_column] + "</td></tr>";
+        var col1 = search_results[i]['split'];
+        var col2 = search_results[i]['value'];
+
+        rows = rows + `<tr><td data-value="${ col1 }""><a href='#' class='no-link' onclick='highlightSplit("${ col1 }");'>${col1}</a></td><td data-value="${ col2 }">${ col2 }</td></tr>`;
     }
     $("#tbody_search_body").html(rows);
 }
@@ -72,8 +108,7 @@ function highlightResult() {
     highlighted_splits = [];
 
     for (var i=0; i < search_results.length; i++) {
-        var _contig_name = layerdata[search_results[i]][0];
-        
+        var _contig_name = search_results[i]['split'];
         highlighted_splits.push(_contig_name);
     }
 
@@ -106,7 +141,7 @@ function appendResult() {
     var bins_to_update = [];
     var _len = search_results.length;
     for (var i=0; i < _len; i++) {
-        _contig_name = layerdata[search_results[i]][0];
+        _contig_name = search_results[i]['split'];
         if (SELECTED[bin_id].indexOf(_contig_name) == -1) {
             SELECTED[bin_id].push(_contig_name);
 
@@ -148,8 +183,7 @@ function removeResult() {
     var bins_to_update = [];
     var _len = search_results.length;
     for (var i=0; i < _len; i++) {
-        _contig_name = layerdata[search_results[i]][0];
-        var _id = label_to_node_map[_contig_name].id;
+        _contig_name = search_results[i]['split'];
 
         var pos = SELECTED[bin_id].indexOf(_contig_name);
         if (pos > -1) {
