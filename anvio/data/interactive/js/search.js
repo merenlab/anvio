@@ -62,14 +62,23 @@ function searchFunctions() {
                 search_column = 'Annotation';
 
                 for (var i=0; i < data['results'].length; i++) {
-                    // 0: gene_caller_id
-                    // 1: source
-                    // 2: annotation
-                    // 3: search term
-                    // 4: split name
-                    search_results.push({'split': data['results'][i][4], 'value': '<b>Gene caller id:</b> ' + data['results'][i][0] +
-                                                                                  '</br><b>Source:</b> ' + data['results'][i][1] +
-                                                                                  '</br><b>Annotation:</b> ' + data['results'][i][2]});
+                    var _gene_caller_id = data['results'][i][0];
+                    var _source         = data['results'][i][1];
+                    var _annotation     = data['results'][i][2];
+                    var _search_term    = data['results'][i][3];
+                    var _split_name     = data['results'][i][4];
+
+                    var _beginning = _annotation.toLowerCase().indexOf(_search_term.toLowerCase());
+                    _annotation = [_annotation.slice(0, _beginning), 
+                                   '<mark>', 
+                                   _annotation.slice(_beginning, _beginning + _search_term.length), 
+                                   '</mark>', 
+                                   _annotation.slice(_beginning + _search_term.length, _annotation.length)
+                                   ].join("");
+
+                    search_results.push({'split': data['results'][i][4], 'value': '<b>Gene caller id:</b> ' + _gene_caller_id +
+                                                                                  '</br><b>Source:</b> ' + _source +
+                                                                                  '</br><b>Annotation:</b> ' + _annotation});
                 }
                 $('#search_result_message_functions').html(data['results'].length + " results found.");
             } else {
