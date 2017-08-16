@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+
+from anvio.errors import ConfigError
+
+current_version = '3'
+next_version    = '4'
+
+def update_genomes_storage(genomes_storage_path):
+    if genomes_storage_path is None:
+        raise ConfigError("No database path is given.")
+
+    raise ConfigError("Anvi'o developers are very sorry to let you know that upgrading your current genomes storage from v%s to v%s\
+                       will not be possible :( If this is a publicly available pan genome project, you must go back to anvi'o\
+                       version with which the pan genome was created. If this is your own project, you will need to re-create\
+                       the genome storage file, as well as the pan database. Which means you will need to redo both `anvi-gen-genomes-storage`\
+                       and `anvi-pan-genome` steps in your workflow. We are as careful as we can be to make sure we provide you with\
+                       upgrade scripts for databaes changes from one version to another, yet due to some technical limitations\
+                       we are unable to provide an easier solution this time. We apologize for any inconvenience." % \
+                                                        (current_version, next_version))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='A simple script to upgrade genomes storage from version %s to version %s' % (current_version, next_version))
+    parser.add_argument('genomes_storage', metavar = 'GENOMES_STORAGE', help = "An anvi'o genomes storage of version %s" % current_version)
+    args = parser.parse_args()
+
+    try:
+        update_genomes_storage(args.genomes_storage)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
