@@ -312,7 +312,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         AA_sequences = None
         if not self.quick:
             header.append('aa_sequence')
-            AA_sequences = self.get_AA_sequences_for_PCs(pc_names=self.protein_cluster_names)
+            AA_sequences = self.get_sequences_for_PCs(pc_names=self.protein_cluster_names)
 
         # write the header
         output_file_obj.write(('\t'.join(header) + '\n').encode('utf-8'))
