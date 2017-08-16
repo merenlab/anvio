@@ -437,6 +437,13 @@ D = {
              'help': "Concatenate output PCs in the same order to create a multi-gene alignment output that is suitable\
                       for phylogenomic analyses."}
                 ),
+    'report-DNA-sequences': (
+            ['--report-DNA-sequences'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, this program reports amino acid sequences. You can change that behavior and as for DNA\
+                      sequences instead using this flag."}
+                ),
     'skip-multiple-gene-calls': (
             ['--skip-multiple-gene-calls'],
             {'default': False,
