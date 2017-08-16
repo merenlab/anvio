@@ -9,6 +9,7 @@
 """
 
 import hashlib
+import argparse
 
 import anvio
 import anvio.tables as t
@@ -96,9 +97,7 @@ class GenomeStorage(GenomeDescriptions):
         if not self.functions_are_available:
             return {}
 
-        class Args: pass
-        args = Args()
-        args.contigs_db = contigs_db_path
+        args = argparse.Namespace(contigs_db=contigs_db_path)
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
         contigs_super.init_functions(requested_sources=self.function_annotation_sources)
 
