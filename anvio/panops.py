@@ -353,18 +353,18 @@ class Pangenome(GenomeStorage):
         return mcl_input_file_path
 
 
-    def process_protein_clusters(self, protein_clusters_dict):
+    def process_PCs(self, PCs_dict):
         self.progress.new('Generating view data')
         self.progress.update('...')
 
-        PCs = list(protein_clusters_dict.keys())
+        PCs = list(PCs_dict.keys())
 
         for PC in PCs:
             self.view_data[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.view_data_presence_absence[PC] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.additional_view_data[PC] = {'num_genes_in_pc': 0, 'num_genomes_pc_has_hits': 0, 'SCG': 0}
 
-            for gene_entry in protein_clusters_dict[PC]:
+            for gene_entry in PCs_dict[PC]:
                 genome_name = gene_entry['genome_name']
 
                 self.view_data[PC][genome_name] += 1
@@ -391,7 +391,7 @@ class Pangenome(GenomeStorage):
                 self.view_data.pop(PC)
                 self.view_data_presence_absence.pop(PC)
                 self.additional_view_data.pop(PC)
-                protein_clusters_dict.pop(PC)
+                PCs_dict.pop(PC)
                 removed_PCs += 1
 
         if self.PC_min_occurrence > 1:
@@ -400,19 +400,19 @@ class Pangenome(GenomeStorage):
         ########################################################################################
         #            CAN WE CLUSTER THIS STUFF? DOES THE USER WANT US TO TRY REGARDLESS?
         ########################################################################################
-        if len(protein_clusters_dict) > self.max_num_PCs_for_hierarchical_clustering:
+        if len(PCs_dict) > self.max_num_PCs_for_hierarchical_clustering:
             if self.enforce_hierarchical_clustering:
                 self.run.warning("You have %s PCs, which exceeds the number of PCs anvi'o is comfortable to cluster. But\
                                   since you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt\
                                   to create a hierarchical clustering of your PCs anyway. It may take a bit of \
                                   time. Pour yourself a coffee. Or go to a nice vacation. See you in 10 mins, or next year \
-                                  or never." % pp(len(protein_clusters_dict)))
+                                  or never." % pp(len(PCs_dict)))
             else:
                 self.run.warning("It seems you have %s protein clusters in your pangenome. This exceeds the soft limit\
                                   of %s for anvi'o to attempt to create a hierarchical clustering of your protein clusters\
                                   (which becomes the center tree in all anvi'o displays). If you want a hierarchical\
                                   clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`." \
-                                            % (pp(len(protein_clusters_dict)), pp(self.max_num_PCs_for_hierarchical_clustering)))
+                                            % (pp(len(PCs_dict)), pp(self.max_num_PCs_for_hierarchical_clustering)))
                 self.skip_hierarchical_clustering = True
 
         ########################################################################################
@@ -451,10 +451,10 @@ class Pangenome(GenomeStorage):
         ########################################################################################
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
         ########################################################################################
-        return protein_clusters_dict
+        return PCs_dict
 
 
-    def cluster_protein_clusters(self):
+    def cluster_PCs(self):
         """Uses a clustering configuration to add hierarchical clustering of protein clusters into the pan db
 
         Note how this function cheats the system to create an enchanced clustering configuration:
@@ -604,38 +604,38 @@ class Pangenome(GenomeStorage):
         self.run.info('Args', (str(self.args)), quiet=True)
 
 
-    def store_protein_clusters(self, protein_clusters_dict):
+    def store_PCs(self, PCs_dict):
         self.progress.new('Storing protein clusters in the database')
         self.progress.update('...')
 
-        table_for_protein_clusters = dbops.TableForProteinClusters(self.pan_db_path, run=self.run, progress=self.progress)
+        table_for_PCs = dbops.TableForProteinClusters(self.pan_db_path, run=self.run, progress=self.progress)
 
-        num_genes_in_protein_clusters = 0
-        for pc_name in protein_clusters_dict:
-            for gene_entry in protein_clusters_dict[pc_name]:
-                table_for_protein_clusters.add(gene_entry)
-                num_genes_in_protein_clusters += 1
+        num_genes_in_PCs = 0
+        for pc_name in PCs_dict:
+            for gene_entry in PCs_dict[pc_name]:
+                table_for_PCs.add(gene_entry)
+                num_genes_in_PCs += 1
 
         self.progress.end()
 
-        table_for_protein_clusters.store()
+        table_for_PCs.store()
 
         pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
-        pan_db.db.set_meta_value('num_protein_clusters', len(protein_clusters_dict))
-        pan_db.db.set_meta_value('num_genes_in_protein_clusters', num_genes_in_protein_clusters)
+        pan_db.db.set_meta_value('num_PCs', len(PCs_dict))
+        pan_db.db.set_meta_value('num_genes_in_PCs', num_genes_in_PCs)
         pan_db.disconnect()
 
-        self.run.info('protein clusters info', '%d PCs stored in the database' % len(protein_clusters_dict))
+        self.run.info('protein clusters info', '%d PCs stored in the database' % len(PCs_dict))
 
 
-    def gen_protein_clusters_dict_from_mcl_clusters(self, mcl_clusters):
+    def gen_PCs_dict_from_mcl_clusters(self, mcl_clusters):
         self.progress.new('Generating the protein clusters dictionary from raw MCL clusters')
         self.progress.update('...')
 
-        protein_clusters_dict = {}
+        PCs_dict = {}
 
         for PC in mcl_clusters:
-            protein_clusters_dict[PC] = []
+            PCs_dict[PC] = []
 
             for entry_hash, gene_caller_id in [e.split('_') for e in mcl_clusters[PC]]:
                 try:
@@ -645,17 +645,17 @@ class Pangenome(GenomeStorage):
                     raise ConfigError("Something horrible happened. This can only happen if you started a new analysis with\
                                         additional genomes without cleaning the previous work directory. Sounds familiar?")
 
-                protein_clusters_dict[PC].append({'gene_caller_id': int(gene_caller_id), 'protein_cluster_id': PC, 'genome_name': genome_name, 'alignment_summary': ''})
+                PCs_dict[PC].append({'gene_caller_id': int(gene_caller_id), 'protein_cluster_id': PC, 'genome_name': genome_name, 'alignment_summary': ''})
 
         self.progress.end()
 
-        return protein_clusters_dict
+        return PCs_dict
 
 
-    def compute_alignments_for_PCs(self, protein_clusters_dict):
+    def compute_alignments_for_PCs(self, PCs_dict):
         if self.skip_alignments:
             self.run.warning('Skipping gene alignments.')
-            return protein_clusters_dict
+            return PCs_dict
 
         r = terminal.Run()
         r.verbose = False
@@ -664,30 +664,30 @@ class Pangenome(GenomeStorage):
 
         self.progress.new('Aligning genes in protein sequences')
         self.progress.update('...')
-        pc_names = list(protein_clusters_dict.keys())
+        pc_names = list(PCs_dict.keys())
         num_pcs = len(pc_names)
         for i in range(0, num_pcs):
             self.progress.update('%d of %d' % (i, num_pcs)) if i % 10 == 0 else None
             pc_name = pc_names[i]
 
-            if len(protein_clusters_dict[pc_name]) == 1:
+            if len(PCs_dict[pc_name]) == 1:
                 # this sequence is a singleton and does not need alignment
                 continue
 
             gene_sequences_in_pc = []
-            for gene_entry in protein_clusters_dict[pc_name]:
+            for gene_entry in PCs_dict[pc_name]:
                 sequence = self.genomes_storage.get_gene_sequence(gene_entry['genome_name'], gene_entry['gene_caller_id'])
                 gene_sequences_in_pc.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
 
             # alignment
             alignments = muscle.run_muscle_stdin(gene_sequences_in_pc)
 
-            for gene_entry in protein_clusters_dict[pc_name]:
+            for gene_entry in PCs_dict[pc_name]:
                 gene_entry['alignment_summary'] = utils.summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])
 
         self.progress.end()
 
-        return protein_clusters_dict
+        return PCs_dict
 
 
     def process(self):
@@ -698,11 +698,11 @@ class Pangenome(GenomeStorage):
         self.generate_pan_db()
 
         # get all protein sequences:
-        combined_proteins_FASTA_path = self.get_output_file_path('combined-proteins.fa')
-        unique_proteins_FASTA_path, unique_proteins_names_dict = self.genomes_storage.gen_combined_protein_sequences_FASTA(combined_proteins_FASTA_path, exclude_partial_gene_calls=self.exclude_partial_gene_calls)
+        combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
+        unique_aas_FASTA_path, unique_aas_names_dict = self.genomes_storage.gen_combined_aa_sequences_FASTA(combined_aas_FASTA_path, exclude_partial_gene_calls=self.exclude_partial_gene_calls)
 
         # run search
-        blastall_results = self.run_search(unique_proteins_FASTA_path, unique_proteins_names_dict)
+        blastall_results = self.run_search(unique_aas_FASTA_path, unique_aas_names_dict)
 
         # generate MCL input from filtered blastall_results
         mcl_input_file_path = self.gen_mcl_input(blastall_results)
@@ -711,20 +711,20 @@ class Pangenome(GenomeStorage):
         mcl_clusters = self.run_mcl(mcl_input_file_path)
 
         # we have the raw protein clusters dict, but we need to re-format it for following steps
-        protein_clusters_dict = self.gen_protein_clusters_dict_from_mcl_clusters(mcl_clusters)
+        PCs_dict = self.gen_PCs_dict_from_mcl_clusters(mcl_clusters)
         del mcl_clusters
 
         # compute alignments for genes within each PC (or don't)
-        protein_clusters_dict = self.compute_alignments_for_PCs(protein_clusters_dict)
+        PCs_dict = self.compute_alignments_for_PCs(PCs_dict)
 
         # populate the pan db with results
-        protein_clusters_dict = self.process_protein_clusters(protein_clusters_dict)
+        PCs_dict = self.process_PCs(PCs_dict)
 
         # store protein clusters dict into the db
-        self.store_protein_clusters(protein_clusters_dict)
+        self.store_PCs(PCs_dict)
 
         # generate a hierarchical clustering of protein clusters (or don't)
-        self.cluster_protein_clusters()
+        self.cluster_PCs()
 
         # gen samples info and order files
         self.gen_samples_db()
