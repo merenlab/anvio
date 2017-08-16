@@ -17,7 +17,7 @@ profile_db_version = "20"
 pan_db_version = "5"
 samples_info_db_version = "2"
 auxiliary_hdf5_db_version = "1"
-genomes_storage_hdf5_db_vesion = "3"
+genomes_storage_hdf5_db_vesion = "4"
 users_db_version = "1"
 
 versions_for_db_types = {'contigs': contigs_db_version,
