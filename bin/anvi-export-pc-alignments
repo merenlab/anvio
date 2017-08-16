@@ -88,20 +88,26 @@ def main(args):
     run.info('Number of protein clusters to report', len(pc_ids))
 
     if args.concatenate_pcs:
-        pan.write_AA_sequences_for_phylogenomics(pc_names=pc_ids, output_file_path=args.output_file, skip_multiple_gene_calls=args.skip_multiple_gene_calls)
+        pan.write_sequences_in_PCs_for_phylogenomics(pc_names=pc_ids,
+                                                     output_file_path=args.output_file,
+                                                     skip_multiple_gene_calls=args.skip_multiple_gene_calls,
+                                                     report_DNA_sequences=args.report_DNA_sequences)
     else:
-        pan.write_AA_sequences_to_file(pc_names=pc_ids, output_file_path=args.output_file)
+        pan.write_sequences_in_PCs_to_file(pc_names=pc_ids,
+                                           output_file_path=args.output_file,
+                                           report_DNA_sequences=args.report_DNA_sequences)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export aligned sequences from anvi'o pan genomes")
+    parser = argparse.ArgumentParser(description="Export aligned sequences in protein clusters from anvi'o pan genomes")
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
-    groupB = parser.add_argument_group('OUTPUT FILE', "You get to chose an output file name to report things. The default will be\
+    groupB = parser.add_argument_group('OUTPUT', "You get to chose an output file name to report things. The default will be\
                                        an ugly name. So, be explicit.")
     groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupB.add_argument(*anvio.A('report-DNA-sequences'), **anvio.K('report-DNA-sequences'))
 
     groupC = parser.add_argument_group('SELECTION', "Which protein clusters should be exported. You can ask for a single PC,\
                                        or multiple ones listed in a file, or you can use a collection and bin name to list PCs\
