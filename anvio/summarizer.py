@@ -288,7 +288,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # generate a dict of protein cluster ~ bin id relationships
         pc_name_to_bin_name= dict(list(zip(self.protein_clusters_in_pan_db_but_not_binned, [None] * len(self.protein_clusters_in_pan_db_but_not_binned))))
-        for bin_id in collection_dict: 
+        for bin_id in collection_dict:
             for pc_name in collection_dict[bin_id]:
                 pc_name_to_bin_name[pc_name] = bin_id
 
@@ -300,7 +300,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # standard headers
         header = ['unique_id', 'protein_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id']
 
-        # extend the header with functions if there are any 
+        # extend the header with functions if there are any
         for source in self.protein_clusters_function_sources:
             if self.quick:
                 header.append(source + '_ACC')
@@ -438,21 +438,21 @@ class SAAVsAndProteinStructuresSummary:
 
     def process_input(self):
         # FIXME: Assume its a single-column file. If it isn't, assume its a multi-column file
-        try: 
+        try:
             self.gene_list = list(utils.get_column_data_from_TAB_delim_file(self.genes_file_path, column_indices=[0], expected_number_of_fields=1).values())[0][1:]
             self.genes = {}
             for gene in self.gene_list:
                 self.genes[gene] = {}
-        except: 
+        except:
             self.genes = utils.get_TAB_delimited_file_as_dictionary(self.genes_file_path)
 
         # FIXME: Assume its a single-column file. If it isn't, assume its a multi-column file
-        try: 
+        try:
             self.sample_list = list(utils.get_column_data_from_TAB_delim_file(self.samples_file_path, column_indices=[0], expected_number_of_fields=1).values())[0][1:]
             self.samples = {}
             for sample in self.sample_list:
                 self.samples[sample] = {}
-        except: 
+        except:
             self.samples = utils.get_TAB_delimited_file_as_dictionary(self.samples_file_path)
 
         self.views = utils.get_columns_of_TAB_delim_file(self.samples_file_path)
@@ -678,7 +678,7 @@ class SAAVsAndProteinStructuresSummary:
             if len(global_legend_content) <= 15:
                 return global_legend_content
 
-        return utils.get_TAB_delimited_file_as_dictionary(color_legend_path_template % 
+        return utils.get_TAB_delimited_file_as_dictionary(color_legend_path_template %
                                                                     {'input_directory': self.input_directory,
                                                                     'id': str(gene),
                                                                     'perspective': perspective})
