@@ -512,7 +512,7 @@ def summarize_alignment(sequence):
     return  '|'.join(['-' if starts_with_gap else '.'] + [str(s) for s in alignment_summary])
 
 
-def restore_alignment(sequence, alignment_summary):
+def restore_alignment(sequence, alignment_summary, from_aa_alignment_summary_to_dna=False):
     """Restores an alignment from its sequence and alignment summary.
 
        See `summarize_alignment` for the `alignment_summary` compression.
@@ -531,7 +531,7 @@ def restore_alignment(sequence, alignment_summary):
     in_gap = alignment_summary[0] == '-'
 
     alignment = ''
-    for part in [int(p) for p in alignment_summary.split('|')[1:]]:
+    for part in [(int(p) * 3) if from_aa_alignment_summary_to_dna else int(p) for p in alignment_summary.split('|')[1:]]:
         if in_gap:
             alignment += '-' * part
             in_gap = False
@@ -540,7 +540,10 @@ def restore_alignment(sequence, alignment_summary):
                 alignment += sequence.pop(0)
             in_gap = True
 
-    return alignment
+    if from_aa_alignment_summary_to_dna:
+        return alignment + ''.join(sequence)
+    else:
+        return alignment
 
 
 def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expected_number_of_fields=None, separator='\t'):
