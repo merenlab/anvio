@@ -277,6 +277,12 @@ D = {
             {'metavar': 'NEWICK',
              'help': "NEWICK formatted tree structure"}
                 ),
+    'items-order': (
+            ['--items-order'],
+            {'metavar': 'COMMA_SEPARATED_FILE',
+             'help': "Comma seperated file that contains order of leaves, You may want to use this \
+                      if you want to order your leaves but do not want to display tree in the middle."}
+                ),
     'additional-layers': (
             ['-A', '--additional-layers'],
             {'metavar': 'ADDITIONAL_LAYERS',
