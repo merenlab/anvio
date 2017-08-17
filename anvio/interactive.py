@@ -378,10 +378,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
         elif self.items_order:
             filesnpaths.is_file_exists(self.items_order)
-            self.displayed_item_names_ordered = sorted([l.strip() for l in open(os.path.abspath(self.items_order)).read().split(',')])
-
-            self.p_meta['clusterings']['<> Custom Order'] = {'basic': self.displayed_item_names_ordered[:]}
-            self.p_meta['available_clusterings'].append('<> Custom Order:none:none')
+            self.displayed_item_names_ordered = [l.strip() for l in open(os.path.abspath(self.items_order)).read().split(',')]
         else:
             self.displayed_item_names_ordered = sorted(utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:])
 
@@ -412,6 +409,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.p_meta['default_clustering'] = clustering_id
             self.p_meta['available_clusterings'].append(clustering_id)
             self.p_meta['clusterings'][clustering_id] = {'newick': newick_tree_text}
+        elif self.items_order:
+            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.items_order)
+            self.p_meta['default_clustering'] = clustering_id
+            self.p_meta['available_clusterings'].append(clustering_id)
+            self.p_meta['clusterings'][clustering_id] = {'basic': ',',join(self.displayed_item_names_ordered)}
 
         if self.view_data_path:
             # sanity of the view data
