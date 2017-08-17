@@ -1219,7 +1219,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                         1,
                         false);
                 }
-                if (layer.get_visual_attribute('type') == 'line') {
+                else if (layer.get_visual_attribute('type') == 'line') {
                         if (numeric_cache.length == 0) {
                             numeric_cache.push("M");
                         } else {
@@ -1294,7 +1294,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                         1,
                         false);
                 }
-                if (layer.get_visual_attribute('type') == 'line') {
+                else if (layer.get_visual_attribute('type') == 'line') {
                         if (numeric_cache.length == 0) {
                             numeric_cache.push("M");
                         } else {
