@@ -66,6 +66,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.fasta_file = A('fasta_file')
         self.view_data_path = A('view_data')
         self.tree = A('tree')
+        self.items_order = A('items_order')
         self.title = A('title')
         self.output_dir = A('output_dir')
         self.show_views = A('show_views')
@@ -353,7 +354,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     for you. Simply type in a new profile database path (it can be a file name\
                                     that doesn't exist).")
 
-        if not self.tree and not self.view_data_path:
+        if not self.tree and not self.view_data_path and not self.items_order:
             raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file? What is it that\
                                anvi'o supposed to visualize? :(")
 
@@ -375,6 +376,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             filesnpaths.is_file_exists(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
             self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
+        elif self.items_order:
+            filesnpaths.is_file_exists(self.items_order)
+            self.displayed_item_names_ordered = sorted([l.strip() for l in open(os.path.abspath(self.items_order)).read().split(',')])
         else:
             self.displayed_item_names_ordered = sorted(utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:])
 
