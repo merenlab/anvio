@@ -26,7 +26,7 @@ class AnviServerAPI:
 
         # project variables:
         self.tree = A('tree')
-        self.items_order = A('items-order')
+        self.items_order = A('items_order')
         self.view_data = A('view_data')
         self.additional_layers = A('additional_layers')
         self.fasta_file = A('fasta_file')
