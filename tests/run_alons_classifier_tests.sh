@@ -12,7 +12,7 @@ INFO "Initializing raw BAM files"
 # init raw bam files.
 for f in 41 62 74 75 79 94
 do
-    anvi-init-bam $files/HMP00$f.bam --output-file $output_dir/HMP00$f.bam
+    anvi-init-bam $files/HMP00$f-RAW.bam --output-file $output_dir/HMP00$f.bam
     echo
 done
 
@@ -36,7 +36,8 @@ INFO "Importing collection"
 anvi-import-collection -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db $files/TEST-COLLECTION.txt -C TEST
 
 INFO "Run anvi-mcg-classifier on PROFILE database"
-anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL --store-gene-detections-and-gene-coverages-tables
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL
+
 ##
 #INFO "Running anvi-mcg-classifier on TAB-delimited files (no PROFILE database)"
 #anvi-mcg-classifier -d $output_dir/TEST-ALL-gene-coverages.txt -D $output_dir/TEST-ALL-gene-detections.txt -O $output_dir/TEST-ALL-TAB-delim
@@ -46,15 +47,16 @@ anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONT
 # #
 INFO "Running anvi-mcg-classifier on a collection"
 anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL-BINS -C TEST
+
 # #
 INFO "Running anvi-mcg-classifier on a bin"
 anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1
 # #
 INFO "Running anvi-mcg-classifier on a bin with samples to exclude"
-anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1 --exclude-samples $files/samples_to_exclude.txt
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_exclude -C TEST -b Bin_1 --exclude-samples $files/samples_to_exclude.txt
 
 INFO "Running anvi-mcg-classifier on a bin with samples to include"
-anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1 --include-samples $files/samples_to_include.txt
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_include -C TEST -b Bin_1 --include-samples $files/samples_to_include.txt
 # INFO "A round of dry run to get the profile db created"
 # ## a dry-run of the interactive so it creates a profile database
 # anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
