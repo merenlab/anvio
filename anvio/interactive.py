@@ -379,6 +379,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         elif self.items_order:
             filesnpaths.is_file_exists(self.items_order)
             self.displayed_item_names_ordered = sorted([l.strip() for l in open(os.path.abspath(self.items_order)).read().split(',')])
+
+            self.p_meta['clusterings']['<> Custom Order'] = {'basic': self.displayed_item_names_ordered[:]}
+            self.p_meta['available_clusterings'].append('<> Custom Order:none:none')
         else:
             self.displayed_item_names_ordered = sorted(utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:])
 
