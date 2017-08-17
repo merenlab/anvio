@@ -413,7 +413,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.items_order)
             self.p_meta['default_clustering'] = clustering_id
             self.p_meta['available_clusterings'].append(clustering_id)
-            self.p_meta['clusterings'][clustering_id] = {'basic': ','.join(self.displayed_item_names_ordered)}
+            self.p_meta['clusterings'][clustering_id] = {'basic': self.displayed_item_names_ordered}
 
         if self.view_data_path:
             # sanity of the view data
