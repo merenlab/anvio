@@ -26,6 +26,7 @@ class AnviServerAPI:
 
         # project variables:
         self.tree = A('tree')
+        self.items_order = A('items-order')
         self.view_data = A('view_data')
         self.additional_layers = A('additional_layers')
         self.fasta_file = A('fasta_file')
@@ -99,6 +100,8 @@ class AnviServerAPI:
             files['data.txt'] = open(self.view_data, 'r')
         if self.tree:
             files['tree.txt'] = open(self.tree, 'r')
+        if self.items_order:
+            files['items-order.txt'] = open(self.items_order, 'r')
         if self.fasta_file:
             files['fasta.fa'] = open(self.fasta_file, 'r')
         if self.samples_information_file:

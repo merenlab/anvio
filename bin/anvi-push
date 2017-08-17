@@ -33,6 +33,7 @@ if __name__ == '__main__':
     groupB = parser.add_argument_group("PROJECT DETAILS", "What to send to the server")
     groupB.add_argument(*anvio.A('project-name'), **anvio.K('project-name', {'required': True}))
     groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
+    groupB.add_argument(*anvio.A('items-order'), **anvio.K('items-order'))
     groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
     groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
     groupB.add_argument(*anvio.A('samples-information-file'), **anvio.K('samples-information-file'))

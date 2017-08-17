@@ -768,11 +768,11 @@ class BottleApplication(Bottle):
                 f = open(ordering_path, 'w')
                 if 'newick' in items_ordering:
                     f.write(items_ordering['newick'])
+                    args.tree = ordering_path
                 elif 'basic' in items_ordering:
                     f.write(",".join(items_ordering['basic']))
+                    args.items_order = ordering_path
                 f.close()
-
-                args.tree = ordering_path
 
             state_name = request.forms.get('state')
             if state_name in self.interactive.states_table.states:
