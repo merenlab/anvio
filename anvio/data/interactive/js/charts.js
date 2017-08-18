@@ -18,6 +18,7 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
+var request_prefix = getParameterByName('request_prefix');
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
 var layers;
@@ -30,7 +31,18 @@ var state;
 
 
 function loadAll() {
-    contig_id = getUrlVars()["contig"];
+    $.ajaxPrefilter(function(options) {
+        if (request_prefix) {
+            options.url = request_prefix + options.url;
+            if (options.type.toLowerCase() == 'post')
+            {
+                options.data += '&csrfmiddlewaretoken=' + getCookie('csrftoken');
+            }
+        }
+        return options;
+    });
+
+    contig_id = getParameterByName('id');
     document.title = contig_id + " detailed";
 
     $.ajax({
@@ -74,11 +86,18 @@ function loadAll() {
             prev_str = "&lt;&lt;&lt; prev | ";
             position = index + " of " + total;
 
+            // anvi-server uses iframes for prettier urls, links need to be open _top
+            var target_str = '';
+
+            if (self != top) {
+                target_str = 'target="_top"';
+            }
+
             if(next_contig_name)
-                next_str = '<a onclick="sessionStorage.state = state;" href="charts.html?contig=' + next_contig_name + '"> | next &gt;&gt;&gt;</a>';
+                next_str = '<a onclick="sessionStorage.state = state;" href="' + generate_inspect_link('inspect', next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
             if(previous_contig_name)
-                prev_str = '<a onclick="sessionStorage.state = state;" href="charts.html?contig=' + previous_contig_name + '">&lt;&lt;&lt; prev | </a>';
+                prev_str = '<a onclick="sessionStorage.state = state;" href="' + generate_inspect_link('inspect', previous_contig_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
             document.getElementById("header").innerHTML = "<strong>" + contig_id + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 
@@ -91,6 +110,7 @@ function loadAll() {
                 // backup the state, if user changes the page (prev, next) we are going to overwrite it.
                 state = sessionStorage.state;
                 createCharts(JSON.parse(state));
+                $('.loading-screen').hide();
             }
         }
     });
@@ -194,7 +214,7 @@ function createCharts(state){
        .attr('transform', 'translate(50, 10)');
 
     // Define arrow markers
-    ['green', 'gray'].forEach(function(color){
+    ['green', 'gray', 'firebrick'].forEach(function(color){
       defs.append('svg:marker')
           .attr('id', 'arrow_' + color )
           .attr('markerHeight', 2)

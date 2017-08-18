@@ -9,7 +9,7 @@ INFO "Initializing raw BAM files"
 # init raw bam files.
 for f in 01 02 03
 do
-    anvi-init-bam $files/SAMPLE-RAW-$f.bam --output-file $output_dir/SAMPLE-$f.bam
+    anvi-init-bam $files/SAMPLE-$f-RAW.bam --output-file $output_dir/SAMPLE-$f.bam
     echo
 done
 

@@ -264,7 +264,7 @@ def is_file_json_formatted(file_path):
     try:
         json.load(open(file_path, 'rU'))
     except ValueError as e:
-        raise FilesNPathsError("File '%s' does seem to be a properly formatted JSON\
+        raise FilesNPathsError("File '%s' does not seem to be a properly formatted JSON\
                             file ('%s', cries the library)." % (file_path, e))
 
     return True

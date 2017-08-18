@@ -132,12 +132,28 @@ class Table(object):
 
         sequences_fasta = u.FastaOutput(output_file_path)
 
+        seq_ids_not_reported = set([])
+
         for seq_id in sequences_table:
-            sequences_fasta.write_id(seq_id)
-            sequences_fasta.write_seq(sequences_table[seq_id]['sequence'], split=False)
+            if len(sequences_table[seq_id]['sequence']):
+                sequences_fasta.write_id(seq_id)
+                sequences_fasta.write_seq(sequences_table[seq_id]['sequence'], split=False)
+            else:
+                seq_ids_not_reported.add(seq_id)
 
         self.progress.end()
-        self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table)))
+
+        if len(seq_ids_not_reported):
+            self.run.warning("%d entries in the sequences table had blank sequences :/ This is related to the issue\
+                             at https://github.com/merenlab/anvio/issues/565. If this is like mid-2018 and you still\
+                             get this warning, please find an anvi'o developer and make them feel embarrassed. If it\
+                             is earlier than take this as a simple warning that some gene calls in your downstream\
+                             analyses may have no sequences, and that's OK. This is a very minor issue due to on-the-fly\
+                             addition of Ribosomal RNA gene calls to the contigs database, and will likely will not\
+                             affect anything major. This warning will go away when anvi'o can seamlessly work with\
+                             multiple gene callers (which we are looking forward to implement in the future)." % len(seq_ids_not_reported))
+
+        self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table) - len(seq_ids_not_reported)))
         self.run.info('FASTA', output_file_path)
 
         return output_file_path

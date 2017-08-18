@@ -9,14 +9,15 @@ import time
 import socket
 import shutil
 import psutil
-import urllib.request, urllib.error, urllib.parse
 import smtplib
 import textwrap
 import subprocess
-import multiprocessing
 import configparser
+import multiprocessing
+import urllib.request, urllib.error, urllib.parse
 
 from email.mime.text import MIMEText
+from collections import Counter
 
 import anvio
 import anvio.db as db
@@ -156,6 +157,10 @@ def get_predicted_type_of_items_in_a_dict(d, key):
     """
 
     items = [x[key] for x in d.values()]
+
+    if(set(items) == set([None])):
+        # all items is of type None.
+        return None
 
     not_float = False
     for item in items:
@@ -507,7 +512,7 @@ def summarize_alignment(sequence):
     return  '|'.join(['-' if starts_with_gap else '.'] + [str(s) for s in alignment_summary])
 
 
-def restore_alignment(sequence, alignment_summary):
+def restore_alignment(sequence, alignment_summary, from_aa_alignment_summary_to_dna=False):
     """Restores an alignment from its sequence and alignment summary.
 
        See `summarize_alignment` for the `alignment_summary` compression.
@@ -524,19 +529,21 @@ def restore_alignment(sequence, alignment_summary):
         raise ConfigError("Sequence must be of type str or bytes. What you sent is of %s :/" % type(sequence))
 
     in_gap = alignment_summary[0] == '-'
-    in_nt = not in_gap
 
     alignment = ''
-    for part in [int(p) for p in alignment_summary.split('|')[1:]]:
+    for part in [(int(p) * 3) if from_aa_alignment_summary_to_dna else int(p) for p in alignment_summary.split('|')[1:]]:
         if in_gap:
             alignment += '-' * part
-            in_gap, in_nt = False, True
+            in_gap = False
         else:
             for i in range(0, part):
                 alignment += sequence.pop(0)
-            in_gap, in_nt = True, False
+            in_gap = True
 
-    return alignment
+    if from_aa_alignment_summary_to_dna:
+        return alignment + ''.join(sequence)
+    else:
+        return alignment
 
 
 def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expected_number_of_fields=None, separator='\t'):
@@ -865,28 +872,37 @@ def get_contigs_splits_dict(split_ids, splits_basic_info):
     return contigs_splits_dict
 
 
-def insert_consensus_and_departure_fields(e, engine='NT'):
+def get_variabile_item_frequencies(e, engine='NT'):
     """ 
     e is a row from variable_nucleotide_positions table defined in tables.
     this function extends dictionary with consensus and departure from consensus.
     """
 
-    if engine == 'NT':
-        freqs_list = sorted([(e[nt], nt) for nt in 'ATCGN'], reverse=True)
-    elif engine == 'AA':
-        aas = set(codon_to_AA.values())
-        freqs_list = sorted([(e[aa], aa) for aa in aas], reverse=True)
+    items = constants.nucleotides if engine=='NT' else constants.amino_acids
+    frequency_dict = Counter(dict([(item, e[item]) for item in items]))
+    return frequency_dict.most_common()
 
-    frequency_of_consensus = freqs_list[0][0]
 
-    e['n2n1ratio'] = freqs_list[1][0] / frequency_of_consensus if frequency_of_consensus else -1
-    e['consensus'] = freqs_list[0][1]
+def get_consensus_and_departure_data(variable_item_frequencies):
+    """Make sense of `variable_item_frequencies`.
 
-    total_frequency_of_all_but_the_consensus = sum([tpl[0] for tpl in freqs_list[1:]])
+       The format of `variable_item_frequencies` follows this:
+
+           >>> [('A', 45), ('T', 5), ('G', 0), ('N', 0), ('C', 0)]
+
+       For a given entry of the variable_XX_frequencies table, the `variable_item_frequencies`
+       tuple can be obtained via `get_variabile_item_frequencies`.
+    """
+
+    frequency_of_consensus = variable_item_frequencies[0][1]
+    total_frequency_of_all_but_the_consensus = sum([tpl[1] for tpl in variable_item_frequencies[1:]])
     coverage = total_frequency_of_all_but_the_consensus + frequency_of_consensus
-    e['departure_from_consensus'] = total_frequency_of_all_but_the_consensus / coverage if coverage else -1
 
-    return e
+    n2n1ratio = variable_item_frequencies[1][1] / frequency_of_consensus if frequency_of_consensus else -1
+    consensus = variable_item_frequencies[0][0]
+    departure_from_consensus = total_frequency_of_all_but_the_consensus / coverage if coverage else -1
+
+    return (n2n1ratio, consensus, departure_from_consensus)
 
 
 def get_codon_order_to_nt_positions_dict(gene_call):
@@ -1503,6 +1519,80 @@ def anvio_hmm_target_term_to_alphabet_and_context(target):
     return alphabet, context
 
 
+def get_pruned_HMM_hits_dict(hmm_hits_dict):
+    """This function will identify HMM hits that are almost identical and keep only the most significant hit.
+
+       This is an example situation where this problem occurs:
+
+            http://i.imgur.com/2ZxDchp.png
+
+       And this is how that context looks like after this function does its magic:
+
+            http://i.imgur.com/cAPKR0E.png
+
+       The data shown in the first screenshot resolves to an input dictionary like this one:
+
+           {
+                1: {'entry_id': 0, 'gene_name': 'Bacterial_23S_rRNA','contig_name': 'c_split_00001', 'start': 3175, 'stop': 267, 'e_value': 0.0},
+                2: {'entry_id': 1, 'gene_name': 'Bacterial_16S_rRNA','contig_name': 'c_split_00001', 'start': 4996, 'stop': 3439, 'e_value': 0.0},
+                3: {'entry_id': 2, 'gene_name': 'Archaeal_23S_rRNA', 'contig_name': 'c_split_00001', 'start': 3162, 'stop': 275, 'e_value': 0.0},
+                4: {'entry_id': 3, 'gene_name': 'Archaeal_16S_rRNA', 'contig_name': 'c_split_00001', 'start': 4988, 'stop': 3441, 'e_value': 7.7e-240}
+           }
+
+       where entry 1 and entry 2 should be removed (becuse they overlap witth 3 and 4, respectively, and they are shorter).
+    """
+
+    # first create a simpler data structure where all hits in a single contig are accessible directly.
+    hits_per_contig = {}
+    for entry in hmm_hits_dict:
+        e = hmm_hits_dict[entry]
+        contig_name = e['contig_name']
+        start = e['start'] if e['start'] < e['stop'] else e['stop']
+        stop = e['stop'] if e['start'] < e['stop'] else e['start']
+        length = stop - start
+
+        if contig_name not in hits_per_contig:
+            hits_per_contig[contig_name] = []
+
+        hits_per_contig[contig_name].append((length, entry, start, stop), )
+
+    # go through hits in each contig to find overlapping hits
+    entry_ids_to_remove = set([])
+    for hits in hits_per_contig.values():
+        indices_with_matches = set([])
+        for i in range(0, len(hits)):
+            if i in indices_with_matches:
+                # this one is already processed and is matching
+                # with something else. no need to waste time
+                continue
+
+            overlapping_hits_indices = set([])
+            for j in range(i + 1, len(hits)):
+                alignment_start = max(hits[i][2], hits[j][2])
+                alignment_end = min(hits[i][3], hits[j][3])
+                shortest_of_the_two = min(hits[i][0], hits[j][0])
+
+                if alignment_end - alignment_start > shortest_of_the_two / 2:
+                    # the overlap between these two is more than the half of the lenght of the
+                    # shorter one. this is done
+                    overlapping_hits_indices.add(i)
+                    overlapping_hits_indices.add(j)
+                    indices_with_matches.add(j)
+
+            if overlapping_hits_indices:
+                # here we have a set of overlapping indices. we will ort them based on length,
+                # and add the entry id of every match except the longest one into the shitkeeping
+                # variable
+                [entry_ids_to_remove.add(r) for r in sorted([hits[ind][1] for ind in overlapping_hits_indices], reverse=True)[1:]]
+
+
+    # time to remove all the entry ids from the actual dictionary
+    for entry_id in entry_ids_to_remove:
+        hmm_hits_dict.pop(entry_id)
+
+    return hmm_hits_dict
+
+
 def get_HMM_sources_dictionary(source_dirs=[]):
     """An anvi'o HMM source directory importer.
 
@@ -1654,7 +1744,7 @@ def run_selenium_and_export_svg(url, output_file_path, run=run):
     driver.get(url)
 
     try:
-        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID,"draw_delta_time"), "objects drawn in"))
+        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID, "title-panel-second-line"), "Current view"))
     except TimeoutException:
         print("Timeout occured, could not get the SVG drawing in 600 seconds.")
         driver.quit()

@@ -7,8 +7,12 @@ import sys
 import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.terminal as terminal 
+import anvio.terminal as terminal
 
+with terminal.SuppressAllOutput():
+    import anvio.data.hmm as hmm_data
+
+available_hmm_sources =  list(hmm_data.sources.keys())
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -34,7 +38,10 @@ def main(args):
 
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
-    if args.hmm_profile_dir:
+    if args.hmm_profile_dir and args.installed_hmm_profile:
+        raise ConfigError("You must select either an installed HMM profile, or provide a path for a profile directory.\
+                           But not both :/")
+    elif args.hmm_profile_dir:
         if not os.path.exists(args.hmm_profile_dir):
             raise ConfigError('No such file or directory: "%s"' % args.hmm_profile_dir)
         sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
@@ -42,8 +49,14 @@ def main(args):
                                                           's' if len(sources) > 1 else '',
                                                           ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))\
                                                                                                     for s in sources])))
+    elif args.installed_hmm_profile:
+        if args.installed_hmm_profile not in available_hmm_sources:
+            raise ConfigError("You managed to find a profile that is not actually installed :/ Available ones are\
+                               these: %s." % (', '.join(available_hmm_sources)))
+
+        sources = {args.installed_hmm_profile: hmm_data.sources[args.installed_hmm_profile]}
     else:
-        # sources will be loaded from defaults. 
+        # sources will be loaded from defaults.
         pass
 
     search_tables = dbops.TablesForHMMHits(args.contigs_db, num_threads_to_use = args.num_threads)
@@ -58,6 +71,13 @@ if __name__ == '__main__':
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
+    parser.add_argument(*anvio.A('installed-hmm-profile'), **anvio.K('installed-hmm-profile', {'help': "When you run this\
+                                  program without any parameter, it runs all %d HMM profiles installed on your system. If\
+                                  you want only a specific one to run, you can select it by using this parameter. These\
+                                  are the currently available ones: %s." % \
+                                                (len(available_hmm_sources),
+                                                 ', '.join(['"%s" (type: %s)' % (s, hmm_data.sources[s]['kind']) \
+                                                                                    for s in available_hmm_sources]))}))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 

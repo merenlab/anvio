@@ -180,7 +180,13 @@ function drawArrows(_start, _stop) {
 
       var y = 10 + (gene.level * 20);
 
-      color = (gene.functions !== null ? 'green' : 'gray');
+      var color = 'gray';
+      if (gene.source == 'Ribosomal_RNAs') {
+        color = 'firebrick';
+      }
+      else if (gene.functions !== null) {
+        color = 'green';
+      }
 
       // M10 15 l20 0
       path = paths.append('svg:path')

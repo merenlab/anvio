@@ -505,12 +505,14 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
   color: green;
 }
 
-#search_result_message {
-  padding-left: 100px;
+#search_result_message, #search_result_message_functions {
+  padding-left: 20px;
+  display: inline-block;
   height: 30px;
   padding-top: 7px;
   font-weight: bold;
   font-family: fantasy;
+  font-size: 14px;
 }
 
 #tooltips-table {
@@ -691,4 +693,9 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .sidebarPadding {
     padding-top: 60px !important;
+}
+
+.modal-body {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
 }

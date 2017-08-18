@@ -29,6 +29,8 @@ single_default = "tnf"
 merged_default = "tnf-cov"
 pan_default="presence-absence"
 
+default_gene_caller = "prodigal"
+
 max_num_items_for_hierarchical_clustering = 20000
 
 # default methods for hierarchical cluster analyses
@@ -37,7 +39,7 @@ linkage_method_default = 'ward'
 
 # this is to have a common language across multiple modules when genomes (whether they are MAGs,
 # SAGs, or isolate genomes):
-essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_complete', 'percent_redundancy',
+essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_completion', 'percent_redundancy',
                          'genes_are_called', 'avg_gene_length', 'num_genes_per_kb', ]
 
 
@@ -68,6 +70,8 @@ AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': '
                                     'Met': 'M', 'Phe': 'F', 'Pro': 'P', 'STP': '*',
                                     'Ser': 'S', 'Thr': 'T', 'Trp': 'W', 'Tyr': 'Y',
                                     'Val': 'V'})
+
+amino_acids = list(AA_to_single_letter_code.keys())
 
 codon_to_AA = Counter({'ATA': 'Ile', 'ATC': 'Ile', 'ATT': 'Ile', 'ATG': 'Met',
                        'ACA': 'Thr', 'ACC': 'Thr', 'ACG': 'Thr', 'ACT': 'Thr',

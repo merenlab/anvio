@@ -9,19 +9,23 @@ INFO "Initializing raw BAM files"
 # init raw bam files.
 for f in 01 02 03
 do
-    anvi-init-bam $files/SAMPLE-RAW-$f.bam --output-file $output_dir/SAMPLE-$f.bam
+    anvi-init-bam $files/SAMPLE-$f-RAW.bam --output-file $output_dir/SAMPLE-$f.bam
     echo
 done
 
 INFO "Reformat the contigs FASTA"
 anvi-script-reformat-fasta $files/contigs.fa -o $output_dir/contigs.fa -l 0 --simplify-names --prefix test_prefix --report $output_dir/contigs-reformat-report.txt
 echo
-column -t $output_dir/contigs-reformat-report.txt 
+column -t $output_dir/contigs-reformat-report.txt
 
 # we first generate an empty contigs database using contigs.fa (keep in mind that 'contigs.fa'
 # is the original file all samples were mapped to). here we use split size of 1000 (the default split
 # size is much better for most projects. the small split size used here is simply for testing purposes)
-INFO "Generating an EMPTY contigs database"
+INFO "Generating a new contigs database with external gene calls"
+anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000 --external-gene-calls $files/example_external_gene_calls.txt
+rm -rf $output_dir/CONTIGS.db $output_dir/CONTIGS.h5
+
+INFO "Generating a new contigs database with the default gene caller"
 anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000
 
 INFO "Exporting gene calls from the contigs database"
@@ -41,6 +45,9 @@ anvi-run-hmms -c $output_dir/CONTIGS.db --num-threads 2
 
 INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory"
 anvi-run-hmms -c $output_dir/CONTIGS.db -H $files/external_hmm_profile
+
+INFO "Rerunning HMMs for a specific installed profile"
+anvi-run-hmms -c $output_dir/CONTIGS.db -I Ribosomal_RNAs
 
 INFO "Importing gene function calls using 'interproscan' parser"
 anvi-import-functions -c $output_dir/CONTIGS.db -i $files/example_interpro_output.tsv -p interproscan
@@ -96,7 +103,10 @@ INFO "Generating coverages and sequences files for splits (for external binning)
 anvi-export-splits-and-coverages -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db
 
 INFO "Generating per-nt position coverage values for a single split across samples"
-anvi-get-split-coverage -p $output_dir/SAMPLES-MERGED/PROFILE.db -o $output_dir/contig_1720_split_00001_coverages.txt --split-name 204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00001
+anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db -o $output_dir/contig_1720_split_00001_coverages.txt --split-name 204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00001
+
+INFO "Generating per-nt position coverage values for a splits in a bin across samples"
+anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/split_coverages_in_Bin_1.txt -C CONCOCT -b Bin_1
 
 INFO "Cluster contigs in the newly generated coverages file"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt
@@ -178,21 +188,27 @@ anvi-script-get-collection-info -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $out
 INFO "Summarizing CONCOCT results"
 anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'cmdline_concoct_RENAMED' --init-gene-coverages
 
-INFO "Generate a variabilty profile for PSAMPLES_Bin_00001 using a collection id"
+INFO "Generate a SNV variabilty profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db -C cmdline_concoct_RENAMED -b PSAMPLES_Bin_00001 -o $output_dir/variability_PSAMPLES_Bin_00001.txt --quince-mode
 
-INFO "Generate a variabilty profile for PSAMPLES_Bin_00001 using split ids and gene ids of interest (after summary)"
+INFO "Generate a SNV variabilty profile for PSAMPLES_Bin_00001 using split ids and gene ids of interest (after summary)"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                              --splits-of-interest $output_dir/SAMPLES-MERGED-SUMMARY/bin_by_bin/PSAMPLES_Bin_00001/PSAMPLES_Bin_00001-original_split_names.txt \
                              --genes-of-interest $files/example_genes_of_interest.txt \
                              -o $output_dir/variability_PSAMPLES_Bin_00001_ALT.txt
 
+INFO "Generate an AA variabilty profile for PSAMPLES_Bin_00001 using a collection id"
+anvi-gen-variability-profile -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db -C cmdline_concoct_RENAMED -b PSAMPLES_Bin_00001 -o $output_dir/variability_AA_PSAMPLES_Bin_00001.txt --quince-mode --engine AA
+
 INFO "Generating amino acid frequencies for gene caller id 3 in SAMPLE-01.bam"
 anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db --gene-caller-id 3 -o $output_dir/AA_frequencies_for_gene_caller_id_3.txt
 
 INFO "Getting back the sequence for gene call 3"
 anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
+
+INFO "Getting back the sequence for gene call 3 (export as GFF3)"
+anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 --export-gff3 -o $output_dir/Sequence_for_gene_caller_id_3.gff
 
 INFO "Export gene coverage and detection data"
 anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MERGED

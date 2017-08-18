@@ -7,7 +7,7 @@ import argparse
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.terminal as terminal 
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.completeness import Completeness
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('min-e-value'), **anvio.K('min-e-value'))
     parser.add_argument(*anvio.A('list-completeness-sources'), **anvio.K('list-completeness-sources'))
     parser.add_argument(*anvio.A('completeness-source'), **anvio.K('completeness-source'))
-    
+
     args = parser.parse_args()
 
     completeness = Completeness(args.contigs_db, args.completeness_source)
@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
     run.warning('', header = 'Completeness for %d splits (p < %g)' % (len(splits_of_interest), args.min_e_value))
     for source in completeness.sources:
-        run.info(source, '%.2f%% complete, %.2f%% redundant' % (results[source]['percent_complete'], results[source]['percent_redundancy']))
+        run.info(source, '%.2f%% complete, %.2f%% redundant' % (results[source]['percent_completion'], results[source]['percent_redundancy']))
 
     print()
 

@@ -6,7 +6,6 @@
    bins in a merged profile.
 """
 
-import os
 import sys
 import argparse
 

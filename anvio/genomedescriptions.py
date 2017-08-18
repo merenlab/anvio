@@ -18,6 +18,7 @@ import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
+import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
 
@@ -43,7 +44,7 @@ class GenomeDescriptions:
         self.progress = progress
 
         self.genomes = {}
-        self.internal_genomes_dict = None 
+        self.internal_genomes_dict = None
         self.external_genomes_dict = None
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
@@ -51,6 +52,7 @@ class GenomeDescriptions:
         self.input_file_for_external_genomes = A('external_genomes')
         self.list_hmm_sources = A('list_hmm_sources')          # <<< these two are look out of place, but if the args requests
         self.list_available_gene_names = A('list_available_gene_names') #     for information about HMMs, this is the bets place to set them
+        self.gene_caller = A('gene_caller')
 
         if self.input_file_for_internal_genomes or self.input_file_for_external_genomes:
             self.read_genome_paths_from_input_files()
@@ -80,7 +82,7 @@ class GenomeDescriptions:
 
 
     def list_HMM_info_and_quit(self):
-        hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes()
+        hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes(dont_raise=True)
 
         if self.list_hmm_sources:
             self.run.warning(None, 'HMM SOURCES COMMON TO ALL %d GENOMES' % (len(self.genomes)), lc='yellow')
@@ -106,7 +108,9 @@ class GenomeDescriptions:
         # find out hmm_sources that occur in all genomes
         hmm_sources_in_all_genomes = copy.deepcopy(hmm_sources_found)
         for genome_name in self.genomes:
-            [hmm_sources_in_all_genomes.remove(s) for s in hmm_sources_found if s not in self.genomes[genome_name]['hmm_sources_info']]
+            for hmm_source in hmm_sources_found:
+                if hmm_source not in self.genomes[genome_name]['hmm_sources_info'] and hmm_source in hmm_sources_in_all_genomes:
+                    hmm_sources_in_all_genomes.remove(hmm_source)
 
         if not len(hmm_sources_in_all_genomes):
             if dont_raise:
@@ -156,7 +160,7 @@ class GenomeDescriptions:
 
         # this will populate self.genomes with relevant data that can be learned about these genomes such as 'avg_gene_length',
         # 'num_splits', 'num_contigs', 'num_genes', 'percent_redundancy', 'gene_caller_ids', 'total_length', 'partial_gene_calls',
-        # 'percent_complete', 'num_genes_per_kb', 'gc_content'.
+        # 'percent_completion', 'num_genes_per_kb', 'gc_content'.
         if init:
             self.init_internal_genomes()
             self.init_external_genomes()
@@ -266,7 +270,7 @@ class GenomeDescriptions:
 
             self.progress.update('working on %s' % (genome_name))
 
-            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'])
+            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], gene_caller=self.gene_caller)
 
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
@@ -309,7 +313,9 @@ class GenomeDescriptions:
                 # here we are using the get_contigs_db_info_dict function WITH split names we found in the collection
                 # which returns a partial summary from the contigs database focusing only those splits. a small workaround
                 # to be able to use the same funciton for bins in collections:
-                summary_from_contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], split_names=split_names_of_interest)
+                summary_from_contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], \
+                                                                                      split_names=split_names_of_interest, \
+                                                                                      gene_caller=self.gene_caller)
                 for key in summary_from_contigs_db_summary:
                     c[key] = summary_from_contigs_db_summary[key]
 
@@ -361,9 +367,11 @@ class GenomeDescriptions:
         genomes_missing_hmms_for_scgs =  [g for g in self.genomes if not self.genomes[g]['hmms_for_scgs_were_run']]
         if len(genomes_missing_hmms_for_scgs):
             if len(genomes_missing_hmms_for_scgs) == len(self.genomes):
-                raise ConfigError("The contigs databases you are using for this analysis are missing HMMs for single-copy core genes. In other words,\
-                                    you don't seem to have run `anvi-run-hmms` on them. Although it is perfectly legal to have anvi'o contigs databases\
-                                    without HMMs run on SCGs, the current pangenomic workflow does not want to deal with this :( Sorry!")
+                self.run.warning("The contigs databases you are using for this analysis are missing HMMs for single-copy core genes.\
+                                  Maybe you haven't run `anvi-run-hmms` on your contigs database, or they didn't contain any hits.\
+                                  It is perfectly legal to have anvi'o contigs databases without HMMs or SCGs for things to work,\
+                                  but we wanted to give you heads up so you can have your 'aha' moment if you see funny things in\
+                                  the interface.")
             else:
                 raise ConfigError("Some of the genomes you have for this analysis are missing HMM hits for SCGs (%d of %d of them, to be precise). You\
                                     can run `anvi-run-hmms` on them to recover from this. Here is the list: %s" % \
