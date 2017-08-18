@@ -5,7 +5,7 @@
 import sys
 
 import anvio
-from anvio.mcgclassifier import mcg
+from anvio.mcgclassifier import MetagenomeCentricGeneClassifier
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -20,8 +20,8 @@ __email__ = "alon.shaiber@gmail.com"
 
 
 def main(args):
-    classifier = mcg(args)
-    classifier.classify()
+    mcg = MetagenomeCentricGeneClassifier(args)
+    mcg.classify()
 
 
 if __name__ == '__main__':

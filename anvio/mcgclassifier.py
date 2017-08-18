@@ -3,7 +3,7 @@
 """
     Classes to classify genes based on coverages across metagenomes.
 
-    anvi-alons-classifier is the default client using this module
+    anvi-mcg-classifier is the default client using this module
 """
 
 
@@ -77,7 +77,7 @@ def get_new_mean(_mean, x, N):
     return new_mean
 
 
-class mcg:
+class MetagenomeCentricGeneClassifier:
     def __init__(self, args, run=run, progress=progress):
         self.run = run
         self.progress = progress
