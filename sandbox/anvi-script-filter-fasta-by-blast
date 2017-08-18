@@ -1,0 +1,112 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import numpy as np
+import pandas as pd
+
+# maybe not all are needed, who is to say?
+import anvio
+import anvio.fastalib as u
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2016, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+def filter_FASTA_by_blast_results(args):
+
+    # be told or infer the parameter ordering for blast output
+    if args.special_outfmt:
+        # if you're here its custom
+        cols = args.special_outfmt.split(" ") 
+    else:
+        # if you're here its default
+        cols = ["qseqid","sseqid","pident","length","mismatch","gparser.pen",
+                "qstart","qend","sstart","send","evalue","bitscore"]
+
+    # read in blast as pandas DataFrame
+    blastout = pd.read_csv(args.blast, sep="\t", names=cols)
+
+    # include only highest bitscore results for each sequence
+    idx = blastout.groupby("qseqid")["bitscore"].transform(max) == blastout["bitscore"]
+    blastout = blastout[idx]
+
+    # Create proper_pident column. Rarely, the reported align length is greater
+    # than the query sequence length as a result of indels. If this ever
+    # hparser.ens we set the align length = query sequence length.
+    blastout["proper_pident"] = blastout["length"]/blastout["qlen"]
+    blastout.loc[blastout["proper_pident"]>1, "proper_pident"] = 1
+    blastout["proper_pident"] *= blastout["pident"]
+
+    # filter (and order) according to proper_pident
+    blastout = blastout[blastout["proper_pident"] >= args.threshold]
+    blastout = blastout.sort_values("proper_pident",ascending=False)
+    seqs_to_keep = [str(x) for x in list(blastout.qseqid.unique())]
+
+    # iterate through fasta. If fasta defline is in seqs_to_keep, add to new fasta
+    output = u.FastaOutput(args.output_file)
+    fasta = u.SequenceSource(args.fasta_file)
+    while next(fasta):
+        if fasta.id in seqs_to_keep:
+            output.write_id(fasta.id)
+            output.write_seq(fasta.seq, split = False)
+
+    fasta.close()
+    output.close()
+
+
+if __name__ == '__main__':
+
+    import argparse
+    parser = argparse.ArgumentParser(description=\
+    """Filter FASTA file according to BLAST table (remove sequences with bad
+    BLAST alignment.""")
+
+    parser.add_argument('fasta_file')
+    parser.add_argument("-o", "--output_file", required = True)
+
+    parser.add_argument("-b", "--blast", required = True, help = \
+    """BLAST table generated with blastp. `--outfmt 6` as the output format is
+    assumed.""")
+    
+    parser.add_argument("-s", "--special-outfmt", required = False, help = \
+    """If you used the non-default -outfmt 6 format, you must specify the strings
+    here. For example, if you used the `outfmt "6 qseqid sseqid pident qlen length
+    mismatch gparser.pen qstart qend sstart send evalue bitscore"` flag, the input for
+    this parameter should be:    
+
+        "qseqid sseqid pident qlen length mismatch gparser.pen qstart qend sstart send evalue bitscore"
+    """)
+    
+    parser.add_argument("-t", "--threshold", required = True, type = float, help = \
+    """What `proper_pident` threshold do you want to use for filtering out
+    sequences whose top bit-score matches have `proper_pident`s less than this
+    threshold?  We have defined `proper_pident` to be the percentage of the
+    query amino acids that both aligned to and were identical to the
+    corresponding matched amino acid. Note that the `pident` parameter output
+    by BLAST does not include regions of the query sequence unaligned to the
+    matched sequence, whereas `proper_pident` does. For example, a sequence
+    that's only half aligned by a match but with 100% identity at matched
+    regions has a `pident` of 100 but a `proper_pident` of 50.""")
+
+    args = parser.parse_args()
+
+    try:
+        filter_FASTA_by_blast_results(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
