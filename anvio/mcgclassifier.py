@@ -17,7 +17,6 @@ import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
-from scipy.stats import norm
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
 from matplotlib.backends.backend_pdf import PdfPages
