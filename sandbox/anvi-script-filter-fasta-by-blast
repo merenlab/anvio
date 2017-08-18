@@ -43,7 +43,7 @@ def filter_FASTA_by_blast_results(args):
 
     # Create proper_pident column. Rarely, the reported align length is greater
     # than the query sequence length as a result of indels. If this ever
-    # hparser.ens we set the align length = query sequence length.
+    # happens we set the align length = query sequence length.
     blastout["proper_pident"] = blastout["length"]/blastout["qlen"]
     blastout.loc[blastout["proper_pident"]>1, "proper_pident"] = 1
     blastout["proper_pident"] *= blastout["pident"]
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     BLAST alignment.""")
 
     parser.add_argument('fasta_file')
-    parser.add_argument("-o", "--output_file", required = True)
+    parser.add_argument("-o", "--output-file", required = True)
 
     parser.add_argument("-b", "--blast", required = True, help = \
     """BLAST table generated with blastp. `--outfmt 6` as the output format is
