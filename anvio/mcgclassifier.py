@@ -83,7 +83,7 @@ def get_new_mean(_mean, x, N):
 def get_new_std(_mean, _std, x, ):
     p = N/(N-1)
     new_std = np.sqrt(p * _std**2 - ((_mean - x)**2)*p/(N-1))
-    
+
 def single_distribution_EM(v, _indices=None, _mean=None, _std=None):
     if _indices is None:
         _indices = set(range(len(v)))
@@ -183,7 +183,6 @@ class mcg:
                 self.summary = summarizer.ProfileSummarizer(args)
                 self.summary.init()
                 self.init_samples(self.summary.p_meta['samples'])
-                
             else:
                 self.profile_db = ProfileSuperclass(args)
                 self.init_samples(self.profile_db.p_meta['samples'])
@@ -197,7 +196,7 @@ class mcg:
 
                 self.init_coverage_and_detection_dataframes(gene_coverages, gene_detection)
 
-                # getting the total length of all contigs 
+                # getting the total length of all contigs
                 self.total_length = self.profile_db.p_meta['total_length']
 
     def get_gene_coverages_and_gene_detection_dicts(self):
@@ -224,7 +223,7 @@ class mcg:
         """ Helper function to verify that an argument has a valid value for a non-zero portion (i.e. greater than zero and a max of 1)"""
         if arg_value <= 0 or arg_value > 1:
             raise ConfigError("%s value must be greater than zero and a max of 1, the value you supplied %s" % (arg_name,arg_value))
-       
+
     def sanity_check(self):
         """Basic sanity check for class inputs"""
 
@@ -256,7 +255,7 @@ class mcg:
         self.check_if_valid_portion_value("gamma", self.gamma)
 
         # Checking eta
-        self.check_if_valid_portion_value("eta", self.eta) 
+        self.check_if_valid_portion_value("eta", self.eta)
 
         if self.collection_name:
             if not self.profile_db_path:
@@ -277,7 +276,7 @@ class mcg:
                                 And here are the samples you requested, and that are not there: %s" % (samples, samples_to_include_that_are_not_there))
             samples = self.samples_to_include
         self.samples = samples
-            
+
 
     def init_coverage_and_detection_dataframes(self, gene_coverages_dict, gene_detection_dict):
         """
@@ -294,7 +293,7 @@ class mcg:
             self.gene_detections = self.gene_detections[list(self.samples)]
 
     def init_sample_detection_information(self):
-        """ Determine  positive, negative, and ambiguous samples with the genome detection information 
+        """ Determine  positive, negative, and ambiguous samples with the genome detection information
         (--alpha, --genome-detection-uncertainty)
         """
 
@@ -305,8 +304,8 @@ class mcg:
         samples_information = pd.DataFrame(index=self.samples, columns=MDG_samples_information_table_structure[1:])
         positive_samples = []
         negative_samples = []
-        
-        self.progress.new("Setting presence/absence in samples")        
+
+        self.progress.new("Setting presence/absence in samples")
         num_samples, counter = len(self.samples), 1
         detection = {}
         for sample in self.samples:
@@ -402,7 +401,6 @@ class mcg:
 
     def get_taxon_specific_genes_in_samples(self):
         """ Use only positive samples to identify the single copy taxon specific genes in each sample:
-            
         """
         non_outliers_indices = {}
         mean_TS = {}
@@ -438,7 +436,7 @@ class mcg:
     def get_coverage_and_detection_dict(self,bin_id):
         _bin = summarizer.Bin(self.summary, bin_id)
         self.coverage_values_per_nt = get_coverage_values_per_nucleotide(_bin.split_coverage_values_per_nt_dict, self.samples)
-        # getting the total length of all contigs 
+        # getting the total length of all contigs
         self.total_length = _bin.total_length
         self.init_coverage_and_detection_dataframes(_bin.gene_coverages, _bin.gene_detection)
 
