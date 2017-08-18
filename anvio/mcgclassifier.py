@@ -188,11 +188,36 @@ class mcg:
                 self.profile_db = ProfileSuperclass(args)
                 self.init_samples(self.profile_db.p_meta['samples'])
                 self.profile_db.init_split_coverage_values_per_nt_dict()
-                self.profile_db.init_gene_coverages_and_detection_dicts()
+                self.profile_db.init_gene_level_coverage_stats_dicts()
                 self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.profile_db.split_coverage_values_per_nt_dict, self.samples)
-                self.init_coverage_and_detection_dataframes(self.profile_db.gene_coverages_dict, self.profile_db.gene_detection_dict)
+
+                # comply with the new design and get gene_coverages and gene_detection dicsts from
+                # gene_level_coverage_stats_dict.
+                gene_coverages, gene_detection = self.get_gene_coverages_and_gene_detection_dicts()
+
+                self.init_coverage_and_detection_dataframes(gene_coverages, gene_detection)
+
                 # getting the total length of all contigs 
                 self.total_length = self.profile_db.p_meta['total_length']
+
+    def get_gene_coverages_and_gene_detection_dicts(self):
+        gene_coverages = {}
+        gene_detection = {}
+
+        A = lambda x: self.profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name][x]
+
+        gene_caller_ids = list(self.profile_db.gene_level_coverage_stats_dict.keys())
+
+        # populate gene coverage and detection dictionaries
+        if self.profile_db.gene_level_coverage_stats_dict:
+            for gene_callers_id in gene_caller_ids:
+                gene_coverages[gene_callers_id], gene_detection[gene_callers_id] = {}, {}
+
+                for sample_name in self.profile_db.p_meta['samples']:
+                    gene_coverages[gene_callers_id][sample_name] = A('mean_coverage')
+                    gene_detection[gene_callers_id][sample_name] = A('detection')
+
+        return gene_coverages, gene_detection
 
 
     def check_if_valid_portion_value(self, arg_name,arg_value):
