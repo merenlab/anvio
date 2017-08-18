@@ -37,46 +37,6 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):
-    """ Helper function that accepts a split_coverage_values_per_nt_dict and returns a dictionary with
-    samples as keys and the concatenated coverage values for all splits as one array
-    """
-    progress.new('Merging coverage values accross splits')
-    d = {}
-    if samples is None:
-        samples = split_coverage_values_per_nt_dict[next(iter(split_coverage_values_per_nt_dict.keys()))].keys()
-    number_of_samples = len(samples)
-    number_of_finished = 0
-    for sample in samples:
-        d[sample] = np.empty([1,0])
-        for split in split_coverage_values_per_nt_dict:
-            d[sample] = np.append(d[sample],split_coverage_values_per_nt_dict[split][sample])
-        #d[sample] = np.array(d[sample])
-        number_of_finished += 1
-        progress.update("Finished sample %d of %d" % (number_of_finished,number_of_samples))
-    progress.end()
-    return d
-
-
-def get_non_outliers(v):
-    """ returns the non-outliers according to the interqurtile range (IQR) for the input pandas series"""
-    q1 = np.percentile(v, 25)
-    q3 = np.percentile(v, 75)
-    IQR = q3 - q1
-    # The non-outliers are non-zero values that are in the IQR (positions that are zero are considered outliers
-    # even if the IQR includes zero)
-    non_outliers_indices = np.where((v >= q1 - 1.5 * IQR) & (v <= q3 + 1.5 * IQR) & (v > 0))[0]
-    mean = np.mean(v[non_outliers_indices])
-    std = np.std(v[non_outliers_indices])
-    return non_outliers_indices, mean, std
-
-
-def get_new_mean(_mean, x, N):
-    """ Helper function to calculate a new mean after removing one data point."""
-    new_mean = N/(N-1)*_mean - 1/(N-1)*x
-    return new_mean
-
-
 class MetagenomeCentricGeneClassifier:
     def __init__(self, args, run=run, progress=progress):
         self.run = run
@@ -452,3 +412,51 @@ class MetagenomeCentricGeneClassifier:
             self.get_gene_classes()
             #self.save_gene_class_information_in_additional_layers()
             #self.save_samples_information()
+
+
+def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):
+    """ Helper function that accepts a split_coverage_values_per_nt_dict and returns a dictionary with
+    samples as keys and the concatenated coverage values for all splits as one array
+    """
+    progress.new('Merging coverage values accross splits')
+
+    d = {}
+    if samples is None:
+        samples = split_coverage_values_per_nt_dict[next(iter(split_coverage_values_per_nt_dict.keys()))].keys()
+
+    number_of_samples = len(samples)
+    number_of_finished = 0
+
+    for sample in samples:
+        d[sample] = np.empty([1,0])
+        for split in split_coverage_values_per_nt_dict:
+            d[sample] = np.append(d[sample],split_coverage_values_per_nt_dict[split][sample])
+        #d[sample] = np.array(d[sample])
+        number_of_finished += 1
+        progress.update("Finished sample %d of %d" % (number_of_finished,number_of_samples))
+
+    progress.end()
+
+    return d
+
+
+def get_non_outliers(v):
+    """ returns the non-outliers according to the interqurtile range (IQR) for the input pandas series"""
+    q1 = np.percentile(v, 25)
+    q3 = np.percentile(v, 75)
+    IQR = q3 - q1
+
+    # The non-outliers are non-zero values that are in the IQR (positions that are zero are considered outliers
+    # even if the IQR includes zero)
+    non_outliers_indices = np.where((v >= q1 - 1.5 * IQR) & (v <= q3 + 1.5 * IQR) & (v > 0))[0]
+    mean = np.mean(v[non_outliers_indices])
+    std = np.std(v[non_outliers_indices])
+
+    return non_outliers_indices, mean, std
+
+
+def get_new_mean(_mean, x, N):
+    """ Helper function to calculate a new mean after removing one data point."""
+    new_mean = N/(N-1)*_mean - 1/(N-1)*x
+
+    return new_mean
