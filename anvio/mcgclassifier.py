@@ -10,22 +10,19 @@
 import os
 import anvio
 import numpy as np
-import scipy as sp
 import pandas as pd
 import matplotlib
-matplotlib.use('pdf')
 import matplotlib.pyplot as plt
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
-from math import ceil
-from math import floor
 from scipy.stats import norm
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
 from matplotlib.backends.backend_pdf import PdfPages
 
+matplotlib.use('pdf')
 
 __author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
