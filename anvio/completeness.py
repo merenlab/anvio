@@ -115,7 +115,7 @@ class Completeness:
         """For a given results dict `d` obtained from 'get_info_for_splits', and a domain, returns
            average percent completion and redundancy for the domain."""
 
-        percent_completion = numpy.mean([d[domain][s]['percent_complete'] for s in d[domain]])
+        percent_completion = numpy.mean([d[domain][s]['percent_completion'] for s in d[domain]])
         percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
             
         return percent_completion, percent_redundancy
@@ -135,7 +135,7 @@ class Completeness:
         domain_specific_estimates = []
 
         for domain in d:
-            percent_completion = numpy.mean([d[domain][s]['percent_complete'] for s in d[domain]])
+            percent_completion = numpy.mean([d[domain][s]['percent_completion'] for s in d[domain]])
             percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
 
             # so the substantive completion seems to be not working to predict the best matching domain. this is
@@ -209,7 +209,7 @@ class Completeness:
             genes_count = Counter([v['gene_name'] for v in list(info_dict[source].values())])
 
             # report results
-            results_dict[domain][source]['percent_complete'] = len(genes_count) * 100.0 / len(self.genes_in_db[source])
+            results_dict[domain][source]['percent_completion'] = len(genes_count) * 100.0 / len(self.genes_in_db[source])
 
             # report redundancy:
             genes_that_occur_multiple_times = [g for g in genes_count if genes_count[g] > 1]

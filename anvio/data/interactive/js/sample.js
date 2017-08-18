@@ -464,7 +464,7 @@ function drawSamplesLayers(settings) {
                 if (value > max) {
                     ratio = 1;
                 }
-                else if (value < min) {
+                else if (value < min || (max - min) == 0)  {
                     ratio = 0;
                 }
                 else {

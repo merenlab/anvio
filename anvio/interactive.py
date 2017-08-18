@@ -6,6 +6,7 @@ import os
 import sys
 import numpy
 import textwrap
+from ete3 import Tree
 
 import anvio
 import anvio.utils as utils
@@ -65,6 +66,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.fasta_file = A('fasta_file')
         self.view_data_path = A('view_data')
         self.tree = A('tree')
+        self.items_order = A('items_order')
         self.title = A('title')
         self.output_dir = A('output_dir')
         self.show_views = A('show_views')
@@ -108,6 +110,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.collections = ccollections.Collections()
 
+        # if the mode has not been set from within the arguments, we will set something up here:
+        if not self.mode:
+            if self.manual_mode:
+                self.mode = 'manual'
+            elif self.collection_name or self.list_collections:
+                self.mode = 'collection'
+            else:
+                self.mode = 'full'
+
         ContigsSuperclass.__init__(self, self.args)
         self.init_splits_taxonomy(self.taxonomic_level)
 
@@ -130,23 +141,23 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
 
-        # here is where the big deal stuff takes place:
-        if not self.mode and self.manual_mode:
-            self.mode = 'manual'
-            self.run.info('Mode', self.mode, mc='red')
+        # here is where the big deal stuff takes place. depending on the mode, we will call
+        # the appropriate function for initializing the interafce class.
+        self.run.info('Interactive mode', self.mode, mc='green')
+        if self.mode == 'manual':
             self.load_manual_mode()
         elif self.mode == 'refine':
             self.load_full_mode()
             self.load_refine_mode()
         elif self.mode == 'pan':
             self.load_pan_mode()
-        elif self.collection_name or self.list_collections:
-            self.mode = 'collection'
-            self.run.info('Mode', self.mode, mc='green')
+        elif self.mode == 'collection':
             self.load_collection_mode()
-        else:
-            self.mode = 'full'
+        elif self.mode == 'full':
             self.load_full_mode()
+        else:
+            raise ConfigError("The interactive class is called with a mode that no one knows anything \
+                               about. '%s'... What kind of a mode is that anyway :/" % self.mode)
 
         # make sure the samples information database, if there is one, is in fact compatible with the profile database
         # the reason we are doing this here is because when we are in 'self.manual_mode', the self.p_meta['samples'] is
@@ -165,42 +176,32 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.collection_autoload and 'default' in self.collections.collections_dict:
             self.collection_autoload = 'default'
 
-        if not self.p_meta['clusterings']:
-            if self.p_meta['db_type'] == 'pan':
-                raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
-                                   clustering of protein clusters (PCs) in it. Maybe you skipped the clustering step, maybe\
-                                   anvi'o skipped it on your behalf because you had too many PCs or something. Regardless of\
-                                   who did what, you don't get to display your pangenome at this particular instance. Sorry :/" \
-                                                            % (self.p_meta['project_name']))
-            else:
-                if self.p_meta['merged']:
-                    raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
-                                       of splits that is required by the interactive interface. It may have been generated\
-                                       by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
-                                       clustering step may have been skipped by anvi-merge because you had too many stplits\
-                                       to get the clustering in a reasonable amount of time. Please read the help menu for\
-                                       anvi-merge, and/or refer to the tutorial: \
-                                       http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
-                else:
-                    raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
-                                       that is required by the interactive interface. You must use `--cluster-contigs`\
-                                       flag for single profiles to access to this functionality. Please read the help\
-                                       menu for anvi-profile, and/or refer to the tutorial.")
+        self.check_for_clusterings()
+        self.set_displayed_item_names()
 
-        # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
-        # need to match these names:
-        default_clustering = self.p_meta['clusterings'][self.p_meta['default_clustering']]
-        if 'newick' in default_clustering:
-            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_clustering['newick'], reverse=True)
-        elif 'basic' in default_clustering:
-            self.displayed_item_names_ordered = default_clustering['basic']
-        else:
-            raise ConfigError("There is something wrong here, and anvi'o needs and adult :( Something that should\
-                               never happen happened. The default clustering does not have a basic or newick type.")
-
-        # now we knot what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
+        # now we know what splits we are interested in (self.displayed_item_names_ordered), we can get rid of all the
         # unnecessary splits stored in views dicts.
         self.prune_view_dicts()
+
+        self.gen_alphabetical_orders_of_items()
+        if not self.p_meta['default_clustering'] and len(self.p_meta['available_clusterings']):
+            self.p_meta['default_clustering'] = self.p_meta['available_clusterings'][0]
+
+        # we are going to iterate the newick trees, and make sure that internal nodes have labels
+        for clustering_name in self.p_meta['clusterings']:
+            if 'newick' in self.p_meta['clusterings'][clustering_name]:
+                tree = Tree(self.p_meta['clusterings'][clustering_name]['newick'], format=1)
+
+                node_counter = 0
+                for node in tree.traverse():
+                    if node.name == "":
+                        node.name = "Int_%d" % node_counter
+                        node_counter += 1
+
+                if node_counter > 0:
+                    # if we did not changed any branch name there is no need to spend time for
+                    # serialization back to newick
+                    self.p_meta['clusterings'][clustering_name]['newick'] = tree.write(format=1)
 
         # if there are any HMM search results in the contigs database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
@@ -217,26 +218,114 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.additional_layers_headers = self.additional_layers_headers + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         self.check_names_consistency()
-        self.auto_order_items_based_on_additional_layers_data()
+        self.gen_orders_for_items_based_on_additional_layers_data()
         self.convert_view_data_into_json()
 
 
-    def auto_order_items_based_on_additional_layers_data(self):
+    def set_displayed_item_names(self):
+        """Sets the master list of names .. UNLESS we are in manual-mode, in which case names will be\
+           set within the function `load_manual_mode`"""
+
+        if self.mode == 'manual':
+            return
+
+        # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
+        # need to match these names:
+        default_clustering = self.p_meta['clusterings'][self.p_meta['default_clustering']]
+        if 'newick' in default_clustering:
+            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_clustering['newick'], reverse=True)
+        elif 'basic' in default_clustering:
+            self.displayed_item_names_ordered = default_clustering['basic']
+        else:
+            raise ConfigError("There is something wrong here, and anvi'o needs and adult :( Something that should\
+                               never happen happened. The default clustering does not have a basic or newick type.")
+
+
+    def check_for_clusterings(self):
+        if self.mode == 'manual':
+            return
+
+        if not self.p_meta['clusterings']:
+            if self.p_meta['db_type'] == 'pan':
+                raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
+                                   clustering of protein clusters (PCs) in it. Maybe you skipped the clustering step, maybe\
+                                   anvi'o skipped it on your behalf because you had too many PCs or something. Regardless of\
+                                   who did what, you don't get to display your pangenome at this particular instance. Sorry :/" \
+                                                            % (self.p_meta['project_name']))
+            else:
+                if self.p_meta['merged']:
+                    raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
+                                       of splits that is required by the interactive interface. It may have been generated\
+                                       by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
+                                       clustering step may have been skipped by anvi-merge because you had too many splits\
+                                       to get the clustering in a reasonable amount of time. Please read the help menu for\
+                                       anvi-merge, and/or refer to the tutorial: \
+                                       http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
+                else:
+                    raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
+                                       that is required by the interactive interface. You must use `--cluster-contigs`\
+                                       flag for single profiles to access to this functionality. Please read the help\
+                                       menu for anvi-profile, and/or refer to the tutorial.")
+
+
+    def gen_orders_for_items_based_on_additional_layers_data(self):
         if self.skip_auto_ordering:
             return
 
         self.progress.new('Processing additional layer data for ordering of splits (to skip: --skip-auto-ordering)')
+        skipped_additional_data_layers = []
         # go through additional layers that are not of type `bar`.
         for layer in [additional_layer for additional_layer in self.additional_layers_headers if '!' not in additional_layer]:
             self.progress.update('for "%s" ...' % layer)
             layer_type = utils.get_predicted_type_of_items_in_a_dict(self.additional_layers_dict, layer)
-            item_layer_data_tuple = [(layer_type(self.additional_layers_dict[item][layer]), item) for item in self.additional_layers_dict]
+
+            if layer_type == None:
+                skipped_additional_data_layers.append(layer)
+                continue
+
+            item_layer_data_tuple = []
+            for item in self.displayed_item_names_ordered:
+                if item not in self.additional_layers_dict:
+                    if layer_type != str:
+                        raise ConfigError("'%s' is looks like numerical layer but value for '%s' is missing or empty. \
+                                          We do not support empty values for numerical layers yet." % (layer, item))
+                    else:
+                        item_layer_data_tuple.append(('', item))
+                else:
+                    item_layer_data_tuple.append((layer_type(self.additional_layers_dict[item][layer]), item))
 
             self.p_meta['available_clusterings'].append('>> %s:none:none' % layer)
             self.p_meta['clusterings']['>> %s' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple)]}
 
             self.p_meta['available_clusterings'].append('>> %s_(reverse):none:none' % layer)
             self.p_meta['clusterings']['>> %s_(reverse)' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
+
+        self.progress.end()
+
+        if len(skipped_additional_data_layers):
+            self.run.warning("One or more of your additional data columns were completely empty. Like, they didn't have any data at all :/\
+                              In the best case scenario you will see completely blank layers in your display. In the worst case scenario\
+                              other things will break. Since you are a curious person, anvi'o thought you would like to know. These are\
+                              the empty variables: %s." % ', '.join(['"%s"' % s for s in skipped_additional_data_layers]))
+
+
+    def gen_alphabetical_orders_of_items(self):
+        """This function populates self.p_meta with additional organizations of data, such as alphabetical ordering\
+           of data items, etc. In the interface these additional orders appear in the 'items order' combo box"""
+
+        if self.skip_auto_ordering:
+            return
+
+        self.progress.new('Additional organizations')
+        self.progress.update('...')
+
+        # add an alphabetical order:
+        self.p_meta['clusterings']['<> Alphabetical:none:none'] = {'basic': self.displayed_item_names_ordered[::-1]}
+        self.p_meta['available_clusterings'].append('<> Alphabetical:none:none')
+
+        # and the reverse-alphabetical, too:
+        self.p_meta['clusterings']['<> Alphabetical_(reverse):none:none'] = {'basic': self.displayed_item_names_ordered}
+        self.p_meta['available_clusterings'].append('<> Alphabetical:none:none')
 
         self.progress.end()
 
@@ -265,7 +354,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     for you. Simply type in a new profile database path (it can be a file name\
                                     that doesn't exist).")
 
-        if not self.tree and not self.view_data_path:
+        if not self.tree and not self.view_data_path and not self.items_order:
             raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file? What is it that\
                                anvi'o supposed to visualize? :(")
 
@@ -286,14 +375,17 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.tree:
             filesnpaths.is_file_exists(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
-            item_names = utils.get_names_order_from_newick_tree(newick_tree_text)
+            self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
+        elif self.items_order:
+            filesnpaths.is_file_exists(self.items_order)
+            self.displayed_item_names_ordered = [l.strip() for l in open(os.path.abspath(self.items_order)).read().split(',')]
         else:
-            item_names = utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:]
+            self.displayed_item_names_ordered = sorted(utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:])
 
         # try to convert item names into integer values for proper sorting later. it's OK if it does
         # not work.
         try:
-            item_names = [int(n) for n in item_names]
+            self.displayed_item_names_ordered = [str(s) for s in sorted([int(n) for n in self.displayed_item_names_ordered])]
         except:
             pass
 
@@ -301,15 +393,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file) if self.fasta_file else None
         self.p_meta['output_dir'] = None
         self.p_meta['views'] = {}
+        self.p_meta['db_type'] = 'profile'
         self.p_meta['merged'] = True
         self.p_meta['default_view'] = 'single'
         self.default_view = self.p_meta['default_view']
 
         # set some default organizations of data:
-        self.p_meta['clusterings'] = {'Alphabetical_(reverse):none:none': {'basic': [str(i) for i in sorted(item_names)]},
-                                      'Alphabetical:none:none': {'basic': [str(i) for i in sorted(item_names, reverse=True)]}}
-        self.p_meta['available_clusterings'] = ['Alphabetical_(reverse):none:none', 'Alphabetical:none:none']
-        self.p_meta['default_clustering'] = self.p_meta['available_clusterings'][0]
+        self.p_meta['clusterings'] = {}
+        self.p_meta['available_clusterings'] = []
+        self.p_meta['default_clustering'] = []
 
         # if we have a tree, let's make arrangements for it:
         if self.tree:
@@ -317,6 +409,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.p_meta['default_clustering'] = clustering_id
             self.p_meta['available_clusterings'].append(clustering_id)
             self.p_meta['clusterings'][clustering_id] = {'newick': newick_tree_text}
+        elif self.items_order:
+            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.items_order)
+            self.p_meta['default_clustering'] = clustering_id
+            self.p_meta['available_clusterings'].append(clustering_id)
+            self.p_meta['clusterings'][clustering_id] = {'basic': self.displayed_item_names_ordered}
 
         if self.view_data_path:
             # sanity of the view data
@@ -330,13 +427,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # no view data is provided... it is only the tree we have. we will creaet a mock 'view data dict'
             # here using what is in the tree.
             ad_hoc_dict = {}
-            for item in item_names:
+            for item in self.displayed_item_names_ordered:
                 ad_hoc_dict[item] = {'names': str(item)}
 
             self.views[self.default_view] = {'header': ['names'],
                                              'dict': ad_hoc_dict}
-
-        self.displayed_item_names_ordered = list(self.views[self.default_view]['dict'].keys())
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
         self.p_meta['samples'] = self.views[self.default_view]['header']
@@ -410,8 +505,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_refine_mode(self):
         self.split_names_of_interest = set([])
-        self.is_merged = int(self.p_meta['merged'])
-        self.clustering_configs = constants.clustering_configs['merged' if self.is_merged else 'single']
+        self.is_merged = self.p_meta['merged']
+        self.is_blank = self.p_meta['blank']
+        self.clustering_configs = constants.clustering_configs['merged' if self.is_merged else 'blank' if self.is_blank else 'single']
 
         progress.new('Initializing')
         progress.update('Getting split names')
@@ -470,19 +566,20 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.collection_name not in self.collections.collections_dict:
             raise ConfigError("%s is not a valid collection name. See a list of available ones with '--list-collections' flag" % self.collection_name)
 
+        # learn whether HMMs were run and we have access to completion estimates, and initialize the hmm_access if they
+        # did
+        completion_redundancy_available = True
         completeness = Completeness(self.contigs_db_path)
+
         if not len(completeness.sources):
-            raise ConfigError("HMM's were not run for this contigs database :/")
+            self.run.warning('HMMs for single-copy core genes were not run for this contigs database. So you will not\
+                              see completion / redundancy estimates in the collection mode as additional layers. SAD.')
+            completion_redundancy_available = False
 
-        if 'Campbell_et_al' not in completeness.sources:
-            raise ConfigError("Collection mode requires single-copy gene collection by Campbell et al. to be in the\
-                               contigs database. It seems you haven't run HMMs (or you have managed to run them\
-                               without Campbell et al.'s collection .. which is quite impressive) :/")
-
-        self.progress.new('Accessing HMM hits')
-        self.progress.update('...')
-        self.hmm_access = hmmops.SequencesForHMMHits(self.contigs_db_path, sources=set(['Campbell_et_al']))
-        self.progress.end()
+            self.progress.new('Accessing HMM hits')
+            self.progress.update('...')
+            self.hmm_access = hmmops.SequencesForHMMHits(self.contigs_db_path, sources=set(completeness.sources))
+            self.progress.end()
 
         # we are about to request a collections dict that contains only split names that appear in the
         # profile database along with other info:
@@ -523,7 +620,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # clustering is done, we can get prepared for the expansion of the view dict
             # with new layers. Note that these layers are going to be filled later.
-            d['header'].extend(['percent_completion', 'percent_redundancy', 'bin_name', 'source'])
+            if completion_redundancy_available:
+                d['header'].extend(['percent_completion', 'percent_redundancy'])
+            d['header'].extend(['bin_name', 'source'])
 
             views_for_collection[view] = d
 
@@ -550,15 +649,18 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         for bin_id in self.collection:
             self.progress.update('%d of %d :: %s ...' % (current_bin, num_bins, bin_id))
 
-            # get completeness estimate
-            p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(self.collection[bin_id]))
-            bin_source = bins_info_dict[bin_id]['source']
+            if completion_redundancy_available:
+                # get completeness estimate
+                p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(self.collection[bin_id]))
 
             for view in self.views:
                 self.views[view]['dict'][bin_id]['bin_name'] = bin_id
-                self.views[view]['dict'][bin_id]['percent_completion'] = p_completion
-                self.views[view]['dict'][bin_id]['percent_redundancy'] = p_redundancy
-                self.views[view]['dict'][bin_id]['source'] = bin_source
+
+                if completion_redundancy_available:
+                    self.views[view]['dict'][bin_id]['percent_completion'] = p_completion
+                    self.views[view]['dict'][bin_id]['percent_redundancy'] = p_redundancy
+
+                self.views[view]['dict'][bin_id]['source'] = bins_info_dict[bin_id]['source']
 
             current_bin += 1
         self.progress.end()
@@ -827,7 +929,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_header.extend(self.additional_layers_headers)
 
             # (7) finally add hmm search results
-            if self.hmm_searches_header:
+            if self.hmm_searches_dict:
                 json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
 
             # (8) and finalize it (yay):
@@ -870,6 +972,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             self.views[view] = json_object
 
+
     def store_refined_bins(self, refined_bin_data, refined_bins_info_dict):
         if 0 in [len(b) for b in list(refined_bin_data.values())]:
             raise RefineError('One or more of your bins have zero splits. If you are trying to remove this bin from your collection,\
@@ -880,7 +983,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         collection_dict = self.collections.get_collection_dict(self.collection_name)
         bins_info_dict = self.collections.get_bins_info_dict(self.collection_name)
-        
+
         progress.end()
 
         bad_bin_names = [b for b in collection_dict if (b in refined_bin_data and b not in self.ids_for_already_refined_bins)]

@@ -1,0 +1,140 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A script to export coverage values across samples of a given split in an anvi'o contigs db"""
+
+import sys
+import argparse
+
+import anvio
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+import anvio.summarizer as summarizer
+import anvio.filesnpaths as filesnpaths
+import anvio.auxiliarydataops as auxiliarydataops
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    dbops.is_profile_db(args.profile_db)
+
+    profile_db = dbops.ProfileSuperclass(args)
+
+    if args.list_splits:
+        print('\n'.join(sorted(list(profile_db.split_names))))
+        sys.exit(0)
+
+    # further sanity checks
+    if not (args.split_name or (args.collection_name or args.bin_id)):
+        raise ConfigError("You must either declare a split name, or a bin name in a collection for this to work")
+
+    if (args.collection_name or args.bin_id) and not (args.collection_name and args.bin_id):
+        raise ConfigError("If you are declaring a collection name, you also need to declare a bin name, and vice\
+                           versa.")
+
+    if args.collection_name and not args.contigs_db:
+        raise ConfigError("If you want to work with a collection, you should also provide a contigs database. You\
+                           can tell it is necessary by the way it is like right there in the help menu.")
+
+    if args.split_name and (args.collection_name or args.bin_id):
+        raise ConfigError("So you ask both for a split name and then ask for splits in a bin :/ You know who\
+                           doesn't like that? Anvi'o. Anvi'o doesn't like that.")
+
+    if not args.output_file:
+        raise ConfigError("You must declare an output file name. Because.")
+
+    filesnpaths.is_output_file_writable(args.output_file)
+
+    if not profile_db.auxiliary_profile_data_available:
+        raise ConfigError("In order to get what you want from this program, you need the auxiliary\
+                           data file associated with this profile to be present. Now this program\
+                           will quit gracefully, and will let you imagine what might have gone\
+                           wrong.")
+
+
+    split_names = []
+    if args.split_name:
+        if args.split_name not in profile_db.split_names:
+            raise ConfigError("The split '%s' does not seem to be in your profile database :/" % args.split_name)
+        else:
+            split_names.append(args.split_name)
+    else:
+        summary = summarizer.ProfileSummarizer(args, r=terminal.Run(verbose=False))
+        summary.init()
+
+        _bin = summarizer.Bin(summary, args.bin_id)
+        split_names = sorted(list(_bin.split_names))
+
+        run.info('Collection', args.collection_name)
+        run.info('Bin', args.bin_id)
+
+    run.info('Num splits', len(split_names))
+
+    sample_names = profile_db.p_meta['samples']
+    run.info('Sample names', ', '.join(sample_names if len(sample_names) < 5 else (sample_names[:5] + ['(.. %d more ..)' % (len(sample_names) - 5)])))
+
+    # report this stuff
+    progress.new('Recovering coverages')
+    entry_id = 0
+    with open(args.output_file, 'w') as output_file:
+        output_file.write('unique_entry_id\tnt_position\tsplit_name\tsample_name\tcoverage\n')
+        num_splits = len(split_names)
+        for i in range(num_splits):
+            progress.update('processing split %d of %d ...' % (i, num_splits))
+
+            split_name = split_names[i]
+            split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(profile_db.auxiliary_data_path, profile_db.p_meta['contigs_db_hash']).get(split_name)
+            num_nucleotides = len(list(split_coverage_values.values())[0])
+
+            for sample_name in sorted(sample_names):
+                for nt_pos in range(0, num_nucleotides):
+                    output_file.write('%d\t%d\t%s\t%s\t%d\n' % (entry_id, nt_pos, split_name, sample_name, split_coverage_values[sample_name][nt_pos]))
+                    entry_id += 1
+
+    progress.end()
+    run.info('Output', "%d entries for %d splits in %d samples are stored in %s" % (entry_id, len(split_names), len(sample_names), args.output_file), mc='green')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Export splits and the coverage table from database')
+
+    groupA = parser.add_argument_group("ESSENTIAL ANVI'O DB", "You need to provide a profile database.")
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+
+    groupA = parser.add_argument_group('INPUT OPTION #1: SPLIT NAME', "You want nothing but the coverage values in a single split. FINE.")
+    groupA.add_argument(*anvio.A('split-name'), **anvio.K('split-name'))
+
+    groupB = parser.add_argument_group('INPUT OPTION #2: COLLECTION + BIN', "You want nucletide-level coverage values for all splits in a bin. FANCY.")
+    groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+
+    groupD = parser.add_argument_group('BORING STUFF', "The output file and all.")
+    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupD.add_argument(*anvio.A('list-splits'), **anvio.K('list-splits'))
+    groupD.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupD.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)

@@ -13,6 +13,7 @@ import io
 import sys
 import json
 import random
+import argparse
 import requests
 import datetime
 import webbrowser
@@ -30,6 +31,7 @@ import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
+from anvio.serverAPI import AnviServerAPI
 from anvio.dbops import SamplesInformationDatabase
 from anvio.errors import RefineError, ConfigError
 
@@ -48,6 +50,7 @@ progress = terminal.Progress()
 
 # increase maximum size of form data to 100 MB
 BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100
+
 
 class BottleApplication(Bottle):
     def __init__(self, interactive, args, mock_request=None, mock_response=None):
@@ -75,11 +78,13 @@ class BottleApplication(Bottle):
     def register_hooks(self):
         self.add_hook('before_request', self.set_default_headers)
 
+
     def set_default_headers(self):
         response.set_header('Content-Type', 'application/json')
         response.set_header('Pragma', 'no-cache')
         response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
         response.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
+
 
     def register_routes(self):
         self.route('/',                                        callback=self.redirect_to_app)
@@ -98,6 +103,7 @@ class BottleApplication(Bottle):
         self.route('/data/collection/<collection_name>',       callback=self.get_collection_dict)
         self.route('/store_collection',                        callback=self.store_collections_dict, method='POST')
         self.route('/store_description',                       callback=self.store_description, method='POST')
+        self.route('/upload_project',                          callback=self.upload_project, method='POST')
         self.route('/data/contig/<split_name>',                callback=self.get_sequence_for_split)
         self.route('/summarize/<collection_name>',             callback=self.gen_summary)
         self.route('/summary/<collection_name>/:filename#.*#', callback=self.send_summary_static)
@@ -109,11 +115,22 @@ class BottleApplication(Bottle):
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
+        self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
+
 
     def run_application(self, ip, port):
         try:
             server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
             server_process.start()
+
+            if self.args.export_svg:
+                try:
+                    utils.run_selenium_and_export_svg("http://%s:%d/app/index.html" % (ip, port), self.args.export_svg, run)
+                except Exception as e:
+                    print(e)
+                finally:
+                    server_process.terminate()
+                    sys.exit(0)
 
             if not self.args.server_only:
                 webbrowser.open_new("http://%s:%d" % (ip, port))
@@ -125,8 +142,10 @@ class BottleApplication(Bottle):
             server_process.terminate()
             sys.exit(0)
 
+
     def redirect_to_app(self):
         redirect('/app/index.html?rand=' + self.random_hash(8))
+
 
     def send_static(self, filename):
         ret = static_file(filename, root=self.static_dir)
@@ -159,6 +178,7 @@ class BottleApplication(Bottle):
             ret.headers['Content-Length'] = buff.getbuffer().nbytes
 
         return ret
+
 
     def get_news(self):
         ret = []
@@ -195,9 +215,11 @@ class BottleApplication(Bottle):
 
         return json.dumps(ret)
 
+
     def random_hash(self, size=8):
         r = random.getrandbits(size * 4)
         return '{1:0{0}x}'.format(size, r)
+
 
     def send_data(self, name):
         if name == "init":
@@ -212,6 +234,7 @@ class BottleApplication(Bottle):
                                  "contigLengths":                      dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info]),
                                  "defaultView":                        self.interactive.views[self.interactive.default_view],
                                  "mode":                               self.interactive.mode,
+                                 "server_mode":                        False,
                                  "readOnly":                           self.read_only,
                                  "binPrefix":                          bin_prefix,
                                  "sessionId":                          self.unique_session_id,
@@ -222,13 +245,16 @@ class BottleApplication(Bottle):
                                  "collectionAutoload":                 self.interactive.collection_autoload,
                                  "noPing":                             False,
                                  "inspectionAvailable":                self.interactive.auxiliary_profile_data_available,
-                                 "sequencesAvailable":                 True if self.interactive.split_sequences else False})
+                                 "sequencesAvailable":                 True if self.interactive.split_sequences else False,
+                                 "functions_initialized":              self.interactive.gene_function_calls_initiated })
 
         elif name == "session_id":
             return json.dumps(self.unique_session_id)
 
+
     def get_view_data(self, view_id):
         return json.dumps(self.interactive.views[view_id])
+
 
     def get_items_ordering(self, items_ordering_id):
         if items_ordering_id in self.interactive.p_meta['clusterings']:
@@ -337,7 +363,8 @@ class BottleApplication(Bottle):
                 level_ok = True
                 for gene_tuple in levels_occupied[level]:
                     if (p['start_in_split'] >= gene_tuple[0] - 100 and p['start_in_split'] <= gene_tuple[1] + 100) or\
-                                (p['stop_in_split'] >= gene_tuple[0] - 100 and p['stop_in_split'] <= gene_tuple[1] + 100):
+                                (p['stop_in_split'] >= gene_tuple[0] - 100 and p['stop_in_split'] <= gene_tuple[1] + 100) or \
+                                (p['start_in_split'] <= gene_tuple[0] - 100 and p['stop_in_split'] >= gene_tuple[1] + 100):
                         level_ok = False
                         break
                 if level_ok:
@@ -353,6 +380,7 @@ class BottleApplication(Bottle):
         progress.end()
 
         return json.dumps(data)
+
 
     def get_index_total_previous_and_next_items(self, item_name):
         previous_item_name = None
@@ -370,6 +398,7 @@ class BottleApplication(Bottle):
         total = len(self.interactive.displayed_item_names_ordered)
 
         return index, total, previous_item_name, next_item_name
+
 
     def completeness(self):
         completeness_sources = {}
@@ -543,7 +572,7 @@ class BottleApplication(Bottle):
             ret.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
             return ret
         else:
-            return json.dumps({'error': 'Something failed. This is what we know: %s' % e})
+            return json.dumps({'error': 'The server has no idea how to handle the mode "%s" :/' % self.interactive.mode})
 
 
     def get_sequence_for_gene_call(self, gene_callers_id):
@@ -655,6 +684,16 @@ class BottleApplication(Bottle):
         return json.dumps(data)
 
 
+    def search_functions_in_splits(self):
+        try:
+            search_terms = [s.strip() for s in request.forms.get('terms').split(',')]
+            matching_split_names_dict, full_report = self.interactive.search_splits_for_gene_functions(search_terms, verbose=False)
+            return json.dumps({'status': 0, 'results': full_report})
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
+
+
     def store_refined_bins(self):
         data = json.loads(request.forms.get('data'))
         colors = json.loads(request.forms.get('colors'))
@@ -671,8 +710,10 @@ class BottleApplication(Bottle):
         message = 'Done! Collection %s is updated in the database. You can close your browser window (or continue updating).' % (self.interactive.collection_name)
         return json.dumps({'status': 0, 'message': message})
 
+
     def get_available_phylogeny_programs(self):
         return json.dumps(list(drivers.driver_modules['phylogeny'].keys()))
+
 
     def generate_tree(self):
         pcs = set(request.forms.getall('pcs[]'))
@@ -703,3 +744,76 @@ class BottleApplication(Bottle):
 
         return json.dumps({'status': 0, 'tree': tree_text})
 
+
+    def upload_project(self):
+        try:
+            args = argparse.Namespace()
+            args.user = request.forms.get('username')
+            args.password = request.forms.get('password')
+            args.api_url = anvio.D['api-url'][1]['default']
+            args.project_name = request.forms.get('project_name')
+            args.delete_if_exists = True if request.forms.get('delete_if_exists') == "true" else False
+
+            view_name = request.forms.get('view')
+            if view_name in self.interactive.views:
+                view_path = filesnpaths.get_temp_file_path()
+                utils.store_array_as_TAB_delimited_file(self.interactive.views[view_name][1:], view_path, self.interactive.views[view_name][0])
+                args.view_data = view_path
+
+            ordering_name = request.forms.get('ordering')
+            if ordering_name in self.interactive.p_meta['clusterings']:
+                ordering_path = filesnpaths.get_temp_file_path()
+                items_ordering = self.interactive.p_meta['clusterings'][ordering_name]
+
+                f = open(ordering_path, 'w')
+                if 'newick' in items_ordering:
+                    f.write(items_ordering['newick'])
+                    args.tree = ordering_path
+                elif 'basic' in items_ordering:
+                    f.write(",".join(items_ordering['basic']))
+                    args.items_order = ordering_path
+                f.close()
+
+            state_name = request.forms.get('state')
+            if state_name in self.interactive.states_table.states:
+                state_path = filesnpaths.get_temp_file_path()
+                f = open(state_path, 'w')
+                f.write(self.interactive.states_table.states[state_name]['content'])
+                f.close()
+
+                args.state = state_path
+
+            if request.forms.get('include_description') == "true":
+                description_path = filesnpaths.get_temp_file_path()
+                f = open(description_path, 'w')
+                f.write(self.interactive.p_meta['description'])
+                f.close()
+
+                args.description = description_path
+
+            if request.forms.get('include_samples') == "true":
+                if len(self.interactive.samples_order_dict):
+                    samples_order_path = filesnpaths.get_temp_file_path()
+                    utils.store_dict_as_TAB_delimited_file(self.interactive.samples_order_dict, samples_order_path, headers=['attributes', 'basic', 'newick'])
+                    args.samples_order_file = samples_order_path
+
+                if len(self.interactive.samples_information_dict):
+                    samples_info_path = filesnpaths.get_temp_file_path()
+                    utils.store_dict_as_TAB_delimited_file(self.interactive.samples_information_dict, samples_info_path)
+                    args.samples_information_file = samples_info_path
+
+            collection_name = request.forms.get('collection')
+            if collection_name in self.interactive.collections.collections_dict:
+                collection_path_prefix = filesnpaths.get_temp_file_path()
+                self.interactive.collections.export_collection(collection_name, output_file_prefix=collection_path_prefix)
+
+                args.bins = collection_path_prefix + '.txt'
+                args.bins_info = collection_path_prefix + '-info.txt'
+
+            server = AnviServerAPI(args)
+            server.login()
+            server.push()
+            return json.dumps({'status': 0})
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})

@@ -199,6 +199,14 @@ D = {
                       'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name'\
                       can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection."}
                 ),
+    'gene-caller': (
+            ['--gene-caller'],
+            {'metavar': 'GENE-CALLER',
+             'help': "The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one)\
+                      requires an explicit mentioning of which one to use. The default is '%s', but it will not be enough if you\
+                      if you were a rebel adn have used `--external-gene-callers` or something." % constants.default_gene_caller}
+                ),
+
     'ignore-internal-stop-codons': (
             ['--ignore-internal-stop-codons'],
             {'default': False,
@@ -268,6 +276,12 @@ D = {
             ['-t', '--tree'],
             {'metavar': 'NEWICK',
              'help': "NEWICK formatted tree structure"}
+                ),
+    'items-order': (
+            ['--items-order'],
+            {'metavar': 'COMMA_SEPARATED_FILE',
+             'help': "Comma seperated file that contains order of leaves, You may want to use this \
+                      if you want to order your leaves but do not want to display tree in the middle."}
                 ),
     'additional-layers': (
             ['-A', '--additional-layers'],
@@ -428,6 +442,13 @@ D = {
              'action': 'store_true',
              'help': "Concatenate output PCs in the same order to create a multi-gene alignment output that is suitable\
                       for phylogenomic analyses."}
+                ),
+    'report-DNA-sequences': (
+            ['--report-DNA-sequences'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, this program reports amino acid sequences. You can change that behavior and as for DNA\
+                      sequences instead using this flag."}
                 ),
     'skip-multiple-gene-calls': (
             ['--skip-multiple-gene-calls'],
@@ -807,6 +828,12 @@ D = {
                       the scipy.cluster module. Up tp you really. But then you can't use %(default)s\
                       anymore, and you would have to leave anvi'o right now."}
                 ),
+    'input-dir': (
+            ['-i', '--input-dir'],
+            {'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "Directory path for input files"}
+                ),
     'output-dir': (
             ['-o', '--output-dir'],
             {'metavar': 'DIR_PATH',
@@ -881,12 +908,12 @@ D = {
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should\
                       work just fine for most."}
                 ),
-    'hostname': (
-            ['--hostname'],
-            {'metavar': 'HOST_NAME',
+    'api-url': (
+            ['--api-url'],
+            {'metavar': 'API_URL',
              'type': str,
-             'default': None,
-             'help': "Host name for an anvi'server."}
+             'default': 'https://anvi-server.org',
+             'help': "Anvi'server url"}
                 ),
     'port-number': (
             ['-P', '--port-number'],
@@ -953,6 +980,13 @@ D = {
                       becuse we should also think about people who may end up having to work with what we put\
                       together later."}
                 ),
+    'bins': (
+            ['--bins'],
+            {'metavar': 'BINS_DATA',
+             'help': "Tab-delimited file, first column contains tree leaves (protein clusters, splits, contigs etc.) \
+                      and second column contains which Bin they belong."
+            }
+      ),
     'contigs-mode': (
             ['--contigs-mode'],
             {'default': False,
@@ -969,7 +1003,7 @@ D = {
                       although, you should never let the software to decide these things)."}
                 ),
     'project-name': (
-            ['-J', '--project-name'],
+            ['-n', '--project-name'],
             {'metavar': 'PROJECT_NAME',
              'help': "Name of the project. Please choose a short but descriptive name (so anvi'o can use\
                       it whenever she needs to name an output file, or add a new table in a database, or name\
@@ -1073,14 +1107,16 @@ D = {
                       the profile database you provide does not exist, anvi'o will create an empty one for\
                       you."}
                 ),
-
     'hmm-profile-dir': (
             ['-H', '--hmm-profile-dir'],
-            {'metavar': 'PATH',
-             'help': "If this is empty, anvi'o will perform the HMM search against the default collections that\
-                      are on the system. If it is not, this parameter should be used to point to a directory\
-                      that contains 4 files: (1) genes.hmm.gz, (2) genes.txt, (3) kind.txt, and (4)\
-                      reference.txt. Please see the documentation for specifics of these files."}
+            {'metavar': 'HMM PROFILE PATH',
+             'help': "You can use this parameter you can specify a directory path that contain an HMM profile.\
+                      This way you can run HMM profiles that are not included in anvi'o. See the online\
+                      to find out about the specifics of this directory structure ."}
+                ),
+    'installed-hmm-profile': (
+            ['-I', '--installed-hmm-profile'],
+            {'metavar': 'HMM PROFILE NAME'}
                 ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
@@ -1128,6 +1164,11 @@ D = {
             {'metavar': 'NAME',
              'help': "Automatically load previous saved state and draw tree. To see a list of available states,\
                       use --show-states flag."}
+                ),
+    'state': (
+            ['-s', '--state'],
+            {'metavar': 'STATE',
+             'help': "State file, you can export states from database using anvi-export-state program"}
                 ),
     'collection-autoload': (
             ['--collection-autoload'],
@@ -1233,6 +1274,14 @@ D = {
                       contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure\
                       the memory use never exceeds the size of the physical memory."}
                 ),
+    'export-gff3': (
+        ['--export-gff3'],
+        {
+            'default': False,
+            'action': 'store_true',
+            'help': "If this is true, the output file will be in GFF3 format."
+        }
+    ),
     'export-svg': (
             ['--export-svg'],
             {'type': str,
@@ -1246,6 +1295,13 @@ D = {
              'required': False,
              'action': 'store_true',
              'help': "Use the TAB-delimited format for the output file."}
+                ),
+    'splits-mode': (
+            ['--splits-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Specify this flag if you would like to output coverages of individual 'splits', rather than their 'parent'\
+                      contig coverages."}
                 ),
 }
 

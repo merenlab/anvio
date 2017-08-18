@@ -9,6 +9,7 @@
 """
 
 import hashlib
+import argparse
 
 import anvio
 import anvio.tables as t
@@ -92,17 +93,30 @@ class GenomeStorage(GenomeDescriptions):
             self.hash_to_genome_name[self.genomes[genome_name]['genome_hash']] = genome_name
 
 
-    def get_functions_dict_from_contigs_db(self, contigs_db_path):
-        if not self.functions_are_available:
-            return {}
+    def get_functions_and_sequences_dicts_from_contigs_db(self, contigs_db_path, gene_caller_ids=None):
+        """Returns function calls, dna and amino acid sequences for `gene_caller_ids`
+           from a contigs database"""
 
-        class Args: pass
-        args = Args()
-        args.contigs_db = contigs_db_path
+        args = argparse.Namespace(contigs_db=contigs_db_path)
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
-        contigs_super.init_functions(requested_sources=self.function_annotation_sources)
 
-        return contigs_super.gene_function_calls_dict
+        # get functions
+        if self.functions_are_available:
+            contigs_super.init_functions(requested_sources=self.function_annotation_sources)
+            function_calls_dict = contigs_super.gene_function_calls_dict
+        else:
+            function_calls_dict = {}
+
+        # get dna sequences
+        gene_caller_ids_list, dna_sequences_dict = contigs_super.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(gene_caller_ids))
+
+        # get amino acid sequences.
+        # FIXME: this should be done in the contigs super.
+        contigs_db = dbops.ContigsDatabase(contigs_db_path)
+        aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
+        contigs_db.disconnect()
+
+        return (function_calls_dict, aa_sequences_dict, dna_sequences_dict)
 
 
     def create_genomes_data_storage(self):
@@ -150,11 +164,7 @@ class GenomeStorage(GenomeDescriptions):
             num_gene_calls_added = 0
             num_partial_gene_calls = 0
 
-            contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
-            protein_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
-            contigs_db.disconnect()
-
-            functions_dict = self.get_functions_dict_from_contigs_db(g['contigs_db_path'])
+            functions_dict, aa_sequences_dict, dna_sequences_dict = self.get_functions_and_sequences_dicts_from_contigs_db(g['contigs_db_path'], g['gene_caller_ids'])
 
             for gene_caller_id in g['gene_caller_ids']:
                 partial_gene_call = gene_caller_id in g['partial_gene_calls']
@@ -169,7 +179,8 @@ class GenomeStorage(GenomeDescriptions):
 
                 self.genomes_storage.add_gene_call_data(genome_name,
                                                         gene_caller_id,
-                                                        sequence=protein_sequences_dict[gene_caller_id]['sequence'],
+                                                        aa_sequence=aa_sequences_dict[gene_caller_id]['sequence'],
+                                                        dna_sequence=dna_sequences_dict[gene_caller_id]['sequence'],
                                                         partial=partial_gene_call,
                                                         functions=functions)
 
@@ -189,8 +200,7 @@ class GenomeStorage(GenomeDescriptions):
             num_gene_calls_added_total += num_gene_calls_added
             num_partial_gene_calls_total += num_partial_gene_calls
 
-
-        self.run.info('The new genomes storage', '%s (signature: %s)' % (self.storage_path, storage_hash))
+        self.run.info('The new genomes storage', '%s (v%s, signature: %s)' % (self.storage_path, self.genomes_storage.version, storage_hash))
         self.run.info('Number of genomes', '%s (internal: %s, external: %s)' % (pp(len(self.genomes)), pp(len(self.internal_genome_names)), pp(len(self.external_genome_names))))
         self.run.info('Number of gene calls', '%s' % pp(num_gene_calls_added_total))
         self.run.info('Number of partial gene calls', '%s' % pp(num_partial_gene_calls_total))

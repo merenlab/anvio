@@ -24,72 +24,6 @@ function log10(val) {
   return Math.log(val) / Math.LN10;
 }
 
-//--------------------------------------------------------------------------------------------------
-// https://stackoverflow.com/questions/10894377/dynamically-adding-a-svg-gradient
-function createGradient(svg,id,stops){
-  var svgNS = svg.namespaceURI;
-  var grad  = document.createElementNS(svgNS,'linearGradient');
-  grad.setAttribute('id',id);
-  for (var i=0;i<stops.length;i++){
-    var attrs = stops[i];
-    var stop = document.createElementNS(svgNS,'stop');
-    for (var attr in attrs){
-      if (attrs.hasOwnProperty(attr)) stop.setAttribute(attr,attrs[attr]);
-    }
-    grad.appendChild(stop);
-  }
-
-  var defs = svg.querySelector('defs') ||
-      svg.insertBefore( document.createElementNS(svgNS,'defs'), svg.firstChild);
-  return defs.appendChild(grad);
-}
-
-
-function getGradientColor(start_color, end_color, percent) {
-   // strip the leading # if it's there
-   start_color = start_color.replace(/^\s*#|\s*$/g, '');
-   end_color = end_color.replace(/^\s*#|\s*$/g, '');
-
-   // convert 3 char codes --> 6, e.g. `E0F` --> `EE00FF`
-   if(start_color.length == 3){
-     start_color = start_color.replace(/(.)/g, '$1$1');
-   }
-
-   if(end_color.length == 3){
-     end_color = end_color.replace(/(.)/g, '$1$1');
-   }
-
-   // get colors
-   var start_red = parseInt(start_color.substr(0, 2), 16),
-       start_green = parseInt(start_color.substr(2, 2), 16),
-       start_blue = parseInt(start_color.substr(4, 2), 16);
-
-   var end_red = parseInt(end_color.substr(0, 2), 16),
-       end_green = parseInt(end_color.substr(2, 2), 16),
-       end_blue = parseInt(end_color.substr(4, 2), 16);
-
-   // calculate new color
-   var diff_red = end_red - start_red;
-   var diff_green = end_green - start_green;
-   var diff_blue = end_blue - start_blue;
-
-   diff_red = ( (diff_red * percent) + start_red ).toString(16).split('.')[0];
-   diff_green = ( (diff_green * percent) + start_green ).toString(16).split('.')[0];
-   diff_blue = ( (diff_blue * percent) + start_blue ).toString(16).split('.')[0];
-
-   // ensure 2 digits by color
-   if( diff_red.length == 1 )
-     diff_red = '0' + diff_red
-
-   if( diff_green.length == 1 )
-     diff_green = '0' + diff_green
-
-   if( diff_blue.length == 1 )
-     diff_blue = '0' + diff_blue
-
-   return '#' + diff_red + diff_green + diff_blue;
- };
-
 function fire_up_ncbi_blast(item_name, program, database, target)
 {
     if (["gene", "contig"].indexOf(target) < 0){
@@ -159,6 +93,55 @@ function fire_up_ncbi_blast(item_name, program, database, target)
     });
 }
 //--------------------------------------------------------------------------------------------------
+
+function generate_inspect_link(type, item_name) {
+    if (self == top) {
+        // local anvio
+        var url = window.location.href.split('?')[0];
+
+        if (url.endsWith('index.html')) {
+            // on index page
+            if (type == 'inspect') {
+                return 'charts.html?id=' + item_name;
+            } 
+            else if (type == 'proteinclusters') {
+                return 'proteinclusters.html?id=' + item_name;
+            }
+        }
+        else
+        {
+            // on charts or pc page, so changing the ?id= part enough
+            return url + '?id=' + item_name;
+        }
+    }
+    else
+    {
+        // anvi server
+        var url = window.parent.location.href.split('?')[0];
+        var new_url = "";
+
+        if (url.endsWith('/inspect') || url.endsWith('/proteinclusters')) {
+            // on charts or pc page
+            new_url = url;
+        }
+        else
+        {
+            // on main page
+            new_url = url + '/' + type;
+        }
+
+        new_url = new_url + '?id=' + item_name;
+
+        var view_key = request_prefix.substr(request_prefix.lastIndexOf('/') + 1, request_prefix.length);
+        if (view_key != 'no_view_key') {
+            new_url = new_url + '&view_key=' + view_key;
+        }
+
+        return new_url;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
     name = name.replace(/[\[\]]/g, "\\$&");
@@ -167,6 +150,17 @@ function getParameterByName(name, url) {
     if (!results) return null;
     if (!results[2]) return '';
     return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
+//-------------------------------------------------------------------------------------------------
+function renderMarkdown(content) {
+    var renderer = new marked.Renderer();
+
+    renderer.link = function( href, title, text ) {
+        return '<a target="_blank" href="' + href + '" title="' + title + '">' + text + '</a>';
+    }
+
+    return marked(content, { renderer:renderer });
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -425,111 +419,6 @@ Math.toRadians = function(degrees) {
 Math.toDegrees = function(radians) {
     return radians * 180 / Math.PI;
 };
-
-
-//--------------------------------------------------------------------------------------------------
-//  Iterator
-//--------------------------------------------------------------------------------------------------
-function NodeIterator(root)
-{
-    this.root = root;
-    this.cur = null;
-    this.stack = [];
-}
-
-//--------------------------------------------------------------------------------------------------
-NodeIterator.prototype.Begin = function() 
-{
-    if (this.root.constructor === Array)
-    {
-        this.cur = 0;
-        return label_to_node_map[this.root[0]];
-    }
-    this.cur = this.root;
-    while (this.cur.child)
-    {
-        this.stack.push(this.cur);
-        this.cur = this.cur.child;
-    }
-    return this.cur;
-}
-
-//--------------------------------------------------------------------------------------------------
-NodeIterator.prototype.Next = function() 
-{
-    if (this.root.constructor === Array)
-    {
-        this.cur = this.cur + 1;
-        if (this.cur >= this.root.length)
-        {
-            return null;
-        }
-        return label_to_node_map[this.root[this.cur]];
-    }
-    if (this.stack.length == 0)
-    {
-        this.cur = null;
-    }
-    else
-    {
-        if (this.cur.sibling)
-        {
-            var p = this.cur.sibling;
-            while (p.child)
-            {
-                this.stack.push(p);
-                p = p.child;
-            }
-            this.cur = p;
-        }
-        else
-        {
-            this.cur = this.stack.pop();
-        }
-    }
-    return this.cur;
-}
-
-//--------------------------------------------------------------------------------------------------
-PreorderIterator.prototype = new NodeIterator;
-
-function PreorderIterator()
-{
-    NodeIterator.apply(this, arguments)
-};
-
-//--------------------------------------------------------------------------------------------------
-PreorderIterator.prototype.Begin = function() 
-{
-    this.cur = this.root;
-    return this.cur;
-}
-
-//--------------------------------------------------------------------------------------------------
-PreorderIterator.prototype.Next = function() 
-{
-    if (this.cur.child)
-    {
-        this.stack.push(this.cur);
-        this.cur = this.cur.child;
-    }
-    else
-    {
-        while (this.stack.length > 0 && this.cur.sibling == null)
-        {
-            this.cur = this.stack.pop();
-        }
-        if (this.stack.length == 0)
-        {
-            this.cur = null;
-        }
-        else
-        {
-            this.cur = this.cur.sibling;
-        }
-    }
-    return this.cur;
-}
 
 //---------------------------------------------------------
 // layerdata operations

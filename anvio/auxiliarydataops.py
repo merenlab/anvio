@@ -101,7 +101,7 @@ class HDF5_IO(object):
 
 class AuxiliaryDataForSplitCoverages(HDF5_IO):
     """A class to handle HDF5 operations to store and access split coverages"""
-    def __init__(self, file_path, db_hash, create_new=False, open_in_append_mode=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+    def __init__(self, file_path, db_hash, split_names_of_interest=None, create_new=False, open_in_append_mode=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
         self.version = anvio.__hdf5__version__
 
@@ -112,6 +112,12 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
         # set sample and split names in the auxiliary data file
         self.sample_names_in_db = set(list(list(self.fp['/data/coverages'].values())[0].keys())) if not create_new else set([])
         self.split_names_in_db = list(self.fp['/data/coverages'].keys()) if not create_new else list()
+        self.split_names_of_interest = list(split_names_of_interest) if split_names_of_interest else None
+
+        if self.split_names_of_interest:
+            self.split_names = self.split_names_of_interest
+        else:
+            self.split_names = self.split_names_in_db
 
 
     def is_known_split(self, split_name):
@@ -145,12 +151,12 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
         sample_names = self.check_sample_names(sample_names)
 
         split_coverages = {}
-        num_splits, counter = len(self.split_names_in_db), 1
+        num_splits, counter = len(self.split_names), 1
         for i in range(0, num_splits):
             if num_splits > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
-            split_name = self.split_names_in_db[i]
+            split_name = self.split_names[i]
             split_coverages[split_name] = {}
             for sample_name in self.sample_names_in_db:
                 split_coverages[split_name][sample_name] = self.get_integer_list('/data/coverages/%s/%s' % (split_name, sample_name))
@@ -202,13 +208,14 @@ class AuxiliaryDataForNtPositions(HDF5_IO):
 
 
 class GenomesDataStorage(HDF5_IO):
-    """A class to handle HDF5 operations to store and access protein sequnces in pan genome analyses.
+    """A class to handle HDF5 operations to store and access sequnces in pan genome analyses.
     
        An example:
 
            >>> x = a.GenomesDataStorage('test.h5', 'unique_hash', create_new=True)
            >>> x.add_gene_call_data('genome_name', int_gene_caller_id,
                                     sequence = 'IMLQWIVIIYFLVINLVLFSMMGYDKKQAKRGNWRIPERRLLTIGLVGGGLGGLMGQKKFHHKTQKPVFALCYSIGVIAMISCIYLTFK',
+                                    dna_sequence = 'AATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGTCGATCG(...)',
                                     partial = 0,
                                     functions = [('PFAM', 'PFAM FUNC_1'), ('TIGRFAM', 'sik')],
                                     taxonomy_dict = {'t_phylum': 'phy', 't_class': 'clas', 't_order': 'ord', 't_family': None, 't_genus': 'genus', 't_species': 'sp'})
@@ -272,10 +279,11 @@ class GenomesDataStorage(HDF5_IO):
             raise HDF5Error('The genome "%s" does not know anything about the gene caller id "%d" :(' % (genome_name, gene_caller_id))
 
 
-    def add_gene_call_data(self, genome_name, gene_caller_id, sequence, partial=0, functions = [], taxonomy_dict = None):
+    def add_gene_call_data(self, genome_name, gene_caller_id, aa_sequence, dna_sequence, partial=0, functions = [], taxonomy_dict = None):
         """Add a gene call in a genome into the database"""
-        self.fp['/data/genomes/%s/%d/sequence' % (genome_name, gene_caller_id)] = sequence
-        self.fp['/data/genomes/%s/%d/length' % (genome_name, gene_caller_id)] = len(sequence)
+        self.fp['/data/genomes/%s/%d/aa_sequence' % (genome_name, gene_caller_id)] = aa_sequence
+        self.fp['/data/genomes/%s/%d/dna_sequence' % (genome_name, gene_caller_id)] = dna_sequence
+        self.fp['/data/genomes/%s/%d/length' % (genome_name, gene_caller_id)] = len(aa_sequence)
         self.fp['/data/genomes/%s/%d/partial' % (genome_name, gene_caller_id)] = partial
 
         if taxonomy_dict:
@@ -295,11 +303,16 @@ class GenomesDataStorage(HDF5_IO):
         return d.value
 
 
-    def get_gene_sequence(self, genome_name, gene_caller_id):
+    def get_gene_sequence(self, genome_name, gene_caller_id, report_DNA_sequences=False):
+        """Returns gene amino acid sequence unless `report_DNA_sequences` is True."""
+
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_caller_id)
 
-        d = self.fp['/data/genomes/%s/%d/sequence' % (genome_name, gene_caller_id)]
+        if report_DNA_sequences:
+            d = self.fp['/data/genomes/%s/%d/dna_sequence' % (genome_name, gene_caller_id)]
+        else:
+            d = self.fp['/data/genomes/%s/%d/aa_sequence' % (genome_name, gene_caller_id)]
 
         return d.value
 
@@ -327,7 +340,10 @@ class GenomesDataStorage(HDF5_IO):
             raise HDF5Error("Genome '%s' is already in this data storage :/" % genome_name)
 
         for key in self.essential_genome_info:
-            self.fp['/info/genomes/%s/%s' % (genome_name, key)] = info_dict[key]
+            # the following line will add a -1 for any `key` that has the value of `None`. the reason
+            # we added this was to be able to work with contigs databases without any hmm hits for SCGs
+            # which is covered in https://github.com/merenlab/anvio/issues/573
+            self.fp['/info/genomes/%s/%s' % (genome_name, key)] = info_dict[key] if info_dict[key] is not None else -1
 
 
     def get_storage_hash(self):
@@ -358,18 +374,18 @@ class GenomesDataStorage(HDF5_IO):
         return genomes_dict
 
 
-    def gen_combined_protein_sequences_FASTA(self, output_file_path, exclude_partial_gene_calls=False):
+    def gen_combined_aa_sequences_FASTA(self, output_file_path, exclude_partial_gene_calls=False):
         self.run.info('Exclude partial gene calls', exclude_partial_gene_calls, nl_after=1)
 
         genomes = self.get_genomes_dict()
 
-        total_num_protein_sequences = 0
-        total_num_excluded_protein_sequences = 0
+        total_num_aa_sequences = 0
+        total_num_excluded_aa_sequences = 0
 
         output_file = open(output_file_path, 'w')
 
         for genome_name in genomes:
-            self.progress.new('Storing protein sequences')
+            self.progress.new('Storing aa sequences')
             self.progress.update('%s ...' % genome_name)
 
             genome_data = self.D(genome_name)
@@ -379,15 +395,15 @@ class GenomesDataStorage(HDF5_IO):
                 partial = self.G(gene_caller_id, genome_data)['partial'].value
 
                 if exclude_partial_gene_calls and partial:
-                    total_num_excluded_protein_sequences += 1
+                    total_num_excluded_aa_sequences += 1
                     continue
 
-                sequence = self.G(gene_caller_id, genome_data)['sequence'].value
+                aa_sequence = self.G(gene_caller_id, genome_data)['aa_sequence'].value
 
                 output_file.write('>%s_%d\n' % (genomes[genome_name]['genome_hash'], int(gene_caller_id)))
-                output_file.write('%s\n' % sequence)
+                output_file.write('%s\n' % aa_sequence)
 
-                total_num_protein_sequences += 1
+                total_num_aa_sequences += 1
 
             self.progress.end()
 
@@ -395,11 +411,11 @@ class GenomesDataStorage(HDF5_IO):
 
         self.progress.new('Uniquing the output FASTA file')
         self.progress.update('...')
-        unique_proteins_FASTA_path, unique_proteins_names_file_path, unique_proteins_names_dict = utils.unique_FASTA_file(output_file_path, store_frequencies_in_deflines=False)
+        unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = utils.unique_FASTA_file(output_file_path, store_frequencies_in_deflines=False)
         self.progress.end()
 
-        self.run.info('Unique protein sequences FASTA', output_file_path)
-        self.run.info('Num protein sequences reported', '%s' % pp(total_num_protein_sequences), nl_before=1)
-        self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_protein_sequences))
+        self.run.info('Unique AA sequences FASTA', output_file_path)
+        self.run.info('Num AA sequences reported', '%s' % pp(total_num_aa_sequences), nl_before=1)
+        self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_aa_sequences))
 
-        return unique_proteins_FASTA_path, unique_proteins_names_dict
+        return unique_aas_FASTA_path, unique_aas_names_dict

@@ -35,23 +35,17 @@ def main(args):
 
     progress.new('Initializing internal genomes')
 
-    profile_db_path = args.profile_db
-    contigs_db_path = args.contigs_db
-    collection_name = args.collection_name
     genome_name = args.bin_id
 
     progress.update('Computing gene presence data ...')
     gene_presence_in_the_environment_dict = {}
 
-    ARGS = summarizer.ArgsTemplateForSummarizerClass()
-    ARGS.profile_db = profile_db_path
-    ARGS.contigs_db = contigs_db_path
-    ARGS.collection_name = collection_name
-
-    summary = summarizer.ProfileSummarizer(ARGS)
+    summary = summarizer.ProfileSummarizer(args)
+    summary.init()
+    summary.init_gene_level_coverage_stats_dicts()
 
     # recover the detection statistic
-    summary.init_collection_profile(collection_name)
+    summary.init_collection_profile(args.collection_name)
     detection_across_metagenomes = summary.collection_profile[genome_name]['detection']
 
     num_metagenomes_above_min_detection = [m for m in detection_across_metagenomes if detection_across_metagenomes[m] > min_detection]
@@ -75,7 +69,7 @@ def main(args):
     gene_presence_in_the_environment_dict = {}
 
     genome_bin_summary = summarizer.Bin(summary, genome_name, split_names_of_interest)
-    gene_coverages_across_samples = genome_bin_summary.get_gene_coverages_across_samples_dict()
+    gene_coverages_across_samples = genome_bin_summary.gene_coverages
 
     # at this point we have all the genes in the genome bin. what we need is to characterize their detection. first,
     # summarize the coverage of each gene in all samples:

@@ -27,8 +27,10 @@ import anvio.summarizer as summarizer
 import os
 import sys
 import gzip
+import glob
 import numpy
 import shutil
+import hashlib
 import mistune
 import textwrap
 
@@ -253,8 +255,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.summary['basics_pretty'] = { \
                 'pan': [('Created on', self.p_meta['creation_date']),
                         ('Version', anvio.__pan__version__),
-                        ('Number of genes', pretty(int(self.p_meta['num_genes_in_protein_clusters']))),
-                        ('Number of protein clusters', pretty(int(self.p_meta['num_protein_clusters']))),
+                        ('Number of genes', pretty(int(self.p_meta['num_genes_in_PCs']))),
+                        ('Number of protein clusters', pretty(int(self.p_meta['num_PCs']))),
                         ('Partial genes excluded', 'Yes' if self.p_meta['exclude_partial_gene_calls'] else 'No'),
                         ('Maxbit parameter', self.p_meta['maxbit']),
                         ('PC min occurrence parameter', pretty(int(self.p_meta['pc_min_occurrence']))),
@@ -286,7 +288,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # generate a dict of protein cluster ~ bin id relationships
         pc_name_to_bin_name= dict(list(zip(self.protein_clusters_in_pan_db_but_not_binned, [None] * len(self.protein_clusters_in_pan_db_but_not_binned))))
-        for bin_id in collection_dict: 
+        for bin_id in collection_dict:
             for pc_name in collection_dict[bin_id]:
                 pc_name_to_bin_name[pc_name] = bin_id
 
@@ -298,7 +300,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # standard headers
         header = ['unique_id', 'protein_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id']
 
-        # extend the header with functions if there are any 
+        # extend the header with functions if there are any
         for source in self.protein_clusters_function_sources:
             if self.quick:
                 header.append(source + '_ACC')
@@ -310,7 +312,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         AA_sequences = None
         if not self.quick:
             header.append('aa_sequence')
-            AA_sequences = self.get_AA_sequences_for_PCs(pc_names=self.protein_cluster_names)
+            AA_sequences = self.get_sequences_for_PCs(pc_names=self.protein_cluster_names)
 
         # write the header
         output_file_obj.write(('\t'.join(header) + '\n').encode('utf-8'))
@@ -358,10 +360,347 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.progress.end()
 
 
+class SAAVsAndProteinStructuresSummary:
+    """A class to make sense of the SAAV Structure outputs."""
+
+    def __init__(self, args=None, r=run, p=progress):
+        self.run = run
+        self.progress = progress
+
+        self.args = args
+
+        self.summary = {}
+        self.summary_type = 'saav'
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+        self.input_directory = A('input_dir')
+        self.output_directory = A('output_dir')
+        self.soft_link_images = A('soft_link_images')
+        self.perspectives = A('perspectives')
+
+        self.genes_file_path = A('genes')
+        self.samples_file_path = A('samples')
+
+        # dicts that will be recovered from input files
+        self.genes = None
+        self.samples = None
+        self.views = None
+
+        # this will be recovered by traversing the input directory
+        self.genes_info = {}
+
+        # dicts that will be populated by the init function
+        self.by_view = {}
+        self.legends = {}
+        self.samples_per_view = {}
+
+        self.initialized = False
+        self.sanity_checked = False
+
+
+    def sanity_check(self):
+        self.input_directory = os.path.abspath(self.input_directory)
+        filesnpaths.is_file_exists(self.input_directory)
+
+        # this fallback code could have been inside init instead of sanity check function
+        # but calling os.path.join can raise exception if input_directory is None, it should checked first.
+        self.genes_file_path = self.genes_file_path or os.path.join(self.input_directory, '.gene_list.txt')
+        self.samples_file_path = self.samples_file_path or os.path.join(self.input_directory, '.sample_groups.txt')
+
+        if not filesnpaths.is_file_exists(self.genes_file_path, dont_raise=True):
+            raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
+                               anvi'o looks for '.gene_list.txt' in input directory." % self.genes_file_path)
+
+        if not filesnpaths.is_file_exists(self.samples_file_path, dont_raise=True):
+            raise ConfigError("Anvi'o could not find sample groups file '%s'. If you did not provided any as a parameter \
+                               anvi'o looks for '.sample_groups.txt' in input directory." % self.samples_file_path)
+
+        if not self.output_directory or not self.input_directory:
+            raise ConfigError("You must declare both input and output directories.")
+
+        if self.output_directory == self.input_directory:
+            raise ConfigError("The input and the output directories can't be the same.")
+
+        if self.contigs_db_path:
+            dbops.is_contigs_db(self.contigs_db_path)
+
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory)
+        filesnpaths.gen_output_directory(self.output_directory)
+        filesnpaths.gen_output_directory(os.path.join(self.output_directory, 'images'))
+
+        self.run.info('Contigs DB found', self.contigs_db_path is not None, mc='green' if self.contigs_db_path else 'red')
+        self.run.info('Input directory', self.input_directory)
+        self.run.info('Output directory', self.output_directory)
+
+        self.sanity_checked = True
+
+
+    def process_input(self):
+        # FIXME: Assume its a single-column file. If it isn't, assume its a multi-column file
+        try:
+            self.gene_list = list(utils.get_column_data_from_TAB_delim_file(self.genes_file_path, column_indices=[0], expected_number_of_fields=1).values())[0][1:]
+            self.genes = {}
+            for gene in self.gene_list:
+                self.genes[gene] = {}
+        except:
+            self.genes = utils.get_TAB_delimited_file_as_dictionary(self.genes_file_path)
+
+        # FIXME: Assume its a single-column file. If it isn't, assume its a multi-column file
+        try:
+            self.sample_list = list(utils.get_column_data_from_TAB_delim_file(self.samples_file_path, column_indices=[0], expected_number_of_fields=1).values())[0][1:]
+            self.samples = {}
+            for sample in self.sample_list:
+                self.samples[sample] = {}
+        except:
+            self.samples = utils.get_TAB_delimited_file_as_dictionary(self.samples_file_path)
+
+        self.views = utils.get_columns_of_TAB_delim_file(self.samples_file_path)
+
+        # add a samples view
+        self.views.append("samples")
+        for sample in self.samples:
+            self.samples[sample]["samples"] = "All"
+
+
+    def populate_genes_info_dict(self):
+        if not self.contigs_db_path:
+            # go populate yourself
+            return
+
+        contigs_db = dbops.ContigsSuperclass(self.args)
+
+        # let's make sure all genes are here
+        for gene_id in map(int, self.genes):
+            if gene_id not in contigs_db.genes_in_contigs_dict:
+                raise ConfigError("Gene caller id %d is not in your contigs db. You must have\
+                                   provided an irrelevant contigs database to your run.")
+
+        contigs_db.init_functions()
+
+        if len(contigs_db.gene_function_calls_dict):
+            self.run.info_single("Good news, anvi'o found functional annotations in your\
+                                  contigs database and will use them to display in the HMTL\
+                                  output. We hope we are not missing anything: %s." % \
+                                            ', '.join(contigs_db.gene_function_call_sources),
+                                            nl_before=1, nl_after=1)
+
+        # we will either of these to show on the header:
+        preferred_annotation_sources = ['Pfam', 'COG_FUNCTION', 'TIGRFAM']
+        annotation_source = None
+        for f in preferred_annotation_sources:
+            if f in contigs_db.gene_function_call_sources:
+                annotation_source = f
+                break
+
+        if annotation_source:
+            self.run.info_single("%s will be used to show summaries in section headers." % \
+                                            annotation_source, nl_after=1)
+        else:
+            self.run.info_single("Congratulations, none of the preferred functional annotation \
+                                  sources (%s) were in your contigs database :( although you \
+                                  have functions in the contigs database, your gene headers\
+                                  will look ugly. That's OK." % \
+                                            ', '.join(preferred_annotation_sources), nl_after=1)
+
+        for gene_id in map(int, self.genes):
+            f = contigs_db.gene_function_calls_dict[gene_id]
+            self.genes_info[gene_id] = {}
+
+            if annotation_source:
+                if f[annotation_source]:
+                    self.genes_info[gene_id]['function'] = f[annotation_source][1]
+                    self.genes_info[gene_id]['accession'] = f[annotation_source][0]
+                else:
+                    self.genes_info[gene_id]['function'] = 'Unknown function'
+                    self.genes_info[gene_id]['accession'] = None
+
+            self.genes_info[gene_id]['functions'] = f
+
+
+    def init(self):
+        self.sanity_check()
+
+        self.process_input()
+        self.populate_genes_info_dict()
+
+        perspectives_found = [os.path.basename(d) for d in glob.glob('%s/*' % self.input_directory) if os.path.isdir(d)]
+
+        if self.perspectives:
+            self.perspectives = [p.strip() for p in self.perspectives.split(',') if p.strip()]
+            for perspective in self.perspectives:
+                if perspective not in perspectives_found:
+                    raise ConfigError("The perspectie you requested ('%s') is not one of the available perspectives in\
+                                       this SAAVs structure output. These are the ones that are avilable: %s" % \
+                                                                          (perspective, ', '.join(perspectives_found)))
+        else:
+            self.perspectives = perspectives_found
+
+        self.run.info('Num genes', len(self.genes))
+        self.run.info('Num samples', len(self.samples))
+        self.run.info('Views', ', '.join(self.views))
+        self.run.info('Perspectives', ', '.join(self.perspectives))
+        self.run.info('Images are soft linked', self.soft_link_images, mc='red' if self.soft_link_images else 'yellow')
+
+        if(len(self.genes)) > 50:
+            self.run.warning('You seem to have a lot of genes to process. Nice. The output may be quite large,\
+                              just so you know :/')
+
+        self.summary['meta'] = {'summary_type': self.summary_type,
+                                'output_directory': self.output_directory,
+                                'images_soft_linked': self.soft_link_images,
+                                'anvio_version': anvio.__version__}
+
+        # populate dicts
+        self.populate_samples_per_view_dict()
+        self.populate_by_view_dict()
+
+        views_and_variables = {}
+        for view in self.samples_per_view:
+            views_and_variables[view] = sorted(self.samples_per_view[view].keys())
+
+        self.summary['data'] = {'gene_names': sorted(list(self.genes.keys())),
+                                'samples': self.samples,
+                                'by_view': self.by_view,
+                                'views_and_variables': views_and_variables,
+                                'views': sorted(self.samples_per_view.keys()),
+                                'perspectives': sorted(self.perspectives),
+                                'genes': self.genes,
+                                'genes_info': self.genes_info,
+                                'samples_per_view': self.samples_per_view,
+                                'legends': self.legends}
+
+        self.initialized = True
+
+
+    def populate_samples_per_view_dict(self):
+        self.progress.new('Populating samples per view data')
+        self.progress.update('...')
+
+        self.samples_per_view = {}
+
+        for view in self.views:
+            self.progress.update('Working on "%s" ...' % view)
+            self.samples_per_view[view] = {}
+            for sample in self.samples:
+                r = self.samples[sample][view]
+                if r not in self.samples_per_view[view]:
+                    self.samples_per_view[view][r] = []
+
+                self.samples_per_view[view][r].append(sample)
+
+        self.progress.end()
+
+
+    def copy_image_and_return_path(self, variables=None):
+        image_path_template = None
+        if variables['image_type'] == 'sample':
+            image_path_template = "%(input_directory)s/%(perspective)s/Images/%(gene)s/%(image_type)s_%(sample)s.pse.png"
+        elif variables['image_type'] == 'merged':
+            image_path_template = "%(input_directory)s/%(perspective)s/Images/%(gene)s/%(image_type)s_%(view)s_%(variable)s.pse.png"
+
+        image_path = image_path_template % variables
+
+        # if user wants a fully populated output directory, update the image_path variable
+        if not self.soft_link_images:
+            #new_image_path = 'images/%s_%s_%s.png' % (str(gene), sample, hashlib.sha1(image_path.encode('utf-8')).hexdigest())
+            new_image_path = 'images/%s_%s_%s.png' % (variables["gene"], variables["sample"], hashlib.sha1(image_path.encode('utf-8')).hexdigest())
+            shutil.copyfile(os.path.join(self.input_directory, image_path), os.path.join(self.output_directory, new_image_path))
+            image_path = new_image_path
+
+        return image_path
+
+
+    def populate_by_view_dict(self):
+        """This one connects the actual data and images."""
+
+        self.progress.new('Populating views dict')
+
+        gene_names = sorted(self.genes.keys())
+        num_genes = len(gene_names)
+        for index in range(0, num_genes):
+            gene = gene_names[index]
+            self.progress.update("gene '%s' (%d of %d) ..." % (str(gene), index + 1, num_genes))
+            self.by_view[gene] = {}
+            self.legends[gene] = {}
+            for view in self.samples_per_view.keys():
+                self.by_view[gene][view] = {}
+                for perspective in self.perspectives:
+                    if perspective not in self.legends[gene]:
+                        self.legends[gene][perspective] = {}
+
+                    self.by_view[gene][view][perspective] = {}
+                    for variable in sorted(self.samples_per_view[view].keys()):
+                        self.by_view[gene][view][perspective][variable] = {}
+                        for sample in self.samples_per_view[view][variable]:
+                            image_path = self.copy_image_and_return_path(variables= {'input_directory': self.input_directory,
+                                                                                            'gene': str(gene),
+                                                                                            'sample': sample,
+                                                                                            'perspective': perspective,
+                                                                                            'image_type': 'sample',
+                                                                                            'view': view,
+                                                                                            'variable': variable})
+
+                            self.by_view[gene][view][perspective][variable][sample] = image_path
+
+                        if view != "samples":
+
+                            image_path = self.copy_image_and_return_path(variables= {'input_directory': self.input_directory,
+                                                                                            'gene': str(gene),
+                                                                                            'sample': sample,
+                                                                                            'perspective': perspective,
+                                                                                            'image_type': 'merged',
+                                                                                            'view': view,
+                                                                                            'variable': variable})
+
+                            self.by_view[gene][view][perspective][variable]['__merged__'] = image_path
+
+                    self.legends[gene][perspective] = self.get_legend_as_dict(gene, perspective)
+
+        self.progress.end()
+
+
+    def get_legend_as_dict(self, gene, perspective):
+        """
+        does a global legend exist? does it have less than 15 colors? if not, load gene-specific legend for each gene
+
+        for single legends id is a gene_id, for global legend it is string constant "global"
+        """
+
+        color_legend_path_template = "%(input_directory)s/%(perspective)s/Legends/color/%(perspective)s_%(id)s_color_legend.txt"
+
+        global_color_legend_path = color_legend_path_template % {'input_directory' : self.input_directory,
+                                                                 'id'              : 'global',
+                                                                 'perspective'     : perspective}
+
+        if os.path.isfile(global_color_legend_path):
+            global_legend_content = utils.get_TAB_delimited_file_as_dictionary(global_color_legend_path)
+            if len(global_legend_content) <= 15:
+                return global_legend_content
+
+        return utils.get_TAB_delimited_file_as_dictionary(color_legend_path_template %
+                                                                    {'input_directory': self.input_directory,
+                                                                    'id': str(gene),
+                                                                    'perspective': perspective})
+
+    def process(self):
+        if not self.initialized:
+            self.init()
+
+        if not self.sanity_checked:
+            self.sanity_check()
+
+        self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=False)
+
+
 class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
     """Creates an über dictionary of 'summary' for anvi'o profiles."""
     def __init__(self, args=None, r=run, p=progress):
         self.summary = {}
+        self.args = args
+
+        self.run = r
+        self.progress = p
 
         self.summary_type = 'profile'
         self.debug = False
@@ -371,15 +710,15 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.output_directory = None
         self.split_names_per_bin = None
         self.completeness_data_available = False
-        self.gene_coverages_data_available = False
+        self.gene_level_coverage_stats_available = False
         self.non_single_copy_gene_hmm_data_available = False
 
-        DatabasesMetaclass.__init__(self, args, run, progress)
-        SummarizerSuperClass.__init__(self, args, self.run, self.progress)
+        DatabasesMetaclass.__init__(self, self.args, self.run, self.progress)
+        SummarizerSuperClass.__init__(self, self.args, self.run, self.progress)
 
         # databases initiated, let's make sure we have gene covereges data avaialable.
-        if self.gene_coverages_dict:
-            self.gene_coverages_data_available = True
+        if self.gene_level_coverage_stats_dict:
+            self.gene_level_coverage_stats_available = True
 
         self.init_splits_taxonomy(self.taxonomic_level)
 
@@ -420,7 +759,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                 'anvio_version': __version__,
                                 'profile': self.p_meta,
                                 'contigs': self.a_meta,
-                                'gene_coverages_data_available': self.gene_coverages_data_available,
+                                'gene_level_coverage_stats_available': self.gene_level_coverage_stats_available,
                                 'completeness_data_available': self.completeness_data_available,
                                 'non_single_copy_gene_hmm_data_available': self.non_single_copy_gene_hmm_data_available,
                                 'percent_contigs_nts_described_by_collection': 0.0,
@@ -507,7 +846,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             summary_of_bins = {}
             properties = ['taxon', 'total_length', 'num_contigs', 'N50', 'GC_content']
             if self.completeness_data_available:
-                properties += ['percent_complete', 'percent_redundancy']
+                properties += ['percent_completion', 'percent_redundancy']
 
             for bin_name in self.summary['collection']:
                 summary_of_bins[bin_name] = dict([(prop, self.summary['collection'][bin_name][prop]) for prop in properties])
@@ -573,7 +912,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
     def get_bins_ordered_by_completeness_and_size(self):
         if self.completeness_data_available:
-            return [t[2] for t in sorted([(self.summary['collection'][bin]['percent_complete'], self.summary['collection'][bin]['total_length'], bin) for bin in self.summary['collection']], reverse=True)]
+            return [t[2] for t in sorted([(self.summary['collection'][bin]['percent_completion'], self.summary['collection'][bin]['total_length'], bin) for bin in self.summary['collection']], reverse=True)]
         else:
             return sorted(self.summary['collection'].keys())
 
@@ -631,16 +970,23 @@ class Bin:
         # make these dicts avilable:
         self.gene_coverages = {}
         self.gene_detection = {}
+        self.gene_non_outlier_coverages = {}
+        self.gene_non_outlier_coverage_stds = {}
         self.split_coverage_values_per_nt_dict = {}
 
+        A = lambda x: self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name][x]
+
         # populate gene coverage and detection dictionaries
-        if self.summary.gene_coverages_dict:
+        if self.summary.gene_level_coverage_stats_dict:
             for gene_callers_id in self.gene_caller_ids:
                 self.gene_coverages[gene_callers_id], self.gene_detection[gene_callers_id] = {}, {}
+                self.gene_non_outlier_coverages[gene_callers_id], self.gene_non_outlier_coverage_stds[gene_callers_id] = {}, {}
 
                 for sample_name in self.summary.p_meta['samples']:
-                    self.gene_coverages[gene_callers_id][sample_name] = self.summary.gene_coverages_dict[gene_callers_id][sample_name]
-                    self.gene_detection[gene_callers_id][sample_name] = self.summary.gene_detection_dict[gene_callers_id][sample_name]
+                    self.gene_coverages[gene_callers_id][sample_name] = A('mean_coverage')
+                    self.gene_detection[gene_callers_id][sample_name] = A('detection')
+                    self.gene_non_outlier_coverages[gene_callers_id][sample_name] = A('non_outlier_mean_coverage')
+                    self.gene_non_outlier_coverage_stds[gene_callers_id][sample_name] = A('non_outlier_coverage_std')
 
         # populate coverage values per nucleutide for the bin.
         if self.summary.split_coverage_values_per_nt_dict:
@@ -667,7 +1013,7 @@ class Bin:
 
         self.store_genes_basic_info()
 
-        self.store_gene_coverages_and_detection()
+        self.store_gene_level_coverage_stats()
 
         self.store_profile_data()
 
@@ -692,11 +1038,11 @@ class Bin:
         self.bin_info_dict['completeness'] = results_dict
 
         self.bin_info_dict['percent_redundancy'] = p_redundancy
-        self.bin_info_dict['percent_complete'] = p_completion
+        self.bin_info_dict['percent_completion'] = p_completion
         self.bin_info_dict['scg_domain'] = domain
         self.bin_info_dict['scg_domain_confidence'] = domain_confidence
 
-        for k in ['percent_redundancy', 'percent_complete']:
+        for k in ['percent_redundancy', 'percent_completion']:
             self.store_data_in_file('%s.txt' % k, '%.4f' % self.bin_info_dict[k])
 
         self.store_data_in_file('scg_domain.txt', '%s' % self.bin_info_dict['scg_domain'])
@@ -799,11 +1145,11 @@ class Bin:
         return gene_callers_ids_for_complete_genes
 
 
-    def store_gene_coverages_and_detection(self):
+    def store_gene_level_coverage_stats(self):
         if self.summary.quick:
             return
 
-        if not self.summary.gene_coverages_dict:
+        if not self.summary.gene_level_coverage_stats_dict:
             return
 
         self.progress.update('Storing gene coverages ...')
@@ -812,6 +1158,8 @@ class Bin:
 
         utils.store_dict_as_TAB_delimited_file(self.gene_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_coverages.txt'))
         utils.store_dict_as_TAB_delimited_file(self.gene_detection, None, headers=headers, file_obj=self.get_output_file_handle('gene_detection.txt'))
+        utils.store_dict_as_TAB_delimited_file(self.gene_non_outlier_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_non_outlier_coverages.txt'))
+        utils.store_dict_as_TAB_delimited_file(self.gene_non_outlier_coverage_stds, None, headers=headers, file_obj=self.get_output_file_handle('gene_non_outlier_coverage_stds.txt'))
 
 
     def store_genes_basic_info(self):
@@ -1037,8 +1385,11 @@ class Bin:
         output_file_obj.close()
 
 
-def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None):
+def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None, gene_caller=None):
     """Returns an info dict for a given contigs db"""
+
+    if not gene_caller:
+        gene_caller = constants.default_gene_caller
 
     class Args:
         def __init__(self):
@@ -1051,22 +1402,35 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     progress.verbose = False
     c = ContigsSuperclass(args, r=run, p=progress)
 
-    info_dict = {'path': contigs_db_path}
+    info_dict = {'path': contigs_db_path,
+                 'gene_caller_ids': set([])}
 
     for key in c.a_meta:
         info_dict[key] = c.a_meta[key]
 
+    gene_calls_not_reported = set([])
+
     # Two different strategies here depending on whether we work with a given set if split ids or
     # everything in the contigs database.
+    ADD = lambda g: info_dict['gene_caller_ids'].add(g) if c.genes_in_contigs_dict[g]['source'] == gene_caller else gene_calls_not_reported.add(g)
+
     if split_names:
         split_names = set(split_names)
         c.init_split_sequences()
         seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
-        info_dict['gene_caller_ids'] = set([e['gene_callers_id'] for e in list(c.genes_in_splits.values()) if e['split'] in split_names])
+        for e in list(c.genes_in_splits.values()):
+            if e['split'] in split_names:
+                ADD(e['gene_callers_id'])
     else:
         c.init_contig_sequences()
         seq = ''.join([e['sequence'] for e in list(c.contig_sequences.values())])
-        info_dict['gene_caller_ids'] = list(c.genes_in_contigs_dict.keys())
+
+        for g in c.genes_in_contigs_dict:
+            ADD(g)
+
+    if len(gene_calls_not_reported):
+        run.info_single('Contigs db info summary will not include %d gene calls that were not identified by "%s", which \
+                         was the default source gene caller.' % (len(gene_calls_not_reported), gene_caller))
 
     info_dict['gc_content'] = seqlib.Composition(seq).GC_content
     info_dict['total_length'] = len(seq)
@@ -1084,7 +1448,7 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.Completeness(contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
 
     info_dict['hmm_sources_info'] = c.hmm_sources_info
-    info_dict['percent_complete'] = p_completion
+    info_dict['percent_completion'] = p_completion
     info_dict['percent_redundancy'] = p_redundancy
     info_dict['scg_domain'] = domain
     info_dict['scg_domain_confidence'] = domain_confidence
@@ -1187,7 +1551,7 @@ class AdHocRunGenerator:
 
     def get_output_file_path(self, file_name):
         return os.path.join(self.output_directory, file_name)
-
+#
 
     def check_output_directory(self):
         if os.path.exists(self.output_directory) and not self.delete_output_directory_if_exists:

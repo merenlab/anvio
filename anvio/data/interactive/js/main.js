@@ -21,39 +21,32 @@
 //--------------------------------------------------------------------------------------------------
 //  Globals
 //--------------------------------------------------------------------------------------------------
+
 var VERSION = '0.2.1';
-
-var VIEWER_WIDTH;
-var VIEWER_HEIGHT;
-var dragging = false;
-
-var zoomBox = {};
-var drawing_zoom = false;
-
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
+var VIEWER_WIDTH;
+var VIEWER_HEIGHT;
+
 
 var scale = 0;
 
 var id_to_node_map = new Array();
 var label_to_node_map = {};
-var order_to_node_map = {};
+var order_to_node_map = new Array();
 var leaf_count;
 var samples_id_to_node_map;
 var unnamed_node_counter;
 
 var angle_per_leaf;
 var height_per_leaf;
-var tree_type;
 var margin;
 var order_counter;
 
 var total_radius = 0;
-var layer_boundaries;
 
 var SELECTED = new Array();
 var clusteringData;
-var hasTree;
 
 var layerdata;
 var contig_lengths;
@@ -102,13 +95,13 @@ var ping_timer;
 var autoload_state;
 var autoload_collection;
 var mode;
+var server_mode = false;
 var samples_tree_hover = false;
 var bbox;
 
-var mouse_event_origin_x = 0;
-var mouse_event_origin_y = 0;
-
 var request_prefix = getParameterByName('request_prefix');
+var collapsedNodes = []; 
+var rotateNode = null;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
@@ -234,7 +227,7 @@ function checkNews() {
                 }
                 $('#news-panel-inner').append('<div class="news-item"> \
                                               <h1>' + ((hash_found) ? '' : '<span class="blue-dot">') + '</span>'+news_item['title']+'</h1> \
-                                              <span class="news-date">'+news_item['date']+'</span>'+marked(news_item['content'])+'</div>')
+                                              <span class="news-date">'+news_item['date']+'</span>'+renderMarkdown(news_item['content'])+'</div>')
             }
             createCookie('news_checked', 'yes', 1); // expiration is 1 days
 
@@ -284,6 +277,7 @@ function initData() {
         var project = response.project;
             unique_session_id = sessionIdResponse[0];
             mode = modeResponse[0];
+            server_mode = response.server_mode;
 
         if(!inspectionAvailable){
             toastr.info("Inspection of data items is not going to be available for this project.");
@@ -293,6 +287,11 @@ function initData() {
         if(!sequencesAvailable && mode != "collection" && mode != "pan"){
             toastr.info("No sequence data is available. Some menu items will be disabled.");
             $('.menuItemSequence').addClass('menu-disabled');
+        }
+
+        if (!response['functions_initialized']) {
+            $('#search_functions_button').attr('disabled', true);
+            $('.functions-not-available-message').show();
         }
 
         if (! response.noPing) {
@@ -319,14 +318,6 @@ function initData() {
             {
                 $('.refine-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/refine-bg.png)');
-            } else if (mode == 'server') {
-                $('.server-mode').show();
-                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
-                $('#multiUser').show();
-                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
-                $('#multiUser > img').attr('src', project.user_avatar);
-                $('#multiUser > .download-button').attr('href', project.download_zip_url);
-                $('#sidebar').css('margin-top', '81px')
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
@@ -338,13 +329,23 @@ function initData() {
                 $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
                 $('#splits_title').hide();
                 $('#len_title').hide();
-
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/collection-bg.png)');
             } else if (mode == 'manual') {
                 $('.manual-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/manual-bg.png)');
+            }
+
+            if (server_mode) {
+                $('.server-mode').show();
+                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
+                $('#multiUser').show();
+                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
+                $('#multiUser > img').attr('src', project.user_avatar);
+                $('#multiUser > .download-button').attr('href', project.download_zip_url);
+                $('#sidebar').css('margin-top', '81px');
+                $('.upload-button').hide();
             }
 
             if (readOnlyResponse[0] == true)
@@ -364,6 +365,9 @@ function initData() {
                     $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
                 },
                 'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
+                'parser': function(content) {
+                    return renderMarkdown(content);
+                },
                 'additionalButtons': [
                   [{
                     data: [{
@@ -390,6 +394,10 @@ function initData() {
                 ],
                 'fullscreen': {'enable': false},
             });
+
+            if (description.length > 100) {
+                toggleRightPanel('#description-panel');
+            }
 
             contig_lengths = eval(contigLengthsResponse[0]);
 
@@ -754,7 +762,7 @@ function buildLegendTables() {
         createLegendColorPanel(i); // this fills legend_content_X
     }
 
-    $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
+    $('#legend_settings, #search_tab_content').accordion({heightStyle: "content", collapsible: true});
 
     $('.colorpicker').colpick({
         layout: 'hex',
@@ -1156,7 +1164,7 @@ function buildLayersTable(order, settings)
             }
             else
             {
-                var norm   = getNamedLayerDefaults(layer_name, 'norm', (mode == 'full') ? 'log' : 'none');
+                var norm   = getNamedLayerDefaults(layer_name, 'norm', (mode == 'full' || mode == 'refine') ? 'log' : 'none');
                 var min    = getNamedLayerDefaults(layer_name, 'min', 0);
                 var max    = getNamedLayerDefaults(layer_name, 'max', 0);
                 var min_disabled = getNamedLayerDefaults(layer_name, 'min_disabled', true);
@@ -1193,6 +1201,7 @@ function buildLayersTable(order, settings)
                 '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
                 '        <option value="bar"{option-type-bar}>Bar</option>' +
                 '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
+                '        <option value="line"{option-type-line}>Line</option>' +
                 '    </select>' +
                 '</td>' +
                 '<td>' +
@@ -1306,6 +1315,7 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
+    state['draw-guide-lines'] = $('#draw_guide_lines').val();
     
     // sync views object and layers table
     syncViews();
@@ -1407,11 +1417,11 @@ function drawTree() {
         {
             dialogSize: 'sm',
             onShow: function() {
-                draw_tree(settings); // call treelib.js where the magic happens
+                var drawer = new Drawer(settings);
+                drawer.draw();
 
                 // last_settings used in export svg for layer information,
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
-                // running serializeSettings() twice costs extra time but we can ignore it to keep code simple.
                 last_settings = serializeSettings();
 
                 redrawBins();
@@ -1722,7 +1732,7 @@ function showCompleteness(bin_id, updateOnly) {
         return;
 
     var msg = '<table class="table table-striped sortable">' +
-        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent complenetess</th></tr></thead><tbody>';
+        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent complenetion</th></tr></thead><tbody>';
 
     for (var source in stats){
         if(stats[source]['domain'] != averages['domain'])
@@ -1730,7 +1740,7 @@ function showCompleteness(bin_id, updateOnly) {
             // don't show it in the interface
             continue;
 
-        msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td><td data-value='" + stats[source]['percent_complete'] + "'>" + stats[source]['percent_complete'].toFixed(2) + "%</td></tr>";
+        msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td><td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td></tr>";
     }
 
     msg = msg + '</tbody></table>';
@@ -1953,15 +1963,22 @@ function storeCollection() {
             var bin_id = $(bin).attr('bin-id');
             var bin_name = $('#bin_name_' + bin_id).val();
 
-            colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
-            data[bin_name] = new Array();
-
+            var items = new Array();
+            
             for (var i=0; i < SELECTED[bin_id].length; i++)
             {
-                if (label_to_node_map[SELECTED[bin_id][i]].IsLeaf())
+                var node_label = SELECTED[bin_id][i];
+                var node = label_to_node_map[node_label];
+
+                if (node.IsLeaf() && !node.collapsed)
                 {
-                    data[bin_name].push(SELECTED[bin_id][i]);
+                    items.push(node_label);
                 }
+            }
+
+            if (items.length > 0) {
+                colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
+                data[bin_name] = items;
             }
         }
     );
@@ -2324,8 +2341,81 @@ function saveState()
                 $('#modSaveState').modal('hide');
 
                 current_state_name = name;
-                $('#current_state').html('[current state: ' + current_state_name + ']');
                 toastr.success("State '" + current_state_name + "' successfully saved.");
+            }
+        }
+    });
+}
+
+function showUploadProject() {
+    $('#upload_state').empty();
+    $('#upload_collection').empty();
+    $('#upload_view').empty();
+    $('#upload_ordering').empty();
+
+    $('#trees_container option').each(function(index, option) {
+        $(option).clone().appendTo('#upload_ordering');
+    });
+
+    $('#views_container option').each(function(index, option) {
+        $(option).clone().appendTo('#upload_view');
+    });
+
+    $('#upload_state').append('<option selected>Select State</option>');
+    $('#upload_collection').append('<option>Select Collection</option>');
+
+    $('#upload_project_name').val($('#title-panel-first-line').text());
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all?timestamp=' + new Date().getTime(),
+        success: function(state_list) {
+            for (state_name in state_list) {
+                $('#upload_state').append('<option>' + state_name + '</option>');
+            }
+
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/collections?timestamp=' + new Date().getTime(),
+                success: function(collection_list) {
+                    for (collection_name in collection_list) {
+                        $('#upload_collection').append('<option>' + collection_name + '</option>');
+                    }
+                }
+            });
+        }
+    });
+    $('#modUpload').modal('show');
+}
+
+function uploadProject() {
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/upload_project?timestamp=' + new Date().getTime(),
+        data: {
+            username: $('#username').val(),
+            password: $('#password').val(),
+            project_name: $('#upload_project_name').val(),
+            ordering: $('#upload_ordering').val(),
+            view: $('#upload_view').val(),
+            state: $('#upload_state').val(),
+            collection: $('#upload_collection').val(),
+            delete_if_exists: $('#upload_delete_if_exists').is(':checked'),
+            include_samples: $('#upload_include_samples').is(':checked'),
+            include_description: $('#upload_include_description').is(':checked')
+        },
+        success: function(data) {
+            if (data['status'] == 1) {
+                $('.upload-message').removeClass('alert-success').addClass('alert-danger');
+                $('.upload-message').show();
+                $('.upload-message').html(data['message']);
+            } else {
+                $('.upload-message').removeClass('alert-danger').addClass('alert-success');
+                $('.upload-message').show();
+                $('.upload-message').html("Project successfully uploaded, to view your projects click <a href='https://anvi-server.org/projects' target='_blank'>here.</a>");
             }
         }
     });
@@ -2552,6 +2642,9 @@ function loadState()
                             if (state.hasOwnProperty('background-opacity')) {
                                 $('#background_opacity').val(state['background-opacity']);
                             }
+                            if (state.hasOwnProperty('draw-guide-lines')) {
+                                $('#draw_guide_lines').val(state['draw-guide-lines'])
+                            }
 
                             // reload layers
                             var current_view = $('#views_container').val();
@@ -2579,9 +2672,7 @@ function loadState()
                             buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
                             buildLegendTables();
 
-
                             current_state_name = state_name;
-                            $('#current_state').html('[current state: ' + current_state_name + ']');
 
                             toastr.success("State '" + current_state_name + "' successfully loaded.");
                             waitingDialog.hide();
