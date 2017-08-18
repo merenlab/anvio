@@ -77,38 +77,6 @@ def get_new_mean(_mean, x, N):
     return new_mean
 
 
-def get_new_std(_mean, _std, x, ):
-    p = N/(N-1)
-    new_std = np.sqrt(p * _std**2 - ((_mean - x)**2)*p/(N-1))
-
-def single_distribution_EM(v, _indices=None, _mean=None, _std=None):
-    if _indices is None:
-        _indices = set(range(len(v)))
-    else:
-        _indices = set(_indices)
-    if _mean is None:
-        _mean = np.mean(v[_indices])
-    if _std is None:
-        _std = np.std(v[_indices])
-
-    converged = False
-    while not convereged:
-        w = v[_indices]
-        N = len(_indices)
-        # creating the pdf function to apply
-        _pdf = lambda x: norm.pdf(x, _mean, _std)
-        # applying pdf to all values
-        w_pdf = np.apply_along_axis(_pdf, 0, w)
-        likelihood = np.sum(w_pdf)
-        i = np.argmin(w_pdf)
-        # translating the index to be relative to v
-        i = _indices[i]
-        new_mean = get_new_mean(_mean, v[i], N)
-        new_std = get_new_std(_mean, _std, v[i], N)
-        new_indices = _indices - {i}
-        np.apply_along_axis(_pdf, 0, w)
-
-
 class mcg:
     def __init__(self, args, run=run, progress=progress):
         self.run = run
@@ -407,10 +375,11 @@ class mcg:
         for sample in self.positive_samples:
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
+
             # loop through positive samples
             # get the indexes of the non outliers and a pdf for the coverage of the single copy core genes
             non_outliers_indices[sample], mean_TS[sample], std_TS[sample] = get_non_outliers(self.coverage_values_per_nt[sample])
-#            TS_nucs[sample], mean_TS[sample], std_TS[sample] = single_distribution_EM(self.coverage_values_per_nt[sample], non_outliers_indices[sample], mean_TS[sample], std_TS[sample])
+
             self.run.info_single('The mean and std in sample %s are: %s, %s respectively' % (sample, mean_TS[sample], std_TS[sample]))
             self.run.info_single('The number of non_outliers is %s of %s' % (len(non_outliers_indices[sample]), self.total_length))
         self.progress.end()
