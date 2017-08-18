@@ -36,6 +36,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
+
 def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):
     """ Helper function that accepts a split_coverage_values_per_nt_dict and returns a dictionary with
     samples as keys and the concatenated coverage values for all splits as one array
@@ -87,10 +88,10 @@ class MetagenomeCentricGeneClassifier:
         self.profile_db_path = A('profile_db')
         self.output_file_prefix = A('output_file_prefix')
         self.alpha = A('alpha')
-        self.beta = A('beta')
-        self.gamma = A('gamma')
-        self.eta = A('eta')
-        self.zeta = A('zeta')
+        self.beta = A('beta')     #
+        self.gamma = A('gamma')   # FIXME: beta, gamma, eta, and zeta are not 
+        self.eta = A('eta')       #        used anywhere in the code anyore :)
+        self.zeta = A('zeta')     #
         self.additional_layers_to_append = A('additional_layers_to_append')
         self.samples_information_to_append = A('samples_information_to_append')
         self.collection_name = A('collection_name')
@@ -118,8 +119,10 @@ class MetagenomeCentricGeneClassifier:
             # check that there is a file like this
             filesnpaths.is_file_exists(self.exclude_samples)
             self.samples_to_exclude = set([l.split('\t')[0].strip() for l in open(self.exclude_samples, 'rU').readlines()])
+
             if not self.samples_to_exclude:
                 raise ConfigError("You asked to exclude samples, but provided an empty list.")
+
             run.info('Excluding Samples', 'The following samples will be excluded: %s' % self.samples_to_exclude,)
         else:
             self.samples_to_exclude = set([])
@@ -128,8 +131,10 @@ class MetagenomeCentricGeneClassifier:
             # check that there is a file like this
             filesnpaths.is_file_exists(self.include_samples)
             self.samples_to_include = set([l.split('\t')[0].strip() for l in open(self.include_samples, 'rU').readlines()])
+
             if not self.samples_to_include:
                 raise ConfigError("You provided an empty list of samples to include.")
+
             run.info('Including Samples', 'The following samples will be included: %s' % self.samples_to_include,)
         else:
             self.samples_to_include = set([])
@@ -163,6 +168,7 @@ class MetagenomeCentricGeneClassifier:
                 # getting the total length of all contigs
                 self.total_length = self.profile_db.p_meta['total_length']
 
+
     def get_gene_coverages_and_gene_detection_dicts(self):
         gene_coverages = {}
         gene_detection = {}
@@ -187,6 +193,7 @@ class MetagenomeCentricGeneClassifier:
         """ Helper function to verify that an argument has a valid value for a non-zero portion (i.e. greater than zero and a max of 1)"""
         if arg_value <= 0 or arg_value > 1:
             raise ConfigError("%s value must be greater than zero and a max of 1, the value you supplied %s" % (arg_name,arg_value))
+
 
     def sanity_check(self):
         """Basic sanity check for class inputs"""
@@ -243,9 +250,9 @@ class MetagenomeCentricGeneClassifier:
 
 
     def init_coverage_and_detection_dataframes(self, gene_coverages_dict, gene_detection_dict):
-        """
-        Populate the following: self.gene_coverages, self.Ng, self.gene_detections
-        Notice that this function could get as input either an object of ProfileSuperclass or of summarizer.Bin
+        """ Populate the following: self.gene_coverages, self.Ng, self.gene_detections.
+
+            Notice that this function could get as input either an object of ProfileSuperclass or of summarizer.Bin
         """
         self.gene_coverages = pd.DataFrame.from_dict(gene_coverages_dict, orient='index', dtype=float)
         self.Ng = len(self.gene_coverages.index)
@@ -256,14 +263,17 @@ class MetagenomeCentricGeneClassifier:
             self.gene_coverages = self.gene_coverages[list(self.samples)]
             self.gene_detections = self.gene_detections[list(self.samples)]
 
+
     def init_sample_detection_information(self):
         """ Determine  positive, negative, and ambiguous samples with the genome detection information
         (--alpha, --genome-detection-uncertainty)
         """
 
+        # FIXME: some of the following variables are never used.
         MDG_samples_information_table_name      = 'MDG_classifier_samples_information'
         MDG_samples_information_table_structure = ['samples', 'presence', 'detection', 'number_of_taxon_specific_core_detected']
         MDG_samples_information_table_types     = ['str', 'bool', 'int', 'int']
+
         # create an empty dataframe
         samples_information = pd.DataFrame(index=self.samples, columns=MDG_samples_information_table_structure[1:])
         positive_samples = []
@@ -297,7 +307,6 @@ class MetagenomeCentricGeneClassifier:
         self.samples_information = samples_information
         self.run.warning('The number of positive samples is %s' % self.number_of_positive_samples)
         self.run.warning('The number of negative samples is %s' % len(self.negative_samples))
-
 
 
     def plot_TS(self, non_outliers_indices, mean_TS, std_TS):
@@ -401,9 +410,12 @@ class MetagenomeCentricGeneClassifier:
     def get_coverage_and_detection_dict(self,bin_id):
         _bin = summarizer.Bin(self.summary, bin_id)
         self.coverage_values_per_nt = get_coverage_values_per_nucleotide(_bin.split_coverage_values_per_nt_dict, self.samples)
+
         # getting the total length of all contigs
         self.total_length = _bin.total_length
+
         self.init_coverage_and_detection_dataframes(_bin.gene_coverages, _bin.gene_detection)
+
 
     def classify(self):
         if self.collection_name:
