@@ -69,32 +69,25 @@ if __name__ == '__main__':
     """Filter FASTA file according to BLAST table (remove sequences with bad
     BLAST alignment.""")
 
-    parser.add_argument('fasta_file')
-    parser.add_argument("-o", "--output_file", required = True)
-
-    parser.add_argument("-b", "--blast", required = True, help = \
-    """BLAST table generated with blastp. `--outfmt 6` as the output format is
-    assumed.""")
-
-    parser.add_argument("-s", "--special-outfmt", required = False, help = \
-    """If you used the non-default -outfmt 6 format, you must specify the strings
-    here. For example, if you used the `outfmt "6 qseqid sseqid pident qlen length
-    mismatch gparser.pen qstart qend sstart send evalue bitscore"` flag, the input for
-    this parameter should be:
-
-        "qseqid sseqid pident qlen length mismatch gparser.pen qstart qend sstart send evalue bitscore"
-    """)
-
-    parser.add_argument("-t", "--threshold", required = True, type = float, help = \
-    """What `proper_pident` threshold do you want to use for filtering out
-    sequences whose top bit-score matches have `proper_pident`s less than this
-    threshold?  We have defined `proper_pident` to be the percentage of the
-    query amino acids that both aligned to and were identical to the
-    corresponding matched amino acid. Note that the `pident` parameter output
-    by BLAST does not include regions of the query sequence unaligned to the
-    matched sequence, whereas `proper_pident` does. For example, a sequence
-    that's only half aligned by a match but with 100% identity at matched
-    regions has a `pident` of 100 but a `proper_pident` of 50.""")
+    parser.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file', {'required': False}))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': False}))
+    parser.add_argument("-b", "--blast-output", required = True, help = "BLAST table generated with \
+                                blastp. `--outfmt 6` as the output format is assumed.")
+    parser.add_argument("-s", "--special-outfmt", required = False, help = "If you used a non-default\
+                                -outfmt 6 format, you must specify the strings here. For example, if \
+                                you used the `outfmt \"6 qseqid sseqid pident qlen length mismatch \
+                                gapopen qstart qend sstart send evalue bitscore\"` flag, the input for \
+                                this parameter should be: \"qseqid sseqid pident qlen length mismatch \
+                                gapopen qstart qend sstart send evalue bitscore\"")
+    parser.add_argument("-t", "--threshold", required = True, type = float, help = "What `proper_pident`\
+                                threshold do you want to use for filtering out sequences whose top bit-score\
+                                matches have `proper_pident`s less than this threshold?  We have defined \
+                                `proper_pident` to be the percentage of the query amino acids that both \
+                                aligned to and were identical to the corresponding matched amino acid. \
+                                Note that the `pident` parameter output by BLAST does not include regions\
+                                of the query sequence unaligned to the matched sequence, whereas `proper_pident`\
+                                does. For example, a sequence that's only half aligned by a match but with 100%%\
+                                identity at matched regions has a `pident` of 100 but a `proper_pident` of 50.")
 
     args = parser.parse_args()
 
