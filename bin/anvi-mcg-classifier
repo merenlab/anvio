@@ -5,7 +5,7 @@
 import sys
 
 import anvio
-import anvio.alonsclassifier as alonsclassifier
+from anvio.mcgclassifier import MetagenomeCentricGeneClassifier
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -20,8 +20,8 @@ __email__ = "alon.shaiber@gmail.com"
 
 
 def main(args):
-    classifier = alonsclassifier.AlonsClassifier(args)
-    classifier.classify()
+    mcg = MetagenomeCentricGeneClassifier(args)
+    mcg.classify()
 
 
 if __name__ == '__main__':
@@ -31,9 +31,6 @@ if __name__ == '__main__':
                                                     samples.")
     group0.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     group0.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    group0.add_argument('-d', '--data-file', metavar='FILE', help=" If you don't have a merged profile, then you can supply a matrix of coverage values of \
-                                                                    genes in samples. The matrix should include row titles (with gene_ids) and column titles \
-                                                                    (with sample names). The matrix should include at least two samples")
     group1 = parser.add_argument_group('ESSENTIAL OUTPUTS', 'The outputs of the algorithm are: an anvio additional layers format file with the classification \
                                                             information for genes. An anvio samples information file with detectino information per sample. \
                                                             In addition, when a profile database is given then a gene-coverages, and gene-detection tables \
@@ -45,18 +42,20 @@ if __name__ == '__main__':
                         help='An additional layer file to append to the one created by the algorithm')
     groupB.add_argument('-S', '--samples-information', metavar='FILE', dest='samples_information_to_append',
                         default=None, help='A samples information file to append to the one created by the algorithm')
-    groupB.add_argument('-D', '--gene_detection_data_file', metavar='FILE', help=" If you don't have a merged profile, then you can supply a matrix of detection values of \
-                                                                    genes in samples. The matrix should include row titles (with gene_ids) and column titles \
-                                                                    (with sample names). The gene_ids and sample_ids should match the ones in the gene_coverages data-file.")
     groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': False}))
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id', {'required': False}))
     groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file', {'required': False}))
     groupB.add_argument('--store-gene-detections-and-gene-coverages-tables', action='store_true', default=False, help='If declared, then the gene-coverages and gene-detections tables would be saved.\
                         This is only relevant when working with a profile database')
-    groupB.add_argument('--exclude-samples', metavar='FILE', default=None, help='List of samples to exclude from the analysis.')
+    groupB.add_argument('--exclude-samples', metavar='FILE', default=None, help='List of samples to exclude for the analysis.')
+    groupB.add_argument('--include-samples', metavar='FILE', default=None, help='List of samples to include for the analysis.')
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
-    groupC.add_argument('--alpha', '--genome-presence-threshold', metavar='NUM', type=float, default=0.7,
-                        help='Minimal portion of genes in a sample for it to be considered positive.')
+    groupC.add_argument('--alpha', '--genome-detection-uncertainty', metavar='NUM', type=float, default=0.25,
+                        help='Determines the range of sample detection values that are considered negative, ambiguous or positive. \
+                        Min of 0 and smaller than 0.5, default of 0.25. For exmaple for the default samples with detection \
+                        below  0.5-0.25 = 0.25 will be considered negative (i.e. donot contain the genome), samples with detection \
+                        between 0.25 and 0.75 would be ambiguous (and hence would not be used for the classification), and samples with \
+                        detection above 0.75 would be considered positive (i.e. contain the genome).')
     groupC.add_argument('--beta', '--genome-absence-threhold', metavar='NUM', type=float, default=0.3,
                         help='Samples with number of present genes (according to the gene presence/absence criteria), that exceeds \
                         this threshold, byt does not exceed the --genome-presence-threshold are considered ambiguous')
