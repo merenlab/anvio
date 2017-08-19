@@ -22,18 +22,58 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+
+
 def filter_FASTA_by_blast_results(args):
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    input_fasta_file_path = A('fasta_file')
+    blast_output_file_path = A('blast_output')
+    output_file_path = A('output_file')
+    threshold = A('threshold') or 30.0
+    special_outfmt = A('special_outfmt')
+
+    if not output_file_path:
+        raise ConfigError("An output file path is required for this to work.")
+
+    if not blast_output_file_path:
+        raise ConfigError("You forgot to provide an input BLAST output.")
+
+    if not input_fasta_file_path:
+        raise ConfigError("You must declare an input FASTA file path...")
+
+    try:
+        threshold = float(threshold)
+    except:
+        raise ConfigError("Threshold must be of type int or float.")
+
+    filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
+
     # be told or infer the parameter ordering for blast output
-    if args.special_outfmt:
+    if special_outfmt:
         # if you're here its custom
         cols = args.special_outfmt.split(" ")
     else:
         # if you're here its default
-        cols = ["qseqid","sseqid","pident","length","mismatch","gparser.pen",
-                "qstart","qend","sstart","send","evalue","bitscore"]
+        cols = ["qseqid", "sseqid", "pident", "length", "mismatch", "gapopen",
+                "qstart", "qend", "sstart", "send", "evalue", "bitscore"]
+
+    filesnpaths.is_file_tab_delimited(blast_output_file_path, expected_number_of_fields=len(cols))
+
+    # DONE WITH THE INITAL CHECKS. TIME TO GET READY FOR THE ACTUAL STUFF
+    # BUT FIRST, REPORTING.
+
+    run.info('Original FASTA file', input_fasta_file_path)
+    run.info('BLAST output file', blast_output_file_path)
+    run.info('Threshold for filtering', '%.1f%%' % threshold)
+    run.info('Special OUTFMT?', special_outfmt != None)
+    if special_outfmt:
+        run.info('Special OUTFMT', "'%s'" % ' '.join(cols))
 
     # read in blast as pandas DataFrame
-    blastout = pd.read_csv(args.blast, sep="\t", names=cols)
+    blastout = pd.read_csv(blast_output_file_path, sep="\t", names=cols)
 
     # include only highest bitscore results for each sequence
     idx = blastout.groupby("qseqid")["bitscore"].transform(max) == blastout["bitscore"]
@@ -52,7 +92,7 @@ def filter_FASTA_by_blast_results(args):
     seqs_to_keep = [str(x) for x in list(blastout.qseqid.unique())]
 
     # iterate through fasta. If fasta defline is in seqs_to_keep, add to new fasta
-    output = u.FastaOutput(args.output_file)
+    output = u.FastaOutput(output_file_path)
     fasta = u.SequenceSource(args.fasta_file)
     while next(fasta):
         if fasta.id in seqs_to_keep:
@@ -80,7 +120,7 @@ if __name__ == '__main__':
                                 gapopen qstart qend sstart send evalue bitscore\"` flag, the input for \
                                 this parameter should be: \"qseqid sseqid pident qlen length mismatch \
                                 gapopen qstart qend sstart send evalue bitscore\"")
-    parser.add_argument("-t", "--threshold", required = True, type = float, help = "What `proper_pident`\
+    parser.add_argument("-t", "--threshold", required = True, type = float, default=30.0, help = "What `proper_pident`\
                                 threshold do you want to use for filtering out sequences whose top bit-score\
                                 matches have `proper_pident`s less than this threshold?  We have defined \
                                 `proper_pident` to be the percentage of the query amino acids that both \
@@ -88,7 +128,8 @@ if __name__ == '__main__':
                                 Note that the `pident` parameter output by BLAST does not include regions\
                                 of the query sequence unaligned to the matched sequence, whereas `proper_pident`\
                                 does. For example, a sequence that's only half aligned by a match but with 100%%\
-                                identity at matched regions has a `pident` of 100 but a `proper_pident` of 50.")
+                                identity at matched regions has a `pident` of 100 but a `proper_pident` of 50. The\
+                                default is %(default).1f%%.")
 
     args = parser.parse_args()
 
