@@ -72,35 +72,48 @@ def filter_FASTA_by_blast_results(args):
     if special_outfmt:
         run.info('Special OUTFMT', "'%s'" % ' '.join(cols))
 
-    # read in blast as pandas DataFrame
+    progress.new('Processing data')
+
+    progress.update('Reading BLAST output file...')
     blastout = pd.read_csv(blast_output_file_path, sep="\t", names=cols)
 
-    # include only highest bitscore results for each sequence
+    progress.update('Selecting the hits with highest bitscore for each sequence...')
     idx = blastout.groupby("qseqid")["bitscore"].transform(max) == blastout["bitscore"]
     blastout = blastout[idx]
 
-    # Create proper_pident column. Rarely, the reported align length is greater
+    progress.update('Generating a proper idnetity column in the data frame...')
+    # Rarely, the reported align length is greater
     # than the query sequence length as a result of indels. If this ever
     # hparser.ens we set the align length = query sequence length.
     blastout["proper_pident"] = blastout["length"]/blastout["qlen"]
     blastout.loc[blastout["proper_pident"]>1, "proper_pident"] = 1
     blastout["proper_pident"] *= blastout["pident"]
 
-    # filter (and order) according to proper_pident
+    progress.update('Filtering hits based on proper identity scores...')
     blastout = blastout[blastout["proper_pident"] >= args.threshold]
     blastout = blastout.sort_values("proper_pident",ascending=False)
     seqs_to_keep = [str(x) for x in list(blastout.qseqid.unique())]
 
     # iterate through fasta. If fasta defline is in seqs_to_keep, add to new fasta
+    progress.update('Filtering input FASTA file...')
     output = u.FastaOutput(output_file_path)
     fasta = u.SequenceSource(args.fasta_file)
+    total_num_seq, filtered_num_seq = 0, 0
     while next(fasta):
+        total_num_seq += 1
         if fasta.id in seqs_to_keep:
+            filtered_num_seq += 1
             output.write_id(fasta.id)
             output.write_seq(fasta.seq, split = False)
 
     fasta.close()
     output.close()
+
+    progress.end()
+
+    run.info('Total number of sequences', pp(total_num_seq))
+    run.info('Final number of filtered sequences', pp(filtered_num_seq))
+    run.info('Filtered FASTA output', output_file_path, mc='green')
 
 
 if __name__ == '__main__':
