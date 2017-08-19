@@ -9,14 +9,17 @@
 
 import anvio
 import numpy as np
-import anvio.utils as utils
+import pandas as pd
+import matplotlib.pyplot as plt
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
+from math import ceil
+from math import floor
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
-
+from matplotlib.backends.backend_pdf import PdfPages
 
 __author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
@@ -31,6 +34,70 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
+# Defining the structure of the sample information dictionary
+
+def get_non_outliers(v):
+    """ returns the interqurtile range (IQR) for the input pandas series"""
+    q1 = np.percentile(v, 25)
+    q3 = np.percentile(v, 75)
+    IQR = q3 - q1
+    non_outliers = (v >= q1 - 1.5 * IQR) & (v <= q3 + 1.5 * IQR) & v > 0
+    return non_outliers
+
+
+def plot_outliers(pdf_output_file, v, non_outliers, sample_id):
+    """ Takes a PdfFile object (matplotlib.backends.backend_pdf), a vector of coverage, and a boolean vector of 
+    the non-outlier indexes, and plots the non-outliers in blue and the outliers in red"""
+    mu = np.mean(v[non_outliers])
+    sigma  = np.std(v[non_outliers])
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.set_xlabel = 'Gene Number (ordered)'
+    ax.set_ylabel = r'$Gene Coverage^2$'
+    v_sqr = np.sqrt(v)
+    min_y = min(v_sqr)
+    range_y = max(v_sqr) - min_y
+    print(sample_id)
+    print(mu)
+    print(sigma)
+    ax.text(0.25 * max(v.index), min_y + 10**0.75*range_y, u'Mean = %d\n Standard deviation = %d' % (mu, sigma))
+    # sorting the coverage values
+    x_values = v.index
+    v.sort_values(inplace=True)
+    ax.semilogy(v.values,'r.')
+    ax.semilogy(v.reset_index().index[non_outliers[v.index]],v[non_outliers].values,'b.')
+    fig.suptitle("%s - sorted coverage values with outliers" % sample_id)
+    plt.savefig(pdf_output_file, format='pdf')
+    plt.close()
+
+    # plotting a histogram of the non-outliers
+    # This would allow to see if they resemble a normal distribution
+    number_of_hist_bins = 100
+    hist_range = (max(0,mu - 3 * sigma), mu + 3*sigma)
+    plt.hist(v[non_outliers.values], number_of_hist_bins,hist_range)
+    plt.title("%s - histogram of non-outliers" % sample_id)
+    plt.savefig(pdf_output_file, format='pdf')
+    plt.close()
+
+
+def get_sliding_window(N, window_portion, overlap=None):
+    """ Accepts an integer (number of items), a window size, and window overlap portion, and returns a list of tuples \
+    where each item is a pair of idexes, a start and end index"""
+    window = ceil(N * window_portion)
+    if overlap is None:
+        overlap = window * 0.5
+    overlap_before = ceil(overlap)
+    overlap_after = floor(overlap)
+    window_indexes = [(0,window - 1)]
+    max_index = window - 1
+    while max_index + overlap_after < N - 1:
+        window_indexes.append((max_index - overlap_before, max_index + overlap_after))
+        max_index += overlap_after
+        print(max_index)
+    window_indexes.append((N - window - 1, N-1))
+    return window_indexes
+
 
 class AlonsClassifier:
     def __init__(self, args, run=run, progress=progress):
@@ -39,7 +106,7 @@ class AlonsClassifier:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.gene_coverages_data_file_path = A('data_file')
-        self.gene_detection_data_file_path = A('gene_detection_data_file')
+        self.gene_detections_data_file_path = A('gene_detection_data_file')
         self.profile_db_path = A('profile_db')
         self.output_file_prefix = A('output_file_prefix')
         self.alpha = A('alpha')
@@ -49,19 +116,31 @@ class AlonsClassifier:
         self.zeta = A('zeta')
         self.additional_layers_to_append = A('additional_layers_to_append')
         self.samples_information_to_append = A('samples_information_to_append')
-        self.number_of_positive_samples = None
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
         self.store_gene_detections_and_gene_coverages_tables = A('store_gene_detections_and_gene_coverages_tables')
-        self.gene_coverages = {}
-        self.gene_detection = {}
+        self.exclude_samples = A('exclude_samples')
+        self.gene_coverages = pd.DataFrame.empty
+        self.gene_detections = pd.DataFrame.empty
         self.samples = {}
-        self.positive_samples = {}
-        self.negative_samples = {}
-        self.gene_class_information = {}
-        self.samples_information = {}
+        self.positive_samples = pd.DataFrame.empty
+        self.number_of_positive_samples = None
+        self.negative_samples = pd.DataFrame.empty
+        self.number_of_negative_samples = None
+        self.gene_class_information = pd.DataFrame.empty
+        self.samples_information = pd.DataFrame.empty
         self.profile_db = {}
+        self.gene_presence_absence_in_samples = pd.DataFrame.empty
+        self.gene_coverages_filtered = pd.DataFrame.empty
+
+        # check that there is a file like this
+        if self.exclude_samples:
+            filesnpaths.is_file_exists(self.exclude_samples)
+            self.samples_to_exclude = set([l.split('\t')[0].strip() for l in open(args.exclude_samples, 'rU').readlines()])
+            run.info('Excluding Samples', 'The following samples will be excluded: %s' % self.samples_to_exclude,)
+        else:
+            self.samples_to_exclude = set([])
 
         self.sanity_check()
         if self.profile_db_path is None:
@@ -75,19 +154,27 @@ class AlonsClassifier:
             else:
                 self.profile_db = ProfileSuperclass(args)
                 self.profile_db.init_gene_coverages_and_detection_dicts()
-                self.gene_coverages = self.profile_db.gene_coverages_dict
-                self.gene_detection = self.profile_db.gene_detection_dict
-                self.samples = set(next(iter(self.gene_coverages.values())).keys())
+                self.gene_coverages = pd.DataFrame.from_dict(self.profile_db.gene_coverages_dict, orient='index', dtype=float)
+                self.gene_coverages.drop(self.samples_to_exclude, axis=1, inplace=True)
+                self.Ng = len(self.gene_coverages.index)
+                self.gene_detections = pd.DataFrame.from_dict(self.profile_db.gene_detection_dict, orient='index', dtype=float)
+                self.gene_detections.drop(self.samples_to_exclude, axis=1, inplace=True)
+                self.samples = set(self.gene_coverages.columns)
 
 
+    def check_if_valid_portion_value(self, arg_name,arg_value):
+        """ Helper function to verify that an argument has a valid value for a non-zero portion (i.e. greater than zero and a max of 1)"""
+        if arg_value <= 0 or arg_value > 1:
+            raise ConfigError("%s value must be greater than zero and a max of 1, the value you supplied %s" % (arg_name,arg_value))
+       
     def sanity_check(self):
         """Basic sanity check for class inputs"""
 
         if self.profile_db_path is None and self.gene_coverages_data_file_path is None:
-            raise ConfigError("You must provide either a profile.db or a gene coverage matrix data file")
+            raise ConfigError("You must provide either a profile.db or a gene coverage self.gene_coverages_filtered data file")
 
         if self.profile_db_path and self.gene_coverages_data_file_path:
-            raise ConfigError("You provided both a profile database and a gene coverage matrix data file, you \
+            raise ConfigError("You provided both a profile database and a gene coverage self.gene_coverages_filtered data file, you \
             must provide only one or the other (hint: if you have a profile database, the use that")
 
         # checking output file
@@ -95,186 +182,135 @@ class AlonsClassifier:
         # checking alpha
         if not isinstance(self.alpha, float):
             raise ConfigError("alpha value must be a type float.")
-        if self.alpha <= 0 or self.alpha > 1:
-            raise ConfigError("alpha value must be greater than zero and a max of 1, the value you supplied %s" % self.alpha)
+        self.check_if_valid_portion_value("alpha", self.alpha)
 
         # Checking beta
         if not isinstance(self.beta, float):
             raise ConfigError("beta value must be a type float.")
-        if self.beta <= 0:
-            raise ConfigError("beta value must be greater than zero, the value you supplied %s" % self.beta)
+        self.check_if_valid_portion_value("beta", self.beta)
+        if self.beta > self.alpha:
+            raise ConfigError("beta value must be smaller than alpha value. The beta value you specified is %s while the alpha value\
+            is %s" % (self.beta, self.alpha))
 
         # Checking gamma
         if not isinstance(self.gamma, float):
             raise ConfigError("Gamma value must be a type float.")
-        if self.gamma <= 0:
-            raise ConfigError("Gamma value must be greater than zero, the value you supplied %s" % self.gamma)
+        self.check_if_valid_portion_value("gamma", self.gamma)
 
         # Checking eta
-        if self.eta <= 0 or self.eta > 1:
-            raise ConfigError("eta value must be greater than zero and a max of 1, the value you supplied %s" % self.eta)
+        self.check_if_valid_portion_value("eta", self.eta) 
 
         if self.collection_name:
             if not self.profile_db_path:
-                raise ConfigError("You specified a collection name %s, but you provided a gene coverage matrix data file \
+                raise ConfigError("You specified a collection name %s, but you provided a gene coverage self.gene_coverages_filtered data file \
                  collections are only available when working with a profile database." % self.collection_name)
 
 
     def get_data_from_txt_file(self):
         """ Reads the coverage data from TAB delimited file """
-        self.samples = set(utils.get_columns_of_TAB_delim_file(self.gene_coverages_data_file_path))
-        self.gene_coverages = utils.get_TAB_delimited_file_as_dictionary(self.gene_coverages_data_file_path, column_mapping=[int] + [float] * len(self.samples))
+        self.gene_coverages = pd.read_table(self.gene_coverages_data_file_path, sep='\t', header=0, index_col=0)
+        self.gene_coverages.drop(self.samples_to_exclude, axis=1, inplace=True)
+        self.Ng = len(self.gene_coverages.index)
+        self.samples = set(self.gene_coverages.columns.values)
         # checking if a gene_detection file was also supplied
-        if self.gene_detection_data_file_path:
-            self.gene_detection = utils.get_TAB_delimited_file_as_dictionary(self.gene_detection_data_file_path, column_mapping=[int] + [float] * len(self.samples))
+        if self.gene_detections_data_file_path:
+            self.gene_detections = pd.read_table(self.gene_coverages_data_file_path, sep='\t', header=0, index_col=0)
+            self.gene_detections.drop(self.samples_to_exclude, axis=1, inplace=True)
             # making sure that the tables are compatible, notice we're only checking if gene_detection contains everything that's in gene_coverages (and not vise versa)
-            for gene_id in self.gene_coverages:
-                if gene_id not in self.gene_detection:
+            for gene_id in self.gene_coverages.index:
+                if gene_id not in self.gene_detections.index:
                     raise ConfigError("Your tables are not compatible. For example gene_id %s is in %s, but not in %s" % (gene_id, self.gene_coverages_data_file_path,
-                                                                                                                         self.gene_detection_data_file_path))
-            gene_detection_sample_list = next(iter(self.gene_detection.values())).keys()
-            for sample_id in next(iter(self.gene_coverages.values())).keys():
-                if sample_id not in gene_detection_sample_list:
+                                                                                                                         self.gene_detections_data_file_path))
+            for sample_id in self.samples:
+                if sample_id not in self.gene_detections.columns.values:
                     raise ConfigError("Your tables are not compatible. For example sample_id %s is in %s, but not in %s" % (sample_id, self.gene_coverages_data_file_path,
-                                                                                                                         self.gene_detection_data_file_path))
+                                                                                                                         self.gene_detections_data_file_path))
 
 
-    def apply_func_to_genes_in_sample(self, func, list_of_genes=None):
-        """ Apply the give function on the list of genes in each sample. The function is expected to accept a list """
-        if not list_of_genes:
-            list_of_genes = self.gene_coverages.keys()
-        d = dict(zip(self.samples, [next(map(func, [[self.gene_coverages[gene_id][sample_id] for gene_id in list_of_genes]])) for
-                           sample_id in self.samples]))
-        return d
+    def set_gene_presence_absence_in_samples(self):
+        """ Determines the presence/absense of genes according to the gene detection threshold.
+            The following arguments are populated:
+                self.gene_presence_absence_in_samples
+                self.gene_coverages_filtered
+        """
+        self.gene_presence_absence_in_samples = self.gene_detections > self.zeta
+        self.gene_coverages_filtered = self.gene_coverages.copy()
+        self.gene_coverages_filtered[~self.gene_presence_absence_in_samples] = 0
 
 
-    def get_mean_coverage_in_samples(self, list_of_genes=None):
-        """ Returns a dictionary with of the average coverage value of the list of genes per sample. if no list of genes is
-        supplied then the average is calculated over all genes """
-        if not self.samples:
-            # if all samples don't contain the genome then return 0 for mean value
-            return 0
-        else:
-            mean_coverage_in_samples = self.apply_func_to_genes_in_sample(np.mean, list_of_genes)
-            return mean_coverage_in_samples
-
-
-    def get_std_in_samples(self, list_of_genes=None):
-        """ Returns a dictionary with of the standard deviation of the coverage values of the list of genes per sample.
-        if no list of genes is supplied then the average is calculated over all genes """
-        std_in_samples = self.apply_func_to_genes_in_sample(np.std, list_of_genes)
-        return std_in_samples
-
-
-    def get_detection_of_genes(self, mean_coverage_in_samples, std_in_samples):
-        """ Returns a dictionary (of dictionaries), where for each gene_id, and each sample_id the detection of the gene
-        is determined. The criteria for detection is having coverage that is greater than 0 and also that is not more
-        than gamma (default is gamma=3) standard deviations below the mean coverage in the sample.
-        Notice that the mean coverage isn't the mean of all genes in the sample necesarilly. In fact it would be the mean of
-        only the taxon-specific genes."""
-        detection_of_genes = {}
-        non_zero_non_detections = False
-        for gene_id in self.gene_coverages:
-            detection_of_genes[gene_id] = {}
-            detection_of_genes[gene_id]['number_of_detections'] = 0
-            detection_of_genes[gene_id]['detected_in_non_positive_samples'] = False
-            for sample in self.samples:
-                if sample in self.positive_samples or sample not in self.negative_samples:
-                # getting gene detection according to coverage criteria
-                # samples that are ambiguous (neither negative nor positive)
-                    detection_of_genes[gene_id][sample] = self.gene_coverages[gene_id][sample] > max(0,mean_coverage_in_samples[sample] -
-                                                                                 self.gamma*std_in_samples[sample])
-                else:
-                # if the sample is a negative sample or the presence of the genome is unknown then the threshold for detections is
-                # more stringent and requires coverage significantly higher than the coverage of the TSC genes
-                    detection_of_genes[gene_id][sample] = self.gene_coverages[gene_id][sample] > max(0,mean_coverage_in_samples[sample] +
-                                                                                 self.gamma*std_in_samples[sample])
-                    detection_of_genes[gene_id]['detected_in_non_positive_samples'] += detection_of_genes[gene_id][sample]
-                if self.gene_detection:
-                    # if we have the gene detection (previously known as "percent covered") information then we will also use it to determine detection in samples:
-                    gene_detection_above_threshold = self.gene_detection[gene_id][sample] > self.zeta
-                    detection_of_genes[gene_id][sample] = detection_of_genes[gene_id][sample] * gene_detection_above_threshold
-                detection_of_genes[gene_id]['number_of_detections'] += detection_of_genes[gene_id][sample]
-                if self.gene_coverages[gene_id][sample] > 0 and self.gene_coverages[gene_id][sample] < mean_coverage_in_samples[sample] - \
-                        self.gamma*std_in_samples[sample]:
-                    non_zero_non_detections = True
-        if non_zero_non_detections:
-            # print('gene %s, in some sample has non-zero coverage %s, and it has been marked as not detected due '
-                  # 'to the detection criteria' % (gene_id, data[gene_id][sample]))
-                  print('some genes in some samples were marked as not detected due to the detection criteria')
-
-        return detection_of_genes
-
-
-    def get_samples_information(self, detection_of_genes, alpha, genes_to_consider=None):
-        '''
-        Setting the values for the samples_information dictionary with the logical variable detection and the number of TSC genes 
-        for each sample. In addition the total number of positive samples (i.e. samples that contain the reference genome) saved in 
-        number_of_positive_samples.
-        '''
-        if not genes_to_consider:
-            # if no list of genes is supplied then considering all genes
-            genes_to_consider = detection_of_genes.keys()
-        samples_information = {}
-        self.number_of_positive_samples = 0
-        for sample_id in self.samples:
-            samples_information[sample_id] = {}
-            number_of_detected_genes_in_sample = len([gene_id for gene_id in genes_to_consider if detection_of_genes[gene_id][sample_id]])
-            samples_information[sample_id]['detection'] = number_of_detected_genes_in_sample > alpha * len(
-                genes_to_consider)
-            # There should be a better way to do this, but for now, if there is an intermediate value of genes that is
-            # detected then the sample would be considered neither positive nor negative
-            if number_of_detected_genes_in_sample > alpha * len(genes_to_consider):
-                samples_information[sample_id]['detection'] = True
-            elif number_of_detected_genes_in_sample > 0.5 * alpha * len(genes_to_consider):
-                samples_information[sample_id]['detection'] = None
-            else:
-                samples_information[sample_id]['detection'] = False
-            self.number_of_positive_samples += 1 if samples_information[sample_id]['detection'] else 0
-            samples_information[sample_id]['number_of_detected_genes'] = number_of_detected_genes_in_sample
-        self.samples_information = samples_information
-        self.run.warning('The number of positive samples is: %s ' % self.number_of_positive_samples)
-
-
-    def get_adjusted_std_for_gene_id(self, gene_id, mean_coverage_in_samples, detection_of_genes):
-        """Returns the adjusted standard deviation for a gene_id. The adjusted standard deviation is calculated 
-        only according to the positive samples (ones that contain the genome), and only in positive samples that 
-        contain the gene (according to the gene detection criteria)."""
-        # Note: originally I thought I would only consider samples in which the genome was detected, but in fact,
-        # if a gene is detected in a sample in which the genome is not detected then that is a good sign that this is
-        #  a TNS gene. But I still kept here the original definition of adjusted_std
-        # adjusted_std = np.std([d[gene_id, sample_id] / mean_coverage_in_samples[sample_id] for sample_id in samples if (
-        #         detection_of_genes[gene_id][sample_id] and samples_information[sample_id])])
+    def set_sample_detection_information(self):
+        """ Using the --genome-presence-threshold and the --genome-absence-threhold the samples are devided to three groups:
+                positive samples: samples in which the number of genes that are present (according to the --min-gene-detection threshold) is
+                    greater than --genome-presence-threshold
+                negative samples: samples in which the number of genes that are present (according to the --min-gene-detection threshold) is
+                    smaller than --genome-absence-threhold
+                ambiguous samples: all other samples (i.e. samples in which the number of genes that are present is between the two thresholds)
+            This function populates the following arguments of self:
+                self.positive_samples - a set of the positive sample ids self.negative_samples - a set of the negative sample ids
+                self.samples_information - dictionary with True, False, None for positive, negative and ambiguous samples respectively
+        """
+        MDG_samples_information_table_name      = 'MDG_classifier_samples_information'
+        MDG_samples_information_table_structure = ['samples', 'presence', 'number_of_detected_genes', 'number_of_taxon_specific_core_detected']
+        MDG_samples_information_table_types     = ['str', 'bool', 'int', 'int']
+        # create an empty dataframe
+        samples_information = pd.DataFrame(index=self.samples, columns=MDG_samples_information_table_structure[1:])
         
-        # First find all positive samples that also contain the gene
-        positive_samples_with_gene = []
-        for sample_id in self.positive_samples:
-            if detection_of_genes[gene_id][sample_id]:
-                positive_samples_with_gene.append(sample_id)
-        if not positive_samples_with_gene:
-            # If no positive samples contain the gene then we want the coverage consistency to be None
-            return -1, 0
-        else:
-            adjusted_gene_coverages = [self.gene_coverages[gene_id][sample_id]/mean_coverage_in_samples[sample_id] for sample_id in
-                                   positive_samples_with_gene]
-            adjusted_mean = np.mean(adjusted_gene_coverages)
-            adjusted_std = np.std(adjusted_gene_coverages)
-            return adjusted_std, adjusted_mean
+        # Compute the number of detected genes per samples
+        number_of_genes_in_sampels = self.gene_presence_absence_in_samples.sum(axis=0)
+        for sample in self.samples:
+            samples_information['number_of_detected_genes'][sample]= number_of_genes_in_sampels[sample]
+
+        self.positive_samples = set(number_of_genes_in_sampels[number_of_genes_in_sampels/ self.Ng > self.alpha].index)
+        self.negative_samples = set(number_of_genes_in_sampels[number_of_genes_in_sampels / self.Ng > self.beta].index) - self.positive_samples
+        for sample in self.positive_samples:
+            samples_information['presence'][sample] = True
+        for sample in self.negative_samples:
+            samples_information['presence'][sample] = False
+        self.samples_information = samples_information
+
+        self.number_of_positive_samples = len(self.positive_samples)
+        self.number_of_negative_samples = len(self.negative_samples)
+        self.run.warning('The number of positive samples is: %d ' % self.number_of_positive_samples)
+        self.run.warning('The number of negative samples is: %d ' % self.number_of_negative_samples)
+        self.run.warning('The number of ambiuous samples is: %d ' % (len(self.samples - self.negative_samples - self.positive_samples)))
 
 
-    def get_adjusted_stds(self, mean_coverage_in_samples, detection_of_genes):
-        """ Returns a dictionary with the gene ids as keys and the adjusted standard deviation per gene"""
-        adjusted_std = {}
-        adjusted_mean = {}
-        # Make sure that there is at least one positive sample
-        if not self.number_of_positive_samples:
-            raise ConfigError("It seems that the reference genome is not detected in any of your samples. \
-            You might consider changing some of the parameters (for example --min-gene-detection, --min-portion-of-TSC \
-            or --core-min-detection).")
-            
-        for gene_id in self.gene_coverages:
-            adjusted_std[gene_id], adjusted_mean[gene_id] = self.get_adjusted_std_for_gene_id(gene_id, mean_coverage_in_samples, detection_of_genes)
-        return adjusted_std, adjusted_mean
+    def get_taxon_specific_genes_in_samples(self, additional_description=''):
+        """ Use only positive samples to identify the single copy core genes:
+            Assumption: At least 25% of the genes are single copy and taxon specific (so that it is included in the Q1Q3 range).
+                a. Sort coverage vaules
+                b. Sliding window (with 50% overlapping windows) that has least outliers with the smallest range. The reason for 50% \
+                overlap is that this guarentees that if the assumption that at least 25% are single copy taxon specific then, it is \
+                guarentees that at least one window will have Q1Q3 composed only from taxon specific genes.
+                    i.Run sliding window and for each step calculate the number of outliers and the range
+                    ii.Sort according the number of outliers and then according to the 
+        """
+        # get the indixes that sort each column separately TODO: delete this part if you don't need it
+        sorting_indexes = self.gene_coverages_filtered.apply(lambda x: x.sort_values(ascending=True).index)
+        # TODO: I'm creating a copy but probably I don't need to
+        coverages_pdf_output = self.output_file_prefix + additional_description + '-coverages.pdf'
+        coverages_pdf_output_file = PdfPages(coverages_pdf_output)
+        # creating dataframe for non-outliers (see usage below)
+        non_outliers = pd.DataFrame().reindex_like(self.gene_coverages)
+        sorting_indexes = self.gene_coverages_filtered.apply(lambda x: x.sort_values(ascending=True).index)
+        print(self.samples_information)
+        print(self.positive_samples)
+        print(self.negative_samples)
+        print(self.samples)
+        for sample in self.positive_samples:
+            # a vector of the coverages for the sample
+            v = self.gene_coverages_filtered[sample].copy()
+            # set coverage to zero if not above gene detection threshold
+            v[self.gene_detections[sample] < self.zeta] = 0
+            # get non-outliers according to the Interquartile range
+            non_outliers[sample] = get_non_outliers(v)
+            plot_outliers(coverages_pdf_output_file, v, non_outliers[sample], sample)
+        coverages_pdf_output_file.close()
+
+        # finding the genes that are non-outliers in the majority of samples
+        # the required majority is defined by the user defined argument self.eta (--core-min-detection)
+        non_outliers_all = non_outliers[non_outliers.sum(axis=1) >= self.number_of_positive_samples * self.eta].index
+        return non_outliers_all
 
 
     def get_gene_specificity(self, detection_of_genes):
@@ -324,18 +360,6 @@ class AlonsClassifier:
                 taxon_specificity[gene_id] = 'TNS'
         return taxon_specificity
 
-    def get_loss_function_value(self, taxon_specificity, adjusted_stds, beta):
-        loss = 0
-        for gene_id in taxon_specificity:
-            if taxon_specificity[gene_id] == 'TS':
-                # Notice: here adjusted std includes the samples that don't have the genome detected in them (it kind of
-                # makes sense, because if the gene is detected even though the genome is not, then maybe it's not
-                # taxon-specific
-                loss += adjusted_stds[gene_id]
-            else:
-                loss += beta
-        return loss
-
 
     def get_number_of_detections_for_gene(self, detection_of_genes, gene_id, samples):
         detections = 0
@@ -381,6 +405,7 @@ class AlonsClassifier:
 
 
     def report_gene_class_information(self):
+        # TODO: change to pandas
         C = lambda dictionary, field, value : len([dict_id for dict_id in dictionary if dictionary[dict_id][field]==value])
 
         for gene_class in ['TSC', 'TSA', 'TNC', 'TNA', 'None']:
@@ -393,67 +418,22 @@ class AlonsClassifier:
     def get_gene_classes(self):
         """ returning the classification per gene along with detection in samples (i.e. for each sample, whether the
         genome has been detected in the sample or not """
-        TSC_genes = set(self.gene_coverages.keys())
-        converged = False
-        loss = None
-        self.gene_class_information = {}
-        # Initializing all the samples to be positive
-        self.positive_samples = self.samples
-        self.negative_samples = {}
-        self.adjusted_stds = 0
-        self.adjusted_mean = dict.fromkeys(TSC_genes,1)
+        # need to start a new gene_class_information dict
+        # this is due to the fact that if the algorithm is ran on a list of bins then this necessary
+        self.gene_class_information = pd.DataFrame(index=self.gene_coverages.index,columns=['gene_class'])
+        # use a gene detection threshold to determine gene presence/absence in samples
+        self.set_gene_presence_absence_in_samples()
+        # use a gene presence threshold classify samples as positive, negative or ambiguous
+        self.set_sample_detection_information()
+        # 
+        non_outliers_all = self.get_taxon_specific_genes_in_samples()
 
-        while not converged:
-            # mean of coverage of all TS genes in each sample
-            mean_coverage_of_TS_in_samples = self.get_mean_coverage_in_samples(TSC_genes)
-
-            # Get the standard deviation of the taxon-specific genes in a sample
-            # TODO: right now, single copy, and multi-copy genes would be treated identically. Hence, multi-copy genes
-            # would skew both the mean and the std of the taxon-specific genes.
-            std_of_TS_in_samples = self.get_std_in_samples(TSC_genes)
-            detection_of_genes = self.get_detection_of_genes(mean_coverage_of_TS_in_samples, std_of_TS_in_samples)
-            self.get_samples_information(detection_of_genes, self.alpha, TSC_genes)
-            self.positive_samples = {sample_id for sample_id in self.samples if self.samples_information[sample_id]['detection']}
-            self.negative_samples = {sample_id for sample_id in self.samples if self.samples_information[sample_id]['detection'] == False}
-            self.adjusted_stds, self.adjusted_mean = self.get_adjusted_stds(mean_coverage_of_TS_in_samples,detection_of_genes)
-            coverage_consistency = self.get_coverage_consistency(self.adjusted_stds, detection_of_genes, self.beta)
-            gene_specificity = self.get_gene_specificity(detection_of_genes)
-            taxon_specificity = self.get_taxon_specificity(coverage_consistency, gene_specificity)
-            new_loss = self.get_loss_function_value(taxon_specificity, self.adjusted_stds, self.beta)
-            epsilon = 2 * self.beta
-
-            if loss is not None:
-                converged = True
-            loss = new_loss
-
-            self.run.warning('current value of loss function: %s ' % loss)
-
-            for gene_id in self.gene_coverages:
-                # setup a dict for gene id:
-                g = {}
-
-                g['gene_specificity'] = gene_specificity[gene_id]
-                g['gene_coverage_consistency'] = coverage_consistency[gene_id]
-                g['number_of_detections'] = detection_of_genes[gene_id]['number_of_detections']
-                g['core_or_accessory'] = self.get_core_accessory_info(detection_of_genes, gene_id, self.eta)
-                g['gene_class'] = self.get_gene_class(taxon_specificity[gene_id], g['core_or_accessory'])
-                g['adjusted_stds'] = self.adjusted_stds[gene_id]
-                g['adjusted_mean'] = self.adjusted_mean[gene_id]
-
-                # counting the number of positive samples that contain the gene
-                g['detection_in_positive_samples'] = len([sample_id for sample_id in self.positive_samples if detection_of_genes[gene_id][sample_id]])
-
-                # Getting the portion of positive samples that contain the gene
-                g['portion_detected'] = g['detection_in_positive_samples'] / len(self.positive_samples) if g['detection_in_positive_samples'] else 0
-
-
-                self.gene_class_information[gene_id] = g
-
-            TSC_genes = {gene_id for gene_id in self.gene_class_information if self.gene_class_information[gene_id]['gene_class']=='TSC'}
-
-            self.report_gene_class_information()
-
-        self.get_samples_information(detection_of_genes, self.alpha, genes_to_consider=TSC_genes)
+        # set the gene classes
+        for gene_id in self.gene_coverages_filtered.index:
+            if gene_id in non_outliers_all:
+                self.gene_class_information['gene_class'][gene_id] = self.get_gene_class('TS', 'core')
+            else:
+                self.gene_class_information['gene_class'][gene_id] = self.get_gene_class(None,None)
 
 
     def get_specificity_from_class_id(self, class_id):
@@ -478,43 +458,41 @@ class AlonsClassifier:
     def save_gene_class_information_in_additional_layers(self, additional_description=''):
         if not self.additional_layers_to_append:
             additional_column_titles = []
-            additional_layers_dict = self.gene_class_information
+            additional_layers_df = self.gene_class_information
         else:
-            additional_column_titles = utils.get_columns_of_TAB_delim_file(self.additional_layers_to_append)
-            additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_to_append,
-                                                                                dict_to_append=self.gene_class_information,
-                                                                                assign_none_for_missing=True,
-                                                                                column_mapping=[int] + [str] * len(additional_column_titles))
+            additional_layers_df = pd.read_table(self.additional_layers_to_append)
+            try:
+                # concatinating the gene_class_information with the user provided additional layers
+                additional_layers_df.join(self.gene_class_information, how='outer')
+            except ValueError as e:
+                raise ConfigError("Something went wrong. This is what we know: %s. This could be happening because \
+                you have columns in your --additional-layers file with the following title: %s" % (e, self.gene_class_information.columns.tolist()))
 
         if additional_description:
             additional_description = '-' + additional_description
-
         additional_layers_file_name = self.output_file_prefix + additional_description + '-additional-layers.txt'
-        headers = headers=['gene_callers_id', 'gene_class', 'number_of_detections', 'portion_detected','gene_specificity','gene_coverage_consistency','core_or_accessory', 'adjusted_mean', 'adjusted_stds'] + additional_column_titles
-
-        utils.store_dict_as_TAB_delimited_file(additional_layers_dict, additional_layers_file_name, headers=headers)
+        additional_layers_df.to_csv(additional_layers_file_name, sep='\t', index_label='gene_callers_id')
 
 
     def save_samples_information(self, additional_description=''):
+        # TODO: there used to be this here:
+        #self.run.warning(self.samples_information)
         if not self.samples_information_to_append:
-            samples_information_column_titles = list(self.samples_information[next(iter(self.samples_information))])
-            samples_information_dict = self.samples_information
+            samples_information_df = self.samples_information
         else:
-            samples_information_column_titles = utils.get_columns_of_TAB_delim_file(self.samples_information_to_append)
-            column_mapping = [str] * (len(samples_information_column_titles) + 2)
-            self.run.warning(self.samples_information)
-            samples_information_dict = utils.get_TAB_delimited_file_as_dictionary(self.samples_information_to_append,
-                                                                                  dict_to_append=self.samples_information,
-                                                                                  assign_none_for_missing=True,
-                                                                                  column_mapping=column_mapping)
+            samples_information_df = pd.read_table(self.samples_information_to_append)
+            try:
+                # concatinating the samples_information with the user provided samples_information file 
+                samples_information_df.join(self.samples_information, how='outer')
+            except ValueError as e:
+                raise ConfigError("Something went wrong. This is what we know: %s. This could be happening because \
+                you have columns in your --additional-layers file with the following title: %s" % (e, self.samples_information.columns.tolist()))
 
         if additional_description:
             additional_description = '-' + additional_description
 
         samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
-        utils.store_dict_as_TAB_delimited_file(samples_information_dict, samples_information_file_name,
-                                                   headers=['samples'] + samples_information_column_titles)
-
+        samples_information_df.to_csv(samples_information_file_name, sep='\t', index_label='samples')
 
     def save_gene_detection_and_coverage(self, additional_description=''):
         if additional_description:
@@ -523,15 +501,19 @@ class AlonsClassifier:
             prefix = self.output_file_prefix
         gene_coverages_file_name = prefix + '-gene-coverages.txt'
         gene_detections_file_name = prefix + '-gene-detections.txt'
-        utils.store_dict_as_TAB_delimited_file(self.gene_coverages, gene_coverages_file_name)
-        utils.store_dict_as_TAB_delimited_file(self.gene_detection, gene_detections_file_name)
+        self.gene_coverages.to_csv(gene_coverages_file_name, sep='\t', index_label='gene_callers_id')
+        self.gene_detections.to_csv(gene_detections_file_name, sep='\t', index_label='gene_callers_id')
 
 
     def get_coverage_and_detection_dict(self,bin_id):
         _bin = summarizer.Bin(self.summary, bin_id)
-        self.gene_coverages = _bin.gene_coverages
-        self.gene_detection = _bin.gene_detection
-        self.samples = set(next(iter(self.gene_coverages.values())).keys())
+        self.gene_coverages = pd.DataFrame.from_dict(_bin.gene_coverages, orient='index', dtype=float)
+        print(self.gene_coverages)
+        self.gene_coverages.drop(self.samples_to_exclude, axis=1, inplace=True)
+        self.Ng = len(self.gene_coverages.index)
+        self.gene_detections = pd.DataFrame.from_dict(_bin.gene_detection, orient='index', dtype=float)
+        self.gene_detections.drop(self.samples_to_exclude, axis=1, inplace=True)
+        self.samples = set(self.gene_coverages.columns.values)
 
 
     def classify(self):

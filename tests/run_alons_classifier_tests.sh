@@ -12,7 +12,7 @@ INFO "Initializing raw BAM files"
 # init raw bam files.
 for f in 41 62 74 75 79 94
 do
-    anvi-init-bam $files/HMP00$f.bam --output-file $output_dir/HMP00$f.bam
+    anvi-init-bam $files/HMP00$f-RAW.bam --output-file $output_dir/HMP00$f.bam
     echo
 done
 
@@ -35,38 +35,45 @@ anvi-merge $output_dir/HMP00*/*.db -o $output_dir/SAMPLES-MERGED -c $output_dir/
 INFO "Importing collection"
 anvi-import-collection -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db $files/TEST-COLLECTION.txt -C TEST
 
-INFO "Run anvi-alons-classifier on PROFILE database"
-anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL --store-gene-detections-and-gene-coverages-tables
+INFO "Run anvi-mcg-classifier on PROFILE database"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL
 
-INFO "Running anvi-alons-classifier on TAB-delimited files (no PROFILE database)"
-anvi-alons-classifier -d $output_dir/TEST-ALL-gene-coverages.txt -D $output_dir/TEST-ALL-gene-detections.txt -O $output_dir/TEST-ALL-TAB-delim
+##
+#INFO "Running anvi-mcg-classifier on TAB-delimited files (no PROFILE database)"
+#anvi-mcg-classifier -d $output_dir/TEST-ALL-gene-coverages.txt -D $output_dir/TEST-ALL-gene-detections.txt -O $output_dir/TEST-ALL-TAB-delim
+#
+# INFO "Generating a samples information database with samples information"
+# anvi-gen-samples-info-database -D $output_dir/TEST-ALL-samples-information.txt -o $output_dir/TEST-ALL-SAMPLES.db
+# #
+INFO "Running anvi-mcg-classifier on a collection"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL-BINS -C TEST
 
-INFO "Generating a samples information database with samples information"
-anvi-gen-samples-info-database -D $output_dir/TEST-ALL-samples-information.txt -o $output_dir/TEST-ALL-SAMPLES.db
+# #
+INFO "Running anvi-mcg-classifier on a bin"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1
+# #
+INFO "Running anvi-mcg-classifier on a bin with samples to exclude"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_exclude -C TEST -b Bin_1 --exclude-samples $files/samples_to_exclude.txt
 
-INFO "Running anvi-alons-classifier on a collection"
-anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL-BINS -C TEST
-
-INFO "Running anvi-alons-classifier on a bin"
-anvi-alons-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_1 -C TEST -b Bin_1
-
-INFO "A round of dry run to get the profile db created"
-# fire up the browser to show how does the merged samples look like.
-anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
-                 -A $output_dir/TEST-ALL-additional-layers.txt \
-                 -p $output_dir/TEST-ALL-manual-profile.db \
-                 -s $output_dir/TEST-ALL-SAMPLES.db \
-                 --manual \
-                 --dry-run
-
-INFO "Importing a default state into newly generated profile database"
-anvi-import-state -p $output_dir/TEST-ALL-manual-profile.db --state $files/default.json --name default
-
-INFO "Firing up the interactive interface"
-# fire up the browser to show how does the merged samples look like.
-anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
-                 -A $output_dir/TEST-ALL-additional-layers.txt \
-                 -p $output_dir/TEST-ALL-manual-profile.db \
-                 -s $output_dir/TEST-ALL-SAMPLES.db \
-                 --title "Alon's gene classifier" \
-                 --manual
+INFO "Running anvi-mcg-classifier on a bin with samples to include"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-Bin_include -C TEST -b Bin_1 --include-samples $files/samples_to_include.txt
+# INFO "A round of dry run to get the profile db created"
+# ## a dry-run of the interactive so it creates a profile database
+# anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
+#                  -A $output_dir/TEST-ALL-additional-layers.txt \
+#                  -p $output_dir/TEST-ALL-manual-profile.db \
+#                  -s $output_dir/TEST-ALL-SAMPLES.db \
+#                  --manual \
+#                  --dry-run
+# #
+# INFO "Importing a default state into newly generated profile database"
+# anvi-import-state -p $output_dir/TEST-ALL-manual-profile.db --state $files/default.json --name default
+# #
+# INFO "Firing up the interactive interface"
+# ## fire up the browser to show how does the merged samples look like.
+# anvi-interactive -d $output_dir/TEST-ALL-gene-coverages.txt \
+#                  -A $output_dir/TEST-ALL-additional-layers.txt \
+#                  -p $output_dir/TEST-ALL-manual-profile.db \
+#                  -s $output_dir/TEST-ALL-SAMPLES.db \
+#                  --title "Alon's gene classifier" \
+#                  --manual
