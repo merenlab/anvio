@@ -25,16 +25,11 @@ __email__ = "a.murat.eren@gmail.com"
 
 def filter_FASTA_by_blast_results(args):
 
-    # be told or infer the parameter ordering for blast output
-    if args.special_outfmt:
-        # if you're here its custom
-        cols = args.special_outfmt.split(" ") 
-    else:
-        # if you're here its default
-        cols = ["qseqid","sseqid","pident","length","mismatch","gparser.pen",
-                "qstart","qend","sstart","send","evalue","bitscore"]
+    if "qlen" not in args.outfmt:
+        raise ConfigError("Your table must include the non-default `qlen` parameter output by blast. See --outfmt help.")
 
     # read in blast as pandas DataFrame
+    cols = args.outfmt.split(" ") 
     blastout = pd.read_csv(args.blast, sep="\t", names=cols)
 
     # include only highest bitscore results for each sequence
@@ -79,13 +74,18 @@ if __name__ == '__main__':
     """BLAST table generated with blastp. `--outfmt 6` as the output format is
     assumed.""")
     
-    parser.add_argument("-s", "--special-outfmt", required = False, help = \
-    """If you used the non-default -outfmt 6 format, you must specify the strings
-    here. For example, if you used the `outfmt "6 qseqid sseqid pident qlen length
-    mismatch gparser.pen qstart qend sstart send evalue bitscore"` flag, the input for
-    this parameter should be:    
+    parser.add_argument("-s", "--outfmt", required = True, help = \
+    """You must specify the column ordering of your BLAST table. For example,
+    if you used the `outfmt "6 qseqid sseqid pident qlen length mismatch
+    gparser.pen qstart qend sstart send evalue bitscore"` flag during your
+    BLAST table creation, the input for this parameter should be:    
 
-        "qseqid sseqid pident qlen length mismatch gparser.pen qstart qend sstart send evalue bitscore"
+        "qseqid sseqid pident qlen length mismatch gparser.pen qstart qend
+        sstart send evalue bitscore"
+
+    Note that calculating `proper_pident` (see --threshold for a definition of
+    `proper_pident`) requires the `qlen` parameter, which is not provided by
+    the default BLAST outfmt.
     """)
     
     parser.add_argument("-t", "--threshold", required = True, type = float, help = \
