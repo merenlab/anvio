@@ -7,7 +7,6 @@ import pandas as pd
 # maybe not all are needed, who is to say?
 import anvio
 import anvio.fastalib as u
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
