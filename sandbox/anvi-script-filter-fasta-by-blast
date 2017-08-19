@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
-import numpy as np
 import pandas as pd
 
 # maybe not all are needed, who is to say?
@@ -24,11 +22,10 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 def filter_FASTA_by_blast_results(args):
-
     # be told or infer the parameter ordering for blast output
     if args.special_outfmt:
         # if you're here its custom
-        cols = args.special_outfmt.split(" ") 
+        cols = args.special_outfmt.split(" ")
     else:
         # if you're here its default
         cols = ["qseqid","sseqid","pident","length","mismatch","gparser.pen",
@@ -66,8 +63,8 @@ def filter_FASTA_by_blast_results(args):
 
 
 if __name__ == '__main__':
-
     import argparse
+
     parser = argparse.ArgumentParser(description=\
     """Filter FASTA file according to BLAST table (remove sequences with bad
     BLAST alignment.""")
@@ -78,16 +75,16 @@ if __name__ == '__main__':
     parser.add_argument("-b", "--blast", required = True, help = \
     """BLAST table generated with blastp. `--outfmt 6` as the output format is
     assumed.""")
-    
+
     parser.add_argument("-s", "--special-outfmt", required = False, help = \
     """If you used the non-default -outfmt 6 format, you must specify the strings
     here. For example, if you used the `outfmt "6 qseqid sseqid pident qlen length
     mismatch gparser.pen qstart qend sstart send evalue bitscore"` flag, the input for
-    this parameter should be:    
+    this parameter should be:
 
         "qseqid sseqid pident qlen length mismatch gparser.pen qstart qend sstart send evalue bitscore"
     """)
-    
+
     parser.add_argument("-t", "--threshold", required = True, type = float, help = \
     """What `proper_pident` threshold do you want to use for filtering out
     sequences whose top bit-score matches have `proper_pident`s less than this
