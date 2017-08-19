@@ -32,7 +32,7 @@ def filter_FASTA_by_blast_results(args):
     blast_output_file_path = A('blast_output')
     output_file_path = A('output_file')
     threshold = A('threshold') or 30.0
-    special_outfmt = A('special_outfmt')
+    outfmt = A('outfmt')
 
     if not output_file_path:
         raise ConfigError("An output file path is required for this to work.")
@@ -50,14 +50,12 @@ def filter_FASTA_by_blast_results(args):
 
     filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
 
-    # be told or infer the parameter ordering for blast output
-    if special_outfmt:
-        # if you're here its custom
-        cols = args.special_outfmt.split(" ")
-    else:
-        # if you're here its default
-        cols = ["qseqid", "sseqid", "pident", "length", "mismatch", "gapopen",
-                "qstart", "qend", "sstart", "send", "evalue", "bitscore"]
+    cols = outfmt.split(" ")
+    required_cols = ['qseqid', 'bitscore', 'length', 'qlen', 'pident']
+    if len([c for c in required_cols if c not in cols]):
+        raise ConfigError("According to your `outfmt` parameter, columns in your BLAST output table\
+                           lack one or more important stuff. These columns must be present in your\
+                           output table (see help for details): %s." % ', '.join(required_cols))
 
     filesnpaths.is_file_tab_delimited(blast_output_file_path, expected_number_of_fields=len(cols))
 
@@ -67,9 +65,7 @@ def filter_FASTA_by_blast_results(args):
     run.info('Original FASTA file', input_fasta_file_path)
     run.info('BLAST output file', blast_output_file_path)
     run.info('Threshold for filtering', '%.1f%%' % threshold)
-    run.info('Special OUTFMT?', special_outfmt != None)
-    if special_outfmt:
-        run.info('Special OUTFMT', "'%s'" % ' '.join(cols))
+    run.info('OUTFMT', "'%s'" % ' '.join(cols))
 
     progress.new('Processing data')
 
@@ -83,7 +79,7 @@ def filter_FASTA_by_blast_results(args):
     progress.update('Generating a proper idnetity column in the data frame...')
     # Rarely, the reported align length is greater
     # than the query sequence length as a result of indels. If this ever
-    # hparser.ens we set the align length = query sequence length.
+    # happens we set the align length = query sequence length.
     blastout["proper_pident"] = blastout["length"]/blastout["qlen"]
     blastout.loc[blastout["proper_pident"]>1, "proper_pident"] = 1
     blastout["proper_pident"] *= blastout["pident"]
@@ -126,12 +122,18 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': False}))
     parser.add_argument("-b", "--blast-output", required = True, help = "BLAST table generated with \
                                 blastp. `--outfmt 6` as the output format is assumed.")
-    parser.add_argument("-s", "--special-outfmt", required = False, help = "If you used a non-default\
-                                -outfmt 6 format, you must specify the strings here. For example, if \
-                                you used the `outfmt \"6 qseqid sseqid pident qlen length mismatch \
-                                gapopen qstart qend sstart send evalue bitscore\"` flag, the input for \
-                                this parameter should be: \"qseqid sseqid pident qlen length mismatch \
-                                gapopen qstart qend sstart send evalue bitscore\"")
+    parser.add_argument("-s", "--outfmt", required = True, help = "Specify the column ordering of your\
+                                BLAST report. We add the following paramter to our BLAST searches\
+                                so the output report contains the `qlen` field, which is not included by\
+                                default: `-outfmt '6 qseqid sseqid pident length mismatch gapopen qstart\
+                                qend sstart send evalue bitscore qlen slen'`. You may have used a different\
+                                `-outfmt` paramter, and you should use this parameter to explicitly define the\
+                                column names in your output file. For instance, if you had used the parameter\
+                                mentioned above, then the correct version of this parameter would be: \"qseqid\
+                                sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore\
+                                qlen slen\". Regardless of the BLAST output format, your columns MUST contain\
+                                the following parameters for this program to work properly: 'qseqid', \
+                                'bitscore', 'length', 'qlen', and 'pident'.")
     parser.add_argument("-t", "--threshold", required = True, type = float, default=30.0, help = "What `proper_pident`\
                                 threshold do you want to use for filtering out sequences whose top bit-score\
                                 matches have `proper_pident`s less than this threshold?  We have defined \
