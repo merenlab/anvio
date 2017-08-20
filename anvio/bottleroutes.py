@@ -663,7 +663,7 @@ class BottleApplication(Bottle):
         if not self.interactive.genomes_storage_is_available:
             return data
 
-        AA_sequences = self.interactive.get_AA_sequences_for_PCs(pc_names=set([pc_name]))
+        AA_sequences = self.interactive.get_sequences_for_PCs(pc_names=set([pc_name]))
 
         # add the list of gene caller ids associated with this protein cluster into `data`:
         for genome_name in self.interactive.protein_clusters[pc_name]:
@@ -725,9 +725,9 @@ class BottleApplication(Bottle):
         temp_fasta_file = filesnpaths.get_temp_file_path()
         temp_tree_file = filesnpaths.get_temp_file_path()
         tree_text = None
-        
+
         try:
-            self.interactive.write_AA_sequences_for_phylogenomics(pc_names=pcs, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls)
+            self.interactive.write_sequences_in_PCs_for_phylogenomics(pc_names=pcs, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls)
             drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file, temp_tree_file)
             tree_text = open(temp_tree_file,'rb').read().decode()
 
