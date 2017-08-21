@@ -908,7 +908,18 @@ D = {
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should\
                       work just fine for most."}
                 ),
-    'api-url': (
+   'browser-path': (
+            ['--browser-path'],
+            {'metavar': 'PATH',
+             'type': str,
+             'default': None,
+             'help': "By default, anvi'o will use your default browser to launch the interactive interface. If you\
+                      would like to use something else than your system default, you can provide a full path for an\
+                      alternative browser using this parameter, and hope for the best. For instance we are using\
+                      this parameter to call Google's experimental browser, Canary, which performs better with\
+                      demanding visualizations."}
+                ),
+   'api-url': (
             ['--api-url'],
             {'metavar': 'API_URL',
              'type': str,
