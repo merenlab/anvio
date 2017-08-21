@@ -11,6 +11,7 @@ import shutil
 import psutil
 import smtplib
 import textwrap
+import webbrowser
 import subprocess
 import configparser
 import multiprocessing
@@ -1721,7 +1722,7 @@ def download_file(url, output_file_path, progress=progress, run=run):
     run.info('Downloaded succesfully', output_file_path)
 
 
-def run_selenium_and_export_svg(url, output_file_path, run=run):
+def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run):
     if filesnpaths.is_file_exists(output_file_path, dont_raise=True):
         raise FilesNPathsError("The output file already exists. Anvi'o does not like overwriting stuff.")
 
@@ -1738,7 +1739,13 @@ def run_selenium_and_export_svg(url, output_file_path, run=run):
                            do that but you don't have it. If you are lucky, you probably can install it by\
                            typing 'pip install selenium' or something :/")
 
-    driver = webdriver.Chrome()
+    if browser_path:
+        filesnpaths.is_file_exists(browser_path)
+        run.info_single('You are launching an alternative browser. Keep an eye on things!', mc='red', nl_before=1)
+        driver = webdriver.Chrome(executable_path=browser_path)
+    else:
+        driver = webdriver.Chrome()
+
     driver.wait = WebDriverWait(driver, 10)
     driver.set_window_size(1920, 1080)
     driver.get(url)
@@ -1761,6 +1768,16 @@ def run_selenium_and_export_svg(url, output_file_path, run=run):
     driver.quit()
 
     run.info_single('\'%s\' saved successfully.' % output_file_path)
+
+
+def open_url_in_browser(url, browser_path=None, run=run):
+    if browser_path:
+        filesnpaths.is_file_exists(browser_path)
+        run.info_single('You are launching an alternative browser. Keep an eye on things!', mc='red', nl_before=1)
+        webbrowser.register('users_preferred_browser', None, webbrowser.BackgroundBrowser(browser_path))
+        webbrowser.get('users_preferred_browser').open_new(url)
+    else:
+        webbrowser.open_new(url)
 
 
 def RepresentsInt(s):
