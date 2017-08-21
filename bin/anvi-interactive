@@ -88,6 +88,7 @@ groupE.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help':
                                  the interactive interface in "collection" mode. The default is "%(default)s".'}))
 groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
 groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+groupF.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
 groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
 groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
