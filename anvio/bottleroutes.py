@@ -16,7 +16,6 @@ import random
 import argparse
 import requests
 import datetime
-import webbrowser
 from multiprocessing import Process
 
 from bottle import Bottle
@@ -58,6 +57,7 @@ class BottleApplication(Bottle):
         self.interactive = interactive
         self.args = args
         self.read_only = args.read_only
+        self.browser_path = args.browser_path
 
         self.unique_session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
@@ -125,7 +125,10 @@ class BottleApplication(Bottle):
 
             if self.args.export_svg:
                 try:
-                    utils.run_selenium_and_export_svg("http://%s:%d/app/index.html" % (ip, port), self.args.export_svg, run)
+                    utils.run_selenium_and_export_svg("http://%s:%d/app/index.html" % (ip, port),
+                                                      self.args.export_svg,
+                                                      browser_path=self.browser_path,
+                                                      run=run)
                 except Exception as e:
                     print(e)
                 finally:
@@ -133,7 +136,9 @@ class BottleApplication(Bottle):
                     sys.exit(0)
 
             if not self.args.server_only:
-                webbrowser.open_new("http://%s:%d" % (ip, port))
+                utils.open_url_in_browser(url="http://%s:%d" % (ip, port),
+                                          browser_path=self.browser_path,
+                                          run=run)
 
             run.info_single('The server is now listening the port number "%d". When you are finished, press CTRL+C to terminate the server.' % port, 'green', nl_before = 1, nl_after=1)
             server_process.join()
