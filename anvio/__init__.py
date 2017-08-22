@@ -279,9 +279,11 @@ D = {
                 ),
     'items-order': (
             ['--items-order'],
-            {'metavar': 'COMMA_SEPARATED_FILE',
-             'help': "Comma seperated file that contains order of leaves, You may want to use this \
-                      if you want to order your leaves but do not want to display tree in the middle."}
+            {'metavar': 'FLAT_FILE',
+             'help': "A flat file that contains the order of items you wish the display using the interactive interface. You\
+                      may want to use this if you have a specific order of items in your mind, and do not want to display a\
+                      tree in the middle (or simply you don't have one). The file format is simple: each line should have an\
+                      item name, and there should be no header."}
                 ),
     'additional-layers': (
             ['-A', '--additional-layers'],
