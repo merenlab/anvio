@@ -38,6 +38,7 @@ __status__ = "Development"
 
 progress = terminal.Progress()
 run = terminal.Run()
+pp = terminal.pretty_print
 
 
 class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
@@ -66,7 +67,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.fasta_file = A('fasta_file')
         self.view_data_path = A('view_data')
         self.tree = A('tree')
-        self.items_order = A('items_order')
+        self.items_order_path = A('items_order')
         self.title = A('title')
         self.output_dir = A('output_dir')
         self.show_views = A('show_views')
@@ -183,6 +184,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # unnecessary splits stored in views dicts.
         self.prune_view_dicts()
 
+        self.process_external_items_order()
         self.gen_alphabetical_orders_of_items()
         if not self.p_meta['default_clustering'] and len(self.p_meta['available_clusterings']):
             self.p_meta['default_clustering'] = self.p_meta['available_clusterings'][0]
@@ -229,6 +231,19 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.mode == 'manual':
             return
 
+        # we expect to have a default clustering to be set when the code makes it way here, but there is an exception
+        # to that (it is when the user provides an items order file). please pay attention:
+        if not self.p_meta['default_clustering']:
+            if self.items_order_path:
+                # this is a special situation where we are not in manual mode, but we don't have a default clustering.
+                # yet the user has an items order file. here we will set the displauyed items to be the items in the view
+                # data.
+                self.displayed_item_names_ordered = sorted(list(self.views.values())[0]['dict'].keys())
+                return
+            else:
+                raise ConfigError("Wow. Anvi'o has no idea how you managed to come here. Please send an e-mail to the first\
+                                   developer you find, they will definitely want to fix this one.")
+
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
         default_clustering = self.p_meta['clusterings'][self.p_meta['default_clustering']]
@@ -253,26 +268,31 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                    who did what, you don't get to display your pangenome at this particular instance. Sorry :/" \
                                                             % (self.p_meta['project_name']))
             else:
-                if self.p_meta['merged']:
-                    raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
-                                       of splits that is required by the interactive interface. It may have been generated\
-                                       by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
-                                       clustering step may have been skipped by anvi-merge because you had too many splits\
-                                       to get the clustering in a reasonable amount of time. Please read the help menu for\
-                                       anvi-merge, and/or refer to the tutorial: \
-                                       http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
+                if self.items_order_path:
+                    self.run.warning("This merged profile database does not seem to have any hierarchical clustering\
+                                      of splits that is required by the interactive interface. But it seems you did provide\
+                                      an items order file. So anvi'o will try to use that and display your data.")
                 else:
-                    raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
-                                       that is required by the interactive interface. You must use `--cluster-contigs`\
-                                       flag for single profiles to access to this functionality. Please read the help\
-                                       menu for anvi-profile, and/or refer to the tutorial.")
+                    if self.p_meta['merged']:
+                        raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
+                                           of splits that is required by the interactive interface. It may have been generated\
+                                           by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
+                                           clustering step may have been skipped by anvi-merge because you had too many splits\
+                                           to get the clustering in a reasonable amount of time. Please read the help menu for\
+                                           anvi-merge, and/or refer to the tutorial: \
+                                           http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
+                    else:
+                        raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
+                                           that is required by the interactive interface. You must use `--cluster-contigs`\
+                                           flag for single profiles to access to this functionality. Please read the help\
+                                           menu for anvi-profile, and/or refer to the tutorial.")
 
 
     def gen_orders_for_items_based_on_additional_layers_data(self):
         if self.skip_auto_ordering:
             return
 
-        self.progress.new('Processing additional layer data for ordering of splits (to skip: --skip-auto-ordering)')
+        self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
         skipped_additional_data_layers = []
         # go through additional layers that are not of type `bar`.
         for layer in [additional_layer for additional_layer in self.additional_layers_headers if '!' not in additional_layer]:
@@ -325,7 +345,54 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # and the reverse-alphabetical, too:
         self.p_meta['clusterings']['<> Alphabetical_(reverse):none:none'] = {'basic': self.displayed_item_names_ordered}
-        self.p_meta['available_clusterings'].append('<> Alphabetical:none:none')
+        self.p_meta['available_clusterings'].append('<> Alphabetical_(reverse):none:none')
+
+        self.progress.end()
+
+
+    def process_external_items_order(self):
+        """This function processes self.items_order_path to update available clusterings"""
+
+        if not self.items_order_path:
+            return
+
+        filesnpaths.is_file_exists(self.items_order_path)
+
+        items_order = [l.strip() for l in open(self.items_order_path, 'rU').readlines()]
+        self.run.info('Items order', 'An items order with %d items is found at %s.' % (len(items_order), self.items_order_path), mc='cyan')
+
+        self.progress.new('External items order')
+        self.progress.update('...')
+
+        # make sure all items we will be working with is in items order.
+        items_order_set = set(items_order)
+        missing_items = [i for i in self.displayed_item_names_ordered if i not in items_order_set]
+        if (missing_items):
+            self.progress.end()
+            raise ConfigError("While processing your items order file, anvi'o realized that some of the items in your view data are not\
+                               in your items order file. In fact there are like %d of them missing, and one of the missing items look\
+                               like this if it makes any sense: '%s'" % (len(missing_items), missing_items.pop()))
+
+        if len(items_order) != len(self.displayed_item_names_ordered):
+            self.progress.end()
+            raise ConfigError("While processing your items order file, anvi'o realized that the number of items described in your file\
+                               (%s) is not equal to the number of items you have in your view data (%s). This is totally a deal\
+                               breaker :/" % (pp(len(items_order)), pp(len(self.displayed_item_names_ordered))))
+
+        # because of the special case of items order, the clusterings and available_clusterings items
+        # may not be initialized. check them first.
+        if not self.p_meta['clusterings']:
+            self.p_meta['clusterings'] = {}
+        if not self.p_meta['available_clusterings']:
+            self.p_meta['available_clusterings'] = []
+
+        # add an alphabetical order:
+        self.p_meta['clusterings']['<> User order:none:none'] = {'basic': items_order[::-1]}
+        self.p_meta['available_clusterings'].append('<> User order:none:none')
+
+        # and the reverse-alphabetical, too:
+        self.p_meta['clusterings']['<> User order (reverse):none:none'] = {'basic': items_order}
+        self.p_meta['available_clusterings'].append('<> User order (reverse):none:none')
 
         self.progress.end()
 
@@ -354,7 +421,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     for you. Simply type in a new profile database path (it can be a file name\
                                     that doesn't exist).")
 
-        if not self.tree and not self.view_data_path and not self.items_order:
+        if not self.tree and not self.view_data_path:
             raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file? What is it that\
                                anvi'o supposed to visualize? :(")
 
@@ -376,9 +443,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             filesnpaths.is_file_exists(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
             self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
-        elif self.items_order:
-            filesnpaths.is_file_exists(self.items_order)
-            self.displayed_item_names_ordered = [l.strip() for l in open(os.path.abspath(self.items_order)).read().split(',')]
         else:
             self.displayed_item_names_ordered = sorted(utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:])
 
@@ -409,11 +473,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.p_meta['default_clustering'] = clustering_id
             self.p_meta['available_clusterings'].append(clustering_id)
             self.p_meta['clusterings'][clustering_id] = {'newick': newick_tree_text}
-        elif self.items_order:
-            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.items_order)
-            self.p_meta['default_clustering'] = clustering_id
-            self.p_meta['available_clusterings'].append(clustering_id)
-            self.p_meta['clusterings'][clustering_id] = {'basic': self.displayed_item_names_ordered}
 
         if self.view_data_path:
             # sanity of the view data
