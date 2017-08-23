@@ -1291,7 +1291,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                                 q.xy['y'],
                                 q.size,
                                 this.layerdata_dict[q.label][layer.index],
-                                color,
+                                layer.get_visual_attribute('color'),
                                 1,
                                 false);
                         }
