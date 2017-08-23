@@ -96,6 +96,12 @@ done
 INFO "Merging profiles"
 anvi-merge $output_dir/*/*.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --description $files/example_description.md
 
+INFO "Merging profiles without any clustering"
+anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED-WO-CLUSTERING \
+                              -c $output_dir/CONTIGS.db \
+                              --skip-concoct-binning \
+                              --skip-hierarchical-clustering
+
 INFO "Update the description in the merged profile"
 anvi-update-db-description -p $output_dir/SAMPLES-MERGED/PROFILE.db --description $files/example_description.md
 
@@ -278,6 +284,7 @@ column -t $output_dir/aa_counts_for_five_genes.txt
 
 INFO "Importing a state file into the merged profile"
 anvi-import-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state $files/example_state.json --name default
+anvi-import-state -p $output_dir/SAMPLES-MERGED-WO-CLUSTERING/PROFILE.db --state $files/example_state.json --name default
 
 INFO "Exporting the state named 'default' from the merged profile"
 anvi-export-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state default -o $output_dir/SAMPLES-MERGED/default_state.json
@@ -290,6 +297,13 @@ anvi-split -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C
 
 INFO "Listing all collections and bins available in the merged profile"
 anvi-show-collections-and-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db
+
+INFO 'A dry run with an items order file for the merged profile without any clustering'
+anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                 -c $output_dir/CONTIGS.db \
+                 -s $output_dir/SAMPLES.db \
+                 --items-order $files/example_items_order_file.txt \
+                 --dry-run
 
 INFO "Firing up the interactive interface for merged samples"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
