@@ -1200,6 +1200,8 @@ Drawer.prototype.draw_numerical_layers = function() {
 
         var numeric_cache = [];
 
+        var previous_non_zero_order = 0;
+
         for (var i=0; i < order_to_node_map.length; i++) {
             q = order_to_node_map[i];
 
@@ -1243,14 +1245,34 @@ Drawer.prototype.draw_numerical_layers = function() {
                                 );
                         }
 
-                        numeric_cache.push(
-                            "L", 
-                            this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
-                            q.xy['y'] - q.size / 2, 
-                            "L", 
-                            this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
-                            q.xy['y'] + q.size / 2
-                            );
+                        if (this.layerdata_dict[q.label][layer.index] > 0)
+                        {
+                            if (q.order > 0 && this.layerdata_dict[order_to_node_map[i-1].label][layer.index] == 0) {
+                                numeric_cache.push(
+                                    "M", 
+                                    this.layer_boundaries[layer.order][1], 
+                                    q.xy['y'] - q.size / 2
+                                    );
+                            }
+
+                            numeric_cache.push(
+                                "L", 
+                                this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
+                                q.xy['y'] - q.size / 2, 
+                                "L", 
+                                this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
+                                q.xy['y'] + q.size / 2
+                                );
+
+                            if (q.order < (order_to_node_map.length - 1) && this.layerdata_dict[order_to_node_map[i+1].label][layer.index] == 0) {
+                                numeric_cache.push(
+                                    "L", 
+                                    this.layer_boundaries[layer.order][1], 
+                                    q.xy['y'] + q.size / 2,
+                                    "Z"
+                                    );
+                            }
+                        }
 
                         if (q.order == order_to_node_map.length - 1) {
                             numeric_cache.push(
@@ -1313,33 +1335,37 @@ Drawer.prototype.draw_numerical_layers = function() {
                         var inner_radius = this.layer_boundaries[layer.order][0];
                         var outer_radius = this.layer_boundaries[layer.order][0] + this.layerdata_dict[q.label][layer.index];
 
-                        if (numeric_cache.length == 0)
-                        {
-                            var ax = Math.cos(start_angle) * inner_radius;
-                            var ay = Math.sin(start_angle) * inner_radius;
+                        if (this.layerdata_dict[q.label][layer.index] > 0) {
+                            if (q.order == 0 || this.layerdata_dict[order_to_node_map[i-1].label][layer.index] == 0)
+                            {
+                                var ax = Math.cos(start_angle) * inner_radius;
+                                var ay = Math.sin(start_angle) * inner_radius;
 
-                            numeric_cache.push("M", ax, ay);
-                        }
+                                numeric_cache.push("M", ax, ay);
+                                previous_non_zero_order = q.order; 
+                            }
 
-                        var cx = Math.cos(end_angle) * outer_radius;
-                        var cy = Math.sin(end_angle) * outer_radius;
+                            var bx = Math.cos(start_angle) * outer_radius;
+                            var by = Math.sin(start_angle) * outer_radius;
 
-                        var dx = Math.cos(start_angle) * outer_radius;
-                        var dy = Math.sin(start_angle) * outer_radius;
+                            var cx = Math.cos(end_angle) * outer_radius;
+                            var cy = Math.sin(end_angle) * outer_radius;
 
-                        numeric_cache.push("L", dx, dy, "A", outer_radius, outer_radius, 0, 0, 1, cx, cy);
+                            numeric_cache.push("L", bx, by, "A", outer_radius, outer_radius, 0, is_large_angle(start_angle, end_angle), 1, cx, cy);
 
-                        if (q.order == order_to_node_map.length - 1) {
-                            var bx = Math.cos(end_angle) * inner_radius;
-                            var by = Math.sin(end_angle) * inner_radius;
+                            if ((q.order == order_to_node_map.length - 1) || this.layerdata_dict[order_to_node_map[i+1].label][layer.index] == 0) {
+                                var dx = Math.cos(end_angle) * inner_radius;
+                                var dy = Math.sin(end_angle) * inner_radius;
 
-                            var _min = Math.toRadians(this.settings['angle-min']);
-                            var _max = Math.toRadians(this.settings['angle-max']);
-                            var large_arc_flag = (_max - _min > Math.PI) ? 1:0;
+                                numeric_cache.push("L", dx, dy);
+                                var first_node = order_to_node_map[previous_non_zero_order];
+                                var first_node_start_angle = first_node.angle - first_node.size / 2;
 
-                            numeric_cache.push("L", bx, by, 
-                                "A", inner_radius, inner_radius, 0, large_arc_flag, 0, numeric_cache[1], numeric_cache[2], 
-                                "Z");
+                                var ex = Math.cos(first_node_start_angle) * inner_radius;
+                                var ey = Math.sin(first_node_start_angle) * inner_radius;
+                                
+                                numeric_cache.push("A", inner_radius, inner_radius, 1, is_large_angle(end_angle, first_node_start_angle), 0, ex, ey, "Z");
+                            }
                         }
                     }
                     else

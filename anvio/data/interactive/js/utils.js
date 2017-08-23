@@ -24,6 +24,10 @@ function log10(val) {
   return Math.log(val) / Math.LN10;
 }
 
+function is_large_angle(a, b) {
+    return (Math.abs(b - a) > Math.PI) ? 1 : 0;
+}
+
 function fire_up_ncbi_blast(item_name, program, database, target)
 {
     if (["gene", "contig"].indexOf(target) < 0){
