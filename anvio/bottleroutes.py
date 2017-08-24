@@ -775,7 +775,7 @@ class BottleApplication(Bottle):
                     f.write(items_ordering['newick'])
                     args.tree = ordering_path
                 elif 'basic' in items_ordering:
-                    f.write(",".join(items_ordering['basic']))
+                    f.write("\n".join(items_ordering['basic']))
                     args.items_order = ordering_path
                 f.close()
 
