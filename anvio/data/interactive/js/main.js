@@ -108,8 +108,8 @@ var rotateNode = null;
 
 $(window).resize(function() {
      // get current client size
-    VIEWER_WIDTH = document.getElementById('svg').clientWidth;
-    VIEWER_HEIGHT = document.getElementById('svg').clientHeight;
+    VIEWER_WIDTH = document.getElementById('svg').clientWidth || document.getElementById('svg').width.baseVal.value;
+    VIEWER_HEIGHT = document.getElementById('svg').clientHeight || document.getElementById('svg').height.baseVal.value;
 });
 
 $(document).ready(function() {
