@@ -239,33 +239,6 @@
                 },
 
                 /**
-                 * Handle mouseenter event.  This has been added to stop ignoring
-                 * inputs when the mouse is over the element.
-                 **/
-                handleMouseEnter = function (evt) {
-                    // bind our mousemove listener only when we have mouse in view
-                    if (!isMouseOverElem) {
-                        recentOffset = $root.offset();
-                        $root.bind('mousemove', handleMouseMove);
-                        isMouseOverElem = true;
-                    }
-                },
-
-                /**
-                 * Handle mouseleave event.  This has been added to ignore
-                 * inputs when the mouse is not over the element.
-                 **/
-                handleMouseLeave = function (evt) {
-                    // unbind our mousemove listener only when we no longer have mouse in view
-                    if (isMouseOverElem) {
-                        $root.unbind('mousemove', handleMouseMove);
-                        isMouseOverElem = false;
-                    }
-                    state = NONE;
-                    document.body.style.cursor = '';
-                },
-
-                /**
                  * Handle click event.
                  */
                 handleMouseDown = function (evt) {
@@ -326,6 +299,34 @@
                         state = NONE;
                         document.body.style.cursor = '';
                     }
+                },
+
+                /**
+                 * Handle mouseenter event.  This has been added to stop ignoring
+                 * inputs when the mouse is over the element.
+                 **/
+                handleMouseEnter = function (evt) {
+                    // bind our mousemove listener only when we have mouse in view
+                    if (!isMouseOverElem) {
+                        recentOffset = $root.offset();
+                        $root.bind('mousemove', handleMouseMove);
+                        isMouseOverElem = true;
+                    }
+                },
+
+                /**
+                 * Handle mouseleave event.  This has been added to ignore
+                 * inputs when the mouse is not over the element.
+                 **/
+                handleMouseLeave = function (evt) {
+                    // unbind our mousemove listener only when we no longer have mouse in view
+                    handleMouseUp(evt);
+
+                    if (isMouseOverElem) {
+                        $root.unbind('mousemove', handleMouseMove);
+                        isMouseOverElem = false;
+                    }
+                    state = NONE;
                 };
 
             /**
