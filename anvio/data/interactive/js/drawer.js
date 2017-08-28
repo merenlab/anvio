@@ -122,18 +122,18 @@ Drawer.prototype.draw = function() {
     // Scale to fit window
     bbox = svg.getBBox();
     zoom_reset();
+    this.show_drawing_statistics();
 
     // pan and mouse zoom
     $('svg').svgPan(
         {
             'viewportId': 'viewport', 
-            'onlyPanOnMouseUp': true,
+            'onlyPanOnMouseUp': (this.total_object_count > 10000 || order_to_node_map.length > 5000),
         });
 
     this.bind_tree_events();
     initialize_area_zoom(); // area-zoom.js
     this.update_title_panel();
-    this.show_drawing_statistics();
     
     ANIMATIONS_ENABLED = false;
 };
@@ -1548,12 +1548,12 @@ Drawer.prototype.update_title_panel = function() {
 };
 
 Drawer.prototype.show_drawing_statistics = function() {
-    var tree_object_count = document.getElementById('tree').getElementsByTagName('*').length + document.getElementById('guide_lines').getElementsByTagName('*').length;
-    var total_object_count = document.getElementById('svg').getElementsByTagName('*').length;
+    this.tree_object_count = document.getElementById('tree').getElementsByTagName('*').length + document.getElementById('guide_lines').getElementsByTagName('*').length;
+    this.total_object_count = document.getElementById('svg').getElementsByTagName('*').length;
 
-    $('#draw_delta_time').html(order_to_node_map.length + ' splits and ' + total_object_count +' objects drawn in ' + this.timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
+    $('#draw_delta_time').html(order_to_node_map.length + ' splits and ' + this.total_object_count +' objects drawn in ' + this.timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
 
     console.log('[info] Leaf count: ' + order_to_node_map.length);
-    console.log('[info] Object count in tree (with guide lines): ' + tree_object_count);
-    console.log('[info] Total objects in SVG: ' + total_object_count);
+    console.log('[info] Object count in tree (with guide lines): ' + this.tree_object_count);
+    console.log('[info] Total objects in SVG: ' + this.total_object_count);
 };
