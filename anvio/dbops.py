@@ -3815,10 +3815,10 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
 
     if a_hash != p_hash:
         raise ConfigError('The contigs database and the profile database does not\
-                            seem to be compatible. More specifically, this contigs\
-                            database is not the one that was used when %s generated\
-                            this profile database.'\
-                                % 'anvi-merge' if merged else 'anvi-profile')
+                           seem to be compatible. More specifically, this contigs\
+                           database is not the one that was used when %s generated\
+                           this profile database (%s != %s).'\
+                               % ('anvi-merge' if merged else 'anvi-profile', a_hash, p_hash))
 
     return True
 
