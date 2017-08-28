@@ -49,6 +49,9 @@ anvi-run-hmms -c $output_dir/CONTIGS.db -H $files/external_hmm_profile
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db -I Ribosomal_RNAs
 
+INFO "Recovering completeness esimates for the contigs db"
+anvi-compute-completeness -c $output_dir/CONTIGS.db
+
 INFO "Importing gene function calls using 'interproscan' parser"
 anvi-import-functions -c $output_dir/CONTIGS.db -i $files/example_interpro_output.tsv -p interproscan
 
