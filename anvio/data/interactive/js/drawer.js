@@ -127,7 +127,7 @@ Drawer.prototype.draw = function() {
     $('svg').svgPan(
         {
             'viewportId': 'viewport', 
-            'onlyPanOnMouseUp': false,
+            'onlyPanOnMouseUp': true,
         });
 
     this.bind_tree_events();
