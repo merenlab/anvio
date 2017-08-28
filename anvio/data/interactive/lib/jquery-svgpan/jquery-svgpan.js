@@ -262,6 +262,7 @@
                         isMouseOverElem = false;
                     }
                     state = NONE;
+                    document.body.style.cursor = '';
                 },
 
                 /**
@@ -286,6 +287,7 @@
                     if (evt.target.tagName === "svg" || !enableDrag) {
                         // Pan mode
                         state = PAN;
+                        document.body.style.cursor = 'move';
 
                         stateTf = g.getCTM().inverse();
 
@@ -322,6 +324,7 @@
                     if (state === PAN || state === DRAG) {
                         // Quit pan mode
                         state = NONE;
+                        document.body.style.cursor = '';
                     }
                 };
 
