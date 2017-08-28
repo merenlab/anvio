@@ -124,7 +124,11 @@ Drawer.prototype.draw = function() {
     zoom_reset();
 
     // pan and mouse zoom
-    $('svg').svgPan('viewport');
+    $('svg').svgPan(
+        {
+            'viewportId': 'viewport', 
+            'onlyPanOnMouseUp': false,
+        });
 
     this.bind_tree_events();
     initialize_area_zoom(); // area-zoom.js
