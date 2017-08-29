@@ -1129,8 +1129,14 @@ Drawer.prototype.draw_layer_backgrounds = function() {
             _opacity = parseFloat(this.settings['background-opacity']);
         }
 
+        if (layer.is_stackbar) {
+            var _colors = stack_bar_colors[layer.index]; 
+            _bgcolor = _colors[_colors.length-1];
+            _opacity = 1;
+        }
+
         // draw backgrounds
-        if (this.settings['tree-type']=='phylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') != 'intensity') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
+        if (this.settings['tree-type']=='phylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') != 'intensity') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text') || layer.is_stackbar))
         {
             drawPhylogramRectangle('layer_background_' + layer.order,
                 'all',
@@ -1144,7 +1150,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         }
 
 
-        if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') != 'intensity') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
+        if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') != 'intensity') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text') || layer.is_stackbar))
         {
             var _first = order_to_node_map[0];
             var _last = order_to_node_map[order_to_node_map.length - 1];
@@ -1423,6 +1429,8 @@ Drawer.prototype.draw_stack_bar_layers = function() {
         if (!layer.is_stackbar)
             return;
 
+        var path_cache = [];
+
         for (var i=0; i < order_to_node_map.length; i++) {
             q = order_to_node_map[i];
 
@@ -1430,35 +1438,89 @@ Drawer.prototype.draw_stack_bar_layers = function() {
                 continue;
 
             var offset = 0;
-            for (var j=0; j < this.layerdata_dict[q.label][layer.index].length; j++)
+            for (var j=0; j < this.layerdata_dict[q.label][layer.index].length - 1; j++)
             {
                 if (this.settings['tree-type'] == 'phylogram') {
-                    drawPhylogramRectangle('layer_' + layer.order,
-                        q.id,
-                        this.layer_boundaries[layer.order][1] - offset - this.layerdata_dict[q.label][layer.index][j],
-                        q.xy['y'],
-                        q.size,
-                        this.layerdata_dict[q.label][layer.index][j],
-                        stack_bar_colors[layer.index][j],
-                        1,
-                        false);
+                    if (q.order == 0) {
+                        path_cache[j] = [];
+                        path_cache[j].push(
+                            "M",
+                            this.layer_boundaries[layer.order][1], 
+                            q.xy['y'] - q.size / 2
+                            );
+                    }
+
+                    path_cache[j].push(
+                        "L", 
+                        this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index][j] - offset, 
+                        q.xy['y'] - q.size / 2, 
+                        "L", 
+                        this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index][j] - offset, 
+                        q.xy['y'] + q.size / 2
+                        );
+
+                    if (q.order == (order_to_node_map.length - 1)) {
+                        path_cache[j].push(
+                            "L", 
+                            this.layer_boundaries[layer.order][1], 
+                            q.xy['y'] + q.size / 2,
+                            "Z"
+                            );   
+                    }
                 }
                 else
                 {
-                    drawPie('layer_' + layer.order,
-                        q.id,
-                        q.angle - q.size / 2,
-                        q.angle + q.size / 2,
-                        this.layer_boundaries[layer.order][0] + offset,
-                        this.layer_boundaries[layer.order][0] + offset + this.layerdata_dict[q.label][layer.index][j],
-                        0,
-                        stack_bar_colors[layer.index][j],
-                        1,
-                        false);
+                    var start_angle  = q.angle - q.size / 2;
+                    var end_angle    = q.angle + q.size / 2;
+                    var inner_radius = this.layer_boundaries[layer.order][0];
+                    var outer_radius = this.layer_boundaries[layer.order][0] + this.layerdata_dict[q.label][layer.index][j] + offset;
+
+                    if (q.order == 0)
+                    {
+                        path_cache[j] = [];
+
+                        var ax = Math.cos(start_angle) * inner_radius;
+                        var ay = Math.sin(start_angle) * inner_radius;
+
+                        path_cache[j].push("M", ax, ay); 
+                    }
+
+                    var bx = Math.cos(start_angle) * outer_radius;
+                    var by = Math.sin(start_angle) * outer_radius;
+
+                    var cx = Math.cos(end_angle) * outer_radius;
+                    var cy = Math.sin(end_angle) * outer_radius;
+
+                    path_cache[j].push("L", bx, by, "A", outer_radius, outer_radius, 0, is_large_angle(start_angle, end_angle), 1, cx, cy);
+
+                    if (q.order == order_to_node_map.length - 1) {
+                        var bx = Math.cos(end_angle) * inner_radius;
+                        var by = Math.sin(end_angle) * inner_radius;
+
+                        var _min = Math.toRadians(this.settings['angle-min']);
+                        var _max = Math.toRadians(this.settings['angle-max']);
+
+                        path_cache[j].push("L", bx, by, 
+                            "A", inner_radius, inner_radius, 0, is_large_angle(_min, _max), 0, path_cache[j][1], path_cache[j][2], 
+                            "Z");
+                    }
                 }
                 
                 offset += this.layerdata_dict[q.label][layer.index][j];
             }
+        }
+
+        for (var j = path_cache.length - 1; j >= 0; j--) {
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+            path.setAttribute('shape-rendering', 'auto');
+            path.setAttribute('pointer-events', 'none');
+            path.setAttribute('fill', stack_bar_colors[layer.index][j]);
+            path.setAttribute('stroke-width', '0');
+            path.setAttribute('d', path_cache[j].join(' '));
+
+            var layer_group = document.getElementById('layer_' + layer.order);
+            layer_group.appendChild(path); 
         }
     }.bind(this));
 };
