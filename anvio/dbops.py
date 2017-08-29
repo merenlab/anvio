@@ -3358,6 +3358,15 @@ class TablesForStates(Table):
         anvio_db.disconnect()
 
 
+    def list_states(self):
+        state_names = sorted(list(self.states.keys()))
+
+        self.run.warning('', 'AVAILABLE STATES (%d FOUND)' % (len(self.states)), lc='yellow')
+        for state_name in state_names:
+            self.run.info_single('%s (last modified on %s)' % (state_name, self.states[state_name]['last_modified']),
+                                 nl_after = 1 if state_name == state_names[-1] else 0)
+
+
     def get_state(self, state_id):
         if state_id not in self.states:
             return None
