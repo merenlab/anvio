@@ -24,7 +24,6 @@ function initialize_area_zoom() {
                 zoomBox['start_y'] = event.clientY;
 
                 $('#divzoom').css({"top": 0, "left": 0, "width": 0, "height": 0 });
-                $('#divzoom_inner').css({"width": 0, "height": 0 });
                 $('#divzoom').show();
             }
         });
@@ -44,26 +43,11 @@ function initialize_area_zoom() {
                 var _width = Math.abs(zoomBox['start_x'] - event.clientX);
 
                 var divzoom = document.getElementById('divzoom');
-                var divzoom_inner = document.getElementById('divzoom_inner');
 
                 divzoom.style.top = _top + "px";
                 divzoom.style.left = _left + "px";
                 divzoom.style.width = _width + "px";
                 divzoom.style.height = _height + "px";
-
-                var w_ratio = _width / VIEWER_WIDTH;
-                var h_ratio = _height / VIEWER_HEIGHT;
-
-                if (w_ratio > h_ratio)
-                {
-                    divzoom_inner.style.width = h_ratio * VIEWER_WIDTH + "px";
-                    divzoom_inner.style.height = _height + "px";
-                }
-                else
-                {
-                    divzoom_inner.style.width = _width + "px";
-                    divzoom_inner.style.height = w_ratio * VIEWER_HEIGHT + "px";
-                }
 
                 // when you drawing rectangle, if you drag over text on the screen browser selects that text
                 // with this hack you can continue drawing.
@@ -76,14 +60,14 @@ function initialize_area_zoom() {
         function() {
             if (drawing_zoom)
             {
-                var inner_rect = document.getElementById('divzoom_inner').getBoundingClientRect();
+                var zoom_rect = document.getElementById('divzoom').getBoundingClientRect();
                 
-                if (inner_rect.width > 2 && inner_rect.height > 2)
+                if (zoom_rect.width > 2 && zoom_rect.height > 2)
                 {
-                    var _dx = (parseInt("0" + $('#svg').position().left) + (VIEWER_WIDTH / 2)) - (inner_rect.left + inner_rect.width / 2);
-                    var _dy = (parseInt("0" + $('#svg').position().top)  + (VIEWER_HEIGHT / 2)) - (inner_rect.top + inner_rect.height / 2);
-                    pan(_dx,_dy);
-                    zoom(VIEWER_WIDTH / inner_rect.width);
+                    var _dx = (parseInt("0" + $('#svg').position().left) + (VIEWER_WIDTH / 2)) - (zoom_rect.left + zoom_rect.width / 2);
+                    var _dy = (parseInt("0" + $('#svg').position().top)  + (VIEWER_HEIGHT / 2)) - (zoom_rect.top + zoom_rect.height / 2);
+                    pan(_dx,_dy); 
+                    zoom(Math.min(VIEWER_WIDTH / zoom_rect.width, VIEWER_HEIGHT / zoom_rect.height));
                 }
             }
 

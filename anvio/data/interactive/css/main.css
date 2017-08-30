@@ -543,16 +543,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     text-align: center;
 }
 
-#divzoom_inner { 
-    pointer-events: none;
-    margin: auto 0px;
-    background-color: rgba(0,0,0,0.2); 
-    position:relative; 
-    top: 50%;
-    left: 50%;
-    transform:translate(-50%,-50%);
-}
-
 #fixed-navbar-div {
     position: fixed;
     z-index: 500;
