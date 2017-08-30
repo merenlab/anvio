@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 
 import sys
-import copy
 import h5py
 import shutil
 import argparse
@@ -20,7 +19,8 @@ def update_genomes_storage(genomes_storage_path):
     if genomes_storage_path is None:
         raise ConfigError("No database path is given.")
 
-    shutil.copyfile(genomes_storage_path, genomes_storage_path + '_backup')
+    backup_genomes_storage_path = genomes_storage_path + '.v3'
+    shutil.copyfile(genomes_storage_path, backup_genomes_storage_path)
 
     fp = h5py.File(genomes_storage_path, 'a')
 
@@ -36,13 +36,13 @@ def update_genomes_storage(genomes_storage_path):
         fp.move('/data/genomes/%s/%s/sequence' % (genome, genome_caller_id), '/data/genomes/%s/%s/aa_sequence' % (genome, genome_caller_id))
         fp['/data/genomes/%s/%s/dna_sequence' % (genome, genome_caller_id)] = ''
         progress.update('Upgrading genome "%s" and gene caller id "%s"' % (genome, genome_caller_id))
-    print('11111')
     progress.end()
-    print('222221')
+
     fp.attrs['version'] = next_version
-    print("3333333")
     fp.close()
-    print("444444444444")
+
+    run.info_single('The update is done! Your old genome storage file is saved as a backup at "%s". Feel free to\
+                     delete it if everything seems to be working.' % (backup_genomes_storage_path), nl_after=1, nl_before=1)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade genomes storage from version %s to version %s' % (current_version, next_version))
@@ -51,7 +51,6 @@ if __name__ == '__main__':
 
     try:
         update_genomes_storage(args.genomes_storage)
-        print("55555555555")
     except ConfigError as e:
         print(e)
         sys.exit(-1)
