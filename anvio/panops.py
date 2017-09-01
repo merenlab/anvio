@@ -680,7 +680,7 @@ class Pangenome(GenomeStorage):
                 gene_sequences_in_pc.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
 
             # alignment
-            alignments = muscle.run_muscle_stdin(gene_sequences_in_pc)
+            alignments = muscle.run_stdin(gene_sequences_in_pc)
 
             for gene_entry in PCs_dict[pc_name]:
                 gene_entry['alignment_summary'] = utils.summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])

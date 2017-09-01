@@ -943,7 +943,7 @@ class PanSuperclass(object):
                         sequences_to_align.append((genome_name, get_first_value(sequences[pc_name][genome_name])))
 
                 progress.update("Processing '" + pc_name + "'")
-                aligned_sequences = muscle.Muscle(run=silent_run).run_muscle_stdin(sequences_list=sequences_to_align)
+                aligned_sequences = muscle.Muscle(run=silent_run).run_stdin(sequences_list=sequences_to_align)
 
                 for genome_name in aligned_sequences:
                     gene_caller_id = get_first_key(sequences[pc_name][genome_name])
