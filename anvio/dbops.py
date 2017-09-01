@@ -33,13 +33,12 @@ import anvio.filesnpaths as filesnpaths
 import anvio.genecalling as genecalling
 import anvio.auxiliarydataops as auxiliarydataops
 
-from anvio.errors import ConfigError
-from anvio.parsers import parser_modules
-from anvio.drivers import muscle
 from anvio.tableops import Table
-from anvio.sequence import get_list_of_outliers
-
+from anvio.drivers import Aligners
+from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
+from anvio.parsers import parser_modules
+from anvio.sequence import get_list_of_outliers
 
 
 __author__ = "A. Murat Eren"
@@ -54,6 +53,7 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+aligners = Aligners()
 
 
 class DBClassFactory:
@@ -894,14 +894,17 @@ class PanSuperclass(object):
         self.run.info('Output FASTA file', output_file_path, mc='green')
 
 
-    def write_sequences_in_PCs_for_phylogenomics(self, pc_names=set([]), skip_alignments=False, output_file_path=None, skip_multiple_gene_calls=False, report_DNA_sequences=False):
+    def write_sequences_in_PCs_for_phylogenomics(self, pc_names=set([]), skip_alignments=False, output_file_path=None, skip_multiple_gene_calls=False, report_DNA_sequences=False, align_with=None):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
         sequences = self.get_sequences_for_PCs(pc_names=pc_names, skip_alignments=skip_alignments, report_DNA_sequences=report_DNA_sequences)
 
+
         if not self.protein_clusters_gene_alignments_available:
+            aligner = aligners.select(align_with)
+
             run.warning("Protein clusters did not aligned during pangenomic analysis, we are going to do it now and it may take some time.")
             progress.new("Aligning sequences")
 
@@ -943,7 +946,8 @@ class PanSuperclass(object):
                         sequences_to_align.append((genome_name, get_first_value(sequences[pc_name][genome_name])))
 
                 progress.update("Processing '" + pc_name + "'")
-                aligned_sequences = muscle.Muscle(run=silent_run).run_stdin(sequences_list=sequences_to_align)
+
+                aligned_sequences = aligner(run=silent_run).run_stdin(sequences_list=sequences_to_align)
 
                 for genome_name in aligned_sequences:
                     gene_caller_id = get_first_key(sequences[pc_name][genome_name])
