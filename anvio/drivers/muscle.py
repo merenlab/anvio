@@ -28,7 +28,7 @@ pp = terminal.pretty_print
 
 class Muscle:
     def __init__(self, progress=progress, run=run, program_name = 'muscle'):
-        """A class to streamline HMM runs."""
+        """A class to take care of muscle alignments."""
         self.progress = progress
         self.run = run
 
