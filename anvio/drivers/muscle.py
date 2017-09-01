@@ -36,6 +36,9 @@ class Muscle:
 
         utils.is_program_exists(self.program_name)
 
+        self.citation = "Edgar, doi:10.1093/nar/gkh340"
+        self.web = "http://www.drive5.com/muscle"
+
 
     def run_stdin(self, sequences_list, debug=False):
         """Takes a list of tuples for sequences, performs MSA using muscle, returns a dict.
