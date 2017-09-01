@@ -19,9 +19,9 @@ import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 
 from anvio.drivers.blast import BLAST
-from anvio.drivers.muscle import Muscle
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
+from anvio.drivers import Aligners
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
@@ -38,6 +38,7 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+aligners = Aligners()
 
 
 class Pangenome(GenomeStorage):
@@ -56,6 +57,7 @@ class Pangenome(GenomeStorage):
         self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
         self.skip_alignments = A('skip_alignments')
+        self.align_with = A('align_with')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = A('debug')
         self.min_percent_identity = A('min_percent_identity')
@@ -80,6 +82,7 @@ class Pangenome(GenomeStorage):
         self.view_data = {}
         self.view_data_presence_absence = {}
         self.additional_view_data = {}
+        self.aligner = None
 
         # we don't know what we are about
         self.description = None
@@ -181,6 +184,9 @@ class Pangenome(GenomeStorage):
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
+
+        if not self.skip_alignments:
+            self.aligner = aligners.select(self.align_with)
 
         self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 
@@ -588,15 +594,12 @@ class Pangenome(GenomeStorage):
             raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/" \
                     % len(self.genomes))
 
-        if not self.skip_alignments:
-            try:
-                Muscle()
-            except ConfigError as e:
-                raise ConfigError("It seems things are not quite in order. Anvi'o does not know what is wrong, but you will\
-                                    see the actual error message in second. You can either try to address whatever causes this problem,\
-                                    or you can use the `--skip-alignments` flag to avoid it completely (although the latter would clearly\
-                                    be the easiest way out of this, anvi'o may stop thinking so highly of you if you choose to do that,\
-                                    just FYI). Here is the actual error you got: %s." % str(e).replace('\n', '').replace('  ', ' '))
+        if self.skip_alignments and self.align_with:
+            raise ConfigError("You are asking anvi'o to skip aligning sequences within your protein clusters, and then you \
+                               are also asking it to use '%s' for aligning sequences within your protein clusters. It is easy \
+                               to ignore this and skip the alignment, but anvi'o gets nervous when it realizes her users are \
+                               being inconsistent. Please make up your mind, and come back as the explicit person you are" \
+                                                                            % self.align_with)
 
         self.check_params()
 
@@ -660,8 +663,6 @@ class Pangenome(GenomeStorage):
         r = terminal.Run()
         r.verbose = False
 
-        muscle = Muscle(run=r)
-
         self.progress.new('Aligning genes in protein sequences')
         self.progress.update('...')
         pc_names = list(PCs_dict.keys())
@@ -680,7 +681,7 @@ class Pangenome(GenomeStorage):
                 gene_sequences_in_pc.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
 
             # alignment
-            alignments = muscle.run_muscle_stdin(gene_sequences_in_pc)
+            alignments = self.aligner(run=r).run_stdin(gene_sequences_in_pc)
 
             for gene_entry in PCs_dict[pc_name]:
                 gene_entry['alignment_summary'] = utils.summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])
