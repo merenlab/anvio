@@ -1,5 +1,8 @@
-from anvio.drivers.fasttree import FastTree
+import anvio.drivers as drivers
 
 driver_modules = {}
-driver_modules['phylogeny'] = {"default":  FastTree,
-                               "fasttree": FastTree}
+driver_modules['phylogeny'] = {"default":  drivers.FastTree,
+                               "fasttree": drivers.FastTree}
+
+driver_modules['psa'] = {"default": drivers.muscle,
+                         "muscle": drivers.muscle}
