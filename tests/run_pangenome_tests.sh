@@ -40,6 +40,9 @@ anvi-import-collection -p TEST/TEST-PAN.db -C test_collection example-PC-collect
 INFO "Exporting the collection 'test_collection'"
 anvi-export-collection -p TEST/TEST-PAN.db -C test_collection -O exported_collection --include-unbinned
 
+INFO "List available aligners for aligning sequences in PCs"
+anvi-export-pc-alignments --list-aligners
+
 INFO "Exporting aligned amino acid sequences for some protein clusters"
 anvi-export-pc-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.h5 -C test_collection -b PCB_1_CORE -o aligned_gene_sequences_in_PCB_1_CORE_AA.fa
 
