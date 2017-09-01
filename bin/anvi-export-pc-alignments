@@ -91,7 +91,8 @@ def main(args):
         pan.write_sequences_in_PCs_for_phylogenomics(pc_names=pc_ids,
                                                      output_file_path=args.output_file,
                                                      skip_multiple_gene_calls=args.skip_multiple_gene_calls,
-                                                     report_DNA_sequences=args.report_DNA_sequences)
+                                                     report_DNA_sequences=args.report_DNA_sequences,
+                                                     align_with=args.align_with)
     else:
         pan.write_sequences_in_PCs_to_file(pc_names=pc_ids,
                                            output_file_path=args.output_file,
@@ -125,6 +126,7 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('CONCATENATED OUTPUT', "Concatenated output for phylogenomics.")
     groupE.add_argument(*anvio.A('concatenate-pcs'), **anvio.K('concatenate-pcs'))
     groupE.add_argument(*anvio.A('skip-multiple-gene-calls'), **anvio.K('skip-multiple-gene-calls'))
+    groupE.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
 
     args = parser.parse_args()
 

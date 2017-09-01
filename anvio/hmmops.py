@@ -14,10 +14,11 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.drivers.muscle import Muscle
+from anvio.drivers import Aligners
 
 run = terminal.Run()
 progress = terminal.Progress()
+aligners = Aligners()
 
 
 class SequencesForHMMHits:
@@ -240,7 +241,7 @@ class SequencesForHMMHits:
         return (header, sequence)
 
 
-    def __store_concatenated_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None):
+    def __store_concatenated_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None, align_with=None):
         """Generates concatenated sequences from `hmm_sequences_dict_for_splits` dict.
 
            Please do NOT directly access to this function, and use `store_hmm_sequences_into_FASTA`
@@ -261,6 +262,9 @@ class SequencesForHMMHits:
 
         # the user wants to play rough. FINE. we will concatenate genes for phylogenomic analyses.
         gene_names = None
+
+        # let's get an instance of the aligner early on so we learn about issues before its too late.
+        aligner = aligners.select(align_with)
 
         # lets learn about what we have in this dictionary first.
         bin_names_in_dict = list(set([x['bin_id'] for x in hmm_sequences_dict_for_splits.values()]))
@@ -299,7 +303,6 @@ class SequencesForHMMHits:
 
         # align homolog sequences across bins
         self.progress.new('Aligning homolog gene sequences pre-concatenation')
-        m = Muscle(run=terminal.Run(verbose=False))
         all_gene_names = list(genes_in_bins_dict.keys())
         num_genes = len(all_gene_names)
         for i in range(0, num_genes):
@@ -308,7 +311,7 @@ class SequencesForHMMHits:
             genes_list = [(bin_name, genes_in_bins_dict[gene_name][bin_name]) \
                                                         for bin_name in genes_in_bins_dict[gene_name] \
                                                                            if bin_name in genes_in_bins_dict[gene_name]]
-            genes_in_bins_dict[gene_name] = m.run_muscle_stdin(genes_list)
+            genes_in_bins_dict[gene_name] = aligner(run=terminal.Run(verbose=False)).run_stdin(genes_list)
             gene_lengths[gene_name] = len(list(genes_in_bins_dict[gene_name].values())[0])
         self.progress.end()
 
@@ -371,7 +374,7 @@ class SequencesForHMMHits:
         f.close()
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator=None, genes_order=None):
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator=None, genes_order=None, align_with=None):
         """Stores HMM sequences into a FASTA file."""
 
         filesnpaths.is_output_file_writable(output_file_path)
@@ -380,6 +383,6 @@ class SequencesForHMMHits:
             raise ConfigError('"wrap" has to be an integer instance')
 
         if concatenate_genes:
-            self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order)
+            self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with)
         else:
             self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order)

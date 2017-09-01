@@ -438,6 +438,14 @@ D = {
              'type': str,
              'help': "Characters to separate things (the default is whatever is most suitable)."}
                 ),
+    'align-with': (
+            ['--align-with'],
+            {'metavar': 'ALIGNER',
+             'default': None,
+             'type': str,
+             'help': "The multiple sequnce alignment program to use when multiple seqeunce alignment is necessary. To see\
+                      all available optons, use the flag `--list-aligners`."}
+                ),
     'concatenate-pcs': (
             ['--concatenate-pcs'],
             {'default': False,
