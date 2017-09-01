@@ -52,11 +52,11 @@ if __name__ == '__main__':
                                 from the gene caller used to identify genes during the generation of the contigs database).")
     groupC.add_argument('--use-ncbi-blast', default = False, action = 'store_true', help = "This program uses DIAMOND by default, however,\
                                 if you like, you can use good ol' blastp from NCBI instead.")
-    groupC.add_argument('--maxbit', type = float, default = 0.5, metavar = "MAXBIT", help = "The maxbit heuristic provides a mean to set a\
+    groupC.add_argument('--minbit', type = float, default = 0.5, metavar = "MINBIT", help = "The minbit heuristic provides a mean to set a\
                                 to eliminate weak matches between two protein sequences. We learned it from ITEP (Benedict MN et al,\
                                 doi:10.1186/1471-2164-15-8), which is a comprehensive pan genome analysis workflow, and decided to use it in\
-                                the anvi'o pan genomic workflow as well. If you have two protein sequences 'A' and 'B', the maxbit is defined\
-                                as BITSCORE(A, B) / MIN(BITSCORE(A, A), BITSCORE(B, B)). The maxbit score between two sequences goes to 1 if\
+                                the anvi'o pan genomic workflow as well. If you have two protein sequences 'A' and 'B', the minbit is defined\
+                                as BITSCORE(A, B) / MIN(BITSCORE(A, A), BITSCORE(B, B)). The minbit score between two sequences goes to 1 if\
                                 they are very similar over their entire length, and goes to 0 if they match over a very short stretch compared\
                                 to their entire length (regardless of how similar they are at the aligned region), or their sequence identity\
                                 is low. The default is %(default)g.")
@@ -73,7 +73,7 @@ if __name__ == '__main__':
                                 between the two protein sequences for them to have an edge for MCL analysis. This value will be used\
                                 to filter hits from Diamond search results. Because percent identity is not a predictor of a good match (since\
                                 it does not communicate many other important factors such as the alignment length between the two sequences and\
-                                its proportion to the entire length of those involved), we suggest you rely on 'maxbit' parameter. But you know\
+                                its proportion to the entire length of those involved), we suggest you rely on 'minbit' parameter. But you know\
                                 what? Maybe you shouldn't listen to anyone, and experiment on your own! The default is %(default)g percent.")
     groupC.add_argument(*anvio.A('sensitive'), **anvio.K('sensitive'))
 
