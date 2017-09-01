@@ -165,7 +165,8 @@ def main(args):
                                      args.output_file, \
                                      concatenate_genes=args.concatenate_genes, \
                                      separator=separator, \
-                                     genes_order=list(gene_names) if len(gene_names) else None)
+                                     genes_order=list(gene_names) if len(gene_names) else None, \
+                                     align_with=args.align_with)
 
     run.info('Mode', 'AA seqeunces' if args.get_aa_sequences else 'DNA seqeunces', mc='green')
     run.info('Genes are concatenated', args.concatenate_genes)
@@ -215,6 +216,7 @@ if __name__ == '__main__':
                                        using the `gene-names` argument. Each concatenated sequence will be separated from the other\
                                        ones by the `separator`.")
     groupG.add_argument(*anvio.A('concatenate-genes'), **anvio.K('concatenate-genes'))
+    groupG.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
     groupG.add_argument(*anvio.A('separator'), **anvio.K('separator', {'help': 'A word that will be used to\
                                   sepaate concatenated gene sequences from each other (IF you are using this\
                                   program with `--concatenate-genes` flag). The default is "XXX" for amino\
