@@ -62,7 +62,7 @@ class Pangenome(GenomeStorage):
         self.PC_min_occurrence = A('min_occurrence')
         self.mcl_inflation = A('mcl_inflation')
         self.sensitive = A('sensitive')
-        self.maxbit = A('maxbit')
+        self.minbit = A('minbit')
         self.use_ncbi_blast = A('use_ncbi_blast')
         self.exclude_partial_gene_calls = A('exclude_partial_gene_calls')
         self.description_file_path = A('description')
@@ -95,7 +95,7 @@ class Pangenome(GenomeStorage):
                        'default_view': 'PC_presence_absence',
                        'use_ncbi_blast': self.use_ncbi_blast,
                        'diamond_sensitive': self.sensitive,
-                       'maxbit': self.maxbit,
+                       'minbit': self.minbit,
                        'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
                        'gene_alignments_computed': False if self.skip_alignments else True,
                        'genomes_storage_hash': self.genomes_storage_hash,
@@ -156,11 +156,11 @@ class Pangenome(GenomeStorage):
         filesnpaths.is_output_file_writable(self.log_file_path)
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
-        if not isinstance(self.maxbit, float):
-            raise ConfigError("maxbit value must be of type float :(")
+        if not isinstance(self.minbit, float):
+            raise ConfigError("minbit value must be of type float :(")
 
-        if self.maxbit < 0 or self.maxbit > 1:
-            raise ConfigError("Well. maxbit must be between 0 and 1. Yes. Very boring.")
+        if self.minbit < 0 or self.minbit > 1:
+            raise ConfigError("Well. minbit must be between 0 and 1. Yes. Very boring.")
 
         if not isinstance(self.min_percent_identity, float):
             raise ConfigError("Minimum percent identity value must be of type float :(")
@@ -242,11 +242,11 @@ class Pangenome(GenomeStorage):
 
         # here we perform an initial pass on the blast results to fill the dict that will hold
         # the bit score for each gene when it was blasted against itself. this dictionary
-        # will then be used to calculate the 'maxbit' value between two genes, which I learned
-        # from ITEP (Benedict MN et al, doi:10.1186/1471-2164-15-8). ITEP defines maxbit as
+        # will then be used to calculate the 'minbit' value between two genes, which I learned
+        # from ITEP (Benedict MN et al, doi:10.1186/1471-2164-15-8). ITEP defines minbit as
         # 'bit score between target and query / min(selfbit for query, selbit for target)'. This
         # heuristic approach provides a mean to set a cutoff to eliminate weak matches between
-        # two genes. maxbit value reaches to 1 for hits between two genes that are almost identical.
+        # two genes. minbit value reaches to 1 for hits between two genes that are almost identical.
         self_bit_scores = {}
         line_no = 1
         self.progress.update('(initial pass of the serach results to set the self bit scores ...)')
@@ -304,7 +304,7 @@ class Pangenome(GenomeStorage):
 
         # CONTINUE AS IF NOTHING HAPPENED
         self.run.info('Min percent identity', self.min_percent_identity)
-        self.run.info('Maxbit', self.maxbit)
+        self.run.info('Minbit', self.minbit)
         self.progress.new('Processing search results')
 
         mcl_input_file_path = self.get_output_file_path('mcl-input.txt')
@@ -330,10 +330,10 @@ class Pangenome(GenomeStorage):
                 continue
 
             #
-            # FILTERING BASED ON MAXBIT
+            # FILTERING BASED ON MINBIT
             #
-            maxbit = bit_score / min(self_bit_scores[query_id], self_bit_scores[subject_id])
-            if maxbit < self.maxbit:
+            minbit = bit_score / min(self_bit_scores[query_id], self_bit_scores[subject_id])
+            if minbit < self.minbit:
                 continue
 
             mcl_input.write('%s\t%s\t%f\n' % (query_id, subject_id, perc_id / 100.0))

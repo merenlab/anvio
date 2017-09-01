@@ -1748,7 +1748,7 @@ class PanDatabase:
                 except:
                     pass
 
-            for key in ['min_percent_identity', 'maxbit', 'mcl_inflation']:
+            for key in ['min_percent_identity', 'minbit', 'mcl_inflation']:
                 try:
                     self.meta[key] = float(self.meta[key])
                 except:
