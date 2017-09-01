@@ -308,7 +308,7 @@ class SequencesForHMMHits:
             genes_list = [(bin_name, genes_in_bins_dict[gene_name][bin_name]) \
                                                         for bin_name in genes_in_bins_dict[gene_name] \
                                                                            if bin_name in genes_in_bins_dict[gene_name]]
-            genes_in_bins_dict[gene_name] = m.run_muscle_stdin(genes_list)
+            genes_in_bins_dict[gene_name] = m.run_stdin(genes_list)
             gene_lengths[gene_name] = len(list(genes_in_bins_dict[gene_name].values())[0])
         self.progress.end()
 
