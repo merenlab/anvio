@@ -19,7 +19,7 @@ $(document).ready(function() {
         }
     });
 
-    $('.select_layer').on('keydown', function(e) {
+    $('.select_layer, .input-height-multiple, .input-min-multiple, .input-max-multiple').on('keydown', function(e) {
         var keyCode = e.keyCode || e.which;
         if (keyCode == '13') {
             $(e.target).trigger('change');
