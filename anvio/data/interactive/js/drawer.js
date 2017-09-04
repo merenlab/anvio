@@ -1246,18 +1246,9 @@ Drawer.prototype.draw_numerical_layers = function() {
                 else
                 {
                     if (this.settings['optimize-speed']) {
-                        if (numeric_cache.length == 0)
-                        {
-                            numeric_cache.push(
-                                "M",
-                                this.layer_boundaries[layer.order][1], 
-                                q.xy['y'] - q.size / 2
-                                );
-                        }
-
                         if (this.layerdata_dict[q.label][layer.index] > 0)
                         {
-                            if (q.order > 0 && this.layerdata_dict[order_to_node_map[i-1].label][layer.index] == 0) {
+                            if (q.order == 0 || (q.order > 0 && this.layerdata_dict[order_to_node_map[i-1].label][layer.index] == 0)) {
                                 numeric_cache.push(
                                     "M", 
                                     this.layer_boundaries[layer.order][1], 
@@ -1274,7 +1265,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                                 q.xy['y'] + q.size / 2
                                 );
 
-                            if (q.order < (order_to_node_map.length - 1) && this.layerdata_dict[order_to_node_map[i+1].label][layer.index] == 0) {
+                            if ((q.order == order_to_node_map.length - 1) || (q.order < (order_to_node_map.length - 1) && this.layerdata_dict[order_to_node_map[i+1].label][layer.index] == 0)) {
                                 numeric_cache.push(
                                     "L", 
                                     this.layer_boundaries[layer.order][1], 
@@ -1282,14 +1273,6 @@ Drawer.prototype.draw_numerical_layers = function() {
                                     "Z"
                                     );
                             }
-                        }
-
-                        if (q.order == order_to_node_map.length - 1) {
-                            numeric_cache.push(
-                                "L", 
-                                this.layer_boundaries[layer.order][1], 
-                                q.xy['y'] + q.size / 2,
-                                "Z");
                         }
                     }
                     else
