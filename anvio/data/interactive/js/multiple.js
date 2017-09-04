@@ -19,6 +19,13 @@ $(document).ready(function() {
         }
     });
 
+    $('.select_layer').on('keydown', function(e) {
+        var keyCode = e.keyCode || e.which;
+        if (keyCode == '13') {
+            $(e.target).trigger('change');
+        }
+    });
+
     $('.picker_multiple, .picker_start_multiple').colpick({
         layout: 'hex',
         submit: 0,
