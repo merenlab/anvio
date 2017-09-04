@@ -53,11 +53,12 @@ BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100
 
 class BottleApplication(Bottle):
     def __init__(self, interactive, args, mock_request=None, mock_response=None):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         super(BottleApplication, self).__init__()
         self.interactive = interactive
         self.args = args
         self.read_only = args.read_only
-        self.browser_path = args.browser_path
+        self.browser_path = A('browser_path')
 
         self.unique_session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
