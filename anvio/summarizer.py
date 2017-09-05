@@ -98,6 +98,7 @@ class ArgsTemplateForSummarizerClass:
         self.skip_init_functions = False
         self.cog_data_dir = None
         self.output_dir = filesnpaths.get_temp_directory_path()
+        self.report_aa_seqs_for_gene_calls = False
 
 
 class SummarizerSuperClass(object):
@@ -137,6 +138,7 @@ class SummarizerSuperClass(object):
         self.debug = A('debug')
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.cog_data_dir = A('cog_data_dir')
+        self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
 
         self.sanity_check()
 
@@ -1171,6 +1173,10 @@ class Bin:
         d = {}
 
         headers = ['contig', 'start', 'stop', 'direction']
+        header_items_for_gene_sequences = ['dna_sequence']
+        if self.summary.report_aa_seqs_for_gene_calls:
+            header_items_for_gene_sequences.append('aa_sequence')
+
         for gene_callers_id in self.gene_caller_ids:
             d[gene_callers_id] = {}
             # add sample independent information into `d`;
@@ -1194,21 +1200,33 @@ class Bin:
                         d[gene_callers_id][source + ' (ACCESSION)'] = ''
                         d[gene_callers_id][source] = ''
 
-            # finally add the sequence:
+            # finally add the dna and amino acid sequence for gene calls:
             contig = self.summary.genes_in_contigs_dict[gene_callers_id]['contig']
             start = self.summary.genes_in_contigs_dict[gene_callers_id]['start']
             stop = self.summary.genes_in_contigs_dict[gene_callers_id]['stop']
-            d[gene_callers_id]['sequence'] = self.summary.contig_sequences[contig]['sequence'][start:stop]
+
+            dna_sequence = self.summary.contig_sequences[contig]['sequence'][start:stop]
+            if self.summary.genes_in_contigs_dict[gene_callers_id]['direction'] == 'r':
+                dna_sequence = utils.rev_comp(dna_sequence)
+
+            d[gene_callers_id]['dna_sequence'] = dna_sequence
+
+            # if the user asked for it, report amino acid sequences as well
+            if self.summary.report_aa_seqs_for_gene_calls:
+                try:
+                    d[gene_callers_id]['aa_sequence'] = utils.get_DNA_sequence_translated(dna_sequence, gene_callers_id)
+                except:
+                    d[gene_callers_id]['aa_sequence'] = ''
 
         output_file_obj = self.get_output_file_handle('gene_calls.txt')
 
         if self.summary.gene_function_call_sources:
             sources = [[source, source + ' (ACCESSION)'] for source in self.summary.gene_function_call_sources]
-            headers = ['gene_callers_id'] + headers + [item for sublist in sources for item in sublist] + ['sequence']
+            headers = ['gene_callers_id'] + headers + [item for sublist in sources for item in sublist] + header_items_for_gene_sequences
         else:
-            headers = ['gene_callers_id'] + headers + ['sequence']
+            headers = ['gene_callers_id'] + headers + header_items_for_gene_sequences
 
-        self.progress.update('Stroing genes basic info ...')
+        self.progress.update('Storing genes basic info ...')
         utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=output_file_obj)
 
         self.bin_info_dict['genes'] = {'num_genes_found': len(self.gene_caller_ids)}
