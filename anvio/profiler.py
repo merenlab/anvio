@@ -192,6 +192,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('profile_AA_frequencies', self.profile_AA_frequencies)
         self.run.info('report_variability_full', self.report_variability_full)
 
+        self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into\
+                          consideration anything below that. If you need to kill this an restart your\
+                          analysis with another minimum contig length value, feel free to press CTRL+C." \
+                                                % (pp(self.min_contig_length)))
+
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
         if self.blank:
