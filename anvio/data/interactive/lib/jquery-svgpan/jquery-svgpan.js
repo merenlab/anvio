@@ -223,9 +223,13 @@
                     var g = svgRoot,
                         p;
 
-                    if (state === PAN && enablePan && !onlyPanOnMouseUp) {
+                    if (state === PAN && enablePan) {
                         // Pan mode
-                        p = getEventPoint(evt).matrixTransform(stateTf);
+                        document.body.style.cursor = 'move';
+
+                        if (!onlyPanOnMouseUp) {
+                            p = getEventPoint(evt).matrixTransform(stateTf);
+                        }
 
                         setCTM(g, stateTf.inverse().translate(p.x - stateOrigin.x, p.y - stateOrigin.y));
                     } else if (state === DRAG && enableDrag) {
@@ -260,8 +264,6 @@
                     if (evt.target.tagName === "svg" || !enableDrag) {
                         // Pan mode
                         state = PAN;
-                        document.body.style.cursor = 'move';
-
                         stateTf = g.getCTM().inverse();
 
                         stateOrigin = getEventPoint(evt).matrixTransform(stateTf);
