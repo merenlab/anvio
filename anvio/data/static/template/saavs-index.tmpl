@@ -121,7 +121,7 @@
             $(element).attr('has-content', 'true');
             var content = `<div id="collapse-${gene}" class="panel-collapse">
                            <div class="panel-body">
-                            ${ Object.keys(saav_data["samples_per_view"]).map(view =>`
+                            ${ Object.keys(saav_data["samples_per_view"]).map(function(view) { return `
                             <div class="panel panel-default">
                                 <div class="panel-heading">
                                     <h1 class="panel-title"><a data-toggle="collapse" data-parent="#${gene}-${view}_panel" href="#collapse-${gene}-${view}">★  View: '${view}'</a></h1>
@@ -133,29 +133,29 @@
                                                 <div role="tabpanel" style="margin: 10px;">
                                                     <!-- Nav tabs -->
                                                     <ul class="nav nav-tabs" role="tablist">
-                                                        ${ saav_data["perspectives"].map((perspective, index) =>`
-                                                        <li role="presentation" ${ (index==0) ? 'class="active"' : '' }><a href="#${gene}-${view}-${perspective}" aria-controls="${gene}-${view}-${perspective}" role="tab" data-toggle="tab">Perspective: '${perspective}'</a></li>`).join('')}
+                                                        ${ saav_data["perspectives"].map(function(perspective, index) { return `
+                                                        <li role="presentation" ${ (index==0) ? 'class="active"' : '' }><a href="#${gene}-${view}-${perspective}" aria-controls="${gene}-${view}-${perspective}" role="tab" data-toggle="tab">Perspective: '${perspective}'</a></li>`}).join('')}
                                                     </ul>
                                                     <!-- TABS -->
                                                     <div class="tab-content">
-                                                        ${ saav_data["perspectives"].map((perspective, index) =>`
+                                                        ${ saav_data["perspectives"].map(function(perspective, index) { return `
                                                         <div role="tabpanel" class="tab-pane fade${ (index==0) ? ' in active' : '' }" id="${gene}-${view}-${perspective}">
                                                             <table class="table table-striped sortable" id="tblGrid_bin">
                                                                 <tbody>
                                                                     <tr>
                                                                         <td style="vertical-align: middle; width: 10px;"><b>Color Legend</b></td>
                                                                         <td>
-                                                                            ${ Object.keys(saav_data["legends"][gene][perspective]).map(legend =>`
+                                                                            ${ Object.keys(saav_data["legends"][gene][perspective]).map(function(legend) { return `
                                                                                 <div class="legend-item">
                                                                                   <div class="color-box" style="background-color: ${ saav_data["legends"][gene][perspective][legend]['hex'] };">
                                                                                   </div>
                                                                                   <span title="${ legend }">${ legend }</span>
                                                                                 </div>
-                                                                            `).join('')}
+                                                                            `}).join('')}
                                                                         </td>
                                                                     </tr>
 
-                                                                     ${ saav_data["views_and_variables"][view].map(variable =>`
+                                                                     ${ saav_data["views_and_variables"][view].map(function(variable) { return `
                                                                     <tr>
                                                                         <td style="vertical-align: middle; width: 10px;"><b>${variable}</b></td>
                                                                         <td>
@@ -164,26 +164,26 @@
                                                                                 <a href="${saav_data["by_view"][gene][view][perspective][variable]['__merged__']}" target="_blank"><img src="${saav_data["by_view"][gene][view][perspective][variable]['__merged__']}" width="130px;" /></a><br />MERGED
                                                                                </div>
                                                                                 ` : `` }
-                                                                            ${ saav_data["samples_per_view"][view][variable].map(sample =>`
+                                                                            ${ saav_data["samples_per_view"][view][variable].map(function(sample) { return `
                                                                             <div class="molecule-image">
                                                                             <a href="${saav_data["by_view"][gene][view][perspective][variable][sample]}" target="_blank"><img src="${saav_data["by_view"][gene][view][perspective][variable][sample]}" width="130px;" /></a><br />
                                                                                 ${ sample }
                                                                             </div>
-                                                                            `).join('')}
+                                                                            `}).join('')}
                                                                         </td>
                                                                     </tr>
-                                                                    `).join('')}
+                                                                    `}).join('')}
                                                                 </tbody>
                                                             </table>
                                                         </div>
-                                                        `).join('')}
+                                                        `}).join('')}
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>`).join('')}
+                            </div>`}).join('')}
 
                             ${ (has_functions) ? `
                                 <hr />
@@ -196,7 +196,7 @@
                                       </tr>
                                    </thead>
                                    <tbody>
-                                    ${ Object.keys(functions).map(source => `
+                                    ${ Object.keys(functions).map(function(source) { return `
                                         ${ (functions[source]) ? `
                                           <tr>
                                              <td><b>${ source }</b></td>
@@ -204,7 +204,7 @@
                                              <td><em>${ functions[source][1] }</em></td>
                                           </tr>
                                          ` : ``}
-                                      `).join('')}
+                                      `}).join('')}
                                    </tbody>
                                 </table>
                             ` : `` }
