@@ -114,6 +114,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_AA_sequences_for_PC/<pc_name>',  callback=self.get_AA_sequences_for_PC)
         self.route('/data/proteinclusters/<pc_name>',          callback=self.inspect_pc)
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
+        self.route('/data/phylogeny/aligners',                 callback=self.get_available_aligners)
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
         self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
@@ -720,12 +721,15 @@ class BottleApplication(Bottle):
     def get_available_phylogeny_programs(self):
         return json.dumps(list(drivers.driver_modules['phylogeny'].keys()))
 
+    def get_available_aligners(self):
+        return json.dumps(list(drivers.Aligners().aligners.keys()))
 
     def generate_tree(self):
         pcs = set(request.forms.getall('pcs[]'))
         name = request.forms.get('name')
         skip_multiple_gene_calls = request.forms.get('skip_multiple_genes')
         program = request.forms.get('program')
+        aligner = request.forms.get('aligner')
         store_tree = request.forms.get('store_tree')
 
         temp_fasta_file = filesnpaths.get_temp_file_path()
@@ -733,7 +737,7 @@ class BottleApplication(Bottle):
         tree_text = None
 
         try:
-            self.interactive.write_sequences_in_PCs_for_phylogenomics(pc_names=pcs, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls)
+            self.interactive.write_sequences_in_PCs_for_phylogenomics(pc_names=pcs, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls, align_with=aligner)
             drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file, temp_tree_file)
             tree_text = open(temp_tree_file,'rb').read().decode()
 

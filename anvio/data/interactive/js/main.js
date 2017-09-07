@@ -2223,25 +2223,38 @@ function showGeneratePhylogeneticTreeWindow() {
         cache: false,
         url: '/data/phylogeny/programs?timestamp=' + new Date().getTime(),
         success: function(available_programs) {
-            $('#available_phylogeny_programs').empty();
-            for (var i=0; i < available_programs.length; i++) {
-                if (available_programs[i] == 'default')
-                    continue;
+              $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/phylogeny/aligners?timestamp=' + new Date().getTime(),
+                success: function(available_aligners) {
+                    $('#phylogeny_programs').empty();
+                    for (var i=0; i < available_programs.length; i++) {
+                        if (available_programs[i] == 'default')
+                            continue;
 
-                $('#phylogeny_programs').append(new Option(available_programs[i]))
-            }
+                        $('#phylogeny_programs').append(new Option(available_programs[i]))
+                    }
 
-            $('#tbody_bins tr').each(
-                function(index, bin) {
-                    var bin_id = $(bin).attr('bin-id');
-                    var bin_name = $('#bin_name_' + bin_id).val();
+                    $('#phylogeny_aligners').empty();
+                    for (var i=0; i < available_aligners.length; i++) {
+                        if (available_aligners[i] == 'default')
+                            continue;
 
-                    $('#phylogeny_pc').append('<option value="' + bin_id + '">' + bin_name + '</option>');
-                }
-            );
-            $('#modPhylogeneticTree').modal('show');
-        }
-    });
+                        $('#phylogeny_aligners').append(new Option(available_aligners[i]))
+                    }
+
+                    $('#tbody_bins tr').each(
+                        function(index, bin) {
+                            var bin_id = $(bin).attr('bin-id');
+                            var bin_name = $('#bin_name_' + bin_id).val();
+
+                            $('#phylogeny_pc').append('<option value="' + bin_id + '">' + bin_name + '</option>');
+                        }
+                    );
+                    $('#modPhylogeneticTree').modal('show');
+                }});
+        }});
 }
 
 function generatePhylogeneticTree() {
@@ -2274,6 +2287,7 @@ function generatePhylogeneticTree() {
             'name': $('#phylogeny_name').val(),
             'skip_multiple_genes': $('#phylogeny_skip_multiple_gene_calls').is(':checked'),
             'program': $('#phylogeny_programs').val(),
+            'aligner': $('#phylogeny_aligners').val(),
             'pcs': pc_list,
             'store_tree': $('#phylogeny_store_generated_tree').is(':checked'),
         },
