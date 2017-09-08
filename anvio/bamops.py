@@ -458,17 +458,19 @@ class GetReadsFromBAM:
 
     def sanity_check(self):
         bad_bam_files = []
+        error_message = None
         for bam_file_path in self.input_bam_files:
             try:
                 bam_file_object = BAMFileObject(bam_file_path).get()
                 bam_file_object.close()
             except ConfigError as e:
                 bad_bam_files.append(bam_file_path)
+                error_message = e
 
         if len(bad_bam_files):
             raise ConfigError('Samtools is not happy with some of your bam files. The following\
-                                file(s) do not look like proper BAM files [ here is the actual\
-                                error: "%s"]: %s.' % (e, ','.join(bad_bam_files)))
+                               file(s) do not look like proper BAM files [here is the actual\
+                               error: "%s"]: %s.' % (error_message, ','.join(bad_bam_files)))
 
         if not self.output_file_path:
             self.output_file_path = 'short_reads.fa'
