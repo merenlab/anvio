@@ -227,6 +227,14 @@ D = {
                       will instruct profiler to skip that step. Please remember that parameters and flags must be\
                       identical between different profiles using the same contigs database for them to merge properly."}
                 ),
+    'return-codon-frequencies-instead': (
+            ['--return-codon-frequencies-instead'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o will return amino acid frequencies here, however, you can ask for codon frequencies\
+                      instead, simply because you always need more data and more stuff. You're lucky this time, but is there\
+                      an end to this? Will you ever be satisfied with what you have? Anvi'o needs answers."}
+                ),
     'profile-AA-frequencies': (
             ['--profile-AA-frequencies'],
             {'default': False,
