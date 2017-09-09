@@ -21,7 +21,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
-from anvio.constants import codon_to_AA, codon_to_AA_RC
+from anvio.constants import codon_to_AA, codon_to_AA_RC, codon_to_codon_RC
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -44,7 +44,11 @@ class AAFrequencies:
         self.run = run
 
 
-    def process_gene_call(self, bam_file_object, gene_call, contig_sequence, codons_to_profile=None):
+    def get_codon_frequencies_dict(self, codon_frequencies):
+        pass
+
+
+    def process_gene_call(self, bam_file_object, gene_call, contig_sequence, codons_to_profile=None, return_codon_frequencies_instead=False):
         if gene_call['partial']:
             return None
 
@@ -88,17 +92,29 @@ class AAFrequencies:
                 hash_to_oligotype[unique_hash] = ''.join([e[1] for e in sorted(hash_to_oligotype[unique_hash])])
 
             codon_frequencies = Counter(list(hash_to_oligotype.values()))
-            aa_frequencies = Counter({})
 
-            # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
-            conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
+            # depending on what we want to return item frequencies will contain frequencies for amino acids or
+            # codons.
+            item_frequencies = Counter({})
+            reference_item = None
 
-            reference_codon_AA = conv_dict[reference_codon_sequence]
-            for codon in codon_frequencies:
-                if conv_dict[codon]: # <-- this check here eliminates any codon that contains anything but [A, T, C, G].
-                    aa_frequencies[conv_dict[codon]] += codon_frequencies[codon]
+            # vat ve vant?
+            if return_codon_frequencies_instead:
+                reference_item = codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence
 
-            coverage = sum(aa_frequencies.values())
+                for codon in codon_frequencies:
+                    codon = codon_to_codon_RC[codon] if gene_call['direction'] == 'r' else codon
+                    item_frequencies[codon] += codon_frequencies[codon]
+            else:
+                # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
+                conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
+                reference_item = conv_dict[reference_codon_sequence]
+
+                for codon in codon_frequencies:
+                    if conv_dict[codon]: # <-- this check here eliminates any codon that contains anything but [A, T, C, G].
+                        item_frequencies[conv_dict[codon]] += codon_frequencies[codon]
+
+            coverage = sum(item_frequencies.values())
 
             if not coverage:
                 # FIXME: there was at least one case where the coverage here in this context was 0,
@@ -108,12 +124,12 @@ class AAFrequencies:
 
             # here we quantify the ratio of frequencies of non-reference-aas observed in this codon
             # to the overall overage, and that is our `departure_from_reference`:
-            total_frequency_of_all_codons_but_the_conensus = sum([aa_frequencies[aa] for aa in aa_frequencies if aa != reference_codon_AA])
-            departure_from_reference = total_frequency_of_all_codons_but_the_conensus / coverage
+            total_frequency_of_all_items_but_the_conensus = sum([item_frequencies[item] for item in item_frequencies if item != reference_item])
+            departure_from_reference = total_frequency_of_all_items_but_the_conensus / coverage
 
-            d[codon_order] = {'reference': reference_codon_AA,
+            d[codon_order] = {'reference': reference_item,
                               'coverage': coverage,
-                              'frequencies': aa_frequencies,
+                              'frequencies': item_frequencies,
                               'departure_from_reference': departure_from_reference}
 
         return d
