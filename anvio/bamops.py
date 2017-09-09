@@ -87,16 +87,16 @@ class AAFrequencies:
             for unique_hash in unique_hashes:
                 hash_to_oligotype[unique_hash] = ''.join([e[1] for e in sorted(hash_to_oligotype[unique_hash])])
 
-            nt_frequencies = Counter(list(hash_to_oligotype.values()))
+            codon_frequencies = Counter(list(hash_to_oligotype.values()))
             aa_frequencies = Counter({})
 
             # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
             conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
 
             reference_codon_AA = conv_dict[reference_codon_sequence]
-            for nt in nt_frequencies:
-                if conv_dict[nt]: # <-- this check here eliminates any codon that contains anything but [A, T, C, G].
-                    aa_frequencies[conv_dict[nt]] += nt_frequencies[nt]
+            for codon in codon_frequencies:
+                if conv_dict[codon]: # <-- this check here eliminates any codon that contains anything but [A, T, C, G].
+                    aa_frequencies[conv_dict[codon]] += codon_frequencies[codon]
 
             coverage = sum(aa_frequencies.values())
 
