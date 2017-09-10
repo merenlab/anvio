@@ -1403,11 +1403,16 @@ class Bin:
         output_file_obj.close()
 
 
-def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None, gene_caller=None):
-    """Returns an info dict for a given contigs db"""
+def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None, gene_caller_to_use=None):
+    """Returns an info dict for a given contigs db.
 
-    if not gene_caller:
-        gene_caller = constants.default_gene_caller
+       Please note that this function will only return gene calls made by `gene_caller_to_use`,
+       but it will report other gene callers found in the contigs database, and how many genes
+       were not reported. The client side should check for those to report to the user.
+    """
+
+    if not gene_caller_to_use:
+        gene_caller_to_use = constants.default_gene_caller
 
     class Args:
         def __init__(self):
@@ -1421,16 +1426,22 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
     c = ContigsSuperclass(args, r=run, p=progress)
 
     info_dict = {'path': contigs_db_path,
-                 'gene_caller_ids': set([])}
+                 'gene_caller_ids': set([]),
+                 'gene_caller': gene_caller_to_use}
 
     for key in c.a_meta:
         info_dict[key] = c.a_meta[key]
 
-    gene_calls_not_reported = set([])
+    gene_calls_from_other_gene_callers = Counter()
 
     # Two different strategies here depending on whether we work with a given set if split ids or
     # everything in the contigs database.
-    ADD = lambda g: info_dict['gene_caller_ids'].add(g) if c.genes_in_contigs_dict[g]['source'] == gene_caller else gene_calls_not_reported.add(g)
+    def process_gene_call(g):
+        gene_caller = c.genes_in_contigs_dict[g]['source']
+        if gene_caller == gene_caller_to_use:
+            info_dict['gene_caller_ids'].add(g)
+        else:
+            gene_calls_from_other_gene_callers[gene_caller] += 1
 
     if split_names:
         split_names = set(split_names)
@@ -1438,18 +1449,24 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
         seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
         for e in list(c.genes_in_splits.values()):
             if e['split'] in split_names:
-                ADD(e['gene_callers_id'])
+                process_gene_call(e['gene_callers_id'])
     else:
         c.init_contig_sequences()
         seq = ''.join([e['sequence'] for e in list(c.contig_sequences.values())])
 
         for g in c.genes_in_contigs_dict:
-            ADD(g)
+            process_gene_call(g)
 
-    if len(gene_calls_not_reported):
-        run.info_single('Contigs db info summary will not include %d gene calls that were not identified by "%s", which \
-                         was the default source gene caller.' % (len(gene_calls_not_reported), gene_caller))
+    if len(gene_calls_from_other_gene_callers):
+        run.info_single('PLEASE READ CAREFULLY. Contigs db info summary will not include %d gene calls that were\
+                         not identified by "%s", the default gene caller. Other gene calls found in this contigs\
+                         database include, %s. If you are more interested in gene calls in any of those, you should\
+                         indicate that through the `--gene-caller` parameter in your program.' \
+                                                            % (sum(gene_calls_from_other_gene_callers.values()), \
+                                                               gene_caller_to_use, \
+                                                               ', '.join(['%d gene calls by %s' % (tpl[1], tpl[0]) for tpl in gene_calls_from_other_gene_callers.items()])))
 
+    info_dict['gene_calls_from_other_gene_callers'] = gene_calls_from_other_gene_callers
     info_dict['gc_content'] = seqlib.Composition(seq).GC_content
     info_dict['total_length'] = len(seq)
 
@@ -1459,8 +1476,11 @@ def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, includ
             info_dict['partial_gene_calls'].add(gene_caller_id)
 
     info_dict['num_genes'] = len(info_dict['gene_caller_ids'])
-    info_dict['avg_gene_length'] = numpy.mean([c.gene_lengths[gene_caller_id] for gene_caller_id in info_dict['gene_caller_ids']])
-    info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
+    if info_dict['num_genes']:
+        info_dict['avg_gene_length'] = numpy.mean([c.gene_lengths[gene_caller_id] for gene_caller_id in info_dict['gene_caller_ids']])
+        info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
+    else:
+        info_dict['avg_gene_length'], info_dict['num_genes_per_kb'] = 0.0, 0
 
     # get completeness / contamination estimates
     p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.Completeness(contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
