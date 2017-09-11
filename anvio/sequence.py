@@ -53,7 +53,7 @@ class Codon:
                     if mutation_type[pair] == "transversion":
                         v += 1
 
-                    dist[start_codon][end_codon] = (s+v, s, v)
+                dist[start_codon][end_codon] = (s+v, s, v)
 
         return dist
 
