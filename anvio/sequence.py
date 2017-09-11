@@ -7,6 +7,7 @@ import numpy
 import collections
 
 import anvio
+import anvio.constants as constants
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -16,6 +17,45 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+
+class Codon:
+    def __init__(self):
+        pass
+
+    def get_codon_to_codon_dist_dictionary(self):
+        codons = list(constants.codon_to_AA.keys())
+        dist = {}
+
+        mutation_type = {"AT": "transition",
+                         "CG": "transition",
+                         "AG": "transversion",
+                         "AC": "transversion",
+                         "CT": "transversion",
+                         "GT": "transversion"}
+
+        for start_codon in codons:
+            dist[start_codon] = {}
+
+            for end_codon in codons:
+
+                # s = number transitions 
+                # v = number transversions
+                s = 0; v = 0
+                for nt_pos in range(3):
+
+                    pair = ''.join(sorted(start_codon[nt_pos] + end_codon[nt_pos]))
+
+                    if pair[0] == pair[1]:
+                        continue
+                    if mutation_type[pair] == "transition":
+                        s += 1
+                    if mutation_type[pair] == "transversion":
+                        v += 1
+
+                    dist[start_codon][end_codon] = (s+v, s, v)
+
+        return dist
 
 
 class Composition:
