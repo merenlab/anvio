@@ -24,6 +24,22 @@ class Codon:
         pass
 
     def get_codon_to_codon_dist_dictionary(self):
+        """
+        Returns a dictionary containing the number the nucleotide difference
+        between two codons, and the number of transitions & transversions required to
+        mutate from one codon to another. 
+
+        USAGE:
+        =====
+        >>> dist['TTC']['AAA']
+        (3, 2, 1)
+
+        Here, 3 is the total number of nucleotide differences, 2 is the number
+        of transitions, and 1 is the number of transversions. Of course, the number of
+        transitions added to the number of transversions is equal to the number of
+        nucleotide differences.
+        """
+
         codons = list(constants.codon_to_AA.keys())
         dist = {}
 
