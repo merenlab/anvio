@@ -64,6 +64,28 @@ complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHD
 
 nucleotides = 'ATCGN'
 
+AA_to_codons = Counter({'Ala': ['GCA', 'GCC', 'GCG', 'GCT'],
+                        'Arg': ['AGA', 'AGG', 'CGA', 'CGC', 'CGG', 'CGT'],
+                        'Asn': ['AAC', 'AAT'],
+                        'Asp': ['GAC', 'GAT'],
+                        'Cys': ['TGC', 'TGT'],
+                        'Gln': ['CAA', 'CAG'],
+                        'Glu': ['GAA', 'GAG'],
+                        'Gly': ['GGA', 'GGC', 'GGG', 'GGT'],
+                        'His': ['CAC', 'CAT'],
+                        'Ile': ['ATA', 'ATC', 'ATT'],
+                        'Leu': ['CTA', 'CTC', 'CTG', 'CTT', 'TTA', 'TTG'],
+                        'Lys': ['AAA', 'AAG'],
+                        'Met': ['ATG'],
+                        'Phe': ['TTC', 'TTT'],
+                        'Pro': ['CCA', 'CCC', 'CCG', 'CCT'],
+                        'STP': ['TAA', 'TAG', 'TGA'],
+                        'Ser': ['AGC', 'AGT', 'TCA', 'TCC', 'TCG', 'TCT'],
+                        'Thr': ['ACA', 'ACC', 'ACG', 'ACT'],
+                        'Trp': ['TGG'],
+                        'Tyr': ['TAC', 'TAT'],
+                        'Val': ['GTA', 'GTC', 'GTG', 'GTT']})
+
 AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': 'D',
                                     'Cys': 'C', 'Gln': 'Q', 'Glu': 'E', 'Gly': 'G',
                                     'His': 'H', 'Ile': 'I', 'Leu': 'L', 'Lys': 'K',
