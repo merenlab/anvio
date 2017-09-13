@@ -26,7 +26,6 @@
     }
     </style>
     <div class='container'>
-        <svg width='800' height='800'></svg>
     </div>
     <script>
     function getReadableSeqSizeString(seqSizeInBases, fixed) {
@@ -41,11 +40,19 @@
         return Math.max(seqSizeInBases, 0.1).toFixed(fixed) + baseUnits[i];
     };
 
-    function drawPlot(stats, container, size) {
-        var svg = d3.select('svg'),
-            width = +svg.attr('width'),
-            height = +svg.attr('height'),
-            g = svg.append('g').attr('transform', 'translate(400,400)');
+    function drawPlot(stats, container, size, margin) {
+        var svg = d3.select(container)
+            .append('svg')
+            .attr('width', size)
+            .attr('height', size)
+            .attr('viewBox', '0 0 ' + size + ' ' + size)
+            .attr('style', 'display: inline-block;');
+            //.attr('preserveAspectRatio', 'xMidYMid meet');
+
+        var plot_radius = size / 2 - margin;
+
+        var g = svg.append('g')
+            .attr('transform', 'translate(' + size / 2 + ',' + size / 2 + ')');
 
         var angle = d3.scale.linear()
             .domain([0, 100])
@@ -53,11 +60,11 @@
 
         var radius = d3.scale.sqrt()
             .domain([stats.n_values[0].length, 0])
-            .range([0, 300]);
+            .range([0, plot_radius]);
 
         var radius_reverse = d3.scale.sqrt()
             .domain([stats.n_values[0].length, 0])
-            .range([300, 0]);
+            .range([plot_radius, 0]);
 
         var area = d3.svg.area.radial()
             .angle(function(d, i) { return angle(i); })
@@ -71,11 +78,11 @@
 
         var n50arc = d3.svg.arc()
             .innerRadius(radius(stats.n_values[49].length))
-            .outerRadius(300);
+            .outerRadius(plot_radius);
 
         var n90arc = d3.svg.arc()
             .innerRadius(radius(stats.n_values[89].length))
-            .outerRadius(300);
+            .outerRadius(plot_radius);
 
         g.append('path')
             .attr('stroke-width', '0')
@@ -93,7 +100,7 @@
             .attr('stroke', '#555')
             .attr('cx', '0')
             .attr('cy', '0')
-            .attr('r', 300);
+            .attr('r', plot_radius);
 
         var axis = d3.svg.axis()
             .orient("left")
@@ -106,13 +113,13 @@
                     .attr('cx', '0')
                     .attr('cy', '0')
                     .attr('stroke-dasharray', '10, 10')
-                    .attr('r', (radius(d) >= 100) ? radius(d) : 0);
+                    .attr('r', (radius(d) >= plot_radius / 2) ? radius(d) : 0);
                 return getReadableSeqSizeString(d, 0);
             })
             .scale(radius_reverse);
 
         g.append("g")
-            .attr('transform', 'translate(0,-300)')
+            .attr('transform', 'translate(0,' + -1 * plot_radius + ')')
             .attr('font-family', 'Helvetica')
             .attr('font-size', '0.8em')
             .attr('fill', '#666')
@@ -124,8 +131,8 @@
         g.append('text')
             .attr('class', 'info')
             .attr('font-family', 'Helvetica')
-            .attr('x', 250)
-            .attr('y', 250);
+            .attr('x', plot_radius)
+            .attr('y', plot_radius);
 
         g.append('circle')
             .attr('fill', '#000000')
@@ -151,7 +158,7 @@
 
                 var arc = d3.svg.arc()
                     .innerRadius(0)
-                    .outerRadius(300);
+                    .outerRadius(plot_radius);
 
                 g.select('.hover')
                     .attr('d', arc({ startAngle: angle(order), endAngle: angle(order + 1) }));
@@ -167,23 +174,24 @@
                 g.select('.info')
                     .append('tspan')
                     .attr('dy', '1.4em')
-                    .attr('x', '250')
+                    .attr('x', plot_radius)
                     .text(stats.n_values[order].num_contigs + " contigs ");
 
                 g.select('.info')
                     .append('tspan')
                     .attr('dy', '1.4em')
-                    .attr('x', '250')
+                    .attr('x', plot_radius)
                     .text(">= " + getReadableSeqSizeString(stats.n_values[order].length, 1));
 
             })
             .on('mouseleave', function() {
                 g.select('.hover').remove();
+                g.select('.info').selectAll('tspan').remove();
             });
     }
 
     d3.json("/data/get_assembly_stats", function(error, stats) {
-        drawPlot(stats);
+        drawPlot(stats, '.container', 800, 100);
     });
     </script>
 </body>

@@ -24,7 +24,6 @@ class AssemblyStats():
         n_index = 1;
         for i in range(size):
             temp_length += contig_lengths[i]
-            print(temp_length, total_length, n_index)
             if (temp_length > ((total_length / 100) * n_index)):
                 summary['n_values'].append({
                     'num_contigs': i + 1,
@@ -32,7 +31,6 @@ class AssemblyStats():
                     })
 
                 n_index += 1
-                print(n_index)
 
         return summary
 
