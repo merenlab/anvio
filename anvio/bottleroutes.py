@@ -57,8 +57,10 @@ class BottleApplication(Bottle):
         super(BottleApplication, self).__init__()
         self.interactive = interactive
         self.args = args
-        self.read_only = args.read_only
+        self.read_only = A('read_only')
         self.browser_path = A('browser_path')
+        self.export_svg = A('export_svg')
+        self.server_only = A('server_only')
 
         self.unique_session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
@@ -118,6 +120,7 @@ class BottleApplication(Bottle):
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
         self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
+        self.route('/data/get_assembly_stats',                 callback=self.get_assembly_stats)
 
 
     def run_application(self, ip, port):
@@ -125,7 +128,7 @@ class BottleApplication(Bottle):
             server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
             server_process.start()
 
-            if self.args.export_svg:
+            if self.export_svg:
                 try:
                     utils.run_selenium_and_export_svg("http://%s:%d/app/index.html" % (ip, port),
                                                       self.args.export_svg,
@@ -137,7 +140,7 @@ class BottleApplication(Bottle):
                     server_process.terminate()
                     sys.exit(0)
 
-            if not self.args.server_only:
+            if not self.server_only:
                 utils.open_url_in_browser(url="http://%s:%d" % (ip, port),
                                           browser_path=self.browser_path,
                                           run=run)
@@ -151,7 +154,11 @@ class BottleApplication(Bottle):
 
 
     def redirect_to_app(self):
-        redirect('/app/index.html?rand=' + self.random_hash(8))
+        homepage = 'index.html' 
+        if self.interactive.mode == 'assembly':
+            homepage = 'assembly.html'
+
+        redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
 
     def send_static(self, filename):
@@ -160,29 +167,29 @@ class BottleApplication(Bottle):
         ret.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
         ret.set_header('Expires', 'Thu, 01 Dec 1994 16:00:00 GMT')
 
-        # cache killer, it adds random query string to .js, .css source urls.
-        if filename.endswith('.html'):
-            pattern = re.compile(b".*(<script|<link).*(href|src)\=[\'\"]((?!http\:\/\/).+?)\".*", re.MULTILINE)
+        # # cache killer, it adds random query string to .js, .css source urls.
+        # if filename.endswith('.html'):
+        #     pattern = re.compile(b".*(<script|<link).*(href|src)\=[\'\"]((?!http\:\/\/).+?)\".*", re.MULTILINE)
 
-            buff = io.BytesIO()
-            index = 0
-            for result in re.finditer(pattern, ret.body.read()):
-                pos = result.end(3)
-                suffix = b'?rand=' + self.random_hash(32).encode() 
+        #     buff = io.BytesIO()
+        #     index = 0
+        #     for result in re.finditer(pattern, ret.body.read()):
+        #         pos = result.end(3)
+        #         suffix = b'?rand=' + self.random_hash(32).encode() 
 
-                # read chunk from original file and write to buffer, 
-                # then store pos to index, next iteration we are going 
-                # to read from that position
-                ret.body.seek(index)
-                buff.write(ret.body.read(pos - index))
-                buff.write(suffix)
-                index = pos
+        #         # read chunk from original file and write to buffer, 
+        #         # then store pos to index, next iteration we are going 
+        #         # to read from that position
+        #         ret.body.seek(index)
+        #         buff.write(ret.body.read(pos - index))
+        #         buff.write(suffix)
+        #         index = pos
 
-            # write rest of the file
-            buff.write(ret.body.read())
-            ret.body = buff
-            ret.body.seek(0)
-            ret.headers['Content-Length'] = buff.getbuffer().nbytes
+        #     # write rest of the file
+        #     buff.write(ret.body.read())
+        #     ret.body = buff
+        #     ret.body.seek(0)
+        #     ret.headers['Content-Length'] = buff.getbuffer().nbytes
 
         return ret
 
@@ -827,3 +834,7 @@ class BottleApplication(Bottle):
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
+
+
+    def get_assembly_stats(self):
+        return self.interactive.get_assembly_stats()

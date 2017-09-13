@@ -1,0 +1,191 @@
+<html>
+
+<head>
+    <title>assembly stats</title>
+    <script type='text/javascript' src='lib/d3.js/d3.min.js'></script>
+</head>
+
+<body>
+    <style>
+    html,
+    body {
+        padding: 0px;
+        margin: 0px;
+        overflow: hidden;
+    }
+
+    .container {
+        text-align: center;
+    }
+
+
+    .domain {
+        fill: none;
+        stroke-width: 1;
+        stroke: black;
+    }
+    </style>
+    <div class='container'>
+        <svg width='800' height='800'></svg>
+    </div>
+    <script>
+    function getReadableSeqSizeString(seqSizeInBases, fixed) {
+        // function based on answer at http://stackoverflow.com/questions/10420352/converting-file-size-in-bytes-to-human-readable
+        var i = -1;
+        var baseUnits = [' kB', ' MB', ' GB', ' TB'];
+        do {
+            seqSizeInBases = seqSizeInBases / 1000;
+            i++;
+        } while (seqSizeInBases >= 1000);
+        fixed = fixed ? fixed : fixed == 0 ? 0 : 1;
+        return Math.max(seqSizeInBases, 0.1).toFixed(fixed) + baseUnits[i];
+    };
+
+    function drawPlot(stats, container, size) {
+        var svg = d3.select('svg'),
+            width = +svg.attr('width'),
+            height = +svg.attr('height'),
+            g = svg.append('g').attr('transform', 'translate(400,400)');
+
+        var angle = d3.scale.linear()
+            .domain([0, 100])
+            .range([0, 2 * Math.PI]);
+
+        var radius = d3.scale.sqrt()
+            .domain([stats.n_values[0].length, 0])
+            .range([0, 300]);
+
+        var radius_reverse = d3.scale.sqrt()
+            .domain([stats.n_values[0].length, 0])
+            .range([300, 0]);
+
+        var area = d3.svg.area.radial()
+            .angle(function(d, i) { return angle(i); })
+            .innerRadius(radius(0))
+            .outerRadius(function(d) { return radius(d.length); });
+
+        g.append('path')
+            .datum(stats.n_values)
+            .attr('fill', '#BBB')
+            .attr('d', area);
+
+        var n50arc = d3.svg.arc()
+            .innerRadius(radius(stats.n_values[49].length))
+            .outerRadius(300);
+
+        var n90arc = d3.svg.arc()
+            .innerRadius(radius(stats.n_values[89].length))
+            .outerRadius(300);
+
+        g.append('path')
+            .attr('stroke-width', '0')
+            .attr('fill', 'rgb(255, 127, 0)')
+            .attr('d', n50arc({ startAngle: angle(0), endAngle: angle(50) }));
+
+        g.append('path')
+            .attr('stroke-width', '0')
+            .attr('fill', 'rgb(253, 191, 111)')
+            .attr('d', n90arc({ startAngle: angle(0), endAngle: angle(90) }));
+
+        g.append('circle')
+            .attr('fill', 'none')
+            .attr('stroke-width', '3')
+            .attr('stroke', '#555')
+            .attr('cx', '0')
+            .attr('cy', '0')
+            .attr('r', 300);
+
+        var axis = d3.svg.axis()
+            .orient("left")
+            .tickValues([10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000])
+            .tickFormat(function(d) {
+                g.append('circle')
+                    .attr('fill', 'none')
+                    .attr('stroke-width', '1')
+                    .attr('stroke', '#666')
+                    .attr('cx', '0')
+                    .attr('cy', '0')
+                    .attr('stroke-dasharray', '10, 10')
+                    .attr('r', (radius(d) >= 100) ? radius(d) : 0);
+                return getReadableSeqSizeString(d, 0);
+            })
+            .scale(radius_reverse);
+
+        g.append("g")
+            .attr('transform', 'translate(0,-300)')
+            .attr('font-family', 'Helvetica')
+            .attr('font-size', '0.8em')
+            .attr('fill', '#666')
+            .call(axis)
+            .selectAll("text")
+            .attr("y", -6)
+            .attr("x", -3);
+
+        g.append('text')
+            .attr('class', 'info')
+            .attr('font-family', 'Helvetica')
+            .attr('x', 250)
+            .attr('y', 250);
+
+        g.append('circle')
+            .attr('fill', '#000000')
+            .attr('fill-opacity', '0.0')
+            .attr('cx', '0')
+            .attr('cy', '0')
+            .attr('r', '300')
+            .on('mouseenter', function() {
+                g.append('path')
+                    .attr('class', 'hover')
+                    .attr('fill', '#000000')
+                    .attr('fill-opacity', '0.1')
+                    .attr('pointer-events', 'none');
+
+            })
+            .on('mousemove', function() {
+                var pos = d3.mouse(this);
+                var radiant = Math.PI / 2 + Math.atan2(pos[1], pos[0]);
+                if (radiant < 0)
+                    radiant = 2 * Math.PI + radiant;
+
+                var order = Math.floor(radiant / (2 * Math.PI) * 100);
+
+                var arc = d3.svg.arc()
+                    .innerRadius(0)
+                    .outerRadius(300);
+
+                g.select('.hover')
+                    .attr('d', arc({ startAngle: angle(order), endAngle: angle(order + 1) }));
+
+                g.selectAll('.info>tspan').remove();
+
+                g.select('.info')
+                    .append('tspan')
+                    .attr('font-weight', 'bold')
+                    .attr('dy', '1.4em')
+                    .text("N" + (order + 1));
+
+                g.select('.info')
+                    .append('tspan')
+                    .attr('dy', '1.4em')
+                    .attr('x', '250')
+                    .text(stats.n_values[order].num_contigs + " contigs ");
+
+                g.select('.info')
+                    .append('tspan')
+                    .attr('dy', '1.4em')
+                    .attr('x', '250')
+                    .text(">= " + getReadableSeqSizeString(stats.n_values[order].length, 1));
+
+            })
+            .on('mouseleave', function() {
+                g.select('.hover').remove();
+            });
+    }
+
+    d3.json("/data/get_assembly_stats", function(error, stats) {
+        drawPlot(stats);
+    });
+    </script>
+</body>
+
+</html>
