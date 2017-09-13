@@ -104,7 +104,7 @@
 
         var axis = d3.svg.axis()
             .orient("left")
-            .tickValues([10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000])
+            .tickValues([3,4,5,6,7,8,9,10,11,12].map(function(x){ return Math.pow(10, x); })) 
             .tickFormat(function(d) {
                 g.append('circle')
                     .attr('fill', 'none')
