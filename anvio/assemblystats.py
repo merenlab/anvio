@@ -21,16 +21,19 @@ class AssemblyStats():
         summary['n_values'] = []
 
         temp_length = 0
-        n_index = 1;
-        for i in range(size):
-            temp_length += contig_lengths[i]
-            if (temp_length > ((total_length / 100) * n_index)):
+        i = 0
+        n_index = 1
+        while n_index <= 100:
+            if (temp_length >= ((total_length / 100) * n_index)):
                 summary['n_values'].append({
-                    'num_contigs': i + 1,
-                    'length': contig_lengths[i]
+                    'num_contigs': i,
+                    'length': contig_lengths[i - 1]
                     })
 
                 n_index += 1
+            else:
+                temp_length += contig_lengths[i]
+                i+=1
 
         return summary
 
