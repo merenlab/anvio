@@ -1887,6 +1887,8 @@ class ContigsDatabase:
     def create(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         contigs_fasta = A('contigs_fasta')
+        project_name = A('project_name')
+        description_file_path = A('description')
         split_length = A('split_length')
         kmer_size = A('kmer_size')
         skip_gene_calling = A('skip_gene_calling')
@@ -1902,7 +1904,17 @@ class ContigsDatabase:
             raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be\
                                 skipped. Please make up your mind.")
 
+        if not project_name:
+            raise ConfigError("Sorry, you must provide a project name for your contigs database :/")
+
+        if self.description_file_path:
+            filesnpaths.is_file_plain_text(description_file_path)
+            description = open(os.path.abspath(description_file_path), 'rU').read()
+        else:
+            description = ''
+
         filesnpaths.is_file_fasta_formatted(contigs_fasta)
+        contigs_fasta = os.path.abspath(contigs_fasta)
 
         # go throught he FASTA file to make sure there are no surprises with deflines and sequence lengths.
         self.progress.new('Checking deflines and contig lengths')
@@ -1963,12 +1975,26 @@ class ContigsDatabase:
 
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
+        self.db.set_meta_value('project_name', project_name)
+        self.db.set_meta_value('description', description)
+
         # this will be the unique information that will be passed downstream whenever this db is used:
         contigs_db_hash = self.get_hash()
         self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
 
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
+
+        # let the user see what's up
+        self.run.info('Name', project_name, mc='green')
+        self.run.info('Description', description_file_path, mc='green')
+        self.run.info('Input FASTA file', contigs_fasta)
+        self.run.info('Split Length', pp(split_length))
+        self.run.info('K-mer size', kmer_size)
+        self.run.info('Skip gene calling?', skip_gene_calling)
+        self.run.info('External gene calls provided?', external_gene_calls)
+        self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
+        self.run.info('Splitting pays attention to gene calls?', skip_mindful_splitting)
 
         # first things first: do the gene calling on contigs. this part is important. we are doing the
         # gene calling first. so we understand wher genes start and end. this information will guide the
@@ -3927,6 +3953,13 @@ def get_description_in_db(anvio_db_path, run=run):
 
     anvio_db.disconnect()
     return description
+
+
+def update_description_in_db_from_file(anvio_db_path, description_file_path, run=run):
+    filesnpaths.is_file_plain_text(description_file_path)
+    description = open(os.path.abspath(description_file_path), 'rU').read()
+
+    update_description_in_db(anvio_db_path, description, run=run)
 
 
 def update_description_in_db(anvio_db_path, description, run=run):
