@@ -1907,7 +1907,7 @@ class ContigsDatabase:
         if not project_name:
             raise ConfigError("Sorry, you must provide a project name for your contigs database :/")
 
-        if self.description_file_path:
+        if description_file_path:
             filesnpaths.is_file_plain_text(description_file_path)
             description = open(os.path.abspath(description_file_path), 'rU').read()
         else:
@@ -1987,7 +1987,7 @@ class ContigsDatabase:
 
         # let the user see what's up
         self.run.info('Name', project_name, mc='green')
-        self.run.info('Description', description_file_path, mc='green')
+        self.run.info('Description', os.path.abspath(description_file_path) if description_file_path else 'No description is given', mc='green')
         self.run.info('Input FASTA file', contigs_fasta)
         self.run.info('Split Length', pp(split_length))
         self.run.info('K-mer size', kmer_size)
