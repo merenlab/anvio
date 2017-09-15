@@ -205,11 +205,53 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
                             .data(data)
                             .enter()
                             .append("g")
-                            .on('mouseenter', function() {
-                                d3.select(this).attr('fill-opacity', '0.5');
+                            .on('mouseenter', function(d) {
+                                d3.select(this)
+                                    .select('rect')
+                                    .attr('fill-opacity', '0.5');
+
+                                var tooltip_pos = {
+                                    'x': Math.max(Math.min(xscale(d.name) - 80, 620), 0),
+                                    'y': yscale(d.value) - 50,
+                                    'width': 160,
+                                    'height': 40
+                                };
+
+                                var tooltip = d3.select(this)
+                                    .append('g')
+                                        .attr('class', 'tooltip')
+                                        .attr('transform', 'translate(' + tooltip_pos.x + ',' + tooltip_pos.y + ')');
+
+                                tooltip.append('rect')
+                                        .attr('rx', '8')
+                                        .attr('ry', '8')
+                                        .attr('height', tooltip_pos.height)
+                                        .attr('fill-opacity', '0.7')
+                                        .attr('width', tooltip_pos.width);
+                                       
+                                var tooltip_text = tooltip.append('text')
+                                                    .attr('x', '10')
+                                                    .attr('y', '15')
+                                                    .attr('fill', '#FFFFFF')
+                                                    .attr('font-family', 'Helvetica')
+                                                    .attr('font-size', '12px');
+
+                                tooltip_text.append('tspan')
+                                                .text('Gene: ' + d.name);
+
+                                tooltip_text.append('tspan')
+                                                .text('Count: ' + d.value)
+                                                .attr('x', '10')
+                                                .attr('dy', '1.4em');
+
                             })
-                            .on('mouseleave', function() {
-                                d3.select(this).attr('fill-opacity', '1');
+                            .on('mouseleave', function(d) {
+                                d3.select(this)
+                                    .select('rect')
+                                    .attr('fill-opacity', '1');
+
+                                d3.select(this)
+                                    .select('.tooltip').remove();
                             });
 
         bar_group.append('rect')
