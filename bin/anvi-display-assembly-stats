@@ -7,7 +7,7 @@ import argparse
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.assemblystats as assemblystats
+import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
@@ -39,7 +39,7 @@ args = parser.parse_args()
 
 try:
     args.mode = 'assembly'
-    d = assemblystats.AssemblyInteractive(args)
+    d = interactive.AssemblyInteractive(args)
     args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
 except ConfigError as e:
     print(e)

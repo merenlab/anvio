@@ -270,7 +270,7 @@ class GenomeDescriptions:
 
             self.progress.update('working on %s' % (genome_name))
 
-            contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], gene_caller=self.gene_caller)
+            contigs_db_summary = summarizer.ContigSummarizer(c['contigs_db_path']).get_contigs_db_info_dict(gene_caller=self.gene_caller)
 
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
@@ -313,9 +313,8 @@ class GenomeDescriptions:
                 # here we are using the get_contigs_db_info_dict function WITH split names we found in the collection
                 # which returns a partial summary from the contigs database focusing only those splits. a small workaround
                 # to be able to use the same funciton for bins in collections:
-                summary_from_contigs_db_summary = summarizer.get_contigs_db_info_dict(c['contigs_db_path'], \
-                                                                                      split_names=split_names_of_interest, \
-                                                                                      gene_caller=self.gene_caller)
+                summary_from_contigs_db_summary = summarizer.ContigSummarizer(c['contigs_db_path']).get_contigs_db_info_dict(split_names=split_names_of_interest, \
+                                                                                                                            gene_caller=self.gene_caller)
                 for key in summary_from_contigs_db_summary:
                     c[key] = summary_from_contigs_db_summary[key]
 

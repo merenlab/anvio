@@ -39,6 +39,7 @@ from collections import Counter
 import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.hmmops as hmmops
 import anvio.sequence as seqlib
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -918,6 +919,139 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         else:
             return sorted(self.summary['collection'].keys())
 
+class ContigSummarizer(SummarizerSuperClass):
+    def __init__(self, contigs_db_path, run=run, progress=progress):
+        self.contigs_db_path = contigs_db_path
+
+    def get_contigs_db_info_dict(run=run, progress=progress, include_AA_counts=False, split_names=None, gene_caller=None):
+        """Returns an info dict for a given contigs db"""
+
+        if not gene_caller:
+            gene_caller = constants.default_gene_caller
+
+        class Args:
+            def __init__(self):
+                self.contigs_db = self.contigs_db_path
+
+        args = Args()
+        run = run
+        progress = progress
+        run.verbose = False
+        progress.verbose = False
+        c = ContigsSuperclass(args, r=run, p=progress)
+
+        info_dict = {'path': contigs_db_path,
+                     'gene_caller_ids': set([])}
+
+        for key in c.a_meta:
+            info_dict[key] = c.a_meta[key]
+
+        gene_calls_not_reported = set([])
+
+        # Two different strategies here depending on whether we work with a given set if split ids or
+        # everything in the contigs database.
+        ADD = lambda g: info_dict['gene_caller_ids'].add(g) if c.genes_in_contigs_dict[g]['source'] == gene_caller else gene_calls_not_reported.add(g)
+
+        if split_names:
+            split_names = set(split_names)
+            c.init_split_sequences()
+            seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
+            for e in list(c.genes_in_splits.values()):
+                if e['split'] in split_names:
+                    ADD(e['gene_callers_id'])
+        else:
+            c.init_contig_sequences()
+            seq = ''.join([e['sequence'] for e in list(c.contig_sequences.values())])
+
+            for g in c.genes_in_contigs_dict:
+                ADD(g)
+
+        if len(gene_calls_not_reported):
+            run.info_single('Contigs db info summary will not include %d gene calls that were not identified by "%s", which \
+                             was the default source gene caller.' % (len(gene_calls_not_reported), gene_caller))
+
+        info_dict['gc_content'] = seqlib.Composition(seq).GC_content
+        info_dict['total_length'] = len(seq)
+
+        info_dict['partial_gene_calls'] = set([])
+        for gene_caller_id in info_dict['gene_caller_ids']:
+            if c.genes_in_contigs_dict[gene_caller_id]['partial']:
+                info_dict['partial_gene_calls'].add(gene_caller_id)
+
+        info_dict['num_genes'] = len(info_dict['gene_caller_ids'])
+        info_dict['avg_gene_length'] = numpy.mean([c.gene_lengths[gene_caller_id] for gene_caller_id in info_dict['gene_caller_ids']])
+        info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
+
+        # get completeness / contamination estimates
+        p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.Completeness(contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
+
+        info_dict['hmm_sources_info'] = c.hmm_sources_info
+        info_dict['percent_completion'] = p_completion
+        info_dict['percent_redundancy'] = p_redundancy
+        info_dict['scg_domain'] = domain
+        info_dict['scg_domain_confidence'] = domain_confidence
+
+        info_dict['hmms_for_scgs_were_run'] = True if len(results_dict) else False
+
+        # lets get all amino acids used in all complete gene calls:
+        if include_AA_counts:
+            if split_names:
+                AA_counts_dict = c.get_AA_counts_dict(split_names=split_names)
+            else:
+                AA_counts_dict = c.get_AA_counts_dict()
+
+            info_dict['AA_counts'] = AA_counts_dict['AA_counts']
+            info_dict['total_AAs'] = AA_counts_dict['total_AAs']
+
+
+        missing_keys = [key for key in constants.essential_genome_info if key not in info_dict]
+        if len(missing_keys):
+            raise ConfigError("We have a big problem. I am reporting from get_contigs_db_info_dict. This function must\
+                                produce a dictionary that meets the requirements defined in the constants module of anvi'o\
+                                for 'essential genome info'. But when I look at the resulting dictionary this funciton is\
+                                about to return, I can see it is missing some stuff :/ This is not a user error, but it needs\
+                                the attention of an anvi'o developer. Here are the keys that should have been in the results\
+                                but missing: '%s'" % (', '.join(missing_keys)))
+
+        return info_dict
+
+
+    def get_summary_dict_for_assembly(self):
+        summary = {}
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        hmm = hmmops.SequencesForHMMHits(self.contigs_db_path)
+
+        contig_lengths = sorted(contigs_db.db.get_single_column_from_table('contigs_basic_info', 'length'), reverse=True)
+        total_length = sum(contig_lengths)
+        size = len(contig_lengths)
+
+        summary['total_length'] = total_length
+        summary['size'] = size
+        summary['n_values'] = self.calculate_N_values(contig_lengths, total_length, N=100)
+        summary['single_copy_gene_counts'] = hmm.get_single_copy_gene_counts()
+
+        return summary
+
+
+    def calculate_N_values(self, contig_lengths, total_length, N=100):
+        results = []
+
+        temp_length = 0
+        contigs_index = 0
+        n_index = 1
+
+        while n_index <= N:
+            if (temp_length >= ((total_length / N) * n_index)):
+                results.append({
+                        'num_contigs': contigs_index,
+                        'length':      contig_lengths[contigs_index - 1]
+                    })
+                n_index += 1
+            else:
+                temp_length += contig_lengths[contigs_index]
+                contigs_index += 1
+
+        return results
 
 class Bin:
     def __init__(self, summary, bin_id, r=run, p=progress):
@@ -1401,99 +1535,6 @@ class Bin:
         output_file_obj = self.get_output_file_handle(output_file_name_posfix)
         output_file_obj.write('%s\n' % content)
         output_file_obj.close()
-
-
-def get_contigs_db_info_dict(contigs_db_path, run=run, progress=progress, include_AA_counts=False, split_names=None, gene_caller=None):
-    """Returns an info dict for a given contigs db"""
-
-    if not gene_caller:
-        gene_caller = constants.default_gene_caller
-
-    class Args:
-        def __init__(self):
-            self.contigs_db = contigs_db_path
-
-    args = Args()
-    run = run
-    progress = progress
-    run.verbose = False
-    progress.verbose = False
-    c = ContigsSuperclass(args, r=run, p=progress)
-
-    info_dict = {'path': contigs_db_path,
-                 'gene_caller_ids': set([])}
-
-    for key in c.a_meta:
-        info_dict[key] = c.a_meta[key]
-
-    gene_calls_not_reported = set([])
-
-    # Two different strategies here depending on whether we work with a given set if split ids or
-    # everything in the contigs database.
-    ADD = lambda g: info_dict['gene_caller_ids'].add(g) if c.genes_in_contigs_dict[g]['source'] == gene_caller else gene_calls_not_reported.add(g)
-
-    if split_names:
-        split_names = set(split_names)
-        c.init_split_sequences()
-        seq = ''.join([c.split_sequences[split_name] for split_name in split_names])
-        for e in list(c.genes_in_splits.values()):
-            if e['split'] in split_names:
-                ADD(e['gene_callers_id'])
-    else:
-        c.init_contig_sequences()
-        seq = ''.join([e['sequence'] for e in list(c.contig_sequences.values())])
-
-        for g in c.genes_in_contigs_dict:
-            ADD(g)
-
-    if len(gene_calls_not_reported):
-        run.info_single('Contigs db info summary will not include %d gene calls that were not identified by "%s", which \
-                         was the default source gene caller.' % (len(gene_calls_not_reported), gene_caller))
-
-    info_dict['gc_content'] = seqlib.Composition(seq).GC_content
-    info_dict['total_length'] = len(seq)
-
-    info_dict['partial_gene_calls'] = set([])
-    for gene_caller_id in info_dict['gene_caller_ids']:
-        if c.genes_in_contigs_dict[gene_caller_id]['partial']:
-            info_dict['partial_gene_calls'].add(gene_caller_id)
-
-    info_dict['num_genes'] = len(info_dict['gene_caller_ids'])
-    info_dict['avg_gene_length'] = numpy.mean([c.gene_lengths[gene_caller_id] for gene_caller_id in info_dict['gene_caller_ids']])
-    info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
-
-    # get completeness / contamination estimates
-    p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.Completeness(contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
-
-    info_dict['hmm_sources_info'] = c.hmm_sources_info
-    info_dict['percent_completion'] = p_completion
-    info_dict['percent_redundancy'] = p_redundancy
-    info_dict['scg_domain'] = domain
-    info_dict['scg_domain_confidence'] = domain_confidence
-
-    info_dict['hmms_for_scgs_were_run'] = True if len(results_dict) else False
-
-    # lets get all amino acids used in all complete gene calls:
-    if include_AA_counts:
-        if split_names:
-            AA_counts_dict = c.get_AA_counts_dict(split_names=split_names)
-        else:
-            AA_counts_dict = c.get_AA_counts_dict()
-
-        info_dict['AA_counts'] = AA_counts_dict['AA_counts']
-        info_dict['total_AAs'] = AA_counts_dict['total_AAs']
-
-
-    missing_keys = [key for key in constants.essential_genome_info if key not in info_dict]
-    if len(missing_keys):
-        raise ConfigError("We have a big problem. I am reporting from get_contigs_db_info_dict. This function must\
-                            produce a dictionary that meets the requirements defined in the constants module of anvi'o\
-                            for 'essential genome info'. But when I look at the resulting dictionary this funciton is\
-                            about to return, I can see it is missing some stuff :/ This is not a user error, but it needs\
-                            the attention of an anvi'o developer. Here are the keys that should have been in the results\
-                            but missing: '%s'" % (', '.join(missing_keys)))
-
-    return info_dict
 
 
 class AdHocRunGenerator:
