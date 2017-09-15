@@ -838,4 +838,4 @@ class BottleApplication(Bottle):
 
 
     def get_assembly_stats(self):
-        return self.interactive.get_assembly_stats()
+        return json.dumps(self.interactive.get_assembly_stats())
