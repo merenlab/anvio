@@ -11,8 +11,22 @@ AssemblyPlot.prototype.draw = function() {
         .attr('viewBox', '0 0 800 1000')
         .attr('preserveAspectRatio', 'xMinYMin meet');
 
+    this.draw_title();
     this.draw_circular_plot();
     this.draw_gene_counts_chart();
+};
+
+AssemblyPlot.prototype.draw_title = function() {
+    var g = this.svg.append('g')
+        .attr('transform', 'translate(400, 20)');
+
+    g.append('text')
+        .attr('class', 'title')
+        .attr('font-family', 'Helvetica')
+        .attr('font-size', '1.4em')
+        .attr('alignment-baseline', 'hanging')
+        .attr('text-anchor', 'middle')
+        .text(this.stats.project_name);
 };
 
 AssemblyPlot.prototype.draw_circular_plot = function() {
