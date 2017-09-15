@@ -1,0 +1,208 @@
+var AssemblyPlot = function(stats, container) {
+    this.stats = stats;
+    this.container = container;
+};
+
+AssemblyPlot.prototype.draw = function() {
+    this.svg = d3.select(this.container)
+        .append('svg')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('viewBox', '0 0 800 1000')
+        .attr('preserveAspectRatio', 'xMinYMin meet');
+
+    this.draw_circular_plot();
+    this.draw_gene_counts_chart();
+};
+
+AssemblyPlot.prototype.draw_circular_plot = function() {
+    var margin = 10;
+    var plot_radius = 300;
+
+    var g = this.svg.append('g')
+        .attr('transform', 'translate(400, 400)');
+
+    var angle = d3.scale.linear()
+        .domain([0, 100])
+        .range([0, 2 * Math.PI]);
+
+    var radius = d3.scale.sqrt()
+        .domain([this.stats.n_values[0].length, 0])
+        .range([0, plot_radius]);
+
+    var radius_reverse = d3.scale.sqrt()
+        .domain([this.stats.n_values[0].length, 0])
+        .range([plot_radius, 0]);
+
+    var area = d3.svg.area.radial()
+        .angle(function(d, i) { return angle(i); })
+        .innerRadius(radius(0))
+        .outerRadius(function(d) { return radius(d.length); });
+
+    g.append('path')
+        .datum(this.stats.n_values)
+        .attr('fill', '#BBB')
+        .attr('d', area);
+
+    var n50arc = d3.svg.arc()
+        .innerRadius(radius(this.stats.n_values[49].length))
+        .outerRadius(plot_radius);
+
+    var n90arc = d3.svg.arc()
+        .innerRadius(radius(this.stats.n_values[89].length))
+        .outerRadius(plot_radius);
+
+    g.append('path')
+        .attr('stroke-width', '0')
+        .attr('fill', 'rgb(255, 127, 0)')
+        .attr('d', n50arc({ startAngle: angle(0), endAngle: angle(50) }));
+
+    g.append('path')
+        .attr('stroke-width', '0')
+        .attr('fill', 'rgb(253, 191, 111)')
+        .attr('d', n90arc({ startAngle: angle(0), endAngle: angle(90) }));
+
+    g.append('circle')
+        .attr('fill', 'none')
+        .attr('stroke-width', '3')
+        .attr('stroke', '#555')
+        .attr('cx', '0')
+        .attr('cy', '0')
+        .attr('r', plot_radius);
+
+    var axis = d3.svg.axis()
+        .orient("left")
+        .tickValues([3,4,5,6,7,8,9,10,11,12].map(function(x){ 
+            var tickValue = Math.pow(10, x);
+            if (tickValue <= this.stats.n_values[0].length) {
+                return tickValue;
+            }
+            return 0;
+        }.bind(this)))
+        .tickFormat(function(d) {
+            g.append('circle')
+                .attr('fill', 'none')
+                .attr('stroke-width', '1')
+                .attr('stroke', '#666')
+                .attr('cx', '0')
+                .attr('cy', '0')
+                .attr('stroke-dasharray', '10, 10')
+                .attr('r', (radius(d) >= plot_radius / 2) ? radius(d) : 0);
+            return getReadableSeqSizeString(d, 0);
+        })
+        .scale(radius_reverse);
+
+    g.append("g")
+        .attr('transform', 'translate(0,' + -1 * plot_radius + ')')
+        .attr('font-family', 'Helvetica')
+        .attr('font-size', '0.8em')
+        .attr('fill', '#666')
+        .call(axis)
+        .selectAll("text")
+        .attr("y", -6)
+        .attr("x", -3);
+
+    g.append('text')
+        .attr('class', 'info')
+        .attr('font-family', 'Helvetica')
+        .attr('font-size', '1.4em')
+        .attr('x', plot_radius * 3/4)
+        .attr('y', plot_radius * 3/4);
+
+    var stats = this.stats;
+    g.append('circle')
+        .attr('fill', '#000000')
+        .attr('fill-opacity', '0.0')
+        .attr('cx', '0')
+        .attr('cy', '0')
+        .attr('r', '300')
+        .on('mouseenter', function() {
+            g.append('path')
+                .attr('class', 'hover')
+                .attr('fill', '#000000')
+                .attr('fill-opacity', '0.1')
+                .attr('pointer-events', 'none');
+
+        })
+        .on('mousemove', function() {
+            var pos = d3.mouse(this);
+            var radiant = Math.PI / 2 + Math.atan2(pos[1], pos[0]);
+            if (radiant < 0)
+                radiant = 2 * Math.PI + radiant;
+
+            var order = Math.floor(radiant / (2 * Math.PI) * 100);
+
+            var arc = d3.svg.arc()
+                .innerRadius(0)
+                .outerRadius(plot_radius);
+
+            g.select('.hover')
+                .attr('d', arc({ startAngle: angle(order), endAngle: angle(order + 1) }));
+
+            g.selectAll('.info>tspan').remove();
+
+            g.select('.info')
+                .append('tspan')
+                .attr('font-weight', 'bold')
+                .attr('dy', '1.4em')
+                .text("N" + (order + 1));
+
+            g.select('.info')
+                .append('tspan')
+                .attr('dy', '1.4em')
+                .attr('x', plot_radius * 3/4)
+                .text(stats.n_values[order].num_contigs + " contigs ");
+
+            g.select('.info')
+                .append('tspan')
+                .attr('dy', '1.4em')
+                .attr('x', plot_radius * 3/4)
+                .text(">= " + getReadableSeqSizeString(stats.n_values[order].length, 1));
+
+        })
+        .on('mouseleave', function() {
+            g.select('.hover').remove();
+            g.select('.info').selectAll('tspan').remove();
+        });
+};
+
+AssemblyPlot.prototype.draw_gene_counts_chart = function() {
+        var g = this.svg.append("g")
+            .attr("transform", "translate(20, 810)");
+
+        var plot_width = 760;
+        var plot_height = 180;
+
+        var data = [];
+        for (key in this.stats.single_copy_gene_counts['Campbell_et_al']) {
+            data.push({'name': key, 'value': this.stats.single_copy_gene_counts['Campbell_et_al'][key]});
+        }
+        data.sort(function(a, b) { return (a['value'] < b['value']) - (a['value'] > b['value'])})
+
+        var xscale = d3.scale.ordinal().rangeRoundBands([0, plot_width], .05);
+        var yscale = d3.scale.linear().rangeRound([plot_height, 0]);
+        var color_scale = d3.scale.linear().range(['#fff7bc', '#d95f0e']);
+
+        xscale.domain(data.map(function(d) { return d.name; }));
+        yscale.domain([0, d3.max(data, function(d) { return d.value; })]);
+        color_scale.domain([0, d3.max(data, function(d) { return d.value; })]);
+
+        var bar_group = g.selectAll(".bar")
+                            .data(data)
+                            .enter()
+                            .append("g")
+                            .on('mouseenter', function() {
+                                d3.select(this).attr('fill-opacity', '0.5');
+                            })
+                            .on('mouseleave', function() {
+                                d3.select(this).attr('fill-opacity', '1');
+                            });
+
+        bar_group.append('rect')
+                .attr("class", "bar")
+                .attr("x", function(d) { return xscale(d.name); })
+                .attr("y", function(d) { return yscale(d.value); })
+                .attr("width", xscale.rangeBand())
+                .attr("fill", function(d) { return color_scale(d.value); })
+                .attr("height", function(d) { return plot_height - yscale(d.value); });
+};
