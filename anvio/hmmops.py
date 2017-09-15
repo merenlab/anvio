@@ -75,6 +75,26 @@ class SequencesForHMMHits:
         return hits_in_splits, split_name_to_bin_id
 
 
+    def get_single_copy_gene_counts(self):
+        sources = [source for source in self.hmm_hits_info if self.hmm_hits_info[source]['search_type'] == 'singlecopy']
+
+        gene_counts = {}
+        for source in sources:
+            gene_counts[source] = {}
+
+        for entry in list(self.hmm_hits.values()):
+            source    = entry['source']
+            gene_name = entry['gene_name']
+
+            if source in sources:
+                if gene_name not in gene_counts[source]:
+                    gene_counts[source][gene_name] = 0
+
+                gene_counts[source][gene_name] += 1
+
+        return gene_counts
+
+
     def get_hmm_hits_per_bin(self, splits_dict, source):
         hits_in_splits, split_name_to_bin_id = self.get_hmm_hits_in_splits(splits_dict)
 

@@ -40,7 +40,8 @@
         return Math.max(seqSizeInBases, 0.1).toFixed(fixed) + baseUnits[i];
     };
 
-    function drawPlot(stats, container, size, margin) {
+    function drawAssemblyPlot(stats, container, size) {
+        var margin = 10;
         var svg = d3.select(container)
             .append('svg')
             .attr('width', size)
@@ -190,8 +191,64 @@
             });
     }
 
+    function drawGenePlot(stats, container, width, height, margin) {
+        var svg = d3.select(container)
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .attr('style', 'display: inline-block;');
+
+        var g = svg.append("g")
+            .attr("transform", "translate(" + margin + "," + margin + ")");
+
+        var plot_width = width - 2 * margin;
+        var plot_height = height - 2 * margin;
+
+        var data = [];
+        for (key in stats.single_copy_gene_counts['Campbell_et_al']) {
+            data.push({'name': key, 'value': stats.single_copy_gene_counts['Campbell_et_al'][key]});
+        }
+        data.sort(function(a, b) { return (a['value'] < b['value']) - (a['value'] > b['value'])})
+
+        var xscale = d3.scale.ordinal().rangeRoundBands([0, plot_width], .05); //.innerPadding(0.1);
+        var yscale = d3.scale.linear().rangeRound([plot_height, 0]);
+        var color_scale = d3.scale.linear().range(['#fff7bc', '#d95f0e']);
+
+        xscale.domain(data.map(function(d) { return d.name; }));
+        yscale.domain([0, d3.max(data, function(d) { return d.value; })]);
+        color_scale.domain([0, d3.max(data, function(d) { return d.value; })]);
+
+        var bar_group = g.selectAll(".bar")
+                            .data(data)
+                            .enter()
+                            .append("g")
+                            .on('mouseenter', function() {
+                                d3.select(this).attr('fill-opacity', '0.5');
+                            })
+                            .on('mouseleave', function() {
+                                d3.select(this).attr('fill-opacity', '1');
+                            });
+
+        bar_group.append('rect')
+                .attr("class", "bar")
+                .attr("x", function(d) { return xscale(d.name); })
+                .attr("y", function(d) { return yscale(d.value); })
+                .attr("width", xscale.rangeBand())
+                .attr("fill", function(d) { return color_scale(d.value); })
+                .attr("height", function(d) { return plot_height - yscale(d.value); });
+        
+/*        bar_group.append("text")
+                .attr("x", function(d) { return xscale(d.name); })
+                .attr("y", plot_height)
+                .attr("fill", '#FFFFFF')
+                .attr("text-anchor", "end")
+                .attr("transform", 'translate()rotate(-90)')
+                .text(function(d) { return d.name; });*/
+    }
+
     d3.json("/data/get_assembly_stats", function(error, stats) {
-        drawPlot(stats, '.container', 800, 100);
+        drawAssemblyPlot(stats, '.container', 600);
+        drawGenePlot(stats, '.container', 600, 200, 10);
     });
     </script>
 </body>
