@@ -1025,6 +1025,7 @@ class ContigSummarizer(SummarizerSuperClass):
         total_length = sum(contig_lengths)
         size = len(contig_lengths)
 
+        summary['project_name'] = contigs_db.db.get_meta_value('project_name')
         summary['total_length'] = total_length
         summary['size'] = size
         summary['n_values'] = self.calculate_N_values(contig_lengths, total_length, N=100)
