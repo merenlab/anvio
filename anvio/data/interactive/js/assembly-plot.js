@@ -6,8 +6,6 @@ var AssemblyPlot = function(stats, container) {
 AssemblyPlot.prototype.draw = function() {
     this.svg = d3.select(this.container)
         .append('svg')
-        .attr('width', '100%')
-        .attr('height', '100%')
         .attr('viewBox', '0 0 800 1000')
         .attr('preserveAspectRatio', 'xMinYMin meet');
 
