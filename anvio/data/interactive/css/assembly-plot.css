@@ -10,6 +10,23 @@ html, body {
     text-align: center;
 }
 
+.container > svg {
+    height: 100%;
+}
+
+.container-left, .container-right  {
+    display: inline-block;
+    width: 50%;
+    height: 100%;
+    text-align: center;
+    float: left;
+    overflow: hidden;
+}
+
+.container-left > svg, .container-right > svg  {
+    width: 100%;
+    height: 100%;
+}
 
 .domain {
     fill: none;

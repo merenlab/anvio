@@ -6,13 +6,40 @@
     <script type='text/javascript' src='lib/d3.js/d3.min.js'></script>
     <script type='text/javascript' src='js/assembly-plot.js'></script>
     <link rel="stylesheet" type="text/css" href="css/assembly-plot.css" />
+    <script type="text/javascript">
+        var assembly_stats;
+        var contig_db_names;
+    </script>
 </head>
 
 <body>
-    <div class='container'></div>
     <script>
-        d3.json("/data/get_assembly_stats", function(error, stats) {
-            new AssemblyPlot(stats, '.container').draw();
+        d3.json("/data/get_assembly_stats", function(error, response) {
+            assembly_stats = response;
+            contig_db_names = Object.keys(assembly_stats);
+
+            if (contig_db_names.length == 0) {
+                alert('There is no contigs db statistics in the response, something is wrong.');
+            }
+            if (contig_db_names.length == 1) {
+                d3.select('body')
+                    .append('div')
+                        .attr('class', 'container');
+
+                new AssemblyPlot(assembly_stats[contig_db_names[0]], '.container').draw();
+            }
+            else {
+                d3.select('body')
+                    .append('div')
+                        .attr('class', 'container-left');
+
+                d3.select('body')
+                    .append('div')
+                        .attr('class', 'container-right');
+
+                new AssemblyPlot(assembly_stats[contig_db_names[0]], '.container-left').draw();
+                new AssemblyPlot(assembly_stats[contig_db_names[1]], '.container-right').draw();
+            }
         });
     </script>
 </body>

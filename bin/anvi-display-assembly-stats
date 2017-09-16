@@ -27,13 +27,14 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 parser = argparse.ArgumentParser(description="Start the anvi'o interactive interactive for viewing assembly statistics")
-groupA = parser.add_argument_group('DEFAULT INPUTS', "Contigs Databases")
-groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-groupB = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
-groupB.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-groupB.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-groupB.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
-groupB.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+parser.add_argument('input', metavar = 'CONTIG DATABASE(S)', nargs='+',
+                    help = "Anvio'o Contig databases to display statistics, \
+                            you can give multiple databases by seperating them with space.")
+groupA = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+groupA.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+groupA.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+groupA.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+groupA.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
 args = parser.parse_args()
 
