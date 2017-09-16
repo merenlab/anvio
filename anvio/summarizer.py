@@ -923,24 +923,22 @@ class ContigSummarizer(SummarizerSuperClass):
     def __init__(self, contigs_db_path, run=run, progress=progress):
         self.contigs_db_path = contigs_db_path
 
-    def get_contigs_db_info_dict(run=run, progress=progress, include_AA_counts=False, split_names=None, gene_caller=None):
+    def get_contigs_db_info_dict(self, run=run, progress=progress, include_AA_counts=False, split_names=None, gene_caller=None):
         """Returns an info dict for a given contigs db"""
 
         if not gene_caller:
             gene_caller = constants.default_gene_caller
 
-        class Args:
-            def __init__(self):
-                self.contigs_db = self.contigs_db_path
+        import argparse
+        args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
-        args = Args()
-        run = run
-        progress = progress
+        run = terminal.Run()
+        progress = terminal.Progress()
         run.verbose = False
         progress.verbose = False
         c = ContigsSuperclass(args, r=run, p=progress)
 
-        info_dict = {'path': contigs_db_path,
+        info_dict = {'path': self.contigs_db_path,
                      'gene_caller_ids': set([])}
 
         for key in c.a_meta:
@@ -983,7 +981,7 @@ class ContigSummarizer(SummarizerSuperClass):
         info_dict['num_genes_per_kb'] = info_dict['num_genes'] * 1000.0 / info_dict['total_length']
 
         # get completeness / contamination estimates
-        p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.Completeness(contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
+        p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.Completeness(self.contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
 
         info_dict['hmm_sources_info'] = c.hmm_sources_info
         info_dict['percent_completion'] = p_completion
