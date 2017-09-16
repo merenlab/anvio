@@ -84,15 +84,20 @@ AssemblyPlot.prototype.draw_circular_plot = function() {
         .attr('cy', '0')
         .attr('r', plot_radius);
 
+    var tick_values = [];
+    for (var i=3; i < 15; i++) {
+        var tick_value = Math.pow(10, i);
+        var tick_radius = radius(tick_value);
+        var previous_tick_radius = (tick_values.length > 0) ? radius(tick_values[tick_values.length-1]) : plot_radius;
+
+        if (tick_radius < plot_radius && tick_radius > plot_radius / 3 && Math.abs(tick_radius - previous_tick_radius) > 10) {
+            tick_values.push(tick_value);
+        }
+    }
+
     var axis = d3.svg.axis()
         .orient("left")
-        .tickValues([3,4,5,6,7,8,9,10,11,12].map(function(x){ 
-            var tickValue = Math.pow(10, x);
-            if (tickValue <= this.stats.n_values[0].length) {
-                return tickValue;
-            }
-            return 0;
-        }.bind(this)))
+        .tickValues(tick_values)
         .tickFormat(function(d) {
             g.append('circle')
                 .attr('fill', 'none')
@@ -101,7 +106,7 @@ AssemblyPlot.prototype.draw_circular_plot = function() {
                 .attr('cx', '0')
                 .attr('cy', '0')
                 .attr('stroke-dasharray', '10, 10')
-                .attr('r', (radius(d) >= plot_radius / 2) ? radius(d) : 0);
+                .attr('r', radius(d));
             return getReadableSeqSizeString(d, 0);
         })
         .scale(radius_reverse);
