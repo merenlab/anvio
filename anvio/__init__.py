@@ -432,6 +432,15 @@ D = {
                       the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good\
                       for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'max-num-genes-missing-from-bin': (
+            ['--max-num-genes-missing-from-bin'],
+            {'default': None,
+             'help': "If you have a list of gene names, you can use this parameter to omit any bin (or external genome) that\
+                      is missing more than a number of genes you desire. For instance, if you have 100 genome bins, and\
+                      you are interested in working with 5 ribosomal proteins, you can use '--max-num-genes-missing-from-bin 4'\
+                      to remove remove the bins that are missing more than 4 of those 5 genes. This is especially useful for\
+                      phylogenomic analyses. Parameter 0 will remove any bin that is missing any of the genes."}
+                ),
     'concatenate-genes': (
             ['--concatenate-genes'],
             {'default': False,
