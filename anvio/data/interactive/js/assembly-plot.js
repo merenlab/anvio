@@ -84,15 +84,20 @@ AssemblyPlot.prototype.draw_circular_plot = function() {
         .attr('cy', '0')
         .attr('r', plot_radius);
 
+    var tick_values = [];
+    for (var i=3; i < 15; i++) {
+        var tick_value = Math.pow(10, i);
+        var tick_radius = radius(tick_value);
+        var previous_tick_radius = (tick_values.length > 0) ? radius(tick_values[tick_values.length-1]) : plot_radius;
+
+        if (tick_radius < plot_radius && tick_radius > plot_radius / 3 && Math.abs(tick_radius - previous_tick_radius) > 10) {
+            tick_values.push(tick_value);
+        }
+    }
+
     var axis = d3.svg.axis()
         .orient("left")
-        .tickValues([3,4,5,6,7,8,9,10,11,12].map(function(x){ 
-            var tickValue = Math.pow(10, x);
-            if (tickValue <= this.stats.n_values[0].length) {
-                return tickValue;
-            }
-            return 0;
-        }.bind(this)))
+        .tickValues(tick_values)
         .tickFormat(function(d) {
             g.append('circle')
                 .attr('fill', 'none')
@@ -101,7 +106,7 @@ AssemblyPlot.prototype.draw_circular_plot = function() {
                 .attr('cx', '0')
                 .attr('cy', '0')
                 .attr('stroke-dasharray', '10, 10')
-                .attr('r', (radius(d) >= plot_radius / 2) ? radius(d) : 0);
+                .attr('r', radius(d));
             return getReadableSeqSizeString(d, 0);
         })
         .scale(radius_reverse);
@@ -205,11 +210,53 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
                             .data(data)
                             .enter()
                             .append("g")
-                            .on('mouseenter', function() {
-                                d3.select(this).attr('fill-opacity', '0.5');
+                            .on('mouseenter', function(d) {
+                                d3.select(this)
+                                    .select('rect')
+                                    .attr('fill-opacity', '0.5');
+
+                                var tooltip_pos = {
+                                    'x': Math.max(Math.min(xscale(d.name) - 80, 620), 0),
+                                    'y': yscale(d.value) - 50,
+                                    'width': 160,
+                                    'height': 40
+                                };
+
+                                var tooltip = d3.select(this)
+                                    .append('g')
+                                        .attr('class', 'tooltip')
+                                        .attr('transform', 'translate(' + tooltip_pos.x + ',' + tooltip_pos.y + ')');
+
+                                tooltip.append('rect')
+                                        .attr('rx', '8')
+                                        .attr('ry', '8')
+                                        .attr('height', tooltip_pos.height)
+                                        .attr('fill-opacity', '0.7')
+                                        .attr('width', tooltip_pos.width);
+                                       
+                                var tooltip_text = tooltip.append('text')
+                                                    .attr('x', '10')
+                                                    .attr('y', '15')
+                                                    .attr('fill', '#FFFFFF')
+                                                    .attr('font-family', 'Helvetica')
+                                                    .attr('font-size', '12px');
+
+                                tooltip_text.append('tspan')
+                                                .text('Gene: ' + d.name);
+
+                                tooltip_text.append('tspan')
+                                                .text('Count: ' + d.value)
+                                                .attr('x', '10')
+                                                .attr('dy', '1.4em');
+
                             })
-                            .on('mouseleave', function() {
-                                d3.select(this).attr('fill-opacity', '1');
+                            .on('mouseleave', function(d) {
+                                d3.select(this)
+                                    .select('rect')
+                                    .attr('fill-opacity', '1');
+
+                                d3.select(this)
+                                    .select('.tooltip').remove();
                             });
 
         bar_group.append('rect')
