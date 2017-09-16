@@ -32,6 +32,7 @@ import numpy
 import shutil
 import hashlib
 import mistune
+import argparse
 import textwrap
 
 from collections import Counter
@@ -929,7 +930,6 @@ class ContigSummarizer(SummarizerSuperClass):
         if not gene_caller:
             gene_caller = constants.default_gene_caller
 
-        import argparse
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
         run = terminal.Run()
