@@ -222,7 +222,7 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
 
                                 var tooltip = d3.select(this)
                                     .append('g')
-                                        .attr('class', 'tooltip')
+                                        .attr('class', 'plot-tooltip')
                                         .attr('transform', 'translate(' + tooltip_pos.x + ',' + tooltip_pos.y + ')');
 
                                 tooltip.append('rect')
@@ -254,7 +254,7 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
                                     .attr('fill-opacity', '1');
 
                                 d3.select(this)
-                                    .select('.tooltip').remove();
+                                    .select('.plot-tooltip').remove();
                             });
 
         bar_group.append('rect')
