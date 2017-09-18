@@ -2,9 +2,12 @@
 
 <head>
     <title>Assembly Statistics</title>
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <script type='text/javascript' src='js/utils.js'></script>
     <script type='text/javascript' src='lib/d3.js/d3.min.js'></script>
     <script type='text/javascript' src='js/assembly-plot.js'></script>
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
     <link rel="stylesheet" type="text/css" href="css/assembly-plot.css" />
     <script type="text/javascript">
         var assembly_stats;
@@ -13,7 +16,56 @@
 </head>
 
 <body>
+    <div class="container"></div>
+    <div class="container-bottom">
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#modal_change_display" id="btn_open_change_display">
+            Change display
+        </button>
+    </div>
+    <div class="modal fade" id="modal_change_display" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Change Display</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="select_panel_left" class="col-2 col-form-label">Left side: </label>
+              <div class="col-10">
+                <select class="form-control" id="select_panel_left">
+                </select>
+              </div>
+            </div>
+            <div class="form-groupw">
+              <label for="select_panel_right" class="col-2 col-form-label">Right side:</label>
+              <div class="col-10">
+                <select class="form-control" id="select_panel_right">
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="btn_select" data-dismiss="modal" onclick="draw_plots();">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <script>
+        function draw_plots() {
+            $('.plot-container-left').remove();
+            $('.plot-container-right').remove();
+
+            $('.container').append('<div class="plot-container-left"></div>');
+            $('.container').append('<div class="plot-container-right"></div>');
+
+            new AssemblyPlot(assembly_stats[$('#select_panel_left option:selected').val()], '.plot-container-left').draw();
+            new AssemblyPlot(assembly_stats[$('#select_panel_right option:selected').val()], '.plot-container-right').draw();
+        }
+
         d3.json("/data/get_assembly_stats", function(error, response) {
             assembly_stats = response;
             contig_db_names = Object.keys(assembly_stats);
@@ -24,21 +76,24 @@
             if (contig_db_names.length == 1) {
                 d3.select('body')
                     .append('div')
-                        .attr('class', 'container');
+                        .attr('class', 'plot-container');
 
-                new AssemblyPlot(assembly_stats[contig_db_names[0]], '.container').draw();
+                new AssemblyPlot(assembly_stats[contig_db_names[0]], '.plot-container').draw();
+
+                $('.container-bottom').style('display', 'none');
+                $('.container').style('height', '100%');
             }
             else {
-                d3.select('body')
-                    .append('div')
-                        .attr('class', 'container-left');
+                contig_db_names.forEach(function(contig_db_name) {
+                    var project_name = assembly_stats[contig_db_name].project_name;
+                    $('#select_panel_left, #select_panel_right').append('<option value="' + contig_db_name + '">' + project_name + '</option>');
+                });
 
-                d3.select('body')
-                    .append('div')
-                        .attr('class', 'container-right');
+                $('#select_panel_left option:nth-child(1)').prop("selected", true);
+                $('#select_panel_right option:nth-child(2)').prop("selected", true);
+                
 
-                new AssemblyPlot(assembly_stats[contig_db_names[0]], '.container-left').draw();
-                new AssemblyPlot(assembly_stats[contig_db_names[1]], '.container-right').draw();
+                draw_plots();
             }
         });
     </script>
