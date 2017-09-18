@@ -76,22 +76,25 @@ class SequencesForHMMHits:
 
 
     def get_single_copy_gene_counts(self):
+        progress.new("Counting HMM hits")
         sources = [source for source in self.hmm_hits_info if self.hmm_hits_info[source]['search_type'] == 'singlecopy']
 
         gene_counts = {}
         for source in sources:
             gene_counts[source] = {}
 
+            print(source, len(self.hmm_hits_info[source]['genes'].split(',')))
+
         for entry in list(self.hmm_hits.values()):
             source    = entry['source']
-            gene_name = entry['gene_name']
+            gene_name = entry['gene_name'].strip()
 
             if source in sources:
                 if gene_name not in gene_counts[source]:
                     gene_counts[source][gene_name] = 0
-
                 gene_counts[source][gene_name] += 1
 
+        progress.end()
         return gene_counts
 
 
