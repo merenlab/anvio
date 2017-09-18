@@ -196,7 +196,7 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
         }
         data.sort(function(a, b) { return (a['value'] < b['value']) - (a['value'] > b['value'])})
 
-        var xscale = d3.scale.ordinal().rangeRoundBands([0, plot_width], .05);
+        var xscale = d3.scale.ordinal().rangeBands([0, plot_width]);
         var yscale = d3.scale.linear().rangeRound([plot_height, 0]);
         var color_scale = d3.scale.linear().range(['#fff7bc', '#d95f0e']);
 
@@ -214,7 +214,7 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
                                     .attr('fill-opacity', '0.5');
 
                                 var tooltip_pos = {
-                                    'x': Math.max(Math.min(xscale(d.name) - 80, 620), 0),
+                                    'x': Math.max(Math.min(xscale(d.name) - 80,  600), 0),
                                     'y': yscale(d.value) - 50,
                                     'width': 160,
                                     'height': 40
@@ -257,20 +257,20 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
                                     .select('.plot-tooltip').remove();
                             });
 
-        bar_group.append('rect')
-                .attr("class", "bar")
-                .attr("x", function(d) { return xscale(d.name); })
-                .attr("y", function(d) { return yscale(d.value); })
-                .attr("width", xscale.rangeBand())
-                .attr("fill", function(d) { return color_scale(d.value); })
-                .attr("height", function(d) { return plot_height - yscale(d.value); });
+    bar_group.append('rect')
+            .attr("class", "bar")
+            .attr("x", function(d) { return xscale(d.name); })
+            .attr("y", function(d) { return yscale(d.value); })
+            .attr("width", xscale.rangeBand())
+            .attr("fill", function(d) { return color_scale(d.value); })
+            .attr("height", function(d) { return plot_height - yscale(d.value); });
 
-        var yAxis = d3.svg.axis()
-            .scale(yscale)
-            .orient("left");
+    var yAxis = d3.svg.axis()
+        .scale(yscale)
+        .orient("left");
 
-        g.append("g")
-            .attr("class", "x_axis")
-            .attr("transform", 'translate(0,0)')
-            .call(yAxis);
+    g.append("g")
+        .attr("class", "x_axis")
+        .attr("transform", 'translate(0,0)')
+        .call(yAxis);
 };
