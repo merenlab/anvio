@@ -196,7 +196,7 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
         }
         data.sort(function(a, b) { return (a['value'] < b['value']) - (a['value'] > b['value'])})
 
-        var xscale = d3.scale.ordinal().rangeBands([0, plot_width]);
+        var xscale = d3.scale.ordinal().rangeBands([20, plot_width]);
         var yscale = d3.scale.linear().rangeRound([plot_height, 0]);
         var color_scale = d3.scale.linear().range(['#fff7bc', '#d95f0e']);
 
@@ -267,10 +267,12 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
 
     var yAxis = d3.svg.axis()
         .scale(yscale)
-        .orient("left");
+        .orient("left")
+        .tickFormat(d3.format("d"))
+        .tickSubdivide(0);
 
     g.append("g")
         .attr("class", "x_axis")
-        .attr("transform", 'translate(0,0)')
+        .attr("transform", 'translate(18,0)')
         .call(yAxis);
 };
