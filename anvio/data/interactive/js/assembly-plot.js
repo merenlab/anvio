@@ -21,7 +21,7 @@ AssemblyPlot.prototype.draw_title = function() {
     g.append('text')
         .attr('class', 'title')
         .attr('font-family', 'Helvetica')
-        .attr('font-size', '1.4em')
+        .attr('font-size', '2em')
         .attr('alignment-baseline', 'hanging')
         .attr('text-anchor', 'middle')
         .text(this.stats.project_name);
