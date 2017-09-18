@@ -264,4 +264,13 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
                 .attr("width", xscale.rangeBand())
                 .attr("fill", function(d) { return color_scale(d.value); })
                 .attr("height", function(d) { return plot_height - yscale(d.value); });
+
+        var yAxis = d3.svg.axis()
+            .scale(yscale)
+            .orient("left");
+
+        g.append("g")
+            .attr("class", "x_axis")
+            .attr("transform", 'translate(0,0)')
+            .call(yAxis);
 };
