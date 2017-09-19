@@ -95,14 +95,13 @@
                 alert('There is no contigs db statistics in the response, something is wrong.');
             }
             if (contig_db_names.length == 1) {
-                d3.select('body')
+                d3.select('.container')
                     .append('div')
                         .attr('class', 'plot-container');
 
                 new ContigsPlot(contigs_stats[contig_db_names[0]], '.plot-container').draw();
-
-                $('.container-bottom').style('display', 'none');
-                $('.container').style('height', '100%');
+                $('.container-bottom').css('display', 'none');
+                $('.container').css('height', '100%');
             }
             else {
                 contig_db_names.forEach(function(contig_db_name) {
