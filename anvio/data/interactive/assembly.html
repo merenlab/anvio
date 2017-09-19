@@ -32,6 +32,7 @@
             </button>
           </div>
           <div class="modal-body">
+            <h5>Display Settings</h5>
             <div class="form-group">
               <label for="select_panel_left" class="col-2 col-form-label">Left side: </label>
               <div class="col-10">
@@ -45,6 +46,21 @@
                 <select class="form-control" id="select_panel_right">
                 </select>
               </div>
+            </div>
+            <div class="col-12" style="margin-top: 40px;"><h5>Plot Settings</h5></div>
+            <div class="grid">
+                <div class="form-group form-margin row">
+                        <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Show N50:</label>  
+                        <div class="col-md-8">
+                            <input type="checkbox" id="show_n50" name="checkbox" value="value" checked>
+                        </div>
+                </div>
+                <div class="form-group form-margin row">
+                        <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Show N90:</label>  
+                        <div class="col-md-8">
+                            <input type="checkbox" id="show_n90" name="checkbox" value="value" checked>
+                        </div>
+                </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -62,8 +78,13 @@
             $('.container').append('<div class="plot-container-left"></div>');
             $('.container').append('<div class="plot-container-right"></div>');
 
-            new AssemblyPlot(assembly_stats[$('#select_panel_left option:selected').val()], '.plot-container-left').draw();
-            new AssemblyPlot(assembly_stats[$('#select_panel_right option:selected').val()], '.plot-container-right').draw();
+            var settings = {
+                'show_n50': $('#show_n50').is(':checked'),
+                'show_n90': $('#show_n90').is(':checked'),
+            };
+
+            new AssemblyPlot(assembly_stats[$('#select_panel_left option:selected').val()], '.plot-container-left', settings).draw();
+            new AssemblyPlot(assembly_stats[$('#select_panel_right option:selected').val()], '.plot-container-right', settings).draw();
         }
 
         d3.json("/data/get_assembly_stats", function(error, response) {
