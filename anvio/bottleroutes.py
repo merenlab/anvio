@@ -120,7 +120,7 @@ class BottleApplication(Bottle):
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
         self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
-        self.route('/data/get_assembly_stats',                 callback=self.get_assembly_stats)
+        self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
 
 
     def run_application(self, ip, port):
@@ -155,8 +155,8 @@ class BottleApplication(Bottle):
 
     def redirect_to_app(self):
         homepage = 'index.html' 
-        if self.interactive.mode == 'assembly':
-            homepage = 'assembly.html'
+        if self.interactive.mode == 'contigs':
+            homepage = 'contigs.html'
 
         redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
@@ -837,5 +837,5 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1, 'message': message})
 
 
-    def get_assembly_stats(self):
-        return json.dumps(self.interactive.get_assembly_stats())
+    def get_contigs_stats(self):
+        return json.dumps(self.interactive.get_contigs_stats())

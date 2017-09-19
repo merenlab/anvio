@@ -1,4 +1,4 @@
-var AssemblyPlot = function(stats, container, settings) {
+var ContigsPlot = function(stats, container, settings) {
     this.stats = stats;
     this.container = container;
 
@@ -9,7 +9,7 @@ var AssemblyPlot = function(stats, container, settings) {
 
 };
 
-AssemblyPlot.prototype.draw = function() {
+ContigsPlot.prototype.draw = function() {
     this.svg = d3.select(this.container)
         .append('svg')
         .attr('viewBox', '0 0 800 1000')
@@ -20,7 +20,7 @@ AssemblyPlot.prototype.draw = function() {
     this.draw_gene_counts_chart();
 };
 
-AssemblyPlot.prototype.draw_title = function() {
+ContigsPlot.prototype.draw_title = function() {
     var g = this.svg.append('g')
         .attr('transform', 'translate(400, 20)');
 
@@ -33,7 +33,7 @@ AssemblyPlot.prototype.draw_title = function() {
         .text(this.stats.project_name);
 };
 
-AssemblyPlot.prototype.draw_circular_plot = function() {
+ContigsPlot.prototype.draw_circular_plot = function() {
     var margin = 10;
     var plot_radius = 300;
 
@@ -193,7 +193,7 @@ AssemblyPlot.prototype.draw_circular_plot = function() {
         });
 };
 
-AssemblyPlot.prototype.draw_gene_counts_chart = function() {
+ContigsPlot.prototype.draw_gene_counts_chart = function() {
         var g = this.svg.append("g")
             .attr("transform", "translate(0, 810)");
 
