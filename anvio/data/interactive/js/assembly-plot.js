@@ -275,4 +275,20 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
         .attr("class", "x_axis")
         .attr("transform", 'translate(18,0)')
         .call(yAxis);
+
+    var bins = d3.layout.histogram()
+        .bins(yscale.ticks(10))
+        (data.map(function(x) { return x.value }));
+
+    var histogram = g.append('g').attr('class', 'histogram');
+
+    histogram.selectAll('rect')
+            .data(bins)
+            .enter()
+            .append('rect')
+            .attr("class", "histogram-bar")
+            .attr("y", function(d) { return yscale(d.x) - d.dx; })
+            .attr("height", function(d) { return d.dx; })
+            .attr("x", function(d) { return 80 - d.y; })
+            .attr("width", function(d) { return d.y; } );
 };
