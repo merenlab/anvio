@@ -277,8 +277,12 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
         .call(yAxis);
 
     var bins = d3.layout.histogram()
-        .bins(yscale.ticks(10))
+        .bins(data[0].value)
         (data.map(function(x) { return x.value }));
+
+    var bins_y = d3.scale.linear()
+        .domain(d3.extent(bins, function(d){return d.length }))
+        .range([0, 70]);
 
     var histogram = g.append('g').attr('class', 'histogram');
 
@@ -287,8 +291,10 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
             .enter()
             .append('rect')
             .attr("class", "histogram-bar")
-            .attr("y", function(d) { return yscale(d.x) - d.dx; })
-            .attr("height", function(d) { return d.dx; })
-            .attr("x", function(d) { return 80 - d.y; })
-            .attr("width", function(d) { return d.y; } );
+            .attr("y", function(d) { return yscale(d.x); })
+            .attr("height", function(d) { return 1; })
+            .attr("x", function(d) { return 80 - bins_y(d.y); })
+            .attr("width", function(d) { return bins_y(d.y); } )
+            .attr("fill", 'black');
+
 };
