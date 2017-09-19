@@ -1,6 +1,12 @@
-var AssemblyPlot = function(stats, container) {
+var AssemblyPlot = function(stats, container, settings) {
     this.stats = stats;
     this.container = container;
+
+    this.settings = $.extend({},{
+        'show_n50': true,
+        'shiw_n90': true
+    }, settings);
+
 };
 
 AssemblyPlot.prototype.draw = function() {
@@ -56,23 +62,27 @@ AssemblyPlot.prototype.draw_circular_plot = function() {
         .attr('fill', '#BBB')
         .attr('d', area);
 
-    var n50arc = d3.svg.arc()
-        .innerRadius(radius(this.stats.n_values[49].length))
-        .outerRadius(plot_radius);
+    if (this.settings['show_n50']) {
+        var n50arc = d3.svg.arc()
+            .innerRadius(radius(this.stats.n_values[49].length))
+            .outerRadius(plot_radius);
+        
+        g.append('path')
+            .attr('stroke-width', '0')
+            .attr('fill', 'rgb(255, 127, 0)')
+            .attr('d', n50arc({ startAngle: angle(0), endAngle: angle(50) }));
+    }
+    
+    if (this.settings['show_n90']) {
+        var n90arc = d3.svg.arc()
+            .innerRadius(radius(this.stats.n_values[89].length))
+            .outerRadius(plot_radius);
 
-    var n90arc = d3.svg.arc()
-        .innerRadius(radius(this.stats.n_values[89].length))
-        .outerRadius(plot_radius);
-
-    g.append('path')
-        .attr('stroke-width', '0')
-        .attr('fill', 'rgb(255, 127, 0)')
-        .attr('d', n50arc({ startAngle: angle(0), endAngle: angle(50) }));
-
-    g.append('path')
-        .attr('stroke-width', '0')
-        .attr('fill', 'rgb(253, 191, 111)')
-        .attr('d', n90arc({ startAngle: angle(0), endAngle: angle(90) }));
+        g.append('path')
+            .attr('stroke-width', '0')
+            .attr('fill', 'rgb(253, 191, 111)')
+            .attr('d', n90arc({ startAngle: angle(0), endAngle: angle(90) }));
+    }
 
     g.append('circle')
         .attr('fill', 'none')
