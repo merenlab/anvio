@@ -249,8 +249,51 @@ class SequencesForHMMHits:
         for hit_unique_id in hit_unique_ids_to_remove:
             hmm_sequences_dict_for_splits.pop(hit_unique_id)
 
-
         return hmm_sequences_dict_for_splits
+
+
+    def get_num_genes_missing_per_bin_dict(self, hmm_sequences_dict_for_splits, gene_names):
+        """Get a dictionary of how many genes each bin is missing from a list of `gene_names`"""
+
+        all_bins = set([])
+
+        for entry in hmm_sequences_dict_for_splits.values():
+            all_bins.add(entry['bin_id'])
+
+        genes_in_bins_dict = dict([(bin_name, set([])) for bin_name in all_bins])
+        num_genes_missing_per_bin = dict([(bin_name, 0) for bin_name in all_bins])
+
+        for entry in hmm_sequences_dict_for_splits.values():
+            genes_in_bins_dict[entry['bin_id']].add(entry['gene_name'])
+
+        for bin_name in all_bins:
+            for gene_name in gene_names:
+                if gene_name not in genes_in_bins_dict[bin_name]:
+                    num_genes_missing_per_bin[bin_name] += 1
+
+        return num_genes_missing_per_bin
+
+
+    def filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(self, hmm_sequences_dict_for_splits, gene_names, max_num_genes_missing=0):
+        """This takes the output of `get_sequences_dict_for_hmm_hits_in_splits`, and goes through every bin\
+           to identify bins or genomes that have lack more than `max_num_genes_missing` from a list of genes.
+
+           Note that it returns a filtered dictionary, AND the bins that are removed."""
+
+        num_genes_missing_per_bin = self.get_num_genes_missing_per_bin_dict(hmm_sequences_dict_for_splits, gene_names)
+
+        bins_to_remove = set([])
+        all_bins = set(list(num_genes_missing_per_bin.keys()))
+        for bin_name in num_genes_missing_per_bin:
+            if num_genes_missing_per_bin[bin_name] > max_num_genes_missing:
+                bins_to_remove.add(bin_name)
+
+        bins_to_keep = all_bins.difference(bins_to_remove)
+
+        if len(bins_to_remove):
+            return (utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'bin_id', bins_to_keep), bins_to_remove)
+        else:
+            return (hmm_sequences_dict_for_splits, set([]))
 
 
     def get_FASTA_header_and_sequence_for_gene_unique_id(self, hmm_sequences_dict_for_splits, gene_unique_id):

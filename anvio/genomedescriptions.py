@@ -270,7 +270,7 @@ class GenomeDescriptions:
 
             self.progress.update('working on %s' % (genome_name))
 
-            contigs_db_summary = summarizer.ContigSummarizer(c['contigs_db_path']).get_contigs_db_info_dict(gene_caller=self.gene_caller)
+            contigs_db_summary = summarizer.ContigSummarizer(c['contigs_db_path']).get_contigs_db_info_dict(gene_caller_to_use=self.gene_caller)
 
             for key in contigs_db_summary:
                 c[key] = contigs_db_summary[key]
@@ -313,8 +313,10 @@ class GenomeDescriptions:
                 # here we are using the get_contigs_db_info_dict function WITH split names we found in the collection
                 # which returns a partial summary from the contigs database focusing only those splits. a small workaround
                 # to be able to use the same funciton for bins in collections:
-                summary_from_contigs_db_summary = summarizer.ContigSummarizer(c['contigs_db_path']).get_contigs_db_info_dict(split_names=split_names_of_interest, \
-                                                                                                                            gene_caller=self.gene_caller)
+                contigs_summary = summarizer.ContigSummarizer(c['contigs_db_path'])
+                summary_from_contigs_db_summary = contigs_summary.get_contigs_db_info_dict(split_names=split_names_of_interest,
+                                                                                           gene_caller_to_use=self.gene_caller)
+
                 for key in summary_from_contigs_db_summary:
                     c[key] = summary_from_contigs_db_summary[key]
 
@@ -379,4 +381,31 @@ class GenomeDescriptions:
         # make sure genome names are not funny (since they are going to end up being db variables soon)
         [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
 
+        # figure out whether there are genomes with gene calls that are NOT processed
+        genomes_with_non_reported_gene_calls_from_other_gene_callers = []
+        for genome_name in self.genomes:
+            if self.genomes[genome_name]['gene_calls_from_other_gene_callers']:
+                genomes_with_non_reported_gene_calls_from_other_gene_callers.append(genome_name)
 
+        if len(genomes_with_non_reported_gene_calls_from_other_gene_callers):
+            info = []
+            for genome_name in genomes_with_non_reported_gene_calls_from_other_gene_callers:
+                info.append('%s (%s)' % (genome_name,
+                                         ', '.join(['%d gene calls by "%s"' % (tpl[1], tpl[0]) for \
+                                                         tpl in self.genomes[genome_name]['gene_calls_from_other_gene_callers'].items()])))
+
+            self.run.warning("PLEASE READ CAREFULLY. Some of your genomes had gene calls identified by gene callers other than\
+                              the gene caller anvi'o used (which should be 'prodigal' unless you specified another one). As a\
+                              result, the following genomes contained gene calls coming from other gene callers that did not\
+                              get processed. This may be exactly what you expected to happen, but if was not, you may need to\
+                              use the `--gene-caller` flag to make sure anvi'o is using the gene caller it should be using. Here\
+                              is the list: %s." % (', '.join(info)), lc='green')
+
+        # check whether every genome has at least one gene call.
+        genomes_with_no_gene_calls = [g for g in self.genomes if not self.genomes[g]['num_genes']]
+        if len(genomes_with_no_gene_calls):
+            raise ConfigError("Well, %d of your %d genomes had 0 gene calls. We can't think of any reason to include genomes that\
+                               contain no gene calls into a genomes, hence, we are going to stop here and ask you to remove these\
+                               genomes from your analysis first: %s. If you think this is a dumb thing to do, and they should be\
+                               in the genomes storage for reasons you know and we don't, please get in touch with us, and we will\
+                               be happy to reconsider." % (len(genomes_with_no_gene_calls), len(self.genomes), ', '.join(genomes_with_no_gene_calls)))

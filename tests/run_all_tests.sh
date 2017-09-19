@@ -215,10 +215,26 @@ anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -o $output_dir/variability_PSAMPLES_Bin_00001_ALT.txt
 
 INFO "Generate an AA variabilty profile for PSAMPLES_Bin_00001 using a collection id"
-anvi-gen-variability-profile -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db -C cmdline_concoct_RENAMED -b PSAMPLES_Bin_00001 -o $output_dir/variability_AA_PSAMPLES_Bin_00001.txt --quince-mode --engine AA
+anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
+                             -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                             -C cmdline_concoct_RENAMED \
+                             -b PSAMPLES_Bin_00001 \
+                             -o $output_dir/variability_AA_PSAMPLES_Bin_00001.txt \
+                             --quince-mode \
+                             --engine AA
 
 INFO "Generating amino acid frequencies for gene caller id 3 in SAMPLE-01.bam"
-anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam -c $output_dir/CONTIGS.db --gene-caller-id 3 -o $output_dir/AA_frequencies_for_gene_caller_id_3.txt
+anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam \
+                        -c $output_dir/CONTIGS.db \
+                        --gene-caller-id 3 \
+                        -o $output_dir/AA_frequencies_for_gene_caller_id_3.txt
+
+INFO "Generating amino codon frequencies for gene caller id 3 in SAMPLE-01.bam"
+anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam \
+                        -c $output_dir/CONTIGS.db \
+                        --gene-caller-id 3 \
+                        -o $output_dir/CODON_frequencies_for_gene_caller_id_3.txt \
+                        --return-codon-frequencies-instead
 
 INFO "Getting back the sequence for gene call 3"
 anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa

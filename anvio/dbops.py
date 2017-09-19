@@ -1392,6 +1392,11 @@ class ProfileSuperclass(object):
            this function will operate on those splits found in that set.
            """
 
+        if not self.auxiliary_profile_data_available:
+            raise ConfigError("Someone is asking gene level coverage stats to be computed, but then there is no auxiliary profile\
+                               data does not seem to be available for this project. Yeah. That's what happens if you don't\
+                               download everything from the server :(")
+
         contigs_db = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
         if not contigs_db.a_meta['genes_are_called']:
@@ -2250,6 +2255,25 @@ class SamplesInformationDatabase:
         self.run.info('Samples information database', 'A new samples information database, %s, has been created.' % (self.db_path), quiet=self.quiet)
         self.run.info('Number of samples', len(samples.sample_names), quiet=self.quiet)
         self.run.info('Number of organizations', len(list(samples.samples_order_dict.keys())), quiet=self.quiet)
+
+
+    def export_samples_db_files(self, order_output_path='samples-order.txt', information_output_path='samples-information.txt', output_file_prefix=None):
+        """Export whatever information is stored in a ginve anvi'o samples database"""
+
+        samples_information_dict, samples_order_dict = self.get_samples_information_and_order_dicts()
+
+        if output_file_prefix:
+            order_output_path = output_file_prefix + '-' + order_output_path
+            information_output_path = output_file_prefix + '-' + information_output_path
+
+        filesnpaths.is_output_file_writable(order_output_path)
+        filesnpaths.is_output_file_writable(information_output_path)
+
+        utils.store_dict_as_TAB_delimited_file(samples_order_dict, order_output_path, headers=['attributes', 'basic', 'newick'])
+        utils.store_dict_as_TAB_delimited_file(samples_information_dict, information_output_path, headers=['samples'] + sorted(list(list(samples_information_dict.values())[0].keys())))
+
+        self.run.info('Samples information file', information_output_path, mc='green')
+        self.run.info('Samples order file', order_output_path, mc='green')
 
 
     def update(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
