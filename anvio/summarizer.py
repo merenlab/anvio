@@ -934,7 +934,7 @@ class ContigSummarizer(SummarizerSuperClass):
         """
 
         if not gene_caller_to_use:
-            gene_caller_to_use = constants.default_gene_call
+            gene_caller_to_use = constants.default_gene_caller
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
