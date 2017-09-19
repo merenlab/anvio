@@ -185,9 +185,9 @@ AssemblyPlot.prototype.draw_circular_plot = function() {
 
 AssemblyPlot.prototype.draw_gene_counts_chart = function() {
         var g = this.svg.append("g")
-            .attr("transform", "translate(20, 810)");
+            .attr("transform", "translate(0, 810)");
 
-        var plot_width = 760;
+        var plot_width = 780;
         var plot_height = 180;
 
         var data = [];
@@ -196,7 +196,7 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
         }
         data.sort(function(a, b) { return (a['value'] < b['value']) - (a['value'] > b['value'])})
 
-        var xscale = d3.scale.ordinal().rangeBands([20, plot_width]);
+        var xscale = d3.scale.ordinal().rangeBands([120, plot_width]);
         var yscale = d3.scale.linear().rangeRound([plot_height, 0]);
         var color_scale = d3.scale.linear().range(['#fff7bc', '#d95f0e']);
 
@@ -214,7 +214,7 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
                                     .attr('fill-opacity', '0.5');
 
                                 var tooltip_pos = {
-                                    'x': Math.max(Math.min(xscale(d.name) - 80,  600), 0),
+                                    'x': Math.max(Math.min(xscale(d.name) - 80,  620), 120),
                                     'y': yscale(d.value) - 50,
                                     'width': 160,
                                     'height': 40
@@ -273,7 +273,7 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
 
     g.append("g")
         .attr("class", "x_axis")
-        .attr("transform", 'translate(18,0)')
+        .attr("transform", 'translate(118,0)')
         .call(yAxis);
 
     var bins = d3.layout.histogram()
