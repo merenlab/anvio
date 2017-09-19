@@ -1392,6 +1392,11 @@ class ProfileSuperclass(object):
            this function will operate on those splits found in that set.
            """
 
+        if not self.auxiliary_profile_data_available:
+            raise ConfigError("Someone is asking gene level coverage stats to be computed, but then there is no auxiliary profile\
+                               data does not seem to be available for this project. Yeah. That's what happens if you don't\
+                               download everything from the server :(")
+
         contigs_db = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
         if not contigs_db.a_meta['genes_are_called']:
