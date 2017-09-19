@@ -1,16 +1,16 @@
 <html>
 
 <head>
-    <title>Assembly Statistics</title>
+    <title>Contigs Statistics</title>
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <script type='text/javascript' src='js/utils.js'></script>
     <script type='text/javascript' src='lib/d3.js/d3.min.js'></script>
-    <script type='text/javascript' src='js/assembly-plot.js'></script>
+    <script type='text/javascript' src='js/contigs-plot.js'></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="css/assembly-plot.css" />
+    <link rel="stylesheet" type="text/css" href="css/contigs-plot.css" />
     <script type="text/javascript">
-        var assembly_stats;
+        var contigs_stats;
         var contig_db_names;
     </script>
 </head>
@@ -83,13 +83,13 @@
                 'show_n90': $('#show_n90').is(':checked'),
             };
 
-            new AssemblyPlot(assembly_stats[$('#select_panel_left option:selected').val()], '.plot-container-left', settings).draw();
-            new AssemblyPlot(assembly_stats[$('#select_panel_right option:selected').val()], '.plot-container-right', settings).draw();
+            new ContigsPlot(contigs_stats[$('#select_panel_left option:selected').val()], '.plot-container-left', settings).draw();
+            new ContigsPlot(contigs_stats[$('#select_panel_right option:selected').val()], '.plot-container-right', settings).draw();
         }
 
-        d3.json("/data/get_assembly_stats", function(error, response) {
-            assembly_stats = response;
-            contig_db_names = Object.keys(assembly_stats);
+        d3.json("/data/get_contigs_stats", function(error, response) {
+            contigs_stats = response;
+            contig_db_names = Object.keys(contigs_stats);
 
             if (contig_db_names.length == 0) {
                 alert('There is no contigs db statistics in the response, something is wrong.');
@@ -99,14 +99,14 @@
                     .append('div')
                         .attr('class', 'plot-container');
 
-                new AssemblyPlot(assembly_stats[contig_db_names[0]], '.plot-container').draw();
+                new ContigsPlot(contigs_stats[contig_db_names[0]], '.plot-container').draw();
 
                 $('.container-bottom').style('display', 'none');
                 $('.container').style('height', '100%');
             }
             else {
                 contig_db_names.forEach(function(contig_db_name) {
-                    var project_name = assembly_stats[contig_db_name].project_name;
+                    var project_name = contigs_stats[contig_db_name].project_name;
                     $('#select_panel_left, #select_panel_right').append('<option value="' + contig_db_name + '">' + project_name + '</option>');
                 });
 

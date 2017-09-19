@@ -1096,14 +1096,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         pass
 
 
-class AssemblyInteractive():
+class ContigsInteractive():
     def __init__(self, args):
-        self.mode = 'assembly'
+        self.mode = 'contigs'
         
-        self.assembly_stats = {}
+        self.contigs_stats = {}
         
         for contig_db_path in args.input:
-            self.assembly_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path).get_summary_dict_for_assembly()
+            self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path).get_summary_dict_for_assembly()
 
-    def get_assembly_stats(self):
-        return self.assembly_stats
+    def get_contigs_stats(self):
+        return self.contigs_stats
