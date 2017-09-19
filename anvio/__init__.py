@@ -227,6 +227,14 @@ D = {
                       will instruct profiler to skip that step. Please remember that parameters and flags must be\
                       identical between different profiles using the same contigs database for them to merge properly."}
                 ),
+    'return-codon-frequencies-instead': (
+            ['--return-codon-frequencies-instead'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o will return amino acid frequencies here, however, you can ask for codon frequencies\
+                      instead, simply because you always need more data and more stuff. You're lucky this time, but is there\
+                      an end to this? Will you ever be satisfied with what you have? Anvi'o needs answers."}
+                ),
     'profile-AA-frequencies': (
             ['--profile-AA-frequencies'],
             {'default': False,
@@ -423,6 +431,15 @@ D = {
                       be multiple RecA hits in a genome bin from Campbell et al.. Using this flag, will go through all of\
                       the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good\
                       for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
+                ),
+    'max-num-genes-missing-from-bin': (
+            ['--max-num-genes-missing-from-bin'],
+            {'default': None,
+             'help': "If you have a list of gene names, you can use this parameter to omit any bin (or external genome) that\
+                      is missing more than a number of genes you desire. For instance, if you have 100 genome bins, and\
+                      you are interested in working with 5 ribosomal proteins, you can use '--max-num-genes-missing-from-bin 4'\
+                      to remove remove the bins that are missing more than 4 of those 5 genes. This is especially useful for\
+                      phylogenomic analyses. Parameter 0 will remove any bin that is missing any of the genes."}
                 ),
     'concatenate-genes': (
             ['--concatenate-genes'],

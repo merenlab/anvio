@@ -238,8 +238,11 @@ class MultipleRuns:
         output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.h5')
         merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
 
+        self.progress.new('Merging split coverage data')
+
         # fill coverages in from all samples
         for input_profile_db_path in self.profile_dbs_info_dict:
+            self.progress.update(input_profile_db_path)
             input_file_path = os.path.join(os.path.dirname(input_profile_db_path), 'AUXILIARY-DATA.h5')
             sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(input_file_path, self.contigs_db_hash)
 
@@ -251,6 +254,8 @@ class MultipleRuns:
             sample_split_coverage_values.close()
 
         merged_split_coverage_values.close()
+
+        self.progress.end()
 
 
     def set_normalization_multiplier(self):
@@ -363,9 +368,7 @@ class MultipleRuns:
 
         self.set_normalization_multiplier()
 
-        self.progress.new('Merging split coverage values')
         self.merge_split_coverage_data()
-        self.progress.end()
 
         if self.SNVs_profiled:
             self.progress.new('Merging variable positions tables')
@@ -394,7 +397,7 @@ class MultipleRuns:
             self.bin_contigs_concoct()
 
         # generate a samples database while you are at it
-        self.gen_samples_db_from_view_data()
+        self.gen_samples_db_for_the_merged_profile()
 
         self.run.quit()
 
@@ -418,7 +421,7 @@ class MultipleRuns:
         return self.normalized_coverages[target][split_name][sample_id] / denominator if denominator else 0
 
 
-    def gen_samples_db_from_view_data(self):
+    def gen_samples_db_for_the_merged_profile(self):
         """Geenrate a samples db for the merged profile.
 
            We use the ProfileSuperclass to load all the views we added into the meged profile,
@@ -436,9 +439,10 @@ class MultipleRuns:
         profile_db_super = dbops.ProfileSuperclass(args)
         profile_db_super.load_views(omit_parent_column=True)
 
+        # figure out sample orders dictionary
         sample_orders = {}
         failed_attempts = []
-        self.progress.new('Generating a default SAMPLES.db')
+        self.progress.new('Working on SAMPLES.db')
         for essential_field in essential_fields:
             self.progress.update('recovering samples order for "%s"' % (essential_field))
             try:
@@ -466,6 +470,7 @@ class MultipleRuns:
                               using the view data that worked. Here is the list of stuff that failed: '%s'"\
                               % (', '.join(failed_attempts)))
 
+        # generate the samples order file
         samples_order_file_path = filesnpaths.get_temp_file_path()
         samples_order_file = open(samples_order_file_path, 'w')
         samples_order_file.write('attributes\tbasic\tnewick\n')
@@ -473,10 +478,30 @@ class MultipleRuns:
             samples_order_file.write('%s\t%s\t%s\n' % (sample_order, '', sample_orders[sample_order]))
         samples_order_file.close()
 
+        # figure out samples information stuff
+        samples_information = {}
+        headers = []
+        for sample_name in self.sample_ids_found_in_input_dbs:
+            samples_information[sample_name] = {}
+
+        self.progress.new('Working on SAMPLES.db')
+        self.progress.update('...')
+
+        # figure out num reads mapped per sample:
+        for sample_name in self.sample_ids_found_in_input_dbs:
+            samples_information[sample_name]['num_mapped_reads'] = self.total_reads_mapped_per_sample[sample_name]
+
+        self.progress.end()
+        # generate the samples information file
+        samples_information_file_path = filesnpaths.get_temp_file_path()
+        utils.store_dict_as_TAB_delimited_file(samples_information, samples_information_file_path, headers=headers)
+
+        # generate the samples database
         samples_db = dbops.SamplesInformationDatabase(self.samples_db_path, quiet=False)
-        samples_db.create(samples_order_path=samples_order_file_path)
+        samples_db.create(samples_order_path=samples_order_file_path, samples_information_path=samples_information_file_path)
 
         os.remove(samples_order_file_path)
+        os.remove(samples_information_file_path)
 
         self.run.info('Samples database', self.samples_db_path)
 
