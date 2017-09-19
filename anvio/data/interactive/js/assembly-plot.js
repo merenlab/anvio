@@ -305,6 +305,6 @@ AssemblyPlot.prototype.draw_gene_counts_chart = function() {
             .attr("height", function(d) { return 1; })
             .attr("x", function(d) { return 80 - bins_y(d.y); })
             .attr("width", function(d) { return bins_y(d.y); } )
-            .attr("fill", 'black');
+            .attr("fill", '#d95f0e');
 
 };
