@@ -253,6 +253,27 @@ class SequencesForHMMHits:
         return hmm_sequences_dict_for_splits
 
 
+    def get_gene_num_occurrences_across_bins(self, hmm_sequences_dict_for_splits):
+        """Get a dictionary of gene names and their number of occurrences across all bins"""
+
+        all_bins = set([])
+        all_genes = set([])
+
+        for entry in hmm_sequences_dict_for_splits.values():
+            all_bins.add(entry['bin_id'])
+            all_genes.add(entry['gene_name'])
+
+        gene_num_occurrences_across_bins = dict([(gene_name, set([])) for gene_name in all_genes])
+
+        for entry in hmm_sequences_dict_for_splits.values():
+            gene_num_occurrences_across_bins[entry['gene_name']].add(entry['bin_id'])
+
+        for gene_name in gene_num_occurrences_across_bins:
+            gene_num_occurrences_across_bins[gene_name] = len(gene_num_occurrences_across_bins[gene_name])
+
+        return gene_num_occurrences_across_bins
+
+
     def get_num_genes_missing_per_bin_dict(self, hmm_sequences_dict_for_splits, gene_names):
         """Get a dictionary of how many genes each bin is missing from a list of `gene_names`"""
 
@@ -273,6 +294,35 @@ class SequencesForHMMHits:
                     num_genes_missing_per_bin[bin_name] += 1
 
         return num_genes_missing_per_bin
+
+
+    def filter_hmm_sequences_dict_from_genes_that_occur_in_less_than_N_bins(self, hmm_sequences_dict_for_splits, min_num_bins_gene_occurs=None):
+        """This takes in your `hmm_sequences_dict_for_splits`, and removes genes that rarely occurs across bins.
+
+           The `min_num_bins_gene_occurs` parameter defines what is the minimum number of bins you want a gene to
+           be present. It removes all the genes that do not fit into that criterion."""
+
+        if not isinstance(min_num_bins_gene_occurs, int):
+            raise ConfigError("Funny. Someone called the function to filter gene names from HMM sequences dictionary if they occur in less than\
+                               a certain amount. But they didn't sen an integer for that amount :/")
+
+        if min_num_bins_gene_occurs < 0:
+            raise ConfigError("But the minimum number of bins a gene is expected to be found can't be a negative value now. Right? :/")
+
+        gene_occurrences_accross_bins = self.get_gene_num_occurrences_across_bins(hmm_sequences_dict_for_splits)
+
+        genes_to_remove = set([])
+        all_genes = set(list(gene_occurrences_accross_bins.keys()))
+        for gene_name in all_genes:
+            if gene_occurrences_accross_bins[gene_name] < min_num_bins_gene_occurs:
+                genes_to_remove.add(gene_name)
+
+        genes_to_keep = all_genes.difference(genes_to_remove)
+
+        if len(genes_to_remove):
+            return (utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', genes_to_keep), genes_to_remove)
+        else:
+            return (hmm_sequences_dict_for_splits, set([]))
 
 
     def filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(self, hmm_sequences_dict_for_splits, gene_names, max_num_genes_missing=0):
