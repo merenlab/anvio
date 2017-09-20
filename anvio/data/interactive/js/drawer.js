@@ -1136,7 +1136,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         }
 
         // draw backgrounds
-        if (this.settings['tree-type']=='phylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') != 'intensity') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text') || layer.is_stackbar))
+        if (this.settings['tree-type']=='phylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text') || layer.is_stackbar))
         {
             drawPhylogramRectangle('layer_background_' + layer.order,
                 'all',
@@ -1150,7 +1150,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         }
 
 
-        if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') != 'intensity') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text') || layer.is_stackbar))
+        if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text') || layer.is_stackbar))
         {
             var _first = order_to_node_map[0];
             var _last = order_to_node_map[order_to_node_map.length - 1];
@@ -1231,21 +1231,9 @@ Drawer.prototype.draw_numerical_layers = function() {
                         1,
                         false);
                 }
-                else if (layer.get_visual_attribute('type') == 'line') {
-                        if (numeric_cache.length == 0) {
-                            numeric_cache.push("M");
-                        } else {
-                            numeric_cache.push("L");
-                        }
-
-                        numeric_cache.push(
-                            this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
-                            q.xy['y']
-                            );
-                }
                 else
                 {
-                    if (this.settings['optimize-speed']) {
+                    if (this.settings['optimize-speed'] || layer.get_visual_attribute('type') == 'line') {
                         if (this.layerdata_dict[q.label][layer.index] > 0)
                         {
                             if (q.order == 0 || (q.order > 0 && this.layerdata_dict[order_to_node_map[i-1].label][layer.index] == 0)) {
@@ -1256,14 +1244,25 @@ Drawer.prototype.draw_numerical_layers = function() {
                                     );
                             }
 
-                            numeric_cache.push(
-                                "L", 
-                                this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
-                                q.xy['y'] - q.size / 2, 
-                                "L", 
-                                this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
-                                q.xy['y'] + q.size / 2
-                                );
+                            if (layer.get_visual_attribute('type') == 'line')
+                            {
+                                numeric_cache.push(
+                                    "L", 
+                                    this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
+                                    q.xy['y']
+                                    );
+                            }
+                            else
+                            {
+                                numeric_cache.push(
+                                    "L", 
+                                    this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
+                                    q.xy['y'] - q.size / 2, 
+                                    "L", 
+                                    this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index], 
+                                    q.xy['y'] + q.size / 2
+                                    );
+                            }
 
                             if ((q.order == order_to_node_map.length - 1) || (q.order < (order_to_node_map.length - 1) && this.layerdata_dict[order_to_node_map[i+1].label][layer.index] == 0)) {
                                 numeric_cache.push(
@@ -1309,20 +1308,9 @@ Drawer.prototype.draw_numerical_layers = function() {
                         1,
                         false);
                 }
-                else if (layer.get_visual_attribute('type') == 'line') {
-                        if (numeric_cache.length == 0) {
-                            numeric_cache.push("M");
-                        } else {
-                            numeric_cache.push("L");
-                        }
-
-                        var center_radius = this.layer_boundaries[layer.order][0] + this.layerdata_dict[q.label][layer.index];
-
-                        numeric_cache.push(Math.cos(q.angle) * center_radius, Math.sin(q.angle) * center_radius);
-                }
                 else
                 {
-                    if (this.settings['optimize-speed']) {
+                    if (this.settings['optimize-speed'] || layer.get_visual_attribute('type') == 'line') {
                         var start_angle  = q.angle - q.size / 2;
                         var end_angle    = q.angle + q.size / 2;
                         var inner_radius = this.layer_boundaries[layer.order][0];
@@ -1338,13 +1326,22 @@ Drawer.prototype.draw_numerical_layers = function() {
                                 previous_non_zero_order = q.order; 
                             }
 
-                            var bx = Math.cos(start_angle) * outer_radius;
-                            var by = Math.sin(start_angle) * outer_radius;
+                            if (layer.get_visual_attribute('type') == 'line') {
+                                var bx = Math.cos(q.angle) * outer_radius;
+                                var by = Math.sin(q.angle) * outer_radius;
 
-                            var cx = Math.cos(end_angle) * outer_radius;
-                            var cy = Math.sin(end_angle) * outer_radius;
+                                numeric_cache.push("L", bx, by);
+                            }
+                            else
+                            {
+                                var bx = Math.cos(start_angle) * outer_radius;
+                                var by = Math.sin(start_angle) * outer_radius;
 
-                            numeric_cache.push("L", bx, by, "A", outer_radius, outer_radius, 0, is_large_angle(start_angle, end_angle), 1, cx, cy);
+                                var cx = Math.cos(end_angle) * outer_radius;
+                                var cy = Math.sin(end_angle) * outer_radius;
+                                
+                                numeric_cache.push("L", bx, by, "A", outer_radius, outer_radius, 0, is_large_angle(start_angle, end_angle), 1, cx, cy);
+                            }
 
                             if ((q.order == order_to_node_map.length - 1) || this.layerdata_dict[order_to_node_map[i+1].label][layer.index] == 0) {
                                 var dx = Math.cos(end_angle) * inner_radius;
@@ -1389,7 +1386,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                 path.setAttribute('stroke', layer.get_visual_attribute('color'));
                 path.setAttribute('stroke-width', '1px');  
                 path.setAttribute('vector-effect', 'non-scaling-stroke');
-                path.setAttribute('fill', 'none');     
+                path.setAttribute('fill', layer.get_visual_attribute('color-start'));     
             }
             else {
                 path.setAttribute('fill', layer.get_visual_attribute('color'));
