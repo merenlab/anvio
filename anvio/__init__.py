@@ -435,11 +435,25 @@ D = {
     'max-num-genes-missing-from-bin': (
             ['--max-num-genes-missing-from-bin'],
             {'default': None,
-             'help': "If you have a list of gene names, you can use this parameter to omit any bin (or external genome) that\
-                      is missing more than a number of genes you desire. For instance, if you have 100 genome bins, and\
-                      you are interested in working with 5 ribosomal proteins, you can use '--max-num-genes-missing-from-bin 4'\
-                      to remove remove the bins that are missing more than 4 of those 5 genes. This is especially useful for\
-                      phylogenomic analyses. Parameter 0 will remove any bin that is missing any of the genes."}
+             'metavar': 'INTEGER',
+             'help': "This filter removes bins (or genomes) from your analysis. If you have a list of gene names, you can\
+                      use this parameter to omit any bin (or external genome) that is missing more than a number of genes\
+                      you desire. For instance, if you have 100 genome bins, and you are interested in working with 5\
+                      ribosomal proteins, you can use '--max-num-genes-missing-from-bin 4' to remove remove the bins that\
+                      are missing more than 4 of those 5 genes. This is especially useful for phylogenomic analyses.\
+                      Parameter 0 will remove any bin that is missing any of the genes."}
+                ),
+    'min-num-bins-gene-occurs': (
+            ['--min-num-bins-gene-occurs'],
+            {'default': None,
+             'metavar': 'INTEGER',
+             'help': "This filter removes genes from your analysis. Let's assume you have 100 bins to get sequences for HMM\
+                      hits. If you want to work only with genes among all the hits that occur in at least X number of bins,\
+                      and discard the rest of them, you can use this flag. If you say '--min-num-bins-gene-occurs 90', each\
+                      gene in the analysis will be required at least to appear in 90 genomes. If a gene occurs in less than\
+                      that number of genomes, it simply will not be reported. This is especially useful for phylogenomic\
+                      analyses, where you may want to only focus on genes that are prevalent across the set of genomes\
+                      you wish to analyze."}
                 ),
     'concatenate-genes': (
             ['--concatenate-genes'],
