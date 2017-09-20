@@ -7,6 +7,7 @@ import argparse
 import anvio
 import anvio.db as db
 import anvio.dbops as dbops
+import anvio.tables as t
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
@@ -58,6 +59,10 @@ def update_contigs_db(contigs_db_path, project_name, description=None, just_do_i
     # set the version
     contigs_db.remove_meta_key_value_pair('version')
     contigs_db.set_version(next_version)
+
+    # gene name changes:
+    contigs_db._exec('''UPDATE %s SET genes = replace(genes, '%s', '%s') WHERE source LIKE 'Rinke_et_al';''' % (t.hmm_hits_info_table_name, 'Ribosomal_S12', 'Ribosom_S12_S23'))
+    contigs_db._exec('''UPDATE %s SET genes = replace(genes, '%s', '%s') Where source LIKE 'Rinke_et_al';''' % (t.hmm_hits_info_table_name, 'UPF0027', 'RtcB'))
 
     # bye
     contigs_db.disconnect()
