@@ -82,14 +82,15 @@ class SequencesForHMMHits:
         for source in sources:
             gene_counts[source] = {}
 
+            for gene_name in self.hmm_hits_info[source]['genes'].split(','):
+                gene_counts[source][gene_name.strip()] = 0
+
         for entry in list(self.hmm_hits.values()):
             source    = entry['source']
             gene_name = entry['gene_name']
 
             if source in sources:
-                if gene_name not in gene_counts[source]:
-                    gene_counts[source][gene_name] = 0
-                gene_counts[source][gene_name] += 1
+                gene_counts[source][gene_name.strip()] += 1
 
         return gene_counts
 
