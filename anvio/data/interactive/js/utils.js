@@ -332,7 +332,7 @@ function togglePickerStart(selectbox, togglePicker)
 {
     var tr = $(selectbox).parent().parent();
 
-    if(selectbox.value=='intensity' || selectbox.value=='text') {  
+    if(selectbox.value=='intensity' || selectbox.value=='line' || selectbox.value=='text') {  
         $(tr).find('.picker_start').css('visibility', 'visible');
         if (togglePicker) {
             $(tr).find('.picker_end').css('visibility', 'visible');
