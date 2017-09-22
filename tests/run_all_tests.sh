@@ -135,6 +135,9 @@ anvi-experimental-organization $files/example_clustering_configuration.ini -i $o
 INFO "Use anvi-experimental-organization to generate a tree from a non-default configuration, but overwrite linkage method and distance metric"
 anvi-experimental-organization $files/example_clustering_configuration.ini -i $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db --name experimental --distance canberra --linkage complete
 
+INFO "Adding a 'DEFAULT' collection that describes all splits in an 'EVERYTHING' bin to the merged profile"
+anvi-script-add-default-collection -p $output_dir/SAMPLES-MERGED/PROFILE.db
+
 INFO "Importing external binning results for splits into the contigs database as 'SPLITS_IMPORTED_INTO_CONTIGS_DB'"
 anvi-import-collection $files/example_files_for_external_binning_results/external_binning_of_splits.txt \
                        -c $output_dir/CONTIGS.db \
