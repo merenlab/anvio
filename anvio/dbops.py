@@ -3339,8 +3339,8 @@ class TablesForCollections(Table):
 
         database.disconnect()
 
-        self.run.info('Collections', '%s annotations for %d splits have been successfully added to the database at "%s".'\
-                                        % (collection_name, num_splits, self.db_path), mc='green')
+        self.run.info('Collections', 'The collection "%s" that describes %s splits has been successfully added to the database at "%s".'\
+                                        % (collection_name, pp(num_splits), self.db_path), mc='green')
 
 
     def process_contigs(self, collection_name, collection_dict):
