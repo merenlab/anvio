@@ -314,7 +314,7 @@ function drawFixedWidthText(svg_id, p, string, font_size, color, width, height) 
         for (var x=string.length-3;x>0;x-=3){
             if (textObj.getSubStringLength(0,x)<=width){
                 textObj.textContent=string.substring(0,x)+"...";
-                return;
+                return textObj;
             }
         }
         textObj.textContent="..."; //can't place at all
