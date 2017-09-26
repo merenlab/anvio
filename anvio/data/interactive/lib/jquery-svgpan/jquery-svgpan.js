@@ -229,9 +229,8 @@
 
                         if (!onlyPanOnMouseUp) {
                             p = getEventPoint(evt).matrixTransform(stateTf);
+                            setCTM(g, stateTf.inverse().translate(p.x - stateOrigin.x, p.y - stateOrigin.y));
                         }
-
-                        setCTM(g, stateTf.inverse().translate(p.x - stateOrigin.x, p.y - stateOrigin.y));
                     } else if (state === DRAG && enableDrag) {
                         // Drag mode
                         p = getEventPoint(evt).matrixTransform(g.getCTM().inverse());
