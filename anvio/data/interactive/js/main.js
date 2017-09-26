@@ -1775,6 +1775,7 @@ function showRedundants(bin_id, updateOnly) {
         tabletext += '<h5>' + source + ' (' + Object.keys(stats[source]['redundants']).length + ')</h5></td></tr>';
 
         var redundants_html = '';
+        var split_array_all = '';
 
         for (var redundant in stats[source]['redundants']) {
             var title = '';
@@ -1788,6 +1789,8 @@ function showRedundants(bin_id, updateOnly) {
                     title += contig[j] + '\n';
                     split_array += '\'' + contig[j] + '\', ';
                 }
+
+                split_array_all += split_array;
             }
 
             redundants_html += '<span style="cursor:pointer;" \
@@ -1797,7 +1800,9 @@ function showRedundants(bin_id, updateOnly) {
                                   </span><br />';
         }
 
-        tabletext += '<tr><td valign="top">' + redundants_html + '</tr></td></table></div>';
+        tabletext += '<tr><td valign="top">' + redundants_html + '<br /><br /><span style="cursor:pointer;" \
+                                    onclick="highlighted_splits = [' + split_array_all + ']; redrawBins();">(Highlight All)\
+                                  </span></tr></td></table></div>';
         output += tabletext;
 
         if (oddeven%2==0)
