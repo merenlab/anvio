@@ -340,11 +340,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.update('...')
 
         # add an alphabetical order:
-        self.p_meta['clusterings']['<> Alphabetical:none:none'] = {'basic': self.displayed_item_names_ordered[::-1]}
+        self.p_meta['clusterings']['<> Alphabetical:none:none'] = {'basic': sorted(self.displayed_item_names_ordered[::-1], reverse=True)}
         self.p_meta['available_clusterings'].append('<> Alphabetical:none:none')
 
         # and the reverse-alphabetical, too:
-        self.p_meta['clusterings']['<> Alphabetical_(reverse):none:none'] = {'basic': self.displayed_item_names_ordered}
+        self.p_meta['clusterings']['<> Alphabetical_(reverse):none:none'] = {'basic': sorted(self.displayed_item_names_ordered)}
         self.p_meta['available_clusterings'].append('<> Alphabetical_(reverse):none:none')
 
         self.progress.end()
