@@ -157,14 +157,14 @@ ContigsPlot.prototype.draw_circular_plot = function() {
             if (radiant < 0)
                 radiant = 2 * Math.PI + radiant;
 
-            var order = Math.floor(radiant / (2 * Math.PI) * 100);
+            var order = Math.floor(radiant / (2 * Math.PI) * 99) + 1;
 
             var arc = d3.svg.arc()
                 .innerRadius(0)
                 .outerRadius(plot_radius);
 
             g.select('.hover')
-                .attr('d', arc({ startAngle: angle(order), endAngle: angle(order + 1) }));
+                .attr('d', arc({ startAngle: angle(order - 1), endAngle: angle(order) }));
 
             g.selectAll('.info>tspan').remove();
 
@@ -172,7 +172,7 @@ ContigsPlot.prototype.draw_circular_plot = function() {
                 .append('tspan')
                 .attr('font-weight', 'bold')
                 .attr('dy', '1.4em')
-                .text("N" + (order + 1));
+                .text("N" + order);
 
             g.select('.info')
                 .append('tspan')
