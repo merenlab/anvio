@@ -1061,7 +1061,7 @@ class ContigSummarizer(SummarizerSuperClass):
         n_index = 1
 
         while n_index <= N:
-            if (temp_length >= ((total_length / N) * n_index)):
+            if (temp_length >= int(((total_length / N) * n_index))):
                 results.append({
                         'num_contigs': contigs_index,
                         'length':      contig_lengths[contigs_index - 1]
