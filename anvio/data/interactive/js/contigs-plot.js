@@ -41,7 +41,7 @@ ContigsPlot.prototype.draw_circular_plot = function() {
         .attr('transform', 'translate(400, 400)');
 
     var angle = d3.scale.linear()
-        .domain([0, 100])
+        .domain([0, 99])
         .range([0, 2 * Math.PI]);
 
     var radius = d3.scale.sqrt()
