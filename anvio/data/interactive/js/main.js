@@ -1700,11 +1700,13 @@ function updateComplateness(bin_id) {
 
             completeness_dict[bin_id] = completeness_info_dict;
 
-            average_completeness = averages['percent_completion']
-            average_redundancy = averages['percent_redundancy']
+            average_completeness = averages['percent_completion'];
+            average_redundancy = averages['percent_redundancy'];
 
-            $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%').parent().attr('data-value', average_completeness);
-            $('#redundancy_' + bin_id).val(average_redundancy.toFixed(1) + '%').parent().attr('data-value', average_redundancy);
+            if (average_completeness != null && average_redundancy != null) {
+                $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%').parent().attr('data-value', average_completeness);
+                $('#redundancy_' + bin_id).val(average_redundancy.toFixed(1) + '%').parent().attr('data-value', average_redundancy);
+            }
 
             $('#completeness_' + bin_id).attr("disabled", false);
             $('#redundancy_' + bin_id).attr("disabled", false);
