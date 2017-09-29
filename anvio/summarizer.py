@@ -1048,6 +1048,7 @@ class ContigSummarizer(SummarizerSuperClass):
         summary['total_length'] = total_length
         summary['size'] = size
         summary['n_values'] = self.calculate_N_values(contig_lengths, total_length, N=100)
+        summary['contig_lengths'] = contig_lengths
         summary['single_copy_gene_counts'] = hmm.get_single_copy_gene_counts()
 
         return summary

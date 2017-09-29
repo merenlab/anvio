@@ -9,112 +9,100 @@
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
     <link rel="stylesheet" type="text/css" href="css/contigs-plot.css" />
-    <script type="text/javascript">
-        var contigs_stats;
-        var contig_db_names;
-    </script>
 </head>
-
+    
 <body>
-    <div class="container"></div>
-    <div class="container-bottom">
-        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#modal_change_display" id="btn_open_change_display">
-            Change display
-        </button>
-    </div>
-    <div class="modal fade" id="modal_change_display" tabindex="-1" role="dialog" aria-hidden="true">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Change Display</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-          <div class="modal-body">
-            <h5>Display Settings</h5>
-            <div class="form-group">
-              <label for="select_panel_left" class="col-2 col-form-label">Left side: </label>
-              <div class="col-10">
-                <select class="form-control" id="select_panel_left">
-                </select>
-              </div>
-            </div>
-            <div class="form-groupw">
-              <label for="select_panel_right" class="col-2 col-form-label">Right side:</label>
-              <div class="col-10">
-                <select class="form-control" id="select_panel_right">
-                </select>
-              </div>
-            </div>
-            <div class="col-12" style="margin-top: 40px;"><h5>Plot Settings</h5></div>
-            <div class="grid">
-                <div class="form-group form-margin row">
-                        <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Show N50:</label>  
-                        <div class="col-md-8">
-                            <input type="checkbox" id="show_n50" name="checkbox" value="value" checked>
-                        </div>
-                </div>
-                <div class="form-group form-margin row">
-                        <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Show N90:</label>  
-                        <div class="col-md-8">
-                            <input type="checkbox" id="show_n90" name="checkbox" value="value" checked>
-                        </div>
-                </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-primary" id="btn_select" data-dismiss="modal" onclick="draw_plots();">Save</button>
-          </div>
+    <div class="container-fluid parent-container">
+        <div class="row row-centered row-plots">
+            
         </div>
-      </div>
+
+        <div class="container">
+            <table class="table table-details">
+              <thead>
+                <tr>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+        </div>
     </div>
     <script>
-        function draw_plots() {
-            $('.plot-container-left').remove();
-            $('.plot-container-right').remove();
-
-            $('.container').append('<div class="plot-container-left"></div>');
-            $('.container').append('<div class="plot-container-right"></div>');
-
-            var settings = {
-                'show_n50': $('#show_n50').is(':checked'),
-                'show_n90': $('#show_n90').is(':checked'),
-            };
-
-            new ContigsPlot(contigs_stats[$('#select_panel_left option:selected').val()], '.plot-container-left', settings).draw();
-            new ContigsPlot(contigs_stats[$('#select_panel_right option:selected').val()], '.plot-container-right', settings).draw();
-        }
-
         d3.json("/data/get_contigs_stats", function(error, response) {
-            contigs_stats = response;
-            contig_db_names = Object.keys(contigs_stats);
+            var contigs_stats = response;
+            //var contig_db_names = Object.keys(contigs_stats).concat(Object.keys(contigs_stats));
+            var contig_db_names = Object.keys(contigs_stats);
 
-            if (contig_db_names.length == 0) {
-                alert('There is no contigs db statistics in the response, something is wrong.');
-            }
-            if (contig_db_names.length == 1) {
-                d3.select('.container')
-                    .append('div')
-                        .attr('class', 'plot-container');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                var stats = contigs_stats[contig_db_name];
 
-                new ContigsPlot(contigs_stats[contig_db_names[0]], '.plot-container').draw();
-                $('.container-bottom').css('display', 'none');
-                $('.container').css('height', '100%');
-            }
-            else {
-                contig_db_names.forEach(function(contig_db_name) {
-                    var project_name = contigs_stats[contig_db_name].project_name;
-                    $('#select_panel_left, #select_panel_right').append('<option value="' + contig_db_name + '">' + project_name + '</option>');
+                var container = d3.select('.parent-container>.row-plots')
+                                    .append('div')
+                                        .attr('class', 'col-sm-6')
+                                        .attr('id', 'container' + index);
+
+                // Add title
+
+                container.append('div')
+                    .append('h1')
+                    .text(stats['project_name']);
+
+
+                // add contig length plot
+                var plot_container = container.append('div')
+                                                .attr('id', 'contig_lengths_' + index);
+
+                plot_container.append('h4')
+                                .attr('class', 'text-left')
+                                .text('Contig Lengths');
+
+                draw_contig_lengths_chart('#contig_lengths_' + index, stats['contig_lengths']);
+
+
+                // Add single copy core gene plots
+                Object.keys(stats.single_copy_gene_counts).forEach(function(source, gene_chart_index) {
+                    var plot_container_id = 'gene_chart_' + index + '_' + gene_chart_index;
+
+                    var plot_container = container.append('div')
+                                            .attr('id', plot_container_id);
+
+                    plot_container.append('h4')
+                                    .attr('class', 'text-left')
+                                    .text(source);
+
+
+                    draw_gene_counts_chart('#' + plot_container_id, stats.single_copy_gene_counts[source]);
                 });
 
-                $('#select_panel_left option:nth-child(1)').prop("selected", true);
-                $('#select_panel_right option:nth-child(2)').prop("selected", true);
-                
+            });
 
-                draw_plots();
-            }
+            // Build compare table
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>thead>tr').append('<th class="text-center">' + contigs_stats[contig_db_name]['project_name'] + '</th>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>Total Length</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['total_length']) + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>Num Contigs</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['size']) + '</td>';
+            });
+
+            $('.table-details>tbody').append('<tr><td>Biggest Contig</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['contig_lengths'][0]) + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>Smallest Contig</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['contig_lengths'][contigs_stats[contig_db_name]['contig_lengths'].length - 1]) + '</td>');
+            });
+
         });
     </script>
 </body>
