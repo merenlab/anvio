@@ -1,42 +1,5 @@
-html, body {
-    padding: 0px;
-    margin: 0px;
-    overflow: hidden;
-}
-
-.container {
-    width: 100%;
-    height: calc(100% - 80px);
-}
-
-.container-bottom {
-    width: 100%;
-    height: 70px;
-    text-align: center;
-}
-
-.plot-container {
-    width: 100%;
-    height: 100%;
-    text-align: center;
-}
-
-.plot-container > svg {
-    height: 100%;
-}
-
-.plot-container-left, .plot-container-right  {
-    display: inline-block;
-    width: 50%;
-    height: 100%;
-    text-align: center;
-    float: left;
-    overflow: hidden;
-}
-
-.plot-container-left > svg, .plot-container-right > svg  {
-    width: 100%;
-    height: 100%;
+.row-centered {
+    text-align:center;
 }
 
 .domain {
@@ -48,3 +11,4 @@ html, body {
 label {
     font-weight: unset;
 }
+

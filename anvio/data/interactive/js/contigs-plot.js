@@ -1,39 +1,5 @@
-var ContigsPlot = function(stats, container, settings) {
-    this.stats = stats;
-    this.container = container;
-
-    this.settings = $.extend({},{
-        'show_n50': true,
-        'shiw_n90': true
-    }, settings);
-
-};
-
-ContigsPlot.prototype.draw = function() {
-    this.svg = d3.select(this.container)
-        .append('svg')
-        .attr('viewBox', '0 0 800 1000')
-        .attr('preserveAspectRatio', 'xMinYMin meet');
-
-    this.draw_title();
-    this.draw_circular_plot();
-    this.draw_gene_counts_chart();
-};
-
-ContigsPlot.prototype.draw_title = function() {
-    var g = this.svg.append('g')
-        .attr('transform', 'translate(400, 20)');
-
-    g.append('text')
-        .attr('class', 'title')
-        .attr('font-family', 'Helvetica')
-        .attr('font-size', '2em')
-        .attr('alignment-baseline', 'hanging')
-        .attr('text-anchor', 'middle')
-        .text(this.stats.project_name);
-};
-
-ContigsPlot.prototype.draw_circular_plot = function() {
+function draw_n_values_plot() {
+    return;
     var margin = 10;
     var plot_radius = 300;
 
@@ -70,7 +36,7 @@ ContigsPlot.prototype.draw_circular_plot = function() {
         g.append('path')
             .attr('stroke-width', '0')
             .attr('fill', 'rgb(255, 127, 0)')
-            .attr('d', n50arc({ startAngle: angle(0), endAngle: angle(50) }));
+            .attr('d', n50arc({ startAngle: angle(0), endAngle: angle(49) }));
     }
     
     if (this.settings['show_n90']) {
@@ -81,7 +47,7 @@ ContigsPlot.prototype.draw_circular_plot = function() {
         g.append('path')
             .attr('stroke-width', '0')
             .attr('fill', 'rgb(253, 191, 111)')
-            .attr('d', n90arc({ startAngle: angle(0), endAngle: angle(90) }));
+            .attr('d', n90arc({ startAngle: angle(0), endAngle: angle(89) }));
     }
 
     g.append('circle')
@@ -157,7 +123,8 @@ ContigsPlot.prototype.draw_circular_plot = function() {
             if (radiant < 0)
                 radiant = 2 * Math.PI + radiant;
 
-            var order = Math.floor(radiant / (2 * Math.PI) * 99) + 1;
+            var order = Math.floor(radiant / (2 * Math.PI) * 99
+                ) + 1;
 
             var arc = d3.svg.arc()
                 .innerRadius(0)
@@ -193,18 +160,22 @@ ContigsPlot.prototype.draw_circular_plot = function() {
         });
 };
 
-ContigsPlot.prototype.draw_gene_counts_chart = function() {
-        var g = this.svg.append("g")
-            .attr("transform", "translate(0, 810)");
+function draw_gene_counts_chart(container, gene_counts) {
+        var svg = d3.select(container)
+            .append('svg')
+            .attr('viewBox', '0 0 800 300');
+
+        var g = svg.append("g")
+            .attr("transform", "translate(0, 60)");
 
         var plot_width = 780;
         var plot_height = 180;
 
         var data = [];
-        for (key in this.stats.single_copy_gene_counts['Campbell_et_al']) {
-            data.push({'name': key, 'value': this.stats.single_copy_gene_counts['Campbell_et_al'][key]});
+        for (key in gene_counts) {
+            data.push({'name': key, 'value': gene_counts[key]});
         }
-        data.sort(function(a, b) { return (a['value'] < b['value']) - (a['value'] > b['value'])})
+        data.sort(function(a, b) { return (a['value'] < b['value']) - (a['value'] > b['value'])});
 
         var xscale = d3.scale.ordinal().rangeBands([120, plot_width]);
         var yscale = d3.scale.linear().rangeRound([plot_height, 0]);
@@ -306,5 +277,90 @@ ContigsPlot.prototype.draw_gene_counts_chart = function() {
             .attr("x", function(d) { return 80 - bins_y(d.y); })
             .attr("width", function(d) { return bins_y(d.y); } )
             .attr("fill", '#d95f0e');
+};
 
+function draw_contig_lengths_chart(container, data) {
+        var svg = d3.select(container)
+            .append('svg')
+            .attr('viewBox', '0 0 800 300');
+
+        var g = svg.append("g")
+            .attr("transform", "translate(0, 60)");
+
+        var plot_width = 780;
+        var plot_height = 180;
+
+        var xscale = d3.scale.ordinal().rangeBands([120, plot_width]);
+        var yscale = d3.scale.linear().rangeRound([plot_height, 0]);
+        var color_scale = d3.scale.linear().range(['#fff7bc', '#d95f0e']);
+
+        xscale.domain(data.map(function(d, i) { return i; }));
+        yscale.domain([0, d3.max(data)]);
+        color_scale.domain([0, d3.max(data)]);
+
+        var bar_group = g.selectAll(".bar")
+                            .data(data)
+                            .enter()
+                            .append("g")
+                            .on('mouseenter', function(d, i) {
+                                d3.select(this)
+                                    .select('rect')
+                                    .attr('fill-opacity', '0.5');
+
+                                var tooltip_pos = {
+                                    'x': Math.max(Math.min(xscale(i) - 80,  620), 120),
+                                    'y': yscale(d) - 50,
+                                    'width': 160,
+                                    'height': 40
+                                };
+
+                                var tooltip = d3.select(this)
+                                    .append('g')
+                                        .attr('class', 'plot-tooltip')
+                                        .attr('transform', 'translate(' + tooltip_pos.x + ',' + tooltip_pos.y + ')');
+
+                                tooltip.append('rect')
+                                        .attr('rx', '8')
+                                        .attr('ry', '8')
+                                        .attr('height', tooltip_pos.height)
+                                        .attr('fill-opacity', '0.7')
+                                        .attr('width', tooltip_pos.width);
+                                       
+                                var tooltip_text = tooltip.append('text')
+                                                    .attr('x', '10')
+                                                    .attr('y', '15')
+                                                    .attr('fill', '#FFFFFF')
+                                                    .attr('font-family', 'Helvetica')
+                                                    .attr('font-size', '12px');
+
+                                tooltip_text.append('tspan')
+                                                .text('Length: ' + getReadableSeqSizeString(d));
+                            })
+                            .on('mouseleave', function(d) {
+                                d3.select(this)
+                                    .select('rect')
+                                    .attr('fill-opacity', '1');
+
+                                d3.select(this)
+                                    .select('.plot-tooltip').remove();
+                            });
+
+    bar_group.append('rect')
+            .attr("class", "bar")
+            .attr("x", function(d, i) { return xscale(i); })
+            .attr("y", function(d) { return yscale(d); })
+            .attr("width", xscale.rangeBand())
+            .attr("fill", function(d) { return color_scale(d); })
+            .attr("height", function(d) { return plot_height - yscale(d); });
+
+    var yAxis = d3.svg.axis()
+        .scale(yscale)
+        .orient("left")
+        .tickFormat(function(d) { return getReadableSeqSizeString(d); })
+        .tickSubdivide(0);
+
+    g.append("g")
+        .attr("class", "x_axis")
+        .attr("transform", 'translate(118,0)')
+        .call(yAxis);
 };
