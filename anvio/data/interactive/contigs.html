@@ -59,17 +59,6 @@
 
                 draw_n_values_plot('#n_values_' + index, stats);
 
-                // add contig length plot
-                var plot_container = container.append('div')
-                                                .attr('id', 'contig_lengths_' + index);
-
-                plot_container.append('h4')
-                                .attr('class', 'text-left')
-                                .text('Contig Lengths');
-
-                draw_contig_lengths_chart('#contig_lengths_' + index, stats['contig_lengths']);
-
-
                 // Add single copy core gene plots
                 Object.keys(stats.single_copy_gene_counts).forEach(function(source, gene_chart_index) {
                     var plot_container_id = 'gene_chart_' + index + '_' + gene_chart_index;
