@@ -222,8 +222,8 @@ function draw_contig_lengths_chart(container, data) {
         var plot_height = 180;
 
         var xscale = d3.scale.ordinal().rangeBands([120, plot_width]);
-        var yscale = d3.scale.linear().rangeRound([plot_height, 0]);
-        var color_scale = d3.scale.linear().range(['#fff7bc', '#d95f0e']);
+        var yscale = d3.scale.sqrt().rangeRound([plot_height, 0]);
+        var color_scale = d3.scale.sqrt().range(['#fff7bc', '#d95f0e']);
 
         xscale.domain(data.map(function(d, i) { return i; }));
         yscale.domain([0, d3.max(data)]);
