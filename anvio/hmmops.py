@@ -76,7 +76,7 @@ class SequencesForHMMHits:
 
 
     def get_single_copy_gene_counts(self):
-        sources = [source for source in self.hmm_hits_info if self.hmm_hits_info[source]['search_type'] == 'singlecopy']
+        sources = [source for source in self.hmm_hits_info]
 
         gene_counts = {}
         for source in sources:
