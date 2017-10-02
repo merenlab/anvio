@@ -118,6 +118,11 @@
                 $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['n_values'][49]['num_contigs'] + '</td>');
             });
 
+            $('.table-details>tbody').append('<tr><td>N75</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['n_values'][74]['num_contigs'] + '</td>');
+            });
+
             $('.table-details>tbody').append('<tr><td>N90</td></tr>');
             contig_db_names.forEach(function(contig_db_name, index) {
                 $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['n_values'][89]['num_contigs'] + '</td>');
@@ -126,6 +131,11 @@
             $('.table-details>tbody').append('<tr><td>L50</td></tr>');
             contig_db_names.forEach(function(contig_db_name, index) {
                 $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['n_values'][49]['length']) + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>L75</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['n_values'][74]['length']) + '</td>');
             });
 
             $('.table-details>tbody').append('<tr><td>L90</td></tr>');
