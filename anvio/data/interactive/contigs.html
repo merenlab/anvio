@@ -50,6 +50,15 @@
                     .text(stats['project_name']);
 
 
+                var plot_container = container.append('div')
+                                                .attr('id', 'n_values_' + index);
+
+                plot_container.append('h4')
+                                .attr('class', 'text-left')
+                                .text('N Values');
+
+                draw_n_values_plot('#n_values_' + index, stats);
+
                 // add contig length plot
                 var plot_container = container.append('div')
                                                 .attr('id', 'contig_lengths_' + index);
@@ -78,7 +87,7 @@
 
             });
 
-            // Build compare table
+            // Build comparison table
             contig_db_names.forEach(function(contig_db_name, index) {
                 $('.table-details>thead>tr').append('<th class="text-center">' + contigs_stats[contig_db_name]['project_name'] + '</th>');
             });
@@ -93,15 +102,37 @@
                 $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['size']) + '</td>';
             });
 
-            $('.table-details>tbody').append('<tr><td>Biggest Contig</td></tr>');
+            $('.table-details>tbody').append('<tr><td>Longest Contig</td></tr>');
             contig_db_names.forEach(function(contig_db_name, index) {
                 $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['contig_lengths'][0]) + '</td>');
             });
 
-            $('.table-details>tbody').append('<tr><td>Smallest Contig</td></tr>');
+            $('.table-details>tbody').append('<tr><td>Shortest Contig</td></tr>');
             contig_db_names.forEach(function(contig_db_name, index) {
                 $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['contig_lengths'][contigs_stats[contig_db_name]['contig_lengths'].length - 1]) + '</td>');
             });
+
+            
+            $('.table-details>tbody').append('<tr><td>N50</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['n_values'][49]['num_contigs'] + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>N90</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['n_values'][89]['num_contigs'] + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>L50</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['n_values'][49]['length']) + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>L90</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['n_values'][89]['length']) + '</td>');
+            });
+
 
         });
     </script>
