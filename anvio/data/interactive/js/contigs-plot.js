@@ -78,6 +78,17 @@ function draw_n_values_plot(container, stats) {
             .attr("width", xscale.rangeBand())
             .attr("fill", function(d) { return color_scale(d.length); })
             .attr("height", function(d) { return plot_height - yscale(d.length); });
+
+    var yAxis = d3.svg.axis()
+        .scale(yscale)
+        .orient("left")
+        .tickFormat(function(d) { return getReadableSeqSizeString(d); })
+        .tickSubdivide(0);
+
+    g.append("g")
+        .attr("class", "x_axis")
+        .attr("transform", 'translate(118,0)')
+        .call(yAxis);
 };
 
 function draw_gene_counts_chart(container, gene_counts) {
