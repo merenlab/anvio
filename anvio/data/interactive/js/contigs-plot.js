@@ -76,7 +76,7 @@ function draw_n_values_plot(container, stats) {
             .attr("x", function(d,i) { return xscale(i); })
             .attr("y", function(d) { return yscale(d.length); })
             .attr("width", xscale.rangeBand())
-            .attr("fill", function(d,i) { return (i == 49) ? '#FF0000' : color_scale(d.length); })
+            .attr("fill", function(d,i) { return (i == 49) ? '#DC143C' : color_scale(d.length); })
             .attr("height", function(d) { return plot_height - yscale(d.length); });
 
     g.append('text')
