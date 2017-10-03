@@ -88,6 +88,7 @@ function draw_n_values_plot(container, stats) {
     g.append("g")
         .attr("class", "x_axis")
         .attr("transform", 'translate(118,0)')
+        .style("font-size", '10')
         .call(yAxis);
 };
 
