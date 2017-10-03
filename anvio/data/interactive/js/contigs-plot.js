@@ -82,8 +82,9 @@ function draw_n_values_plot(container, stats) {
     g.append('text')
             .text('N50')
             .style("font-size", '8')
-            .attr("x", function(d,i) { return xscale(49); })
-            .attr("y", function(d) { return yscale(data[49].length) - 4; });
+            .attr("x", xscale(49))
+            .attr("y", yscale(data[49].length) - 4);
+
     var yAxis = d3.svg.axis()
         .scale(yscale)
         .orient("left")
