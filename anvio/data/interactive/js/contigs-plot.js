@@ -197,6 +197,10 @@ function draw_gene_counts_chart(container, gene_counts) {
         .domain(d3.extent(bins, function(d){return d.length }))
         .range([0, 70]);
 
+    var bins_y_reversed = d3.scale.linear()
+        .domain(d3.extent(bins, function(d){return d.length }).reverse())
+        .range([0, 70]);
+
     var histogram = g.append('g').attr('class', 'histogram');
 
     histogram.selectAll('rect')
@@ -209,4 +213,17 @@ function draw_gene_counts_chart(container, gene_counts) {
             .attr("x", function(d) { return 80 - bins_y(d.y); })
             .attr("width", function(d) { return bins_y(d.y); } )
             .attr("fill", '#d95f0e');
+
+    var axis_for_histogram = d3.svg.axis()
+        .scale(bins_y_reversed)
+        .orient("top")
+        .ticks(5)
+        .tickFormat(d3.format("d"))
+        .tickSubdivide(0);
+
+    g.append("g")
+        .attr("class", "histogram_axis")
+        .attr("transform", 'translate(10,0)')
+        .style("font-size", '8')
+        .call(axis_for_histogram);
 };

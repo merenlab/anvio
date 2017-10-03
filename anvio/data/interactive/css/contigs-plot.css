@@ -12,3 +12,10 @@ label {
     font-weight: unset;
 }
 
+.histogram_axis text {
+    fill: #777777;
+}
+
+.histogram_axis path {
+    stroke: #777777;
+}
