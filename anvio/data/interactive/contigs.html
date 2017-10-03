@@ -67,14 +67,28 @@
                 var tab_content = container.append('div')
                                         .attr('class', 'tab-content');
 
+                var max_hmm_hits = 0;
+                var active_index = 0;
                 Object.keys(stats.single_copy_gene_counts).forEach(function(source, gene_chart_index) {
                     var plot_container_id = 'gene_chart_' + index + '_' + gene_chart_index;
+
+                    var hits_sum = 0;
+
+                    Object.keys(stats.single_copy_gene_counts[source]).forEach(function (gene) {
+                        hits_sum += stats.single_copy_gene_counts[source][gene];
+                    });
+
+                    if (hits_sum > max_hmm_hits) {
+                        max_hmm_hits = hits_sum;
+                        active_index = gene_chart_index;
+                    }
 
                     tabs.append('li')
                             .append('a')
                                 .attr('href', '#' + plot_container_id)
                                 .attr('data-toggle', 'tab')
                                 .text(source);
+
 
                     var plot_container = tab_content.append('div')
                                             .attr('class', 'tab-pane')
@@ -84,6 +98,7 @@
                     draw_gene_counts_chart('#' + plot_container_id, stats.single_copy_gene_counts[source]);
                 });
 
+                $('a[href="#gene_chart_' + index + '_' + active_index + '"').tab('show');
             });
 
             // Build comparison table
