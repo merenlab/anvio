@@ -60,16 +60,26 @@
                 draw_n_values_plot('#n_values_' + index, stats);
 
                 // Add single copy core gene plots
+                
+                var tabs = container.append('ul')
+                                    .attr('class', 'nav nav-tabs');
+
+                var tab_content = container.append('div')
+                                        .attr('class', 'tab-content');
+
                 Object.keys(stats.single_copy_gene_counts).forEach(function(source, gene_chart_index) {
                     var plot_container_id = 'gene_chart_' + index + '_' + gene_chart_index;
 
-                    var plot_container = container.append('div')
+                    tabs.append('li')
+                            .append('a')
+                                .attr('href', '#' + plot_container_id)
+                                .attr('data-toggle', 'tab')
+                                .text(source);
+
+                    var plot_container = tab_content.append('div')
+                                            .attr('class', 'tab-pane')
+                                            .attr('role', 'tabpanel')
                                             .attr('id', plot_container_id);
-
-                    plot_container.append('h4')
-                                    .attr('class', 'text-left')
-                                    .text(source);
-
 
                     draw_gene_counts_chart('#' + plot_container_id, stats.single_copy_gene_counts[source]);
                 });
