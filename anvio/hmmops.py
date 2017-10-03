@@ -14,11 +14,9 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.drivers import Aligners
 
 run = terminal.Run()
 progress = terminal.Progress()
-aligners = Aligners()
 
 
 class SequencesForHMMHits:
@@ -354,6 +352,14 @@ class SequencesForHMMHits:
         return (header, sequence)
 
 
+    def get_aligner(self, align_with=None):
+        """Return an instance of an aligner"""
+
+        from anvio.drivers import Aligners
+
+        return Aligners().select(align_with)
+
+
     def __store_concatenated_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None, align_with=None):
         """Generates concatenated sequences from `hmm_sequences_dict_for_splits` dict.
 
@@ -377,7 +383,7 @@ class SequencesForHMMHits:
         gene_names = None
 
         # let's get an instance of the aligner early on so we learn about issues before its too late.
-        aligner = aligners.select(align_with)
+        aligner = self.get_aligner(align_with)
 
         # lets learn about what we have in this dictionary first.
         bin_names_in_dict = list(set([x['bin_id'] for x in hmm_sequences_dict_for_splits.values()]))
