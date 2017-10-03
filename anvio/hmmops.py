@@ -347,7 +347,7 @@ class SequencesForHMMHits:
 
     def get_FASTA_header_and_sequence_for_gene_unique_id(self, hmm_sequences_dict_for_splits, gene_unique_id):
         entry = hmm_sequences_dict_for_splits[gene_unique_id]
-        header = '%s___%s|' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'gene_callers_id', 'start', 'stop', 'length']])
+        header = '%s___%s ' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'gene_callers_id', 'start', 'stop', 'length']])
         sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
         return (header, sequence)
 
