@@ -227,7 +227,7 @@ function redrawBins()
                 'bin_outer_' + 1,
                 start.angle - start.size / 2,
                 end.angle + end.size / 2,
-                total_radius,
+                total_radius + outer_ring_margin + outer_ring_size,
                 total_radius + outer_ring_margin + outer_ring_size * 2,
                 (end.angle - start.angle + start.size / 2 + end.size / 2 > Math.PI) ? 1 : 0,
                 color,
@@ -240,7 +240,7 @@ function redrawBins()
             
             drawPhylogramRectangle('bin',
                 'bin_outer_' + 1,
-                total_radius,
+                total_radius + outer_ring_margin + outer_ring_size,
                 start.xy['y'] - start.size / 2 + height / 2,
                 height,
                 outer_ring_size,
