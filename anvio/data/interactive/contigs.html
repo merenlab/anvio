@@ -95,7 +95,7 @@
                         .append('a')
                             .attr('href', '#' + plot_container_id)
                             .attr('data-toggle', 'tab')
-                            .text(source);
+                            .text(source.replace(/_/g, ' '));
 
 
                 var plot_container = tab_content.append('div')
@@ -204,6 +204,10 @@
         d3.json("/data/get_contigs_stats", function(error, response) {
             contigs_stats = response;
             contig_db_names = Object.keys(contigs_stats);
+
+            contig_db_names.forEach(function(name) {
+                contigs_stats[name]['project_name'] = contigs_stats[name]['project_name'].replace(/_/g, ' ');
+            });
 
             if (contig_db_names.length == 1) {
                 d3.select('.parent-container>.row-plots')
