@@ -1,0 +1,191 @@
+<html>
+
+<head>
+    <title>Contigs Statistics</title>
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+    <script type='text/javascript' src='js/utils.js'></script>
+    <script type='text/javascript' src='lib/d3.js/d3.min.js'></script>
+    <script type='text/javascript' src='js/contigs-plot.js'></script>
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/contigs-plot.css" />
+</head>
+    
+<body>
+    <div class="container-fluid parent-container">
+        <div class="row row-centered row-plots">
+            
+        </div>
+
+        <div class="container">
+            <table class="table table-details">
+              <thead>
+                <tr>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        d3.json("/data/get_contigs_stats", function(error, response) {
+            var contigs_stats = response;
+            //var contig_db_names = Object.keys(contigs_stats).concat(Object.keys(contigs_stats));
+            var contig_db_names = Object.keys(contigs_stats);
+
+            contig_db_names.forEach(function(contig_db_name, index) {
+                var stats = contigs_stats[contig_db_name];
+
+                var container = d3.select('.parent-container>.row-plots')
+                                    .append('div')
+                                        .attr('class', 'col-sm-6')
+                                        .attr('id', 'container' + index);
+
+                // Add title
+
+                container.append('div')
+                    .append('h1')
+                    .text(stats['project_name']);
+
+
+                var plot_container = container.append('div')
+                                                .attr('id', 'n_values_' + index);
+
+                plot_container.append('h4')
+                                .attr('class', 'text-left')
+                                .text('Contigs');
+
+                draw_n_values_plot('#n_values_' + index, stats);
+
+                // Add single copy core gene plots
+                
+                var tabs = container.append('ul')
+                                    .attr('class', 'nav nav-tabs');
+
+                var tab_content = container.append('div')
+                                        .attr('class', 'tab-content');
+
+                var max_hmm_hits = 0;
+                var active_index = 0;
+                Object.keys(stats.single_copy_gene_counts).forEach(function(source, gene_chart_index) {
+                    var plot_container_id = 'gene_chart_' + index + '_' + gene_chart_index;
+
+                    var hits_sum = 0;
+
+                    Object.keys(stats.single_copy_gene_counts[source]).forEach(function (gene) {
+                        hits_sum += stats.single_copy_gene_counts[source][gene];
+                    });
+
+                    if (hits_sum > max_hmm_hits) {
+                        max_hmm_hits = hits_sum;
+                        active_index = gene_chart_index;
+                    }
+
+                    tabs.append('li')
+                            .append('a')
+                                .attr('href', '#' + plot_container_id)
+                                .attr('data-toggle', 'tab')
+                                .text(source);
+
+
+                    var plot_container = tab_content.append('div')
+                                            .attr('class', 'tab-pane')
+                                            .attr('role', 'tabpanel')
+                                            .attr('id', plot_container_id);
+
+                    draw_gene_counts_chart('#' + plot_container_id, stats.single_copy_gene_counts[source]);
+                });
+
+                $('a[href="#gene_chart_' + index + '_' + active_index + '"').tab('show');
+            });
+
+            // Build comparison table
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>thead>tr').append('<th class="text-center">' + contigs_stats[contig_db_name]['project_name'] + '</th>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>Total Length</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['total_length']) + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>Num Contigs</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['size']) + '</td>';
+            });
+
+            $('.table-details>tbody').append('<tr><td>Longest Contig</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['contig_lengths'][0]) + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>Shortest Contig</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['contig_lengths'][contigs_stats[contig_db_name]['contig_lengths'].length - 1]) + '</td>');
+            });
+
+            
+            $('.table-details>tbody').append('<tr><td>N50</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['n_values'][49]['num_contigs'] + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>N75</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['n_values'][74]['num_contigs'] + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>N90</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['n_values'][89]['num_contigs'] + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>L50</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['n_values'][49]['length']) + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>L75</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['n_values'][74]['length']) + '</td>');
+            });
+
+            $('.table-details>tbody').append('<tr><td>L90</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['n_values'][89]['length']) + '</td>');
+            });
+
+
+            var all_sources = [];
+
+            contig_db_names.forEach(function(contig_db_name) {
+                Object.keys(contigs_stats[contig_db_name].single_copy_gene_counts).forEach(function(source) {
+                    if (all_sources.indexOf(source) == -1) {
+                        all_sources.push(source);
+                    }
+                });
+            });
+
+            all_sources.forEach(function(source) {
+                $('.table-details>tbody').append('<tr><td>HMM Hits ( ' + source + ' )</td></tr>');
+                contig_db_names.forEach(function(contig_db_name) {
+                    if (contigs_stats[contig_db_name]['single_copy_gene_counts'].hasOwnProperty(source)) {
+                        var hits_sum = 0;
+                        Object.keys(contigs_stats[contig_db_name]['single_copy_gene_counts'][source]).forEach(function (gene) {
+                            hits_sum += contigs_stats[contig_db_name]['single_copy_gene_counts'][source][gene];
+                        });
+                        $('.table-details>tbody>tr:last').append('<td class="text-center">' + hits_sum + '</td>');
+                    }
+                    else
+                    {
+                        $('.table-details>tbody>tr:last').append('<td class="text-center">n/a</td>');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

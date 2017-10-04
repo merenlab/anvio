@@ -14,11 +14,9 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.drivers import Aligners
 
 run = terminal.Run()
 progress = terminal.Progress()
-aligners = Aligners()
 
 
 class SequencesForHMMHits:
@@ -73,6 +71,26 @@ class SequencesForHMMHits:
                 split_name_to_bin_id[split_name] = bin_id
 
         return hits_in_splits, split_name_to_bin_id
+
+
+    def get_single_copy_gene_counts(self):
+        sources = [source for source in self.hmm_hits_info]
+
+        gene_counts = {}
+        for source in sources:
+            gene_counts[source] = {}
+
+            for gene_name in self.hmm_hits_info[source]['genes'].split(','):
+                gene_counts[source][gene_name.strip()] = 0
+
+        for entry in list(self.hmm_hits.values()):
+            source    = entry['source']
+            gene_name = entry['gene_name']
+
+            if source in sources:
+                gene_counts[source][gene_name.strip()] += 1
+
+        return gene_counts
 
 
     def get_hmm_hits_per_bin(self, splits_dict, source):
@@ -329,9 +347,17 @@ class SequencesForHMMHits:
 
     def get_FASTA_header_and_sequence_for_gene_unique_id(self, hmm_sequences_dict_for_splits, gene_unique_id):
         entry = hmm_sequences_dict_for_splits[gene_unique_id]
-        header = '%s___%s|' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'gene_callers_id', 'start', 'stop', 'length']])
+        header = '%s___%s ' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'gene_callers_id', 'start', 'stop', 'length']])
         sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
         return (header, sequence)
+
+
+    def get_aligner(self, align_with=None):
+        """Return an instance of an aligner"""
+
+        from anvio.drivers import Aligners
+
+        return Aligners().select(align_with)
 
 
     def __store_concatenated_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None, align_with=None):
@@ -357,7 +383,7 @@ class SequencesForHMMHits:
         gene_names = None
 
         # let's get an instance of the aligner early on so we learn about issues before its too late.
-        aligner = aligners.select(align_with)
+        aligner = self.get_aligner(align_with)
 
         # lets learn about what we have in this dictionary first.
         bin_names_in_dict = list(set([x['bin_id'] for x in hmm_sequences_dict_for_splits.values()]))
@@ -446,12 +472,32 @@ class SequencesForHMMHits:
         f.close()
 
 
-    def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None):
+    def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None, align_with=None):
         """Stores every sequence in hmm_sequences_dict_for_splits into the `output_file_path`.
 
            Please do NOT directly access to this function, and use `store_hmm_sequences_into_FASTA`
            instead.
         """
+
+        # if the user wants alignment, lets update the input dictionary with aligned sequences
+        if align_with:
+            self.run.info('Sequence aligner', align_with)
+            self.run.warning("Anvi'o will align your sequences since you explicitly asked for an aligner. However, you are not\
+                              concatenating your genes. If you are working with multiple gene names, your multiple sequence alignment\
+                              may contain genes that are evolutionarily very distant from each other, and the resulting multiple\
+                              sequence alignment may be irrelevant to answer any biologically relevant questions. So here anvi'o will\
+                              do what you want, assuming that you know what you are doing.")
+
+            aligner = self.get_aligner(align_with)
+            genes_list = [(gene_id, hmm_sequences_dict_for_splits[gene_id]['sequence']) for gene_id in hmm_sequences_dict_for_splits]
+
+            self.progress.new('Alignment')
+            self.progress.update('Working on %d sequences ...' % (len(genes_list)))
+            genes_aligned = aligner(run=terminal.Run(verbose=False)).run_stdin(genes_list)
+            self.progress.end()
+
+            for gene_id in genes_aligned:
+                hmm_sequences_dict_for_splits[gene_id]['sequence'] = genes_aligned[gene_id]
 
         f = open(output_file_path, 'w')
 
@@ -478,4 +524,4 @@ class SequencesForHMMHits:
         if concatenate_genes:
             self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with)
         else:
-            self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order)
+            self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with)

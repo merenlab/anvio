@@ -14,6 +14,7 @@ import anvio.dbops as dbops
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.summarizer as summarizer
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -1093,3 +1094,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def end(self):
         # FIXME: remove temp files and stuff
         pass
+
+
+class ContigsInteractive():
+    def __init__(self, args):
+        self.mode = 'contigs'
+        
+        self.contigs_stats = {}
+        
+        for contig_db_path in args.input:
+            self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path).get_summary_dict_for_assembly()
+
+    def get_contigs_stats(self):
+        return self.contigs_stats

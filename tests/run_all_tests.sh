@@ -22,11 +22,18 @@ column -t $output_dir/contigs-reformat-report.txt
 # is the original file all samples were mapped to). here we use split size of 1000 (the default split
 # size is much better for most projects. the small split size used here is simply for testing purposes)
 INFO "Generating a new contigs database with external gene calls"
-anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000 --external-gene-calls $files/example_external_gene_calls.txt
+anvi-gen-contigs-database -f $files/contigs.fa \
+                          -o $output_dir/CONTIGS.db \
+                          -L 1000 \
+                          --external-gene-calls $files/example_external_gene_calls.txt \
+                          --project-name 'Contigs DB with external gene calls'
 rm -rf $output_dir/CONTIGS.db $output_dir/CONTIGS.h5
 
 INFO "Generating a new contigs database with the default gene caller"
-anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000
+anvi-gen-contigs-database -f $files/contigs.fa \
+                          -o $output_dir/CONTIGS.db \
+                          -L 1000 \
+                          --project-name "Contigs DB for anvi'o self-tests"
 
 INFO "Exporting gene calls from the contigs database"
 anvi-export-gene-calls -c $output_dir/CONTIGS.db -o $output_dir/exported_gene_calls.txt
@@ -106,7 +113,7 @@ anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED-WO-CLUSTERING 
                               --skip-hierarchical-clustering
 
 INFO "Update the description in the merged profile"
-anvi-update-db-description -p $output_dir/SAMPLES-MERGED/PROFILE.db --description $files/example_description.md
+anvi-update-db-description $output_dir/SAMPLES-MERGED/PROFILE.db --description $files/example_description.md
 
 INFO "Generating coverages and sequences files for splits (for external binning)"
 anvi-export-splits-and-coverages -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db

@@ -398,6 +398,20 @@ function readableNumber(num) {
 }
 
 //--------------------------------------------------------------------------------------------------
+function getReadableSeqSizeString(seqSizeInBases, fixed) {
+    // function based on answer at http://stackoverflow.com/questions/10420352/converting-file-size-in-bytes-to-human-readable
+    var i = -1;
+    var baseUnits = [' kB', ' MB', ' GB', ' TB'];
+    do {
+        seqSizeInBases = seqSizeInBases / 1000;
+        i++;
+    } while (seqSizeInBases >= 1000);
+    fixed = fixed ? fixed : fixed == 0 ? 0 : 1;
+    return Math.max(seqSizeInBases, 0.1).toFixed(fixed) + baseUnits[i];
+};
+
+
+//--------------------------------------------------------------------------------------------------
 function linePath(p0, p1)
 {
     var path = 'M ' + p0['x'] + ' ' + p0['y'] + ' ' + p1['x'] + ' ' + p1['y'];
