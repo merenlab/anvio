@@ -47,7 +47,9 @@
             var container = d3.select('.parent-container>.row-plots')
                                 .append('div')
                                     .attr('class', 'col-sm-6')
-                                    .attr('id', 'container' + prefix);
+                                    .append('div')
+                                        .attr('class', 'round-corners-and-background')
+                                        .attr('id', 'container' + prefix);
 
             // Add title
 
