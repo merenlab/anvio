@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.interactive as interactive
+from anvio.bottleroutes import BottleApplication
+
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
+
+
+__author__ = "Özcan Esen"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Özcan Esen"
+__email__ = "ozcanesen@gmail.com"
+
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+parser = argparse.ArgumentParser(description="Start the anvi'o interactive interactive for viewing or comparing contigs statistics")
+parser.add_argument('input', metavar = 'CONTIG DATABASE(S)', nargs='+',
+                    help = "Anvio'o Contig databases to display statistics, \
+                            you can give multiple databases by seperating them with space.")
+groupA = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+groupA.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+groupA.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+groupA.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+groupA.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+
+args = parser.parse_args()
+
+try:
+    args.mode = 'contigs'
+    d = interactive.ContigsInteractive(args)
+    args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+except ConfigError as e:
+    print(e)
+    sys.exit(-1)
+except FilesNPathsError as e:
+    print(e)
+    sys.exit(-2)
+except DictIOError as e:
+    print(e)
+    sys.exit(-3)
+except SamplesError as e:
+    print(e)
+    sys.exit(-4)
+
+
+app = BottleApplication(d, args)
+app.run_application(args.ip_address, args.port_number)

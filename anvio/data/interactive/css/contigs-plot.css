@@ -1,0 +1,21 @@
+.row-centered {
+    text-align:center;
+}
+
+.domain {
+    fill: none;
+    stroke-width: 1;
+    stroke: black;
+}
+
+label {
+    font-weight: unset;
+}
+
+.histogram_axis text {
+    fill: #777777;
+}
+
+.histogram_axis path {
+    stroke: #777777;
+}

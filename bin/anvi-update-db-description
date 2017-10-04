@@ -8,7 +8,6 @@ import argparse
 import anvio
 import anvio.dbops as dbops
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -25,16 +24,13 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 
 def main(args):
-    dbops.is_pan_or_profile_db(args.pan_or_profile_db)
-    filesnpaths.is_file_plain_text(args.description)
-
-    dbops.update_description_in_db(args.pan_or_profile_db, open(args.description).read())
+    dbops.update_description_in_db_from_file(args.db_path, args.description)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Update the description in an anvi'o database")
 
-    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': True}))
+    parser.add_argument('db_path', metavar='DB', help="An anvi'o database.")
     parser.add_argument(*anvio.A('description'), **anvio.K('description', {'required': True}))
 
     args = parser.parse_args()

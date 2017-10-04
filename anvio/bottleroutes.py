@@ -57,8 +57,10 @@ class BottleApplication(Bottle):
         super(BottleApplication, self).__init__()
         self.interactive = interactive
         self.args = args
-        self.read_only = args.read_only
+        self.read_only = A('read_only')
         self.browser_path = A('browser_path')
+        self.export_svg = A('export_svg')
+        self.server_only = A('server_only')
 
         self.unique_session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
@@ -118,6 +120,7 @@ class BottleApplication(Bottle):
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
         self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
+        self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
 
 
     def run_application(self, ip, port):
@@ -125,7 +128,7 @@ class BottleApplication(Bottle):
             server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
             server_process.start()
 
-            if self.args.export_svg:
+            if self.export_svg:
                 try:
                     utils.run_selenium_and_export_svg("http://%s:%d/app/index.html" % (ip, port),
                                                       self.args.export_svg,
@@ -137,7 +140,7 @@ class BottleApplication(Bottle):
                     server_process.terminate()
                     sys.exit(0)
 
-            if not self.args.server_only:
+            if not self.server_only:
                 utils.open_url_in_browser(url="http://%s:%d" % (ip, port),
                                           browser_path=self.browser_path,
                                           run=run)
@@ -151,7 +154,11 @@ class BottleApplication(Bottle):
 
 
     def redirect_to_app(self):
-        redirect('/app/index.html?rand=' + self.random_hash(8))
+        homepage = 'index.html' 
+        if self.interactive.mode == 'contigs':
+            homepage = 'contigs.html'
+
+        redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
 
     def send_static(self, filename):
@@ -179,6 +186,7 @@ class BottleApplication(Bottle):
                 index = pos
 
             # write rest of the file
+            ret.body.seek(index)
             buff.write(ret.body.read())
             ret.body = buff
             ret.body.seek(0)
@@ -827,3 +835,7 @@ class BottleApplication(Bottle):
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
+
+
+    def get_contigs_stats(self):
+        return json.dumps(self.interactive.get_contigs_stats())
