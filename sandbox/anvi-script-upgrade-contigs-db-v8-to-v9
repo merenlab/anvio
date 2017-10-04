@@ -63,6 +63,7 @@ def update_contigs_db(contigs_db_path, project_name, description=None, just_do_i
     # gene name changes:
     contigs_db._exec('''UPDATE %s SET genes = replace(genes, '%s', '%s') WHERE source LIKE 'Rinke_et_al';''' % (t.hmm_hits_info_table_name, 'Ribosomal_S12', 'Ribosom_S12_S23'))
     contigs_db._exec('''UPDATE %s SET genes = replace(genes, '%s', '%s') Where source LIKE 'Rinke_et_al';''' % (t.hmm_hits_info_table_name, 'UPF0027', 'RtcB'))
+    contigs_db._exec('''UPDATE %s SET genes = replace(genes, '%s', '%s') Where source LIKE 'Rinke_et_al';''' % (t.hmm_hits_info_table_name, '‐', '-')) # first - is not ASCII
 
     # bye
     contigs_db.disconnect()
