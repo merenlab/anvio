@@ -9,10 +9,20 @@
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
     <link rel="stylesheet" type="text/css" href="css/contigs-plot.css" />
+    <script type="text/javascript">
+        var contigs_stats;
+        var contig_db_names;
+    </script>
 </head>
     
 <body>
     <div class="container-fluid parent-container">
+        <div class="row row-centered row-menu" style="display: none; padding: 5px;">
+            Compare 
+            <select id="select-left"></select>
+            and
+            <select id="select-right"></select>
+        </div>
         <div class="row row-centered row-plots">
             
         </div>
@@ -30,77 +40,74 @@
         </div>
     </div>
     <script>
-        d3.json("/data/get_contigs_stats", function(error, response) {
-            var contigs_stats = response;
-            //var contig_db_names = Object.keys(contigs_stats).concat(Object.keys(contigs_stats));
-            var contig_db_names = Object.keys(contigs_stats);
+        function create_plots(index, prefix) {
+            var contig_db_name = contig_db_names[index];
+            var stats = contigs_stats[contig_db_name];
 
-            contig_db_names.forEach(function(contig_db_name, index) {
-                var stats = contigs_stats[contig_db_name];
+            var container = d3.select('.parent-container>.row-plots')
+                                .append('div')
+                                    .attr('class', 'col-sm-6')
+                                    .attr('id', 'container' + prefix);
 
-                var container = d3.select('.parent-container>.row-plots')
-                                    .append('div')
-                                        .attr('class', 'col-sm-6')
-                                        .attr('id', 'container' + index);
+            // Add title
 
-                // Add title
-
-                container.append('div')
-                    .append('h1')
-                    .text(stats['project_name']);
+            container.append('div')
+                .append('h1')
+                .text(stats['project_name']);
 
 
-                var plot_container = container.append('div')
-                                                .attr('id', 'n_values_' + index);
+            var plot_container = container.append('div')
+                                            .attr('id', 'n_values_' + prefix);
 
-                plot_container.append('h4')
-                                .attr('class', 'text-left')
-                                .text('Contigs');
+            plot_container.append('h4')
+                            .attr('class', 'text-left')
+                            .text('Contigs');
 
-                draw_n_values_plot('#n_values_' + index, stats);
+            draw_n_values_plot('#n_values_' + prefix, stats);
 
-                // Add single copy core gene plots
-                
-                var tabs = container.append('ul')
-                                    .attr('class', 'nav nav-tabs');
+            // Add single copy core gene plots
+            
+            var tabs = container.append('ul')
+                                .attr('class', 'nav nav-tabs');
 
-                var tab_content = container.append('div')
-                                        .attr('class', 'tab-content');
+            var tab_content = container.append('div')
+                                    .attr('class', 'tab-content');
 
-                var max_hmm_hits = 0;
-                var active_index = 0;
-                Object.keys(stats.single_copy_gene_counts).forEach(function(source, gene_chart_index) {
-                    var plot_container_id = 'gene_chart_' + index + '_' + gene_chart_index;
+            var max_hmm_hits = 0;
+            var active_index = 0;
+            Object.keys(stats.single_copy_gene_counts).forEach(function(source, gene_chart_index) {
+                var plot_container_id = 'gene_chart_' + prefix + '_' + gene_chart_index;
 
-                    var hits_sum = 0;
+                var hits_sum = 0;
 
-                    Object.keys(stats.single_copy_gene_counts[source]).forEach(function (gene) {
-                        hits_sum += stats.single_copy_gene_counts[source][gene];
-                    });
-
-                    if (hits_sum > max_hmm_hits) {
-                        max_hmm_hits = hits_sum;
-                        active_index = gene_chart_index;
-                    }
-
-                    tabs.append('li')
-                            .append('a')
-                                .attr('href', '#' + plot_container_id)
-                                .attr('data-toggle', 'tab')
-                                .text(source);
-
-
-                    var plot_container = tab_content.append('div')
-                                            .attr('class', 'tab-pane')
-                                            .attr('role', 'tabpanel')
-                                            .attr('id', plot_container_id);
-
-                    draw_gene_counts_chart('#' + plot_container_id, stats.single_copy_gene_counts[source]);
+                Object.keys(stats.single_copy_gene_counts[source]).forEach(function (gene) {
+                    hits_sum += stats.single_copy_gene_counts[source][gene];
                 });
 
-                $('a[href="#gene_chart_' + index + '_' + active_index + '"').tab('show');
+                if (hits_sum > max_hmm_hits) {
+                    max_hmm_hits = hits_sum;
+                    active_index = gene_chart_index;
+                }
+
+                tabs.append('li')
+                        .append('a')
+                            .attr('href', '#' + plot_container_id)
+                            .attr('data-toggle', 'tab')
+                            .text(source);
+
+
+                var plot_container = tab_content.append('div')
+                                        .attr('class', 'tab-pane')
+                                        .attr('role', 'tabpanel')
+                                        .attr('id', plot_container_id);
+
+                draw_gene_counts_chart('#' + plot_container_id, stats.single_copy_gene_counts[source]);
             });
 
+            $('a[href="#gene_chart_' + prefix + '_' + active_index + '"').tab('show');
+        }
+
+        function create_table() {
             // Build comparison table
             contig_db_names.forEach(function(contig_db_name, index) {
                 $('.table-details>thead>tr').append('<th class="text-center">' + contigs_stats[contig_db_name]['project_name'] + '</th>');
@@ -184,6 +191,43 @@
                     }
                 });
             });
+        }
+
+        $('#select-left,#select-right').change(function() {
+            $('.parent-container>.row-plots').empty();
+            create_plots(parseInt($('#select-left').val()), 'left');
+            create_plots(parseInt($('#select-right').val()), 'right'); 
+        });
+
+        d3.json("/data/get_contigs_stats", function(error, response) {
+            contigs_stats = response;
+            contig_db_names = Object.keys(contigs_stats);
+
+            if (contig_db_names.length == 1) {
+                d3.select('.parent-container>.row-plots')
+                    .append('div')
+                    .attr('class', 'col-sm-3');
+
+                create_plots(0, 'left');
+            } else if (contig_db_names.length == 2) {
+                create_plots(0, 'left');
+                create_plots(1, 'rights');
+            } else {
+                $('.row-menu').show();
+
+                contig_db_names.forEach(function(name, index) {
+                    var option = '<option value="' + index + '">' + contigs_stats[name]['project_name'] +  '</option>';
+                    $('#select-left').append(option);
+                    $('#select-right').append(option);
+
+                    $('#select-left option:nth-child(1)').attr("selected", "selected");
+                    $('#select-right option:nth-child(2)').attr("selected", "selected");
+
+                    $('#select-left').trigger('change');
+                });
+            }
+
+            create_table();
         });
     </script>
 </body>
