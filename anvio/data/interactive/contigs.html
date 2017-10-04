@@ -178,7 +178,7 @@
             });
 
             all_sources.forEach(function(source) {
-                $('.table-details>tbody').append('<tr><td>HMM Hits ( ' + source + ' )</td></tr>');
+                $('.table-details>tbody').append('<tr><td>HMM Hits (' + source + ')</td></tr>');
                 contig_db_names.forEach(function(contig_db_name) {
                     if (contigs_stats[contig_db_name]['single_copy_gene_counts'].hasOwnProperty(source)) {
                         var hits_sum = 0;
