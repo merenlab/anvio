@@ -334,6 +334,9 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --items-order $files/example_items_order_file.txt \
                  --dry-run
 
+INFO "Firing up the interactive interface to display the contigs db stats"
+anvi-display-contigs-stats $output_dir/CONTIGS.db
+
 INFO "Firing up the interactive interface for merged samples"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
