@@ -1,7 +1,7 @@
 <html>
 
 <head>
-    <title>Contigs Statistics</title>
+    <title>Contigs DB Stats</title>
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <script type='text/javascript' src='js/utils.js'></script>
     <script type='text/javascript' src='lib/d3.js/d3.min.js'></script>
@@ -14,17 +14,14 @@
         var contig_db_names;
     </script>
 </head>
-    
+
 <body>
     <div class="container-fluid parent-container">
-        <div class="row row-centered row-menu" style="display: none; padding: 5px;">
-            Compare 
-            <select id="select-left"></select>
-            and
-            <select id="select-right"></select>
+        <div class="row row-centered row-menu" style="display: none; padding: 5px; margin-top: 10px;">
+            <select id="select-left"></select> vs <select id="select-right"></select>
         </div>
         <div class="row row-centered row-plots">
-            
+
         </div>
 
         <div class="container">
@@ -54,21 +51,17 @@
             // Add title
 
             container.append('div')
-                .append('h1')
+                .append('h3')
+                .style('margin-top', '0px')
                 .text(stats['project_name']);
-
 
             var plot_container = container.append('div')
                                             .attr('id', 'n_values_' + prefix);
 
-            plot_container.append('h4')
-                            .attr('class', 'text-left')
-                            .text('Contigs');
-
             draw_n_values_plot('#n_values_' + prefix, stats);
 
             // Add single copy core gene plots
-            
+
             var tabs = container.append('ul')
                                 .attr('class', 'nav nav-tabs');
 
@@ -122,7 +115,12 @@
 
             $('.table-details>tbody').append('<tr><td>Num Contigs</td></tr>');
             contig_db_names.forEach(function(contig_db_name, index) {
-                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['size']) + '</td>';
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['num_contigs']) + '</td>';
+            });
+
+            $('.table-details>tbody').append('<tr><td>Num Genes (' + contigs_stats[contig_db_names[0]]['gene_caller'] + ')</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['num_genes']) + '</td>';
             });
 
             $('.table-details>tbody').append('<tr><td>Longest Contig</td></tr>');
@@ -135,7 +133,6 @@
                 $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['contig_lengths'][contigs_stats[contig_db_name]['contig_lengths'].length - 1]) + '</td>');
             });
 
-            
             $('.table-details>tbody').append('<tr><td>N50</td></tr>');
             contig_db_names.forEach(function(contig_db_name, index) {
                 $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['n_values'][49]['num_contigs'] + '</td>');
