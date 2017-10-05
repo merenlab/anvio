@@ -1035,18 +1035,35 @@ class ContigSummarizer(SummarizerSuperClass):
         return info_dict
 
 
-    def get_summary_dict_for_assembly(self):
-        summary = {}
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+    def get_summary_dict_for_assembly(self, gene_caller_to_use=None):
+        """Returns a simple summary dict for a given contigs database"""
+        if not gene_caller_to_use:
+            gene_caller_to_use = constants.default_gene_caller
+
+        # initiate a contigs super
+        args = argparse.Namespace(contigs_db=self.contigs_db_path)
+        run = terminal.Run()
+        progress = terminal.Progress()
+        run.verbose = False
+        progress.verbose = False
+        c = ContigsSuperclass(args, r=run, p=progress)
+        num_genes = len([True for v in c.genes_in_contigs_dict.values() if v['source'] == gene_caller_to_use])
+
+        # get an HMM hits instance
         hmm = hmmops.SequencesForHMMHits(self.contigs_db_path)
 
-        contig_lengths = sorted(contigs_db.db.get_single_column_from_table('contigs_basic_info', 'length'), reverse=True)
-        total_length = sum(contig_lengths)
-        size = len(contig_lengths)
+        summary = {}
 
-        summary['project_name'] = contigs_db.db.get_meta_value('project_name')
+        contig_lengths = sorted([e['length'] for e in c.contigs_basic_info.values()], reverse=True)
+        total_length = sum(contig_lengths)
+        num_contigs = len(contig_lengths)
+
+        # populate the summary dict
+        summary['project_name'] = c.a_meta['project_name']
         summary['total_length'] = total_length
-        summary['size'] = size
+        summary['num_genes'] = num_genes
+        summary['gene_caller'] = gene_caller_to_use
+        summary['num_contigs'] = num_contigs
         summary['n_values'] = self.calculate_N_values(contig_lengths, total_length, N=100)
         summary['contig_lengths'] = contig_lengths
         summary['single_copy_gene_counts'] = hmm.get_single_copy_gene_counts()
