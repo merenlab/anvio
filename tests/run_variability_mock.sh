@@ -38,7 +38,7 @@ then
     bowtie2-build single_contig.fa test-output/single_contig
 
     INFO "Generating anvi'o contigs database"
-    anvi-gen-contigs-database -f single_contig.fa -o test-output/single_contig.db -L 60
+    anvi-gen-contigs-database -f single_contig.fa -o test-output/single_contig.db -L 60 -n "Single contig"
 
     for sample in 01 02 03 04 05
     do
