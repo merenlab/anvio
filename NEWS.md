@@ -1,3 +1,7 @@
+# v3, "Eden" is out!" (05.10.2017) #
+Welcome, Eden! See the release notes [here](https://github.com/merenlab/anvio/releases/tag/v3), and keep your installation up-to-date!
+***
+
 # v2.4.0, "Pyrenees" is out!" (27.07.2017) #
 A new anvi'o version with many bug fixes and new features is out! See the release notes [here](https://github.com/merenlab/anvio/releases/tag/v2.4.0).
 ***
