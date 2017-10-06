@@ -83,7 +83,7 @@ function fire_up_ncbi_blast(item_name, program, database, target)
                 var form = document.createElement('form');
                 
                 form.action = 'https://blast.ncbi.nlm.nih.gov/Blast.cgi';
-                form.method = 'POST';
+                form.method = 'GET';
 
                 for (name in post_variables)
                 {
