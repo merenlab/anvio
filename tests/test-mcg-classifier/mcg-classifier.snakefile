@@ -47,7 +47,7 @@ rule gen_contigs_db:
     output:
         db = output_dir + "/TEST.db",
         aux = output_dir + "/TEST.h5"
-    shell: "anvi-gen-contigs-database -f {input} -o {output.db} >> {log} 2>&1"
+    shell: "anvi-gen-contigs-database -f {input} -o {output.db} -n TEST >> {log} 2>&1"
 
 
 rule anvi_init_bam:
