@@ -12,8 +12,9 @@ import anvio
 import numpy as np
 import pandas as pd
 import matplotlib
+# TODO: according to the warning, this call to set the back-hand is meaningless
+# I need to experiment to see what happens if I delete it.
 matplotlib.use('pdf')
-from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -22,6 +23,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
 from anvio.sequence import get_list_of_outliers
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 __author__ = "Alon Shaiber"
