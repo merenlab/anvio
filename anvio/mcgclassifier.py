@@ -21,6 +21,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
+from anvio.sequence import get_list_of_outliers
 
 
 __author__ = "Alon Shaiber"
@@ -440,15 +441,17 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
     return d
 
 
-def get_non_outliers(v):
-    """ returns the non-outliers according to the interqurtile range (IQR) for the input pandas series"""
-    q1 = np.percentile(v, 25)
-    q3 = np.percentile(v, 75)
-    IQR = q3 - q1
+def get_non_outliers(v, MAD_threshold=2.5):
+    """ returns the the non-zero, non-outliers for the input pandas series using MAD"""
+
+    outliers = get_list_of_outliers(v, threshold=MAD_threshold)
+    # setting the zero positions as outliers
+    outliers[np.where(v==0)] = 1
+    non_outliers = np.logical_not(outliers)
 
     # The non-outliers are non-zero values that are in the IQR (positions that are zero are considered outliers
     # even if the IQR includes zero)
-    non_outliers_indices = np.where((v >= q1 - 1.5 * IQR) & (v <= q3 + 1.5 * IQR) & (v > 0))[0]
+    non_outliers_indices = np.where(non_outliers)[0]
     mean = np.mean(v[non_outliers_indices])
     std = np.std(v[non_outliers_indices])
 
