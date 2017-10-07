@@ -12,6 +12,8 @@ import anvio
 import numpy as np
 import pandas as pd
 import matplotlib
+matplotlib.use('pdf')
+from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -19,9 +21,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
-from matplotlib.backends.backend_pdf import PdfPages
 
-matplotlib.use('pdf')
 
 __author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
