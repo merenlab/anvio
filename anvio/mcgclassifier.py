@@ -12,6 +12,9 @@ import anvio
 import numpy as np
 import pandas as pd
 import matplotlib
+# TODO: according to the warning, this call to set the back-hand is meaningless
+# I need to experiment to see what happens if I delete it.
+matplotlib.use('pdf')
 import matplotlib.pyplot as plt
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -19,9 +22,9 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
+from anvio.sequence import get_list_of_outliers
 from matplotlib.backends.backend_pdf import PdfPages
 
-matplotlib.use('pdf')
 
 __author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
@@ -440,15 +443,17 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
     return d
 
 
-def get_non_outliers(v):
-    """ returns the non-outliers according to the interqurtile range (IQR) for the input pandas series"""
-    q1 = np.percentile(v, 25)
-    q3 = np.percentile(v, 75)
-    IQR = q3 - q1
+def get_non_outliers(v, MAD_threshold=2.5):
+    """ returns the the non-zero, non-outliers for the input pandas series using MAD"""
+
+    outliers = get_list_of_outliers(v, threshold=MAD_threshold)
+    # setting the zero positions as outliers
+    outliers[np.where(v==0)] = 1
+    non_outliers = np.logical_not(outliers)
 
     # The non-outliers are non-zero values that are in the IQR (positions that are zero are considered outliers
     # even if the IQR includes zero)
-    non_outliers_indices = np.where((v >= q1 - 1.5 * IQR) & (v <= q3 + 1.5 * IQR) & (v > 0))[0]
+    non_outliers_indices = np.where(non_outliers)[0]
     mean = np.mean(v[non_outliers_indices])
     std = np.std(v[non_outliers_indices])
 
