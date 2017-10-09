@@ -199,7 +199,7 @@ class ContigsSuperclass(object):
                               variability analyses will not be available." % auxiliary_contigs_data_path)
 
         if self.auxiliary_contigs_data_available:
-            self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (auxiliary_contigs_data_path, anvio.__hdf5__version__))
+            self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (auxiliary_contigs_data_path, anvio.__auxiliary_data_version__))
 
         self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
@@ -1339,7 +1339,7 @@ class ProfileSuperclass(object):
             self.init_gene_level_coverage_stats_dicts()
 
         if self.auxiliary_profile_data_available:
-            self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__hdf5__version__))
+            self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__auxiliary_data_version__))
 
         if self.split_names_of_interest:
             self.run.info('Profile Super', 'Initialized with %d of %d splits: %s (v. %s)' % (len(self.split_names),
