@@ -1409,8 +1409,8 @@ def print_version():
     run.info("Contigs DB version", __contigs__version__)
     run.info("Pan DB version", __pan__version__)
     run.info("Samples information DB version", __samples__version__)
-    run.info("Genome data storage version", __hdf5__version__)
-    run.info("Auxiliary data storage version", __genomes_storage_version__)
+    run.info("Genome data storage version", __genomes_storage_version__)
+    run.info("Auxiliary data storage version", __auxiliary_hdf5_db_version__)
 
 
 __version__, \
@@ -1418,7 +1418,7 @@ __contigs__version__, \
 __pan__version__, \
 __profile__version__, \
 __samples__version__, \
-__hdf5__version__, \
+__auxiliary_hdf5_db_version__, \
 __genomes_storage_version__  = set_version()
 
 
