@@ -75,7 +75,7 @@ class HDF5_IO(object):
 
     def add_integer_list(self, path, l, data_type='uint16'):
         """Add an array into the the HDF5 file.
-        
+
             >>> h = HDF5_IO('test.h5')
             >>> l = [1, 2, 3, 4, 5]
             >>> h.add_integer_list('/split_1/sample_x', l)
@@ -103,7 +103,7 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
     """A class to handle HDF5 operations to store and access split coverages"""
     def __init__(self, file_path, db_hash, split_names_of_interest=None, create_new=False, open_in_append_mode=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
-        self.version = anvio.__hdf5__version__
+        self.version = anvio.__auxiliary_data_version__
 
         HDF5_IO.__init__(self, file_path, db_hash, create_new=create_new, open_in_append_mode=open_in_append_mode, ignore_hash=ignore_hash)
 
@@ -184,7 +184,7 @@ class AuxiliaryDataForNtPositions(HDF5_IO):
     """A class to handle HDF5 operations to store and access split coverages"""
     def __init__(self, file_path, db_hash, create_new = False, run=run, progress=progress, quiet = False):
         self.db_type = 'auxiliary data for nt positions'
-        self.version = anvio.__hdf5__version__
+        self.version = anvio.__auxiliary_data_version__
 
         HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new)
 
@@ -209,7 +209,7 @@ class AuxiliaryDataForNtPositions(HDF5_IO):
 
 class GenomesDataStorage(HDF5_IO):
     """A class to handle HDF5 operations to store and access sequnces in pan genome analyses.
-    
+
        An example:
 
            >>> x = a.GenomesDataStorage('test.h5', 'unique_hash', create_new=True)
