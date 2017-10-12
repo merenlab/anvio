@@ -187,3 +187,14 @@ samples_attribute_aliases_table_name       = 'samples_attribute_aliases'
 samples_attribute_aliases_table_structure  = ['alias', 'attribute']
 samples_attribute_aliases_table_types      = [ 'str' ,     'str'  ]
 
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE CONTIGS AUXILIARY DATABASE
+#
+####################################################################################################
+
+split_coverages_table_name       = 'split_coverages'
+split_coverages_table_structure  = ['split_name', 'sample_name', 'coverages']
+split_coverages_table_types      = [    'str'   ,     'str'    ,   'blob'   ]
+
