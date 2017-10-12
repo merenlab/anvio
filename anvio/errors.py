@@ -92,6 +92,13 @@ class HDF5Error(AnvioError):
         self.error_type = 'HDF5 Error'
         AnvioError.__init__(self)
 
+class AuxiliaryDataError(AnvioError):
+    def __init__(self, e=None):
+        self.e = remove_spaces(e)
+        self.error_type = 'Auxiliary Data Error'
+        AnvioError.__init__(self)
+
+
 class AnviServerError(AnvioError):
     def __init__(self, e=None):
         self.e = remove_spaces(e)

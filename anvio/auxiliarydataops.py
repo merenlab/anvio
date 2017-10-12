@@ -14,7 +14,7 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import HDF5Error
+from anvio.errors import HDF5Error, AuxiliaryDataError
 
 
 __author__ = "A. Murat Eren"
@@ -127,20 +127,22 @@ class AuxiliaryDataForSplitCoverages(object):
         self.db.set_meta_value('creation_date', time.time())
         self.db.create_table(t.split_coverages_table_name, t.split_coverages_table_structure, t.split_coverages_table_types)
 
+
     def append(self, split_name, sample_id, coverage_list):
         coverage_list_blob = db.binary(np.array(coverage_list, dtype=np.uint16))
         self.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.split_coverages_table_name, (split_name, sample_id, coverage_list_blob, ))
 
+
     def check_sample_names(self, sample_names, split_name=None):
         if sample_names:
             if not isinstance(sample_names, set):
-                raise HDF5Error('The type of sample names must be a "set".')
+                raise AuxiliaryDataError('The type of sample names must be a "set".')
 
         if sample_names:
             for sample_name in sample_names:
                 missing_samples = [sample_name for sample_name in sample_names if sample_name not in self.sample_names_in_db]
                 if len(missing_samples):
-                    raise HDF5Error("Some sample names you requested are missing from the auxiliary data file. Here\
+                    raise AuxiliaryDataError("Some sample names you requested are missing from the auxiliary data file. Here\
                                         they are: '%s'" % (', '.join(missing_samples)))
             return sample_name
 
