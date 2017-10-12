@@ -3,6 +3,7 @@
 """Module to deal with HDF5 files"""
 
 import h5py
+import time
 import numpy as np
 
 import anvio
@@ -102,6 +103,7 @@ class HDF5_IO(object):
 class AuxiliaryDataForSplitCoverages(object):
     def __init__(self, file_path, db_hash, split_names_of_interest=None, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
+        self.db_hash = db_hash
         self.version = anvio.__auxiliary_data_version__
         self.file_path = file_path
         self.quiet = quiet
@@ -120,7 +122,10 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def create_tables(self):
-        """ TODO: meta values """
+        self.db.set_meta_value('version', self.version)
+        self.db.set_meta_value('db_type', self.db_type)
+        self.db.set_meta_value('contigs_db_hash', self.db_hash)
+        self.db.set_meta_value('creation_date', time.time())
         self.db.create_table(t.split_coverages_table_name, t.split_coverages_table_structure, t.split_coverages_table_types)
 
     def append(self, split_name, sample_id, coverage_list):
