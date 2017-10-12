@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""BLAST aa sequences against genes in contigs database."""
+
+import os
+import sys
+import argparse
+
+import anvio
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.drivers.blast import BLAST
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+
+    # BLAST class has an overwrite_output_destinations=False flag, but it is
+    # embedded in logic in get_blastall_results(self) that assumes a FASTA blast
+    # against itself, like when creating protein clusters. Rather than muddy up
+    # that code, I make my own condition here that does not allow overwriting.
+    if os.path.exists(args.output_file):
+        raise ConfigError("{} already exists. Please supply a different --output-file.".format(args.output_file))
+
+    # create fasta file of genes in contigs db for blast db
+    progress.new('GETTING GENE SEQUENCES')
+    progress.update("Exporting AA gene sequences from contigs database...")
+    temp_fasta_for_blast_db = filesnpaths.get_temp_file_path()
+    dbops.export_aa_sequences_from_contigs_db(args.contigs_db, temp_fasta_for_blast_db, quiet=True)
+    progress.end()
+
+    # create blast db
+    temp_blast_db = filesnpaths.get_temp_file_path()
+    db = BLAST(temp_fasta_for_blast_db, target_db_path=temp_blast_db)
+    db.makedb()
+
+    # this instance to blast against db
+    query = BLAST(args.query_fasta, evalue=args.evalue, outfmt=args.out_fmt, target_db_path=temp_blast_db, search_output_path=args.output_file)
+    query.blastp()
+    query.check_output(args.output_file)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=\
+    """
+    BLAST query amino acid sequences against genes in your contigs database.
+
+    This script takes query amino acid sequences and aligns them to the genes
+    in your contigs database using protein BLAST. It is useful for checking
+    whether sequences you're interested in align to genes found in your
+    contigs, and to what extent.
+
+    Note that under the hood, this script creates a temporary FASTA file of
+    gene sequences in your contigs database. If your interest is in that FASTA
+    file, use `anvi-get-aa-sequences-for-gene-calls` instead.
+    """)
+
+    parser.add_argument('query_fasta', help="A FASTA file of query amino acid sequences.")
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'), required=True)
+    parser.add_argument("--evalue", metavar="BLAST", default="1e-5", help=\
+    """specify the -evalue parameter for BLAST. The default is set to "1e-5".
+    If you're sad that you don't see any hits, you can try increasing that
+    value, understanding that the quality of alignment decreases with
+    increasing --evalue.""")
+    parser.add_argument("--out-fmt", metavar="BLAST", default="6", help=\
+    """specify the -outfmt parameter for BLAST. The default is 6 which creates a
+    tabularized output. For a complete list of options here's some easy to digest documentation:
+    http://www.metagenomics.wiki/tools/blast/blastn-output-format-6. Here is a table format I like: 
+    "6 qseqid sseqid pident qlen length mismatch gapopen qstart qend sstart send evalue bitscore".""")
+
+    args = parser.parse_args() 
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)

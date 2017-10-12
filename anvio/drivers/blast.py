@@ -26,12 +26,13 @@ pp = terminal.pretty_print
 
 
 class BLAST:
-    def __init__(self, query_fasta, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
+    def __init__(self, query_fasta, evalue=1e-05, outfmt='6', target_db_path='blast-target', search_output_path='blast-search-results.txt', run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
         self.run = run
         self.progress = progress
 
         self.num_threads = num_threads
-        self.evalue = 1e-05
+        self.evalue = evalue
+        self.outfmt = outfmt
         self.overwrite_output_destinations = overwrite_output_destinations
 
         utils.is_program_exists('makeblastdb')
@@ -40,8 +41,8 @@ class BLAST:
         self.tmp_dir = tempfile.gettempdir()
 
         self.query_fasta = query_fasta
-        self.target_db_path = 'blast-target'
-        self.search_output_path = 'blast-search-results.txt'
+        self.target_db_path = target_db_path
+        self.search_output_path = search_output_path 
         self.max_target_seqs = None
 
 
@@ -110,7 +111,7 @@ class BLAST:
                     '-query', self.query_fasta,
                     '-db', self.target_db_path,
                     '-evalue', self.evalue,
-                    '-outfmt', '6',
+                    '-outfmt', self.outfmt,
                     '-out', self.search_output_path,
                     '-num_threads', self.num_threads]
 
