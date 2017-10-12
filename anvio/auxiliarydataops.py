@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 
 import anvio
+import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -26,7 +27,6 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
-
 
 class HDF5_IO(object):
     def __init__(self, file_path, unique_hash, create_new=False, open_in_append_mode=False, ignore_hash=False, run=run, progress=progress, quiet=False):
@@ -99,35 +99,33 @@ class HDF5_IO(object):
         self.fp.close()
 
 
-class AuxiliaryDataForSplitCoverages(HDF5_IO):
-    """A class to handle HDF5 operations to store and access split coverages"""
-    def __init__(self, file_path, db_hash, split_names_of_interest=None, create_new=False, open_in_append_mode=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+class AuxiliaryDataForSplitCoverages(object):
+    def __init__(self, file_path, db_hash, split_names_of_interest=None, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
         self.version = anvio.__auxiliary_data_version__
-
-        HDF5_IO.__init__(self, file_path, db_hash, create_new=create_new, open_in_append_mode=open_in_append_mode, ignore_hash=ignore_hash)
-
+        self.file_path = file_path
         self.quiet = quiet
 
+        self.db = db.DB(self.file_path, self.version, new_database=create_new)
+
+        if create_new:
+            self.create_tables()
+
         # set sample and split names in the auxiliary data file
-        self.sample_names_in_db = set(list(list(self.fp['/data/coverages'].values())[0].keys())) if not create_new else set([])
-        self.split_names_in_db = list(self.fp['/data/coverages'].keys()) if not create_new else list()
-        self.split_names_of_interest = list(split_names_of_interest) if split_names_of_interest else None
+        self.sample_names_in_db = set(self.db.get_single_column_from_table('sample_name')) if not create_new else set([])
+        self.split_names_in_db = set(self.db.get_single_column_from_table('split_name')) if not create_new else list()
+        self.split_names_of_interest = set(split_names_of_interest) if split_names_of_interest else None
 
-        if self.split_names_of_interest:
-            self.split_names = self.split_names_of_interest
-        else:
-            self.split_names = self.split_names_in_db
+        self.split_names = self.split_names_of_interest or self.split_names_in_db
 
 
-    def is_known_split(self, split_name):
-        if not self.path_exists('/data/coverages/%s' % split_name):
-            raise HDF5Error('The database at "%s" does not know anything about "%s" :(' % (self.file_path, split_name))
-
+    def create_tables(self):
+        """ TODO: meta values """
+        self.db.create_table(t.split_coverages_table_name, t.split_coverages_table_structure, t.split_coverages_table_types)
 
     def append(self, split_name, sample_id, coverage_list):
-        self.add_integer_list('/data/coverages/%s/%s' % (split_name, sample_id), coverage_list)
-
+        coverage_list_blob = db.binary(np.array(coverage_list, dtype=np.uint16))
+        self.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.split_coverages_table_name, (split_name, sample_id, coverage_list_blob, ))
 
     def check_sample_names(self, sample_names, split_name=None):
         if sample_names:
@@ -178,6 +176,9 @@ class AuxiliaryDataForSplitCoverages(HDF5_IO):
             d[sample_name] = self.get_integer_list('/data/coverages/%s/%s' % (split_name, sample_name))
 
         return d
+
+    def close(self):
+        self.db.disconnect()
 
 
 class AuxiliaryDataForNtPositions(HDF5_IO):
