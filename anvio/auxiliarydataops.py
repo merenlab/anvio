@@ -122,7 +122,6 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def create_tables(self):
-        self.db.set_meta_value('version', self.version)
         self.db.set_meta_value('db_type', self.db_type)
         self.db.set_meta_value('contigs_db_hash', self.db_hash)
         self.db.set_meta_value('creation_date', time.time())
