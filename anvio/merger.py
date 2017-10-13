@@ -235,7 +235,7 @@ class MultipleRuns:
 
 
     def merge_split_coverage_data(self):
-        output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.h5')
+        output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.db')
         merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
 
         self.progress.new('Merging split coverage data')
@@ -243,7 +243,7 @@ class MultipleRuns:
         # fill coverages in from all samples
         for input_profile_db_path in self.profile_dbs_info_dict:
             self.progress.update(input_profile_db_path)
-            input_file_path = os.path.join(os.path.dirname(input_profile_db_path), 'AUXILIARY-DATA.h5')
+            input_file_path = os.path.join(os.path.dirname(input_profile_db_path), 'AUXILIARY-DATA.db')
             sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(input_file_path, self.contigs_db_hash)
 
             for split_name in self.split_names:
