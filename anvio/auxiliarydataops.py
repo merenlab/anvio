@@ -175,6 +175,10 @@ class AuxiliaryDataForSplitCoverages(object):
         return split_coverages
 
 
+    def is_known_split(self, split_name):
+        return split_name in self.split_names_in_db
+
+
     def get(self, split_name, sample_names=[]):
         self.is_known_split(split_name)
 
