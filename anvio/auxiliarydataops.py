@@ -166,7 +166,7 @@ class AuxiliaryDataForSplitCoverages(object):
             split_name = self.split_names[i]
             split_coverages[split_name] = {}
             for sample_name in self.sample_names_in_db:
-                split_coverages[split_name][sample_name] = self.get_integer_list('/data/coverages/%s/%s' % (split_name, sample_name))
+                split_coverages[split_name][sample_name] = self.get(split_name, sample_name=[sample_name])
 
             counter += 1
 
