@@ -114,8 +114,8 @@ class AuxiliaryDataForSplitCoverages(object):
             self.create_tables()
 
         # set sample and split names in the auxiliary data file
-        self.sample_names_in_db = set(self.db.get_single_column_from_table('sample_name')) if not create_new else set([])
-        self.split_names_in_db = set(self.db.get_single_column_from_table('split_name')) if not create_new else set([])
+        self.sample_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'sample_name')) if not create_new else set([])
+        self.split_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'split_name')) if not create_new else set([])
         self.split_names_of_interest = set(split_names_of_interest) if split_names_of_interest else None
 
         self.split_names = self.split_names_of_interest or self.split_names_in_db
@@ -186,7 +186,11 @@ class AuxiliaryDataForSplitCoverages(object):
 
         d = {}
         for sample_name in sample_names:
-            d[sample_name] = self.get_integer_list('/data/coverages/%s/%s' % (split_name, sample_name))
+            cursor = self.db._exec('''SELECT coverages FROM %s WHERE sample_name = "%s" AND split_name = "%s"''' % 
+                                                (t.split_coverages_table_name, sample_name, split_name))
+
+            coverages_blob = cursor.fetchone()[0] # we only have one field selected
+            d[sample_name] = np.frombuffer(coverages_blob, dtype=np.uint16).tolist()
 
         return d
 
