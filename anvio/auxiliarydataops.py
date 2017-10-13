@@ -115,7 +115,7 @@ class AuxiliaryDataForSplitCoverages(object):
 
         # set sample and split names in the auxiliary data file
         self.sample_names_in_db = set(self.db.get_single_column_from_table('sample_name')) if not create_new else set([])
-        self.split_names_in_db = set(self.db.get_single_column_from_table('split_name')) if not create_new else list()
+        self.split_names_in_db = set(self.db.get_single_column_from_table('split_name')) if not create_new else set([])
         self.split_names_of_interest = set(split_names_of_interest) if split_names_of_interest else None
 
         self.split_names = self.split_names_of_interest or self.split_names_in_db
@@ -131,6 +131,9 @@ class AuxiliaryDataForSplitCoverages(object):
     def append(self, split_name, sample_id, coverage_list):
         coverage_list_blob = db.binary(np.array(coverage_list, dtype=np.uint16))
         self.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.split_coverages_table_name, (split_name, sample_id, coverage_list_blob, ))
+
+        self.split_names_in_db.add(split_name)
+        self.sample_names_in_db.add(sample_id)
 
 
     def check_sample_names(self, sample_names, split_name=None):
