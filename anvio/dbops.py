@@ -3962,7 +3962,7 @@ def get_auxiliary_data_path_for_contigs_db(contigs_db_path):
 
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):
-    return  os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.h5')
+    return  os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
 
 
 def get_description_in_db(anvio_db_path, run=run):
