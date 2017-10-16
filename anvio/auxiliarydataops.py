@@ -116,14 +116,12 @@ class AuxiliaryDataForSplitCoverages(object):
         if not ignore_hash:
             self.check_hash()
 
-        self.sample_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'sample_name'))
-        self.split_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'split_name'))
-
 
     def create_tables(self):
         self.db.set_meta_value('db_type', self.db_type)
         self.db.set_meta_value('contigs_db_hash', self.db_hash)
         self.db.set_meta_value('creation_date', time.time())
+
         self.db.create_table(t.split_coverages_table_name, t.split_coverages_table_structure, t.split_coverages_table_types)
 
 
@@ -135,26 +133,19 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def append(self, split_name, sample_name, coverage_list):
-        coverage_list_blob = db.binary(np.array(coverage_list, dtype=np.uint16))
+        coverage_list_blob = self.convert_coverage_list_to_blob(coverage_list)
         self.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.split_coverages_table_name, (split_name, sample_name, coverage_list_blob, ))
 
-        self.split_names_in_db.add(split_name)
-        self.sample_names_in_db.add(sample_name)
+
+    def convert_coverage_list_to_blob(self, coverage_list):
+        return db.binary(np.array(coverage_list, dtype=np.uint16))
 
 
-    def check_split_name(self, split_name):
-        if not split_name in self.split_names_in_db:
-            raise AuxiliaryDataError('Database does not contains coverages value for split "%s"' % split_name)
+    def convert_blob_to_coverage_list(self, blob):
+        return np.frombuffer(coverages_blob, dtype=np.uint16).tolist()
 
 
-    def check_sample_names(self, sample_names):
-        missing_samples = set(sample_names) - self.split_names_in_db
-        if len(missing_samples):
-            raise AuxiliaryDataError("Some sample names you requested are missing from the auxiliary data file. Here\
-                                they are: '%s'" % (', '.join(missing_samples)))
-
-
-    def get_all(self, sample_names=[]):
+    def get_all(self):
         self.progress.new('Recovering split coverages')
         self.progress.update('...')
         
@@ -173,22 +164,14 @@ class AuxiliaryDataForSplitCoverages(object):
         return split_coverages
 
 
-    def get(self, split_name, sample_names=[]):
-        self.check_split_name(split_name)
-        self.check_sample_names(sample_names)
+    def get(self, split_name, sample_name):
+        cursor = self.db._exec('''SELECT coverages FROM %s WHERE sample_name = "%s" AND split_name = "%s"''' % 
+                                            (t.split_coverages_table_name, sample_name, split_name))
 
-        result = {}
-        for sample_name in sample_names:
-            cursor = self.db._exec('''SELECT coverages FROM %s WHERE sample_name = "%s" AND split_name = "%s"''' % 
-                                                (t.split_coverages_table_name, sample_name, split_name))
-
-            result_row = cursor.fetchone()
-            coverages_blob = result_row[0]
-            coverages = np.frombuffer(coverages_blob, dtype=np.uint16).tolist()
+        result_row = cursor.fetchone()
+        coverages = self.convert_blob_to_coverage_list(result_row[0])
             
-            result[sample_name] = coverages
-
-        return result
+        return coverages
 
 
     def close(self):
