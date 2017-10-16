@@ -137,6 +137,7 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def check_sample_names(self, sample_names, split_name=None):
+        return # REMOVE THIS
         if sample_names:
             if not isinstance(sample_names, set):
                 raise AuxiliaryDataError('The type of sample names must be a "set".')
@@ -182,14 +183,15 @@ class AuxiliaryDataForSplitCoverages(object):
     def get(self, split_name, sample_names=[]):
         self.is_known_split(split_name)
 
-        sample_names = self.check_sample_names(sample_names)
+        #sample_names = self.check_sample_names(sample_names)
 
         d = {}
         for sample_name in sample_names:
             cursor = self.db._exec('''SELECT coverages FROM %s WHERE sample_name = "%s" AND split_name = "%s"''' % 
                                                 (t.split_coverages_table_name, sample_name, split_name))
 
-            coverages_blob = cursor.fetchone()[0] # we only have one field selected
+            result_row = cursor.fetchone()
+            coverages_blob = result_row[0]
             d[sample_name] = np.frombuffer(coverages_blob, dtype=np.uint16).tolist()
 
         return d
