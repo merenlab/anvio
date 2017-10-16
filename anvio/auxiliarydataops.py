@@ -134,12 +134,12 @@ class AuxiliaryDataForSplitCoverages(object):
                                       this files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
-    def append(self, split_name, sample_id, coverage_list):
+    def append(self, split_name, sample_name, coverage_list):
         coverage_list_blob = db.binary(np.array(coverage_list, dtype=np.uint16))
-        self.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.split_coverages_table_name, (split_name, sample_id, coverage_list_blob, ))
+        self.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.split_coverages_table_name, (split_name, sample_name, coverage_list_blob, ))
 
         self.split_names_in_db.add(split_name)
-        self.sample_names_in_db.add(sample_id)
+        self.sample_names_in_db.add(sample_name)
 
 
     def check_split_name(self, split_name):
