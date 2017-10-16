@@ -101,7 +101,7 @@ class HDF5_IO(object):
 
 
 class AuxiliaryDataForSplitCoverages(object):
-    def __init__(self, file_path, db_hash, split_names_of_interest=None, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+    def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
         self.db_hash = db_hash
         self.version = anvio.__auxiliary_data_version__
@@ -116,9 +116,6 @@ class AuxiliaryDataForSplitCoverages(object):
         # set sample and split names in the auxiliary data file
         self.sample_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'sample_name')) if not create_new else set([])
         self.split_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'split_name')) if not create_new else set([])
-        self.split_names_of_interest = set(split_names_of_interest) if split_names_of_interest else None
-
-        self.split_names = self.split_names_of_interest or self.split_names_in_db
 
 
     def create_tables(self):
@@ -153,7 +150,7 @@ class AuxiliaryDataForSplitCoverages(object):
         self.progress.update('...')
         
         split_coverages = {}
-        num_splits = len(self.split_names)
+        num_splits = len(self.split_names_in_db)
         for i in range(0, num_splits):
             if num_splits > 100 and i % 100 == 0:
                 self.progress.update('%d of %d splits ...' % (i, num_splits))
