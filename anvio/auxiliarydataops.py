@@ -113,6 +113,9 @@ class AuxiliaryDataForSplitCoverages(object):
         if create_new:
             self.create_tables()
 
+        if not ignore_hash:
+            self.check_hash()
+
         self.sample_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'sample_name'))
         self.split_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'split_name'))
 
@@ -122,6 +125,13 @@ class AuxiliaryDataForSplitCoverages(object):
         self.db.set_meta_value('contigs_db_hash', self.db_hash)
         self.db.set_meta_value('creation_date', time.time())
         self.db.create_table(t.split_coverages_table_name, t.split_coverages_table_structure, t.split_coverages_table_types)
+
+
+    def check_hash(self):
+        actual_db_hash = self.db.get_meta_value('contigs_db_hash')
+        if self.db_hash != actual_db_hash:
+            raise AuxiliaryDataError('The hash value inside Auxiliary Database "%" does not match with Contigs Database hash "%s",\
+                                      this files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
     def append(self, split_name, sample_id, coverage_list):
