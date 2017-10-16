@@ -29,6 +29,7 @@ import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
+import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
 from anvio.dbops import SamplesInformationDatabase
@@ -339,8 +340,10 @@ class BottleApplication(Bottle):
 
         layers = sorted(self.interactive.p_meta['samples'])
 
-        coverage_values_dict = self.interactive.split_coverage_values.get(split_name)
-        data['coverage'] = [coverage_values_dict[layer].tolist() for layer in layers]
+        coverages = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
+                                                                    self.interactive.p_meta['contigs_db_hash']).get(split_name, sample_names=layers)
+
+        data['coverage'] = [coverages[layer] for layer in layers]
 
         ## get the variability information dict for split:
         progress.new('Variability')
