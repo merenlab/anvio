@@ -113,9 +113,8 @@ class AuxiliaryDataForSplitCoverages(object):
         if create_new:
             self.create_tables()
 
-        # set sample and split names in the auxiliary data file
-        self.sample_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'sample_name')) if not create_new else set([])
-        self.split_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'split_name')) if not create_new else set([])
+        self.sample_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'sample_name'))
+        self.split_names_in_db = set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'split_name'))
 
 
     def create_tables(self):
