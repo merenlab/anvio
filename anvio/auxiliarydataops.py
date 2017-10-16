@@ -136,65 +136,54 @@ class AuxiliaryDataForSplitCoverages(object):
         self.sample_names_in_db.add(sample_id)
 
 
-    def check_sample_names(self, sample_names, split_name=None):
-        return # REMOVE THIS
-        if sample_names:
-            if not isinstance(sample_names, set):
-                raise AuxiliaryDataError('The type of sample names must be a "set".')
+    def check_split_name(self, split_name):
+        if not split_name in self.split_names_in_db:
+            raise AuxiliaryDataError('Database does not contains coverages value for split "%s"' % split_name)
 
-        if sample_names:
-            for sample_name in sample_names:
-                missing_samples = [sample_name for sample_name in sample_names if sample_name not in self.sample_names_in_db]
-                if len(missing_samples):
-                    raise AuxiliaryDataError("Some sample names you requested are missing from the auxiliary data file. Here\
-                                        they are: '%s'" % (', '.join(missing_samples)))
-            return sample_name
 
-        return self.sample_names_in_db
+    def check_sample_names(self, sample_names):
+        missing_samples = set(sample_names) - self.split_names_in_db
+        if len(missing_samples):
+            raise AuxiliaryDataError("Some sample names you requested are missing from the auxiliary data file. Here\
+                                they are: '%s'" % (', '.join(missing_samples)))
 
 
     def get_all(self, sample_names=[]):
         self.progress.new('Recovering split coverages')
         self.progress.update('...')
-        sample_names = self.check_sample_names(sample_names)
-
+        
         split_coverages = {}
-        num_splits, counter = len(self.split_names), 1
+        num_splits = len(self.split_names)
         for i in range(0, num_splits):
-            if num_splits > 100 and counter % 100 == 0:
-                self.progress.update('%d of %d splits ...' % (counter, num_splits))
+            if num_splits > 100 and i % 100 == 0:
+                self.progress.update('%d of %d splits ...' % (i, num_splits))
 
             split_name = self.split_names[i]
             split_coverages[split_name] = {}
             for sample_name in self.sample_names_in_db:
-                split_coverages[split_name][sample_name] = self.get(split_name, sample_name=[sample_name])
-
-            counter += 1
+                split_coverages[split_name][sample_name] = self.get(split_name, sample_names=[sample_name])
 
         self.progress.end()
-
         return split_coverages
 
 
-    def is_known_split(self, split_name):
-        return split_name in self.split_names_in_db
-
-
     def get(self, split_name, sample_names=[]):
-        self.is_known_split(split_name)
+        self.check_split_name(split_name)
+        self.check_sample_names(sample_names)
 
-        #sample_names = self.check_sample_names(sample_names)
-
-        d = {}
+        result = {}
         for sample_name in sample_names:
             cursor = self.db._exec('''SELECT coverages FROM %s WHERE sample_name = "%s" AND split_name = "%s"''' % 
                                                 (t.split_coverages_table_name, sample_name, split_name))
 
             result_row = cursor.fetchone()
             coverages_blob = result_row[0]
-            d[sample_name] = np.frombuffer(coverages_blob, dtype=np.uint16).tolist()
+            coverages = np.frombuffer(coverages_blob, dtype=np.uint16).tolist()
+            
+            result[sample_name] = coverages
 
-        return d
+        return result
+
 
     def close(self):
         self.db.disconnect()
