@@ -175,14 +175,14 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def get(self, split_name):
-        cursor = self.db._exec('''SELECT * FROM %s WHERE split_name = "%s"''' % 
-                                (t.split_coverages_table_name, split_name))
+        cursor = self.db._exec('''SELECT sample_name, coverages FROM %s WHERE split_name = "%s"''' % 
+                                                 (t.split_coverages_table_name, split_name))
 
         rows = cursor.fetchall()
         split_coverage = {}
         
         for row in rows:
-            split_name, sample_name, coverage_blob = row # unpack tuple
+            sample_name, coverage_blob = row # unpack sqlite row tuple
 
             split_coverage[sample_name] = self.convert_blob_to_coverage_list(coverage_blob)
             
