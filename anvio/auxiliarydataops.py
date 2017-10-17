@@ -107,6 +107,8 @@ class AuxiliaryDataForSplitCoverages(object):
         self.version = anvio.__auxiliary_data_version__
         self.file_path = file_path
         self.quiet = quiet
+        self.run = run
+        self.progress = progress
 
         self.db = db.DB(self.file_path, self.version, new_database=create_new)
 
@@ -141,37 +143,50 @@ class AuxiliaryDataForSplitCoverages(object):
         return db.binary(np.array(coverage_list, dtype=np.uint16))
 
 
-    def convert_blob_to_coverage_list(self, blob):
+    def convert_blob_to_coverage_list(self, coverages_blob):
         return np.frombuffer(coverages_blob, dtype=np.uint16).tolist()
 
 
+    def get_all_known_split_names(self):
+        return set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'split_name'))
+
+
     def get_all(self):
+        return self.get_coverage_for_multiple_splits(self.get_all_known_split_names())
+
+
+    def get_coverage_for_multiple_splits(self, split_names):
         self.progress.new('Recovering split coverages')
         self.progress.update('...')
         
         split_coverages = {}
-        num_splits = len(self.split_names_in_db)
-        for i in range(0, num_splits):
-            if num_splits > 100 and i % 100 == 0:
-                self.progress.update('%d of %d splits ...' % (i, num_splits))
+        all_known_splits = self.get_all_known_split_names()
 
-            split_name = self.split_names[i]
-            split_coverages[split_name] = {}
-            for sample_name in self.sample_names_in_db:
-                split_coverages[split_name][sample_name] = self.get(split_name, sample_names=[sample_name])
+        for split_name in split_names:
+            if split_name not in all_known_splits:
+                raise AuxiliaryDataError('Database does not know anything about split "%s"' % split_name)
+
+            self.progress.update('Processing split "%s"' % split_name)
+
+            split_coverages[split_name] = self.get(split_name)
 
         self.progress.end()
-        return split_coverages
+        return split_coverages        
 
 
-    def get(self, split_name, sample_name):
-        cursor = self.db._exec('''SELECT coverages FROM %s WHERE sample_name = "%s" AND split_name = "%s"''' % 
-                                            (t.split_coverages_table_name, sample_name, split_name))
+    def get(self, split_name):
+        cursor = self.db._exec('''SELECT * FROM %s WHERE split_name = "%s"''' % 
+                                (t.split_coverages_table_name, split_name))
 
-        result_row = cursor.fetchone()
-        coverages = self.convert_blob_to_coverage_list(result_row[0])
+        rows = cursor.fetchall()
+        split_coverage = {}
+        
+        for row in rows:
+            split_name, sample_name, coverage_blob = row # unpack tuple
+
+            split_coverage[sample_name] = self.convert_blob_to_coverage_list(coverage_blob)
             
-        return coverages
+        return split_coverage
 
 
     def close(self):
