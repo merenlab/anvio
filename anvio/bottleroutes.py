@@ -340,8 +340,10 @@ class BottleApplication(Bottle):
 
         layers = sorted(self.interactive.p_meta['samples'])
 
-        coverages = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
-                                                                    self.interactive.p_meta['contigs_db_hash']).get(split_name, sample_names=layers)
+        auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
+                                                                                 self.interactive.p_meta['contigs_db_hash'])
+        coverages = auxiliary_coverages_db.get(split_name)
+        auxiliary_coverages_db.close()
 
         data['coverage'] = [coverages[layer] for layer in layers]
 
