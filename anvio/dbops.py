@@ -1329,9 +1329,15 @@ class ProfileSuperclass(object):
             self.auxiliary_profile_data_available = False
         else:
             self.auxiliary_profile_data_available = True
-            self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
-                                                                                         self.p_meta['contigs_db_hash'],
-                                                                                         split_names_of_interest=self.split_names_of_interest)
+            auxiliary_split_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
+                                                                                           self.p_meta['contigs_db_hash'])
+
+            if self.split_names_of_interest:
+                self.split_coverage_values = auxiliary_split_coverages_db.get_coverage_for_multiple_splits(self.split_names_of_interest)
+            else:
+                self.split_coverage_values = auxiliary_split_coverages_db.get_all()
+
+            auxiliary_split_coverages_db.close()
 
         self.progress.end()
 
