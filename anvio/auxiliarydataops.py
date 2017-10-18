@@ -195,31 +195,60 @@ class AuxiliaryDataForSplitCoverages(object):
         self.db.disconnect()
 
 
-class AuxiliaryDataForNtPositions(HDF5_IO):
-    """A class to handle HDF5 operations to store and access split coverages"""
-    def __init__(self, file_path, db_hash, create_new = False, run=run, progress=progress, quiet = False):
+class AuxiliaryDataForNtPositions(object):
+    def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, progress=progress, run=run):
+        self.file_path = file_path
         self.db_type = 'auxiliary data for nt positions'
         self.version = anvio.__auxiliary_data_version__
+        self.db_hash = db_hash
+        self.numpy_data_type = 'uint8'
 
-        HDF5_IO.__init__(self, file_path, db_hash, create_new = create_new)
+        self.db = db.DB(self.file_path, self.version, new_database=create_new)
 
-        self.quiet = quiet
+        if create_new:
+            self.create_tables()
+
+        if not ignore_hash:
+            self.check_hash()
+
+
+    def create_tables(self):
+        self.db.set_meta_value('db_type', self.db_type)
+        self.db.set_meta_value('contigs_db_hash', self.db_hash)
+        self.db.set_meta_value('creation_date', time.time())
+
+        self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
+
+
+    def check_hash(self):
+        actual_db_hash = self.db.get_meta_value('contigs_db_hash')
+        if self.db_hash != actual_db_hash:
+            raise AuxiliaryDataError('The hash value inside Auxiliary Database "%s" does not match with Contigs Database hash "%s",\
+                                      this files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
     def is_known_contig(self, contig_name):
-        path = '/data/nt_position_info/%s' % contig_name
-        return self.path_exists(path)
+        return contig_name in self.db.get_single_column_from_table(t.nt_position_info_table_name, 'contig_name')
 
 
     def append(self, contig_name, position_info_list):
-        self.add_integer_list('/data/nt_position_info/%s' % contig_name, position_info_list, data_type = 'uint8')
+        position_info_blob = convert_numpy_array_to_binary_blob(np.array(position_info_list, dtype=self.numpy_data_type))
+        self.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.nt_position_info_table_name, (contig_name, position_info_blob, ))
 
 
     def get(self, contig_name):
         if not self.is_known_contig(contig_name):
             return []
 
-        return self.get_integer_list('/data/nt_position_info/%s' % contig_name)
+        cursor = self.db._exec('''SELECT position_info FROM %s WHERE contig_name = "%s"''' % 
+                                                      (t.nt_position_info_table_name, contig_name))
+
+        position_info_blob = cursor.fetchone()[0]
+        return convert_binary_blob_to_numpy_array(position_info_blob, dtype=self.numpy_data_type).tolist()
+
+
+    def close(self):
+        self.db.disconnect()
 
 
 class GenomesDataStorage(HDF5_IO):
