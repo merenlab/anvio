@@ -1,0 +1,141 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import anvio
+import argparse
+import anvio.dbops as dbops
+import anvio.hmmops as hmmops
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.dbops import ContigsSuperclass
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "Alon Shaiber"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):    
+    contigs_db = dbops.ContigsSuperclass(args)
+    contigs_db.init_contig_sequences()
+
+    if args.list_hmm_sources:
+        info_table = hmmops.SequencesForHMMHits(args.contigs_db).hmm_hits_info
+        for source in info_table:
+            t = info_table[source]
+            run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
+        sys.exit(0)
+
+    if args.use_hmm:
+        # use hmm hits instead of functional annotation
+        hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
+        s = hmmops.SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
+        hmm_hits = utils.get_filtered_dict(s.hmm_hits, 'gene_name', {args.search_term})
+        # gene id's of the hmm hits
+        matching_genes = [entry['gene_callers_id'] for entry in hmm_hits.values()]
+    else:
+        # use functional annotation
+        contigs_db.init_functions()
+        foo, search_report = contigs_db.search_splits_for_gene_functions([args.search_terms], verbose=True)
+        # gene id's of genes with the searched function
+        matching_genes = [i[0] for i in search_report]
+
+    if not args.separate_fasta:
+        # print all matches into one fasta file
+        output_file_path = args.output_file_prefix + '.fa'
+        filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
+        f = open(output_file_path, 'w')
+
+    run.info('Matching genes', '%d genes matched your search' % len(matching_genes))
+
+    block_num = 0
+    for gene_id in matching_genes:
+        # for each gene hit take the sequence that follows for 25 genes in the direction of transcription
+        gene_dict = contigs_db.genes_in_contigs_dict[gene_id]
+
+        if gene_dict['direction'] == 'f':
+            # the gene direction is forward so take genes ahead.
+            first_gene_of_the_block = gene_id
+            last_gene_of_the_block = gene_id + (args.block_size - 1)
+
+            if last_gene_of_the_block > list(contigs_db.genes_in_contigs_dict.keys())[-1]:
+            # FIXME: there must be a better way to do this. Also need to check with Meren if gene id's are always consecutive.
+            # take the last gene of the contig. FIXME: also here, maybe there is a better way. ask Meren.
+                last_gene_of_the_block = list(utils.get_filtered_dict(contigs_db.genes_in_contigs_dict, 'contig', {gene_dict['contig']}).keys())[-1]
+
+        else:
+            # gene direction is reverse
+            first_gene_of_the_block = gene_id - (args.block_size - 1)
+            last_gene_of_the_block = gene_id
+            
+            if first_gene_of_the_block < 0:
+                # take the first gene of the contig. FIXME: also might be a better way to do this
+                first_gene_of_the_block = list(utils.get_filtered_dict(contigs_db.genes_in_contigs_dict, 'contig', {gene_dict['contig']}).keys())[0]
+
+        start = contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
+        stop = contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
+        block_sequence = contigs_db.contig_sequences[gene_dict['contig']]['sequence'][start:stop]
+
+        if args.separate_fasta:
+            # create a separate fasta per match
+            output_file_path = args.output_file_prefix + '_' + str(block_num) + '.fa'
+            f = open(output_file_path, 'w')
+
+        block_header = '_'.join([str(block_num), '', gene_dict['contig'], '', 'positions', str(start), str(stop), '', 'genes', str(first_gene_of_the_block), str(last_gene_of_the_block)])
+        f.write('>%s\n' % block_header)
+        f.write('%s\n' % block_sequence)
+        if args.separate_fasta:
+        # if separate fasta files are created then need to close it now
+            f.close()
+
+        block_num += 1
+
+    if not args.separate_fasta:
+        # if the matches are combined into one fasta then we only close it now
+        f.close()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Search for a function or hmm hit and for each match\
+                                                    get the sequence starting with the match and including\
+                                                    a block of genes the follow the match.")
+
+    groupA = parser.add_argument_group('INPUT')
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupA.add_argument('-s', '--search-term', help='Search term.')
+
+    groupB = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be one FASTA file with all matches\
+                                       or one FASTA per match") 
+    groupB.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    groupB.add_argument('--separate-fasta', default = False, action='store_true', help='Split each match to a separate FASTA file.')
+
+    groupC = parser.add_argument_group('ADDITIONAL STUFF', "Flags and parameters you can set according to your need")
+    groupC.add_argument('--use-hmm', default = False, action='store_true', help='Use hmm hits instead of functional annotations.\
+                            If you choose this option, you must also say which hmm source to use.')
+    groupC.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
+    groupC.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
+    groupC.add_argument('-b', '--block-size', default = 25, help='For each match (to the function, or hmm that was searched) a sequence which includes\
+                            a block of genes will be saved. The sequence will start with the gene that matched, and continue according to the\
+                            transcription direction of the gene. This parameter defines how many genes will be included in the block. The defulat is 25.')
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
