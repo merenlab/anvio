@@ -4,6 +4,7 @@
 
 import h5py
 import time
+import gzip
 import numpy as np
 
 import anvio
@@ -100,6 +101,14 @@ class HDF5_IO(object):
         self.fp.close()
 
 
+def convert_numpy_array_to_binary_blob(array):
+    return gzip.compress(memoryview(array))
+
+
+def convert_binary_blob_to_numpy_array(blob, dtype):
+    return np.frombuffer(gzip.decompress(blob), dtype=dtype)
+
+
 class AuxiliaryDataForSplitCoverages(object):
     def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
@@ -109,6 +118,7 @@ class AuxiliaryDataForSplitCoverages(object):
         self.quiet = quiet
         self.run = run
         self.progress = progress
+        self.numpy_data_type = 'uint16'
 
         self.db = db.DB(self.file_path, self.version, new_database=create_new)
 
@@ -135,16 +145,8 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def append(self, split_name, sample_name, coverage_list):
-        coverage_list_blob = self.convert_coverage_list_to_blob(coverage_list)
+        coverage_list_blob = convert_numpy_array_to_binary_blob(np.array(coverage_list, dtype=self.numpy_data_type))
         self.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.split_coverages_table_name, (split_name, sample_name, coverage_list_blob, ))
-
-
-    def convert_coverage_list_to_blob(self, coverage_list):
-        return db.binary(np.array(coverage_list, dtype=np.uint16))
-
-
-    def convert_blob_to_coverage_list(self, coverages_blob):
-        return np.frombuffer(coverages_blob, dtype=np.uint16).tolist()
 
 
     def get_all_known_split_names(self):
@@ -184,7 +186,7 @@ class AuxiliaryDataForSplitCoverages(object):
         for row in rows:
             sample_name, coverage_blob = row # unpack sqlite row tuple
 
-            split_coverage[sample_name] = self.convert_blob_to_coverage_list(coverage_blob)
+            split_coverage[sample_name] = convert_binary_blob_to_numpy_array(coverage_blob, dtype=self.numpy_data_type).tolist()
         
         return split_coverage
 
