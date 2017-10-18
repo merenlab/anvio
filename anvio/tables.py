@@ -190,11 +190,23 @@ samples_attribute_aliases_table_types      = [ 'str' ,     'str'  ]
 
 ####################################################################################################
 #
-#     TABLE DESCRIPTIONS FOR THE CONTIGS AUXILIARY DATABASE
+#     TABLE DESCRIPTIONS FOR THE PROFILE AUXILIARY COVERAGE DATABASE
 #
 ####################################################################################################
 
 split_coverages_table_name       = 'split_coverages'
 split_coverages_table_structure  = ['split_name', 'sample_name', 'coverages']
 split_coverages_table_types      = [    'str'   ,     'str'    ,   'blob'   ]
+
+
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE CONTIGS AUXILIARY NT POSITION INFO DATABASE
+#
+####################################################################################################
+
+nt_position_info_table_name       = 'nt_position_info'
+nt_position_info_table_structure  = ['contig_name', 'position_info']
+nt_position_info_table_types      = [    'str'    ,      'blob'    ]
 
