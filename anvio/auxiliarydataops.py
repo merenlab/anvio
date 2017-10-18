@@ -158,14 +158,11 @@ class AuxiliaryDataForSplitCoverages(object):
     def get_coverage_for_multiple_splits(self, split_names):
         self.progress.new('Recovering split coverages')
         self.progress.update('...')
-        
+
         split_coverages = {}
         all_known_splits = self.get_all_known_split_names()
 
         for split_name in split_names:
-            if split_name not in all_known_splits:
-                raise AuxiliaryDataError('Database does not know anything about split "%s"' % split_name)
-
             self.progress.update('Processing split "%s"' % split_name)
 
             split_coverages[split_name] = self.get(split_name)
@@ -179,13 +176,16 @@ class AuxiliaryDataForSplitCoverages(object):
                                                  (t.split_coverages_table_name, split_name))
 
         rows = cursor.fetchall()
+
+        if len(rows) == 0:
+            raise AuxiliaryDataError('Database does not know anything about split "%s"' % split_name)
+
         split_coverage = {}
-        
         for row in rows:
             sample_name, coverage_blob = row # unpack sqlite row tuple
 
             split_coverage[sample_name] = self.convert_blob_to_coverage_list(coverage_blob)
-            
+        
         return split_coverage
 
 
