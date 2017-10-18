@@ -130,7 +130,7 @@ class AuxiliaryDataForSplitCoverages(object):
     def check_hash(self):
         actual_db_hash = self.db.get_meta_value('contigs_db_hash')
         if self.db_hash != actual_db_hash:
-            raise AuxiliaryDataError('The hash value inside Auxiliary Database "%" does not match with Contigs Database hash "%s",\
+            raise AuxiliaryDataError('The hash value inside Auxiliary Database "%s" does not match with Contigs Database hash "%s",\
                                       this files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
