@@ -292,7 +292,3 @@ class DB:
     def get_table_names(self):
         response = self._exec("""select name from sqlite_master where type='table'""")
         return [r[0] for r in response.fetchall()]
-
-
-def binary(data):
-    return sqlite3.Binary(data)
