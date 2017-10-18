@@ -1,5 +1,35 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
+"""Get a block of sequence following a gene that mathces a functional annotation or HMM hit
+
+    This program takes a contigs database, and searches for a function or HMM hit. It is useful
+    when you want to study which genes are present around a gene of interest. It could be helpful
+    when studying genomic loci that tend to some consereved and some variable genes.
+    
+  You want to play with it? This is how you could quickly test it:
+
+  Downloaded the anvi'o data pack for the infant gut data, which is here:
+
+    https://ndownloader.figshare.com/files/8252861
+
+  Uunpack it and went into it:
+
+    tar -zxvf INFANTGUTTUTORIAL.tar.gz && cd INFANT-GUT-TUTORIAL
+
+  Then I run the program `anvi-export-gene-block` in the anvi'o master this way:
+
+    anvi-get-sequences-for-hmm-hits -c CONTIGS.db \
+                                    -O OUTPUT \
+                                    --use-hmm \
+                                    --hmm-sources Campbell_et_al \
+                                    --search-term Ribosomal_L27 \
+
+  This will give you a fasta file OUTPUT.fa with the Ribosomal_L27 gene and the 24 genes that follow it.
+
+  If all you want is the sequence of a gene matching a search pattern then use:
+  for hmm - anvi-get-sequences-for-hmm-hits
+  for functional annotations - anvi-search-functions-in-splits
+"""
 
 import sys
 import anvio
