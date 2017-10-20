@@ -149,18 +149,7 @@ if __name__ == '__main__':
     groupA = parser.add_argument_group('INPUT')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     groupA.add_argument('-s', '--search-term', help='Search term.')
-
-    groupB = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be one FASTA file with all matches \
-                                       or one FASTA per match") 
-    groupB.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
-    groupB.add_argument('--separate-fasta', default = False, action='store_true', help='Split each match to a separate FASTA file.')
-
-    groupC = parser.add_argument_group('ADDITIONAL STUFF', "Flags and parameters you can set according to your need")
-    groupC.add_argument('--use-hmm', default = False, action='store_true', help='Use HMM hits instead of functional annotations. \
-                            If you choose this option, you must also say which HMM source to use.')
-    groupC.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
-    groupC.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-    groupC.add_argument('-n', '--num-genes',type=str, help='For each match (to the function, or HMM that was searched) a sequence which includes \
+    groupA.add_argument('-n', '--num-genes',type=str, help='For each match (to the function, or HMM that was searched) a sequence which includes \
                             a block of genes will be saved. The block could include either genes only in the forward direction of the gene (defined \
                             according to the direction of transcription of the gene) or reverse or both. \
                             If you wish to get both direction use a comma (no spaces) to define the block \
@@ -169,6 +158,17 @@ if __name__ == '__main__':
                             To get only genes preceeding the match use \"-n 5,0\". \
                             If the number of genes requested exceeds the length of the contig, then the output \
                             will include the the sequence until the end of the contig.')
+
+    groupB = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be one FASTA file with all matches \
+                                       or one FASTA per match (see --separate-fasta)") 
+    groupB.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+
+    groupC = parser.add_argument_group('ADDITIONAL STUFF', "Flags and parameters you can set according to your need")
+    groupC.add_argument('--separate-fasta', default = False, action='store_true', help='Split each match to a separate FASTA file.')
+    groupC.add_argument('--use-hmm', default = False, action='store_true', help='Use HMM hits instead of functional annotations. \
+                            If you choose this option, you must also say which HMM source to use.')
+    groupC.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
+    groupC.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
     args = parser.parse_args()
 
     try:
