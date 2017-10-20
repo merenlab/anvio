@@ -56,6 +56,9 @@ anvi-run-hmms -c $output_dir/CONTIGS.db -H $files/external_hmm_profile
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db -I Ribosomal_RNAs
 
+INFO "Export genomic locus using HMM"
+anvi-export-locus -c $output_dir/CONTIGS.db -O $output_dir/exported_locus_from_hmm -n 200,2 -s S-AdoMet_synt_C --use-hmm --hmm-sources Campbell_et_al
+
 INFO "Recovering completeness esimates for the contigs db"
 anvi-compute-completeness -c $output_dir/CONTIGS.db
 
@@ -75,6 +78,9 @@ INFO "Export all functional annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db -o $output_dir/exported_functions_from_all_sources.txt
 echo
 head $output_dir/exported_functions_from_all_sources.txt | tr ' ' @@ | column -t | tr @@ ' '
+
+INFO "Export genomic locus using functional annotation search"
+anvi-export-locus -c $output_dir/CONTIGS.db -O $output_dir/exported_locus_from_functions -n 2,200 -s NusB
 
 INFO "Export only Pfam annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db -o $output_dir/exported_functions_from_source_Pfam.txt --annotation-sources Pfam
