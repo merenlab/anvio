@@ -41,7 +41,6 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.dbops import ContigsSuperclass
 from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Alon Shaiber"
@@ -57,7 +56,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def main(args):    
+def main(args):
     contigs_db = dbops.ContigsSuperclass(args)
     contigs_db.init_contig_sequences()
 
