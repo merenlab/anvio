@@ -61,13 +61,15 @@ def main(args):
         if departure_from_consensus > args.min_departure_from_consensus and departure_from_consensus < args.max_departure_from_consensus:
             data_dict[unique_pos_identifier][sample] = departure_from_consensus
 
-        additional_data_dict[unique_pos_identifier]['Position in codon'] = {0: None, 1: '1st', 2: '2nd', 3: '3rd'}[int(entry['base_pos_in_codon'])]
+        # append 'st', 'nd', or 'th' to make categorical
+        additional_data_dict[unique_pos_identifier]['Position in codon'] = utils.get_ordinal_from_numerical(int(entry['base_pos_in_codon']))
+        additional_data_dict[unique_pos_identifier]['Gene'] = utils.get_ordinal_from_numerical(int(entry['corresponding_gene_call']))
 
     temp_view_data_file_path = filesnpaths.get_temp_file_path()
     temp_additional_data_file_path = filesnpaths.get_temp_file_path()
 
     utils.store_dict_as_TAB_delimited_file(data_dict, temp_view_data_file_path, headers = ['contig'] + samples)
-    utils.store_dict_as_TAB_delimited_file(additional_data_dict, temp_additional_data_file_path, headers = ['contig'] + ['Competing NTs', 'Position in codon'])
+    utils.store_dict_as_TAB_delimited_file(additional_data_dict, temp_additional_data_file_path, headers = ['contig'] + ['Competing NTs', 'Position in codon', 'Gene'])
 
     g = summarizer.AdHocRunGenerator(temp_view_data_file_path)
     g.linkage = 'ward'
