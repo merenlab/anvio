@@ -660,6 +660,11 @@ def get_all_ids_from_fasta(input_file):
     return ids
 
 
+def get_ordinal_from_integer(num):
+    """append 'st', 'nd', or 'th' to integer to make categorical. num must be integer"""
+    return'%d%s' % (num, {11:'th', 12:'th', 13:'th'}.get(num%100, {1:'st', 2:'nd', 3:'rd'}.get(num%10,'th')))
+
+
 def get_read_lengths_from_fasta(input_file):
     contig_lengths = {}
 
