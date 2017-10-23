@@ -2,7 +2,6 @@
 # pylint: disable=line-too-long
 """Module to deal with HDF5 files"""
 
-import h5py
 import time
 import gzip
 import numpy as np
@@ -29,76 +28,6 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
-
-class HDF5_IO(object):
-    def __init__(self, file_path, unique_hash, create_new=False, open_in_append_mode=False, ignore_hash=False, run=run, progress=progress, quiet=False):
-        self.run = run
-        self.progress = progress
-
-        self.file_path = file_path
-
-        if open_in_append_mode and not create_new:
-            raise HDF5Error("The 'open_in_append_mode' flag can only be used along with the flag 'create_new'.")
-
-        if create_new:
-            if ignore_hash:
-                raise HDF5Error("When creating (or appending to) a database, you can't use the 'ignore_hash'\
-                                  flag.")
-
-            if not unique_hash:
-                raise HDF5Error("When creating (or appending to) a database, the 'unique_hash' cannot be None.")
-
-            self.fp = h5py.File(self.file_path, 'a' if open_in_append_mode else 'w')
-            self.fp.attrs['hash'] = unique_hash
-            self.fp.attrs['version'] = self.version
-        else:
-            filesnpaths.is_file_exists(self.file_path)
-            self.fp = h5py.File(self.file_path, 'r')
-
-            G = lambda x: self.fp.attrs[x].decode('utf-8') if isinstance(self.fp.attrs[x], bytes) else self.fp.attrs[x]
-            fp_version = G('version')
-            fp_hash = G('hash')
-
-            if fp_version != self.version:
-                raise HDF5Error("The data file for %s ('%s') is at version '%s', however, your client is at\
-                                 version '%s'. This is bad news, because your version of anvi'o can't work with\
-                                 this file. You can regenerate the data file using the current version of anvi'o,\
-                                 or look around to see whether there is an upgrade script is available (a good start\
-                                 would be to type 'anvi-script-upgrade-' and then click TAB key twice). Otherwise you\
-                                 may want to consider sending an e-mail to the anvi'o developers to find out what's up.\
-                                 We heard that they love them some e-mails." % (self.db_type, self.file_path, self.fp.attrs['version'], self.version))
-
-            if not ignore_hash and fp_hash != unique_hash:
-                raise HDF5Error("The database at '%s' does not seem to be compatible with the client :/\
-                                  (i.e., the hash values do not match)." % self.file_path)
-
-            self.unique_hash = fp_hash
-
-
-    def add_integer_list(self, path, l, data_type='uint16'):
-        """Add an array into the the HDF5 file.
-
-            >>> h = HDF5_IO('test.h5')
-            >>> l = [1, 2, 3, 4, 5]
-            >>> h.add_integer_list('/split_1/sample_x', l)
-            >>> h.close()
-        """
-
-        new_data_obj = self.fp.create_dataset(path, (len(l),), dtype=np.dtype(data_type), compression="gzip")
-        new_data_obj[...] = np.array(l)
-
-
-    def get_integer_list(self, path):
-        l = self.fp[path]
-        return l.value
-
-
-    def path_exists(self, path):
-        return path in self.fp
-
-
-    def close(self):
-        self.fp.close()
 
 
 def convert_numpy_array_to_binary_blob(array):
