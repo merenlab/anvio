@@ -223,7 +223,7 @@ genome_info_table_types      = [    'str'    ,      'str'   ,     'numeric'    ]
 
 gene_info_table_name       = 'gene_info'
 gene_info_table_structure  = ['genome_name', 'gene_caller_id', 'aa_sequence', 'dna_sequence', 'partial', 'length' ]
-gene_info_table_types      = [    'str'    ,     'numeric'   ,    'blob'    ,     'blob'    , 'numeric', 'numeric']
+gene_info_table_types      = [    'str'    ,     'numeric'   ,    'text'    ,     'text'    , 'numeric', 'numeric']
 
 genome_gene_function_calls_table_name      = 'gene_function_calls'
 genome_gene_function_calls_table_structure = ['genome_name', ] + gene_function_calls_table_structure[:]
