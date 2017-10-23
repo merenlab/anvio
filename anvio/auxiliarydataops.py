@@ -3,7 +3,6 @@
 """Module to deal with HDF5 files"""
 
 import time
-import gzip
 import numpy as np
 
 import anvio
@@ -28,15 +27,6 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
-
-
-def convert_numpy_array_to_binary_blob(array):
-    return gzip.compress(memoryview(array))
-
-
-def convert_binary_blob_to_numpy_array(blob, dtype):
-    return np.frombuffer(gzip.decompress(blob), dtype=dtype)
-
 
 class AuxiliaryDataForSplitCoverages(object):
     def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
@@ -74,7 +64,7 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def append(self, split_name, sample_name, coverage_list):
-        coverage_list_blob = convert_numpy_array_to_binary_blob(np.array(coverage_list, dtype=self.numpy_data_type))
+        coverage_list_blob = utils.convert_numpy_array_to_binary_blob(np.array(coverage_list, dtype=self.numpy_data_type))
         self.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.split_coverages_table_name, (split_name, sample_name, coverage_list_blob, ))
 
 
@@ -115,7 +105,7 @@ class AuxiliaryDataForSplitCoverages(object):
         for row in rows:
             sample_name, coverage_blob = row # unpack sqlite row tuple
 
-            split_coverage[sample_name] = convert_binary_blob_to_numpy_array(coverage_blob, dtype=self.numpy_data_type).tolist()
+            split_coverage[sample_name] = utils.convert_binary_blob_to_numpy_array(coverage_blob, dtype=self.numpy_data_type).tolist()
         
         return split_coverage
 
@@ -161,7 +151,7 @@ class AuxiliaryDataForNtPositions(object):
 
 
     def append(self, contig_name, position_info_list):
-        position_info_blob = convert_numpy_array_to_binary_blob(np.array(position_info_list, dtype=self.numpy_data_type))
+        position_info_blob = utils.convert_numpy_array_to_binary_blob(np.array(position_info_list, dtype=self.numpy_data_type))
         self.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.nt_position_info_table_name, (contig_name, position_info_blob, ))
 
 
@@ -173,7 +163,7 @@ class AuxiliaryDataForNtPositions(object):
                                                       (t.nt_position_info_table_name, contig_name))
 
         position_info_blob = cursor.fetchone()[0]
-        return convert_binary_blob_to_numpy_array(position_info_blob, dtype=self.numpy_data_type).tolist()
+        return utils.convert_binary_blob_to_numpy_array(position_info_blob, dtype=self.numpy_data_type).tolist()
 
 
     def close(self):
