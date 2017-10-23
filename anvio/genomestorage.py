@@ -68,6 +68,7 @@ class GenomeStorage(object):
     def create_tables(self):
         self.db.create_table(t.genome_info_table_name, t.genome_info_table_structure, t.genome_info_table_types)
         self.db.create_table(t.gene_info_table_name, t.gene_info_table_structure, t.gene_info_table_types)
+        self.db.create_table(t.genome_gene_function_calls_table_name, t.genome_gene_function_calls_table_structure, t.genome_gene_function_calls_table_types)
 
         self.db.set_meta_value('db_type', self.db_type)
         self.db.set_meta_value('creation_date', time.time())
@@ -231,8 +232,17 @@ class GenomeStorage(object):
                                                                                            partial,
                                                                                            len(aa_sequence),))
 
+
     def add_gene_function_annotation(self, genome_name, gene_caller_id, source, annotation):
-        print(source, annotation)
+        if not annotation or len(annotation) != 3:
+            return
+
+        accession, function, e_value = annotation
+
+        query = '''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.genome_gene_function_calls_table_name
+        values = (genome_name, 0, gene_caller_id, source, accession, function, e_value)
+        self.db._exec(query, values)
+
 
     def is_known_genome(self, genome_name, throw_exception=True):
         cursor = self.db._exec('''SELECT genome_name FROM %s WHERE genome_name = ?''' % t.genome_info_table_name, (genome_name, ))
