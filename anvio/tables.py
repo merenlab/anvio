@@ -2,7 +2,7 @@
 # pylint: disable=line-too-long
 """ Table schemas for databases."""
 
-from anvio.constants import codon_to_AA
+from anvio.constants import codon_to_AA, essential_genome_info
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -209,4 +209,20 @@ split_coverages_table_types      = [    'str'   ,     'str'    ,   'blob'   ]
 nt_position_info_table_name       = 'nt_position_info'
 nt_position_info_table_structure  = ['contig_name', 'position_info']
 nt_position_info_table_types      = [    'str'    ,      'blob'    ]
+
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE GENOME STORAGE
+#
+####################################################################################################
+
+genome_info_table_name       = 'genome_info'
+genome_info_table_structure  = ['genome_name', 'genome_hash', 'external_genome'] + essential_genome_info
+genome_info_table_types      = [    'str'    ,      'str'   ,     'numeric'    ] + ['numeric'] * len(essential_genome_info)
+
+gene_info_table_name       = 'gene_info'
+gene_info_table_structure  = ['genome_name', 'gene_caller_id', 'aa_sequence', 'dna_sequence', 'partial', 'length' ]
+gene_info_table_types      = [    'str'    ,     'numeric'   ,    'blob'    ,     'blob'    , 'numeric', 'numeric']
+
 
