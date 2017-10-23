@@ -37,7 +37,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class GenomeDescriptions:
+class GenomeDescriptions(object):
     def __init__(self, args=None, run=run, progress=progress):
         self.args = args
         self.run = run
@@ -48,6 +48,7 @@ class GenomeDescriptions:
         self.external_genomes_dict = None
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.function_annotation_sources = set([])
         self.input_file_for_internal_genomes = A('internal_genomes')
         self.input_file_for_external_genomes = A('external_genomes')
         self.list_hmm_sources = A('list_hmm_sources')          # <<< these two are look out of place, but if the args requests

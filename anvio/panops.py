@@ -41,10 +41,12 @@ pp = terminal.pretty_print
 aligners = Aligners()
 
 
-class Pangenome(GenomeStorage):
+class Pangenome(object):
     def __init__(self, args=None, run=run, progress=progress):
-        GenomeStorage.__init__(self, args, run, progress)
-        self.init_genomes_data_storage()
+        # GenomeStorage.__init__(self, args, run, progress)
+        # self.init_genomes_data_storage()
+
+        self.genomes_storage = GenomeStorage(args, run, progress)
 
         self.args = args
         self.run = run
