@@ -4,7 +4,6 @@
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
 
 import os
-import np
 import sys
 import gzip
 import time
@@ -18,6 +17,7 @@ import subprocess
 import configparser
 import multiprocessing
 import urllib.request, urllib.error, urllib.parse
+import numpy as np
 
 from email.mime.text import MIMEText
 from collections import Counter
