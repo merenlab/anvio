@@ -210,27 +210,23 @@ class GenomeStorage(object):
         if self.is_known_genome(genome_name, throw_exception=False):
             raise ConfigError("Genome '%s' is already in this data storage :/" % genome_name)
 
-        values_tuple = (genome_name, )
+        values = (genome_name, )
 
         for column_name in t.genome_info_table_structure[1:]:
             if genome_info_dict[column_name]:
-                values_tuple += (genome_info_dict[column_name], )
+                values += (genome_info_dict[column_name], )
             else:
                 # the following line will add a -1 for any `key` that has the value of `None`. the reason
                 # we added this was to be able to work with contigs databases without any hmm hits for SCGs
                 # which is covered in https://github.com/merenlab/anvio/issues/573
-                values_tuple += (-1, )
+                values += (-1, )
 
-        self.db._exec('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.genome_info_table_name, values_tuple)
+        self.db.insert(t.genome_info_table_name, values=values)
 
 
     def add_gene_call(self, genome_name, gene_caller_id, aa_sequence, dna_sequence, partial=0):
-        self.db._exec('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.gene_info_table_name, (genome_name,
-                                                                                           gene_caller_id,
-                                                                                           aa_sequence,
-                                                                                           dna_sequence,
-                                                                                           partial,
-                                                                                           len(aa_sequence),))
+        self.db.insert(t.gene_info_table_name, (genome_name, gene_caller_id, aa_sequence, dna_sequence,
+                                                partial, len(aa_sequence),))
 
 
     def add_gene_function_annotation(self, genome_name, gene_caller_id, source, annotation):
@@ -238,10 +234,9 @@ class GenomeStorage(object):
             return
 
         accession, function, e_value = annotation
+        values = (genome_name, 0, gene_caller_id, source, accession, function, e_value, )
 
-        query = '''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.genome_gene_function_calls_table_name
-        values = (genome_name, 0, gene_caller_id, source, accession, function, e_value)
-        self.db._exec(query, values)
+        self.db.insert(t.gene_function_calls_table_name, values=values)
 
 
     def is_known_genome(self, genome_name, throw_exception=True):

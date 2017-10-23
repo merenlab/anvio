@@ -65,7 +65,7 @@ class AuxiliaryDataForSplitCoverages(object):
 
     def append(self, split_name, sample_name, coverage_list):
         coverage_list_blob = utils.convert_numpy_array_to_binary_blob(np.array(coverage_list, dtype=self.numpy_data_type))
-        self.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.split_coverages_table_name, (split_name, sample_name, coverage_list_blob, ))
+        self.db.insert(t.split_coverages_table_name, values=(split_name, sample_name, coverage_list_blob, ))
 
 
     def get_all_known_split_names(self):
@@ -152,7 +152,7 @@ class AuxiliaryDataForNtPositions(object):
 
     def append(self, contig_name, position_info_list):
         position_info_blob = utils.convert_numpy_array_to_binary_blob(np.array(position_info_list, dtype=self.numpy_data_type))
-        self.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.nt_position_info_table_name, (contig_name, position_info_blob, ))
+        self.db.insert(t.nt_position_info_table_name, values=(contig_name, position_info_blob, ))
 
 
     def get(self, contig_name):

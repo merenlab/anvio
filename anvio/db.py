@@ -175,6 +175,11 @@ class DB:
         return self.cursor.executemany(sql_query, values)
 
 
+    def insert(self, table_name, values=()):
+        query = '''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(values)))
+        return self._exec(query, values)
+
+
     def get_all_rows_from_table(self, table):
         response = self._exec('''SELECT * FROM %s''' % table)
         return response.fetchall()
