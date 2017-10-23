@@ -5,6 +5,7 @@
 
 import os
 import sys
+import gzip
 import time
 import socket
 import shutil
@@ -429,6 +430,21 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
 
     f.close()
     return output_path
+
+
+
+def convert_numpy_array_to_binary_blob(array, compress=True):
+    if compress:
+        return gzip.compress(memoryview(array))
+    else:
+        return memoryview(array)
+
+
+def convert_binary_blob_to_numpy_array(blob, dtype, decompress=True):
+    if decompress:
+        return np.frombuffer(gzip.decompress(blob), dtype=dtype)
+    else:
+        return np.frombuffer(blob, dtype=dtype)
 
 
 def is_all_columns_present_in_TAB_delim_file(columns, file_path):
