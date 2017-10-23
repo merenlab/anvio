@@ -4,6 +4,7 @@
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
 
 import os
+import np
 import sys
 import gzip
 import time
