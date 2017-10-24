@@ -236,7 +236,7 @@ class GenomeStorage(object):
         accession, function, e_value = annotation
         values = (genome_name, 0, gene_caller_id, source, accession, function, e_value, )
 
-        self.db.insert(t.gene_function_calls_table_name, values=values)
+        self.db.insert(t.genome_gene_function_calls_table_name, values=values)
 
 
     def is_known_genome(self, genome_name, throw_exception=True):
