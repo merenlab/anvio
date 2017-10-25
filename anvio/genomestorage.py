@@ -188,6 +188,10 @@ class GenomeStorage(object):
         self.run.info('Number of gene calls', '%s' % pp(num_gene_calls_added_total))
         self.run.info('Number of partial gene calls', '%s' % pp(num_partial_gene_calls_total))
 
+        # generate new hash for genome storage
+        self.db.set_meta_value('hash', self.gen_storage_hash())
+        self.close()
+
 
     def get_functions_and_sequences_dicts_from_contigs_db(self, contigs_db_path, gene_caller_ids=None, functions_are_available=False, function_annotation_sources=set([])):
         """Returns function calls, dna and amino acid sequences for `gene_caller_ids`
