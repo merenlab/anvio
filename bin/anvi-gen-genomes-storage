@@ -54,7 +54,6 @@ if __name__ == '__main__':
 
         genome_storage = genomestorage.GenomeStorage(args.output_file, create_new=True)
         genome_storage.store_genomes(genome_descriptions)
-        genome_storage.close()
 
     except ConfigError as e:
         print(e)
