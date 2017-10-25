@@ -43,11 +43,6 @@ aligners = Aligners()
 
 class Pangenome(object):
     def __init__(self, args=None, run=run, progress=progress):
-        # GenomeStorage.__init__(self, args, run, progress)
-        # self.init_genomes_data_storage()
-
-        self.genomes_storage = GenomeStorage(args, run, progress)
-
         self.args = args
         self.run = run
         self.progress = progress
@@ -55,6 +50,7 @@ class Pangenome(object):
         self.max_num_PCs_for_hierarchical_clustering = constants.max_num_items_for_hierarchical_clustering
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.genomes_storage = GenomeStorage(A('genomes_storage'), run, progress)
         self.project_name = A('project_name')
         self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
@@ -103,7 +99,7 @@ class Pangenome(object):
                        'minbit': self.minbit,
                        'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
                        'gene_alignments_computed': False if self.skip_alignments else True,
-                       'genomes_storage_hash': self.genomes_storage_hash,
+                       'genomes_storage_hash': self.genomes_storage.get_storage_hash(),
                        'project_name': self.project_name,
                        'PCs_clustered': False,
                        'description': self.description if self.description else '_No description is provided_',
