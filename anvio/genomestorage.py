@@ -130,6 +130,10 @@ class GenomeStorage(object):
         return hashlib.sha224(concatenated_genome_hashes).encode('utf-8').hexdigest()[0:8]
 
 
+    def get_storage_hash(self):
+        return self.db.get_meta_value('hash')
+
+
     def store_genomes(self, genome_descriptions):
         num_gene_calls_added_total = 0
         num_partial_gene_calls_total = 0
