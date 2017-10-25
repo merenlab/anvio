@@ -271,6 +271,9 @@ class GenomeStorage(object):
         else:
             return True
 
+    def get_genome_names(self):
+        return self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name')
+
 
     def close(self):
         self.db.disconnect()
