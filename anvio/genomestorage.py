@@ -187,7 +187,9 @@ class GenomeStorage(object):
             num_gene_calls_added_total += num_gene_calls_added
             num_partial_gene_calls_total += num_partial_gene_calls
 
-        self.run.info('The new genomes storage', '%s (v%s, signature: %s)' % (self.storage_path, self.version, 'storage_hash')) # TO DO
+        new_storage_hash = self.gen_storage_hash()
+
+        self.run.info('The new genomes storage', '%s (v%s, signature: %s)' % (self.storage_path, self.version, new_storage_hash))
         self.run.info('Number of genomes', '%s (internal: %s, external: %s)' % (pp(len(genome_descriptions.genomes)), 
                                                                                 pp(len(genome_descriptions.internal_genome_names)), 
                                                                                 pp(len(genome_descriptions.external_genome_names))))
@@ -195,7 +197,7 @@ class GenomeStorage(object):
         self.run.info('Number of partial gene calls', '%s' % pp(num_partial_gene_calls_total))
 
         # generate new hash for genome storage
-        self.db.set_meta_value('hash', self.gen_storage_hash())
+        self.db.set_meta_value('hash', new_storage_hash)
         self.close()
 
 
