@@ -48,21 +48,33 @@ class GenomeStorage(object):
 
         if create_new:
             self.storage_path = storage_path or 'GENOMES.db'
+            self.check_storage_path_for_create_new()
+        else:
+            self.check_storage_path_for_load()
 
-        self.check_storage_path()
         self.db = db.DB(self.storage_path, self.version, new_database=create_new)
 
         if create_new:
             self.create_tables()
 
 
-    def check_storage_path(self):
+    def check_storage_path_for_create_new(self):
         if not self.storage_path.endswith('GENOMES.db'):
             raise ConfigError("The genomes storage file must end with '-GENOMES.db'. Anvi'o developers do know how ridiculous\
                                 this requirement sounds like, but if you have seen the things they did, you would totally\
                                 understand why this is necessary.")
 
         filesnpaths.is_output_file_writable(self.storage_path)
+
+    def check_storage_path_for_load(self):
+        if not self.storage_path:
+            raise ConfigError("Anvi'o genomes storage is speaking. Someone called the init function,\
+                               yet there is nothing to initialize since genome storage path variable\
+                               (args.genomes_storage) is None. If you are an end user, please make sure\
+                               you provide the genomes storage paramater to whatever program you were\
+                               running. If you are a developer, you probably already figured what is\
+                               wrong. If you are a cat, you need to send us an e-mail immediately.")
+
 
 
     def create_tables(self):
@@ -80,14 +92,6 @@ class GenomeStorage(object):
 
         self.storage_path = A('genomes_storage')
         self.genome_names_to_focus = A('genome_names')
-
-        if not self.storage_path:
-            raise ConfigError("Anvi'o genomes storage is speaking. Someone called the init function,\
-                               yet there is nothing to initialize since genome storage path variable\
-                               (args.genomes_storage) is None. If you are an end user, please make sure\
-                               you provide the genomes storage paramater to whatever program you were\
-                               running. If you are a developer, you probably already figured what is\
-                               wrong. If you are a cat, you need to send us an e-mail immediately.")
 
         # let's take care of the genome names to focus, if there are any, first. 
         if self.genome_names_to_focus:
@@ -110,6 +114,10 @@ class GenomeStorage(object):
 
         for genome_name in self.genomes:
             self.hash_to_genome_name[self.genomes[genome_name]['genome_hash']] = genome_name
+
+
+    def get_genomes_dict(self, genome_names_to_focus=None):
+        pass
 
 
     def gen_storage_hash(self):
@@ -138,7 +146,7 @@ class GenomeStorage(object):
 
             self.add_genome(genome_name, genome)
 
-            functions_dict, aa_sequences_dict, dna_sequences_dict = self.get_functions_and_sequences_dicts_from_contigs_db(genome['contigs_db_path'], 
+            functions_dict, aa_sequences_dict, dna_sequences_dict = self.get_functions_and_sequences_dicts_from_contigs_db(genome['contigs_db_path'],
                                                                                                                            genome['gene_caller_ids'],
                                                                                                                            functions_are_available=genome_descriptions.functions_are_available,
                                                                                                                            function_annotation_sources=genome_descriptions.function_annotation_sources)
