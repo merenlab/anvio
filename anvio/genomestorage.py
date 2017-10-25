@@ -88,38 +88,16 @@ class GenomeStorage(object):
         self.db.set_meta_value('creation_date', time.time())
 
 
-    def init_genomes_data_storage(self):
-        """Initializes an existing genomes storage by reading everything about genomes of interest"""
+    def get_genomes_dict(self, genome_names=None):
+        # we retrieve all table at once to avoid seperate sql queries
+        all_genomes_dict = self.db.get_table_as_dict(t.genome_info_table_name)
+        result = {}
 
+        # copy genomes requested by user to result dictionary
+        for genome_name in genome_names:
+            result[genome_name] = all_genomes_dict[genome_name]
 
-        self.storage_path = A('genomes_storage')
-        self.genome_names_to_focus = A('genome_names')
-
-        # let's take care of the genome names to focus, if there are any, first. 
-        if self.genome_names_to_focus:
-            if filesnpaths.is_file_exists(self.genome_names_to_focus, dont_raise=True):
-                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0], expected_number_of_fields=1)[0]
-            else:
-                self.genome_names_to_focus = [g.strip() for g in self.genome_names_to_focus.split(',')]
-
-            self.run.warning("A subset of genome names is found, and anvi'o will focus only on to those.")
-
-        filesnpaths.is_proper_genomes_storage_file(self.storage_path)
-
-        self.genomes_storage = auxiliarydataops.GenomesDataStorage(self.storage_path, db_hash = None, genome_names_to_focus=self.genome_names_to_focus, ignore_hash = True)
-        self.genomes_storage_hash = self.genomes_storage.get_storage_hash()
-
-        self.genomes = self.genomes_storage.get_genomes_dict()
-
-        self.external_genome_names = [g for g in self.genomes if self.genomes[g]['external_genome']]
-        self.internal_genome_names = [g for g in self.genomes if not self.genomes[g]['external_genome']]
-
-        for genome_name in self.genomes:
-            self.hash_to_genome_name[self.genomes[genome_name]['genome_hash']] = genome_name
-
-
-    def get_genomes_dict(self, genome_names_to_focus=None):
-        pass
+        return result
 
 
     def update_storage_hash(self):
@@ -271,7 +249,8 @@ class GenomeStorage(object):
         else:
             return True
 
-    def get_genome_names(self):
+
+    def get_all_genome_names(self):
         return self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name')
 
 
