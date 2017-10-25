@@ -46,40 +46,6 @@ def is_proper_newick(newick_data, dont_raise=False):
                                     to say about this: '%s'. Pity :/" % e)
 
 
-def is_proper_hdf5_file(hdf5_file_path):
-    is_file_exists(hdf5_file_path)
-
-    try:
-        h5py.File(hdf5_file_path, 'r')
-    except:
-        raise FilesNPathsError("The file '%s' does not seem to be a properly formatted HDF5 data file. Are you sure\
-                                 anvi'o generated this?" % (hdf5_file_path))
-
-    return True
-
-
-def is_proper_genomes_storage_file(storage_path):
-    is_file_exists(storage_path)
-    is_proper_hdf5_file(storage_path)
-
-    fp = h5py.File(storage_path, 'r')
-
-    if '/data/genomes' not in fp or '/info/genomes' not in fp:
-        raise FilesNPathsError("The file '%s' does not seem to be a proper genomes storage file. If you are not just\
-                                 sending random HDF5 files as parameters to mock anvi'o and you are certain that this\
-                                 is a geniune genomes storage file, then something may have gone wrong during the\
-                                 process that attempted to create it :/" % (storage_path))
-
-    if len(fp['/info/genomes']) != len(fp['/data/genomes']):
-        raise FilesNPathsError("The file '%s' has different number of genomes for data (%d) and information (%d) sections. This\
-                                 would have never ever happened if things had gone properly when you generated the file. With its\
-                                 current form, there is nothing anvi'o can do with this file :( Sorry about the cryptic and\
-                                 not-quite-helpful error message..." % (storage_path, len(fp['/data/genomes']), len(fp['/info/genomes'])))
-
-
-    return True
-
-
 def is_proper_samples_information_file(file_path):
     is_file_tab_delimited(file_path)
 
