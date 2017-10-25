@@ -45,9 +45,9 @@ class GenomeStorage(object):
         self.version = anvio.__genomes_storage_version__
         self.run = run
         self.progress = progress
+        self.storage_path = storage_path
 
         if create_new:
-            self.storage_path = storage_path or 'GENOMES.db'
             self.check_storage_path_for_create_new()
         else:
             self.check_storage_path_for_load()
@@ -74,6 +74,8 @@ class GenomeStorage(object):
                                you provide the genomes storage paramater to whatever program you were\
                                running. If you are a developer, you probably already figured what is\
                                wrong. If you are a cat, you need to send us an e-mail immediately.")
+
+        filesnpaths.is_file_exists(self.storage_path)
 
 
 
