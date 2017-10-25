@@ -122,14 +122,16 @@ class GenomeStorage(object):
         pass
 
 
-    def gen_storage_hash(self):
+    def update_storage_hash(self):
         # here we create a signature for the storage itself by concatenating all hash values from all genomes. even if one
         # split is added or removed to any of these genomes will change this signature. since we will tie this information
         # to the profile database we will generate for the pangenome analysis, even if one split is added or removed from any
         # of the genomes will make sure that the profile databases from this storage and storage itself are not compatible:
 
-        concatenated_genome_hashes = '_'.join(self.genomes[genome_name]['genome_hash'] for genome_name in self.genomes)
-        return hashlib.sha224(concatenated_genome_hashes).encode('utf-8').hexdigest()[0:8]
+        concatenated_genome_hashes = '_'.join(sorted(self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_hash')))
+        new_hash = hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:8]
+
+        self.db.set_meta_value('hash', new_hash)
 
 
     def get_storage_hash(self):
@@ -187,17 +189,14 @@ class GenomeStorage(object):
             num_gene_calls_added_total += num_gene_calls_added
             num_partial_gene_calls_total += num_partial_gene_calls
 
-        new_storage_hash = self.gen_storage_hash()
 
-        self.run.info('The new genomes storage', '%s (v%s, signature: %s)' % (self.storage_path, self.version, new_storage_hash))
+        self.run.info('The new genomes storage', '%s (v%s, signature: %s)' % (self.storage_path, self.version, self.get_storage_hash()))
         self.run.info('Number of genomes', '%s (internal: %s, external: %s)' % (pp(len(genome_descriptions.genomes)), 
                                                                                 pp(len(genome_descriptions.internal_genome_names)), 
                                                                                 pp(len(genome_descriptions.external_genome_names))))
         self.run.info('Number of gene calls', '%s' % pp(num_gene_calls_added_total))
         self.run.info('Number of partial gene calls', '%s' % pp(num_partial_gene_calls_total))
 
-        # generate new hash for genome storage
-        self.db.set_meta_value('hash', new_storage_hash)
         self.close()
 
 
@@ -242,6 +241,7 @@ class GenomeStorage(object):
                 values += (-1, )
 
         self.db.insert(t.genome_info_table_name, values=values)
+        self.update_storage_hash()
 
 
     def add_gene_call(self, genome_name, gene_caller_id, aa_sequence, dna_sequence, partial=0):
