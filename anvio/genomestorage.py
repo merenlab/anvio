@@ -249,12 +249,27 @@ class GenomeStorage(object):
         else:
             return True
 
+
     def is_known_gene_call(self, genome_name, gene_caller_id):
         cursor = self.db._exec('''SELECT gene_caller_id FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % t.gene_info_table_name, (genome_name, gene_caller_id))
         rows = cursor.fetchall()
 
         if len(rows) == 0:
             raise ConfigError('The database at "%s" does not know anything gene caller id "%d" in genome "%s" :(' % (self.storage_path, gene_caller_id, genome_name))
+
+
+    def is_partial_gene_call(self, genome_name, gene_caller_id):
+        self.is_known_genome(genome_name)
+        self.is_known_gene_call(genome_name, gene_caller_id)
+
+        cursor = self.db._exec('''SELECT partial FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % t.gene_info_table_name, (genome_name, gene_caller_id))
+        row = cursor.fetchone()
+        partial = row[0]
+
+        # 'partial' can either be 0 or 1, so it can be used as a boolean.
+        # but let's make sure and convert it to boolean, maybe type can be problem in future
+        return (partial == 1)
+
 
 
     def get_all_genome_names(self):
