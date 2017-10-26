@@ -2435,37 +2435,6 @@ class KMerTablesForContigsAndSplits:
         db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.kmers_table_structure)))), self.db_entries)
 
 
-class CodonFreqTablesForContigsAndSplits:
-    """
-    Mimic class of KMerTablesForContigsAndSplits for codon freqs.
-    Not tested and should be deleted if meren says so.
-    """
-    def __init__(self, table_name):
-        self.table_name = table_name
-        self.codons = sorted(constants.codons)
-
-        self.db_entries = []
-
-        self.codonfreqs_table_structure = ['contig'] + self.codons
-        self.codonfreqs_table_types = ['text'] + ['numeric'] * len(self.codons)
-
-
-    def get_codon_freq(self, sequence):
-        pass
-
-
-    def append(self, seq_id, sequence, codon_freq=None):
-        if not codon_freq:
-            #do something
-
-        db_entry = tuple([seq_id] + [codon_freq[codon] for codon in self.codons])
-        self.db_entries.append(db_entry)
-
-    def store(self, db):
-        db.create_table(self.table_name, self.codonfreqs_table_structure, self.codonfreqs_table_types)
-        db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.codonfreqs_table_structure)))), self.db_entries)
-
-
 class TablesForViews(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
