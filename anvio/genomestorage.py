@@ -249,6 +249,14 @@ class GenomeStorage(object):
         else:
             return True
 
+    def is_known_gene_call(self, genome_name, gene_caller_id):
+        cursor = self.db._exec('''SELECT gene_caller_id FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % t.gene_info_table_name, (genome_name, gene_caller_id))
+        rows = cursor.fetchall()
+
+        if len(rows) == 0:
+            return False
+        return True
+
 
     def get_all_genome_names(self):
         return self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name')
