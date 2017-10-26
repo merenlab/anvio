@@ -254,8 +254,7 @@ class GenomeStorage(object):
         rows = cursor.fetchall()
 
         if len(rows) == 0:
-            return False
-        return True
+            raise ConfigError('The database at "%s" does not know anything gene caller id "%d" in genome "%s" :(' % (self.storage_path, gene_caller_id, genome_name))
 
 
     def get_all_genome_names(self):
