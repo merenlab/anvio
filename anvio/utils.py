@@ -958,6 +958,23 @@ def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=Fal
 
 
 def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
+
+    list_of_codons = get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict)
+    list_of_AAs = []
+
+    for codon in list_of_codons:
+
+        # if concensus sequence contains shitty characters, we will not continue
+        if codon not in constants.codon_to_AA:
+            continue
+
+        # genes in the reverse direction are already handled in get_list_of_codons_for_gene_call so
+        # all we do is transform codons to AAs
+        list_of_AAs.append(constants.codon_to_AA[codon])
+
+    return list_of_AAs
+
+def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict):
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call)
 
     if gene_call['contig'] not in contig_sequences_dict:
@@ -972,20 +989,14 @@ def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
                             this function does not seem to be an anvi'o contig sequences dict :/ It\
                             doesn't have the item 'sequence' in it.")
 
-    list_of_AAs = []
+    list_of_codons = []
     for codon_order in codon_order_to_nt_positions:
         nt_positions = codon_order_to_nt_positions[codon_order]
         reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
-        # if concensus sequence contains shitty characters, we will not continue
-        if reference_codon_sequence not in constants.codon_to_AA:
-            continue
-        # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
-        conv_dict = constants.codon_to_AA_RC if gene_call['direction'] == 'r' else constants.codon_to_AA
+        list_of_codons.append(constants.codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence)
 
-        list_of_AAs.append(conv_dict[reference_codon_sequence])
-
-    return list_of_AAs
+    return list_of_codons
 
 
 def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_dict):
