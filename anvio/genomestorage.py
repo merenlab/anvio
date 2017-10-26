@@ -271,6 +271,19 @@ class GenomeStorage(object):
         return (partial == 1)
 
 
+    def get_gene_sequence(self, genome_name, gene_caller_id, report_DNA_sequences=False):
+        """Returns gene amino acid sequence unless `report_DNA_sequences` is True."""
+        self.is_known_genome(genome_name)
+        self.is_known_gene_call(genome_name, gene_caller_id)
+
+        column_name = 'dna_sequence' if report_DNA_sequences else 'aa_sequence' 
+        
+        cursor = self.db._exec('''SELECT %s FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % (column_name, t.gene_info_table_name), (genome_name, gene_caller_id))
+        row = cursor.fetchone()
+        sequence = row[0]
+
+        return sequence
+
 
     def get_all_genome_names(self):
         return self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name')
