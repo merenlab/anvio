@@ -17,6 +17,7 @@ import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.fastalib as fastalib
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
@@ -277,7 +278,7 @@ class GenomeStorage(object):
         self.is_known_gene_call(genome_name, gene_caller_id)
 
         column_name = 'dna_sequence' if report_DNA_sequences else 'aa_sequence' 
-        
+
         cursor = self.db._exec('''SELECT %s FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % (column_name, t.gene_info_table_name), (genome_name, gene_caller_id))
         row = cursor.fetchone()
         sequence = row[0]
@@ -287,6 +288,51 @@ class GenomeStorage(object):
 
     def get_all_genome_names(self):
         return self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name')
+
+
+    def gen_combined_aa_sequences_FASTA(self, output_file_path, genome_names=None, exclude_partial_gene_calls=False):
+        self.run.info('Exclude partial gene calls', exclude_partial_gene_calls, nl_after=1)
+
+        total_num_aa_sequences = 0
+        total_num_excluded_aa_sequences = 0
+
+        fasta_output = fastalib.FastaOutput(output_file_path)
+
+        for genome_name in genomes:
+            self.progress.new('Storing aa sequences')
+            self.progress.update('%s ...' % genome_name)
+
+            genome_data = self.D(genome_name)
+            gene_caller_ids = sorted([int(i[0]) for i in list(genome_data.items())])
+
+            for gene_caller_id in gene_caller_ids:
+                partial = self.G(gene_caller_id, genome_data)['partial'].value
+
+                if exclude_partial_gene_calls and partial:
+                    total_num_excluded_aa_sequences += 1
+                    continue
+
+                aa_sequence = self.G(gene_caller_id, genome_data)['aa_sequence'].value
+
+                output_file.write('>%s_%d\n' % (genomes[genome_name]['genome_hash'], int(gene_caller_id)))
+                output_file.write('%s\n' % aa_sequence)
+
+                total_num_aa_sequences += 1
+
+            self.progress.end()
+
+        output_file.close()
+
+        self.progress.new('Uniquing the output FASTA file')
+        self.progress.update('...')
+        unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = utils.unique_FASTA_file(output_file_path, store_frequencies_in_deflines=False)
+        self.progress.end()
+
+        self.run.info('Unique AA sequences FASTA', output_file_path)
+        self.run.info('Num AA sequences reported', '%s' % pp(total_num_aa_sequences), nl_before=1)
+        self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_aa_sequences))
+
+        return total_num_aa_sequences, total_num_excluded_aa_sequences
 
 
     def close(self):
