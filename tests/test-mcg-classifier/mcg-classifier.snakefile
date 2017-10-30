@@ -1,5 +1,8 @@
 '''
     A test file to test mcg-classifier
+
+    To run it:
+        snakemake -s mcg-classifier.snakefile -p
 '''
 
 configfile: "config.json"
