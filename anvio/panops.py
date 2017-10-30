@@ -724,7 +724,9 @@ class Pangenome(object):
 
         # get all protein sequences:
         combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
-        unique_aas_FASTA_path, unique_aas_names_dict = self.genomes_storage.gen_combined_aa_sequences_FASTA(combined_aas_FASTA_path, exclude_partial_gene_calls=self.exclude_partial_gene_calls)
+        self.genomes_storage.gen_combined_aa_sequences_FASTA(combined_aas_FASTA_path, 
+                                                             genome_names=self.genomes, 
+                                                             exclude_partial_gene_calls=self.exclude_partial_gene_calls)
 
         # run search
         blastall_results = self.run_search(unique_aas_FASTA_path, unique_aas_names_dict)
