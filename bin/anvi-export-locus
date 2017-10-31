@@ -59,6 +59,9 @@ progress = terminal.Progress()
 def main(args):
     contigs_db = dbops.ContigsSuperclass(args)
     contigs_db.init_contig_sequences()
+    targets = []
+    sources = []
+    premature = False
 
     if args.list_hmm_sources:
         info_table = hmmops.SequencesForHMMHits(args.contigs_db).hmm_hits_info
@@ -80,6 +83,14 @@ def main(args):
     if args.use_hmm:
         # use HMM hits instead of functional annotation
         hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
+
+        targets.append('HMMs')
+        # add hmm sources to the list of sources 
+        if hmm_sources:
+            sources.extend(hmm_sources)
+        else:
+            sources.extend(contigs_db.hmm_sources_info.keys())
+
         s = hmmops.SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
         hmm_hits = utils.get_filtered_dict(s.hmm_hits, 'gene_name', {args.search_term})
         # gene id's of the HMM hits
@@ -87,6 +98,10 @@ def main(args):
     else:
         # use functional annotation
         contigs_db.init_functions()
+        targets.append('functions')
+        # add functional annotation sources to the list of sources
+        sources.extend(contigs_db.gene_function_call_sources)
+
         foo, search_report = contigs_db.search_splits_for_gene_functions([args.search_term], verbose=True)
         # gene id's of genes with the searched function
         matching_genes = [i[0] for i in search_report]
@@ -102,7 +117,7 @@ def main(args):
         filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
         f = open(output_file_path, 'w')
 
-    block_num = 0
+    entry_id = 0
     direction_dict = {'f': 1, 'r': -1}
     for gene_id in matching_genes:
         # for each gene hit take the sequence that follows for 25 genes in the direction of transcription
@@ -116,9 +131,11 @@ def main(args):
             # The requested block exceeds the contig length, then just take
             # FIXME: there must be a better way to do this. Also need to check with Meren if gene id's are always consecutive.
             last_gene_of_the_block = list(utils.get_filtered_dict(contigs_db.genes_in_contigs_dict, 'contig', {gene_dict['contig']}).keys())[-1]
+            premature = True
         if first_gene_of_the_block < 0:
             # take the first gene of the contig. FIXME: also might be a better way to do this
             first_gene_of_the_block = list(utils.get_filtered_dict(contigs_db.genes_in_contigs_dict, 'contig', {gene_dict['contig']}).keys())[0]
+            premature = True
 
         start = contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
         stop = contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
@@ -126,17 +143,26 @@ def main(args):
 
         if args.separate_fasta:
             # create a separate fasta per match
-            output_file_path = args.output_file_prefix + '_' + str(block_num) + '.fa'
+            output_file_path = args.output_file_prefix + '_' + str(entry_id) + '.fa'
             f = open(output_file_path, 'w')
-
-        block_header = '_'.join([str(block_num), '', gene_dict['contig'], '', 'positions', str(start), str(stop), '', 'genes', str(first_gene_of_the_block), str(last_gene_of_the_block)])
+        
+        block_header = contigs_db.a_meta['project_name'] + ' ' +\
+                       '|'.join([
+                                 'target:%s' % ', '.join(targets),
+                                 'sources:%s' % ', '.join(sources),
+                                 'query:%s' % args.search_term,
+                                 'hit_contig:%s' % gene_dict['contig'],
+                                 'hit_gene_callers_id:%s' % str(gene_id),
+                                 'locus:%s,%s' % (str(first_gene_of_the_block), str(last_gene_of_the_block)),
+                                 'nt_positions_in_contig:%s:%s' % (str(start), str(stop)),
+                                 'premature:%s' % str(premature)])
         f.write('>%s\n' % block_header)
         f.write('%s\n' % block_sequence)
         if args.separate_fasta:
         # if separate fasta files are created then need to close it now
             f.close()
 
-        block_num += 1
+        entry_id += 1
 
     if not args.separate_fasta:
         # if the matches are combined into one fasta then we only close it now
