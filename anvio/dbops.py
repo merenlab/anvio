@@ -1495,6 +1495,58 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
+    def get_gene_coverage_values_per_nt_in_samples(self, gene_callers_id, samples_of_interest=None):
+        ''' returns a dictionary with samples as keys and the nucleotide level coverage values for a gene_callers_id as a numpy vector'''
+
+        if not self.auxiliary_profile_data_available:
+            raise ConfigError("Someone is asking gene level coverage stats to be computed, but then there is no auxiliary profile\
+                               data does not seem to be available for this project. Yeah. That's what happens if you don't\
+                               download everything from the server :(")
+
+        contigs_db = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+
+        if not contigs_db.a_meta['splits_consider_gene_calls']:
+            self.run.warning("PLEASE READ THIS VERY CAREFULLY (remember, anvi'o never talks to you in CAPS, so it must be important).\
+                              It seems when you generated your contigs database, you have skipped 'mindful' splitting of contigs.\
+                              This means, some of the genes may be soft-broken into two or more pieces. For most things, it doesn't\
+                              really matter, but here this will cause an issue as your gene coverages will average one of those splits\
+                              without any biologically relevant reason. We could have done much better here, but it would have affected\
+                              the performance very negatively. If you are seeing this warning, and go like 'crap, this will ruin\
+                              everything because I possibly can not recover from this situation', then send us an e-mail, and we will\
+                              think about whether we can be less lazy about stuff, and do things better.")
+
+        sample_names = self.p_meta['samples']
+        if samples_of_interest:
+            bad_sample_names = [i for i in samples_of_interest if i not in self.p_meta['samples']]
+            if len(bad_sample_names) > 0:
+                raise ConfigError("Some of the samples you requested are not in the profile database.\
+                                   These are the samples that are missing: %s.\
+                                   These are the samples in your profile database: %s.\
+                                   " % (bad_sample_names, self.p_meta['samples']))
+        else:
+            samples_of_interest = self.p_meta['samples']
+
+        if not self.split_coverage_values_per_nt_dict:
+            self.init_split_coverage_values_per_nt_dict()
+
+        # get the info for the gene (split name, start, and stop)
+        contig = contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']
+        start = contigs_db.genes_in_contigs_dict[gene_callers_id]['start']
+        stop = contigs_db.genes_in_contigs_dict[gene_callers_id]['stop']
+        for split in contigs_db.splits_basic_info:
+            if contigs_db.splits_basic_info[split]['parent'] == contig:
+                if contigs_db.splits_basic_info[split]['end'] >= start and\
+                   contigs_db.splits_basic_info[split]['start'] <= stop:
+                        split_of_interest = split
+                        break
+
+        d = dict.fromkeys(samples_of_interest)
+        for sample in samples_of_interest:
+            d[sample] = {}
+            d[sample][gene_callers_id] = self.split_coverage_values_per_nt_dict[split][sample][start:stop]
+
+        return d
+
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
         if not split_name in self.split_names:
             raise ConfigError("get_variability_information_for_split: The split name '%s' does not seem to be\
