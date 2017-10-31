@@ -1530,15 +1530,9 @@ class ProfileSuperclass(object):
             self.init_split_coverage_values_per_nt_dict()
 
         # get the info for the gene (split name, start, and stop)
-        contig = contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']
         start = contigs_db.genes_in_contigs_dict[gene_callers_id]['start']
         stop = contigs_db.genes_in_contigs_dict[gene_callers_id]['stop']
-        for split in contigs_db.splits_basic_info:
-            if contigs_db.splits_basic_info[split]['parent'] == contig:
-                if contigs_db.splits_basic_info[split]['end'] >= start and\
-                   contigs_db.splits_basic_info[split]['start'] <= stop:
-                        split_of_interest = split
-                        break
+        split = contigs_db.gene_callers_id_to_split_name_dict[gene_callers_id]
 
         d = dict.fromkeys(samples_of_interest)
         for sample in samples_of_interest:
