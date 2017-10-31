@@ -1495,8 +1495,15 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
-    def get_gene_coverage_values_per_nt_in_samples(self, gene_callers_id, samples_of_interest=None):
-        ''' returns a dictionary with samples as keys and the nucleotide level coverage values for a gene_callers_id as a numpy vector'''
+    def get_gene_coverage_values_per_nt_in_samples(self, genes_of_interest=None, samples_of_interest=None):
+        ''' returns a dictionary with the nucleotide level coverage values
+            
+            The output format is a dictionary with the samples of interest as keys.
+            If no samples were specified, then all samples are included.
+            Each dictionary entry is another dictionary with the genes_of_intereset as keys,
+            and a numpy array with coverage information for that gene as the value.
+            If no genes_of_interest were specified, then all genes are included.
+        '''
 
         if not self.auxiliary_profile_data_available:
             raise ConfigError("Someone is asking gene level coverage stats to be computed, but then there is no auxiliary profile\
@@ -1517,27 +1524,43 @@ class ProfileSuperclass(object):
 
         sample_names = self.p_meta['samples']
         if samples_of_interest:
+            # check for samples that do not appear in the profile database
             bad_sample_names = [i for i in samples_of_interest if i not in self.p_meta['samples']]
             if len(bad_sample_names) > 0:
                 raise ConfigError("Some of the samples you requested are not in the profile database.\
                                    These are the samples that are missing: %s.\
                                    These are the samples in your profile database: %s.\
-                                   " % (bad_sample_names, self.p_meta['samples']))
+                                   " % (', '.join(bad_sample_names), ', '.join(self.p_meta['samples'])))
         else:
+            # if no samples_of_interest were specified then return all samples
             samples_of_interest = self.p_meta['samples']
+
+        if genes_of_interest:
+            # check for genes that do not appear in the contigs database
+            bad_gene_caller_ids = [g for g in genes_of_interest if g not in contigs_db.gene_callers_id_to_split_name_dict]
+            if bad_gene_caller_ids:
+                self.progress.end()
+                raise ConfigError("The gene caller id you provided is not known to this contigs database.\
+                                   Here are the genes we couldn't find: %s" % ', '.join(str(gene) for gene in bad_gene_caller_ids))
+        else:
+            # if no genes were specified, then return all genes
+            genes_of_interest = list(contigs_db.gene_callers_id_to_split_name_dict.keys())
 
         if not self.split_coverage_values_per_nt_dict:
             self.init_split_coverage_values_per_nt_dict()
 
-        # get the info for the gene (split name, start, and stop)
-        start = contigs_db.genes_in_contigs_dict[gene_callers_id]['start']
-        stop = contigs_db.genes_in_contigs_dict[gene_callers_id]['stop']
-        split = contigs_db.gene_callers_id_to_split_name_dict[gene_callers_id]
+        d = dict.fromkeys(samples_of_interest, {})
+        for gene_callers_id in genes_of_interest:
+            # get the info for the gene (split name, start_in_split, and stop_in_split)
+            start = contigs_db.genes_in_contigs_dict[gene_callers_id]['start']
+            stop = contigs_db.genes_in_contigs_dict[gene_callers_id]['stop']
+            split = contigs_db.gene_callers_id_to_split_name_dict[gene_callers_id]
+            start_in_split = start - contigs_db.splits_basic_info[split]['start'] 
+            stop_in_split = stop - contigs_db.splits_basic_info[split]['start'] 
 
-        d = dict.fromkeys(samples_of_interest)
-        for sample in samples_of_interest:
-            d[sample] = {}
-            d[sample][gene_callers_id] = self.split_coverage_values_per_nt_dict[split][sample][start:stop]
+            for sample in samples_of_interest:
+                # get the coverage information
+                d[sample][gene_callers_id] = self.split_coverage_values_per_nt_dict[split][sample][start_in_split:stop_in_split]
 
         return d
 
