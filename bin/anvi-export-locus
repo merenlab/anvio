@@ -91,13 +91,16 @@ def main(args):
         # gene id's of genes with the searched function
         matching_genes = [i[0] for i in search_report]
 
+    # Multiple sources could annotate the same gene, so make sure the list is unique
+    matching_genes = set(matching_genes)
+
+    run.info('Matching genes', '%d genes matched your search' % len(matching_genes))
+
     if not args.separate_fasta:
         # print all matches into one fasta file
         output_file_path = args.output_file_prefix + '.fa'
         filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
         f = open(output_file_path, 'w')
-
-    run.info('Matching genes', '%d genes matched your search' % len(matching_genes))
 
     block_num = 0
     direction_dict = {'f': 1, 'r': -1}
