@@ -1549,7 +1549,7 @@ class ProfileSuperclass(object):
         if not self.split_coverage_values_per_nt_dict:
             self.init_split_coverage_values_per_nt_dict()
 
-        d = dict.fromkeys(samples_of_interest, {})
+        d = {}
         for gene_callers_id in genes_of_interest:
             # get the info for the gene (split name, start_in_split, and stop_in_split)
             start = contigs_db.genes_in_contigs_dict[gene_callers_id]['start']
@@ -1559,6 +1559,8 @@ class ProfileSuperclass(object):
             stop_in_split = stop - contigs_db.splits_basic_info[split]['start'] 
 
             for sample in samples_of_interest:
+                if sample not in d:
+                    d[sample] = {}
                 # get the coverage information
                 d[sample][gene_callers_id] = self.split_coverage_values_per_nt_dict[split][sample][start_in_split:stop_in_split]
 
