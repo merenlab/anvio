@@ -572,12 +572,12 @@ class Pangenome(object):
 
         headers.extend(['gc_content', 'num_genes', 'avg_gene_length', 'num_genes_per_kb'])
 
-        for c in list(self.genomes.values()):
+        for genome_name in self.genomes:
             new_dict = {}
             for header in headers:
-                new_dict[header] = c[header]
+                new_dict[header] = self.genomes[genome_name][header]
 
-            samples_info_dict[c['name']] = new_dict
+            samples_info_dict[genome_name] = new_dict
 
         utils.store_dict_as_TAB_delimited_file(samples_info_dict, samples_info_file_path, headers=['samples'] + headers)
 
