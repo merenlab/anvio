@@ -322,8 +322,8 @@ class GenomeStorage(object):
 
                 aa_sequence = self.get_gene_sequence(genome_name, gene_caller_id)
 
-                fasta_output.write_id('%s_%d\n' % (genome_info_dict[genome_name]['genome_hash'], int(gene_caller_id)))
-                fasta_output.write_seq(aa_sequence)
+                fasta_output.write_id('%s_%d' % (genome_info_dict[genome_name]['genome_hash'], int(gene_caller_id)))
+                fasta_output.write_seq(aa_sequence, split=False)
 
                 total_num_aa_sequences += 1
 
