@@ -107,7 +107,7 @@ class GenomeStorage(object):
         # to the profile database we will generate for the pangenome analysis, even if one split is added or removed from any
         # of the genomes will make sure that the profile databases from this storage and storage itself are not compatible:
 
-        concatenated_genome_hashes = '_'.join(sorted(self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_hash')))
+        concatenated_genome_hashes = '_'.join(sorted(map(str, self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_hash'))))
         new_hash = hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:8]
 
         self.db.set_meta_value('hash', new_hash)
@@ -272,6 +272,13 @@ class GenomeStorage(object):
         return (partial == 1)
 
 
+    def get_gene_caller_ids(self, genome_name):
+        cursor = self.db._exec('''SELECT gene_caller_id FROM %s WHERE genome_name = ?''' % t.gene_info_table_name, (genome_name, ))
+        rows = cursor.fetchall()
+
+        return [row[0] for row in rows]
+
+
     def get_gene_sequence(self, genome_name, gene_caller_id, report_DNA_sequences=False):
         """Returns gene amino acid sequence unless `report_DNA_sequences` is True."""
         self.is_known_genome(genome_name)
@@ -298,37 +305,33 @@ class GenomeStorage(object):
 
         fasta_output = fastalib.FastaOutput(output_file_path)
 
-        for genome_name in genomes:
+        genome_info_dict = self.get_genomes_dict(genome_names=genome_names)
+
+        for genome_name in genome_names:
             self.progress.new('Storing aa sequences')
             self.progress.update('%s ...' % genome_name)
 
-            genome_data = self.D(genome_name)
-            gene_caller_ids = sorted([int(i[0]) for i in list(genome_data.items())])
+            gene_caller_ids = sorted([int(gene_caller_id) for gene_caller_id in self.get_gene_caller_ids(genome_name)])
 
             for gene_caller_id in gene_caller_ids:
-                partial = self.G(gene_caller_id, genome_data)['partial'].value
+                is_partial = self.is_partial_gene_call(genome_name, gene_caller_id)
 
-                if exclude_partial_gene_calls and partial:
+                if exclude_partial_gene_calls and is_partial:
                     total_num_excluded_aa_sequences += 1
                     continue
 
-                aa_sequence = self.G(gene_caller_id, genome_data)['aa_sequence'].value
+                aa_sequence = self.get_gene_sequence(genome_name, gene_caller_id)
 
-                output_file.write('>%s_%d\n' % (genomes[genome_name]['genome_hash'], int(gene_caller_id)))
-                output_file.write('%s\n' % aa_sequence)
+                fasta_output.write_id('%s_%d\n' % (genome_info_dict[genome_name]['genome_hash'], int(gene_caller_id)))
+                fasta_output.write_seq(aa_sequence)
 
                 total_num_aa_sequences += 1
 
             self.progress.end()
 
-        output_file.close()
+        fasta_output.close()
 
-        self.progress.new('Uniquing the output FASTA file')
-        self.progress.update('...')
-        unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = utils.unique_FASTA_file(output_file_path, store_frequencies_in_deflines=False)
-        self.progress.end()
-
-        self.run.info('Unique AA sequences FASTA', output_file_path)
+        self.run.info('AA sequences FASTA', output_file_path)
         self.run.info('Num AA sequences reported', '%s' % pp(total_num_aa_sequences), nl_before=1)
         self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_aa_sequences))
 
