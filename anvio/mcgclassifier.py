@@ -51,10 +51,6 @@ class MetagenomeCentricGeneClassifier:
         self.profile_db_path = A('profile_db')
         self.output_file_prefix = A('output_file_prefix')
         self.alpha = A('alpha')
-        self.beta = A('beta')     #
-        self.gamma = A('gamma')   # FIXME: beta, gamma, eta, and zeta are not 
-        self.eta = A('eta')       #        used anywhere in the code anyore :)
-        self.zeta = A('zeta')     #
         self.additional_layers_to_append = A('additional_layers_to_append')
         self.samples_information_to_append = A('samples_information_to_append')
         self.collection_name = A('collection_name')
@@ -177,19 +173,6 @@ class MetagenomeCentricGeneClassifier:
         # alpha must be a min of 0 and smaller than 0.5
         if self.alpha < 0 or self.alpha >= 0.5:
             raise ConfigError("alpha must be a minimum of 0 and smaller than 0.5")
-
-        # Checking beta
-        if not isinstance(self.beta, float):
-            raise ConfigError("beta value must be a type float.")
-        self.check_if_valid_portion_value("beta", self.beta)
-
-        # Checking gamma
-        if not isinstance(self.gamma, float):
-            raise ConfigError("Gamma value must be a type float.")
-        self.check_if_valid_portion_value("gamma", self.gamma)
-
-        # Checking eta
-        self.check_if_valid_portion_value("eta", self.eta)
 
         if self.collection_name:
             if not self.profile_db_path:
