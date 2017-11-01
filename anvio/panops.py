@@ -587,19 +587,6 @@ class Pangenome(object):
         return samples_info_file_path
 
 
-    def gen_ad_hoc_anvio_run(self, view_data_file_path, experimental_data_file_path, additional_view_data_file_path, samples_info_file_path):
-        ad_hoc_run = summarizer.AdHocRunGenerator(view_data_file_path, run=self.run, progress=self.progress)
-
-        ad_hoc_run.matrix_data_for_clustering = experimental_data_file_path
-        ad_hoc_run.additional_view_data_file_path = additional_view_data_file_path
-        ad_hoc_run.samples_info_file_path = samples_info_file_path
-
-        ad_hoc_run.output_directory = self.get_output_file_path(os.path.basename(self.output_dir))
-        ad_hoc_run.delete_output_directory_if_exists = True
-
-        ad_hoc_run.generate()
-
-
     def sanity_check(self):
         self.check_programs()
 
