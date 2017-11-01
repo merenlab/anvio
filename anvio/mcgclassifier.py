@@ -390,8 +390,6 @@ class MetagenomeCentricGeneClassifier:
                 self.get_gene_classes()
                 #self.save_gene_class_information_in_additional_layers(bin_id)
                 #self.save_samples_information(bin_id)
-                #if self.store_gene_detections_and_gene_coverages_tables:
-                #    self.save_gene_detection_and_coverage(bin_id)
 
         else:
             # No collection provided so running on the entire detection table
