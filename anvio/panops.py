@@ -734,6 +734,7 @@ class Pangenome(object):
         self.progress.new('Uniquing the output FASTA file')
         self.progress.update('...')
         unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = utils.unique_FASTA_file(combined_aas_FASTA_path, store_frequencies_in_deflines=False)
+        self.run.info('Unique AA sequences FASTA', unique_aas_FASTA_path)
         self.progress.end()
 
         # run search
