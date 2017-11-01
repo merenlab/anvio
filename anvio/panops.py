@@ -50,7 +50,7 @@ class Pangenome(object):
         self.max_num_PCs_for_hierarchical_clustering = constants.max_num_items_for_hierarchical_clustering
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.genomes_storage = GenomeStorage(A('genomes_storage'), run, progress)
+        self.genomes_storage = GenomeStorage(A('genomes_storage'), run=run, progress=progress)
         self.genome_names_to_focus = A('genome_names')
         self.genomes = None
         self.project_name = A('project_name')
@@ -105,6 +105,7 @@ class Pangenome(object):
         self.external_genome_names = [g for g in self.genomes if self.genomes[g]['external_genome']]
         self.internal_genome_names = [g for g in self.genomes if not self.genomes[g]['external_genome']]
 
+        self.hash_to_genome_name = {}
         for genome_name in self.genomes:
             self.hash_to_genome_name[self.genomes[genome_name]['genome_hash']] = genome_name
 
