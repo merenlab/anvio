@@ -2076,7 +2076,7 @@ class ContigsDatabase:
         self.run.info('Skip gene calling?', skip_gene_calling)
         self.run.info('External gene calls provided?', external_gene_calls)
         self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
-        self.run.info('Splitting pays attention to gene calls?', skip_mindful_splitting)
+        self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))
 
         # first things first: do the gene calling on contigs. this part is important. we are doing the
         # gene calling first. so we understand wher genes start and end. this information will guide the
