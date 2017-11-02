@@ -63,16 +63,19 @@ class MetagenomeCentricGeneClassifier:
         self.gene_coverages = pd.DataFrame.empty
         self.gene_detections = pd.DataFrame.empty
         self.samples = {}
+        self.sample_detection_information_was_initiated = False
         self.positive_samples = []
         self.number_of_positive_samples = None
         self.negative_samples = pd.DataFrame.empty
         self.number_of_negative_samples = None
         self.gene_class_information = pd.DataFrame.empty
-        self.samples_information = pd.DataFrame.empty
+        self.samples_detection_information = pd.DataFrame.empty
         self.gene_presence_absence_in_samples = pd.DataFrame.empty
         self.gene_coverages_filtered = pd.DataFrame.empty
         self.additional_description = ''
         self.total_length = None
+        self.samples_coverage_stats_dicts_was_initiated = False
+        self.samples_coverage_stats_dicts = {}
 
         if self.exclude_samples:
             # check that there is a file like this
@@ -216,12 +219,12 @@ class MetagenomeCentricGeneClassifier:
         """
 
         # FIXME: some of the following variables are never used.
-        MDG_samples_information_table_name      = 'MDG_classifier_samples_information'
-        MDG_samples_information_table_structure = ['samples', 'presence', 'detection', 'number_of_taxon_specific_core_detected']
-        MDG_samples_information_table_types     = ['str', 'bool', 'int', 'int']
+        MCG_samples_information_table_name      = 'MCG_classifier_samples_information'
+        MCG_samples_information_table_structure = ['samples', 'presence', 'detection', 'number_of_taxon_specific_core_detected']
+        MCG_samples_information_table_types     = ['str', 'bool', 'int', 'int']
 
         # create an empty dataframe
-        samples_information = pd.DataFrame(index=self.samples, columns=MDG_samples_information_table_structure[1:])
+        samples_information = pd.DataFrame(index=self.samples, columns=MCG_samples_information_table_structure[1:])
         positive_samples = []
         negative_samples = []
 
@@ -232,8 +235,8 @@ class MetagenomeCentricGeneClassifier:
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
             print("total length for %s is %s" % (sample, self.total_length))
-            print("the length of the vector: %s" % len(self.coverage_values_per_nt[sample]))
-            print("number of non zero in %s is %s " % (sample, np.count_nonzero(self.coverage_values_per_nt[sample])))
+            print("the length of the vector: %s" % len(self.coverage_values_per_nt[sample])) # FIXME: after testing this module, delete this line. it is only here to make sure that anvio is not lying to us.
+            print("number of nucleotide positions with non zero coverage in %s is %s " % (sample, np.count_nonzero(self.coverage_values_per_nt[sample])))
             detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / self.total_length
             if detection[sample] >= 0.5 + self.alpha:
                 positive_samples.append(sample)
@@ -250,18 +253,45 @@ class MetagenomeCentricGeneClassifier:
         self.positive_samples = positive_samples
         self.number_of_positive_samples = len(self.positive_samples)
         self.negative_samples = negative_samples
-        self.samples_information = samples_information
+        self.samples_detection_information = samples_information
         self.run.warning('The number of positive samples is %s' % self.number_of_positive_samples)
         self.run.warning('The number of negative samples is %s' % len(self.negative_samples))
+        self.sample_detection_information_was_initiated = True
 
 
-    def plot_TS(self, non_outliers_indices, mean_TS, std_TS):
+    def init_samples_coverage_stats_dict(self):
+        """ populate the samples_coverage_stats_dict."""
+        if not self.sample_detection_information_was_initiated:
+            self.init_sample_detection_information
+
+        num_samples, counter = len(self.samples), 1
+        self.progress.new("Finding nucleotide positions in samples with outlier coverage values")
+        for sample in self.positive_samples:
+            if num_samples > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d samples...' % (counter, num_samples))
+
+            # loop through positive samples
+            # get the non-zero non-outlier information
+            self.samples_coverage_stats_dicts[sample] = get_non_outliers_information(self.coverage_values_per_nt[sample])
+
+            self.run.info_single('The mean and std of non-outliers in sample %s are: %s, %s respectively' % (sample, self.samples_coverage_stats_dicts[sample]['non_outlier_mean_coverage'], self.samples_coverage_stats_dicts[sample]['non_outlier_coverage_std']))
+            number_of_non_outliers = len(self.samples_coverage_stats_dicts[sample]['non_outlier_indices'])
+            self.run.info_single('The number of non-outliers is %s of %s (%.2f%%)' % (number_of_non_outliers, self.total_length, 100.0 * number_of_non_outliers / self.total_length))
+        self.progress.end()
+
+
+    def plot_TS(self):
         """ Creates a pdf file with the following plots for each sample the sorted nucleotide coverages \
         (with a the outliers in red and non-outliers in blue), and a histogram of coverages for the non-outliers"""
         # Creating a dircetory for the plots. If running on bins, each bin would be in a separate sub-directory
+
+        if not self.samples_coverage_stats_dicts_was_initiated:
+            self.init_samples_coverage_stats_dict()
+
         additional_description = ''
         if self.additional_description:
             additional_description = '-' + self.additional_description
+
         plot_dir = self.output_file_prefix + '-TS-plots' + '/'
         os.makedirs(plot_dir, exist_ok=True)
         self.progress.new('Saving figures of taxon specific distributions to pdf')
@@ -284,30 +314,32 @@ class MetagenomeCentricGeneClassifier:
             ax.set_xlabel = 'Nucleotide Number (ordered)'
             ax.set_ylabel = r'$Nucleotide Coverage^2$'
             x1 = range(len(v)) # FIXME: this shouldn't be in the loop (only here because I need to fix the mock data)
-            x2 = reverse_sorted_indices[non_outliers_indices[sample]]
-            y2 = v[non_outliers_indices[sample]]
+            x2 = reverse_sorted_indices[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']]
+            y2 = v[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']]
             # plot all in red
             ax.semilogy(x1,v[sorting_indices],'r.', rasterized=True)
             # plot on top the non-outliers in blue
-            ax.semilogy(x2,v[non_outliers_indices[sample]],'b.', rasterized=True)
+            ax.semilogy(x2,v[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']],'b.', rasterized=True)
             fig.suptitle("%s - sorted coverage values with outliers" % sample)
             plt.savefig(pdf_output_file, format='pdf')
             plt.close()
 
             # plotting a histogram of the non-outliers
             # This would allow to see if they resemble a normal distribution
-            hist_range = (min(v[non_outliers_indices[sample]]),max(v[non_outliers_indices[sample]]))
+            hist_range = (min(v[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']]),max(v[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']]))
             # computing the number of bins so that the width of a bin is ~1/4 of the standard deviation
             # FIXME: need to make it so the bins are only of integers (so the smallest bin is of width 1
             # and that bins are integers)
-            number_of_hist_bins = np.ceil((hist_range[1] - hist_range[0]) / (std_TS[sample]/4)).astype(int) # setting the histogram bins to be of the width of a quarter of std
+            number_of_hist_bins = np.ceil((hist_range[1] - hist_range[0]) / (self.samples_coverage_stats_dicts[sample]['non_outlier_coverage_std']/4)).astype(int) # setting the histogram bins to be of the width of a quarter of std
             fig = plt.figure()
             ax = fig.add_subplot(111, rasterized=True)
             ax.set_xlabel = 'Coverage'
-            ax.hist(v[non_outliers_indices[sample]], number_of_hist_bins,hist_range, rasterized=True)
+            ax.hist(v[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']], number_of_hist_bins,hist_range, rasterized=True)
             fig.suptitle("%s - histogram of non-outliers" % sample)
             # adding the mean and std of the non-outliers as text to the plot
-            text_for_hist = u'$\mu = %d$\n $\sigma = %d$' % (mean_TS[sample], std_TS[sample])
+            text_for_hist = u'$\mu = %d$\n $\sigma = %d$' %\
+                                (self.samples_coverage_stats_dicts[sample]['non_outlier_mean_coverage'],\
+                                 self.samples_coverage_stats_dicts[sample]['non_outlier_coverage_std'])
             ax.text(0.8, 0.9, text_for_hist, ha='center', va='center', transform=ax.transAxes)
             plt.savefig(pdf_output_file, format='pdf')
             plt.close()
@@ -316,28 +348,6 @@ class MetagenomeCentricGeneClassifier:
             number_of_fininshed += 1
             self.progress.update("Finished %d of %d" % (number_of_fininshed, self.number_of_positive_samples))
         self.progress.end()
-
-
-    def get_taxon_specific_genes_in_samples(self):
-        """ Use only positive samples to identify the single copy taxon specific genes in each sample:
-        """
-        non_outliers_indices = {}
-        mean_TS = {}
-        std_TS = {}
-        num_samples, counter = len(self.samples), 1
-        self.progress.new("Finding taxon specific genes in samples")
-        for sample in self.positive_samples:
-            if num_samples > 100 and counter % 100 == 0:
-                self.progress.update('%d of %d samples...' % (counter, num_samples))
-
-            # loop through positive samples
-            # get the indexes of the non outliers and a pdf for the coverage of the single copy core genes
-            non_outliers_indices[sample], mean_TS[sample], std_TS[sample] = get_non_outliers(self.coverage_values_per_nt[sample])
-
-            self.run.info_single('The mean and std in sample %s are: %s, %s respectively' % (sample, mean_TS[sample], std_TS[sample]))
-            self.run.info_single('The number of non_outliers is %s of %s' % (len(non_outliers_indices[sample]), self.total_length))
-        self.progress.end()
-        self.plot_TS(non_outliers_indices,mean_TS,std_TS)
 
 
     def get_gene_classes(self):
@@ -350,7 +360,7 @@ class MetagenomeCentricGeneClassifier:
         self.init_sample_detection_information()
 
         # find the taxon-specific genes for each sample
-        self.get_taxon_specific_genes_in_samples()
+        self.plot_TS()
 
 
     def get_coverage_and_detection_dict(self,bin_id):
@@ -424,9 +434,10 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
     return d
 
 
-def get_non_outliers(v, MAD_threshold=2.5):
+def get_non_outliers_information(v, MAD_threshold=2.5):
     """ returns the the non-zero, non-outliers for the input pandas series using MAD"""
 
+    d = {}
     outliers = get_list_of_outliers(v, threshold=MAD_threshold)
     # setting the zero positions as outliers
     outliers[np.where(v==0)] = 1
@@ -434,11 +445,11 @@ def get_non_outliers(v, MAD_threshold=2.5):
 
     # The non-outliers are non-zero values that are in the IQR (positions that are zero are considered outliers
     # even if the IQR includes zero)
-    non_outliers_indices = np.where(non_outliers)[0]
-    mean = np.mean(v[non_outliers_indices])
-    std = np.std(v[non_outliers_indices])
+    d['non_outlier_indices'] = np.where(non_outliers)[0]
+    d['non_outlier_mean_coverage'] = np.mean(v[d['non_outlier_indices']])
+    d['non_outlier_coverage_std'] = np.std(v[d['non_outlier_indices']])
 
-    return non_outliers_indices, mean, std
+    return d
 
 
 def get_new_mean(_mean, x, N):
