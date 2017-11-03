@@ -452,8 +452,6 @@ def get_non_outliers_information(v, MAD_threshold=2.5):
     return d
 
 
-def get_new_mean(_mean, x, N):
-    """ Helper function to calculate a new mean after removing one data point."""
-    new_mean = N/(N-1)*_mean - 1/(N-1)*x
 
     return new_mean
+    return non_outlier_indices, d
