@@ -198,7 +198,7 @@ def get_list_of_outliers(values, threshold=1.5):
        if values[0] == 0:
             # A vector of all zeros is considered "all outliers"
             return numpy.array([True] * values.size)
-        else:
+       else:
             # A vector of uniform non-zero values is "all non-outliers"
             # This could be important for silly cases (like in megahit) in which there is a maximum value for coverage
             return numpy.array([False] * values.size)
