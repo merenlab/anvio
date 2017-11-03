@@ -8,6 +8,8 @@
 
 import os
 import math
+import pandas as pd
+from itertools import chain
 
 import anvio
 import anvio.utils as utils
@@ -460,7 +462,35 @@ class Pangenome(GenomeStorage):
         return PCs_dict
 
 
-    def cluster_PCs(self):
+    def gen_synteny_based_ordering_of_PCs(self, PCs_dict):
+        """Take the dictionary of PCs, and order PCs per genome based on synteny of genes.
+
+           This adds more orders to the pangenomic output so the user can enforce ordering of
+           PCs based on the synteny of genes they contain in a given genome.
+
+           The synteny in this context is defined by the gene caller ids. Gene caller ids
+           follow a numerical order in anvi'o contigs databases for genes that are coming
+           from the same contig. Of course, the synteny does not mean much for genmes that
+           fragmented into multiple contigs.
+        """
+
+        # yes. this is meren converting the PCs_dict into a pandas data frame :/ if you are reading
+        # this line and if you are not evan, don't tell evan about this. everyone else: i don't know
+        # what you're talking about.
+        df = pd.DataFrame(list(chain.from_iterable(list(PCs_dict.values()))))
+        df = df.sort_values(by=['genome_name', 'gene_caller_id'])
+        df = df.reset_index(drop=True)
+
+        for genome_name in df.genome_name.unique():
+            pcs_in_genome = df.loc[(df.genome_name == genome_name)].protein_cluster_id.unique()
+            pcs_not_described = df.loc[~df.protein_cluster_id.isin(pcs_in_genome)].protein_cluster_id.unique()
+            pcs_order_based_on_genome_synteny = list(pcs_in_genome) + list(pcs_not_described)
+
+            # FIXME: store pcs_order_based_on_genome_synteny as an order in the pan database
+            # which needs this to be addresses first: https://github.com/merenlab/anvio/issues/628
+
+
+    def gen_hierarchical_clustering_of_PCs(self):
         """Uses a clustering configuration to add hierarchical clustering of protein clusters into the pan db
 
         Note how this function cheats the system to create an enchanced clustering configuration:
@@ -725,7 +755,10 @@ class Pangenome(GenomeStorage):
         self.store_PCs(PCs_dict)
 
         # generate a hierarchical clustering of protein clusters (or don't)
-        self.cluster_PCs()
+        self.gen_hierarchical_clustering_of_PCs()
+
+        # generate orderings of PCs based on synteny of genes
+        self.gen_synteny_based_ordering_of_PCs(PCs_dict)
 
         # gen samples info and order files
         self.gen_samples_db()
