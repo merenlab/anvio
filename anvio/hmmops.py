@@ -175,12 +175,14 @@ class SequencesForHMMHits:
             gene_call = self.genes_in_contigs[gene_callers_id]
 
             contig_name = gene_call['contig']
-            start, stop = gene_call['start'], gene_call['stop']
+            start, stop, forward = gene_call['start'], gene_call['stop'], gene_call['direction'] == 'f'
 
             if return_amino_acid_sequences:
                 sequence = self.aa_sequences[gene_callers_id]['sequence']
             else:
                 sequence = self.contig_sequences[contig_name]['sequence'][start:stop]
+                if not forward:
+                    sequence = utils.rev_comp(sequence)
 
             hmm_sequences_dict_for_splits[hit_unique_id] = {'sequence': sequence,
                                                             'source': source,
@@ -191,6 +193,7 @@ class SequencesForHMMHits:
                                                             'start': start,
                                                             'stop': stop,
                                                             'gene_callers_id': gene_callers_id,
+                                                            'rev_comped': (not forward),
                                                             'length': stop - start}
 
         if return_best_hits:
