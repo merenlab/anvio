@@ -481,6 +481,7 @@ class Pangenome(GenomeStorage):
         df = df.sort_values(by=['genome_name', 'gene_caller_id'])
         df = df.reset_index(drop=True)
 
+        # forced synteny
         for genome_name in df.genome_name.unique():
             pcs_in_genome = df.loc[(df.genome_name == genome_name)].protein_cluster_id.unique()
             pcs_not_described = df.loc[~df.protein_cluster_id.isin(pcs_in_genome)].protein_cluster_id.unique()
@@ -488,6 +489,16 @@ class Pangenome(GenomeStorage):
 
             # FIXME: store pcs_order_based_on_genome_synteny as an order in the pan database
             # which needs this to be addresses first: https://github.com/merenlab/anvio/issues/628
+
+        PC_PC_edges = []
+        # network description of PC-PC relationshops given the gene synteny.
+        gene_ordered_list_of_PCs = list(zip(df.gene_caller_id, df.protein_cluster_id))
+        for index in range(1, len(gene_ordered_list_of_PCs)):
+            (GENE_A, PC_A), (GENE_B, PC_B) = gene_ordered_list_of_PCs[index-1], gene_ordered_list_of_PCs[index]
+            if GENE_A == GENE_B - 1:
+                PC_PC_edges.append((PC_A, PC_B), )
+
+        # FIXME: Do something with PC_PC_edges.
 
 
     def gen_hierarchical_clustering_of_PCs(self):
