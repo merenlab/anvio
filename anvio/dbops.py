@@ -1390,7 +1390,7 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
-    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0):
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False):
         """This function will process `self.split_coverage_values_per_nt_dict` to populate
            `self.gene_level_coverage_stats_dict`.
 
@@ -1475,8 +1475,9 @@ class ProfileSuperclass(object):
                     detection = numpy.count_nonzero(gene_coverage_per_position) / gene_length
 
                     # findout outlier psitions, and get non-outliers
-                    outliers_bool = get_list_of_outliers(gene_coverage_per_position)
-                    non_outliers = gene_coverage_per_position[numpy.invert(outliers_bool)]
+                    outliers_bool = get_list_of_outliers(gene_coverage_per_position, outliers_threshold)
+                    non_outlier_positions = numpy.invert(outliers_bool)
+                    non_outliers = gene_coverage_per_position[non_outlier_positions]
 
                     if not(len(non_outliers)):
                         non_outlier_mean_coverage = 0.0
@@ -1489,6 +1490,9 @@ class ProfileSuperclass(object):
                                                                                           'detection': detection,
                                                                                           'non_outlier_mean_coverage': non_outlier_mean_coverage,
                                                                                           'non_outlier_coverage_std':  non_outlier_coverage_std}
+                    if populate_nt_level_coverage == True:
+                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_per_position'] = gene_coverage_per_position
+                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['non_outlier_positions'] = non_outlier_positions
 
             counter += 1
 
