@@ -277,7 +277,7 @@ class MetagenomeCentricGeneClassifier:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
 
             # loop through positive samples
-            # get the non-zero non-outlier information
+            # get the non-outlier information
             self.non_outlier_indices[sample], self.samples_coverage_stats_dicts.loc[sample,] = get_non_outliers_information(self.coverage_values_per_nt[sample])
 
             self.run.info_single('The mean and std of non-outliers in sample %s are: %s, %s respectively' % (sample, self.samples_coverage_stats_dicts['non_outlier_mean_coverage'][sample], self.samples_coverage_stats_dicts['non_outlier_coverage_std'][sample]))
@@ -441,15 +441,10 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
 
 
 def get_non_outliers_information(v, MAD_threshold=2.5):
-    """ returns the the non-zero, non-outliers for the input pandas series using MAD"""
+    """ returns the non-outliers for the input pandas series using MAD"""
 
     d = pd.Series(index=columns_for_samples_coverage_stats_dict)
     outliers = get_list_of_outliers(v, threshold=MAD_threshold)
-    if 0 in v :
-        # setting the zero positions as outliers
-        for i in range(len(outliers)):
-            if v[i] == 0:
-                outliers[i] = True
     non_outliers = np.logical_not(outliers)
 
     if not(len(non_outliers)):
