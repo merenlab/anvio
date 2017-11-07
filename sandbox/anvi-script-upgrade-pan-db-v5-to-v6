@@ -45,7 +45,10 @@ def update_pan_db(pan_db_path, just_do_it = False):
     progress.new("Trying to upgrade the pan database")
     progress.update('...')
 
-    pan_db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
+    try:
+        pan_db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
+    except:
+        pass
 
     clusterings = pan_db.get_table_as_dict('clusterings')
 
@@ -58,7 +61,10 @@ def update_pan_db(pan_db_path, just_do_it = False):
     for old_key, new_key in [('available_clusterings', 'available_item_orders'),
                              ('PCs_clustered', 'PCs_ordered'),
                              ('default_clustering', 'default_item_order')]:
-        pan_db.set_meta_value(new_key, pan_db.get_meta_value(old_key))
+        try:
+            pan_db.set_meta_value(new_key, pan_db.get_meta_value(old_key))
+        except:
+            pass
 
     # remove stuff that are not irrelevant
     try:
