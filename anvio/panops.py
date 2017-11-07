@@ -538,9 +538,9 @@ class Pangenome(GenomeStorage):
             # update the clustering configs:
             updated_clustering_configs[config_name] = enhanced_config_path
 
-            dbops.do_hierarchical_clusterings(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
-                                              input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
-                                              distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
+            dbops.do_hierarchical_clustering_of_items(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
+                                                      input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
+                                                      distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
     def gen_samples_db(self):
