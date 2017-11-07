@@ -40,6 +40,9 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
+columns_for_samples_coverage_stats_dict = ['non_outlier_mean_coverage', 'non_outlier_coverage_std']
+
+
 class MetagenomeCentricGeneClassifier:
     def __init__(self, args, run=run, progress=progress):
         self.run = run
@@ -75,7 +78,8 @@ class MetagenomeCentricGeneClassifier:
         self.additional_description = ''
         self.total_length = None
         self.samples_coverage_stats_dicts_was_initiated = False
-        self.samples_coverage_stats_dicts = {}
+        self.samples_coverage_stats_dicts = pd.DataFrame.empty
+        self.non_outlier_indices = {}
 
         if self.exclude_samples:
             # check that there is a file like this
@@ -264,6 +268,8 @@ class MetagenomeCentricGeneClassifier:
         if not self.sample_detection_information_was_initiated:
             self.init_sample_detection_information
 
+        self.samples_coverage_stats_dicts = pd.DataFrame(index=self.samples, columns=columns_for_samples_coverage_stats_dict)
+
         num_samples, counter = len(self.samples), 1
         self.progress.new("Finding nucleotide positions in samples with outlier coverage values")
         for sample in self.positive_samples:
@@ -271,11 +277,11 @@ class MetagenomeCentricGeneClassifier:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
 
             # loop through positive samples
-            # get the non-zero non-outlier information
-            self.samples_coverage_stats_dicts[sample] = get_non_outliers_information(self.coverage_values_per_nt[sample])
+            # get the non-outlier information
+            self.non_outlier_indices[sample], self.samples_coverage_stats_dicts.loc[sample,] = get_non_outliers_information(self.coverage_values_per_nt[sample])
 
-            self.run.info_single('The mean and std of non-outliers in sample %s are: %s, %s respectively' % (sample, self.samples_coverage_stats_dicts[sample]['non_outlier_mean_coverage'], self.samples_coverage_stats_dicts[sample]['non_outlier_coverage_std']))
-            number_of_non_outliers = len(self.samples_coverage_stats_dicts[sample]['non_outlier_indices'])
+            self.run.info_single('The mean and std of non-outliers in sample %s are: %s, %s respectively' % (sample, self.samples_coverage_stats_dicts['non_outlier_mean_coverage'][sample], self.samples_coverage_stats_dicts['non_outlier_coverage_std'][sample]))
+            number_of_non_outliers = len(self.non_outlier_indices[sample])
             self.run.info_single('The number of non-outliers is %s of %s (%.2f%%)' % (number_of_non_outliers, self.total_length, 100.0 * number_of_non_outliers / self.total_length))
         self.progress.end()
 
@@ -314,32 +320,32 @@ class MetagenomeCentricGeneClassifier:
             ax.set_xlabel = 'Nucleotide Number (ordered)'
             ax.set_ylabel = r'$Nucleotide Coverage^2$'
             x1 = range(len(v)) # FIXME: this shouldn't be in the loop (only here because I need to fix the mock data)
-            x2 = reverse_sorted_indices[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']]
-            y2 = v[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']]
+            x2 = reverse_sorted_indices[self.non_outlier_indices[sample]]
+            y2 = v[self.non_outlier_indices[sample]]
             # plot all in red
             ax.semilogy(x1,v[sorting_indices],'r.', rasterized=True)
             # plot on top the non-outliers in blue
-            ax.semilogy(x2,v[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']],'b.', rasterized=True)
+            ax.semilogy(x2,v[self.non_outlier_indices[sample]],'b.', rasterized=True)
             fig.suptitle("%s - sorted coverage values with outliers" % sample)
             plt.savefig(pdf_output_file, format='pdf')
             plt.close()
 
             # plotting a histogram of the non-outliers
             # This would allow to see if they resemble a normal distribution
-            hist_range = (min(v[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']]),max(v[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']]))
+            hist_range = (min(v[self.non_outlier_indices[sample]]),max(v[self.non_outlier_indices[sample]]))
             # computing the number of bins so that the width of a bin is ~1/4 of the standard deviation
             # FIXME: need to make it so the bins are only of integers (so the smallest bin is of width 1
             # and that bins are integers)
-            number_of_hist_bins = np.ceil((hist_range[1] - hist_range[0]) / (self.samples_coverage_stats_dicts[sample]['non_outlier_coverage_std']/4)).astype(int) # setting the histogram bins to be of the width of a quarter of std
+            number_of_hist_bins = np.ceil((hist_range[1] - hist_range[0]) / (self.samples_coverage_stats_dicts['non_outlier_coverage_std'][sample]/4)).astype(int) # setting the histogram bins to be of the width of a quarter of std
             fig = plt.figure()
             ax = fig.add_subplot(111, rasterized=True)
             ax.set_xlabel = 'Coverage'
-            ax.hist(v[self.samples_coverage_stats_dicts[sample]['non_outlier_indices']], number_of_hist_bins,hist_range, rasterized=True)
+            ax.hist(v[self.non_outlier_indices[sample]], number_of_hist_bins,hist_range, rasterized=True)
             fig.suptitle("%s - histogram of non-outliers" % sample)
             # adding the mean and std of the non-outliers as text to the plot
             text_for_hist = u'$\mu = %d$\n $\sigma = %d$' %\
-                                (self.samples_coverage_stats_dicts[sample]['non_outlier_mean_coverage'],\
-                                 self.samples_coverage_stats_dicts[sample]['non_outlier_coverage_std'])
+                                (self.samples_coverage_stats_dicts['non_outlier_mean_coverage'][sample],\
+                                 self.samples_coverage_stats_dicts['non_outlier_coverage_std'][sample])
             ax.text(0.8, 0.9, text_for_hist, ha='center', va='center', transform=ax.transAxes)
             plt.savefig(pdf_output_file, format='pdf')
             plt.close()
@@ -435,25 +441,20 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
 
 
 def get_non_outliers_information(v, MAD_threshold=2.5):
-    """ returns the the non-zero, non-outliers for the input pandas series using MAD"""
+    """ returns the non-outliers for the input pandas series using MAD"""
 
-    d = {}
+    d = pd.Series(index=columns_for_samples_coverage_stats_dict)
     outliers = get_list_of_outliers(v, threshold=MAD_threshold)
-    # setting the zero positions as outliers
-    outliers[np.where(v==0)] = 1
     non_outliers = np.logical_not(outliers)
 
-    # The non-outliers are non-zero values that are in the IQR (positions that are zero are considered outliers
-    # even if the IQR includes zero)
-    d['non_outlier_indices'] = np.where(non_outliers)[0]
-    d['non_outlier_mean_coverage'] = np.mean(v[d['non_outlier_indices']])
-    d['non_outlier_coverage_std'] = np.std(v[d['non_outlier_indices']])
+    if not(len(non_outliers)):
+        non_outlier_indices = np.array([])
+        d['non_outlier_mean_coverage'] = 0.0
+        d['non_outlier_coverage_std'] = 0.0
 
-    return d
+    else:
+        non_outlier_indices = np.where(non_outliers)[0]
+        d['non_outlier_mean_coverage'] = np.mean(v[non_outlier_indices])
+        d['non_outlier_coverage_std'] = np.std(v[non_outlier_indices])
 
-
-def get_new_mean(_mean, x, N):
-    """ Helper function to calculate a new mean after removing one data point."""
-    new_mean = N/(N-1)*_mean - 1/(N-1)*x
-
-    return new_mean
+    return non_outlier_indices, d

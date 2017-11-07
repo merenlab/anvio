@@ -1558,31 +1558,59 @@ function newBin(id, binState) {
     });
 }
 
-function deleteBin(id) {
-    if (confirm('Are you sure?')) {
-
-        $('#bin_row_' + id).remove();
-        $('#tbody_bins input[type=radio]').last().prop('checked', true);
-        bin_count--;
-
-        for (var i = 0; i < SELECTED[id].length; i++) {
-            var node_id = label_to_node_map[SELECTED[id][i]].id;
-            $("#line" + node_id).css('stroke-width', '1');
-            $("#arc" + node_id).css('stroke-width', '1');
-            $("#line" + node_id).css('stroke', LINE_COLOR);
-            $("#arc" + node_id).css('stroke', LINE_COLOR);
-        }
-
-        SELECTED[id] = [];
-        delete completeness_dict[id];
-
-        if (bin_count==0)
-        {
-            newBin();
-        }
-
-        redrawBins();
+function deleteBin(id, show_confirm) {
+    if (typeof show_confirm === 'undefined') {
+        show_confirm = true;
     }
+
+    if (show_confirm && !confirm('Are you sure?')) {
+        return;
+    }
+
+    $('#bin_row_' + id).remove();
+    $('#tbody_bins input[type=radio]').last().prop('checked', true);
+    bin_count--;
+
+    for (var i = 0; i < SELECTED[id].length; i++) {
+        var node = label_to_node_map[SELECTED[id][i]];
+
+        if (typeof node === 'undefined' || !node.hasOwnProperty('id')) {
+            continue;
+        }
+
+        var node_id = node.id;
+        $("#line" + node_id).css('stroke-width', '1');
+        $("#arc" + node_id).css('stroke-width', '1');
+        $("#line" + node_id).css('stroke', LINE_COLOR);
+        $("#arc" + node_id).css('stroke', LINE_COLOR);
+    }
+
+    SELECTED[id] = [];
+    delete completeness_dict[id];
+
+    if (bin_count==0)
+    {
+        newBin();
+    }
+
+    redrawBins();
+}
+
+function deleteAllBins() {
+    if (!confirm('Are you sure you want to remove all bins?')) {
+        return;
+    }
+    var bin_ids_to_delete = [];
+
+    $('#tbody_bins tr').each(
+        function(index, bin) {
+            bin_ids_to_delete.push($(bin).attr('bin-id'));
+        }
+    );
+
+    bin_ids_to_delete.map(function(bin_id) { 
+        deleteBin(bin_id, false);
+    });
 }
 
 function showGenSummaryWindow() {
