@@ -748,7 +748,7 @@ class PanSuperclass(object):
         self.protein_clusters_gene_alignments_available = False
         self.protein_clusters_function_sources = []
         self.protein_clusters_functions_dict = {}
-        self.clusterings = {}
+        self.item_orders = {}
         self.views = {}
         self.collection_profile = {}
 
@@ -781,13 +781,13 @@ class PanSuperclass(object):
         self.genome_names = self.p_meta['genome_names']
         self.protein_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
-        if self.p_meta['PCs_clustered']:
-            self.p_meta['available_clusterings'] = sorted([s.strip() for s in self.p_meta['available_clusterings'].split(',')])
-            self.clusterings = pan_db.db.get_table_as_dict(t.clusterings_table_name)
+        if self.p_meta['PCs_ordered']:
+            self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
+            self.item_orders = pan_db.db.get_table_as_dict(t.item_orders_table_name)
         else:
-            self.p_meta['available_clusterings'] = None
-            self.p_meta['default_clustering'] = None
-            self.clusterings = None
+            self.p_meta['available_item_orders'] = None
+            self.p_meta['default_item_order'] = None
+            self.item_orders = None
 
         # recover all protein cluster names so others can access to this information
         # without having to initialize anything
@@ -1254,7 +1254,7 @@ class ProfileSuperclass(object):
         self.auxiliary_data_path = None
 
         self.split_names = set([])
-        self.clusterings = {}
+        self.item_orders = {}
         self.views = {}
         self.collection_profile = {}
 
@@ -1306,26 +1306,26 @@ class ProfileSuperclass(object):
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
 
-        if self.p_meta['contigs_clustered'] and 'available_clusterings' in self.p_meta:
-            self.p_meta['available_clusterings'] = sorted([s.strip() for s in self.p_meta['available_clusterings'].split(',')])
-            self.clusterings = profile_db.db.get_table_as_dict(t.clusterings_table_name)
-        elif self.p_meta['contigs_clustered'] and 'available_clusterings' not in self.p_meta:
+        if self.p_meta['contigs_ordered'] and 'available_item_orders' in self.p_meta:
+            self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
+            self.item_orders = profile_db.db.get_table_as_dict(t.item_orders_table_name)
+        elif self.p_meta['contigs_ordered'] and 'available_item_orders' not in self.p_meta:
             self.progress.end()
-            self.run.warning("Your profile database thinks the hierarchical clustering was done, yet it contains no entries\
-                              for any hierarchical clustering results. This is not good. Something must have gone wrong\
+            self.run.warning("Your profile database thinks the hierarchical item_order was done, yet it contains no entries\
+                              for any hierarchical item_order results. This is not good. Something must have gone wrong\
                               somewhere :/ To be on the safe side, anvi'o will assume this profile database has no\
-                              clustering (which is literally the case, by the way, it is just the database itself is\
+                              item_order (which is literally the case, by the way, it is just the database itself is\
                               confused about that fact --it happens to the best of us).")
             self.progress.new('Initializing the profile database superclass')
 
-            self.p_meta['contigs_clustered'] = False
-            self.p_meta['available_clusterings'] = None
-            self.p_meta['default_clustering'] = None
-            self.clusterings = None
+            self.p_meta['contigs_ordered'] = False
+            self.p_meta['available_item_orders'] = None
+            self.p_meta['default_item_order'] = None
+            self.item_orders = None
         else:
-            self.p_meta['available_clusterings'] = None
-            self.p_meta['default_clustering'] = None
-            self.clusterings = None
+            self.p_meta['available_item_orders'] = None
+            self.p_meta['default_item_order'] = None
+            self.item_orders = None
 
         profile_db.disconnect()
 
@@ -1685,7 +1685,7 @@ class ProfileDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability', 'merged', 'blank', 'contigs_clustered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length']:
+            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability', 'merged', 'blank', 'contigs_ordered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
@@ -1716,7 +1716,7 @@ class ProfileDatabase:
         self.db = db.DB(self.db_path, anvio.__profile__version__, new_database=True)
 
         # creating empty default tables
-        self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
+        self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
         self.db.create_table(t.variable_aas_table_name, t.variable_aas_table_structure, t.variable_aas_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
@@ -1767,7 +1767,7 @@ class PanDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             for key in ['num_genomes', 'pc_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', \
-                        'num_protein_clusters', 'num_genes_in_protein_clusters', 'gene_alignments_computed', 'PCs_clustered']:
+                        'num_protein_clusters', 'num_genes_in_protein_clusters', 'gene_alignments_computed', 'PCs_ordered']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
@@ -1806,7 +1806,7 @@ class PanDatabase:
         self.db.create_table(t.pan_protein_clusters_table_name, t.pan_protein_clusters_table_structure, t.pan_protein_clusters_table_types)
 
         # creating empty default tables for standard anvi'o profiles
-        self.db.create_table(t.clusterings_table_name, t.clusterings_table_structure, t.clusterings_table_types)
+        self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
@@ -2099,7 +2099,7 @@ class ContigsDatabase:
 
                 # this is very confusing, because both contigs_kmer_table and splits_kmer_able in fact
                 # holds kmer values for splits only. in one table, each split has a kmer value of their
-                # contigs (to not lose the genomic context while clustering based on kmers), in the other
+                # contigs (to not lose the genomic context while item_order based on kmers), in the other
                 # one each split holds its own kmer value.
                 contigs_kmer_table.append(split_name, contig_sequence[start:end], kmer_freq=contig_kmer_freq)
                 splits_kmer_table.append(split_name, contig_sequence[start:end])
@@ -2457,10 +2457,10 @@ class TablesForViews(Table):
 
         Entries in 'views' table appear in various places in the interface. However, we also generate
         view tables to store the type of data we do not wish to display on interfaces, but be able
-        access from various other modules. A good example to this is the clustering recipes. When we
+        access from various other modules. A good example to this is the item_order recipes. When we
         profile a sample, we treat every stplit as their own entity with respect to their mean coverage.
-        Although it is great for visualization purposes, it is not useful for clustering purposes since in
-        most cases we wish splits to stay together in clustering output. Hence, we create a mean_coverage_splits
+        Although it is great for visualization purposes, it is not useful for item_order purposes since in
+        most cases we wish splits to stay together in item_order output. Hence, we create a mean_coverage_splits
         table, where each split holds their own coverage, and we create a mean_coverage_contigs table where each
         split has the coverage of their parent. Clearly the second table is not useful to display. When a table
         is not added as an entry to the 'views' table, then it only exists in the database for other purposes
@@ -4019,9 +4019,9 @@ def update_description_in_db(anvio_db_path, description, run=run):
                      and %d characters." % (db_type, len(description.split()), len(description)))
 
 
-def do_hierarchical_clusterings(anvio_db_path, clustering_configs, split_names=[], database_paths={}, input_directory=None, default_clustering_config=None, \
+def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split_names=[], database_paths={}, input_directory=None, default_clustering_config=None, \
                                 distance=constants.distance_metric_default, linkage=constants.linkage_method_default, run=run, progress=progress):
-    """This is just an orphan function that computes hierarchical clustering results
+    """This is just an orphan function that computes hierarchical clustering w results
        and calls the `add_hierarchical_clustering_to_db` function with correct input.
 
        Ugly but useful --yet another one of those moments in which we sacrifice
@@ -4036,13 +4036,13 @@ def do_hierarchical_clusterings(anvio_db_path, clustering_configs, split_names=[
         config = ClusteringConfiguration(config_path, input_directory, db_paths=database_paths, row_ids_of_interest=split_names)
 
         try:
-            clustering_id, newick = order_contigs_simple(config, distance=distance, linkage=linkage, progress=progress)
+            clustering_name, newick = order_contigs_simple(config, distance=distance, linkage=linkage, progress=progress)
         except Exception as e:
             progress.end()
             run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
             continue
 
-        _, distance, linkage = clustering_id.split(':')
+        _, distance, linkage = clustering_name.split(':')
 
         add_hierarchical_clustering_to_db(anvio_db_path, config_name, newick, distance=distance, linkage=linkage, make_default=config_name == default_clustering_config, run=run)
 
@@ -4056,97 +4056,97 @@ def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering
     utils.is_this_name_OK_for_database('clustering_name parameter', clustering_name, stringent=False)
 
     # replace clustering id with a text that contains distance and linkage information
-    clustering_id = ':'.join([clustering_name, distance, linkage])
+    clustering_name = ':'.join([clustering_name, distance, linkage])
 
     anvio_db = DBClassFactory().get_db_object(anvio_db_path)
 
-    if t.clusterings_table_name not in anvio_db.db.get_table_names():
-        raise ConfigError("You can't a new clustering result into this %s database (%s). You know why? Becasue it doesn't\
-                            have a table for 'clusterings' :(" % (db_type, anvio_db_path))
+    if t.item_orders_table_name not in anvio_db.db.get_table_names():
+        raise ConfigError("You can't add a new items order into this %s database (%s). You know why? Becasue it doesn't\
+                            have a table for 'item_order' :(" % (db_type, anvio_db_path))
 
     try:
-        available_clusterings = anvio_db.db.get_meta_value('available_clusterings').split(',')
+        available_item_orders = anvio_db.db.get_meta_value('available_item_orders').split(',')
     except:
-        available_clusterings = []
+        available_item_orders = []
 
-    if clustering_id in available_clusterings:
+    if clustering_name in available_item_orders:
         run.warning('Clustering for "%s" (with %s distance and %s linkage) is already in the database. Its content will\
                      be replaced with the new one.' % (clustering_name, distance, linkage))
 
-        anvio_db.db._exec('''DELETE FROM %s where clustering = "%s"''' % (t.clusterings_table_name, clustering_id))
+        anvio_db.db._exec('''DELETE FROM %s where name = "%s"''' % (t.item_orders_table_name, clustering_name))
     else:
-        available_clusterings.append(clustering_id)
+        available_item_orders.append(clustering_name)
 
-    anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.clusterings_table_name, tuple([clustering_id, clustering_newick]))
+    anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, tuple([clustering_name, 'newick', clustering_newick]))
 
     try:
-        anvio_db.db.remove_meta_key_value_pair('available_clusterings')
+        anvio_db.db.remove_meta_key_value_pair('available_item_orders')
     except:
         pass
-    anvio_db.db.set_meta_value('available_clusterings', ','.join(available_clusterings))
+    anvio_db.db.set_meta_value('available_item_orders', ','.join(available_item_orders))
 
     try:
-        anvio_db.db.remove_meta_key_value_pair('PCs_clustered' if db_type == 'pan' else 'contigs_clustered')
+        anvio_db.db.remove_meta_key_value_pair('PCs_ordered' if db_type == 'pan' else 'contigs_ordered')
     except:
         pass
-    anvio_db.db.set_meta_value('PCs_clustered' if db_type == 'pan' else 'contigs_clustered', True)
+    anvio_db.db.set_meta_value('PCs_ordered' if db_type == 'pan' else 'contigs_ordered', True)
 
     try:
-        anvio_db.db.get_meta_value('default_clustering')
-        default_clustering_is_set = True
+        anvio_db.db.get_meta_value('default_item_order')
+        default_item_order_is_set = True
     except:
-        default_clustering_is_set = False
+        default_item_order_is_set = False
 
-    if make_default or not default_clustering_is_set:
+    if make_default or not default_item_order_is_set:
         try:
-            anvio_db.db.remove_meta_key_value_pair('default_clustering')
+            anvio_db.db.remove_meta_key_value_pair('default_item_order')
         except:
             pass
-        anvio_db.db.set_meta_value('default_clustering', clustering_id)
+        anvio_db.db.set_meta_value('default_item_order', clustering_name)
 
     anvio_db.disconnect()
 
-    run.info('New hierarchical clusetring', '"%s" has been added to the database...' % clustering_id)
+    run.info('New hierarchical clusetring', '"%s" has been added to the database...' % clustering_name)
 
 
-def get_default_clustering_id(default_clustering_requested, clusterings_dict, progress=progress, run=run):
-    """Get the proper default clustering given the desired default with respect to available clusterings.
+def get_default_item_order_name(default_item_order_requested, item_orders_dict, progress=progress, run=run):
+    """Get the proper default item_order given the desired default with respect to available item_orders.
 
-       This is tricky. We have some deault clusterings defined in the constants. For instance, for the
+       This is tricky. We have some deault item_orders defined in the constants. For instance, for the
        merged profiles we want the default to be 'tnf-cov', for single profiles we want it to be 'tnf',
        etc. The problem is that these defaults do not indicate any distance metric or linkages,
        even though anvi'o allows users to define those variables freely in cluster configurations.
 
-       A clustering dict can contain multiple clustrings. The purpose of this function is to take the
+       A item_order dict can contain multiple clustrings. The purpose of this function is to take the
        desired default into consideration, but then find a working one if it is not available, or there
        are multiple ones in the dict.
     """
 
-    if not clusterings_dict:
-        raise ConfigError("You requested to get the default clustering given the clustering dictionary,\
-                            but the clustering dict is empty :/ ")
+    if not item_orders_dict:
+        raise ConfigError("You requested to get the default item_order given the item_order dictionary,\
+                            but the item_order dict is empty :/ ")
 
-    matching_clustering_ids = [clustering for clustering in clusterings_dict if clustering.lower().split(':')[0] == default_clustering_requested.lower()]
+    matching_item_order_names = [item_order for item_order in item_orders_dict if item_order.lower().split(':')[0] == default_item_order_requested.lower()]
 
-    if not len(matching_clustering_ids):
-        default_clustering = list(clusterings_dict.keys())[0]
-        run.warning('`get_default_clustering_id` function is concerned, because nothing in the clusterings\
-                     dict matched to the desired default clustring class "%s". So it literally set "%s"\
-                     (a class of "%s") randomly as the default. Good luck :/' % (default_clustering_requested,
-                                                                                 default_clustering,
-                                                                                 default_clustering.split(':')[0]))
-        return default_clustering
-    elif len(matching_clustering_ids) == 1:
-        return matching_clustering_ids[0]
+    if not len(matching_item_order_names):
+        default_item_order = list(item_orders_dict.keys())[0]
+        run.warning('`get_default_item_order_name` function is concerned, because nothing in the item_orders\
+                     dict matched to the desired order class "%s". So the order literally set to "%s"\
+                     (a class of "%s") randomly as the default order. Good luck :/' % (default_item_order_requested,
+                                                                                 default_item_order,
+                                                                                 default_item_order.split(':')[0]))
+        return default_item_order
+    elif len(matching_item_order_names) == 1:
+        return matching_item_order_names[0]
     else:
-        default_clustering = matching_clustering_ids[0]
-        run.warning('`get_default_clustering_id` function is concerned, because there were multiple entries\
-                     in the clusterings dict matched to the desired default clustring class "%s". So it set\
-                     the first of all %d matching clusterings, which happened to be the "%s", as the\
-                     default. We hope that will not screw up your mojo :/' % (default_clustering_requested,
-                                                                              len(matching_clustering_ids),
-                                                                              default_clustering))
-        return default_clustering
+        default_item_order = matching_item_order_names[0]
+        run.warning('`get_default_item_order_name` function is concerned, because there were multiple entries\
+                     in the item_orders dict matched to the desired default order class "%s". So it set\
+                     the first of all %d matching item_orders, which happened to be the "%s", as the\
+                     default. We hope that will not screw up your mojo :/' % (default_item_order_requested,
+                                                                              len(matching_item_order_names),
+                                                                              default_item_order))
+        return default_item_order
 
 
 def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path):

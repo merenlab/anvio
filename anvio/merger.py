@@ -334,7 +334,7 @@ class MultipleRuns:
                        'total_reads_mapped': total_reads_mapped_list,
                        'merged': True,
                        'blank': False,
-                       'contigs_clustered': not self.skip_hierarchical_clustering,
+                       'contigs_ordered': not self.skip_hierarchical_clustering,
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
                        'SNVs_profiled': self.SNVs_profiled,
@@ -593,9 +593,9 @@ class MultipleRuns:
         self.run.info_single("Anvi'o hierarchical clustering of contigs...", nl_before=1, nl_after=1, mc="blue")
 
         if not self.skip_hierarchical_clustering:
-            dbops.do_hierarchical_clusterings(self.merged_profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
-                                              input_directory=self.output_directory, default_clustering_config=constants.merged_default, \
-                                              distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
+            dbops.do_hierarchical_clustering_of_items(self.merged_profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
+                                                      input_directory=self.output_directory, default_clustering_config=constants.merged_default, \
+                                                      distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
     def get_split_parents(self):

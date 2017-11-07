@@ -145,7 +145,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'samples': self.sample_id,
                        'merged': False,
                        'blank': self.blank,
-                       'contigs_clustered': self.contigs_shall_be_clustered,
+                       'contigs_ordered': self.contigs_shall_be_clustered,
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
                        'SNVs_profiled': not self.skip_SNV_profiling,
@@ -719,9 +719,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def cluster_contigs(self):
         default_clustering_config = constants.blank_default if self.blank else constants.single_default
 
-        dbops.do_hierarchical_clusterings(self.profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
-                                          input_directory=self.output_directory, default_clustering_config=default_clustering_config, \
-                                          distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
+        dbops.do_hierarchical_clustering_of_items(self.profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
+                                                  input_directory=self.output_directory, default_clustering_config=default_clustering_config, \
+                                                  distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
     def check_args(self):
