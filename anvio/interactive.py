@@ -260,7 +260,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def check_for_clusterings(self):
         if self.mode == 'manual':
             return
-        if not len([o for o in self.p_meta['item_orders'].values() if o['type'] == 'newick']):
+
+        if not self.p_meta['item_orders'] or not len([o for o in self.p_meta['item_orders'].values() if o['type'] == 'newick']):
             if self.p_meta['db_type'] == 'pan':
                 raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
                                    clustering of protein clusters (PCs) in it. Maybe you skipped the clustering step, maybe\
