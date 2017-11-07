@@ -49,16 +49,18 @@ def update_profile_db(profile_db_path, just_do_it = False):
 
     clusterings = profile_db.get_table_as_dict('clusterings')
 
-    # set the version
-    profile_db.remove_meta_key_value_pair('version')
-    profile_db.set_version(next_version)
-
+    # move clustering data into the new table
     for clustering in clusterings:
-        clustering_name, distance, linkage = clustering.split(':')
         newick = clusterings[clustering]['newick']
-        dbops.add_hierarchical_clustering_to_db(profile_db_path, clustering_name, newick, distance, linkage)
+        profile_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, tuple([clustering, 'newick', newick]))
 
-    # drop the old table and now irrelevant self values
+    # update keys
+    for old_key, new_key in [('available_clusterings', 'available_item_orders'),
+                             ('contigs_clustered', 'contigs_ordered'),
+                             ('default_clustering', 'default_item_order')]:
+        profile_db.set_meta_value(new_key, profile_db.get_meta_value(old_key))
+
+    # remove stuff that are not irrelevant
     try:
         profile_db._exec('DROP TABLE clusterings;')
         profile_db.remove_meta_key_value_pair('available_clusterings')
@@ -78,6 +80,10 @@ def update_profile_db(profile_db_path, just_do_it = False):
         profile_db._exec('vacuum')
     except:
         pass
+
+    # set the version
+    profile_db.remove_meta_key_value_pair('version')
+    profile_db.set_version(next_version)
 
     # bye
     profile_db.disconnect()
