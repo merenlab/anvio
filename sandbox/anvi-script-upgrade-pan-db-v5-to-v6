@@ -49,20 +49,22 @@ def update_pan_db(pan_db_path, just_do_it = False):
 
     clusterings = pan_db.get_table_as_dict('clusterings')
 
-    # set the version
-    pan_db.remove_meta_key_value_pair('version')
-    pan_db.set_version(next_version)
-
+    # move clustering data into the new table
     for clustering in clusterings:
-        clustering_name, distance, linkage = clustering.split(':')
         newick = clusterings[clustering]['newick']
-        dbops.add_hierarchical_clustering_to_db(pan_db_path, clustering_name, newick, distance, linkage)
+        pan_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, tuple([clustering, 'newick', newick]))
 
-    # drop the old table and now irrelevant self values
+    # update keys
+    for old_key, new_key in [('available_clusterings', 'available_item_orders'),
+                             ('PCs_clustered', 'PCs_ordered'),
+                             ('default_clustering', 'default_item_order')]:
+        pan_db.set_meta_value(new_key, pan_db.get_meta_value(old_key))
+
+    # remove stuff that are not irrelevant
     try:
         pan_db._exec('DROP TABLE clusterings;')
         pan_db.remove_meta_key_value_pair('available_clusterings')
-        pan_db.remove_meta_key_value_pair('contigs_clustered')
+        pan_db.remove_meta_key_value_pair('PCs_clustered')
         pan_db.remove_meta_key_value_pair('default_clustering')
     except:
         pass
@@ -78,6 +80,10 @@ def update_pan_db(pan_db_path, just_do_it = False):
         pan_db._exec('vacuum')
     except:
         pass
+
+    # set the version
+    pan_db.remove_meta_key_value_pair('version')
+    pan_db.set_version(next_version)
 
     # bye
     pan_db.disconnect()
