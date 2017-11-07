@@ -195,7 +195,13 @@ def get_list_of_outliers(values, threshold=1.5):
     median_absolute_deviation = numpy.median(diff)
 
     if not median_absolute_deviation:
-        return [True] * values.size
+       if values[0] == 0:
+            # A vector of all zeros is considered "all outliers"
+            return numpy.array([True] * values.size)
+       else:
+            # A vector of uniform non-zero values is "all non-outliers"
+            # This could be important for silly cases (like in megahit) in which there is a maximum value for coverage
+            return numpy.array([False] * values.size)
 
     modified_z_score = 0.6745 * diff / median_absolute_deviation
 

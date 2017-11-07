@@ -517,18 +517,18 @@ class ContigsSuperclass(object):
         return self.contig_name_to_genes[contig_name]
 
 
-    def get_AA_counts_dict(self, split_names=set([]), contig_names=set([]), gene_caller_ids=set([])):
+    def get_AA_counts_dict(self, split_names=set([]), contig_names=set([]), gene_caller_ids=set([]), return_codons_instead=False):
         """Returns a dictionary of AA counts.
 
            The dict can be returned for a given collection of split names, contigs names,
            or gene calls. If none of these variables are specified, the dict will contain
            counts for all gene calls in the contigs database"""
 
-        AA_counts_dict = {}
+        counts_dict = {}
 
         # nothing to do here if the genes were not called:
         if not self.a_meta['genes_are_called']:
-            return AA_counts_dict
+            return counts_dict
 
         if len([True for v in [split_names, contig_names, gene_caller_ids] if v]) > 1:
             raise ConfigError("get_AA_counts_dict :: If you want to get AA counts for a specific\
@@ -555,25 +555,31 @@ class ContigsSuperclass(object):
         if not len(self.contig_sequences):
             self.init_contig_sequences()
 
-        AAs = []
+        # sequences is a list of gene sequences, where each gene sequence is itself a list
+        # of either AAs, e.g. ["Ala","Ala","Trp",...] or codons, e.g. ["AAA","AAT","CCG",...]
+        sequences = []
         for gene_call_id in gene_calls_of_interest:
             gene_call = self.genes_in_contigs_dict[gene_call_id]
 
             if gene_call['partial']:
                 continue
 
-            AAs.extend(utils.get_list_of_AAs_for_gene_call(gene_call, self.contig_sequences))
+            if return_codons_instead:
+                sequences.extend(utils.get_list_of_codons_for_gene_call(gene_call, self.contig_sequences))
+            else:
+                sequences.extend(utils.get_list_of_AAs_for_gene_call(gene_call, self.contig_sequences))
 
-        AA_counts_dict['AA_counts'] = Counter(AAs)
-        AA_counts_dict['total_AAs'] = sum(Counter(AAs).values())
-        AA_counts_dict['total_gene_calls'] = len(gene_calls_of_interest)
+        counts_dict['counts'] = Counter(sequences)
+        counts_dict['total'] = sum(Counter(sequences).values())
+        counts_dict['total_gene_calls'] = len(gene_calls_of_interest)
 
-        # add missing AAs into the dict .. if there are any
-        for AA in list(constants.codon_to_AA.values()):
-            if AA not in AA_counts_dict['AA_counts']:
-                AA_counts_dict['AA_counts'][AA] = 0
+        # add missing AAs or codons into the dict ... if there are any
+        items = constants.codons if return_codons_instead else constants.AA_to_codons.keys()
+        for item in items:
+            if item not in counts_dict['counts']:
+                counts_dict['counts'][item] = 0
 
-        return AA_counts_dict
+        return counts_dict
 
 
     def get_corresponding_gene_caller_ids_for_base_position(self, contig_name, pos_in_contig):
@@ -1390,7 +1396,7 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
-    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0):
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False):
         """This function will process `self.split_coverage_values_per_nt_dict` to populate
            `self.gene_level_coverage_stats_dict`.
 
@@ -1475,8 +1481,9 @@ class ProfileSuperclass(object):
                     detection = numpy.count_nonzero(gene_coverage_per_position) / gene_length
 
                     # findout outlier psitions, and get non-outliers
-                    outliers_bool = get_list_of_outliers(gene_coverage_per_position)
-                    non_outliers = gene_coverage_per_position[numpy.invert(outliers_bool)]
+                    outliers_bool = get_list_of_outliers(gene_coverage_per_position, outliers_threshold)
+                    non_outlier_positions = numpy.invert(outliers_bool)
+                    non_outliers = gene_coverage_per_position[non_outlier_positions]
 
                     if not(len(non_outliers)):
                         non_outlier_mean_coverage = 0.0
@@ -1489,6 +1496,9 @@ class ProfileSuperclass(object):
                                                                                           'detection': detection,
                                                                                           'non_outlier_mean_coverage': non_outlier_mean_coverage,
                                                                                           'non_outlier_coverage_std':  non_outlier_coverage_std}
+                    if populate_nt_level_coverage == True:
+                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_per_position'] = gene_coverage_per_position
+                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['non_outlier_positions'] = non_outlier_positions
 
             counter += 1
 
@@ -2005,7 +2015,7 @@ class ContigsDatabase:
         self.run.info('Skip gene calling?', skip_gene_calling)
         self.run.info('External gene calls provided?', external_gene_calls)
         self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
-        self.run.info('Splitting pays attention to gene calls?', skip_mindful_splitting)
+        self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))
 
         # first things first: do the gene calling on contigs. this part is important. we are doing the
         # gene calling first. so we understand wher genes start and end. this information will guide the
@@ -2606,7 +2616,7 @@ class AA_counts(ContigsSuperclass):
             split_name_per_bin_dict[e['bin_name']].add(e['split'])
 
         for bin_name in bin_names_of_interest:
-            self.counts_dict[bin_name] = self.get_AA_counts_dict(split_names=set(split_name_per_bin_dict[bin_name]))['AA_counts']
+            self.counts_dict[bin_name] = self.get_AA_counts_dict(split_names=set(split_name_per_bin_dict[bin_name]))['counts']
 
 
     def __AA_counts_for_contigs(self):
@@ -2620,7 +2630,7 @@ class AA_counts(ContigsSuperclass):
                                 database :(")
 
         for contig_name in contigs_of_interest:
-            self.counts_dict[contig_name] = self.get_AA_counts_dict(contig_names=set([contig_name]))['AA_counts']
+            self.counts_dict[contig_name] = self.get_AA_counts_dict(contig_names=set([contig_name]))['counts']
 
 
     def __AA_counts_for_genes(self):
@@ -2633,11 +2643,11 @@ class AA_counts(ContigsSuperclass):
                                 call ids (I tried to int them, and it didn't work!)")
 
         for gene_call in genes_of_interest:
-            self.counts_dict[gene_call] = self.get_AA_counts_dict(gene_caller_ids=set([gene_call]))['AA_counts']
+            self.counts_dict[gene_call] = self.get_AA_counts_dict(gene_caller_ids=set([gene_call]))['counts']
 
 
     def __AA_counts_for_the_contigs_db(self):
-        self.counts_dict[self.args.contigs_db] = self.get_AA_counts_dict()['AA_counts']
+        self.counts_dict[self.args.contigs_db] = self.get_AA_counts_dict()['counts']
 
 
     def report(self):
