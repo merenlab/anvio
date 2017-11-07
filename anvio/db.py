@@ -180,6 +180,12 @@ class DB:
         return self._exec(query, values)
 
 
+    def insert_many(self, table_name, entries=[]):
+        if len(entries):
+            query = '''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(entries[0])))
+            return self._exec_many(query, entries)
+
+
     def get_all_rows_from_table(self, table):
         response = self._exec('''SELECT * FROM %s''' % table)
         return response.fetchall()

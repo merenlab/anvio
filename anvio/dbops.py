@@ -2397,24 +2397,6 @@ class InfoTableForContigs:
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
 
-class InfoTableForSplits:
-    def __init__(self):
-        self.db_entries = []
-        self.total_splits = 0
-
-
-    def append(self, seq_id, sequence, order, start, end, parent_gc_content, parent):
-        self.total_splits += 1
-        sequence_length = len(sequence)
-        db_entry = tuple([seq_id, order, start, end, sequence_length, utils.get_GC_content_for_sequence(sequence), parent_gc_content, parent])
-        self.db_entries.append(db_entry)
-
-
-    def store(self, db):
-        if len(self.db_entries):
-            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.splits_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
-
-
 class KMerTablesForContigsAndSplits:
     def __init__(self, table_name, k=4):
         self.table_name = table_name
