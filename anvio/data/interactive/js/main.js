@@ -258,7 +258,7 @@ function initData() {
     function (response)
         {
         var titleResponse = [ response.title ];
-        var clusteringsResponse = [ response.clusterings ];
+        var itemOrdersResponse = [ response.item_orders ];
         var viewsResponse = [ response.views ];
         var contigLengthsResponse = [ response.contigLengths ];
         var defaultViewResponse = [ response.defaultView ];
@@ -410,8 +410,8 @@ function initData() {
             /* 
             //  Clusterings
             */
-            var default_tree = clusteringsResponse[0][0];
-            var available_trees = clusteringsResponse[0][1];
+            var default_tree = itemOrdersResponse[0][0];
+            var available_trees = itemOrdersResponse[0][1];
             var available_trees_combo = getComboBoxContent(default_tree, available_trees);
 
             $('#trees_container').append(available_trees_combo);
