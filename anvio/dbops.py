@@ -40,6 +40,8 @@ from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.sequence import get_list_of_outliers
 
+from anvio.table.contigsinfo import InfoTableForContigs
+from anvio.table.splitsinfo import InfoTableForSplits
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -2059,8 +2061,8 @@ class ContigsDatabase:
         auxiliary_contigs_data_path = get_auxiliary_data_path_for_contigs_db(self.db_path)
         nt_positions_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, contigs_db_hash, create_new=True)
 
-        contigs_info_table = InfoTableForContigs(split_length)
-        splits_info_table = InfoTableForSplits()
+        contigs_info_table = InfoTableForContigs(self.db, split_length)
+        splits_info_table = InfoTableForSplits(self.db)
 
         recovered_split_lengths = []
 
@@ -2113,8 +2115,8 @@ class ContigsDatabase:
         self.db.set_meta_value('kmer_size', kmer_size)
         contigs_kmer_table.store(self.db)
         splits_kmer_table.store(self.db)
-        contigs_info_table.store(self.db)
-        splits_info_table.store(self.db)
+        contigs_info_table.store()
+        splits_info_table.store()
 
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.contig_sequences_table_name, db_entries_contig_sequences)
 
@@ -2368,33 +2370,6 @@ class SamplesInformationDatabase:
 #
 ####################################################################################################
 
-
-class InfoTableForContigs:
-    def __init__(self, split_length):
-        self.db_entries = []
-        self.total_nts = 0
-        self.total_contigs = 0
-        self.split_length = split_length
-
-
-    def append(self, seq_id, sequence, gene_start_stops=None):
-        sequence_length = len(sequence)
-        gc_content = utils.get_GC_content_for_sequence(sequence)
-
-        # how many splits will there be?
-        split_start_stops = utils.get_split_start_stops(sequence_length, self.split_length, gene_start_stops)
-
-        self.total_nts += sequence_length
-        self.total_contigs += 1
-        db_entry = tuple([seq_id, sequence_length, gc_content, len(split_start_stops)])
-        self.db_entries.append(db_entry)
-
-        return (sequence_length, split_start_stops, gc_content)
-
-
-    def store(self, db):
-        if len(self.db_entries):
-            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
 
 class KMerTablesForContigsAndSplits:
