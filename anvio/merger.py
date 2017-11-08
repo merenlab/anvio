@@ -17,6 +17,7 @@ import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
+from anvio.table.views import TablesForViews
 from anvio.errors import ConfigError
 
 __author__ = "A. Murat Eren"
@@ -550,16 +551,16 @@ class MultipleRuns:
 
                 # time to store the data for this view in the profile database
                 table_name = '_'.join([essential_field, target])
-                dbops.TablesForViews(self.merged_profile_db_path).create_new_view(
-                                                data_dict=data_dict,
-                                                table_name=table_name,
-                                                table_structure=view_table_structure,
-                                                table_types=view_table_types,
-                                                view_name=essential_field if target == 'splits' else None)
+                TablesForViews(self.merged_profile_db_path).create_new_view(
+                                            data_dict=data_dict,
+                                            table_name=table_name,
+                                            table_structure=view_table_structure,
+                                            table_types=view_table_types,
+                                            view_name=essential_field if target == 'splits' else None)
 
         # if SNVs were not profiled, remove all entries from variability tables:
         if not self.SNVs_profiled:
-            dbops.TablesForViews(self.merged_profile_db_path).remove(view_name='variability', table_names_to_blank=['variability_splits', 'variability_contigs'])
+            TablesForViews(self.merged_profile_db_path).remove(view_name='variability', table_names_to_blank=['variability_splits', 'variability_contigs'])
 
         self.progress.end()
 
