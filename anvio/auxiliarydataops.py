@@ -175,10 +175,10 @@ class AuxiliaryDataForNtPositions(object):
                                 directory with your contigs database. But if you do have it there, then anvi'o really\
                                 needs an adult :(")
 
-        if not self.nt_positions_info.is_known_contig(contig_name):
+        if not self.is_known_contig(contig_name):
             return (0, 0, 0)
 
-        position_info = self.nt_positions_info[contig_name][pos_in_contig]
+        position_info = self.nt_position_info[contig_name][pos_in_contig]
 
         if not position_info:
             return (0, 0, 0)

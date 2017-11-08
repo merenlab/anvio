@@ -22,6 +22,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 from anvio.errors import ConfigError
 
+from anvio.auxiliarydataops import AuxiliaryDataForNtPositions
 from anvio.table.views import TablesForViews
 
 __author__ = "A. Murat Eren"
@@ -111,6 +112,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # following variable will be populated while the variable positions table is computed
         self.codons_in_genes_to_profile_AA_frequencies = set([])
+
+        self.nt_positions_info = AuxiliaryDataForNtPositions(dbops.get_auxiliary_data_path_for_contigs_db(self.contigs_db_path), self.a_meta['contigs_db_hash'])
 
         # we don't know what we are about
         self.description = None
@@ -285,7 +288,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                     column_profile['in_partial_gene_call'], \
                     column_profile['in_complete_gene_call'],\
-                    column_profile['base_pos_in_codon'] = self.get_nt_position_info(contig.name, pos_in_contig)
+                    column_profile['base_pos_in_codon'] = self.nt_positions_info.get_nt_position_info(contig.name, pos_in_contig)
 
                     column_profile['sample_id'] = self.sample_id
                     column_profile['corresponding_gene_call'] = -1 # this means there is no gene call that corresponds to this
