@@ -333,6 +333,16 @@ anvi-split -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C
 INFO "Listing all collections and bins available in the merged profile"
 anvi-show-collections-and-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db
 
+INFO "Running anvi-mcg-classifier"
+mkdir -p $output_dir/MCG_CLASSIFIER_OUTPUTS
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG
+
+INFO "Running anvi-mcg-classifier on a collection"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG_CONCOCT -C CONCOCT
+
+INFO "Running anvi-mcg-classifier on a single bin in a collection"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG_Bin_1 -C CONCOCT -b Bin_1
+
 INFO 'A dry run with an items order file for the merged profile without any clustering'
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
