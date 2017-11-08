@@ -3309,52 +3309,6 @@ class TablesForCollections(Table):
         return db_entries_for_contigs
 
 
-class TablesForStates(Table):
-    def __init__(self, db_path):
-        self.db_path = db_path
-        self.states = {}
-
-        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
-
-        self.init()
-
-
-    def init(self):
-        anvio_db = DBClassFactory().get_db_object(self.db_path)
-        self.states = anvio_db.db.get_table_as_dict(t.states_table_name)
-        anvio_db.disconnect()
-
-
-    def list_states(self):
-        state_names = sorted(list(self.states.keys()))
-
-        self.run.warning('', 'AVAILABLE STATES (%d FOUND)' % (len(self.states)), lc='yellow')
-        for state_name in state_names:
-            self.run.info_single('%s (last modified on %s)' % (state_name, self.states[state_name]['last_modified']),
-                                 nl_after = 1 if state_name == state_names[-1] else 0)
-
-
-    def get_state(self, state_id):
-        if state_id not in self.states:
-            return None
-
-        return self.states[state_id]
-
-
-    def store_state(self, state_id, content, last_modified=None):
-        self.remove_state(state_id)
-
-        last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S") if not last_modified else last_modified
-
-        anvio_db = DBClassFactory().get_db_object(self.db_path)
-        anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.states_table_name, (state_id, content, last_modified))
-        self.states = anvio_db.db.get_table_as_dict(t.states_table_name)
-
-        anvio_db.disconnect()
-
-
-    def remove_state(self, state_id):
-        self.delete_entries_for_key('name', state_id, [t.states_table_name])
 
 
 class TablesForTaxonomy(Table):
