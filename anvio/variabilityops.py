@@ -304,7 +304,7 @@ class VariabilitySuper(object):
         else:
             if self.min_departure_from_consensus:
                 self.run.info('Min departure from consensus', self.min_departure_from_consensus)
-                self.filter('max departure from consensus', lambda x: x['departure_from_consensus'] < self.min_departure_from_consensus)
+                self.filter('min departure from consensus', lambda x: x['departure_from_consensus'] < self.min_departure_from_consensus)
 
             if self.max_departure_from_consensus < 1:
                 self.run.info('Max departure from consensus', self.max_departure_from_consensus)
@@ -382,9 +382,9 @@ class VariabilitySuper(object):
 
         if self.pandas:
             if self.engine == 'NT':
-                self.data['unique_pos_identifier_str'] = self.data['split_name'] + self.data['pos'].astype(str)
+                self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
             if self.engine == 'AA':
-                self.data['unique_pos_identifier_str'] = self.data['split_name'] + self.data['corresponding_gene_call'].astype(str) + self.data['codon_order_in_gene'].astype(str)
+                self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['corresponding_gene_call'].astype(str) + "_" + self.data['codon_order_in_gene'].astype(str)
 
             # this could go anywhere now
             self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
@@ -514,6 +514,10 @@ class VariabilitySuper(object):
 
             items = constants.amino_acids if self.engine == "AA" else list(constants.nucleotides)
 
+            # index those with and without non-zero coverage
+            coverage_zero = self.data.index.isin(entry_ids) & (self.data["coverage"] == 0)
+            coverage_nonzero = self.data.index.isin(entry_ids) & (self.data["coverage"] > 0)
+
             # coverage values and identity of items most common
             coverages_first = self.data.loc[entry_ids, items].max(axis=1)
             items_first = self.data.loc[entry_ids, items].idxmax(axis=1)
@@ -524,15 +528,22 @@ class VariabilitySuper(object):
             items_second = exclude_first.idxmax(axis=1)
 
             self.data.loc[entry_ids, "consensus"] = items_first
-            self.data.loc[entry_ids, "departure_from_consensus"] = (self.data.loc[entry_ids, "coverage"] - coverages_first) / self.data.loc[entry_ids, "coverage"]
-            self.data.loc[entry_ids, "n2n1ratio"] = coverages_second / coverages_first
+
+            # if the coverage is zero, departure_from_consensus = -1
+            self.data.loc[coverage_zero, "departure_from_consensus"] = -1
+            self.data.loc[coverage_nonzero, "departure_from_consensus"] = \
+                        (self.data.loc[coverage_nonzero, "coverage"] - coverages_first) / self.data.loc[coverage_nonzero, "coverage"]
+
+            # if the coverage is zero, departure_from_consensus = -1
+            self.data.loc[coverage_zero, "n2n1ratio"] = -1
+            self.data.loc[coverage_nonzero, "n2n1ratio"] = coverages_second.loc[coverage_nonzero] / coverages_first[coverage_nonzero]
 
             if self.engine == 'AA':
 
                 # first naively concatenate the first and second most common
                 self.data.loc[entry_ids, "competing_aas"] = items_first + items_second
                 # if the most common has a coverage equal to the total coverage, pair the most common with itself
-                self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == coverages_first), "competing_aas"] = self.data["consensus"]*2
+                self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == self.data[items].max(axis=1)), "competing_aas"] = self.data["consensus"]*2
                 # alphabetize the pairs so that AlaTrp ends up the same as TrpAla
                 self.data.loc[entry_ids, "competing_aas"] = self.data.loc[entry_ids, "competing_aas"].apply(lambda x: ''.join(sorted([x[:3], x[3:]])))
 
@@ -663,25 +674,37 @@ class VariabilitySuper(object):
 
         self.run.info('Min coverage in all samples', '%dX' % self.min_coverage_in_each_sample)
 
-        # we need to make sure we have an up-to-date dictionary for unque position to entry id conversion:
-        self.gen_unique_pos_identifier_to_entry_id_dict()
+        if self.pandas:
 
-        self.progress.new('Examining coverage of each variable position in each sample')
-        self.progress.update('...')
+            self.progress.new('Examining coverage of each variable position in each sample')
+            self.progress.update('...')
 
-        entry_ids_to_remove = set([])
+            pos_to_keep = self.data.loc[self.data["coverage"] >= self.min_coverage_in_each_sample, "unique_pos_identifier"].unique()
+            self.data = self.data[self.data["unique_pos_identifier"].isin(pos_to_keep)]
 
-        for unique_pos_id in self.unique_pos_id_to_entry_id:
-            entry_ids = self.unique_pos_id_to_entry_id[unique_pos_id]
+            self.progress.end()
 
-            min_coverage_in_a_sample = min([self.data[entry_id]['coverage'] for entry_id in entry_ids])
+        else:
 
-            if min_coverage_in_a_sample < self.min_coverage_in_each_sample:
-                entry_ids_to_remove.update(entry_ids)
+            # we need to make sure we have an up-to-date dictionary for unque position to entry id conversion:
+            self.gen_unique_pos_identifier_to_entry_id_dict()
 
-        self.progress.end()
+            self.progress.new('Examining coverage of each variable position in each sample')
+            self.progress.update('...')
 
-        self.remove_entries_from_data(entry_ids_to_remove, "min cov in all samples")
+            entry_ids_to_remove = set([])
+
+            for unique_pos_id in self.unique_pos_id_to_entry_id:
+                entry_ids = self.unique_pos_id_to_entry_id[unique_pos_id]
+
+                min_coverage_in_a_sample = min([self.data[entry_id]['coverage'] for entry_id in entry_ids])
+
+                if min_coverage_in_a_sample < self.min_coverage_in_each_sample:
+                    entry_ids_to_remove.update(entry_ids)
+
+            self.progress.end()
+
+            self.remove_entries_from_data(entry_ids_to_remove, "min cov in all samples")
 
 
     def filter_based_on_num_positions_from_each_split(self):
@@ -759,128 +782,206 @@ class VariabilitySuper(object):
             self.run.warning("Anvi'o will skip comprehensive variability score computations.")
             return
 
-        # FIXME: In the future we should separate this function into two:
-        #   1. scores that require quince mode - these are scores that are computed according 
-        #       to the occurence accross samples, and hence they require quince mode
-        #       for example: Kullbak-Leibler divergence
-        #   2. scores that dont require quince mode - these are calculated per sample (e.g. entropy, BLOSUM)
-        # For now we just require quince mode for all scores
-        if not self.quince_mode:
-            self.run.warning("Comprehensive variability score computations can only be done with `--quince-mode`")
-            return
+        import time; start = time.time()
 
-        unique_positions_and_frequencies_dict = self.get_unique_positions_and_frequencies_dict()
+        if self.pandas:
 
-        self.progress.new('Comprehensive stats')
-        self.progress.update('...')
+            if not self.quince_mode:
+                self.run.warning("Only some comprehensive variability score computations can only be done without `--quince-mode`")
 
-        comprehensive_stats = {}
-        self.comprehensive_stats_headers = [m + '_weighted' for m in self.substitution_scoring_matrices] + \
-                                           ['entropy', 'kullback_leibler_divergence_raw', 'kullback_leibler_divergence_normalized']
+            self.progress.new("Comprehensive stats that don't require --quince-mode")
+            self.progress.update('...')
 
-        # converting the substitution matrices from dict of dicts to numpy matrix (to allow vector operations later on)
-        # we keep track of the indices of the items for the following reasons:
-        #    1. in case the substitution matrix has only a sub-set of the items
-        #    2. to make sure the order of items is compatible between this matrix and the items frequency vectors (and thus allow vector operations - see below)
-        self.progress.update('Initializing numpy formatted substitution matrices...')
-        item_indices_for_substitution_scoring_matrices = {}
-        numpy_matrices_for_substitution_scoring_matrices = {}
-        for m in self.substitution_scoring_matrices:
-            item_indices_for_substitution_scoring_matrices[m] = [self.items.index(item) for item in self.substitution_scoring_matrices[m].keys()]
+            # compute entropy
+            self.data["entropy"] = entropy
 
-            items = list(self.substitution_scoring_matrices[m].keys())
-            num_items = len(items)
-            numpy_matrices_for_substitution_scoring_matrices[m] = np.zeros([num_items, num_items])
-            for i in range(num_items):
-                for j in range(num_items):
-                    if i == j:
-                        # We set the substitution score of an item with itself to zero. This way we only consider substitutions to other items
-                        # (and dont consider substitution of an item with itself)
-                        numpy_matrices_for_substitution_scoring_matrices[m][i][j] = 0
+
+
+
+
+
+
+
+
+
+            self.progress.update('Running comprehensive stats across all unique positions X samples')
+
+                    # compute entropy
+                    comprehensive_stats[sample_id]['entropy'] = entropy(list_of_sample_frequencies[i])
+
+                    # compute Kullback-Leibler divergence for raw counts
+                    kullback_leibler_divergence_raw = entropy(list_of_sample_frequencies[i], sum_sample_frequencies)
+                    # compute Kullback-Leibler divergence for normalized counts (normalized to sum to 1 in each sample)
+                    kullback_leibler_divergence_normalized = entropy(list_of_sample_frequencies_normalized[i], sum_sample_frequencies_normalized)
+
+                    comprehensive_stats[sample_id]['kullback_leibler_divergence_raw'] = kullback_leibler_divergence_raw
+                    comprehensive_stats[sample_id]['kullback_leibler_divergence_normalized'] = kullback_leibler_divergence_normalized
+
+                    # computing weighted substitution score
+                    # we compute a weighted score for each existing substitution matrix
+                    if not comprehensive_stats[sample_id]['entropy']:
+                        # if the entropy is zero it means there are no substitutions in this sample (i.e. this row is here due to quince mode)
+                        # so no need to calculate substitution score
+                        for m in self.substitution_scoring_matrices:
+                            comprehensive_stats[sample_id][m + '_weighted'] = None
                     else:
-                        numpy_matrices_for_substitution_scoring_matrices[m][i][j] = self.substitution_scoring_matrices[m][items[i]][items[j]]
+                        for m in self.substitution_scoring_matrices:
+                            # here we subsample AND reorder our sample frequencies based on the items that
+                            # appear in the substitution matrix `m`. see the code above with the for loop
+                            # to remember how they are set.
+                            S = list_of_sample_frequencies[i][item_indices_for_substitution_scoring_matrices[m]]
+                            S = S / sum(S)
 
-        self.progress.update('Running comprehensive stats across all unique positions X samples')
-        unique_positions = list(unique_positions_and_frequencies_dict.keys())
-        num_unique_positions = len(unique_positions)
-        for unique_pos_index in range(num_unique_positions):
-            unique_pos = unique_positions[unique_pos_index]
+                            if np.count_nonzero(S) > 1:
+                                # because the substitution matrix might hold only a subset of the items,
+                                # we could have positions in which the entropy is greater than zero, but 
+                                # only due to items that are not in the substitution matrix (for example stop codon is not in BLOSUM)
+                                # hence to avoid devision by zero we make sure there is more than one nonzero frequency
 
-            if unique_pos_index % 100 == 0:
-                self.progress.update('Running comprehensive stats: %s of %s ...' % (pp(unique_pos_index + 1), pp(num_unique_positions)))
+                                # a normalization score is needed since we dont consider a substitution of an item with itself.
+                                # hence, the sum of frequencies wouldn't sum to 1, and so to make sure they sum to 1
+                                # we multiply by this normalization factor. We want these to sum to 1 because otherwise these
+                                # are not valid weights.
+                                normalization_factor = 1 / (1 - np.sum(np.square(S)))
+                                # element-wise multiplication of the substitution matrix with the outer-product of the frequency vector with itself
+                                # this means that each substitution score between two items is weighted by the product of the weight of the items
+                                A = normalization_factor * np.sum(np.multiply(numpy_matrices_for_substitution_scoring_matrices[m], np.outer(S, S)))
+                                comprehensive_stats[sample_id][m + '_weighted'] = A
+                            else:
+                                comprehensive_stats[sample_id][m + '_weighted'] = None
+
+                # update self.data with comprehensive stats
+                for entry_id in self.unique_pos_id_to_entry_id[unique_pos]:
+                    e = self.data[entry_id]
+                    s = e['sample_id']
+
+                    for h in self.comprehensive_stats_headers:
+                        e[h] = comprehensive_stats[s][h]
+        else:
+
+            # FIXME: In the future we should separate this function into two:
+            #   1. scores that require quince mode - these are scores that are computed according 
+            #       to the occurence accross samples, and hence they require quince mode
+            #       for example: Kullbak-Leibler divergence
+            #   2. scores that dont require quince mode - these are calculated per sample (e.g. entropy, BLOSUM)
+            # For now we just require quince mode for all scores
+            if not self.quince_mode:
+                self.run.warning("Comprehensive variability score computations can only be done with `--quince-mode`")
+                return
+
+            unique_positions_and_frequencies_dict = self.get_unique_positions_and_frequencies_dict()
+
+            self.progress.new('Comprehensive stats')
+            self.progress.update('...')
 
             comprehensive_stats = {}
+            self.comprehensive_stats_headers = [m + '_weighted' for m in self.substitution_scoring_matrices] + \
+                                               ['entropy', 'kullback_leibler_divergence_raw', 'kullback_leibler_divergence_normalized']
 
-            # first create a vector of frequencies for all samples
-            list_of_sample_frequencies = []
-            for sample_id in self.sample_ids:
-                list_of_sample_frequencies.append([unique_positions_and_frequencies_dict[unique_pos][sample_id][f] for f in self.items])
-                comprehensive_stats[sample_id] = {}
+            # converting the substitution matrices from dict of dicts to numpy matrix (to allow vector operations later on)
+            # we keep track of the indices of the items for the following reasons:
+            #    1. in case the substitution matrix has only a sub-set of the items
+            #    2. to make sure the order of items is compatible between this matrix and the items frequency vectors (and thus allow vector operations - see below)
+            self.progress.update('Initializing numpy formatted substitution matrices...')
+            item_indices_for_substitution_scoring_matrices = {}
+            numpy_matrices_for_substitution_scoring_matrices = {}
+            for m in self.substitution_scoring_matrices:
+                item_indices_for_substitution_scoring_matrices[m] = [self.items.index(item) for item in self.substitution_scoring_matrices[m].keys()]
 
-            # create a numpy array for all samples, and sum sample frequencies
-            list_of_sample_frequencies = np.array(list_of_sample_frequencies)
-            sum_sample_frequencies = sum(list_of_sample_frequencies)
-
-            # normalizing frequencies (so they add to 1) (notice that by deviding by a column vector we divide each row of the matrix by the sum that
-            # corresponds to that row)
-            list_of_sample_frequencies_normalized = np.divide(np.array(list_of_sample_frequencies), np.sum(list_of_sample_frequencies, axis=1)[:, np.newaxis])
-            sum_sample_frequencies_normalized = sum(list_of_sample_frequencies_normalized)
-
-            for i in range(0, len(self.sample_ids)):
-                sample_id = self.sample_ids[i]
-
-                # compute entropy
-                comprehensive_stats[sample_id]['entropy'] = entropy(list_of_sample_frequencies[i])
-
-                # compute Kullback-Leibler divergence for raw counts
-                kullback_leibler_divergence_raw = entropy(list_of_sample_frequencies[i], sum_sample_frequencies)
-                # compute Kullback-Leibler divergence for normalized counts (normalized to sum to 1 in each sample)
-                kullback_leibler_divergence_normalized = entropy(list_of_sample_frequencies_normalized[i], sum_sample_frequencies_normalized)
-
-                comprehensive_stats[sample_id]['kullback_leibler_divergence_raw'] = kullback_leibler_divergence_raw
-                comprehensive_stats[sample_id]['kullback_leibler_divergence_normalized'] = kullback_leibler_divergence_normalized
-
-                # computing weighted substitution score
-                # we compute a weighted score for each existing substitution matrix
-                if not comprehensive_stats[sample_id]['entropy']:
-                    # if the entropy is zero it means there are no substitutions in this sample (i.e. this row is here due to quince mode)
-                    # so no need to calculate substitution score
-                    for m in self.substitution_scoring_matrices:
-                        comprehensive_stats[sample_id][m + '_weighted'] = None
-                else:
-                    for m in self.substitution_scoring_matrices:
-                        # here we subsample AND reorder our sample frequencies based on the items that
-                        # appear in the substitution matrix `m`. see the code above with the for loop
-                        # to remember how they are set.
-                        S = list_of_sample_frequencies[i][item_indices_for_substitution_scoring_matrices[m]]
-                        S = S / sum(S)
-
-                        if np.count_nonzero(S) > 1:
-                            # because the substitution matrix might hold only a subset of the items,
-                            # we could have positions in which the entropy is greater than zero, but 
-                            # only due to items that are not in the substitution matrix (for example stop codon is not in BLOSUM)
-                            # hence to avoid devision by zero we make sure there is more than one nonzero frequency
-
-                            # a normalization score is needed since we dont consider a substitution of an item with itself.
-                            # hence, the sum of frequencies wouldn't sum to 1, and so to make sure they sum to 1
-                            # we multiply by this normalization factor. We want these to sum to 1 because otherwise these
-                            # are not valid weights.
-                            normalization_factor = 1 / (1 - np.sum(np.square(S)))
-                            # element-wise multiplication of the substitution matrix with the outer-product of the frequency vector with itself
-                            # this means that each substitution score between two items is weighted by the product of the weight of the items
-                            A = normalization_factor * np.sum(np.multiply(numpy_matrices_for_substitution_scoring_matrices[m], np.outer(S, S)))
-                            comprehensive_stats[sample_id][m + '_weighted'] = A
+                items = list(self.substitution_scoring_matrices[m].keys())
+                num_items = len(items)
+                numpy_matrices_for_substitution_scoring_matrices[m] = np.zeros([num_items, num_items])
+                for i in range(num_items):
+                    for j in range(num_items):
+                        if i == j:
+                            # We set the substitution score of an item with itself to zero. This way we only consider substitutions to other items
+                            # (and dont consider substitution of an item with itself)
+                            numpy_matrices_for_substitution_scoring_matrices[m][i][j] = 0
                         else:
+                            numpy_matrices_for_substitution_scoring_matrices[m][i][j] = self.substitution_scoring_matrices[m][items[i]][items[j]]
+
+            self.progress.update('Running comprehensive stats across all unique positions X samples')
+            unique_positions = list(unique_positions_and_frequencies_dict.keys())
+            num_unique_positions = len(unique_positions)
+            for unique_pos_index in range(num_unique_positions):
+                unique_pos = unique_positions[unique_pos_index]
+
+                if unique_pos_index % 100 == 0:
+                    self.progress.update('Running comprehensive stats: %s of %s ...' % (pp(unique_pos_index + 1), pp(num_unique_positions)))
+
+                comprehensive_stats = {}
+
+                # first create a vector of frequencies for all samples
+                list_of_sample_frequencies = []
+                for sample_id in self.sample_ids:
+                    list_of_sample_frequencies.append([unique_positions_and_frequencies_dict[unique_pos][sample_id][f] for f in self.items])
+                    comprehensive_stats[sample_id] = {}
+
+                # create a numpy array for all samples, and sum sample frequencies
+                list_of_sample_frequencies = np.array(list_of_sample_frequencies)
+                sum_sample_frequencies = sum(list_of_sample_frequencies)
+
+                # normalizing frequencies (so they add to 1) (notice that by deviding by a column vector we divide each row of the matrix by the sum that
+                # corresponds to that row)
+                list_of_sample_frequencies_normalized = np.divide(np.array(list_of_sample_frequencies), np.sum(list_of_sample_frequencies, axis=1)[:, np.newaxis])
+                sum_sample_frequencies_normalized = sum(list_of_sample_frequencies_normalized)
+
+                for i in range(0, len(self.sample_ids)):
+                    sample_id = self.sample_ids[i]
+
+                    # compute entropy
+                    comprehensive_stats[sample_id]['entropy'] = entropy(list_of_sample_frequencies[i])
+
+                    # compute Kullback-Leibler divergence for raw counts
+                    kullback_leibler_divergence_raw = entropy(list_of_sample_frequencies[i], sum_sample_frequencies)
+                    # compute Kullback-Leibler divergence for normalized counts (normalized to sum to 1 in each sample)
+                    kullback_leibler_divergence_normalized = entropy(list_of_sample_frequencies_normalized[i], sum_sample_frequencies_normalized)
+
+                    comprehensive_stats[sample_id]['kullback_leibler_divergence_raw'] = kullback_leibler_divergence_raw
+                    comprehensive_stats[sample_id]['kullback_leibler_divergence_normalized'] = kullback_leibler_divergence_normalized
+
+                    # computing weighted substitution score
+                    # we compute a weighted score for each existing substitution matrix
+                    if not comprehensive_stats[sample_id]['entropy']:
+                        # if the entropy is zero it means there are no substitutions in this sample (i.e. this row is here due to quince mode)
+                        # so no need to calculate substitution score
+                        for m in self.substitution_scoring_matrices:
                             comprehensive_stats[sample_id][m + '_weighted'] = None
+                    else:
+                        for m in self.substitution_scoring_matrices:
+                            # here we subsample AND reorder our sample frequencies based on the items that
+                            # appear in the substitution matrix `m`. see the code above with the for loop
+                            # to remember how they are set.
+                            S = list_of_sample_frequencies[i][item_indices_for_substitution_scoring_matrices[m]]
+                            S = S / sum(S)
 
-            # update self.data with comprehensive stats
-            for entry_id in self.unique_pos_id_to_entry_id[unique_pos]:
-                e = self.data[entry_id]
-                s = e['sample_id']
+                            if np.count_nonzero(S) > 1:
+                                # because the substitution matrix might hold only a subset of the items,
+                                # we could have positions in which the entropy is greater than zero, but 
+                                # only due to items that are not in the substitution matrix (for example stop codon is not in BLOSUM)
+                                # hence to avoid devision by zero we make sure there is more than one nonzero frequency
 
-                for h in self.comprehensive_stats_headers:
-                    e[h] = comprehensive_stats[s][h]
+                                # a normalization score is needed since we dont consider a substitution of an item with itself.
+                                # hence, the sum of frequencies wouldn't sum to 1, and so to make sure they sum to 1
+                                # we multiply by this normalization factor. We want these to sum to 1 because otherwise these
+                                # are not valid weights.
+                                normalization_factor = 1 / (1 - np.sum(np.square(S)))
+                                # element-wise multiplication of the substitution matrix with the outer-product of the frequency vector with itself
+                                # this means that each substitution score between two items is weighted by the product of the weight of the items
+                                A = normalization_factor * np.sum(np.multiply(numpy_matrices_for_substitution_scoring_matrices[m], np.outer(S, S)))
+                                comprehensive_stats[sample_id][m + '_weighted'] = A
+                            else:
+                                comprehensive_stats[sample_id][m + '_weighted'] = None
 
+                # update self.data with comprehensive stats
+                for entry_id in self.unique_pos_id_to_entry_id[unique_pos]:
+                    e = self.data[entry_id]
+                    s = e['sample_id']
+
+                    for h in self.comprehensive_stats_headers:
+                        e[h] = comprehensive_stats[s][h]
+
+        print("time taken: {:.3f}".format(time.time()-start))
         self.progress.end()
 
         self.comprehensive_variability_scores_computed = True
@@ -1035,7 +1136,6 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
            variation at nucleotide positions reported in the table"""
         self.progress.new('Recovering NT data')
 
-        # its like 3 times slower than dictionary way
         if self.pandas:
 
             samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
@@ -1206,7 +1306,6 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                         next_available_entry_id += 1
 
             self.progress.end()
-        print("time taken {:.3f}".format(time.time()-start))
 
 
 class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
@@ -1222,7 +1321,6 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
     def recover_base_frequencies_for_all_samples(self):
         self.progress.new('Recovering AA data')
-
 
         if self.pandas:
             samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
@@ -1255,6 +1353,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
             split_names_to_consider = list(splits_to_consider_dict.keys())
             num_splits = len(split_names_to_consider)
+            new_entries = {}
             for split_index in range(num_splits):
                 split_name = split_names_to_consider[split_index]
                 self.progress.update('Accessing split covs, updating variable pos dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
@@ -1272,17 +1371,18 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                         unique_pos_identifier_str = '_'.join([split_name, str(corresponding_gene_call), str(codon_order_in_gene)])
                         reference_codon = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
 
-                        self.data[next_available_entry_id] = {'unique_pos_identifier_str': unique_pos_identifier_str,
-                                                              'unique_pos_identifier': unique_pos_identifier_str_to_unique_pos_identifier[unique_pos_identifier_str],
-                                                              'sample_id': sample_name,
-                                                              'split_name': split_name,
-                                                              'contig_name': contig_name,
-                                                              'corresponding_gene_call': corresponding_gene_call,
-                                                              'gene_length': gene_length,
-                                                              'codon_order_in_gene': codon_order_in_gene,
-                                                              'departure_from_reference': 0,
-                                                              'coverage': None,
-                                                              'reference': reference_codon}
+                        new_entries[next_available_entry_id] = {'entry_id': next_available_entry_id,
+                                                                'unique_pos_identifier_str': unique_pos_identifier_str,
+                                                                'unique_pos_identifier': unique_pos_identifier_str_to_unique_pos_identifier[unique_pos_identifier_str],
+                                                                'sample_id': sample_name,
+                                                                'split_name': split_name,
+                                                                'contig_name': contig_name,
+                                                                'corresponding_gene_call': corresponding_gene_call,
+                                                                'gene_length': gene_length,
+                                                                'codon_order_in_gene': codon_order_in_gene,
+                                                                'departure_from_reference': 0,
+                                                                'coverage': None,
+                                                                'reference': reference_codon}
 
                         # DEALING WITH COVERAGE ##################################################################
                         # some very cool but expensive shit is going on here, let me break it down for poor souls of the future.
@@ -1309,21 +1409,29 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                         coverage = int(round(sum(coverages) / 3))
 
                         # and finally update the data table
-                        self.data[next_available_entry_id]['coverage'] = coverage
+                        new_entries[next_available_entry_id]['coverage'] = coverage
 
                         # DEALING WITH AAs ##################################################################
                         # here we need to put all the codons into the data table for this sample
                         for codon in set(constants.codon_to_AA.values()):
-                            self.data[next_available_entry_id][codon] = 0
+                            new_entries[next_available_entry_id][codon] = 0
 
                         # and finally update the frequency of the reference codon with the coverage (WHICH IS VERY BAD,
                         # WE HAVE NO CLUE WHAT IS THE ACTUAL COVERAGE OF TRIPLICATE LINKMERS):
-                        self.data[next_available_entry_id][reference_codon] = coverage
-
-                        # insert additional fields for this newly added data point
-                        self.insert_additional_fields([next_available_entry_id])
+                        new_entries[next_available_entry_id][reference_codon] = coverage
 
                         next_available_entry_id += 1
+
+            # convert to pandas DataFrame (its faster to build and convert a dictionary than to build DataFrame row by row)
+            new_entries = pd.DataFrame(new_entries).T
+
+            # concatenate new columns to self.data
+            self.data = pd.concat([self.data, new_entries])
+            new_entries.set_index("entry_id", drop=False, inplace=True)
+
+            # fill in additional fields for new entries
+            self.insert_additional_fields(list(new_entries["entry_id"]))
+
         else:
 
             samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
