@@ -6,6 +6,7 @@ import os
 import sys
 import anvio.utils as utils
 import anvio.fastalib as u
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
@@ -63,10 +64,6 @@ class ContigsProfiler(object):
 
         self.check_fasta()
 
-        all_ids_in_FASTA = utils.get_all_ids_from_fasta(contigs_fasta)
-        if len(all_ids_in_FASTA) != len(set(all_ids_in_FASTA)):
-            raise ConfigError("Every contig in the input FASTA file must have a unique ID. You know...")
-
         if not self.split_length:
             raise ConfigError("Creating a new contigs database requires split length information to be\
                                 provided. But the ContigsDatabase class was called to create one without this\
@@ -101,7 +98,7 @@ class ContigsProfiler(object):
         # go throught he FASTA file to make sure there are no surprises with deflines and sequence lengths.
         self.progress.new('Checking deflines and contig lengths')
         self.progress.update('tick tock ...')
-        fasta = u.SequenceSource(contigs_fasta)
+        fasta = u.SequenceSource(self.contigs_fasta)
         while next(fasta):
             if not utils.check_contig_names(fasta.id, dont_raise=True):
                 self.progress.end()
@@ -159,7 +156,7 @@ class ContigsProfiler(object):
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
             if external_gene_calls:
-                gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(input_file_path=external_gene_calls, ignore_internal_stop_codons=ignore_internal_stop_codons)
+                gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(input_file_path=external_gene_calls, ignore_internal_stop_codons=self.ignore_internal_stop_codons)
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
 
