@@ -936,6 +936,54 @@ def get_codon_order_to_nt_positions_dict(gene_call):
     return codon_order_to_nt_positions
 
 
+def convert_sequence_indexing(index, source="anvio", destination="not anvio"):
+    """
+    Anvi'o zero-indexes sequences. For example, the methionine that every
+    ORF starts with has the index 0. This is in contrast to the rest of the
+    world, in which the methionine is indexed by 1. This function converts
+    between the two. 
+    
+    index : integer
+        The sequence index you are converting. 
+    source : string
+        The convention you are converting from. Must be either "anvio" or "not
+        anvio"
+    destination : string
+        The convention you are converting to. Must be either "anvio" or "not
+        anvio"
+    """
+
+    if source not in ["anvio", "not anvio"] or destination not in ["anvio", "not anvio"]:
+        raise ValueError("Must be 'anvio' or 'not anvio'.")
+
+    if source == "anvio" and destination == "not anvio":
+        return index + 1
+
+    if source == "not anvio" and destination == "anvio":
+        return index - 1
+
+    return index
+
+def convert_SSM_to_single_accession(matrix_data):
+    """
+    The substitution scores from the SSM dictionaries created in
+    anvio.data.SSMs are accessed via a dictionary of dictionaries, e.g.
+    data["Ala"]["Trp"]. This returns a new dictionary accessed via the
+    concatenated sequence element pair, e.g. data["AlaTrp"] or data["AT"],
+    where they are ordered alphabetically.
+    """
+    items = matrix_data.keys()
+    new_data = {}
+
+    for row in items:
+        for column in items:
+
+            if row > column:
+                continue
+            new_data[''.join([row, column])] = matrix_data[row][column]
+    return new_data
+
+
 def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
     sequence = sequence.upper()
 
