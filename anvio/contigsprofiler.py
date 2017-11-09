@@ -41,6 +41,8 @@ class ContigsProfiler(object):
         self.ignore_internal_stop_codons = A('ignore_internal_stop_codons')
         self.debug = A('debug')
 
+        self.process()
+
 
     def sanity_check(self):
         if self.external_gene_calls:
@@ -109,7 +111,7 @@ class ContigsProfiler(object):
                                     this requirement (anvi'o is very upset for making you do this): %s" % \
                                         ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
 
-            if len(fasta.seq) < kmer_size:
+            if len(fasta.seq) < self.kmer_size:
                 self.progress.end()
                 raise ConfigError("At least one of the contigs in your input FASTA '%s' is shorter than the k-mer size. The k\
                                     is %d, and your contig is like %d :/ Anvi'o will not judge you for whatever you are doing\
@@ -124,6 +126,66 @@ class ContigsProfiler(object):
             raise ConfigError("Every contig in the input FASTA file must have a unique ID. You know...")
 
 
+    def print_arguments_summary(self):
+        self.run.info('Name', self.project_name, mc='green')
+        self.run.info('Description', os.path.abspath(self.description_file_path) if self.description_file_path else 'No description is given', mc='green')
+        self.run.info('Input FASTA file', self.contigs_fasta)
+        self.run.info('Split Length', pp(self.split_length))
+        self.run.info('K-mer size', self.kmer_size)
+        self.run.info('Skip gene calling?', self.skip_gene_calling)
+        self.run.info('External gene calls provided?', self.external_gene_calls)
+        self.run.info('Ignoring internal stop codons?', self.ignore_internal_stop_codons)
+        self.run.info('Splitting pays attention to gene calls?', (not self.skip_mindful_splitting))
+
+
+    def print_final_report(self):
+        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info('Number of contigs', contigs_info_table.total_contigs, quiet=self.quiet)
+        self.run.info('Number of splits', splits_info_table.total_splits, quiet=self.quiet)
+        self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet=self.quiet)
+        self.run.info('Gene calling step skipped', skip_gene_calling, quiet=self.quiet)
+        self.run.info("Splits broke genes (non-mindful mode)", skip_mindful_splitting, quiet=self.quiet)
+        self.run.info('Desired split length (what the user wanted)', split_length, quiet=self.quiet)
+        self.run.info("Average split length (wnat anvi'o gave back)", (int(round(numpy.mean(recovered_split_lengths)))) \
+                                                                        if recovered_split_lengths \
+                                                                            else "(Anvi'o did not create any splits)", quiet=self.quiet)
+
+
+    def do_gene_calling(self):
+        genes_in_contigs_dict = {}
+        contig_name_to_gene_start_stops = {}
+        if not self.skip_gene_calling:
+            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug=debug)
+
+            # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
+            if external_gene_calls:
+                gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(input_file_path=external_gene_calls, ignore_internal_stop_codons=ignore_internal_stop_codons)
+            else:
+                gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
+
+            # reconnect and learn about what's done
+            self.db = db.DB(self.db_path, anvio.__contigs__version__)
+
+            genes_in_contigs_dict = self.db.get_table_as_dict(t.genes_in_contigs_table_name)
+
+            for gene_unique_id in genes_in_contigs_dict:
+                e = genes_in_contigs_dict[gene_unique_id]
+                if e['contig'] not in contig_name_to_gene_start_stops:
+                    contig_name_to_gene_start_stops[e['contig']] = set([])
+
+                contig_name_to_gene_start_stops[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
+
+
 
     def process(self):
-        pass
+        self.sanity_check()
+
+        self.print_arguments_summary()
+
+        # first things first: do the gene calling on contigs. this part is important. we are doing the
+        # gene calling first. so we understand where genes start and end. this information will guide the
+        # arrangement of the breakpoint of splits
+        self.do_gene_calling()
+
+        self.print_final_report()
+
