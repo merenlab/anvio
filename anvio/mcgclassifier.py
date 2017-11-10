@@ -20,6 +20,7 @@ import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
+from scipy import odr as odr
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
 from anvio.sequence import get_list_of_outliers
@@ -73,6 +74,7 @@ class MetagenomeCentricGeneClassifier:
         self.number_of_negative_samples = None
         self.gene_class_information = pd.DataFrame.empty
         self.samples_detection_information = pd.DataFrame.empty
+        self.gene_presence_absence_in_samples_initiated = False
         self.gene_presence_absence_in_samples = pd.DataFrame.empty
         self.gene_coverages_filtered = pd.DataFrame.empty
         self.additional_description = ''
@@ -80,6 +82,10 @@ class MetagenomeCentricGeneClassifier:
         self.samples_coverage_stats_dicts_was_initiated = False
         self.samples_coverage_stats_dicts = pd.DataFrame.empty
         self.non_outlier_indices = {}
+        self.gene_coverage_stats_dict_of_dfs_initiated = False
+        self.gene_coverage_stats_dict_of_dfs = {}
+        self.gene_coverage_consistency_dict = {}
+        self.gene_coverage_consistency_dict_initiated = False
 
         if self.exclude_samples:
             # check that there is a file like this
@@ -122,7 +128,7 @@ class MetagenomeCentricGeneClassifier:
                 self.profile_db = ProfileSuperclass(args)
                 self.init_samples(self.profile_db.p_meta['samples'])
                 self.profile_db.init_split_coverage_values_per_nt_dict()
-                self.profile_db.init_gene_level_coverage_stats_dicts()
+                self.profile_db.init_gene_level_coverage_stats_dicts(outliers_threshold=2.5,populate_nt_level_coverage=True)
                 self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.profile_db.split_coverage_values_per_nt_dict, self.samples)
 
                 # comply with the new design and get gene_coverages and gene_detection dicsts from
@@ -242,14 +248,12 @@ class MetagenomeCentricGeneClassifier:
             print("the length of the vector: %s" % len(self.coverage_values_per_nt[sample])) # FIXME: after testing this module, delete this line. it is only here to make sure that anvio is not lying to us.
             print("number of nucleotide positions with non zero coverage in %s is %s " % (sample, np.count_nonzero(self.coverage_values_per_nt[sample])))
             detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / self.total_length
-            if detection[sample] >= 0.5 + self.alpha:
+            samples_information['presence'][sample] = get_presence_absence_information(detection[sample], self.alpha)
+            if samples_information['presence'][sample]:
                 positive_samples.append(sample)
-                samples_information['presence'][sample] = True
-            elif detection[sample] <= 0.5 - self.alpha:
+            elif samples_information['presence'][sample] == False:
                 negative_samples.append(sample)
-                samples_information['presence'][sample] = False
-            else:
-                samples_information['presence'][sample] = None
+
             samples_information['detection'][sample] = detection[sample]
             counter += 1
         self.progress.end()
@@ -356,6 +360,85 @@ class MetagenomeCentricGeneClassifier:
         self.progress.end()
 
 
+    def init_gene_presence_absence_in_samples(self):
+        gene_callers_id = list(self.profile_db.gene_level_coverage_stats_dict.keys())
+        self.gene_presence_absence_in_samples = pd.DataFrame(index=gene_callers_id, columns=self.samples)
+        for sample in self.samples:
+            for gene_id in gene_callers_id:
+                self.gene_presence_absence_in_samples.loc[gene_id, sample] = get_presence_absence_information(self.profile_db.gene_level_coverage_stats_dict[gene_id][sample]['detection'], self.alpha)
+        self.gene_presence_absence_in_samples_initiated = True
+
+
+    def init_gene_coverage_stats_dict_of_dfs(self):
+        """ Convert gene_coverage_stats_dict to a dictionary of pandas dataframes
+            
+            The reason to do this is that this way the gene parameters accross samples
+            could be used as numpy arrays. For example this allows to use the gene non-outlier
+            mean coverage accross samples as an array in order to perform regression
+            (see init_gene_coverage_consistency_information for example of usage).
+        """
+        for gene_id, coverage_stats in self.profile_db.gene_level_coverage_stats_dict.items():
+            self.gene_coverage_stats_dict_of_dfs[gene_id] = pd.DataFrame.from_dict(coverage_stats, orient='index')
+        self.gene_coverage_stats_dict_of_dfs_initiated = True
+
+
+    def init_gene_coverage_consistency_information(self):
+        """ Perform orthogonal distance regression for each gene to determine coverage consistency.
+            
+            The question that we are trying to ask is:
+                Do the non-outlier nt coverage of the gene in samlpes correlates to the non-outlier
+                nt coverage of the genome in samples?
+
+            The regression is performed only for positive samples.
+            For each gene, the regression is performed only according to samples in which
+            the gene is present (according to the detection critrea).
+        """
+        
+        if not self.gene_presence_absence_in_samples_initiated:
+            self.init_gene_presence_absence_in_samples()
+
+        if not self.gene_coverage_stats_dict_of_dfs_initiated:
+            self.init_gene_coverage_stats_dict_of_dfs()
+
+        for gene_id in self.profile_db.gene_level_coverage_stats_dict.keys():
+            # samples in which the gene is present
+            _samples = self.gene_presence_absence_in_samples.loc[gene_id,self.gene_presence_absence_in_samples.loc[gene_id,]==True].index
+            # mean and std of non-outlier nt in each sample
+            x = self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_mean_coverage']
+            std_x = self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_coverage_std']
+            if len(_samples) > 1:
+                # mean and std of non-outlier nt in the gene (in each sample)
+                y = self.gene_coverage_stats_dict_of_dfs[gene_id].loc[_samples, 'non_outlier_mean_coverage']
+                std_y = self.gene_coverage_stats_dict_of_dfs[gene_id].loc[_samples,'non_outlier_coverage_std']
+
+                # performing the regression using ODR
+                _data = odr.RealData(list(x.values), list(y.values), list(std_x.values), list(std_y.values))
+                _model = lambda B, c: B[0] * c
+                _odr = odr.ODR(_data, odr.Model(_model), beta0=[3])
+                odr_output = _odr.run()
+                run.info_single('Orthogonal Distance Regression results for gene %s' % gene_id)
+                odr_output.pprint()
+                
+                # store results
+                self.gene_coverage_consistency_dict[gene_id] = {}
+                self.gene_coverage_consistency_dict[gene_id]['slope'] = odr_output.beta[0]
+                self.gene_coverage_consistency_dict[gene_id]['slope_std'] = odr_output.sd_beta[0]
+                self.gene_coverage_consistency_dict[gene_id]['slope_precision'] = odr_output.sd_beta[0] / odr_output.beta[0]
+
+                # compute R squered
+                f = lambda b: lambda _x: b*_x
+                R_squered = 1 - sum((np.apply_along_axis(f(odr_output.beta[0]),0,x)-y.values)**2) / sum((y-np.mean(y.values))**2)
+
+                # Check if converged
+                self.gene_coverage_consistency_dict[gene_id]['R_squered'] = R_squered
+                if odr_output.stopreason[0] == 'Sum of squares convergence':
+                    self.gene_coverage_consistency_dict[gene_id]['converged'] = True
+                else:
+                    self.gene_coverage_consistency_dict[gene_id]['converged'] = False
+
+        self.gene_coverage_consistency_dict_initiated = True
+
+
     def get_gene_classes(self):
         """ The main process of this class - computes the class information for each gene"""
         # need to start a new gene_class_information dict
@@ -458,3 +541,13 @@ def get_non_outliers_information(v, MAD_threshold=2.5):
         d['non_outlier_coverage_std'] = np.std(v[non_outlier_indices])
 
     return non_outlier_indices, d
+
+
+def get_presence_absence_information(detection, alpha):
+    """ Helper function to determine presence/absence according to a threshold."""
+    if detection >= 0.5 + alpha:
+        return True
+    elif detection <= 0.5 - alpha:
+        return False
+    else:
+        return None
