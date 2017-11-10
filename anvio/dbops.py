@@ -42,6 +42,7 @@ from anvio.sequence import get_list_of_outliers
 
 from anvio.table.contigsinfo import InfoTableForContigs
 from anvio.table.splitsinfo import InfoTableForSplits
+from anvio.table.genecalls import TablesForGeneCalls
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -1797,7 +1798,7 @@ class PanDatabase:
 
 class ContigsDatabase:
     """To create an empty contigs database and/or access one."""
-    def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
+    def __init__(self, db_path, run=run, progress=progress, quiet=True, create_new=False, meta_values=None):
         self.db = None
         self.db_path = db_path
 
@@ -1806,9 +1807,14 @@ class ContigsDatabase:
         self.quiet = quiet
 
         self.meta = {}
-
-        if not skip_init:
-            self.init()
+        self.meta_for_new_db = meta_values
+        print(self.meta_for_new_db)
+        if create_new and self.meta_for_new_db:
+            self.create()
+        else:
+            raise ConfigError("You tried to create a new contigs database but did not provide any 'meta_values'.")
+        
+        self.init()
 
 
     def init(self):
@@ -1819,8 +1825,14 @@ class ContigsDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls']:
-                self.meta[key] = int(self.meta[key])
+                try:
+                    self.meta[key] = int(self.meta[key])
+                except:
+                    pass
 
+            self.gene_calls_tables = TablesForGeneCalls(self.db)
+
+            return
             self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
 
             if 'creation_date' not in self.meta:
@@ -1833,6 +1845,8 @@ class ContigsDatabase:
             self.run.info('Number of splits', self.meta['num_splits'], quiet=self.quiet)
             self.run.info('Total number of nucleotides', self.meta['total_length'], quiet=self.quiet)
             self.run.info('Split length', self.meta['split_length'], quiet=self.quiet)
+
+
         else:
             self.db = None
 
@@ -1845,7 +1859,7 @@ class ContigsDatabase:
         return '%08x' % random.randrange(16**8)
 
 
-    def touch(self):
+    def create(self):
         """Creates an empty contigs database on disk, and sets `self.db` to access to it.
 
         At some point self.db.disconnect() must be called to complete the creation of the new db."""
@@ -1874,25 +1888,14 @@ class ContigsDatabase:
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
 
-        return self.db
-
-
-    def create(self, args):
-        # create a blank contigs database on disk, and set the self.db
-        self.touch()
-
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
-        self.db.set_meta_value('project_name', project_name)
-        self.db.set_meta_value('description', description)
+        self.db.set_meta_value('split_length', self.meta_for_new_db['split_length'])
+        self.db.set_meta_value('project_name', self.meta_for_new_db['project_name'])
+        self.db.set_meta_value('description', self.meta_for_new_db['description'])
+        self.db.set_meta_value('kmer_size', self.meta_for_new_db['kmer_size'])
 
-        # this will be the unique information that will be passed downstream whenever this db is used:
-        contigs_db_hash = self.get_hash()
-        self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
-
-        # set split length variable in the meta table
-        self.db.set_meta_value('split_length', split_length)
-
+        return
         # first things first: do the gene calling on contigs. this part is important. we are doing the
         # gene calling first. so we understand wher genes start and end. this information will guide the
         # arrangement of the breakpoint of splits
@@ -1985,7 +1988,6 @@ class ContigsDatabase:
         nt_positions_auxiliary.close()
         self.progress.end()
 
-        self.db.set_meta_value('kmer_size', kmer_size)
         contigs_kmer_table.store(self.db)
         splits_kmer_table.store(self.db)
         contigs_info_table.store()

@@ -1,242 +1,23 @@
 
-class TablesForGeneCalls(Table):
-    def __init__(self, db_path, contigs_fasta=None, run=run, progress=progress, debug=False):
+import anvio.tables as t
+import anvio.terminal as terminal
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+class TablesForGeneCalls(object):
+    def __init__(self, db, run=run, progress=progress, debug=False):
         self.run = run
         self.progress = progress
-        self.db_path = db_path
-        self.contigs_fasta = contigs_fasta
+        self.db = db
         self.debug = debug
 
-        is_contigs_db(self.db_path)
 
-        if self.contigs_fasta:
-            filesnpaths.is_file_exists(self.contigs_fasta)
-            filesnpaths.is_file_fasta_formatted(self.contigs_fasta)
-
-
-    def check_gene_calls_dict(self, gene_calls_dict):
-        if not isinstance(gene_calls_dict, type({})):
-            raise ConfigError("Gene calls dict must be a dict instance :/")
-
-        try:
-            [int(g) for g in list(gene_calls_dict.keys())]
-        except ValueError:
-            raise ConfigError("Keys of a gene calls dict must be integers!")
-
-        if False in [x['direction'] in ['f', 'r'] for x in list(gene_calls_dict.values())]:
-            raise ConfigError("The values in 'direction' column can't be anything but 'f' (for forward)\
-                                or 'r' (for reverse). You have other stuff, and it is not cool.")
-
-        if False in [x['stop'] > x['start'] for x in list(gene_calls_dict.values())]:
-            raise ConfigError("For each gene call, the stop position must be bigger than the start position.\
-                                Your gene calls dict does not conform to that. If you have reverse gene calls\
-                                you must use the 'direction' column to declare that.")
-
-        if False in [(x['stop'] - float(x['start'])) % 3.0 == 0 for x in list(gene_calls_dict.values())]:
-            raise ConfigError("Something is wrong with your gene calls. For every gene call, the (stop - start)\
-                                should be multiply of 3. It is not the case for all, which is a deal breaker.")
-
-
-    def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path, gene_calls_dict=None, ignore_internal_stop_codons=False):
-        """Add genes to the contigs database.
-
-           Either provide an `input_file_path` for external gene calls, or provide an
-           external gene calls dictionary. The format should follow this:
-
-                {
-                  "1": {
-                      "contig": "contig_name",
-                      "start": 20,
-                      "stop": 1544,
-                      "direction": "f",
-                      "partial": 0,
-                      "source": "source_name",
-                      "version": "unknown"
-                  },
-
-                  "2": {
-                    (...)
-                  },
-
-                (...)
-                }
-
-            If you provide a `gene_calls_dict`, they will be APPENDED to the database. So you
-            need to make sure gene caller ids in your dict does not overlap with the ones in
-            the database.
-
-        """
-
-        # by default we assume that this is a pristine run. but if the user sends a dictionary
-        append_to_the_db = False
-
-        gene_calls_found = False
-        # let's do a rigorous check whether the user provided a gene_calls_dict.
-        if (gene_calls_dict is not None and gene_calls_dict is not False):
-            if not isinstance(gene_calls_dict, dict):
-                raise ConfigError("'Use external gene calls' function received a non-empty gene_calls_dict object,\
-                                    but it is of type '%s', and not '%s'" % (type(gene_calls_dict), type({})))
-
-            # congrats, we have a dict.
-            gene_calls_found = True
-
-            if not len(gene_calls_dict):
-                # but it is empty ... silly user.
-                self.run.info_single("'Use external gene calls' function found an empty gene calls dict, returning\
-                                      prematurely and assuming you know what's up. If you don't, stop here and try to\
-                                      identify what decisions you've made might have led you to this weird point your\
-                                      workflow (or 'life', totally up to you and your mood, but anvi'o thinks you've\
-                                      done great so far.", nl_before=1, nl_after=1)
-                return
-
-
-        if (not input_file_path and not gene_calls_found) or (input_file_path and gene_calls_found):
-            raise ConfigError("You must provide either an input file, or an gene calls dict to process external\
-                               gene calls. You called `use_external_gene_calls_to_populate_genes_in_contigs_table`\
-                               with wrong parameters.")
-
-        Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress, simple=True)
-
-        # take care of gene calls dict
-        if not gene_calls_found:
-            gene_calls_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_path,
-                                                                         expected_fields=t.genes_in_contigs_table_structure,
-                                                                         only_expected_fields=True,
-                                                                         column_mapping=[int, str, int, int, str, int, str, str])
-
-            if not len(gene_calls_dict):
-                raise ConfigError("You provided an external gene calls file, but it returned zero gene calls. Assuming that\
-                                   this is an error, anvi'o will stop here and complain. If this is not an error and you\
-                                   in fact expected this, the proper way of doing this is to use `--skip-gene-calls` flag,\
-                                   instead of providing an emtpy external gene calls file. You don't agree? You need this\
-                                   for some weird step for you weird pipeline? Let us know, and we will consider changing\
-                                   this.")
-
-            self.run.info("External gene calls", "%d gene calls recovered and will be processed." % len(gene_calls_dict))
-        else:
-            # FIXME: we need to make sure the gene caller ids in the incoming directory is not going to
-            #        overwrite an existing gene call. Something like this would have returned the
-            #        current max, which could be cross-checked with what's in the dict:
-            #
-            #            contigs_db = ContigsDatabase(self.db_path)
-            #            next_id = contigs_db.db.get_max_value_in_column('genes_in_contigs', 'gene_callers_id') + 1
-            #            contigs_db.disconnect()
-            append_to_the_db = True
-
-        # recover protein sequences. during this operation we are going to have to read all contig sequences
-        # into the damn memory. anvi'o is doing a pretty bad job with memory management :(
-        protein_sequences = {}
-
-        contig_sequences = {}
-        if self.contigs_fasta:
-            fasta = u.SequenceSource(self.contigs_fasta)
-            while next(fasta):
-                contig_sequences[fasta.id] = {'sequence': fasta.seq}
-            fasta.close()
-        else:
-            class Args: None
-            args = Args()
-            args.contigs_db = self.db_path
-            contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False))
-            contigs_db.init_contig_sequences()
-            contig_sequences = contigs_db.contig_sequences
-
-        num_genes_with_internal_stops = 0
-        number_of_impartial_gene_calls = 0
-        for gene_callers_id in gene_calls_dict:
-            gene_call = gene_calls_dict[gene_callers_id]
-            contig_name = gene_call['contig']
-
-            if contig_name not in contig_sequences:
-                # remove the partial contigs database so things don't get screwed later
-                os.remove(self.db_path)
-                raise ConfigError("You are in big trouble :( The contig name '%s' in your external gene callers file\
-                                    does not appear to be in the contigs FASTA file. How did this happen?" % contig_name)
-
-            if gene_call['partial']:
-                protein_sequences[gene_callers_id] = ''
-                number_of_impartial_gene_calls += 1
-                continue
-
-            sequence = contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
-            if gene_call['direction'] == 'r':
-                sequence = utils.rev_comp(sequence)
-
-            protein_sequence = utils.get_DNA_sequence_translated(sequence, gene_callers_id)
-
-            # check if there are any internal stops:
-            if protein_sequence.find('*') > -1:
-                if ignore_internal_stop_codons:
-                    protein_sequence = protein_sequence.replace('*', 'X')
-                    num_genes_with_internal_stops += 1
-                else:
-                    os.remove(self.db_path)
-                    raise ConfigError("Oops. Anvi'o run into an amino acid seqeunce (that corresponds to the gene callers id '%s')\
-                                       which had an internal stop codon :/ This usually indicates that your external gene calls\
-                                       have problems. If you still want to continue, you can ask anvi'o to ignore internal stop\
-                                       codons on your own risk. It will probably look very ugly on your screen, but here is the\
-                                       DNA sequence for that gene in case you don't trust anvi'o (which only would be fair since\
-                                       anvi'o does not trust you either): %s" % (str(gene_callers_id), sequence))
-
-            protein_sequences[gene_callers_id] = protein_sequence
-
-        # populate genes_in_contigs, and gene_protein_sequences table in contigs db.
-        self.populate_genes_in_contigs_table(gene_calls_dict, protein_sequences, append_to_the_db=append_to_the_db)
-
-        if num_genes_with_internal_stops:
-            percent_genes_with_internal_stops = num_genes_with_internal_stops * 100.0 / len(gene_calls_dict)
-            self.run.warning("Please read this carefully: Your external gene calls contained open reading frames with internal\
-                              stop codons, and you asked anvi'o to ignore those. Anvi'o replaced internal stop codons with 'X'\
-                              characters, and stored them in the contigs database that way. %d of your genes, which corresponded\
-                              to %.2f%% of the total %d genes, had internal stop codons. We hope you are happy." % \
-                                        (num_genes_with_internal_stops, percent_genes_with_internal_stops, len(gene_calls_dict)))
-
-        if number_of_impartial_gene_calls:
-            self.run.warning('%d of your %d gene calls were impartial, hence the translated protein sequences for those\
-                              were not stored in the database.' % (number_of_impartial_gene_calls, len(gene_calls_dict)))
-
-
-    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
-        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple=True)
-
-        # get gene calls and protein sequences
-        gene_calls_dict, protein_sequences = self.run_gene_caller(gene_caller)
-
-        # make sure the returning gene calls dict is proper
-        self.check_gene_calls_dict(gene_calls_dict)
-
-        # populate genes_in_contigs, and gene_protein_sequences table in contigs db.
-        self.populate_genes_in_contigs_table(gene_calls_dict, protein_sequences)
-
-
-    def run_gene_caller(self, gene_caller='prodigal'):
-        """Runs gene caller, and returns gene_calls_dict, and protein sequences."""
-        remove_fasta_after_processing = False
-
-        if not self.contigs_fasta:
-            self.contigs_fasta = self.export_sequences_table_in_db_into_FASTA_file()
-            remove_fasta_after_processing = True
-
-        if self.debug:
-            self.run.info_single('--debug flag is [ON], which means temporary directories generated by\
-                                 this run will not be removed', nl_after=2)
-
-        gene_caller = genecalling.GeneCaller(self.contigs_fasta, gene_caller=gene_caller, debug=self.debug)
-
-        gene_calls_dict, protein_sequences = gene_caller.process()
-
-        if not self.debug and remove_fasta_after_processing:
-            os.remove(self.contigs_fasta)
-
-        return gene_calls_dict, protein_sequences
-
-
-    def populate_genes_in_contigs_table(self, gene_calls_dict, protein_sequences, append_to_the_db=False):
-        contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
-
-        if not append_to_the_db:
-            contigs_db._exec('''DELETE FROM %s''' % (t.genes_in_contigs_table_name))
-            contigs_db._exec('''DELETE FROM %s''' % (t.gene_protein_sequences_table_name))
+    def store(self, gene_calls_dict, protein_sequences, append=False):
+        if not append:
+            self.db.clear_table(t.genes_in_contigs_table_name)
+            self.db.clear_table(t.gene_protein_sequences_table_name)
         else:
             # so we are in the append mode. We must remove all the previous entries from genes in contigs
             # that matches to the incoming sources. otherwhise we may end up with many duplicates in the db.
@@ -248,14 +29,13 @@ class TablesForGeneCalls(Table):
         self.progress.update('Entering %d gene calls into the db ...' % (len(gene_calls_dict)))
 
         db_entries = [tuple([entry_id] + [gene_calls_dict[entry_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for entry_id in gene_calls_dict]
-        contigs_db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, db_entries)
+        self.db.insert_many(t.genes_in_contigs_table_name, db_entries)
 
         db_entries = [tuple([entry_id] + [protein_sequences[entry_id]]) for entry_id in gene_calls_dict]
-        contigs_db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.gene_protein_sequences_table_name, db_entries)
+        self.db.insert_many(t.gene_protein_sequences_table_name, db_entries)
 
         self.progress.end()
 
-        contigs_db.disconnect()
 
 
     def populate_genes_in_splits_tables(self):

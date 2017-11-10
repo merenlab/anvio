@@ -4,10 +4,12 @@
 
 import os
 import sys
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.fastalib as u
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+import anvio.genecalling as genecalling
 
 from anvio.errors import ConfigError
 
@@ -31,6 +33,7 @@ class ContigsProfiler(object):
         self.run = run
         self.progress = progress
 
+        self.output_db_path = A('output_db_path')
         self.contigs_fasta = os.path.abspath(A('contigs_fasta'))
         self.project_name = A('project_name')
         self.description_file_path = A('description')
@@ -152,18 +155,20 @@ class ContigsProfiler(object):
         genes_in_contigs_dict = {}
         contig_name_to_gene_start_stops = {}
         if not self.skip_gene_calling:
-            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug=debug)
-
-            # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
-            if external_gene_calls:
-                gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(input_file_path=external_gene_calls, ignore_internal_stop_codons=self.ignore_internal_stop_codons)
+            #gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug=debug)
+            gene_caller = None
+            if self.external_gene_calls:
+                gene_caller = genecalling.ExternalGeneCaller(self.contigs_fasta, self.external_gene_calls, ignore_internal_stop_codons=self.ignore_internal_stop_codons)
             else:
-                gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
+                gene_caller = genecalling.GeneCaller(self.contigs_fasta, gene_caller=gene_caller, debug=self.debug)
+            
+            gene_calls_dict, protein_sequences = gene_caller.process()
+
+            self.contigs_db.gene_calls_tables.store(gene_calls_dict, protein_sequences)
 
             # reconnect and learn about what's done
-            self.db = db.DB(self.db_path, anvio.__contigs__version__)
-
-            genes_in_contigs_dict = self.db.get_table_as_dict(t.genes_in_contigs_table_name)
+            #self.db = db.DB(self.db_path, anvio.__contigs__version__)
+            #genes_in_contigs_dict = self.db.get_table_as_dict(t.genesx_in_contigs_table_name)
 
             for gene_unique_id in genes_in_contigs_dict:
                 e = genes_in_contigs_dict[gene_unique_id]
@@ -173,11 +178,22 @@ class ContigsProfiler(object):
                 contig_name_to_gene_start_stops[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
 
 
+    def create_new_contigs_db(self):
+        meta_values = {
+            'split_length': self.split_length,
+            'project_name': self.project_name,
+            'description': self.description,
+            'kmer_size': self.kmer_size
+        }
+
+        self.contigs_db = dbops.ContigsDatabase(self.output_db_path, create_new=True, meta_values=meta_values)
 
     def process(self):
         self.sanity_check()
 
         self.print_arguments_summary()
+
+        self.create_new_contigs_db()
 
         # first things first: do the gene calling on contigs. this part is important. we are doing the
         # gene calling first. so we understand where genes start and end. this information will guide the

@@ -74,6 +74,10 @@ class DB:
         self._exec('''DROP TABLE IF EXISTS %s;''' % table_name)
 
 
+    def clear_table(self, table_name):
+        self._exec('''DELETE FROM %s''' % table_name)    
+
+
     def create_table(self, table_name, fields, types):
         if len(fields) != len(types):
             raise ConfigError("create_table: The number of fields and types has to match.")
