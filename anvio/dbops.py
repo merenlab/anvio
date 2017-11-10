@@ -4041,37 +4041,63 @@ def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split
         add_hierarchical_clustering_to_db(anvio_db_path, config_name, newick, distance=distance, linkage=linkage, make_default=config_name == default_clustering_config, run=run)
 
 
+
 def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run):
+    """Backwards compatibility function.
+
+       We can fix all instances of `add_hierarchical_clustering_to_db` everywhere in the code to work
+       with `add_items_order_to_db` function directly, and end this tyranny."""
+
+    add_items_order_to_db(anvio_db_path,
+                          clustering_name,
+                          order_data=clustering_newick,
+                          order_data_type_newick=True,
+                          distance=distance,
+                          linkage=linkage,
+                          make_default=False,
+                          run=run)
+
+
+def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None, linkage=None, make_default=False, run=run):
     """Adds a new clustering into an anvi'o db"""
+
+    if order_data_type_newick and (not distance or not linkage):
+        raise ConfigError("You are trying to add a newick-formatted clustering dendrogram to the database without providing\
+                           distance and linkage data that generated this dendrogram :/")
+
+    if not order_data_type_newick and (distance or linkage):
+        raise ConfigError("Distance and linkage variables are only relevant if you are trying to add a newick-formatted\
+                           clustering dendrogram. But your function call suggests you are not.")
 
     # let's learn who we are dealing with:
     db_type = get_db_type(anvio_db_path)
 
-    utils.is_this_name_OK_for_database('clustering_name parameter', clustering_name, stringent=False)
-
     # replace clustering id with a text that contains distance and linkage information
-    clustering_name = ':'.join([clustering_name, distance, linkage])
+    if order_data_type_newick:
+        order_name = ':'.join([order_name, distance, linkage])
+    else:
+        order_name = ':'.join([order_name, 'NA', 'NA'])
 
     anvio_db = DBClassFactory().get_db_object(anvio_db_path)
 
     if t.item_orders_table_name not in anvio_db.db.get_table_names():
         raise ConfigError("You can't add a new items order into this %s database (%s). You know why? Becasue it doesn't\
-                            have a table for 'item_order' :(" % (db_type, anvio_db_path))
+                           have a table for 'item_order' :(" % (db_type, anvio_db_path))
 
     try:
         available_item_orders = anvio_db.db.get_meta_value('available_item_orders').split(',')
     except:
         available_item_orders = []
 
-    if clustering_name in available_item_orders:
-        run.warning('Clustering for "%s" (with %s distance and %s linkage) is already in the database. Its content will\
-                     be replaced with the new one.' % (clustering_name, distance, linkage))
+    if order_name in available_item_orders:
+        run.warning('Clustering for "%s" is already in the database. Its content will\
+                     be replaced with the new one.' % (order_name))
 
-        anvio_db.db._exec('''DELETE FROM %s where name = "%s"''' % (t.item_orders_table_name, clustering_name))
+        anvio_db.db._exec('''DELETE FROM %s where name = "%s"''' % (t.item_orders_table_name, order_name))
     else:
-        available_item_orders.append(clustering_name)
+        available_item_orders.append(order_name)
 
-    anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, tuple([clustering_name, 'newick', clustering_newick]))
+    anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, tuple([order_name, 'newick' if order_data_type_newick else 'basic', order_data]))
 
     try:
         anvio_db.db.remove_meta_key_value_pair('available_item_orders')
@@ -4079,11 +4105,13 @@ def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering
         pass
     anvio_db.db.set_meta_value('available_item_orders', ','.join(available_item_orders))
 
-    try:
-        anvio_db.db.remove_meta_key_value_pair('PCs_ordered' if db_type == 'pan' else 'contigs_ordered')
-    except:
-        pass
-    anvio_db.db.set_meta_value('PCs_ordered' if db_type == 'pan' else 'contigs_ordered', True)
+    # We don't consider basic orders as orders becasue we are rebels.
+    if order_data_type_newick:
+        try:
+            anvio_db.db.remove_meta_key_value_pair('PCs_ordered' if db_type == 'pan' else 'contigs_ordered')
+        except:
+            pass
+        anvio_db.db.set_meta_value('PCs_ordered' if db_type == 'pan' else 'contigs_ordered', True)
 
     try:
         anvio_db.db.get_meta_value('default_item_order')
@@ -4096,11 +4124,11 @@ def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering
             anvio_db.db.remove_meta_key_value_pair('default_item_order')
         except:
             pass
-        anvio_db.db.set_meta_value('default_item_order', clustering_name)
+        anvio_db.db.set_meta_value('default_item_order', order_name)
 
     anvio_db.disconnect()
 
-    run.info('New hierarchical clusetring', '"%s" has been added to the database...' % clustering_name)
+    run.info('New items order', '"%s" (type %s) has been added to the database...' % (order_name, 'newick' if order_data_type_newick else 'basic'))
 
 
 def get_default_item_order_name(default_item_order_requested, item_orders_dict, progress=progress, run=run):

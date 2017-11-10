@@ -280,7 +280,7 @@ class BottleApplication(Bottle):
                 return json.dumps(items_order['data'])
             elif items_order['type'] == 'basic':
                 run.info_single("The basic order '%s' has been requested" % (items_order_id))
-                return json.dumps(items_order['data'])
+                return json.dumps(items_order['data'].split(','))
             else:
                 return json.dumps({'error': "The interface requested something anvi'o doesn't know about. Item orders\
                                              can only be in the form of 'newick' or 'basic'. But the interface requested\
