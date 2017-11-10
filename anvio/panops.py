@@ -509,8 +509,9 @@ class Pangenome(object):
             pcs_not_described = df.loc[~df.protein_cluster_id.isin(pcs_in_genome)].protein_cluster_id.unique()
             pcs_order_based_on_genome_synteny = list(pcs_in_genome) + list(pcs_not_described)
 
-            # FIXME: store pcs_order_based_on_genome_synteny as an order in the pan database
-            # which needs this to be addresses first: https://github.com/merenlab/anvio/issues/628
+            order_name = 'Forced synteny <> %s' % genome_name
+
+            dbops.add_items_order_to_db(self.pan_db_path, order_name, ','.join(pcs_order_based_on_genome_synteny), order_data_type_newick=False, run=self.run)
 
         PC_PC_edges = []
         # network description of PC-PC relationshops given the gene synteny.
