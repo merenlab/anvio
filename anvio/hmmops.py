@@ -73,8 +73,19 @@ class SequencesForHMMHits:
         return hits_in_splits, split_name_to_bin_id
 
 
-    def get_gene_hit_counts_per_hmm_source(self):
-        sources = [source for source in self.hmm_hits_info]
+    def get_gene_hit_counts_per_hmm_source(self, sources=None):
+        if not sources:
+            sources = [source for source in self.hmm_hits_info]
+        else:
+            if not isinstance(sources, list):
+                raise ConfigError("get_gene_hit_counts_per_hmm_source speaking: `sources` variable must be of type `list`.")
+
+            missing_sources = [source for source in sources if source not in self.hmm_hits_info]
+            if len(missing_sources):
+                self.progress.end()
+                raise ConfigError("Anvi'o was trying to generate information regarding all the hits per HMM source stored\
+                                   in its databases, but some of the sources you requested do not seem to be found anywhere :/\
+                                   Here is the list of those that failed you: '%s'." % (','.join(sources)))
 
         gene_hit_counts = {}
         for source in sources:
