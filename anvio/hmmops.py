@@ -73,24 +73,24 @@ class SequencesForHMMHits:
         return hits_in_splits, split_name_to_bin_id
 
 
-    def get_single_copy_gene_counts(self):
+    def get_gene_hit_counts_per_hmm_source(self):
         sources = [source for source in self.hmm_hits_info]
 
-        gene_counts = {}
+        gene_hit_counts = {}
         for source in sources:
-            gene_counts[source] = {}
+            gene_hit_counts[source] = {}
 
             for gene_name in self.hmm_hits_info[source]['genes'].split(','):
-                gene_counts[source][gene_name.strip()] = 0
+                gene_hit_counts[source][gene_name.strip()] = 0
 
         for entry in list(self.hmm_hits.values()):
             source    = entry['source']
             gene_name = entry['gene_name']
 
             if source in sources:
-                gene_counts[source][gene_name.strip()] += 1
+                gene_hit_counts[source][gene_name.strip()] += 1
 
-        return gene_counts
+        return gene_hit_counts
 
 
     def get_hmm_hits_per_bin(self, splits_dict, source):
