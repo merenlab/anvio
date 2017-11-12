@@ -26,11 +26,6 @@
 
         <div class="container">
             <table class="table table-details">
-              <thead>
-                <tr>
-                  <th></th>
-                </tr>
-              </thead>
               <tbody>
               </tbody>
             </table>
@@ -102,16 +97,17 @@
             $('a[href="#gene_chart_' + prefix + '_' + active_index + '"').tab('show');
         }
 
+        function create_table_header(header_text) {
+            $('.table-details>tbody').append('<tr class="info"><th>'+header_text+'</th>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<th class="text-center">' + contigs_stats[contig_db_name]['project_name'] + '</th>');
+            });
+            $('.table-details>tbody').append('</tr>');
+        }
+
         function create_table() {
             // Build comparison table
-            contig_db_names.forEach(function(contig_db_name, index) {
-                $('.table-details>thead>tr').append('<th class="text-center">' + contigs_stats[contig_db_name]['project_name'] + '</th>');
-            });
-
-            $('.table-details>tbody').append('<tr><td>Total Length</td></tr>');
-            contig_db_names.forEach(function(contig_db_name, index) {
-                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['total_length']) + '</td>');
-            });
+            create_table_header('Contigs Stats');
 
             $('.table-details>tbody').append('<tr><td>Num Contigs</td></tr>');
             contig_db_names.forEach(function(contig_db_name, index) {
@@ -174,8 +170,10 @@
                 });
             });
 
+            create_table_header('Raw number of HMM Hits');
+
             all_sources.forEach(function(source) {
-                $('.table-details>tbody').append('<tr><td>HMM Hits (' + source + ')</td></tr>');
+                $('.table-details>tbody').append('<tr><td>' + source + '</td></tr>');
                 contig_db_names.forEach(function(contig_db_name) {
                     if (contigs_stats[contig_db_name]['gene_hit_counts_per_hmm_source'].hasOwnProperty(source)) {
                         var hits_sum = 0;
@@ -190,6 +188,45 @@
                     }
                 });
             });
+
+            if (all_sources.length == 0) {
+                $('.table-details>tbody').append('<tr><td><i>HMMs were not run</i></td></tr>');
+            }
+
+            create_table_header('Approx. number of genomes <a href="http://merenlab.org/2015/12/07/predicting-number-of-genomes/">[?]</a>');
+
+            var all_sources_SCG_hits = [];
+
+            contig_db_names.forEach(function(contig_db_name) {
+                Object.keys(contigs_stats[contig_db_name]['num_genomes_per_SCG_source_dict']).forEach(function(source) {
+                    if (all_sources_SCG_hits.map(function(s) {return s.name }).indexOf(source) == -1) {
+                        all_sources_SCG_hits.push({
+                            'name': source, 
+                            'domain': contigs_stats[contig_db_name]['num_genomes_per_SCG_source_dict'][source]['domain']
+                        });
+                    }
+                });
+            });
+
+            all_sources_SCG_hits.forEach(function(source) {
+                $('.table-details>tbody').append('<tr><td>' + source.domain + ' (' + source.name + ')</td></tr>');
+                contig_db_names.forEach(function(contig_db_name) {
+                    if (contigs_stats[contig_db_name]['num_genomes_per_SCG_source_dict'].hasOwnProperty(source.name)) {
+                        var domain = contigs_stats[contig_db_name]['num_genomes_per_SCG_source_dict'][source.name]['domain'];
+                        var num_genomes = contigs_stats[contig_db_name]['num_genomes_per_SCG_source_dict'][source.name]['num_genomes'];
+
+                        $('.table-details>tbody>tr:last').append('<td class="text-center">' + num_genomes + '</td>');    
+                    }
+                    else
+                    {
+                        $('.table-details>tbody>tr:last').append('<td class="text-center">n/a</td>');
+                    }
+                });
+            });
+
+            if (all_sources_SCG_hits.length == 0) {
+                $('.table-details>tbody').append('<tr><td><i>SCG HMMs were not run</i></td></tr>');
+            }
         }
 
         $('#select-left,#select-right').change(function() {
