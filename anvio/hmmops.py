@@ -5,6 +5,7 @@
 """
 
 import textwrap
+from scipy import stats
 
 import anvio
 import anvio.db as db
@@ -102,6 +103,23 @@ class SequencesForHMMHits:
                 gene_hit_counts[source][gene_name.strip()] += 1
 
         return gene_hit_counts
+
+
+    def get_num_genomes_from_SCG_sources_dict(self):
+        SCG_sources = [key for key in self.hmm_hits_info if self.hmm_hits_info[key]['search_type'] == 'singlecopy']
+
+        if not len(SCG_sources):
+            return {}
+
+        gene_hit_counts_per_hmm_source = self.get_gene_hit_counts_per_hmm_source(SCG_sources)
+
+        num_genomes_per_SCG_source = {}
+        for SCG_source in SCG_sources:
+            l = list(gene_hit_counts_per_hmm_source[SCG_source].values())
+            num_genomes_per_SCG_source[SCG_source] = {'num_genomes': int(stats.mode(l).mode[0]),
+                                                      'domain': self.hmm_hits_info[SCG_source]['domain']}
+
+        return num_genomes_per_SCG_source
 
 
     def get_hmm_hits_per_bin(self, splits_dict, source):
