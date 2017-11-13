@@ -16,14 +16,12 @@ import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
-import anvio.dbops as dbops
 import anvio.fastalib as fastalib
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
-from anvio.genomedescriptions import GenomeDescriptions
 
 
 __author__ = "A. Murat Eren"
@@ -41,12 +39,14 @@ pp = terminal.pretty_print
 
 
 class GenomeStorage(object):
-    def __init__(self, storage_path, create_new=False, run=run, progress=progress):
+    def __init__(self, storage_path, storage_hash=None,  genome_names_to_focus=None, create_new=False, run=run, progress=progress):
         self.db_type = 'genomes data storage'
         self.version = anvio.__genomes_storage_version__
         self.run = run
+        self.storage_hash = storage_hash
         self.progress = progress
         self.storage_path = storage_path
+        self.genome_names_to_focus = genome_names_to_focus
 
         if create_new:
             self.check_storage_path_for_create_new()
@@ -57,6 +57,8 @@ class GenomeStorage(object):
 
         if create_new:
             self.create_tables()
+        else:
+            self.init()
 
 
     def check_storage_path_for_create_new(self):
@@ -79,6 +81,37 @@ class GenomeStorage(object):
         filesnpaths.is_file_exists(self.storage_path)
 
 
+    def init(self):
+        if self.storage_hash:
+            if self.storage_hash != self.get_storage_hash():
+                raise ConfigError("Requested storage hash ('%s') does not match with the one readed from database ('%s')." % 
+                    (self.storage_hash, self.get_sorage_hash))
+
+        self.genome_names_in_db = self.get_all_genome_names()
+
+        if self.genome_names_to_focus:
+            genome_names_to_focus_missing_from_db = [g for g in self.genome_names_to_focus if g not in self.genome_names_in_db]
+
+            # make sure the user knows what they're doing
+            if genome_names_to_focus_missing_from_db:
+                raise ConfigError("%d of %d genome names you wanted to focus are missing from the genomes sotrage.\
+                                 Although this may not be a show-stopper, anvi'o likes to be explicit, so here we\
+                                 are. Not going anywhere until you fix this. For instance this is one of the missing\
+                                 genome names: '%s', and this is one random genome name from the database: '%s'" % \
+                                         (len(genome_names_to_focus_missing_from_db), len(self.genome_names_to_focus),\
+                                         genome_names_to_focus_missing_from_db[0], list(self.genomes.keys())[0]))
+
+            self.genome_names = self.genome_names_to_focus
+        else:
+            self.genome_names = self.genome_names_in_db
+
+        self.num_genomes = len(self.genome_names)
+        self.functions_are_available = self.db.get_meta_value('functions_are_available')
+
+        self.run.info('Genomes storage', 'Initialized (storage hash: %s)' % (self.get_storage_hash()))
+        self.run.info('Num genomes in storage', len(self.get_all_genome_names()))
+        self.run.info('Num genomes will be used', len(self.genome_names), mc='green')
+
 
     def create_tables(self):
         self.db.create_table(t.genome_info_table_name, t.genome_info_table_structure, t.genome_info_table_types)
@@ -87,15 +120,16 @@ class GenomeStorage(object):
 
         self.db.set_meta_value('db_type', self.db_type)
         self.db.set_meta_value('creation_date', time.time())
+        self.db.set_meta_value('functions_are_available', False)
 
 
-    def get_genomes_dict(self, genome_names=None):
+    def get_genomes_dict(self):
         # we retrieve all table at once to avoid seperate sql queries
         all_genomes_dict = self.db.get_table_as_dict(t.genome_info_table_name)
         result = {}
 
         # copy genomes requested by user to result dictionary
-        for genome_name in genome_names:
+        for genome_name in self.genome_names:
             result[genome_name] = all_genomes_dict[genome_name]
 
         return result
@@ -118,6 +152,9 @@ class GenomeStorage(object):
 
 
     def store_genomes(self, genome_descriptions):
+        self.functions_are_available = genome_descriptions.functions_are_available
+        self.db.set_meta_value('functions_are_available', self.functions_are_available)
+
         num_gene_calls_added_total = 0
         num_partial_gene_calls_total = 0
 
@@ -133,10 +170,7 @@ class GenomeStorage(object):
 
             self.add_genome(genome_name, genome)
 
-            functions_dict, aa_sequences_dict, dna_sequences_dict = self.get_functions_and_sequences_dicts_from_contigs_db(genome['contigs_db_path'],
-                                                                                                                           genome['gene_caller_ids'],
-                                                                                                                           functions_are_available=genome_descriptions.functions_are_available,
-                                                                                                                           function_annotation_sources=genome_descriptions.function_annotation_sources)
+            functions_dict, aa_sequences_dict, dna_sequences_dict = genome_descriptions.get_functions_and_sequences_dicts_from_contigs_db(genome_name)
 
             for gene_caller_id in genome['gene_caller_ids']:
                 is_partial_gene_call = gene_caller_id in genome['partial_gene_calls']
@@ -177,31 +211,6 @@ class GenomeStorage(object):
         self.run.info('Number of partial gene calls', '%s' % pp(num_partial_gene_calls_total))
 
         self.close()
-
-
-    def get_functions_and_sequences_dicts_from_contigs_db(self, contigs_db_path, gene_caller_ids=None, functions_are_available=False, function_annotation_sources=set([])):
-        """Returns function calls, dna and amino acid sequences for `gene_caller_ids`
-           from a contigs database"""
-
-        args = argparse.Namespace(contigs_db=contigs_db_path)
-        contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
-
-        if functions_are_available:
-            contigs_super.init_functions(requested_sources=function_annotation_sources)
-            function_calls_dict = contigs_super.gene_function_calls_dict
-        else:
-            function_calls_dict = {}
-
-        # get dna sequences
-        gene_caller_ids_list, dna_sequences_dict = contigs_super.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(gene_caller_ids))
-
-        # get amino acid sequences.
-        # FIXME: this should be done in the contigs super.
-        contigs_db = dbops.ContigsDatabase(contigs_db_path)
-        aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
-        contigs_db.disconnect()
-
-        return (function_calls_dict, aa_sequences_dict, dna_sequences_dict)
 
 
     def add_genome(self, genome_name, genome_info_dict):
@@ -297,7 +306,7 @@ class GenomeStorage(object):
         return self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name')
 
 
-    def gen_combined_aa_sequences_FASTA(self, output_file_path, genome_names=None, exclude_partial_gene_calls=False):
+    def gen_combined_aa_sequences_FASTA(self, output_file_path, exclude_partial_gene_calls=False):
         self.run.info('Exclude partial gene calls', exclude_partial_gene_calls, nl_after=1)
 
         total_num_aa_sequences = 0
@@ -305,9 +314,9 @@ class GenomeStorage(object):
 
         fasta_output = fastalib.FastaOutput(output_file_path)
 
-        genome_info_dict = self.get_genomes_dict(genome_names=genome_names)
+        genome_info_dict = self.get_genomes_dict()
 
-        for genome_name in genome_names:
+        for genome_name in self.genome_names:
             self.progress.new('Storing aa sequences')
             self.progress.update('%s ...' % genome_name)
 
