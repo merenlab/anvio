@@ -13,8 +13,8 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "9"
-profile_db_version = "20"
-pan_db_version = "5"
+profile_db_version = "21"
+pan_db_version = "6"
 samples_info_db_version = "2"
 auxiliary_data_version = "1"
 genomes_storage_vesion = "4"
@@ -112,9 +112,9 @@ hmm_hits_splits_table_types            = [ 'numeric',      'numeric'    ,  'text
 #
 ####################################################################################################
 
-clusterings_table_name               = 'clusterings'
-clusterings_table_structure          = ['clustering', 'newick']
-clusterings_table_types              = [   'str'    ,  'str'  ]
+item_orders_table_name               = 'item_orders'
+item_orders_table_structure          = ['name', 'type', 'data']
+item_orders_table_types              = [ 'str',  'str',  'str']
 
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']

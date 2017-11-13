@@ -26,11 +26,6 @@
 
         <div class="container">
             <table class="table table-details">
-              <thead>
-                <tr>
-                  <th></th>
-                </tr>
-              </thead>
               <tbody>
               </tbody>
             </table>
@@ -70,13 +65,13 @@
 
             var max_hmm_hits = 0;
             var active_index = 0;
-            Object.keys(stats.single_copy_gene_counts).forEach(function(source, gene_chart_index) {
+            Object.keys(stats.gene_hit_counts_per_hmm_source).forEach(function(source, gene_chart_index) {
                 var plot_container_id = 'gene_chart_' + prefix + '_' + gene_chart_index;
 
                 var hits_sum = 0;
 
-                Object.keys(stats.single_copy_gene_counts[source]).forEach(function (gene) {
-                    hits_sum += stats.single_copy_gene_counts[source][gene];
+                Object.keys(stats.gene_hit_counts_per_hmm_source[source]).forEach(function (gene) {
+                    hits_sum += stats.gene_hit_counts_per_hmm_source[source][gene];
                 });
 
                 if (hits_sum > max_hmm_hits) {
@@ -96,22 +91,23 @@
                                         .attr('role', 'tabpanel')
                                         .attr('id', plot_container_id);
 
-                draw_gene_counts_chart('#' + plot_container_id, stats.single_copy_gene_counts[source]);
+                draw_gene_counts_chart('#' + plot_container_id, stats.gene_hit_counts_per_hmm_source[source]);
             });
 
             $('a[href="#gene_chart_' + prefix + '_' + active_index + '"').tab('show');
         }
 
+        function create_table_header(header_text) {
+            $('.table-details>tbody').append('<tr class="info"><th>'+header_text+'</th>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<th class="text-center">' + contigs_stats[contig_db_name]['project_name'] + '</th>');
+            });
+            $('.table-details>tbody').append('</tr>');
+        }
+
         function create_table() {
             // Build comparison table
-            contig_db_names.forEach(function(contig_db_name, index) {
-                $('.table-details>thead>tr').append('<th class="text-center">' + contigs_stats[contig_db_name]['project_name'] + '</th>');
-            });
-
-            $('.table-details>tbody').append('<tr><td>Total Length</td></tr>');
-            contig_db_names.forEach(function(contig_db_name, index) {
-                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['total_length']) + '</td>');
-            });
+            create_table_header('Contigs Stats');
 
             $('.table-details>tbody').append('<tr><td>Num Contigs</td></tr>');
             contig_db_names.forEach(function(contig_db_name, index) {
@@ -167,20 +163,22 @@
             var all_sources = [];
 
             contig_db_names.forEach(function(contig_db_name) {
-                Object.keys(contigs_stats[contig_db_name].single_copy_gene_counts).forEach(function(source) {
+                Object.keys(contigs_stats[contig_db_name].gene_hit_counts_per_hmm_source).forEach(function(source) {
                     if (all_sources.indexOf(source) == -1) {
                         all_sources.push(source);
                     }
                 });
             });
 
+            create_table_header('Raw number of HMM Hits');
+
             all_sources.forEach(function(source) {
-                $('.table-details>tbody').append('<tr><td>HMM Hits (' + source + ')</td></tr>');
+                $('.table-details>tbody').append('<tr><td>' + source + '</td></tr>');
                 contig_db_names.forEach(function(contig_db_name) {
-                    if (contigs_stats[contig_db_name]['single_copy_gene_counts'].hasOwnProperty(source)) {
+                    if (contigs_stats[contig_db_name]['gene_hit_counts_per_hmm_source'].hasOwnProperty(source)) {
                         var hits_sum = 0;
-                        Object.keys(contigs_stats[contig_db_name]['single_copy_gene_counts'][source]).forEach(function (gene) {
-                            hits_sum += contigs_stats[contig_db_name]['single_copy_gene_counts'][source][gene];
+                        Object.keys(contigs_stats[contig_db_name]['gene_hit_counts_per_hmm_source'][source]).forEach(function (gene) {
+                            hits_sum += contigs_stats[contig_db_name]['gene_hit_counts_per_hmm_source'][source][gene];
                         });
                         $('.table-details>tbody>tr:last').append('<td class="text-center">' + hits_sum + '</td>');
                     }
@@ -190,6 +188,45 @@
                     }
                 });
             });
+
+            if (all_sources.length == 0) {
+                $('.table-details>tbody').append('<tr><td><i>HMMs were not run</i></td></tr>');
+            }
+
+            create_table_header('Approx. number of genomes <a href="http://merenlab.org/2015/12/07/predicting-number-of-genomes/">[?]</a>');
+
+            var all_sources_SCG_hits = [];
+
+            contig_db_names.forEach(function(contig_db_name) {
+                Object.keys(contigs_stats[contig_db_name]['num_genomes_per_SCG_source_dict']).forEach(function(source) {
+                    if (all_sources_SCG_hits.map(function(s) {return s.name }).indexOf(source) == -1) {
+                        all_sources_SCG_hits.push({
+                            'name': source, 
+                            'domain': contigs_stats[contig_db_name]['num_genomes_per_SCG_source_dict'][source]['domain']
+                        });
+                    }
+                });
+            });
+
+            all_sources_SCG_hits.forEach(function(source) {
+                $('.table-details>tbody').append('<tr><td>' + source.domain + ' (' + source.name + ')</td></tr>');
+                contig_db_names.forEach(function(contig_db_name) {
+                    if (contigs_stats[contig_db_name]['num_genomes_per_SCG_source_dict'].hasOwnProperty(source.name)) {
+                        var domain = contigs_stats[contig_db_name]['num_genomes_per_SCG_source_dict'][source.name]['domain'];
+                        var num_genomes = contigs_stats[contig_db_name]['num_genomes_per_SCG_source_dict'][source.name]['num_genomes'];
+
+                        $('.table-details>tbody>tr:last').append('<td class="text-center">' + num_genomes + '</td>');    
+                    }
+                    else
+                    {
+                        $('.table-details>tbody>tr:last').append('<td class="text-center">n/a</td>');
+                    }
+                });
+            });
+
+            if (all_sources_SCG_hits.length == 0) {
+                $('.table-details>tbody').append('<tr><td><i>SCG HMMs were not run</i></td></tr>');
+            }
         }
 
         $('#select-left,#select-right').change(function() {
