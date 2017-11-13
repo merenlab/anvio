@@ -108,6 +108,23 @@ class GenomeStorage(object):
         self.num_genomes = len(self.genome_names)
         self.functions_are_available = self.db.get_meta_value('functions_are_available')
 
+        ## load the data
+        where_clause = """genome_name IN (%s)""" % ",".join('"' + item + '"' for item in self.genome_names)
+        self.genomes_info = self.db.get_some_rows_from_table_as_dict(t.genome_info_table_name, where_clause)
+
+        self.gene_info = {}
+        for gene_info_tuple in self.db.get_some_rows_from_table(t.gene_info_table_name, where_clause):
+            genome_name, gene_caller_id, aa_sequence, dna_sequence, partial, length = gene_info_tuple
+            if genome_name not in self.gene_info:
+                self.gene_info[genome_name] = {}
+
+            self.gene_info[genome_name][gene_caller_id] = {
+                'aa_sequence': aa_sequence,
+                'dna_sequence': dna_sequence,
+                'partial': partial,
+                'length': length
+            }
+
         self.run.info('Genomes storage', 'Initialized (storage hash: %s)' % (self.get_storage_hash()))
         self.run.info('Num genomes in storage', len(self.get_all_genome_names()))
         self.run.info('Num genomes will be used', len(self.genome_names), mc='green')
@@ -214,9 +231,6 @@ class GenomeStorage(object):
 
 
     def add_genome(self, genome_name, genome_info_dict):
-        if self.is_known_genome(genome_name, throw_exception=False):
-            raise ConfigError("Genome '%s' is already in this data storage :/" % genome_name)
-
         values = (genome_name, )
 
         for column_name in t.genome_info_table_structure[1:]:
@@ -248,10 +262,7 @@ class GenomeStorage(object):
 
 
     def is_known_genome(self, genome_name, throw_exception=True):
-        cursor = self.db._exec('''SELECT genome_name FROM %s WHERE genome_name = ?''' % t.genome_info_table_name, (genome_name, ))
-        rows = cursor.fetchall()
-
-        if len(rows) == 0:
+        if genome_name not in self.genomes_info:
             if throw_exception:
                 raise ConfigError('The database at "%s" does not know anything about "%s" :(' % (self.storage_path, genome_name))
             else:
@@ -261,10 +272,7 @@ class GenomeStorage(object):
 
 
     def is_known_gene_call(self, genome_name, gene_caller_id):
-        cursor = self.db._exec('''SELECT gene_caller_id FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % t.gene_info_table_name, (genome_name, gene_caller_id))
-        rows = cursor.fetchall()
-
-        if len(rows) == 0:
+        if genome_name not in self.gene_info and gene_caller_id not in self.gene_info[genome_name]:
             raise ConfigError('The database at "%s" does not know anything gene caller id "%d" in genome "%s" :(' % (self.storage_path, gene_caller_id, genome_name))
 
 
@@ -272,20 +280,12 @@ class GenomeStorage(object):
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_caller_id)
 
-        cursor = self.db._exec('''SELECT partial FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % t.gene_info_table_name, (genome_name, gene_caller_id))
-        row = cursor.fetchone()
-        partial = row[0]
-
-        # 'partial' can either be 0 or 1, so it can be used as a boolean.
-        # but let's make sure and convert it to boolean, maybe type can be problem in future
-        return (partial == 1)
+        return (self.gene_info[genome_name][gene_caller_id]['partial'] == 1)
 
 
     def get_gene_caller_ids(self, genome_name):
-        cursor = self.db._exec('''SELECT gene_caller_id FROM %s WHERE genome_name = ?''' % t.gene_info_table_name, (genome_name, ))
-        rows = cursor.fetchall()
-
-        return [row[0] for row in rows]
+        self.is_known_genome(genome_name)
+        return self.gene_info[genome_name].keys()
 
 
     def get_gene_sequence(self, genome_name, gene_caller_id, report_DNA_sequences=False):
@@ -295,11 +295,7 @@ class GenomeStorage(object):
 
         column_name = 'dna_sequence' if report_DNA_sequences else 'aa_sequence' 
 
-        cursor = self.db._exec('''SELECT %s FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % (column_name, t.gene_info_table_name), (genome_name, gene_caller_id))
-        row = cursor.fetchone()
-        sequence = row[0]
-
-        return sequence
+        return self.gene_info[genome_name][gene_caller_id][column_name]
 
 
     def get_all_genome_names(self):
