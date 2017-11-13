@@ -1,0 +1,342 @@
+# -*- coding: utf-8
+# pylint: disable=line-too-long
+"""
+    A module to dealing with genome storages.
+
+    Pangenomic workflow heavily uses this module.
+
+    Ad hoc access to make sene of internal or external genome descriptions is also welcome.
+"""
+
+import time
+import hashlib
+import argparse
+
+import anvio
+import anvio.db as db
+import anvio.tables as t
+import anvio.utils as utils
+import anvio.dbops as dbops
+import anvio.fastalib as fastalib
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+import anvio.auxiliarydataops as auxiliarydataops
+
+from anvio.errors import ConfigError
+from anvio.genomedescriptions import GenomeDescriptions
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+
+
+class GenomeStorage(object):
+    def __init__(self, storage_path, create_new=False, run=run, progress=progress):
+        self.db_type = 'genomes data storage'
+        self.version = anvio.__genomes_storage_version__
+        self.run = run
+        self.progress = progress
+        self.storage_path = storage_path
+
+        if create_new:
+            self.check_storage_path_for_create_new()
+        else:
+            self.check_storage_path_for_load()
+
+        self.db = db.DB(self.storage_path, self.version, new_database=create_new)
+
+        if create_new:
+            self.create_tables()
+
+
+    def check_storage_path_for_create_new(self):
+        if not self.storage_path.endswith('GENOMES.db'):
+            raise ConfigError("The genomes storage file must end with '-GENOMES.db'. Anvi'o developers do know how ridiculous\
+                                this requirement sounds like, but if you have seen the things they did, you would totally\
+                                understand why this is necessary.")
+
+        filesnpaths.is_output_file_writable(self.storage_path)
+
+    def check_storage_path_for_load(self):
+        if not self.storage_path:
+            raise ConfigError("Anvi'o genomes storage is speaking. Someone called the init function,\
+                               yet there is nothing to initialize since genome storage path variable\
+                               (args.genomes_storage) is None. If you are an end user, please make sure\
+                               you provide the genomes storage paramater to whatever program you were\
+                               running. If you are a developer, you probably already figured what is\
+                               wrong. If you are a cat, you need to send us an e-mail immediately.")
+
+        filesnpaths.is_file_exists(self.storage_path)
+
+
+
+    def create_tables(self):
+        self.db.create_table(t.genome_info_table_name, t.genome_info_table_structure, t.genome_info_table_types)
+        self.db.create_table(t.gene_info_table_name, t.gene_info_table_structure, t.gene_info_table_types)
+        self.db.create_table(t.genome_gene_function_calls_table_name, t.genome_gene_function_calls_table_structure, t.genome_gene_function_calls_table_types)
+
+        self.db.set_meta_value('db_type', self.db_type)
+        self.db.set_meta_value('creation_date', time.time())
+
+
+    def get_genomes_dict(self, genome_names=None):
+        # we retrieve all table at once to avoid seperate sql queries
+        all_genomes_dict = self.db.get_table_as_dict(t.genome_info_table_name)
+        result = {}
+
+        # copy genomes requested by user to result dictionary
+        for genome_name in genome_names:
+            result[genome_name] = all_genomes_dict[genome_name]
+
+        return result
+
+
+    def update_storage_hash(self):
+        # here we create a signature for the storage itself by concatenating all hash values from all genomes. even if one
+        # split is added or removed to any of these genomes will change this signature. since we will tie this information
+        # to the profile database we will generate for the pangenome analysis, even if one split is added or removed from any
+        # of the genomes will make sure that the profile databases from this storage and storage itself are not compatible:
+
+        concatenated_genome_hashes = '_'.join(sorted(map(str, self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_hash'))))
+        new_hash = hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:8]
+
+        self.db.set_meta_value('hash', new_hash)
+
+
+    def get_storage_hash(self):
+        return self.db.get_meta_value('hash')
+
+
+    def store_genomes(self, genome_descriptions):
+        num_gene_calls_added_total = 0
+        num_partial_gene_calls_total = 0
+
+        genome_names_to_go_through = sorted(genome_descriptions.genomes.keys())
+
+        for genome_name in genome_names_to_go_through:
+            self.progress.new('Initializing genomes')
+            self.progress.update('%s ...' % genome_name)
+            num_gene_calls_added = 0
+            num_partial_gene_calls = 0
+
+            genome = genome_descriptions.genomes[genome_name]
+
+            self.add_genome(genome_name, genome)
+
+            functions_dict, aa_sequences_dict, dna_sequences_dict = self.get_functions_and_sequences_dicts_from_contigs_db(genome['contigs_db_path'],
+                                                                                                                           genome['gene_caller_ids'],
+                                                                                                                           functions_are_available=genome_descriptions.functions_are_available,
+                                                                                                                           function_annotation_sources=genome_descriptions.function_annotation_sources)
+
+            for gene_caller_id in genome['gene_caller_ids']:
+                is_partial_gene_call = gene_caller_id in genome['partial_gene_calls']
+
+                self.add_gene_call(genome_name,
+                                    gene_caller_id,
+                                    aa_sequence=aa_sequences_dict[gene_caller_id]['sequence'],
+                                    dna_sequence=dna_sequences_dict[gene_caller_id]['sequence'],
+                                    partial=is_partial_gene_call)
+
+                if gene_caller_id in functions_dict:
+                    for source in functions_dict[gene_caller_id]:
+                        self.add_gene_function_annotation(genome_name, 
+                                                          gene_caller_id, 
+                                                          source, 
+                                                          functions_dict[gene_caller_id][source])
+
+                num_gene_calls_added += 1
+                if is_partial_gene_call:
+                    num_partial_gene_calls += 1
+
+
+            self.progress.end()
+            self.run.info_single('%s is stored with %s genes (%s of which were partial)' % (genome_name, pp(num_gene_calls_added), pp(num_partial_gene_calls)),
+                          cut_after=120,
+                          nl_before = 1 if genome_name == genome_names_to_go_through[0] else 0,
+                          nl_after  = 1 if genome_name == genome_names_to_go_through[-1] else 0)
+
+            num_gene_calls_added_total += num_gene_calls_added
+            num_partial_gene_calls_total += num_partial_gene_calls
+
+
+        self.run.info('The new genomes storage', '%s (v%s, signature: %s)' % (self.storage_path, self.version, self.get_storage_hash()))
+        self.run.info('Number of genomes', '%s (internal: %s, external: %s)' % (pp(len(genome_descriptions.genomes)), 
+                                                                                pp(len(genome_descriptions.internal_genome_names)), 
+                                                                                pp(len(genome_descriptions.external_genome_names))))
+        self.run.info('Number of gene calls', '%s' % pp(num_gene_calls_added_total))
+        self.run.info('Number of partial gene calls', '%s' % pp(num_partial_gene_calls_total))
+
+        self.close()
+
+
+    def get_functions_and_sequences_dicts_from_contigs_db(self, contigs_db_path, gene_caller_ids=None, functions_are_available=False, function_annotation_sources=set([])):
+        """Returns function calls, dna and amino acid sequences for `gene_caller_ids`
+           from a contigs database"""
+
+        args = argparse.Namespace(contigs_db=contigs_db_path)
+        contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
+
+        if functions_are_available:
+            contigs_super.init_functions(requested_sources=function_annotation_sources)
+            function_calls_dict = contigs_super.gene_function_calls_dict
+        else:
+            function_calls_dict = {}
+
+        # get dna sequences
+        gene_caller_ids_list, dna_sequences_dict = contigs_super.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(gene_caller_ids))
+
+        # get amino acid sequences.
+        # FIXME: this should be done in the contigs super.
+        contigs_db = dbops.ContigsDatabase(contigs_db_path)
+        aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
+        contigs_db.disconnect()
+
+        return (function_calls_dict, aa_sequences_dict, dna_sequences_dict)
+
+
+    def add_genome(self, genome_name, genome_info_dict):
+        if self.is_known_genome(genome_name, throw_exception=False):
+            raise ConfigError("Genome '%s' is already in this data storage :/" % genome_name)
+
+        values = (genome_name, )
+
+        for column_name in t.genome_info_table_structure[1:]:
+            if genome_info_dict[column_name]:
+                values += (genome_info_dict[column_name], )
+            else:
+                # the following line will add a -1 for any `key` that has the value of `None`. the reason
+                # we added this was to be able to work with contigs databases without any hmm hits for SCGs
+                # which is covered in https://github.com/merenlab/anvio/issues/573
+                values += (-1, )
+
+        self.db.insert(t.genome_info_table_name, values=values)
+        self.update_storage_hash()
+
+
+    def add_gene_call(self, genome_name, gene_caller_id, aa_sequence, dna_sequence, partial=0):
+        self.db.insert(t.gene_info_table_name, (genome_name, gene_caller_id, aa_sequence, dna_sequence,
+                                                partial, len(aa_sequence),))
+
+
+    def add_gene_function_annotation(self, genome_name, gene_caller_id, source, annotation):
+        if not annotation or len(annotation) != 3:
+            return
+
+        accession, function, e_value = annotation
+        values = (genome_name, 0, gene_caller_id, source, accession, function, e_value, )
+
+        self.db.insert(t.genome_gene_function_calls_table_name, values=values)
+
+
+    def is_known_genome(self, genome_name, throw_exception=True):
+        cursor = self.db._exec('''SELECT genome_name FROM %s WHERE genome_name = ?''' % t.genome_info_table_name, (genome_name, ))
+        rows = cursor.fetchall()
+
+        if len(rows) == 0:
+            if throw_exception:
+                raise ConfigError('The database at "%s" does not know anything about "%s" :(' % (self.storage_path, genome_name))
+            else:
+                return False
+        else:
+            return True
+
+
+    def is_known_gene_call(self, genome_name, gene_caller_id):
+        cursor = self.db._exec('''SELECT gene_caller_id FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % t.gene_info_table_name, (genome_name, gene_caller_id))
+        rows = cursor.fetchall()
+
+        if len(rows) == 0:
+            raise ConfigError('The database at "%s" does not know anything gene caller id "%d" in genome "%s" :(' % (self.storage_path, gene_caller_id, genome_name))
+
+
+    def is_partial_gene_call(self, genome_name, gene_caller_id):
+        self.is_known_genome(genome_name)
+        self.is_known_gene_call(genome_name, gene_caller_id)
+
+        cursor = self.db._exec('''SELECT partial FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % t.gene_info_table_name, (genome_name, gene_caller_id))
+        row = cursor.fetchone()
+        partial = row[0]
+
+        # 'partial' can either be 0 or 1, so it can be used as a boolean.
+        # but let's make sure and convert it to boolean, maybe type can be problem in future
+        return (partial == 1)
+
+
+    def get_gene_caller_ids(self, genome_name):
+        cursor = self.db._exec('''SELECT gene_caller_id FROM %s WHERE genome_name = ?''' % t.gene_info_table_name, (genome_name, ))
+        rows = cursor.fetchall()
+
+        return [row[0] for row in rows]
+
+
+    def get_gene_sequence(self, genome_name, gene_caller_id, report_DNA_sequences=False):
+        """Returns gene amino acid sequence unless `report_DNA_sequences` is True."""
+        self.is_known_genome(genome_name)
+        self.is_known_gene_call(genome_name, gene_caller_id)
+
+        column_name = 'dna_sequence' if report_DNA_sequences else 'aa_sequence' 
+
+        cursor = self.db._exec('''SELECT %s FROM %s WHERE genome_name = ? AND gene_caller_id = ?''' % (column_name, t.gene_info_table_name), (genome_name, gene_caller_id))
+        row = cursor.fetchone()
+        sequence = row[0]
+
+        return sequence
+
+
+    def get_all_genome_names(self):
+        return self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_name')
+
+
+    def gen_combined_aa_sequences_FASTA(self, output_file_path, genome_names=None, exclude_partial_gene_calls=False):
+        self.run.info('Exclude partial gene calls', exclude_partial_gene_calls, nl_after=1)
+
+        total_num_aa_sequences = 0
+        total_num_excluded_aa_sequences = 0
+
+        fasta_output = fastalib.FastaOutput(output_file_path)
+
+        genome_info_dict = self.get_genomes_dict(genome_names=genome_names)
+
+        for genome_name in genome_names:
+            self.progress.new('Storing aa sequences')
+            self.progress.update('%s ...' % genome_name)
+
+            gene_caller_ids = sorted([int(gene_caller_id) for gene_caller_id in self.get_gene_caller_ids(genome_name)])
+
+            for gene_caller_id in gene_caller_ids:
+                is_partial = self.is_partial_gene_call(genome_name, gene_caller_id)
+
+                if exclude_partial_gene_calls and is_partial:
+                    total_num_excluded_aa_sequences += 1
+                    continue
+
+                aa_sequence = self.get_gene_sequence(genome_name, gene_caller_id)
+
+                fasta_output.write_id('%s_%d' % (genome_info_dict[genome_name]['genome_hash'], int(gene_caller_id)))
+                fasta_output.write_seq(aa_sequence, split=False)
+
+                total_num_aa_sequences += 1
+
+            self.progress.end()
+
+        fasta_output.close()
+
+        self.run.info('AA sequences FASTA', output_file_path)
+        self.run.info('Num AA sequences reported', '%s' % pp(total_num_aa_sequences), nl_before=1)
+        self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_aa_sequences))
+
+        return total_num_aa_sequences, total_num_excluded_aa_sequences
+
+
+    def close(self):
+        self.db.disconnect()
