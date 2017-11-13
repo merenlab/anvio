@@ -12,8 +12,10 @@ import os
 import sys
 import copy
 import hashlib
+import argparse
 
 import anvio
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -168,8 +170,33 @@ class GenomeDescriptions(object):
             self.init_internal_genomes()
             self.init_external_genomes()
 
+
         # make sure it is OK to go with self.genomes
         self.sanity_check()
+
+
+    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name):
+        g = self.genomes[genome_name]
+
+        args = argparse.Namespace(contigs_db=g['contigs_db_path'])
+        contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
+
+        if self.functions_are_available:
+            contigs_super.init_functions(requested_sources=self.function_annotation_sources)
+            function_calls_dict = contigs_super.gene_function_calls_dict
+        else:
+            function_calls_dict = {}
+
+        # get dna sequences
+        gene_caller_ids_list, dna_sequences_dict = contigs_super.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(g['gene_caller_ids']))
+
+        # get amino acid sequences.
+        # FIXME: this should be done in the contigs super.
+        contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+        aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
+        contigs_db.disconnect()
+
+        return (function_calls_dict, aa_sequences_dict, dna_sequences_dict)
 
 
     def init_functions(self):

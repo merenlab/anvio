@@ -32,6 +32,7 @@ import anvio.samplesops as samplesops
 import anvio.filesnpaths as filesnpaths
 import anvio.genecalling as genecalling
 import anvio.auxiliarydataops as auxiliarydataops
+import anvio.genomestorage as genomestorage
 
 from anvio.tableops import Table
 from anvio.drivers import Aligners
@@ -801,7 +802,7 @@ class PanSuperclass(object):
         self.progress.end()
 
         if 'genomes_storage' in args.__dict__ and args.genomes_storage:
-            self.genomes_storage = auxiliarydataops.GenomesDataStorage(args.genomes_storage,
+            self.genomes_storage = genomestorage.GenomeStorage(args.genomes_storage,
                                                                        self.p_meta['genomes_storage_hash'],
                                                                        genome_names_to_focus=self.p_meta['genome_names'],
                                                                        run=self.run,

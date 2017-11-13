@@ -52,8 +52,8 @@ class Pangenome(object):
         self.max_num_PCs_for_hierarchical_clustering = constants.max_num_items_for_hierarchical_clustering
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.genomes_storage = GenomeStorage(A('genomes_storage'), run=run, progress=progress)
         self.genome_names_to_focus = A('genome_names')
+        self.genomes_storage_path = A('genomes_storage')
         self.genomes = None
         self.project_name = A('project_name')
         self.output_dir = A('output_dir')
@@ -99,10 +99,9 @@ class Pangenome(object):
                 self.genome_names_to_focus = [g.strip() for g in self.genome_names_to_focus.split(',')]
 
             self.run.warning("A subset of genome names is found, and anvi'o will focus only on to those.")
-        else:
-            self.genome_names_to_focus = self.genomes_storage.get_all_genome_names()
 
-        self.genomes = self.genomes_storage.get_genomes_dict(genome_names=self.genome_names_to_focus)
+        self.genomes_storage = GenomeStorage(self.genomes_storage_path, storage_hash=None, genome_names_to_focus=self.genome_names_to_focus)
+        self.genomes = self.genomes_storage.get_genomes_dict()
 
         self.external_genome_names = [g for g in self.genomes if self.genomes[g]['external_genome']]
         self.internal_genome_names = [g for g in self.genomes if not self.genomes[g]['external_genome']]
@@ -755,7 +754,6 @@ class Pangenome(object):
         # get all protein sequences:
         combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
         self.genomes_storage.gen_combined_aa_sequences_FASTA(combined_aas_FASTA_path, 
-                                                             genome_names=self.genomes, 
                                                              exclude_partial_gene_calls=self.exclude_partial_gene_calls)
 
 
@@ -763,8 +761,8 @@ class Pangenome(object):
         self.progress.new('Uniquing the output FASTA file')
         self.progress.update('...')
         unique_aas_FASTA_path, unique_aas_names_file_path, unique_aas_names_dict = utils.unique_FASTA_file(combined_aas_FASTA_path, store_frequencies_in_deflines=False)
-        self.run.info('Unique AA sequences FASTA', unique_aas_FASTA_path)
         self.progress.end()
+        self.run.info('Unique AA sequences FASTA', unique_aas_FASTA_path)
 
         # run search
         blastall_results = self.run_search(unique_aas_FASTA_path, unique_aas_names_dict)
