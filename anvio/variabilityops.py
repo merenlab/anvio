@@ -4,7 +4,6 @@
 """Classes to make sense of single nucleotide variation"""
 
 
-from collections import Counter
 
 import os
 import sys
@@ -21,7 +20,6 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
-import anvio.variability as variability
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
@@ -400,8 +398,6 @@ class VariabilitySuper(object):
 
         if not len(entry_ids):
             entry_ids = list(self.data.index)
-
-        items = constants.amino_acids if self.engine == "AA" else list(constants.nucleotides)
 
         # index those with and without non-zero coverage
         coverage_zero = self.data.index.isin(entry_ids) & (self.data["coverage"] == 0)
@@ -843,13 +839,17 @@ class VariabilitySuper(object):
         if self.include_split_names_in_output:
             new_structure.append('split_name')
 
-        self.progress.update('exporting variable positions table as a TAB-delimited file ...')
+        # Update entry_id with sequential numbers based on the final ordering of the data:
+        self.data = self.data.reset_index()
+        self.data.entry_id = self.data.index
 
+        self.progress.update('exporting variable positions table as a TAB-delimited file ...')
         utils.store_dataframe_as_TAB_delimited_file(self.data, self.args.output_file, columns=new_structure)
+        self.progress.end()
+
         self.run.info('Num entries reported', pp(len(self.data.index)))
         self.run.info('Output File', self.output_file_path)
         self.run.info('Num %s positions reported' % self.engine, self.data["unique_pos_identifier"].nunique())
-        self.progress.end()
 
 
 class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
