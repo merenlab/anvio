@@ -9,7 +9,6 @@ from collections import Counter
 import os
 import sys
 import copy
-import time
 import random
 import numpy as np
 import pandas as pd
@@ -79,7 +78,6 @@ class VariabilitySuper(object):
         self.include_contig_names_in_output = A('include_contig_names', null)
         self.include_split_names_in_output = A('include_split_names', null)
         self.gene_caller_id = A('gene_caller_id', null)
-        self.pandas = args.pandas
 
         self.substitution_scoring_matrices = None
         self.merged_split_coverage_values = None
@@ -157,7 +155,7 @@ class VariabilitySuper(object):
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
         # set items of interest while you are at it.
-        self.items = constants.amino_acids if self.engine == 'AA' else constants.nucleotides
+        self.items = constants.amino_acids if self.engine == 'AA' else sorted(list(constants.nucleotides))
 
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
@@ -236,29 +234,18 @@ class VariabilitySuper(object):
         # data is one of them, since they will be read from different tables.
         # another one is the substitution scoring matrices.
         if self.engine == 'NT':
-            if self.pandas:
-                self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name)
-            else:
-                self.data = profile_db.db.get_table_as_dict(t.variable_nts_table_name)
+            self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name)
             self.progress.end()
 
         elif self.engine == 'AA':
             if not profile_db.meta['AA_frequencies_profiled']:
                 raise ConfigError("It seems AA frequencies were not characterized for this profile database.\
                                     There is nothing to report here for AAs!")
-            if self.pandas:
-                self.data = profile_db.db.get_table_as_dataframe(t.variable_aas_table_name)
-                self.progress.end()
+            self.data = profile_db.db.get_table_as_dataframe(t.variable_aas_table_name)
+            self.progress.end()
 
-                # append split_name information
-                self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
-            else:
-                self.data = profile_db.db.get_table_as_dict(t.variable_aas_table_name)
-                self.progress.end()
-
-                # append split_name information
-                for e in list(self.data.values()):
-                    e['split_name'] = self.gene_callers_id_to_split_name_dict[e['corresponding_gene_call']]
+            # append split_name information
+            self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
 
         # we're done here. bye.
         profile_db.disconnect()
@@ -292,23 +279,13 @@ class VariabilitySuper(object):
 
 
     def apply_advanced_filters(self):
-        if self.pandas:
-            if self.min_departure_from_consensus:
-                self.run.info('Min departure from consensus', self.min_departure_from_consensus)
-                self.data = self.data[self.data['departure_from_consensus'] >= self.min_departure_from_consensus]
+        if self.min_departure_from_consensus:
+            self.run.info('Min departure from consensus', self.min_departure_from_consensus)
+            self.data = self.data[self.data['departure_from_consensus'] >= self.min_departure_from_consensus]
 
-            if self.max_departure_from_consensus < 1:
-                self.run.info('Max departure from consensus', self.max_departure_from_consensus)
-                self.data = self.data[self.data['departure_from_consensus'] <= self.max_departure_from_consensus]
-
-        else:
-            if self.min_departure_from_consensus:
-                self.run.info('Min departure from consensus', self.min_departure_from_consensus)
-                self.filter('min departure from consensus', lambda x: x['departure_from_consensus'] < self.min_departure_from_consensus)
-
-            if self.max_departure_from_consensus < 1:
-                self.run.info('Max departure from consensus', self.max_departure_from_consensus)
-                self.filter('max departure from consensus', lambda x: x['departure_from_consensus'] > self.max_departure_from_consensus)
+        if self.max_departure_from_consensus < 1:
+            self.run.info('Max departure from consensus', self.max_departure_from_consensus)
+            self.data = self.data[self.data['departure_from_consensus'] <= self.max_departure_from_consensus]
 
         self.check_if_data_is_empty()
 
@@ -328,80 +305,45 @@ class VariabilitySuper(object):
 
             self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
             self.sample_ids = sorted(list(self.samples_of_interest))
-            if self.pandas:
-                self.progress.new('Filtering based on samples of interest')
-                self.data = self.data.loc[self.data["sample_id"].isin(self.samples_of_interest)]
-                self.progress.end()
-            else:
-                self.filter('samples of interest', lambda x: x['sample_id'] not in self.samples_of_interest)
+            self.progress.new('Filtering based on samples of interest')
+            self.data = self.data.loc[self.data["sample_id"].isin(self.samples_of_interest)]
+            self.progress.end()
 
         if self.genes_of_interest:
             self.run.info('Num genes of interest', pp(len(self.genes_of_interest)))
-            if self.pandas:
-                self.progress.new('Filtering based on genes of interest')
-                self.data = self.data.loc[self.data["corresponding_gene_call"].isin(self.genes_of_interest)]
-                self.progress.end()
-            else:
-                self.filter('genes of interest', lambda x: x['corresponding_gene_call'] not in self.genes_of_interest)
+            self.progress.new('Filtering based on genes of interest')
+            self.data = self.data.loc[self.data["corresponding_gene_call"].isin(self.genes_of_interest)]
+            self.progress.end()
 
         if self.splits_of_interest:
             self.run.info('Num splits of interest', pp(len(self.splits_of_interest)))
-            if self.pandas:
-                self.progress.new('Filtering based on splits of interest')
-                self.data = self.data.loc[self.data["split_name"].isin(self.splits_of_interest)]
-                self.progress.end()
-            else:
-                self.filter('splits of interest', lambda x: x['split_name'] not in self.splits_of_interest)
+            self.progress.new('Filtering based on splits of interest')
+            self.data = self.data.loc[self.data["split_name"].isin(self.splits_of_interest)]
+            self.progress.end()
 
         # let's report the number of positions reported in each sample before filtering any further:
-        if self.pandas:
-            num_positions_each_sample = dict(self.data.sample_id.value_counts())
-            self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample.get(s, 0)) for s in sorted(self.sample_ids)]))
-        else:
-            num_positions_each_sample = Counter([v['sample_id'] for v in list(self.data.values())])
-            self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample[s]) for s in sorted(self.sample_ids)]))
+        num_positions_each_sample = dict(self.data.sample_id.value_counts())
+        self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample.get(s, 0)) for s in sorted(self.sample_ids)]))
 
         if self.min_departure_from_reference:
             self.run.info('Min departure from reference', self.min_departure_from_reference)
-            if self.pandas:
-                self.progress.new('Filtering based on min departure from reference')
-                self.data = self.data.loc[self.data["departure_from_reference"] >= self.min_departure_from_reference]
-                self.progress.end()
-            else:
-                self.filter('min departure from reference', lambda x: x['departure_from_reference'] < self.min_departure_from_reference)
+            self.progress.new('Filtering based on min departure from reference')
+            self.data = self.data.loc[self.data["departure_from_reference"] >= self.min_departure_from_reference]
+            self.progress.end()
 
         if self.max_departure_from_reference < 1:
             self.run.info('Max departure from reference', self.max_departure_from_reference)
-            if self.pandas:
-                self.progress.new('Filtering based on max departure from reference')
-                self.data = self.data.loc[self.data["departure_from_reference"] <= self.max_departure_from_reference]
-                self.progress.end()
-            else:
-                self.filter('max departure from reference', lambda x: x['departure_from_reference'] > self.max_departure_from_reference)
+            self.progress.new('Filtering based on max departure from reference')
+            self.data = self.data.loc[self.data["departure_from_reference"] <= self.max_departure_from_reference]
+            self.progress.end()
 
+        if self.engine == 'NT':
+            self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
+        if self.engine == 'AA':
+            self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['corresponding_gene_call'].astype(str) + "_" + self.data['codon_order_in_gene'].astype(str)
 
-        if self.pandas:
-            if self.engine == 'NT':
-                self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
-            if self.engine == 'AA':
-                self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['corresponding_gene_call'].astype(str) + "_" + self.data['codon_order_in_gene'].astype(str)
-
-            # this could go anywhere now
-            self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
-
-        else:
-            # this is the first time we are going through each data entry. before things get thorny down below,
-            # we will use this opportunity to add gene_length as well as unique_pos_identifier_str for each entry.
-            # a more granular design may be necessary for exposure later on.
-            for entry_id in self.data:
-                v = self.data[entry_id]
-                if self.engine == 'NT':
-                    v['unique_pos_identifier_str'] = '_'.join([v['split_name'], str(v['pos'])])
-                if self.engine == 'AA':
-                    v['unique_pos_identifier_str'] = '_'.join([v['split_name'], str(v['corresponding_gene_call']), str(v['codon_order_in_gene'])])
-
-                v['gene_length'] = self.get_gene_length(v['corresponding_gene_call'])
-
+        # this could go anywhere now
+        self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
 
         if self.min_occurrence == 1:
             return
@@ -413,68 +355,17 @@ class VariabilitySuper(object):
 
         self.progress.update('counting occurrences of each position across samples ...')
 
-        if self.pandas:
-            """
-            For the uninitiated, let's break this down:
-            
-            occurrences : 
-                a pandas Series with a length equal to the number of
-                unique_pos_identifier_str's. Each element is the number of
-                samples that unique_pos_identifier_str occurs in.  Each element
-                is accessed with the index that is equal to the
-                unique_pos_identifier_str. For example, the number of samples
-                <unique_pos_identifier_str> occurs in is
-                occurences.loc[<unique_pos_identifier_str>].
-            occurrences[occurrences >= self.min_occurrence] : 
-                A Series subset of occurrences that only includes
-                unique_pos_identifier_str's that occur at least
-                self.min_occurrence times.
-            occurrences[occurrences >= self.min_occurrence].index : 
-                The indices of occurrences[occurrences >= self.min_occurrence], i.e.
-                a pandas Index of all unique_pos_identifier_str's in the subset.
-            self.data.unique_pos_identifier_str.isin(occurrences[occurrences >= self.min_occurrence].index) :
-                A boolean Series with length equal to the number of rows of self.data. True if that row has
-                a unique_pos_identifier contained in the pandas Index, False if not.
-            self.data[self.data.unique_pos_identifier_str.isin(occurrences[occurrences >= self.min_occurrence].index)] :
-                A subset DataFrame of self.data that only includes rows where the boolean series is True.
-            """
-            occurrences = self.data.unique_pos_identifier_str.value_counts()
-            self.data = self.data[self.data.unique_pos_identifier_str.isin(occurrences[occurrences >= self.min_occurrence].index)]
-            self.progress.end()
-        else:
-            unique_pos_identifier_str_occurrences = {}
-            for entry_id in self.data:
-                v = self.data[entry_id]
-                if v['unique_pos_identifier_str'] in unique_pos_identifier_str_occurrences:
-                    unique_pos_identifier_str_occurrences[v['unique_pos_identifier_str']] += 1
-                else:
-                    unique_pos_identifier_str_occurrences[v['unique_pos_identifier_str']] = 1
-
-            self.progress.update('identifying entries that occurr in less than %d samples ...' % (self.min_occurrence))
-            entry_ids_to_remove = set([])
-            for entry_id in self.data:
-                v = self.data[entry_id]
-                if not unique_pos_identifier_str_occurrences[v['unique_pos_identifier_str']] >= self.min_occurrence:
-                    entry_ids_to_remove.add(entry_id)
-
-            self.progress.end()
-
-            self.remove_entries_from_data(entry_ids_to_remove, reason="preliminary filters")
+        occurrences = self.data.unique_pos_identifier_str.value_counts()
+        self.data = self.data[self.data.unique_pos_identifier_str.isin(occurrences[occurrences >= self.min_occurrence].index)]
+        self.progress.end()
 
 
     def set_unique_pos_identification_numbers(self):
         self.progress.new('Further processing')
         self.progress.update('re-setting unique identifiers to track split/position pairs across samples')
 
-        if self.pandas:
-            self.data['unique_pos_identifier'] = self.data['unique_pos_identifier_str'].apply(self.get_unique_pos_identification_number)
-            self.data['contig_name'] = self.data['split_name'].apply(lambda split: self.splits_basic_info[split]['parent'])
-
-        else:
-            for entry_id in self.data:
-                v = self.data[entry_id]
-                v['unique_pos_identifier'] = self.get_unique_pos_identification_number(v['unique_pos_identifier_str'])
-                v['contig_name'] = self.splits_basic_info[v['split_name']]['parent']
+        self.data['unique_pos_identifier'] = self.data['unique_pos_identifier_str'].apply(self.get_unique_pos_identification_number)
+        self.data['contig_name'] = self.data['split_name'].apply(lambda split: self.splits_basic_info[split]['parent'])
 
         self.progress.end()
 
@@ -507,92 +398,62 @@ class VariabilitySuper(object):
 
     def insert_additional_fields(self, entry_ids=[]):
 
-        if self.pandas:
+        if not len(entry_ids):
+            entry_ids = list(self.data.index)
 
-            if not len(entry_ids):
-                entry_ids = list(self.data.index)
+        items = constants.amino_acids if self.engine == "AA" else list(constants.nucleotides)
 
-            items = constants.amino_acids if self.engine == "AA" else list(constants.nucleotides)
+        # index those with and without non-zero coverage
+        coverage_zero = self.data.index.isin(entry_ids) & (self.data["coverage"] == 0)
+        coverage_nonzero = self.data.index.isin(entry_ids) & (self.data["coverage"] > 0)
 
-            # index those with and without non-zero coverage
-            coverage_zero = self.data.index.isin(entry_ids) & (self.data["coverage"] == 0)
-            coverage_nonzero = self.data.index.isin(entry_ids) & (self.data["coverage"] > 0)
+        argsorted_coverage = np.argsort(self.data.loc[entry_ids, self.items].values, axis=1)
+        sorted_coverage = np.sort(self.data.loc[entry_ids, self.items].values, axis=1)
 
-            # coverage values and identity of items most common
-            coverages_first = self.data.loc[entry_ids, items].max(axis=1)
-            items_first = self.data.loc[entry_ids, items].idxmax(axis=1)
+        # NOTE FIXME If there is a tie in coverage between either the most common or second most common, I don't
+        # understand which item is picked. Ideally it would be alphabetically but it seems to be random.
+        items_first =  self.data.loc[entry_ids, self.items].columns[argsorted_coverage][:,-1]
+        items_second = self.data.loc[entry_ids, self.items].columns[argsorted_coverage][:,-2]
+        coverages_first =  pd.Series(sorted_coverage[:,-1], index=self.data.loc[entry_ids].index)
+        coverages_second = pd.Series(sorted_coverage[:,-2], index=self.data.loc[entry_ids].index)
 
-            # now we block the most common and recalculate the max
-            exclude_first = self.data.loc[entry_ids, items].where(self.data.loc[entry_ids, items].lt(coverages_first, axis='rows'))
-            coverages_second = exclude_first.max(axis=1)
-            items_second = exclude_first.idxmax(axis=1)
+        self.data.loc[entry_ids, "consensus"] = items_first
 
-            self.data.loc[entry_ids, "consensus"] = items_first
+        # if the coverage is zero, departure_from_consensus = -1
+        self.data.loc[coverage_zero, "departure_from_consensus"] = -1
+        self.data.loc[coverage_nonzero, "departure_from_consensus"] = \
+                    (self.data.loc[coverage_nonzero, "coverage"] - coverages_first) / self.data.loc[coverage_nonzero, "coverage"]
 
-            # if the coverage is zero, departure_from_consensus = -1
-            self.data.loc[coverage_zero, "departure_from_consensus"] = -1
-            self.data.loc[coverage_nonzero, "departure_from_consensus"] = \
-                        (self.data.loc[coverage_nonzero, "coverage"] - coverages_first) / self.data.loc[coverage_nonzero, "coverage"]
+        # if the coverage is zero, n2n1ratio = -1
+        self.data.loc[coverage_zero, "n2n1ratio"] = -1
+        self.data.loc[coverage_nonzero, "n2n1ratio"] = coverages_second[coverage_nonzero] / coverages_first[coverage_nonzero]
 
-            # if the coverage is zero, departure_from_consensus = -1
-            self.data.loc[coverage_zero, "n2n1ratio"] = -1
-            self.data.loc[coverage_nonzero, "n2n1ratio"] = coverages_second.loc[coverage_nonzero] / coverages_first[coverage_nonzero]
+        if self.engine == 'AA':
 
-            if self.engine == 'AA':
+            # first naively concatenate the first and second most common
+            self.data.loc[entry_ids, "competing_aas"] = items_first + items_second
+            # if the most common has a coverage equal to the total coverage, pair the most common with itself
+            self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == self.data[self.items].max(axis=1)), "competing_aas"] = self.data["consensus"]*2
+            # alphabetize the pairs so that AlaTrp ends up the same as TrpAla
+            self.data.loc[entry_ids, "competing_aas"] = self.data.loc[entry_ids, "competing_aas"].apply(lambda x: ''.join(sorted([x[:3], x[3:]])))
 
-                # first naively concatenate the first and second most common
-                self.data.loc[entry_ids, "competing_aas"] = items_first + items_second
-                # if the most common has a coverage equal to the total coverage, pair the most common with itself
-                self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == self.data[items].max(axis=1)), "competing_aas"] = self.data["consensus"]*2
-                # alphabetize the pairs so that AlaTrp ends up the same as TrpAla
-                self.data.loc[entry_ids, "competing_aas"] = self.data.loc[entry_ids, "competing_aas"].apply(lambda x: ''.join(sorted([x[:3], x[3:]])))
-
-            competing = "competing_aas" if self.engine == "AA" else "competing_nts"
-            for m in self.substitution_scoring_matrices:
-                substitution_scoring_matrix = utils.convert_SSM_to_single_accession(self.substitution_scoring_matrices[m])
-                self.data.loc[entry_ids, m] = self.data.loc[entry_ids, competing].apply(lambda x: substitution_scoring_matrix.get(x, None))
-
-        else:
-            if not len(entry_ids):
-                entry_ids = list(self.data.keys())
-
-            for entry_id in entry_ids:
-                e = self.data[entry_id]
-                item_frequencies = utils.get_variabile_item_frequencies(e, self.engine)
-                e['n2n1ratio'], e['consensus'], e['departure_from_consensus'] = utils.get_consensus_and_departure_data(item_frequencies)
-
-                # this is where we will make use of the substitution scoring matrices framework.
-                if self.engine == 'NT':
-                    competing_items = list(e['competing_nts'])
-                elif self.engine == 'AA':
-                    competing_items = variability.get_competing_items(e['reference'], item_frequencies)
-
-                    if not competing_items:
-                        # this is a position that did have variation with SNVs, but all of them turned out to be synonymous.
-                        # we will just list this one as itself.
-                        competing_items = [item_frequencies[0][0]] * 2
-
-                    e['competing_aas'] = ''.join(competing_items)
-                else:
-                    raise ConfigError("You cray :( Ain't nobody got an engine for %s." % self.engine)
-
-                for m in self.substitution_scoring_matrices:
-                    try:
-                        e[m] = self.substitution_scoring_matrices[m][competing_items[0]][competing_items[1]]
-                    except KeyError:
-                        e[m] = None
-
+        competing = "competing_aas" if self.engine == "AA" else "competing_nts"
+        for m in self.substitution_scoring_matrices:
+            substitution_scoring_matrix = utils.convert_SSM_to_single_accession(self.substitution_scoring_matrices[m])
+            self.data.loc[entry_ids, m] = self.data.loc[entry_ids, competing].apply(lambda x: substitution_scoring_matrix.get(x, None))
 
 
     def filter_based_on_scattering_factor(self):
         """To remove any unique entry from the variable positions table that describes a variable position
            and yet is not helpful to distinguish samples from eachother."""
 
-        # FIXME THIS FUNCTION DOES NOT DO WHAT IT IS SUPPOSED TO
-        return
-
         if self.min_scatter == 0:
             return
+
+        # FIXME THIS FUNCTION DOES NOT DO WHAT IT IS SUPPOSED TO.
+        raise ConfigError("Woops. The function that handles --min-scatter doesn't do \
+                           what we thought it did. This will be fixed soon. Sorry for \
+                           the inconvenience.")
 
         num_samples = len(self.sample_ids)
         if self.min_scatter > num_samples / 2:
@@ -674,37 +535,13 @@ class VariabilitySuper(object):
 
         self.run.info('Min coverage in all samples', '%dX' % self.min_coverage_in_each_sample)
 
-        if self.pandas:
+        self.progress.new('Examining coverage of each variable position in each sample')
+        self.progress.update('...')
 
-            self.progress.new('Examining coverage of each variable position in each sample')
-            self.progress.update('...')
+        pos_to_keep = self.data.loc[self.data["coverage"] >= self.min_coverage_in_each_sample, "unique_pos_identifier"].unique()
+        self.data = self.data[self.data["unique_pos_identifier"].isin(pos_to_keep)]
 
-            pos_to_keep = self.data.loc[self.data["coverage"] >= self.min_coverage_in_each_sample, "unique_pos_identifier"].unique()
-            self.data = self.data[self.data["unique_pos_identifier"].isin(pos_to_keep)]
-
-            self.progress.end()
-
-        else:
-
-            # we need to make sure we have an up-to-date dictionary for unque position to entry id conversion:
-            self.gen_unique_pos_identifier_to_entry_id_dict()
-
-            self.progress.new('Examining coverage of each variable position in each sample')
-            self.progress.update('...')
-
-            entry_ids_to_remove = set([])
-
-            for unique_pos_id in self.unique_pos_id_to_entry_id:
-                entry_ids = self.unique_pos_id_to_entry_id[unique_pos_id]
-
-                min_coverage_in_a_sample = min([self.data[entry_id]['coverage'] for entry_id in entry_ids])
-
-                if min_coverage_in_a_sample < self.min_coverage_in_each_sample:
-                    entry_ids_to_remove.update(entry_ids)
-
-            self.progress.end()
-
-            self.remove_entries_from_data(entry_ids_to_remove, "min cov in all samples")
+        self.progress.end()
 
 
     def filter_based_on_num_positions_from_each_split(self):
@@ -716,274 +553,193 @@ class VariabilitySuper(object):
 
         self.progress.new('Filtering based on -n')
 
-        if self.pandas:
-            
-            self.progress.update('Randomly subsampling from splits with num positions > %d' % self.num_positions_from_each_split)
+        self.progress.update('Randomly subsampling from splits with num positions > %d' % self.num_positions_from_each_split)
 
-            subsample_func = lambda x: pd.Series(x.unique()) if len(x.unique()) <= self.num_positions_from_each_split else\
-                                       pd.Series(np.random.choice(x.unique(), size=self.num_positions_from_each_split, replace=False))
-            unique_positions_to_keep = self.data.groupby('split_name')['unique_pos_identifier'].apply(subsample_func)
-            self.data = self.data[self.data['unique_pos_identifier'].isin(unique_positions_to_keep)]
+        subsample_func = lambda x: pd.Series(x.unique()) if len(x.unique()) <= self.num_positions_from_each_split else\
+                                   pd.Series(np.random.choice(x.unique(), size=self.num_positions_from_each_split, replace=False))
+        unique_positions_to_keep = self.data.groupby('split_name')['unique_pos_identifier'].apply(subsample_func)
+        self.data = self.data[self.data['unique_pos_identifier'].isin(unique_positions_to_keep)]
 
-            self.progress.end()
-
-        else:
-            self.progress.update('Generating splits and positions tuples ...')
-            splits_and_positions = set([(v['split_name'], v['unique_pos_identifier']) for v in list(self.data.values())])
-            unique_positions_to_remove = set([])
-
-            self.progress.update('Generating positions in splits dictionary ...')
-            positions_in_splits = {}
-            for split_name, position in splits_and_positions:
-                if split_name not in positions_in_splits:
-                    positions_in_splits[split_name] = set([])
-
-                positions_in_splits[split_name].add(position)
-
-            self.progress.update('Randomly subsampling from splits with num positions > %d' % self.num_positions_from_each_split)
-            for split_name in positions_in_splits:
-                if self.num_positions_from_each_split and len(positions_in_splits[split_name]) > self.num_positions_from_each_split:
-                    positions_to_keep = set(random.sample(positions_in_splits[split_name], self.num_positions_from_each_split))
-                    for pos in (positions_in_splits[split_name] - positions_to_keep):
-                        unique_positions_to_remove.add(pos)
-
-            self.progress.update('Identifying entry ids to remove ...')
-            entry_ids_to_remove = set([entry_id for entry_id in self.data if self.data[entry_id]['unique_pos_identifier'] in unique_positions_to_remove])
-
-            self.progress.end()
-
-            self.remove_entries_from_data(entry_ids_to_remove, reason="max num positions from each split")
+        self.progress.end()
 
 
     def compute_comprehensive_variability_scores(self):
         """
-            Comprehensive stats - we compute scores that take into consideration the entire vector of variability
-            and not only the two most competing items (and thus it is comprehensive).
-            Currently the scores that are included are: site-entropy, site-Kullback-Leibler divergence (both a 
-            raw score and a normalized score (see below)), and weighted substitution scores (i.e. BLOSUM).
+            Comprehensive stats are defined as scores that take into consideration the entire vector of variability and
+            not only the two most competing items (and thus it is comprehensive).  Currently the scores that are
+            included are: site-entropy, site-Kullback-Leibler divergence (both a raw score and a normalized score (see
+            below)), and weighted substitution scores (i.e. BLOSUM).
             
-            site-entropy - the entropy of the items in a single site (in a sample).
+            site-entropy 
+            ============
+            The entropy of the items at a single position in a single sample. This means that each entry of the
+            variability table receives its own site-entropy score (in the table we just called it "entropy"). If a site
+            has no coverage, which can happen if --quince-mode is enabled, the value of entropy is -np.inf, something we
+            maintain until exporting the table as a tab-delimited file, at which point we recast them to something
+            reasonable.
 
-            Kullback-Leibler divergence raw - the Kullback-Leibler divergence of the frequencies in a sample
-            compared to the raw frequencies of the sum of occurances in the same site accross samples.
+            Kullback-Leibler divergence raw
+            ===============================
+            the Kullback-Leibler divergence of the frequencies in a sample compared to the raw frequencies of the sum of
+            occurrences in the same site accross samples.
 
-            Kullback-Leibler divergence normalized - the Kullback-Leibler divergence of the frequencies in a sample
-            compared to the frequencies of the sum of normalized occurances in the same site accross samples. Where
-            the normalization is such that the occernce of items is normalized to sum to one in each sample. This method
-            eliminates the effect of coverage on the score. The disadvantage of this method is that if there is a sample with
-            low coverage then any noise (like a single sequencing error) could have a major effect. It is recommended 
-            to use this score in combination with the --min-coverage-in-each-sample.
+            Kullback-Leibler divergence normalized
+            ======================================
+            The Kullback-Leibler divergence of the frequencies in a sample compared to the frequencies of the sum of
+            normalized occurances in the same site accross samples. Where the normalization is such that the occernce of
+            items is normalized to sum to one in each sample. This method eliminates the effect of coverage on the
+            score. The disadvantage of this method is that if there is a sample with low coverage then any noise (like a
+            single sequencing error) could have a major effect. It is recommended to use this score in combination with
+            the --min-coverage-in-each-sample.
             
-            Weighted substitution scores - the weights per substitution score is weighted by the joint frequency of the items
-            i.e. sum(S_{i,j}*pi*pj) where i does not equal j (i.e. the substitution of an item with itself is not considered)
+            Weighted substitution scores
+            ============================
+            The weights per substitution score is weighted by the joint frequency of the items i.e. sum(S_{i,j}*pi*pj)
+            where i does not equal j (i.e. the substitution of an item with itself is not considered)
         """
 
         if self.skip_comprehensive_variability_scores:
             self.run.warning("Anvi'o will skip comprehensive variability score computations.")
             return
 
-        import time; start = time.time()
+        # suppress division by zero runtime warning
+        np.seterr(invalid='ignore')
 
-        if self.pandas:
+        if not self.quince_mode:
+            self.run.warning("Only some comprehensive variability score computations can only be done without `--quince-mode`")
 
-            if not self.quince_mode:
-                self.run.warning("Only some comprehensive variability score computations can only be done without `--quince-mode`")
+        self.progress.new("Comprehensive stats")
+        self.progress.update("Those that don't require --quince-mode")
 
-            self.progress.new("Comprehensive stats that don't require --quince-mode")
-            self.progress.update('...')
+        self.comprehensive_stats_headers = [m + '_weighted' for m in self.substitution_scoring_matrices] + \
+                                           ['entropy', 'kullback_leibler_divergence_raw', 'kullback_leibler_divergence_normalized']
 
-            # compute entropy
-            self.data["entropy"] = entropy
+        # Pandas is fun, but numpy is fast. Here we convert the coverage table information from the DataFrame to a
+        # numpy array. The transpose is required because scipy.stats entropy function calculates along an
+        # unspecifiable axis that we must conform to. But before any of this is done we order the entries according
+        # to unique_pos_identifier (and for a given unique_pos_identifier, entries are ordered alphabetically by
+        # sample_id). The reason for this is aesthetic but also required for vectorized operations that occur after
+        # self.progress.update("Those that do require --quince-mode")
+        self.data = self.data.sort_values(by=["unique_pos_identifier","sample_id"])
+        coverage_table = self.data[self.items].T.astype(int).as_matrix()
 
+        # Now we compute the entropy, which is defined at a per position, per sample basis. There is a reason we
+        # pass coverage_table instead of a normalized table. If we pass a normalized table scipy.stat.entropy complains
+        # that there is division by zero for entries introduced by --quince-mode that have 0 coverage.  By passing
+        # coverage_table instead, scipy.stats.entropy does the normalization itself ensures that such entries return
+        # -inf instead of raising an error.
+        self.data["entropy"] = entropy(coverage_table)
 
+        # Next we worry ourselves with weighted substitution scores. We convert each SSM to a numpy array and store
+        # each of them in a dictionary with keys equal to the SSM names, e.g. BLOSUM90. The index of numpy arrays
+        # are organized alphabetically. For example, for an amino acid substitution matrix, the substitution
+        # Ala->Ala is indexed by [0,0], whereas Val->Val is indexed by [-1,-1]. We decided it makes sense to set the
+        # substitution score of an item with itself to zero. This way we only consider substitutions to other items
+        # (and don't consider substitution of an item with itself)
+        numpy_substitution_scoring_matrices = {SMM: np.array([[matrix[i][j] if j != i else 0 for j in sorted(matrix[i])] for i in sorted(matrix)]) for SMM, matrix in self.substitution_scoring_matrices.items()}
 
+        # We loop through each of the substitution scoring matrices available. It's possible the items in the
+        # substitution matrices aren't a complete set of the items we have coverage data for. For example, BLOSUM90
+        # doesn't have substitution scores for the STP codon (yet we have coverage data for STP). Available items
+        # can vary from SSM to SSM. To deal with this, we subset the coverage_table to only include available items
+        # for a given SSM. We then transform this subset of the coverage data to a frequency table that's
+        # potentially unique to the SSM. To avoid calculating frequency tables unnecessarily, the previous SSM's
+        # items are stored in `previous_indices` so the table is only recalculated if the current SSM items vary
+        # from the previous SSM items.
+        previous_indices = None
+        for SMM, matrix in numpy_substitution_scoring_matrices.items():
 
+            # initialize the entropy column in self.data with np.nans
+            self.data[SMM + "weighted"] = np.nan
 
+            # We find which items in self.items are in the SSM and record the index at which they appear in
+            # self.items. By definition this is also the index ordering of coverage_table. For example, the index of
+            # Ala is 0 so the coverage data for Ala is coverage_table[0,:]. Hence, the subset of coverage_table for
+            # the given SSM is coverage_table[indices, :].
+            indices = sorted([self.items.index(item) for item in self.substitution_scoring_matrices[SMM]])
+            if indices != previous_indices:
 
+                # To get the frequency table we divide each column by the sum of the rows (the array called
+                # total_coverage). But we must be careful, because it's possible for some entries of total_coverage
+                # to be 0, which can occur if both a) --quince-mode is enabled and b) --min-coverage-in-each-sample
+                # is 0 (the default). If this is the case we set the total_coverage entry to -1 so that the
+                # frequency for each item in the entry becomes 0/-1 = 0, instead of producing a NaN due to division
+                # by zero. 
+                total_coverage = np.sum(coverage_table[indices,:], axis=0)
+                freq_table = np.divide(coverage_table[indices,:], np.where(total_coverage==0, -1, total_coverage))
 
+                # While in this loop, we define a Boolean array with length equal to the number of entries in
+                # freq_table. It is True if the substitution score should be calculated and False otherwise. What
+                # can cause an entry not to be calculated? First of all, if there is no coverage data then there is
+                # no substitution to report. Secondly, since we don't consider the substitution of an item with
+                # itself (Remember? We set all diagonals in each SSM to 0), we don't report scores for entries that
+                # only have 1 item with non-zero coverage. Both of these conditions are encapsulated nicely with the
+                # np.count_nonzero function. We then subset the freq_table to only include these entries but we hang
+                # onto the Boolean array for when we put the scores into self.data
+                keep = np.count_nonzero(freq_table, axis=0) > 1
+                freq_table = freq_table[:, keep]
 
+                # The last thing we do in here is calculate a normalization factor for the entries, since it is
+                # unique to each freq_table. A normalization score is needed since we don't consider a substitution
+                # of an item with itself. Hence, the sum of frequencies doesn't sum to 1, and so to make sure they
+                # sum to 1 we multiply by this normalization factor. We want these to sum to 1 because otherwise
+                # these are not valid weights.
+                normalization = 1 / (1 - np.sum(np.square(freq_table), axis=0))
 
+            # This is legitimately legendary status array broadcasting. I can't explain how it works but the
+            # quantity sum(S_{i,j}*pi*pj) is being calculated for each entry, where pi is the frequency of the ith
+            # item, pj is the frequency of the jth item, and S_{i,j} is the substitution matrix score for the i->j
+            # substitution. If you remember, we already set i=j entries to zero so they contribute zero weight to
+            # the score.
+            self.data.loc[keep, SMM + "weighted"] = normalization * np.sum(freq_table[np.newaxis, :].T * freq_table[:, np.newaxis].T * matrix, axis=(1,2))
 
-            self.progress.update('Running comprehensive stats across all unique positions X samples')
+        if not self.quince_mode:
+            self.progress.end()
+            self.comprehensive_variability_scores_computed = True
+            return
 
-                    # compute entropy
-                    comprehensive_stats[sample_id]['entropy'] = entropy(list_of_sample_frequencies[i])
+        self.progress.update("Those that do require --quince-mode")
 
-                    # compute Kullback-Leibler divergence for raw counts
-                    kullback_leibler_divergence_raw = entropy(list_of_sample_frequencies[i], sum_sample_frequencies)
-                    # compute Kullback-Leibler divergence for normalized counts (normalized to sum to 1 in each sample)
-                    kullback_leibler_divergence_normalized = entropy(list_of_sample_frequencies_normalized[i], sum_sample_frequencies_normalized)
+        # Due to --quince-mode every unique position identifier has the same number of entries (this screams
+        # vectorization). We abuse this to make a 3 dimensional numpy array, coverage_by_pos. The zeroth axis
+        # indexes the items, the first indexes the unique_pos_identifier, and the second indexes the sample number.
+        # This reshaping operation works only because at the start of this function we ordered entries by
+        # unique_pos_identifier.
+        numpy_dimension = (len(self.items), self.data["unique_pos_identifier"].nunique(), len(self.sample_ids))
+        coverage_by_pos = coverage_table.reshape(numpy_dimension)
 
-                    comprehensive_stats[sample_id]['kullback_leibler_divergence_raw'] = kullback_leibler_divergence_raw
-                    comprehensive_stats[sample_id]['kullback_leibler_divergence_normalized'] = kullback_leibler_divergence_normalized
+        # We also define a normalized version of coverage_by_pos so that each entries defines the frequency
+        # (probability) of a certain item occuring, rather than the raw counts. This is used for the normalized
+        # Kullback-Leibler divergence. If the entry is all zeros, the frequencies for the entry are all defined to
+        # be 0. NOTE If this is not done, any position where one or more of the samples has 0 coverage yields a
+        # normalized kullback-leibler value of inf. I think it makes more sense this way.
+        counts_per_pos_per_sample = np.sum(coverage_by_pos, axis=0)
+        #freq_by_pos = np.divide(coverage_by_pos, np.where(counts_per_pos_per_sample==0, -1, counts_per_pos_per_sample))
+        freq_by_pos = np.divide(coverage_by_pos, counts_per_pos_per_sample)
 
-                    # computing weighted substitution score
-                    # we compute a weighted score for each existing substitution matrix
-                    if not comprehensive_stats[sample_id]['entropy']:
-                        # if the entropy is zero it means there are no substitutions in this sample (i.e. this row is here due to quince mode)
-                        # so no need to calculate substitution score
-                        for m in self.substitution_scoring_matrices:
-                            comprehensive_stats[sample_id][m + '_weighted'] = None
-                    else:
-                        for m in self.substitution_scoring_matrices:
-                            # here we subsample AND reorder our sample frequencies based on the items that
-                            # appear in the substitution matrix `m`. see the code above with the for loop
-                            # to remember how they are set.
-                            S = list_of_sample_frequencies[i][item_indices_for_substitution_scoring_matrices[m]]
-                            S = S / sum(S)
+        # The entropy from scipy.stats operates on axis = 0, so the returned array dimension is flattened in the
+        # zeroth dimension compared to the input array. For example, if the input is shape (X,Y,Z), the output is
+        # shape (Y,Z). That means when we pass coverage_by_pos, an entropy array is returned with the zeroth axis
+        # indexed by unique_pos_identifiers and the first axis indexed by sample_ids. The entropy function insists
+        # that our reference distributions (the normalized and unnormalized mean frequency counts across samples,
+        # see docstring for more details) must ALSO have the shape (X,Y,Z). The issue with this is that by
+        # calculating the mean over samples we collapse the Z dimension so the shape of our reference distribution
+        # array is (X,Y). We solve this issue by stacking Z identical reference distribution arrays to create a
+        # pseudo-second axis so the final shape is (X,Y,Z). coverage_summed_over_samples is the reference
+        # distribution array for the raw Kullback-Leibler divergence and freq_summed_over_samples is for the
+        # normalized Kullback-Leibler divergence.
+        coverage_summed_over_samples = np.repeat(np.sum(coverage_by_pos, axis=2)[:,:,np.newaxis], len(self.sample_ids), axis=2)
+        freq_summed_over_samples     = np.repeat(np.sum(freq_by_pos,     axis=2)[:,:,np.newaxis], len(self.sample_ids), axis=2)
 
-                            if np.count_nonzero(S) > 1:
-                                # because the substitution matrix might hold only a subset of the items,
-                                # we could have positions in which the entropy is greater than zero, but 
-                                # only due to items that are not in the substitution matrix (for example stop codon is not in BLOSUM)
-                                # hence to avoid devision by zero we make sure there is more than one nonzero frequency
+        # As mentioned in last comment, a 2D array is returned by entropy, which we flatten into 1D.  The flattened
+        # array is equal to the length of entries in self.data. Furthermore, the order of entropy values is the same
+        # order as the entries they correspond to, so all we do is assign the arrays to new columns in self.data and
+        # we're done.
+        self.data['kullback_leibler_divergence_raw'] = entropy(coverage_by_pos, coverage_summed_over_samples).flatten()
+        self.data['kullback_leibler_divergence_normalized'] = entropy(freq_by_pos, freq_summed_over_samples).flatten()
 
-                                # a normalization score is needed since we dont consider a substitution of an item with itself.
-                                # hence, the sum of frequencies wouldn't sum to 1, and so to make sure they sum to 1
-                                # we multiply by this normalization factor. We want these to sum to 1 because otherwise these
-                                # are not valid weights.
-                                normalization_factor = 1 / (1 - np.sum(np.square(S)))
-                                # element-wise multiplication of the substitution matrix with the outer-product of the frequency vector with itself
-                                # this means that each substitution score between two items is weighted by the product of the weight of the items
-                                A = normalization_factor * np.sum(np.multiply(numpy_matrices_for_substitution_scoring_matrices[m], np.outer(S, S)))
-                                comprehensive_stats[sample_id][m + '_weighted'] = A
-                            else:
-                                comprehensive_stats[sample_id][m + '_weighted'] = None
-
-                # update self.data with comprehensive stats
-                for entry_id in self.unique_pos_id_to_entry_id[unique_pos]:
-                    e = self.data[entry_id]
-                    s = e['sample_id']
-
-                    for h in self.comprehensive_stats_headers:
-                        e[h] = comprehensive_stats[s][h]
-        else:
-
-            # FIXME: In the future we should separate this function into two:
-            #   1. scores that require quince mode - these are scores that are computed according 
-            #       to the occurence accross samples, and hence they require quince mode
-            #       for example: Kullbak-Leibler divergence
-            #   2. scores that dont require quince mode - these are calculated per sample (e.g. entropy, BLOSUM)
-            # For now we just require quince mode for all scores
-            if not self.quince_mode:
-                self.run.warning("Comprehensive variability score computations can only be done with `--quince-mode`")
-                return
-
-            unique_positions_and_frequencies_dict = self.get_unique_positions_and_frequencies_dict()
-
-            self.progress.new('Comprehensive stats')
-            self.progress.update('...')
-
-            comprehensive_stats = {}
-            self.comprehensive_stats_headers = [m + '_weighted' for m in self.substitution_scoring_matrices] + \
-                                               ['entropy', 'kullback_leibler_divergence_raw', 'kullback_leibler_divergence_normalized']
-
-            # converting the substitution matrices from dict of dicts to numpy matrix (to allow vector operations later on)
-            # we keep track of the indices of the items for the following reasons:
-            #    1. in case the substitution matrix has only a sub-set of the items
-            #    2. to make sure the order of items is compatible between this matrix and the items frequency vectors (and thus allow vector operations - see below)
-            self.progress.update('Initializing numpy formatted substitution matrices...')
-            item_indices_for_substitution_scoring_matrices = {}
-            numpy_matrices_for_substitution_scoring_matrices = {}
-            for m in self.substitution_scoring_matrices:
-                item_indices_for_substitution_scoring_matrices[m] = [self.items.index(item) for item in self.substitution_scoring_matrices[m].keys()]
-
-                items = list(self.substitution_scoring_matrices[m].keys())
-                num_items = len(items)
-                numpy_matrices_for_substitution_scoring_matrices[m] = np.zeros([num_items, num_items])
-                for i in range(num_items):
-                    for j in range(num_items):
-                        if i == j:
-                            # We set the substitution score of an item with itself to zero. This way we only consider substitutions to other items
-                            # (and dont consider substitution of an item with itself)
-                            numpy_matrices_for_substitution_scoring_matrices[m][i][j] = 0
-                        else:
-                            numpy_matrices_for_substitution_scoring_matrices[m][i][j] = self.substitution_scoring_matrices[m][items[i]][items[j]]
-
-            self.progress.update('Running comprehensive stats across all unique positions X samples')
-            unique_positions = list(unique_positions_and_frequencies_dict.keys())
-            num_unique_positions = len(unique_positions)
-            for unique_pos_index in range(num_unique_positions):
-                unique_pos = unique_positions[unique_pos_index]
-
-                if unique_pos_index % 100 == 0:
-                    self.progress.update('Running comprehensive stats: %s of %s ...' % (pp(unique_pos_index + 1), pp(num_unique_positions)))
-
-                comprehensive_stats = {}
-
-                # first create a vector of frequencies for all samples
-                list_of_sample_frequencies = []
-                for sample_id in self.sample_ids:
-                    list_of_sample_frequencies.append([unique_positions_and_frequencies_dict[unique_pos][sample_id][f] for f in self.items])
-                    comprehensive_stats[sample_id] = {}
-
-                # create a numpy array for all samples, and sum sample frequencies
-                list_of_sample_frequencies = np.array(list_of_sample_frequencies)
-                sum_sample_frequencies = sum(list_of_sample_frequencies)
-
-                # normalizing frequencies (so they add to 1) (notice that by deviding by a column vector we divide each row of the matrix by the sum that
-                # corresponds to that row)
-                list_of_sample_frequencies_normalized = np.divide(np.array(list_of_sample_frequencies), np.sum(list_of_sample_frequencies, axis=1)[:, np.newaxis])
-                sum_sample_frequencies_normalized = sum(list_of_sample_frequencies_normalized)
-
-                for i in range(0, len(self.sample_ids)):
-                    sample_id = self.sample_ids[i]
-
-                    # compute entropy
-                    comprehensive_stats[sample_id]['entropy'] = entropy(list_of_sample_frequencies[i])
-
-                    # compute Kullback-Leibler divergence for raw counts
-                    kullback_leibler_divergence_raw = entropy(list_of_sample_frequencies[i], sum_sample_frequencies)
-                    # compute Kullback-Leibler divergence for normalized counts (normalized to sum to 1 in each sample)
-                    kullback_leibler_divergence_normalized = entropy(list_of_sample_frequencies_normalized[i], sum_sample_frequencies_normalized)
-
-                    comprehensive_stats[sample_id]['kullback_leibler_divergence_raw'] = kullback_leibler_divergence_raw
-                    comprehensive_stats[sample_id]['kullback_leibler_divergence_normalized'] = kullback_leibler_divergence_normalized
-
-                    # computing weighted substitution score
-                    # we compute a weighted score for each existing substitution matrix
-                    if not comprehensive_stats[sample_id]['entropy']:
-                        # if the entropy is zero it means there are no substitutions in this sample (i.e. this row is here due to quince mode)
-                        # so no need to calculate substitution score
-                        for m in self.substitution_scoring_matrices:
-                            comprehensive_stats[sample_id][m + '_weighted'] = None
-                    else:
-                        for m in self.substitution_scoring_matrices:
-                            # here we subsample AND reorder our sample frequencies based on the items that
-                            # appear in the substitution matrix `m`. see the code above with the for loop
-                            # to remember how they are set.
-                            S = list_of_sample_frequencies[i][item_indices_for_substitution_scoring_matrices[m]]
-                            S = S / sum(S)
-
-                            if np.count_nonzero(S) > 1:
-                                # because the substitution matrix might hold only a subset of the items,
-                                # we could have positions in which the entropy is greater than zero, but 
-                                # only due to items that are not in the substitution matrix (for example stop codon is not in BLOSUM)
-                                # hence to avoid devision by zero we make sure there is more than one nonzero frequency
-
-                                # a normalization score is needed since we dont consider a substitution of an item with itself.
-                                # hence, the sum of frequencies wouldn't sum to 1, and so to make sure they sum to 1
-                                # we multiply by this normalization factor. We want these to sum to 1 because otherwise these
-                                # are not valid weights.
-                                normalization_factor = 1 / (1 - np.sum(np.square(S)))
-                                # element-wise multiplication of the substitution matrix with the outer-product of the frequency vector with itself
-                                # this means that each substitution score between two items is weighted by the product of the weight of the items
-                                A = normalization_factor * np.sum(np.multiply(numpy_matrices_for_substitution_scoring_matrices[m], np.outer(S, S)))
-                                comprehensive_stats[sample_id][m + '_weighted'] = A
-                            else:
-                                comprehensive_stats[sample_id][m + '_weighted'] = None
-
-                # update self.data with comprehensive stats
-                for entry_id in self.unique_pos_id_to_entry_id[unique_pos]:
-                    e = self.data[entry_id]
-                    s = e['sample_id']
-
-                    for h in self.comprehensive_stats_headers:
-                        e[h] = comprehensive_stats[s][h]
-
-        print("time taken: {:.3f}".format(time.time()-start))
+        # Vape Nation V/\
         self.progress.end()
-
         self.comprehensive_variability_scores_computed = True
 
 
@@ -1051,30 +807,16 @@ class VariabilitySuper(object):
     def get_unique_pos_identifier_to_corresponding_gene_id(self):
         self.progress.update('populating a dict to track corresponding gene ids for each unique position')
 
-        if self.pandas:
-            # key = unique_pos_identifier, val = corresponding_gene_call
-            return self.data[["unique_pos_identifier","corresponding_gene_call"]].\
-                   drop_duplicates().set_index("unique_pos_identifier").to_dict()["corresponding_gene_call"]
-        else:
-            unique_pos_identifier_to_corresponding_gene_id = {}
-            for entry in list(self.data.values()):
-                unique_pos_identifier_to_corresponding_gene_id[entry['unique_pos_identifier']] = entry['corresponding_gene_call']
-
-            return unique_pos_identifier_to_corresponding_gene_id
+        # key = unique_pos_identifier, val = corresponding_gene_call
+        return self.data[["unique_pos_identifier","corresponding_gene_call"]].\
+               drop_duplicates().set_index("unique_pos_identifier").to_dict()["corresponding_gene_call"]
 
 
     def get_unique_pos_identifier_to_codon_order_in_gene(self):
         self.progress.update('populating a dict to track codon order in genes for each unique position')
-        if self.pandas:
-            # key = unique_pos_identifier, val = codon_order_in_gene
-            return self.data[["unique_pos_identifier","codon_order_in_gene"]].\
-                   drop_duplicates().set_index("unique_pos_identifier").to_dict()["codon_order_in_gene"]
-        else:
-            unique_pos_identifier_to_codon_order_in_gene = {}
-            for entry in list(self.data.values()):
-                unique_pos_identifier_to_codon_order_in_gene[entry['unique_pos_identifier']] = entry['codon_order_in_gene']
-
-            return unique_pos_identifier_to_codon_order_in_gene
+        # key = unique_pos_identifier, val = codon_order_in_gene
+        return self.data[["unique_pos_identifier","codon_order_in_gene"]].\
+               drop_duplicates().set_index("unique_pos_identifier").to_dict()["codon_order_in_gene"]
 
 
     def report(self):
@@ -1095,7 +837,6 @@ class VariabilitySuper(object):
                              ['competing_aas', 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
                              self.comprehensive_stats_headers
 
-
         if self.include_contig_names_in_output:
             new_structure.append('contig_name')
 
@@ -1104,12 +845,11 @@ class VariabilitySuper(object):
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
 
-        utils.store_dict_as_TAB_delimited_file(self.data, self.args.output_file, new_structure)
-        self.progress.end()
-
-        self.run.info('Num entries reported', pp(len(self.data)))
+        utils.store_dataframe_as_TAB_delimited_file(self.data, self.args.output_file, columns=new_structure)
+        self.run.info('Num entries reported', pp(len(self.data.index)))
         self.run.info('Output File', self.output_file_path)
-        self.run.info('Num %s positions reported' % self.engine, pp(len(set([e['unique_pos_identifier'] for e in list(self.data.values())]))))
+        self.run.info('Num %s positions reported' % self.engine, self.data["unique_pos_identifier"].nunique())
+        self.progress.end()
 
 
 class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
@@ -1136,176 +876,93 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
            variation at nucleotide positions reported in the table"""
         self.progress.new('Recovering NT data')
 
-        if self.pandas:
+        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
+        splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
+        next_available_entry_id = self.data["entry_id"].max() + 1
 
-            samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
-            splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
-            next_available_entry_id = self.data["entry_id"].max() + 1
+        unique_pos_identifier_to_corresponding_gene_id = self.get_unique_pos_identifier_to_corresponding_gene_id()
 
-            unique_pos_identifier_to_corresponding_gene_id = self.get_unique_pos_identifier_to_corresponding_gene_id()
+        unique_pos_identifier_to_codon_order_in_gene = self.get_unique_pos_identifier_to_codon_order_in_gene()
+        self.progress.update('creating a dict to track missing base frequencies for each sample / split / pos')
+        split_pos_to_unique_pos_identifier = {}
+        splits_to_consider_dict = {}
+        for split_name in splits_wanted:
+            splits_to_consider_dict[split_name] = {}
+            split_pos_to_unique_pos_identifier[split_name] = {}
 
-            unique_pos_identifier_to_codon_order_in_gene = self.get_unique_pos_identifier_to_codon_order_in_gene()
-            self.progress.update('creating a dict to track missing base frequencies for each sample / split / pos')
-            split_pos_to_unique_pos_identifier = {}
-            splits_to_consider_dict = {}
-            for split_name in splits_wanted:
-                splits_to_consider_dict[split_name] = {}
-                split_pos_to_unique_pos_identifier[split_name] = {}
+        self.progress.update('populating the dict to track missing base frequencies for each sample / split / pos')
+        for entry_id, v in self.data.iterrows():
+            p = v['pos']
+            d = splits_to_consider_dict[v['split_name']]
+            u = split_pos_to_unique_pos_identifier[v['split_name']]
 
-            self.progress.update('populating the dict to track missing base frequencies for each sample / split / pos')
-            for entry_id, v in self.data.iterrows():
-                p = v['pos']
-                d = splits_to_consider_dict[v['split_name']]
-                u = split_pos_to_unique_pos_identifier[v['split_name']]
+            if p in d:
+                d[p].remove(v['sample_id'])
+            else:
+                d[p] = copy.deepcopy(samples_wanted)
+                d[p].remove(v['sample_id'])
 
-                if p in d:
-                    d[p].remove(v['sample_id'])
-                else:
-                    d[p] = copy.deepcopy(samples_wanted)
-                    d[p].remove(v['sample_id'])
+            if p not in u:
+                u[p] = v['unique_pos_identifier']
 
-                if p not in u:
-                    u[p] = v['unique_pos_identifier']
+        split_names_to_consider = list(splits_to_consider_dict.keys())
+        num_splits = len(split_names_to_consider)
+        new_entries = {}
+        for split_index in range(num_splits):
+            split = split_names_to_consider[split_index]
+            self.progress.update('Accessing split covs, updating variable pos dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
 
-            split_names_to_consider = list(splits_to_consider_dict.keys())
-            num_splits = len(split_names_to_consider)
-            new_entries = {}
-            for split_index in range(num_splits):
-                split = split_names_to_consider[split_index]
-                self.progress.update('Accessing split covs, updating variable pos dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
+            split_coverage_across_samples = self.merged_split_coverage_values.get(split)
 
-                split_coverage_across_samples = self.merged_split_coverage_values.get(split)
+            split_info = self.splits_basic_info[split]
+            contig_name_name = split_info['parent']
 
-                split_info = self.splits_basic_info[split]
-                contig_name_name = split_info['parent']
+            for pos in splits_to_consider_dict[split]:
+                unique_pos_identifier = split_pos_to_unique_pos_identifier[split][pos]
+                contig_name_seq = self.contig_sequences[contig_name_name]['sequence']
+                pos_in_contig = split_info['start'] + pos
+                base_at_pos = contig_name_seq[pos_in_contig]
+                corresponding_gene_call = unique_pos_identifier_to_corresponding_gene_id[unique_pos_identifier]
+                gene_length = self.get_gene_length(corresponding_gene_call)
+                codon_order_in_gene = unique_pos_identifier_to_codon_order_in_gene[unique_pos_identifier]
 
-                for pos in splits_to_consider_dict[split]:
-                    unique_pos_identifier = split_pos_to_unique_pos_identifier[split][pos]
-                    contig_name_seq = self.contig_sequences[contig_name_name]['sequence']
-                    pos_in_contig = split_info['start'] + pos
-                    base_at_pos = contig_name_seq[pos_in_contig]
-                    corresponding_gene_call = unique_pos_identifier_to_corresponding_gene_id[unique_pos_identifier]
-                    gene_length = self.get_gene_length(corresponding_gene_call)
-                    codon_order_in_gene = unique_pos_identifier_to_codon_order_in_gene[unique_pos_identifier]
+                in_partial_gene_call, in_complete_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
 
-                    in_partial_gene_call, in_complete_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
+                for sample in splits_to_consider_dict[split][pos]:
+                    new_entries[next_available_entry_id] = {'entry_id': next_available_entry_id,
+                                                            'contig_name': contig_name_name,
+                                                            'departure_from_reference': 0,
+                                                            'reference': base_at_pos,
+                                                            'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
+                                                            'pos': pos,
+                                                            'pos_in_contig': pos_in_contig,
+                                                            'in_partial_gene_call': in_partial_gene_call,
+                                                            'in_complete_gene_call': in_complete_gene_call,
+                                                            'base_pos_in_codon': base_pos_in_codon,
+                                                            'coverage': split_coverage_across_samples[sample][pos],
+                                                            'sample_id': sample,
+                                                            'cov_outlier_in_split': 0,
+                                                            'cov_outlier_in_contig': 0,
+                                                            'competing_nts': base_at_pos + base_at_pos,
+                                                            'unique_pos_identifier': unique_pos_identifier,
+                                                            'unique_pos_identifier_str': '%s_%d' % (split, pos),
+                                                            'corresponding_gene_call': corresponding_gene_call,
+                                                            'gene_length': gene_length,
+                                                            'codon_order_in_gene': codon_order_in_gene,
+                                                            'split_name': split}
+                    new_entries[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
+                    next_available_entry_id += 1
 
-                    for sample in splits_to_consider_dict[split][pos]:
-                        new_entries[next_available_entry_id] = {'entry_id': next_available_entry_id,
-                                                                'contig_name': contig_name_name,
-                                                                'departure_from_reference': 0,
-                                                                'reference': base_at_pos,
-                                                                'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
-                                                                'pos': pos,
-                                                                'pos_in_contig': pos_in_contig,
-                                                                'in_partial_gene_call': in_partial_gene_call,
-                                                                'in_complete_gene_call': in_complete_gene_call,
-                                                                'base_pos_in_codon': base_pos_in_codon,
-                                                                'coverage': split_coverage_across_samples[sample][pos],
-                                                                'sample_id': sample,
-                                                                'cov_outlier_in_split': 0,
-                                                                'cov_outlier_in_contig': 0,
-                                                                'competing_nts': base_at_pos + base_at_pos,
-                                                                'unique_pos_identifier': unique_pos_identifier,
-                                                                'unique_pos_identifier_str': '%s_%d' % (split, pos),
-                                                                'corresponding_gene_call': corresponding_gene_call,
-                                                                'gene_length': gene_length,
-                                                                'codon_order_in_gene': codon_order_in_gene,
-                                                                'split_name': split}
-                        new_entries[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
-                        next_available_entry_id += 1
+        # convert to pandas DataFrame (its much faster to build and convert a dictionary than to build DataFrame row by row)
+        new_entries = pd.DataFrame(new_entries).T
+        new_entries.set_index("entry_id", drop=False, inplace=True)
 
-            # convert to pandas DataFrame (its much faster to build and convert a dictionary than to build DataFrame row by row)
-            new_entries = pd.DataFrame(new_entries).T
-            new_entries.set_index("entry_id", drop=False, inplace=True)
+        # concatenate new columns to self.data
+        self.data = pd.concat([self.data, new_entries])
 
-            # concatenate new columns to self.data
-            self.data = pd.concat([self.data, new_entries])
-
-            # fill in additional fields for new entries
-            self.insert_additional_fields(list(new_entries.index))
-            self.progress.end()
-
-
-        else:
-            samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
-            splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
-            next_available_entry_id = max(self.data.keys()) + 1
-
-            unique_pos_identifier_to_corresponding_gene_id = self.get_unique_pos_identifier_to_corresponding_gene_id()
-
-            unique_pos_identifier_to_codon_order_in_gene = self.get_unique_pos_identifier_to_codon_order_in_gene()
-            self.progress.update('creating a dict to track missing base frequencies for each sample / split / pos')
-            split_pos_to_unique_pos_identifier = {}
-            splits_to_consider_dict = {}
-            for split_name in splits_wanted:
-                splits_to_consider_dict[split_name] = {}
-                split_pos_to_unique_pos_identifier[split_name] = {}
-
-            self.progress.update('populating the dict to track missing base frequencies for each sample / split / pos')
-            for entry_id in self.data:
-                v = self.data[entry_id]
-                p = v['pos']
-                d = splits_to_consider_dict[v['split_name']]
-                u = split_pos_to_unique_pos_identifier[v['split_name']]
-
-                if p in d:
-                    d[p].remove(v['sample_id'])
-                else:
-                    d[p] = copy.deepcopy(samples_wanted)
-                    d[p].remove(v['sample_id'])
-
-                if p not in u:
-                    u[p] = v['unique_pos_identifier']
-
-            split_names_to_consider = list(splits_to_consider_dict.keys())
-            num_splits = len(split_names_to_consider)
-            for split_index in range(num_splits):
-                split = split_names_to_consider[split_index]
-                self.progress.update('Accessing split covs, updating variable pos dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
-
-                split_coverage_across_samples = self.merged_split_coverage_values.get(split)
-
-                split_info = self.splits_basic_info[split]
-                contig_name_name = split_info['parent']
-
-                for pos in splits_to_consider_dict[split]:
-                    unique_pos_identifier = split_pos_to_unique_pos_identifier[split][pos]
-                    contig_name_seq = self.contig_sequences[contig_name_name]['sequence']
-                    pos_in_contig = split_info['start'] + pos
-                    base_at_pos = contig_name_seq[pos_in_contig]
-                    corresponding_gene_call = unique_pos_identifier_to_corresponding_gene_id[unique_pos_identifier]
-                    gene_length = self.get_gene_length(corresponding_gene_call)
-                    codon_order_in_gene = unique_pos_identifier_to_codon_order_in_gene[unique_pos_identifier]
-
-                    in_partial_gene_call, in_complete_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
-
-                    for sample in splits_to_consider_dict[split][pos]:
-                        self.data[next_available_entry_id] = {'contig_name': contig_name_name,
-                                                              'departure_from_reference': 0,
-                                                              'reference': base_at_pos,
-                                                              'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
-                                                              'pos': pos,
-                                                              'pos_in_contig': pos_in_contig,
-                                                              'in_partial_gene_call': in_partial_gene_call,
-                                                              'in_complete_gene_call': in_complete_gene_call,
-                                                              'base_pos_in_codon': base_pos_in_codon,
-                                                              'coverage': split_coverage_across_samples[sample][pos],
-                                                              'sample_id': sample,
-                                                              'cov_outlier_in_split': 0,
-                                                              'cov_outlier_in_contig': 0,
-                                                              'competing_nts': base_at_pos + base_at_pos,
-                                                              'unique_pos_identifier': unique_pos_identifier,
-                                                              'unique_pos_identifier_str': '%s_%d' % (split, pos),
-                                                              'corresponding_gene_call': corresponding_gene_call,
-                                                              'gene_length': gene_length,
-                                                              'codon_order_in_gene': codon_order_in_gene,
-                                                              'split_name': split}
-                        self.data[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
-                        self.insert_additional_fields([next_available_entry_id])
-                        next_available_entry_id += 1
-
-            self.progress.end()
+        # fill in additional fields for new entries
+        self.insert_additional_fields(list(new_entries.index))
+        self.progress.end()
 
 
 class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
@@ -1322,218 +979,114 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
     def recover_base_frequencies_for_all_samples(self):
         self.progress.new('Recovering AA data')
 
-        if self.pandas:
-            samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
-            splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
-            next_available_entry_id = self.data["entry_id"].max() + 1
+        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
+        splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
+        next_available_entry_id = self.data["entry_id"].max() + 1
 
-            unique_pos_identifier_str_to_consenus_codon = {}
-            unique_pos_identifier_str_to_unique_pos_identifier = {}
-            for _, e in self.data.iterrows():
-                upi = e['unique_pos_identifier_str']
-                unique_pos_identifier_str_to_consenus_codon[upi] = e['reference']
-                unique_pos_identifier_str_to_unique_pos_identifier[upi] = e['unique_pos_identifier']
+        unique_pos_identifier_str_to_consenus_codon = {}
+        unique_pos_identifier_str_to_unique_pos_identifier = {}
+        for _, e in self.data.iterrows():
+            upi = e['unique_pos_identifier_str']
+            unique_pos_identifier_str_to_consenus_codon[upi] = e['reference']
+            unique_pos_identifier_str_to_unique_pos_identifier[upi] = e['unique_pos_identifier']
 
-            self.progress.update('creating a dict to track missing AA frequencies for each sample / split / pos')
+        self.progress.update('creating a dict to track missing AA frequencies for each sample / split / pos')
 
-            splits_to_consider_dict = {}
-            for split_name in splits_wanted:
-                splits_to_consider_dict[split_name] = {}
+        splits_to_consider_dict = {}
+        for split_name in splits_wanted:
+            splits_to_consider_dict[split_name] = {}
 
-            self.progress.update('populating the dict to track missing AA frequencies for each sample / split / pos')
-            for entry_id, v in self.data.iterrows():
-                gene_codon_key = '%d_%d' % (v['corresponding_gene_call'], v['codon_order_in_gene'])
-                d = splits_to_consider_dict[v['split_name']]
+        self.progress.update('populating the dict to track missing AA frequencies for each sample / split / pos')
+        for entry_id, v in self.data.iterrows():
+            gene_codon_key = '%d_%d' % (v['corresponding_gene_call'], v['codon_order_in_gene'])
+            d = splits_to_consider_dict[v['split_name']]
 
-                if gene_codon_key in d:
-                    d[gene_codon_key].remove(v['sample_id'])
-                else:
-                    d[gene_codon_key] = copy.deepcopy(samples_wanted)
-                    d[gene_codon_key].remove(v['sample_id'])
+            if gene_codon_key in d:
+                d[gene_codon_key].remove(v['sample_id'])
+            else:
+                d[gene_codon_key] = copy.deepcopy(samples_wanted)
+                d[gene_codon_key].remove(v['sample_id'])
 
-            split_names_to_consider = list(splits_to_consider_dict.keys())
-            num_splits = len(split_names_to_consider)
-            new_entries = {}
-            for split_index in range(num_splits):
-                split_name = split_names_to_consider[split_index]
-                self.progress.update('Accessing split covs, updating variable pos dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
+        split_names_to_consider = list(splits_to_consider_dict.keys())
+        num_splits = len(split_names_to_consider)
+        new_entries = {}
+        for split_index in range(num_splits):
+            split_name = split_names_to_consider[split_index]
+            self.progress.update('Accessing split covs, updating variable pos dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
 
-                split_coverage_across_samples = self.merged_split_coverage_values.get(split_name)
+            split_coverage_across_samples = self.merged_split_coverage_values.get(split_name)
 
-                split_info = self.splits_basic_info[split_name]
-                contig_name = split_info['parent']
+            split_info = self.splits_basic_info[split_name]
+            contig_name = split_info['parent']
 
-                for gene_codon_key in splits_to_consider_dict[split_name]:
-                    corresponding_gene_call, codon_order_in_gene = [int(k) for k in gene_codon_key.split('_')]
-                    gene_length = self.get_gene_length(corresponding_gene_call)
+            for gene_codon_key in splits_to_consider_dict[split_name]:
+                corresponding_gene_call, codon_order_in_gene = [int(k) for k in gene_codon_key.split('_')]
+                gene_length = self.get_gene_length(corresponding_gene_call)
 
-                    for sample_name in splits_to_consider_dict[split_name][gene_codon_key]:
-                        unique_pos_identifier_str = '_'.join([split_name, str(corresponding_gene_call), str(codon_order_in_gene)])
-                        reference_codon = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
+                for sample_name in splits_to_consider_dict[split_name][gene_codon_key]:
+                    unique_pos_identifier_str = '_'.join([split_name, str(corresponding_gene_call), str(codon_order_in_gene)])
+                    reference_codon = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
 
-                        new_entries[next_available_entry_id] = {'entry_id': next_available_entry_id,
-                                                                'unique_pos_identifier_str': unique_pos_identifier_str,
-                                                                'unique_pos_identifier': unique_pos_identifier_str_to_unique_pos_identifier[unique_pos_identifier_str],
-                                                                'sample_id': sample_name,
-                                                                'split_name': split_name,
-                                                                'contig_name': contig_name,
-                                                                'corresponding_gene_call': corresponding_gene_call,
-                                                                'gene_length': gene_length,
-                                                                'codon_order_in_gene': codon_order_in_gene,
-                                                                'departure_from_reference': 0,
-                                                                'coverage': None,
-                                                                'reference': reference_codon}
+                    new_entries[next_available_entry_id] = {'entry_id': next_available_entry_id,
+                                                            'unique_pos_identifier_str': unique_pos_identifier_str,
+                                                            'unique_pos_identifier': unique_pos_identifier_str_to_unique_pos_identifier[unique_pos_identifier_str],
+                                                            'sample_id': sample_name,
+                                                            'split_name': split_name,
+                                                            'contig_name': contig_name,
+                                                            'corresponding_gene_call': corresponding_gene_call,
+                                                            'gene_length': gene_length,
+                                                            'codon_order_in_gene': codon_order_in_gene,
+                                                            'departure_from_reference': 0,
+                                                            'coverage': None,
+                                                            'reference': reference_codon}
 
-                        # DEALING WITH COVERAGE ##################################################################
-                        # some very cool but expensive shit is going on here, let me break it down for poor souls of the future.
-                        # what we want to do is to learn the coverage of this codon in the sample. all we have is the corresponding
-                        # gene call id, and the order of this codon in the gene. so here how it goes:
-                        #
-                        # learn the gene call
-                        gene_call = self.genes_in_contigs_dict[corresponding_gene_call]
+                    # DEALING WITH COVERAGE ##################################################################
+                    # some very cool but expensive shit is going on here, let me break it down for poor souls of the future.
+                    # what we want to do is to learn the coverage of this codon in the sample. all we have is the corresponding
+                    # gene call id, and the order of this codon in the gene. so here how it goes:
+                    #
+                    # learn the gene call
+                    gene_call = self.genes_in_contigs_dict[corresponding_gene_call]
 
-                        # the following dict converts codon orders into nt positions in contig for a geven gene call
-                        codon_order_to_nt_positions_in_contig = utils.get_codon_order_to_nt_positions_dict(gene_call)
+                    # the following dict converts codon orders into nt positions in contig for a geven gene call
+                    codon_order_to_nt_positions_in_contig = utils.get_codon_order_to_nt_positions_dict(gene_call)
 
-                        # so the nucleotide positions for this codon in the contig is the following:
-                        nt_positions_for_codon_in_contig = codon_order_to_nt_positions_in_contig[codon_order_in_gene]
+                    # so the nucleotide positions for this codon in the contig is the following:
+                    nt_positions_for_codon_in_contig = codon_order_to_nt_positions_in_contig[codon_order_in_gene]
 
-                        # but we need to convert those positions to the context of this split. so here is the start pos:
-                        split_start = self.splits_basic_info[split_name]['start']
+                    # but we need to convert those positions to the context of this split. so here is the start pos:
+                    split_start = self.splits_basic_info[split_name]['start']
 
-                        # here we map nt positions from the contig context to split context using the start position
-                        nt_positions_for_codon_in_split = [p - split_start for p in nt_positions_for_codon_in_contig]
+                    # here we map nt positions from the contig context to split context using the start position
+                    nt_positions_for_codon_in_split = [p - split_start for p in nt_positions_for_codon_in_contig]
 
-                        # we acquire coverages that match to these positions
-                        coverages = split_coverage_across_samples[sample_name][nt_positions_for_codon_in_split]
-                        coverage = int(round(sum(coverages) / 3))
+                    # we acquire coverages that match to these positions
+                    coverages = split_coverage_across_samples[sample_name][nt_positions_for_codon_in_split]
+                    coverage = int(round(sum(coverages) / 3))
 
-                        # and finally update the data table
-                        new_entries[next_available_entry_id]['coverage'] = coverage
+                    # and finally update the data table
+                    new_entries[next_available_entry_id]['coverage'] = coverage
 
-                        # DEALING WITH AAs ##################################################################
-                        # here we need to put all the codons into the data table for this sample
-                        for codon in set(constants.codon_to_AA.values()):
-                            new_entries[next_available_entry_id][codon] = 0
+                    # DEALING WITH AAs ##################################################################
+                    # here we need to put all the codons into the data table for this sample
+                    for codon in set(constants.codon_to_AA.values()):
+                        new_entries[next_available_entry_id][codon] = 0
 
-                        # and finally update the frequency of the reference codon with the coverage (WHICH IS VERY BAD,
-                        # WE HAVE NO CLUE WHAT IS THE ACTUAL COVERAGE OF TRIPLICATE LINKMERS):
-                        new_entries[next_available_entry_id][reference_codon] = coverage
+                    # and finally update the frequency of the reference codon with the coverage (WHICH IS VERY BAD,
+                    # WE HAVE NO CLUE WHAT IS THE ACTUAL COVERAGE OF TRIPLICATE LINKMERS):
+                    new_entries[next_available_entry_id][reference_codon] = coverage
 
-                        next_available_entry_id += 1
+                    next_available_entry_id += 1
 
-            # convert to pandas DataFrame (its faster to build and convert a dictionary than to build DataFrame row by row)
-            new_entries = pd.DataFrame(new_entries).T
+        # convert to pandas DataFrame (its faster to build and convert a dictionary than to build DataFrame row by row)
+        new_entries = pd.DataFrame(new_entries).T
 
-            # concatenate new columns to self.data
-            self.data = pd.concat([self.data, new_entries])
-            new_entries.set_index("entry_id", drop=False, inplace=True)
+        # concatenate new columns to self.data
+        self.data = pd.concat([self.data, new_entries])
+        new_entries.set_index("entry_id", drop=False, inplace=True)
 
-            # fill in additional fields for new entries
-            self.insert_additional_fields(list(new_entries["entry_id"]))
-
-        else:
-
-            samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
-            splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
-            next_available_entry_id = max(self.data.keys()) + 1
-
-            unique_pos_identifier_str_to_consenus_codon = {}
-            unique_pos_identifier_str_to_unique_pos_identifier = {}
-            for e in list(self.data.values()):
-                upi = e['unique_pos_identifier_str']
-                unique_pos_identifier_str_to_consenus_codon[upi] = e['reference']
-                unique_pos_identifier_str_to_unique_pos_identifier[upi] = e['unique_pos_identifier']
-
-            self.progress.update('creating a dict to track missing AA frequencies for each sample / split / pos')
-
-            splits_to_consider_dict = {}
-            for split_name in splits_wanted:
-                splits_to_consider_dict[split_name] = {}
-
-            self.progress.update('populating the dict to track missing AA frequencies for each sample / split / pos')
-            for entry_id in self.data:
-                v = self.data[entry_id]
-                gene_codon_key = '%d_%d' % (v['corresponding_gene_call'], v['codon_order_in_gene'])
-                d = splits_to_consider_dict[v['split_name']]
-
-                if gene_codon_key in d:
-                    d[gene_codon_key].remove(v['sample_id'])
-                else:
-                    d[gene_codon_key] = copy.deepcopy(samples_wanted)
-                    d[gene_codon_key].remove(v['sample_id'])
-
-            split_names_to_consider = list(splits_to_consider_dict.keys())
-            num_splits = len(split_names_to_consider)
-            for split_index in range(num_splits):
-                split_name = split_names_to_consider[split_index]
-                self.progress.update('Accessing split covs, updating variable pos dict (%s of %s)' % (pp(split_index + 1), pp(num_splits)))
-
-                split_coverage_across_samples = self.merged_split_coverage_values.get(split_name)
-
-                split_info = self.splits_basic_info[split_name]
-                contig_name = split_info['parent']
-
-                for gene_codon_key in splits_to_consider_dict[split_name]:
-                    corresponding_gene_call, codon_order_in_gene = [int(k) for k in gene_codon_key.split('_')]
-                    gene_length = self.get_gene_length(corresponding_gene_call)
-
-                    for sample_name in splits_to_consider_dict[split_name][gene_codon_key]:
-                        unique_pos_identifier_str = '_'.join([split_name, str(corresponding_gene_call), str(codon_order_in_gene)])
-                        reference_codon = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
-
-                        self.data[next_available_entry_id] = {'unique_pos_identifier_str': unique_pos_identifier_str,
-                                                              'unique_pos_identifier': unique_pos_identifier_str_to_unique_pos_identifier[unique_pos_identifier_str],
-                                                              'sample_id': sample_name,
-                                                              'split_name': split_name,
-                                                              'contig_name': contig_name,
-                                                              'corresponding_gene_call': corresponding_gene_call,
-                                                              'gene_length': gene_length,
-                                                              'codon_order_in_gene': codon_order_in_gene,
-                                                              'departure_from_reference': 0,
-                                                              'coverage': None,
-                                                              'reference': reference_codon}
-
-                        # DEALING WITH COVERAGE ##################################################################
-                        # some very cool but expensive shit is going on here, let me break it down for poor souls of the future.
-                        # what we want to do is to learn the coverage of this codon in the sample. all we have is the corresponding
-                        # gene call id, and the order of this codon in the gene. so here how it goes:
-                        #
-                        # learn the gene call
-                        gene_call = self.genes_in_contigs_dict[corresponding_gene_call]
-
-                        # the following dict converts codon orders into nt positions in contig for a geven gene call
-                        codon_order_to_nt_positions_in_contig = utils.get_codon_order_to_nt_positions_dict(gene_call)
-
-                        # so the nucleotide positions for this codon in the contig is the following:
-                        nt_positions_for_codon_in_contig = codon_order_to_nt_positions_in_contig[codon_order_in_gene]
-
-                        # but we need to convert those positions to the context of this split. so here is the start pos:
-                        split_start = self.splits_basic_info[split_name]['start']
-
-                        # here we map nt positions from the contig context to split context using the start position
-                        nt_positions_for_codon_in_split = [p - split_start for p in nt_positions_for_codon_in_contig]
-
-                        # we acquire coverages that match to these positions
-                        coverages = split_coverage_across_samples[sample_name][nt_positions_for_codon_in_split]
-                        coverage = int(round(sum(coverages) / 3))
-
-                        # and finally update the data table
-                        self.data[next_available_entry_id]['coverage'] = coverage
-
-                        # DEALING WITH AAs ##################################################################
-                        # here we need to put all the codons into the data table for this sample
-                        for codon in set(constants.codon_to_AA.values()):
-                            self.data[next_available_entry_id][codon] = 0
-
-                        # and finally update the frequency of the reference codon with the coverage (WHICH IS VERY BAD,
-                        # WE HAVE NO CLUE WHAT IS THE ACTUAL COVERAGE OF TRIPLICATE LINKMERS):
-                        self.data[next_available_entry_id][reference_codon] = coverage
-
-                        # insert additional fields for this newly added data point
-                        self.insert_additional_fields([next_available_entry_id])
-
-                        next_available_entry_id += 1
+        # fill in additional fields for new entries
+        self.insert_additional_fields(list(new_entries["entry_id"]))
 
         self.progress.end()
 
