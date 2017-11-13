@@ -22,9 +22,6 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 from anvio.errors import ConfigError
 
-from anvio.auxiliarydataops import AuxiliaryDataForNtPositions
-from anvio.table.views import TablesForViews
-
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
 __credits__ = []
@@ -112,8 +109,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # following variable will be populated while the variable positions table is computed
         self.codons_in_genes_to_profile_AA_frequencies = set([])
-
-        self.nt_positions_info = AuxiliaryDataForNtPositions(dbops.get_auxiliary_data_path_for_contigs_db(self.contigs_db_path), self.a_meta['contigs_db_hash'])
 
         # we don't know what we are about
         self.description = None
@@ -209,13 +204,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             # creating a null view_data_splits dict:
             view_data_splits = dict(list(zip(self.split_names, [dict(list(zip(t.atomic_data_table_structure[1:], [None] * len(t.atomic_data_table_structure[1:]))))] * len(self.split_names))))
-            TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
-            TablesForViews(self.profile_db_path).create_new_view(
-                                       data_dict=view_data_splits,
-                                       table_name='atomic_data_splits',
-                                       table_structure=t.atomic_data_table_structure,
-                                       table_types=t.atomic_data_table_types,
-                                       view_name='single')
+            dbops.TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
+            dbops.TablesForViews(self.profile_db_path).create_new_view(
+                                           data_dict=view_data_splits,
+                                           table_name='atomic_data_splits',
+                                           table_structure=t.atomic_data_table_structure,
+                                           table_types=t.atomic_data_table_types,
+                                           view_name='single')
         elif self.input_file_path:
             self.init_profile_from_BAM()
             self.profile()
@@ -288,7 +283,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                     column_profile['in_partial_gene_call'], \
                     column_profile['in_complete_gene_call'],\
-                    column_profile['base_pos_in_codon'] = self.nt_positions_info.get_nt_position_info(contig.name, pos_in_contig)
+                    column_profile['base_pos_in_codon'] = self.get_nt_position_info(contig.name, pos_in_contig)
 
                     column_profile['sample_id'] = self.sample_id
                     column_profile['corresponding_gene_call'] = -1 # this means there is no gene call that corresponds to this
@@ -696,21 +691,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # function create_new_view defined in the class TablesForViews.
         view_data_splits, view_data_contigs = contigops.get_atomic_data_dicts(self.sample_id, self.contigs)
 
-        TablesForViews(self.profile_db_path).create_new_view(
-                                    data_dict=view_data_splits,
-                                    table_name='atomic_data_splits',
-                                    table_structure=t.atomic_data_table_structure,
-                                    table_types=t.atomic_data_table_types,
-                                    view_name='single',
-                                    append_mode=True)
+        dbops.TablesForViews(self.profile_db_path).create_new_view(
+                                        data_dict=view_data_splits,
+                                        table_name='atomic_data_splits',
+                                        table_structure=t.atomic_data_table_structure,
+                                        table_types=t.atomic_data_table_types,
+                                        view_name='single',
+                                        append_mode=True)
 
-        TablesForViews(self.profile_db_path).create_new_view(
-                                    data_dict=view_data_contigs,
-                                    table_name='atomic_data_contigs',
-                                    table_structure=t.atomic_data_table_structure,
-                                    table_types=t.atomic_data_table_types,
-                                    view_name=None,
-                                    append_mode=True)
+        dbops.TablesForViews(self.profile_db_path).create_new_view(
+                                        data_dict=view_data_contigs,
+                                        table_name='atomic_data_contigs',
+                                        table_structure=t.atomic_data_table_structure,
+                                        table_types=t.atomic_data_table_types,
+                                        view_name=None,
+                                        append_mode=True)
 
 
     def check_contigs(self, num_contigs=None):

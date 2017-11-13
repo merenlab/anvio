@@ -6,7 +6,6 @@
 
 import os
 import sqlite3
-import pandas as pd
 
 import anvio
 import anvio.filesnpaths as filesnpaths
@@ -72,10 +71,6 @@ class DB:
 
     def drop_table(self, table_name):
         self._exec('''DROP TABLE IF EXISTS %s;''' % table_name)
-
-
-    def clear_table(self, table_name):
-        self._exec('''DELETE FROM %s''' % table_name)    
 
 
     def create_table(self, table_name, fields, types):
@@ -185,12 +180,6 @@ class DB:
         return self._exec(query, values)
 
 
-    def insert_many(self, table_name, entries=[]):
-        if len(entries):
-            query = '''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(entries[0])))
-            return self._exec_many(query, entries)
-
-
     def get_all_rows_from_table(self, table):
         response = self._exec('''SELECT * FROM %s''' % table)
         return response.fetchall()
@@ -271,10 +260,6 @@ class DB:
                 results_dict[row[0]] = entry
 
         return results_dict
-
-
-    def get_table_as_dataframe(self, table_name, index_column=None):
-        return pd.read_sql_query('''SELECT * FROM %s''' % table_name, self.conn, index_col=index_column)
 
 
     def get_some_rows_from_table_as_dict(self, table, where_clause, error_if_no_data=True, string_the_key=False):
