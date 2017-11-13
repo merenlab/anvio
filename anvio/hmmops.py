@@ -5,6 +5,7 @@
 """
 
 import textwrap
+from scipy import stats
 
 import anvio
 import anvio.db as db
@@ -73,24 +74,52 @@ class SequencesForHMMHits:
         return hits_in_splits, split_name_to_bin_id
 
 
-    def get_single_copy_gene_counts(self):
-        sources = [source for source in self.hmm_hits_info]
+    def get_gene_hit_counts_per_hmm_source(self, sources=None):
+        if not sources:
+            sources = [source for source in self.hmm_hits_info]
+        else:
+            if not isinstance(sources, list):
+                raise ConfigError("get_gene_hit_counts_per_hmm_source speaking: `sources` variable must be of type `list`.")
 
-        gene_counts = {}
+            missing_sources = [source for source in sources if source not in self.hmm_hits_info]
+            if len(missing_sources):
+                self.progress.end()
+                raise ConfigError("Anvi'o was trying to generate information regarding all the hits per HMM source stored\
+                                   in its databases, but some of the sources you requested do not seem to be found anywhere :/\
+                                   Here is the list of those that failed you: '%s'." % (','.join(sources)))
+
+        gene_hit_counts = {}
         for source in sources:
-            gene_counts[source] = {}
+            gene_hit_counts[source] = {}
 
             for gene_name in self.hmm_hits_info[source]['genes'].split(','):
-                gene_counts[source][gene_name.strip()] = 0
+                gene_hit_counts[source][gene_name.strip()] = 0
 
         for entry in list(self.hmm_hits.values()):
             source    = entry['source']
             gene_name = entry['gene_name']
 
             if source in sources:
-                gene_counts[source][gene_name.strip()] += 1
+                gene_hit_counts[source][gene_name.strip()] += 1
 
-        return gene_counts
+        return gene_hit_counts
+
+
+    def get_num_genomes_from_SCG_sources_dict(self):
+        SCG_sources = [key for key in self.hmm_hits_info if self.hmm_hits_info[key]['search_type'] == 'singlecopy']
+
+        if not len(SCG_sources):
+            return {}
+
+        gene_hit_counts_per_hmm_source = self.get_gene_hit_counts_per_hmm_source(SCG_sources)
+
+        num_genomes_per_SCG_source = {}
+        for SCG_source in SCG_sources:
+            l = list(gene_hit_counts_per_hmm_source[SCG_source].values())
+            num_genomes_per_SCG_source[SCG_source] = {'num_genomes': int(stats.mode(l).mode[0]),
+                                                      'domain': self.hmm_hits_info[SCG_source]['domain']}
+
+        return num_genomes_per_SCG_source
 
 
     def get_hmm_hits_per_bin(self, splits_dict, source):
