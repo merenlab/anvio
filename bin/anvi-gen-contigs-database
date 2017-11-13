@@ -4,9 +4,9 @@
 import sys
 
 import anvio
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 
-from anvio.contigsprofiler import ContigsProfiler
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -49,8 +49,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        ContigsProfiler(args)
-
+        a = dbops.ContigsDatabase(args.output_db_path, run, progress, quiet=False, skip_init = True)
+        a.create(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

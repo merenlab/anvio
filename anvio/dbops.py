@@ -40,9 +40,6 @@ from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.sequence import get_list_of_outliers
 
-from anvio.table.contigsinfo import InfoTableForContigs
-from anvio.table.splitsinfo import InfoTableForSplits
-from anvio.table.genecalls import TablesForGeneCalls
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -342,6 +339,36 @@ class ContigsSuperclass(object):
                 self.hmm_searches_dict[e['split']][hmm_source].append((hmm_hit['gene_name'], hmm_hit['gene_unique_identifier']),)
 
         self.progress.end()
+
+
+    def get_nt_position_info(self, contig_name, pos_in_contig):
+        """This function returns a tuple with three items for each nucleotide position.
+
+            (in_partial_gene_call, in_complete_gene_call, base_pos_in_codon)
+
+        See `init_nt_position_info_dict` for more info."""
+
+        if not self.nt_positions_info:
+            raise ConfigError("get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!\
+                                This may happen if you don't have the '.h5' file for your contigs database in the same\
+                                directory with your contigs database. But if you do have it there, then anvi'o really\
+                                needs an adult :(")
+
+        if not self.nt_positions_info.is_known_contig(contig_name):
+            return (0, 0, 0)
+
+        position_info = self.nt_positions_info.get(contig_name)[pos_in_contig]
+
+        if not position_info:
+            return (0, 0, 0)
+        if position_info == 8:
+            return (1, 0, 0)
+        if position_info == 4:
+            return (0, 1, 1)
+        if position_info == 2:
+            return (0, 1, 2)
+        if position_info == 1:
+            return (0, 1, 3)
 
 
     def init_functions(self, requested_sources=[], dont_panic=False):
@@ -1798,7 +1825,7 @@ class PanDatabase:
 
 class ContigsDatabase:
     """To create an empty contigs database and/or access one."""
-    def __init__(self, db_path, run=run, progress=progress, quiet=True, create_new=False, meta_values=None):
+    def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
         self.db = None
         self.db_path = db_path
 
@@ -1807,14 +1834,9 @@ class ContigsDatabase:
         self.quiet = quiet
 
         self.meta = {}
-        self.meta_for_new_db = meta_values
-        print(self.meta_for_new_db)
-        if create_new and self.meta_for_new_db:
-            self.create()
-        else:
-            raise ConfigError("You tried to create a new contigs database but did not provide any 'meta_values'.")
-        
-        self.init()
+
+        if not skip_init:
+            self.init()
 
 
     def init(self):
@@ -1825,14 +1847,8 @@ class ContigsDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls']:
-                try:
-                    self.meta[key] = int(self.meta[key])
-                except:
-                    pass
+                self.meta[key] = int(self.meta[key])
 
-            self.gene_calls_tables = TablesForGeneCalls(self.db)
-
-            return
             self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
 
             if 'creation_date' not in self.meta:
@@ -1845,8 +1861,6 @@ class ContigsDatabase:
             self.run.info('Number of splits', self.meta['num_splits'], quiet=self.quiet)
             self.run.info('Total number of nucleotides', self.meta['total_length'], quiet=self.quiet)
             self.run.info('Split length', self.meta['split_length'], quiet=self.quiet)
-
-
         else:
             self.db = None
 
@@ -1859,7 +1873,7 @@ class ContigsDatabase:
         return '%08x' % random.randrange(16**8)
 
 
-    def create(self):
+    def touch(self):
         """Creates an empty contigs database on disk, and sets `self.db` to access to it.
 
         At some point self.db.disconnect() must be called to complete the creation of the new db."""
@@ -1888,14 +1902,121 @@ class ContigsDatabase:
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
 
+        return self.db
+
+
+    def create(self, args):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        contigs_fasta = A('contigs_fasta')
+        project_name = A('project_name')
+        description_file_path = A('description')
+        split_length = A('split_length')
+        kmer_size = A('kmer_size')
+        skip_gene_calling = A('skip_gene_calling')
+        external_gene_calls = A('external_gene_calls')
+        skip_mindful_splitting = A('skip_mindful_splitting')
+        ignore_internal_stop_codons = A('ignore_internal_stop_codons')
+        debug = A('debug')
+
+        if external_gene_calls:
+            filesnpaths.is_file_exists(external_gene_calls)
+
+        if external_gene_calls and skip_gene_calling:
+            raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be\
+                                skipped. Please make up your mind.")
+
+        if not project_name:
+            raise ConfigError("Sorry, you must provide a project name for your contigs database :/")
+
+        if description_file_path:
+            filesnpaths.is_file_plain_text(description_file_path)
+            description = open(os.path.abspath(description_file_path), 'rU').read()
+        else:
+            description = ''
+
+        filesnpaths.is_file_fasta_formatted(contigs_fasta)
+        contigs_fasta = os.path.abspath(contigs_fasta)
+
+        # go throught he FASTA file to make sure there are no surprises with deflines and sequence lengths.
+        self.progress.new('Checking deflines and contig lengths')
+        self.progress.update('tick tock ...')
+        fasta = u.SequenceSource(contigs_fasta)
+        while next(fasta):
+            if not utils.check_contig_names(fasta.id, dont_raise=True):
+                self.progress.end()
+                raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines'\
+                                    requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take\
+                                    care of this issue, or read this section in the tutorial to understand the reason behind\
+                                    this requirement (anvi'o is very upset for making you do this): %s" % \
+                                        ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
+
+            if len(fasta.seq) < kmer_size:
+                self.progress.end()
+                raise ConfigError("At least one of the contigs in your input FASTA '%s' is shorter than the k-mer size. The k\
+                                    is %d, and your contig is like %d :/ Anvi'o will not judge you for whatever you are doing\
+                                    with such short contigs, but the length of each contig must be at least as long as your `k` for\
+                                    k-mer analyis. You can use the script `anvi-script-reformat-fasta` to get rid of very short\
+                                    contigs if you like." % (contigs_fasta, kmer_size, len(fasta.seq)))
+        fasta.close()
+        self.progress.end()
+
+        all_ids_in_FASTA = utils.get_all_ids_from_fasta(contigs_fasta)
+        if len(all_ids_in_FASTA) != len(set(all_ids_in_FASTA)):
+            raise ConfigError("Every contig in the input FASTA file must have a unique ID. You know...")
+
+        if not split_length:
+            raise ConfigError("Creating a new contigs database requires split length information to be\
+                                provided. But the ContigsDatabase class was called to create one without this\
+                                bit of information. Not cool.")
+
+        if not os.path.exists(contigs_fasta):
+            raise ConfigError("Creating a new contigs database requires a FASTA file with contigs to be provided.")
+
+        try:
+            split_length = int(split_length)
+        except:
+            raise ConfigError("Split size must be an integer.")
+
+        if split_length <= 0:
+            split_length = sys.maxsize
+
+        try:
+            kmer_size = int(kmer_size)
+        except:
+            raise ConfigError("K-mer size must be an integer.")
+        if kmer_size < 2 or kmer_size > 8:
+            raise ConfigError("We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
+                                source code if you are not happy to be told what you can't do, let us know how it goes!).")
+
+        if skip_gene_calling:
+            skip_mindful_splitting = True
+
+        # create a blank contigs database on disk, and set the self.db
+        self.touch()
+
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
-        self.db.set_meta_value('split_length', self.meta_for_new_db['split_length'])
-        self.db.set_meta_value('project_name', self.meta_for_new_db['project_name'])
-        self.db.set_meta_value('description', self.meta_for_new_db['description'])
-        self.db.set_meta_value('kmer_size', self.meta_for_new_db['kmer_size'])
+        self.db.set_meta_value('project_name', project_name)
+        self.db.set_meta_value('description', description)
 
-        return
+        # this will be the unique information that will be passed downstream whenever this db is used:
+        contigs_db_hash = self.get_hash()
+        self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
+
+        # set split length variable in the meta table
+        self.db.set_meta_value('split_length', split_length)
+
+        # let the user see what's up
+        self.run.info('Name', project_name, mc='green')
+        self.run.info('Description', os.path.abspath(description_file_path) if description_file_path else 'No description is given', mc='green')
+        self.run.info('Input FASTA file', contigs_fasta)
+        self.run.info('Split Length', pp(split_length))
+        self.run.info('K-mer size', kmer_size)
+        self.run.info('Skip gene calling?', skip_gene_calling)
+        self.run.info('External gene calls provided?', external_gene_calls)
+        self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
+        self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))
+
         # first things first: do the gene calling on contigs. this part is important. we are doing the
         # gene calling first. so we understand wher genes start and end. this information will guide the
         # arrangement of the breakpoint of splits
@@ -1938,8 +2059,8 @@ class ContigsDatabase:
         auxiliary_contigs_data_path = get_auxiliary_data_path_for_contigs_db(self.db_path)
         nt_positions_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, contigs_db_hash, create_new=True)
 
-        contigs_info_table = InfoTableForContigs(self.db, split_length)
-        splits_info_table = InfoTableForSplits(self.db)
+        contigs_info_table = InfoTableForContigs(split_length)
+        splits_info_table = InfoTableForSplits()
 
         recovered_split_lengths = []
 
@@ -1966,7 +2087,8 @@ class ContigsDatabase:
 
             self.progress.append('and %d nts. Now computing: auxiliary ... ' % contig_length)
             if genes_in_contig:
-                nt_positions_auxiliary.append(contig_name, contig_length, genes_in_contig, genes_in_contigs_dict)
+                nt_position_info_list = self.compress_nt_position_info(contig_length, genes_in_contig, genes_in_contigs_dict)
+                nt_positions_auxiliary.append(contig_name, nt_position_info_list)
 
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(contig_sequence)
 
@@ -1988,10 +2110,11 @@ class ContigsDatabase:
         nt_positions_auxiliary.close()
         self.progress.end()
 
+        self.db.set_meta_value('kmer_size', kmer_size)
         contigs_kmer_table.store(self.db)
         splits_kmer_table.store(self.db)
-        contigs_info_table.store()
-        splits_info_table.store()
+        contigs_info_table.store(self.db)
+        splits_info_table.store(self.db)
 
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.contig_sequences_table_name, db_entries_contig_sequences)
 
@@ -2008,6 +2131,68 @@ class ContigsDatabase:
 
         if not skip_gene_calling:
             gene_calls_tables.populate_genes_in_splits_tables()
+
+        self.run.info('Contigs database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info('Number of contigs', contigs_info_table.total_contigs, quiet=self.quiet)
+        self.run.info('Number of splits', splits_info_table.total_splits, quiet=self.quiet)
+        self.run.info('Total number of nucleotides', contigs_info_table.total_nts, quiet=self.quiet)
+        self.run.info('Gene calling step skipped', skip_gene_calling, quiet=self.quiet)
+        self.run.info("Splits broke genes (non-mindful mode)", skip_mindful_splitting, quiet=self.quiet)
+        self.run.info('Desired split length (what the user wanted)', split_length, quiet=self.quiet)
+        self.run.info("Average split length (wnat anvi'o gave back)", (int(round(numpy.mean(recovered_split_lengths)))) \
+                                                                        if recovered_split_lengths \
+                                                                            else "(Anvi'o did not create any splits)", quiet=self.quiet)
+
+
+    def compress_nt_position_info(self, contig_length, genes_in_contig, genes_in_contigs_dict):
+        """This function compresses information regarding each nucleotide position in a given contig
+           into a small int. Every nucleotide position is represented by four bits depending on whether
+           they occur in a complete opoen reading frame, and which base they correspond to in a codon.
+
+                0000
+                ||||
+                ||| \
+                |||   Third codon?
+                || \
+                ||   Second codon?
+                | \
+                |   First codon?
+                 \
+                   Whether the position in a partial gene call
+
+           8: int('1000', 2); nt position is in a partial gene call
+           4: int('0100', 2); nt position is in a complete gene call, and is at the 1st position in the codon
+           2: int('0010', 2); nt position is in a complete gene call, and is at the 2nd position in the codon
+           1: int('0001', 2); nt position is in a complete gene call, and is at the 3rd position in the codon
+        """
+
+        # first we create a list of zeros for each position of the contig
+        nt_position_info_list = [0] * contig_length
+
+        for gene_unique_id, start, stop in genes_in_contig:
+            gene_call = genes_in_contigs_dict[gene_unique_id]
+
+            # if the gene call is a partial one, meaning the gene was cut at the beginning or
+            # at the end of the contig, we are not going to try to make sense of synonymous /
+            # non-synonmous bases in that. the clients who wish to use these variables must also
+            # be careful about the difference
+            if gene_call['partial']:
+                for nt_position in range(start, stop):
+                    nt_position_info_list[nt_position] = 8
+                continue
+
+            if gene_call['direction'] == 'f':
+                for nt_position in range(start, stop, 3):
+                    nt_position_info_list[nt_position] = 4
+                    nt_position_info_list[nt_position + 1] = 2
+                    nt_position_info_list[nt_position + 2] = 1
+            elif gene_call['direction'] == 'r':
+                for nt_position in range(stop - 1, start - 1, -3):
+                    nt_position_info_list[nt_position] = 4
+                    nt_position_info_list[nt_position - 1] = 2
+                    nt_position_info_list[nt_position - 2] = 1
+
+        return nt_position_info_list
 
 
     def disconnect(self):
@@ -2184,6 +2369,51 @@ class SamplesInformationDatabase:
 ####################################################################################################
 
 
+class InfoTableForContigs:
+    def __init__(self, split_length):
+        self.db_entries = []
+        self.total_nts = 0
+        self.total_contigs = 0
+        self.split_length = split_length
+
+
+    def append(self, seq_id, sequence, gene_start_stops=None):
+        sequence_length = len(sequence)
+        gc_content = utils.get_GC_content_for_sequence(sequence)
+
+        # how many splits will there be?
+        split_start_stops = utils.get_split_start_stops(sequence_length, self.split_length, gene_start_stops)
+
+        self.total_nts += sequence_length
+        self.total_contigs += 1
+        db_entry = tuple([seq_id, sequence_length, gc_content, len(split_start_stops)])
+        self.db_entries.append(db_entry)
+
+        return (sequence_length, split_start_stops, gc_content)
+
+
+    def store(self, db):
+        if len(self.db_entries):
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
+
+class InfoTableForSplits:
+    def __init__(self):
+        self.db_entries = []
+        self.total_splits = 0
+
+
+    def append(self, seq_id, sequence, order, start, end, parent_gc_content, parent):
+        self.total_splits += 1
+        sequence_length = len(sequence)
+        db_entry = tuple([seq_id, order, start, end, sequence_length, utils.get_GC_content_for_sequence(sequence), parent_gc_content, parent])
+        self.db_entries.append(db_entry)
+
+
+    def store(self, db):
+        if len(self.db_entries):
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.splits_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
 
 class KMerTablesForContigsAndSplits:
     def __init__(self, table_name, k=4):
@@ -2214,6 +2444,66 @@ class KMerTablesForContigsAndSplits:
         db.create_table(self.table_name, self.kmers_table_structure, self.kmers_table_types)
         db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.kmers_table_structure)))), self.db_entries)
 
+
+class TablesForViews(Table):
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
+
+
+    def create_new_view(self, data_dict, table_name, table_structure, table_types, view_name=None, append_mode=False):
+        """Creates a new view table, and adds an entry for it into the 'views' table.
+
+        Entries in 'views' table appear in various places in the interface. However, we also generate
+        view tables to store the type of data we do not wish to display on interfaces, but be able
+        access from various other modules. A good example to this is the item_order recipes. When we
+        profile a sample, we treat every stplit as their own entity with respect to their mean coverage.
+        Although it is great for visualization purposes, it is not useful for item_order purposes since in
+        most cases we wish splits to stay together in item_order output. Hence, we create a mean_coverage_splits
+        table, where each split holds their own coverage, and we create a mean_coverage_contigs table where each
+        split has the coverage of their parent. Clearly the second table is not useful to display. When a table
+        is not added as an entry to the 'views' table, then it only exists in the database for other purposes
+        than displaying it.
+
+        If a new view does not have a 'view_id', it is not added the 'views' table to provide that flexibility.
+        """
+
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
+
+        views_in_db = anvio_db.db.get_table_as_dict(t.views_table_name)
+
+        if not append_mode:
+            if view_name and view_name in views_in_db:
+                raise ConfigError("TablesForViews speaking: Yo yo yo. You already have a view in the db called '%s'.\
+                                    You can't create another one before you get rid of the existing one, because rules."\
+                                                                            % view_name)
+
+            # first create the data table:
+            anvio_db.db.drop_table(table_name)
+
+        try:
+            anvio_db.db.create_table(table_name, table_structure, table_types)
+        except:
+            if not append_mode:
+                raise ConfigError("Table already exists")
+
+        db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
+        anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
+
+        if view_name and view_name not in views_in_db:
+            anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))
+
+        anvio_db.disconnect()
+
+
+    def remove(self, view_name, table_names_to_blank=[]):
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
+        anvio_db.db._exec('''DELETE FROM %s WHERE view_id = "%s"''' % (t.views_table_name, view_name))
+        for table_name in table_names_to_blank:
+            if table_name in anvio_db.db.get_table_names():
+                anvio_db.db._exec('''DELETE FROM %s''' % table_name)
+        anvio_db.disconnect()
 
 
 class TableForVariability(Table):
@@ -2394,6 +2684,336 @@ class TableForAAFrequencies(Table):
         profile_db = ProfileDatabase(self.db_path)
         profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.variable_aas_table_name, ','.join(['?'] * len(t.variable_aas_table_structure))), self.db_entries)
         profile_db.disconnect()
+
+
+class TablesForGeneCalls(Table):
+    def __init__(self, db_path, contigs_fasta=None, run=run, progress=progress, debug=False):
+        self.run = run
+        self.progress = progress
+        self.db_path = db_path
+        self.contigs_fasta = contigs_fasta
+        self.debug = debug
+
+        is_contigs_db(self.db_path)
+
+        if self.contigs_fasta:
+            filesnpaths.is_file_exists(self.contigs_fasta)
+            filesnpaths.is_file_fasta_formatted(self.contigs_fasta)
+
+
+    def check_gene_calls_dict(self, gene_calls_dict):
+        if not isinstance(gene_calls_dict, type({})):
+            raise ConfigError("Gene calls dict must be a dict instance :/")
+
+        try:
+            [int(g) for g in list(gene_calls_dict.keys())]
+        except ValueError:
+            raise ConfigError("Keys of a gene calls dict must be integers!")
+
+        if False in [x['direction'] in ['f', 'r'] for x in list(gene_calls_dict.values())]:
+            raise ConfigError("The values in 'direction' column can't be anything but 'f' (for forward)\
+                                or 'r' (for reverse). You have other stuff, and it is not cool.")
+
+        if False in [x['stop'] > x['start'] for x in list(gene_calls_dict.values())]:
+            raise ConfigError("For each gene call, the stop position must be bigger than the start position.\
+                                Your gene calls dict does not conform to that. If you have reverse gene calls\
+                                you must use the 'direction' column to declare that.")
+
+        if False in [(x['stop'] - float(x['start'])) % 3.0 == 0 for x in list(gene_calls_dict.values())]:
+            raise ConfigError("Something is wrong with your gene calls. For every gene call, the (stop - start)\
+                                should be multiply of 3. It is not the case for all, which is a deal breaker.")
+
+
+    def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path, gene_calls_dict=None, ignore_internal_stop_codons=False):
+        """Add genes to the contigs database.
+
+           Either provide an `input_file_path` for external gene calls, or provide an
+           external gene calls dictionary. The format should follow this:
+
+                {
+                  "1": {
+                      "contig": "contig_name",
+                      "start": 20,
+                      "stop": 1544,
+                      "direction": "f",
+                      "partial": 0,
+                      "source": "source_name",
+                      "version": "unknown"
+                  },
+
+                  "2": {
+                    (...)
+                  },
+
+                (...)
+                }
+
+            If you provide a `gene_calls_dict`, they will be APPENDED to the database. So you
+            need to make sure gene caller ids in your dict does not overlap with the ones in
+            the database.
+
+        """
+
+        # by default we assume that this is a pristine run. but if the user sends a dictionary
+        append_to_the_db = False
+
+        gene_calls_found = False
+        # let's do a rigorous check whether the user provided a gene_calls_dict.
+        if (gene_calls_dict is not None and gene_calls_dict is not False):
+            if not isinstance(gene_calls_dict, dict):
+                raise ConfigError("'Use external gene calls' function received a non-empty gene_calls_dict object,\
+                                    but it is of type '%s', and not '%s'" % (type(gene_calls_dict), type({})))
+
+            # congrats, we have a dict.
+            gene_calls_found = True
+
+            if not len(gene_calls_dict):
+                # but it is empty ... silly user.
+                self.run.info_single("'Use external gene calls' function found an empty gene calls dict, returning\
+                                      prematurely and assuming you know what's up. If you don't, stop here and try to\
+                                      identify what decisions you've made might have led you to this weird point your\
+                                      workflow (or 'life', totally up to you and your mood, but anvi'o thinks you've\
+                                      done great so far.", nl_before=1, nl_after=1)
+                return
+
+
+        if (not input_file_path and not gene_calls_found) or (input_file_path and gene_calls_found):
+            raise ConfigError("You must provide either an input file, or an gene calls dict to process external\
+                               gene calls. You called `use_external_gene_calls_to_populate_genes_in_contigs_table`\
+                               with wrong parameters.")
+
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress, simple=True)
+
+        # take care of gene calls dict
+        if not gene_calls_found:
+            gene_calls_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_path,
+                                                                         expected_fields=t.genes_in_contigs_table_structure,
+                                                                         only_expected_fields=True,
+                                                                         column_mapping=[int, str, int, int, str, int, str, str])
+
+            if not len(gene_calls_dict):
+                raise ConfigError("You provided an external gene calls file, but it returned zero gene calls. Assuming that\
+                                   this is an error, anvi'o will stop here and complain. If this is not an error and you\
+                                   in fact expected this, the proper way of doing this is to use `--skip-gene-calls` flag,\
+                                   instead of providing an emtpy external gene calls file. You don't agree? You need this\
+                                   for some weird step for you weird pipeline? Let us know, and we will consider changing\
+                                   this.")
+
+            self.run.info("External gene calls", "%d gene calls recovered and will be processed." % len(gene_calls_dict))
+        else:
+            # FIXME: we need to make sure the gene caller ids in the incoming directory is not going to
+            #        overwrite an existing gene call. Something like this would have returned the
+            #        current max, which could be cross-checked with what's in the dict:
+            #
+            #            contigs_db = ContigsDatabase(self.db_path)
+            #            next_id = contigs_db.db.get_max_value_in_column('genes_in_contigs', 'gene_callers_id') + 1
+            #            contigs_db.disconnect()
+            append_to_the_db = True
+
+        # recover protein sequences. during this operation we are going to have to read all contig sequences
+        # into the damn memory. anvi'o is doing a pretty bad job with memory management :(
+        protein_sequences = {}
+
+        contig_sequences = {}
+        if self.contigs_fasta:
+            fasta = u.SequenceSource(self.contigs_fasta)
+            while next(fasta):
+                contig_sequences[fasta.id] = {'sequence': fasta.seq}
+            fasta.close()
+        else:
+            class Args: None
+            args = Args()
+            args.contigs_db = self.db_path
+            contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False))
+            contigs_db.init_contig_sequences()
+            contig_sequences = contigs_db.contig_sequences
+
+        num_genes_with_internal_stops = 0
+        number_of_impartial_gene_calls = 0
+        for gene_callers_id in gene_calls_dict:
+            gene_call = gene_calls_dict[gene_callers_id]
+            contig_name = gene_call['contig']
+
+            if contig_name not in contig_sequences:
+                # remove the partial contigs database so things don't get screwed later
+                os.remove(self.db_path)
+                raise ConfigError("You are in big trouble :( The contig name '%s' in your external gene callers file\
+                                    does not appear to be in the contigs FASTA file. How did this happen?" % contig_name)
+
+            if gene_call['partial']:
+                protein_sequences[gene_callers_id] = ''
+                number_of_impartial_gene_calls += 1
+                continue
+
+            sequence = contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+            if gene_call['direction'] == 'r':
+                sequence = utils.rev_comp(sequence)
+
+            protein_sequence = utils.get_DNA_sequence_translated(sequence, gene_callers_id)
+
+            # check if there are any internal stops:
+            if protein_sequence.find('*') > -1:
+                if ignore_internal_stop_codons:
+                    protein_sequence = protein_sequence.replace('*', 'X')
+                    num_genes_with_internal_stops += 1
+                else:
+                    os.remove(self.db_path)
+                    raise ConfigError("Oops. Anvi'o run into an amino acid seqeunce (that corresponds to the gene callers id '%s')\
+                                       which had an internal stop codon :/ This usually indicates that your external gene calls\
+                                       have problems. If you still want to continue, you can ask anvi'o to ignore internal stop\
+                                       codons on your own risk. It will probably look very ugly on your screen, but here is the\
+                                       DNA sequence for that gene in case you don't trust anvi'o (which only would be fair since\
+                                       anvi'o does not trust you either): %s" % (str(gene_callers_id), sequence))
+
+            protein_sequences[gene_callers_id] = protein_sequence
+
+        # populate genes_in_contigs, and gene_protein_sequences table in contigs db.
+        self.populate_genes_in_contigs_table(gene_calls_dict, protein_sequences, append_to_the_db=append_to_the_db)
+
+        if num_genes_with_internal_stops:
+            percent_genes_with_internal_stops = num_genes_with_internal_stops * 100.0 / len(gene_calls_dict)
+            self.run.warning("Please read this carefully: Your external gene calls contained open reading frames with internal\
+                              stop codons, and you asked anvi'o to ignore those. Anvi'o replaced internal stop codons with 'X'\
+                              characters, and stored them in the contigs database that way. %d of your genes, which corresponded\
+                              to %.2f%% of the total %d genes, had internal stop codons. We hope you are happy." % \
+                                        (num_genes_with_internal_stops, percent_genes_with_internal_stops, len(gene_calls_dict)))
+
+        if number_of_impartial_gene_calls:
+            self.run.warning('%d of your %d gene calls were impartial, hence the translated protein sequences for those\
+                              were not stored in the database.' % (number_of_impartial_gene_calls, len(gene_calls_dict)))
+
+
+    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple=True)
+
+        # get gene calls and protein sequences
+        gene_calls_dict, protein_sequences = self.run_gene_caller(gene_caller)
+
+        # make sure the returning gene calls dict is proper
+        self.check_gene_calls_dict(gene_calls_dict)
+
+        # populate genes_in_contigs, and gene_protein_sequences table in contigs db.
+        self.populate_genes_in_contigs_table(gene_calls_dict, protein_sequences)
+
+
+    def run_gene_caller(self, gene_caller='prodigal'):
+        """Runs gene caller, and returns gene_calls_dict, and protein sequences."""
+        remove_fasta_after_processing = False
+
+        if not self.contigs_fasta:
+            self.contigs_fasta = self.export_sequences_table_in_db_into_FASTA_file()
+            remove_fasta_after_processing = True
+
+        if self.debug:
+            self.run.info_single('--debug flag is [ON], which means temporary directories generated by\
+                                 this run will not be removed', nl_after=2)
+
+        gene_caller = genecalling.GeneCaller(self.contigs_fasta, gene_caller=gene_caller, debug=self.debug)
+
+        gene_calls_dict, protein_sequences = gene_caller.process()
+
+        if not self.debug and remove_fasta_after_processing:
+            os.remove(self.contigs_fasta)
+
+        return gene_calls_dict, protein_sequences
+
+
+    def populate_genes_in_contigs_table(self, gene_calls_dict, protein_sequences, append_to_the_db=False):
+        contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
+
+        if not append_to_the_db:
+            contigs_db._exec('''DELETE FROM %s''' % (t.genes_in_contigs_table_name))
+            contigs_db._exec('''DELETE FROM %s''' % (t.gene_protein_sequences_table_name))
+        else:
+            # so we are in the append mode. We must remove all the previous entries from genes in contigs
+            # that matches to the incoming sources. otherwhise we may end up with many duplicates in the db.
+            sources = set([v['source'] for v in gene_calls_dict.values()])
+            for source in sources:
+                contigs_db._exec('''DELETE FROM %s WHERE source = "%s"''' % (t.genes_in_contigs_table_name, source))
+
+        self.progress.new('Processing')
+        self.progress.update('Entering %d gene calls into the db ...' % (len(gene_calls_dict)))
+
+        db_entries = [tuple([entry_id] + [gene_calls_dict[entry_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for entry_id in gene_calls_dict]
+        contigs_db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, db_entries)
+
+        db_entries = [tuple([entry_id] + [protein_sequences[entry_id]]) for entry_id in gene_calls_dict]
+        contigs_db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.gene_protein_sequences_table_name, db_entries)
+
+        self.progress.end()
+
+        contigs_db.disconnect()
+
+
+    def populate_genes_in_splits_tables(self):
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
+        self.init_gene_calls_dict()
+
+        genes_in_splits = GenesInSplits()
+        # build a dictionary for fast access to all proteins identified within a contig
+        gene_calls_in_contigs_dict = {}
+        for gene_callers_id in self.gene_calls_dict:
+            contig = self.gene_calls_dict[gene_callers_id]['contig']
+            if contig in gene_calls_in_contigs_dict:
+                gene_calls_in_contigs_dict[contig].add(gene_callers_id)
+            else:
+                gene_calls_in_contigs_dict[contig] = set([gene_callers_id])
+
+        contigs_without_any_gene_calls = list(set(self.contigs_info.keys()) - set(gene_calls_in_contigs_dict.keys()))
+        run.info('Contigs with at least one gene call', '%d of %d (%.1f%%)' % (len(gene_calls_in_contigs_dict),
+                                                                               len(self.contigs_info),
+                                                                               len(gene_calls_in_contigs_dict) * 100.0 / len(self.contigs_info)))
+
+        for contig in contigs_without_any_gene_calls:
+            gene_calls_in_contigs_dict[contig] = set([])
+
+        splits_dict = {}
+        for contig in self.contigs_info:
+            for split_name in self.contig_name_to_splits[contig]:
+                start = self.splits_info[split_name]['start']
+                stop = self.splits_info[split_name]['end']
+
+                gene_start_stops = []
+                # here we go through all genes in the contig and identify the all the ones that happen to be in
+                # this particular split to generate summarized info for each split. BUT one important that is done
+                # in the following loop is genes_in_splits.add call, which populates GenesInSplits class.
+                for gene_callers_id in gene_calls_in_contigs_dict[contig]:
+                    if self.gene_calls_dict[gene_callers_id]['stop'] > start and self.gene_calls_dict[gene_callers_id]['start'] < stop:
+                        gene_start_stops.append((self.gene_calls_dict[gene_callers_id]['start'], self.gene_calls_dict[gene_callers_id]['stop']), )
+                        genes_in_splits.add(split_name, start, stop, gene_callers_id, self.gene_calls_dict[gene_callers_id]['start'], self.gene_calls_dict[gene_callers_id]['stop'])
+
+                # here we identify genes that are associated with a split even if one base of the gene spills into
+                # the defined start or stop of a split, which means, split N, will include genes A, B and C in this
+                # scenario:
+                #
+                # contig: (...)------[ gene A ]--------[     gene B    ]----[gene C]---------[    gene D    ]-----(...)
+                #         (...)----------x---------------------------------------x--------------------------------(...)
+                #                        ^ (split N start)                       ^ (split N stop)
+                #                        |                                       |
+                #                        |<-              split N              ->|
+                #
+                # however, when looking at the coding versus non-coding nucleotide ratios in a split, we have to make
+                # sure that only the relevant portion of gene A and gene C is counted:
+                total_coding_nts = 0
+                for gene_start, gene_stop in gene_start_stops:
+                    total_coding_nts += (gene_stop if gene_stop < stop else stop) - (gene_start if gene_start > start else start)
+
+                splits_dict[split_name] = {'num_genes': len(gene_start_stops),
+                                           'avg_gene_length': numpy.mean([(l[1] - l[0]) for l in gene_start_stops]) if len(gene_start_stops) else 0.0,
+                                           'ratio_coding': total_coding_nts * 1.0 / (stop - start),
+                                           }
+
+        # open connection
+        contigs_db = ContigsDatabase(self.db_path)
+        # push raw entries for splits table
+        db_entries = [tuple([split] + [splits_dict[split][h] for h in t.genes_in_splits_summary_table_structure[1:]]) for split in splits_dict]
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.genes_in_splits_summary_table_name, db_entries)
+
+        # push entries for genes in splits table
+        db_entries = [tuple([entry_id] + [genes_in_splits.splits_to_prots[entry_id][h] for h in t.genes_in_splits_table_structure[1:]]) for entry_id in genes_in_splits.splits_to_prots]
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.genes_in_splits_table_name, db_entries)
+        # disconnect
+        contigs_db.disconnect()
 
 
 class TablesForHMMHits(Table):
@@ -2792,6 +3412,52 @@ class TablesForCollections(Table):
         return db_entries_for_contigs
 
 
+class TablesForStates(Table):
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self.states = {}
+
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
+
+        self.init()
+
+
+    def init(self):
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
+        self.states = anvio_db.db.get_table_as_dict(t.states_table_name)
+        anvio_db.disconnect()
+
+
+    def list_states(self):
+        state_names = sorted(list(self.states.keys()))
+
+        self.run.warning('', 'AVAILABLE STATES (%d FOUND)' % (len(self.states)), lc='yellow')
+        for state_name in state_names:
+            self.run.info_single('%s (last modified on %s)' % (state_name, self.states[state_name]['last_modified']),
+                                 nl_after = 1 if state_name == state_names[-1] else 0)
+
+
+    def get_state(self, state_id):
+        if state_id not in self.states:
+            return None
+
+        return self.states[state_id]
+
+
+    def store_state(self, state_id, content, last_modified=None):
+        self.remove_state(state_id)
+
+        last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S") if not last_modified else last_modified
+
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
+        anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.states_table_name, (state_id, content, last_modified))
+        self.states = anvio_db.db.get_table_as_dict(t.states_table_name)
+
+        anvio_db.disconnect()
+
+
+    def remove_state(self, state_id):
+        self.delete_entries_for_key('name', state_id, [t.states_table_name])
 
 
 class TablesForTaxonomy(Table):
