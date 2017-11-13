@@ -109,6 +109,11 @@
             // Build comparison table
             create_table_header('Contigs Stats');
 
+            $('.table-details>tbody').append('<tr><td>Total Length</td></tr>');
+            contig_db_names.forEach(function(contig_db_name, index) {
+                $('.table-details>tbody>tr:last').append('<td class="text-center">' + getReadableSeqSizeString(contigs_stats[contig_db_name]['total_length']) + '</td>');
+            });
+
             $('.table-details>tbody').append('<tr><td>Num Contigs</td></tr>');
             contig_db_names.forEach(function(contig_db_name, index) {
                 $('.table-details>tbody>tr:last').append('<td class="text-center">' + contigs_stats[contig_db_name]['num_contigs']) + '</td>';
