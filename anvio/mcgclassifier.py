@@ -21,6 +21,7 @@ import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
 from scipy import odr as odr
+from anvio.mcgops import MCGPlots
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
 from anvio.sequence import get_list_of_outliers
@@ -239,6 +240,7 @@ class MetagenomeCentricGeneClassifier:
         negative_samples = []
 
         self.progress.new("Setting presence/absence in samples")
+        progress.update('...')
         num_samples, counter = len(self.samples), 1
         detection = {}
         for sample in self.samples:
@@ -270,12 +272,13 @@ class MetagenomeCentricGeneClassifier:
     def init_samples_coverage_stats_dict(self):
         """ populate the samples_coverage_stats_dict."""
         if not self.sample_detection_information_was_initiated:
-            self.init_sample_detection_information
+            self.init_sample_detection_information()
 
         self.samples_coverage_stats_dicts = pd.DataFrame(index=self.samples, columns=columns_for_samples_coverage_stats_dict)
 
         num_samples, counter = len(self.samples), 1
         self.progress.new("Finding nucleotide positions in samples with outlier coverage values")
+        progress.update('...')
         for sample in self.positive_samples:
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
@@ -305,6 +308,7 @@ class MetagenomeCentricGeneClassifier:
         plot_dir = self.output_file_prefix + '-TS-plots' + '/'
         os.makedirs(plot_dir, exist_ok=True)
         self.progress.new('Saving figures of taxon specific distributions to pdf')
+        progress.update('...')
         number_of_fininshed = 0
         for sample in self.positive_samples:
             coverages_pdf_output = plot_dir + sample + additional_description + '-coverages.pdf'
@@ -363,10 +367,17 @@ class MetagenomeCentricGeneClassifier:
     def init_gene_presence_absence_in_samples(self):
         gene_callers_id = list(self.profile_db.gene_level_coverage_stats_dict.keys())
         self.gene_presence_absence_in_samples = pd.DataFrame(index=gene_callers_id, columns=self.samples)
+
+        num_samples, counter = len(self.samples), 1
+        self.progress.new('Computing gene presence/absence in samples')
+        progress.update('...')
         for sample in self.samples:
+            if num_samples > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d samples...' % (counter, num_samples))
             for gene_id in gene_callers_id:
                 self.gene_presence_absence_in_samples.loc[gene_id, sample] = get_presence_absence_information(self.profile_db.gene_level_coverage_stats_dict[gene_id][sample]['detection'], self.alpha)
         self.gene_presence_absence_in_samples_initiated = True
+        self.progress.end()
 
 
     def init_gene_coverage_stats_dict_of_dfs(self):
@@ -377,9 +388,15 @@ class MetagenomeCentricGeneClassifier:
             mean coverage accross samples as an array in order to perform regression
             (see init_gene_coverage_consistency_information for example of usage).
         """
+        num_genes, counter = len(self.profile_db.gene_level_coverage_stats_dict.keys()), 1
+        self.progress.new("Initializing gene coverage stats dictionary of dataframes")
+        progress.update('...')
         for gene_id, coverage_stats in self.profile_db.gene_level_coverage_stats_dict.items():
+            if num_genes > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d genes...' % (counter, num_genes))
             self.gene_coverage_stats_dict_of_dfs[gene_id] = pd.DataFrame.from_dict(coverage_stats, orient='index')
         self.gene_coverage_stats_dict_of_dfs_initiated = True
+        self.progress.end()
 
 
     def init_gene_coverage_consistency_information(self):
@@ -400,7 +417,13 @@ class MetagenomeCentricGeneClassifier:
         if not self.gene_coverage_stats_dict_of_dfs_initiated:
             self.init_gene_coverage_stats_dict_of_dfs()
 
+        self.progress.new("Computing coverage consistency for all genes.")
+        progress.update('...')
+        num_genes, counter = len(self.profile_db.gene_level_coverage_stats_dict.keys()), 1
         for gene_id in self.profile_db.gene_level_coverage_stats_dict.keys():
+            if num_genes > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d genes...' % (counter, num_genes))
+
             # samples in which the gene is present
             _samples = self.gene_presence_absence_in_samples.loc[gene_id,self.gene_presence_absence_in_samples.loc[gene_id,]==True].index
             # mean and std of non-outlier nt in each sample
@@ -416,8 +439,6 @@ class MetagenomeCentricGeneClassifier:
                 _model = lambda B, c: B[0] * c
                 _odr = odr.ODR(_data, odr.Model(_model), beta0=[3])
                 odr_output = _odr.run()
-                run.info_single('Orthogonal Distance Regression results for gene %s' % gene_id)
-                odr_output.pprint()
                 
                 # store results
                 self.gene_coverage_consistency_dict[gene_id] = {}
@@ -437,19 +458,33 @@ class MetagenomeCentricGeneClassifier:
                     self.gene_coverage_consistency_dict[gene_id]['converged'] = False
 
         self.gene_coverage_consistency_dict_initiated = True
+        self.progress.end()
 
 
     def get_gene_classes(self):
         """ The main process of this class - computes the class information for each gene"""
-        # need to start a new gene_class_information dict
-        # this is due to the fact that if the algorithm is ran on a list of bins then this necessary
-        self.gene_class_information = pd.DataFrame(index=self.gene_coverages.index,columns=['gene_class'])
-
-        # set the presence/absence values for samples
-        self.init_sample_detection_information()
-
         # find the taxon-specific genes for each sample
         self.plot_TS()
+
+        self.gen_gene_consistency_plots() 
+
+
+    def gen_gene_consistency_plots(self):
+        """ generate and save the gene consistency plots for each gene."""
+
+        if not self.gene_coverage_consistency_dict_initiated:
+            self.init_gene_coverage_consistency_information()
+
+        num_genes, counter = len(self.profile_db.gene_level_coverage_stats_dict.keys()), 1
+        progress.new('Plotting gene consistency information')
+        progress.update('...')
+        for gene_id in self.profile_db.gene_level_coverage_stats_dict.keys():
+            if num_genes > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d genes...' % (counter, num_genes))
+            p = MCGPlots(self, gene_id, run=run, progress=progress)
+            p.plot()
+
+        progress.end()
 
 
     def get_coverage_and_detection_dict(self,bin_id):
@@ -502,6 +537,7 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
     samples as keys and the concatenated coverage values for all splits as one array
     """
     progress.new('Merging coverage values accross splits')
+    progress.update('...')
 
     d = {}
     if samples is None:
