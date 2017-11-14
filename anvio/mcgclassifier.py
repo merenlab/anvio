@@ -463,9 +463,10 @@ class MetagenomeCentricGeneClassifier:
 
     def get_gene_classes(self):
         """ The main process of this class - computes the class information for each gene"""
-        # find the taxon-specific genes for each sample
+        # Create the plots for nucleotide-level coverage data per sample.
         self.plot_TS()
 
+        # generate plots for coverage consistency information for each gene.
         self.gen_gene_consistency_plots() 
 
 
