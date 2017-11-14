@@ -121,6 +121,7 @@ class AuxiliaryDataForNtPositions(object):
         self.version = anvio.__auxiliary_data_version__
         self.db_hash = db_hash
         self.numpy_data_type = 'uint8'
+        self.nt_positions_entries = []
 
         self.db = db.DB(self.file_path, self.version, new_database=create_new)
 
@@ -129,6 +130,12 @@ class AuxiliaryDataForNtPositions(object):
 
         if not ignore_hash:
             self.check_hash()
+
+        self.init()
+
+
+    def init(self):
+        self.nt_positions = self.db.get_table_as_dict(t.nt_position_info_table_name)
 
 
     def create_tables(self):
@@ -147,22 +154,24 @@ class AuxiliaryDataForNtPositions(object):
 
 
     def is_known_contig(self, contig_name):
-        return contig_name in self.db.get_single_column_from_table(t.nt_position_info_table_name, 'contig_name')
+        return contig_name in self.nt_positions
 
 
     def append(self, contig_name, position_info_list):
         position_info_blob = utils.convert_numpy_array_to_binary_blob(np.array(position_info_list, dtype=self.numpy_data_type))
-        self.db.insert(t.nt_position_info_table_name, values=(contig_name, position_info_blob, ))
+        self.nt_positions_entries.append((contig_name, position_info_blob, ))
+
+
+    def store(self):
+        self.db.insert_many(t.nt_position_info_table_name, entries=self.nt_positions_entries)
 
 
     def get(self, contig_name):
         if not self.is_known_contig(contig_name):
             return []
 
-        cursor = self.db._exec('''SELECT position_info FROM %s WHERE contig_name = "%s"''' % 
-                                                      (t.nt_position_info_table_name, contig_name))
+        position_info_blob = self.nt_positions[contig_name]['position_info']
 
-        position_info_blob = cursor.fetchone()[0]
         return utils.convert_binary_blob_to_numpy_array(position_info_blob, dtype=self.numpy_data_type).tolist()
 
 
