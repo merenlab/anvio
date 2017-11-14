@@ -3975,7 +3975,7 @@ def get_split_names_in_profile_db(profile_db_path):
 
 
 def get_auxiliary_data_path_for_contigs_db(contigs_db_path):
-    return ''.join(contigs_db_path[:-3]) + '.h5'
+    return ''.join(contigs_db_path[:-3]) + '-AUXILIARY.db'
 
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):
