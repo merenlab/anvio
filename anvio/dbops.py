@@ -2108,6 +2108,8 @@ class ContigsDatabase:
                 splits_info_table.append(split_name, contig_sequence[start:end], order, start, end, contig_gc_content, contig_name)
 
             db_entries_contig_sequences.append((contig_name, contig_sequence), )
+
+        nt_positions_auxiliary.store()
         nt_positions_auxiliary.close()
         self.progress.end()
 

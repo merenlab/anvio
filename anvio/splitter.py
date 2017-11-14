@@ -253,6 +253,7 @@ class BinSplitter(summarizer.Bin):
         for contig_name in self.contig_names:
             bin_contigs_auxiliary.append(contig_name, parent_contigs_auxiliary.get(contig_name))
 
+        bin_contigs_auxiliary.store()
         bin_contigs_auxiliary.close()
         parent_contigs_auxiliary.close()
 
