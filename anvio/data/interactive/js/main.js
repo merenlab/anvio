@@ -1436,7 +1436,7 @@ function drawTree() {
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
 
-                if (autoload_collection !== null)
+                if (autoload_collection !== null && mode !== 'refine')
                 {
                     loadCollection(autoload_collection);
                     autoload_collection = null;
