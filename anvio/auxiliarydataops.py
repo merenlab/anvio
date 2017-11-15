@@ -38,6 +38,7 @@ class AuxiliaryDataForSplitCoverages(object):
         self.run = run
         self.progress = progress
         self.numpy_data_type = 'uint16'
+        self.coverage_entries = []
 
         self.db = db.DB(self.file_path, self.version, new_database=create_new)
 
@@ -65,7 +66,11 @@ class AuxiliaryDataForSplitCoverages(object):
 
     def append(self, split_name, sample_name, coverage_list):
         coverage_list_blob = utils.convert_numpy_array_to_binary_blob(np.array(coverage_list, dtype=self.numpy_data_type))
-        self.db.insert(t.split_coverages_table_name, values=(split_name, sample_name, coverage_list_blob, ))
+        self.coverage_entries.append((split_name, sample_name, coverage_list_blob, ))
+
+
+    def store(self):
+        self.db.insert_many(t.split_coverages_table_name, entries=self.coverage_entries)
 
 
     def get_all_known_split_names(self):
