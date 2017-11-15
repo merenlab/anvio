@@ -326,6 +326,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             contigs_counter += 1
 
+        split_coverage_values.store()    
         split_coverage_values.close()
 
 

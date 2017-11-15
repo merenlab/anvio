@@ -226,6 +226,7 @@ class BinSplitter(summarizer.Bin):
             for sample_name in sample_coverages:
                 bin_profile_auxiliary.append(split_name, sample_name, sample_coverages[sample_name])
 
+        bin_profile_auxiliary.store()
         bin_profile_auxiliary.close()
         parent_profile_auxiliary.close()
 

@@ -253,6 +253,7 @@ class MultipleRuns:
 
             sample_split_coverage_values.close()
 
+        merged_split_coverage_values.store()    
         merged_split_coverage_values.close()
 
         self.progress.end()
