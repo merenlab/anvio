@@ -1096,13 +1096,85 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
 class ContigsInteractive():
-    def __init__(self, args):
+    def __init__(self, args, run=run, progress=progress):
         self.mode = 'contigs'
+        self.run = run
+        self.progress = progress
 
         self.contigs_stats = {}
 
         for contig_db_path in args.input:
             self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path).get_summary_dict_for_assembly()
 
-    def get_contigs_stats(self):
-        return self.contigs_stats
+        self.tables = {}
+        self.generate_tables()
+
+    def generate_tables(self):
+        self.tables['header'] = [c['project_name'] for c in self.contigs_stats.values()]
+
+        ##
+        ##  Table for basic stats
+        ##
+
+        basic_stats = []
+        basic_stats.append(['Total Length'] + [c['total_length'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Num Contigs'] + [c['num_contigs'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Num Genes (' + constants.default_gene_caller + ')'] + [c['num_genes'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Longest Contig'] + [c['total_length'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Shortest Contig'] + [c['total_length'] for c in self.contigs_stats.values()])
+        basic_stats.append(['N50'] + [c['n_values'][49]['num_contigs'] for c in self.contigs_stats.values()])
+        basic_stats.append(['N75'] + [c['n_values'][74]['num_contigs'] for c in self.contigs_stats.values()])
+        basic_stats.append(['N90'] + [c['n_values'][89]['num_contigs'] for c in self.contigs_stats.values()])
+        basic_stats.append(['L50'] + [c['n_values'][49]['length'] for c in self.contigs_stats.values()])
+        basic_stats.append(['L75'] + [c['n_values'][74]['length'] for c in self.contigs_stats.values()])
+        basic_stats.append(['L90'] + [c['n_values'][89]['length'] for c in self.contigs_stats.values()])
+
+        self.tables['basic_stats'] = basic_stats
+
+        ##
+        ##  Table for hmm hits
+        ##
+
+        all_hmm_sources = set()
+        for c in self.contigs_stats.values():
+            for source in c['gene_hit_counts_per_hmm_source'].keys():
+                all_hmm_sources.add(source)
+
+        hmm_table = []
+        for source in all_hmm_sources:
+            line = [source]
+            for c in self.contigs_stats.values():
+                if source in c['gene_hit_counts_per_hmm_source']:
+                    line.append(sum(c['gene_hit_counts_per_hmm_source'][source].values()))
+                else:
+                    line.append('n/a')
+
+            hmm_table.append(line)
+
+        self.tables['hmm'] = hmm_table
+
+        ##
+        ##  Table for SCG genome prediction
+        ##
+
+        source_to_domain = {}
+        all_scg_sources = set()
+        for c in self.contigs_stats.values():
+            for source in c['num_genomes_per_SCG_source_dict'].keys():
+                all_scg_sources.add(source)
+
+                if source not in source_to_domain:
+                    source_to_domain[source] = c['num_genomes_per_SCG_source_dict'][source]['domain']
+
+        scg_table = []
+        for source in all_scg_sources:
+            line = [source_to_domain[source] + ' (' + source + ')']
+            for c in self.contigs_stats.values():
+                if source in c['num_genomes_per_SCG_source_dict']:
+                    line.append(c['num_genomes_per_SCG_source_dict'][source]['num_genomes'])
+                else:
+                    line.append('n/a')
+
+            scg_table.append(line)
+
+        self.tables['scg'] = scg_table
