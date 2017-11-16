@@ -28,6 +28,9 @@
             <div style="text-align: right;">
                 <input type="checkbox" id="checkbox_human_readable" name="checkbox_human_readable" checked='checked' onclick="create_table();">
                 <label for="checkbox_human_readable">Human readable bases</label>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" id="checkbox_color_output" name="checkbox_color_output" onclick="create_table();">
+                <label for="checkbox_color_output">Color output</label>
             </div>
             <table class="table table-details">
               <tbody>
@@ -101,6 +104,52 @@
             $('a[href="#gene_chart_' + prefix + '_' + active_index + '"').tab('show');
         }
 
+        function getGradientColor(start_color, end_color, percent) {
+           // strip the leading # if it's there
+           start_color = start_color.replace(/^\s*#|\s*$/g, '');
+           end_color = end_color.replace(/^\s*#|\s*$/g, '');
+
+           // convert 3 char codes --> 6, e.g. `E0F` --> `EE00FF`
+           if(start_color.length == 3){
+             start_color = start_color.replace(/(.)/g, '$1$1');
+           }
+
+           if(end_color.length == 3){
+             end_color = end_color.replace(/(.)/g, '$1$1');
+           }
+
+           // get colors
+           var start_red = parseInt(start_color.substr(0, 2), 16),
+               start_green = parseInt(start_color.substr(2, 2), 16),
+               start_blue = parseInt(start_color.substr(4, 2), 16);
+
+           var end_red = parseInt(end_color.substr(0, 2), 16),
+               end_green = parseInt(end_color.substr(2, 2), 16),
+               end_blue = parseInt(end_color.substr(4, 2), 16);
+
+           // calculate new color
+           var diff_red = end_red - start_red;
+           var diff_green = end_green - start_green;
+           var diff_blue = end_blue - start_blue;
+
+           diff_red = Math.abs(( (diff_red * percent) + start_red )).toString(16).split('.')[0];
+           diff_green = Math.abs(( (diff_green * percent) + start_green )).toString(16).split('.')[0];
+           diff_blue = Math.abs(( (diff_blue * percent) + start_blue )).toString(16).split('.')[0];
+
+           // ensure 2 digits by color
+           if( diff_red.length == 1 )
+             diff_red = '0' + diff_red
+
+           if( diff_green.length == 1 )
+             diff_green = '0' + diff_green
+
+           if( diff_blue.length == 1 )
+             diff_blue = '0' + diff_blue
+
+           return '#' + diff_red + diff_green + diff_blue;
+         }
+
+
         function create_table_header(header_text) {
             var columns = tables['header'];
             var table_str = '<tr class="info"><th>' + header_text + '</th>';
@@ -114,6 +163,7 @@
             return table_str;
         }
 
+
         function array_to_table(table_array, placeholder_text) {
             var human_readable_keys = ['L50', 'L75', 'L90', 'Shortest Contig', 'Longest Contig', 'Total Length'];
 
@@ -121,18 +171,27 @@
             table_array.forEach(function(table_line) {
                 table_str += '<tr>';
                 var human_readable = $('#checkbox_human_readable').is(':checked');
+                var color_numbers = $('#checkbox_color_output').is(':checked');
 
                 if (human_readable_keys.indexOf(table_line[0]) == -1) {
                     human_readable = false;
                 }
 
+                var layer_extent = d3.extent(table_line.slice(1, table_line.length).map(Number));
+                var layer_range = layer_extent[1] - layer_extent[0];
+
                 table_line.forEach(function(table_item, i) { 
                     var td_class = (i > 0) ? 'text-center' : '';
+                    var td_color =  '#333';
+                    
+                    if (color_numbers && i > 0 && layer_range > 0) {
+                        td_color = getGradientColor('#FBA396', '#5E0602', (table_item - layer_extent[0]) / layer_range );
+                    } 
 
                     if (human_readable && i > 0) {
-                        table_str += '<td class="' + td_class + '">' + getReadableSeqSizeString(parseInt(table_item)) + '</td>';
+                        table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + getReadableSeqSizeString(parseInt(table_item)) + '</td>';
                     } else {
-                        table_str += '<td class="' + td_class + '">' + table_item + '</td>';
+                        table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + table_item + '</td>';
                     }
                 });
 
