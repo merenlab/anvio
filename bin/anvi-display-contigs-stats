@@ -22,39 +22,39 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 
 
-
 run = terminal.Run()
 progress = terminal.Progress()
 
-parser = argparse.ArgumentParser(description="Start the anvi'o interactive interactive for viewing or comparing contigs statistics")
-parser.add_argument('input', metavar = 'CONTIG DATABASE(S)', nargs='+',
-                    help = "Anvio'o Contig databases to display statistics, \
-                            you can give multiple databases by seperating them with space.")
-groupA = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
-groupA.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-groupA.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-groupA.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
-groupA.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
-args = parser.parse_args()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Start the anvi'o interactive interactive for viewing or comparing contigs statistics")
+    parser.add_argument('input', metavar = 'CONTIG DATABASE(S)', nargs='+',
+                        help = "Anvio'o Contig databases to display statistics, \
+                                you can give multiple databases by seperating them with space.")
+    groupA = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+    groupA.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupA.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupA.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+    groupA.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
-try:
-    args.mode = 'contigs'
-    d = interactive.ContigsInteractive(args)
-    args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
-except ConfigError as e:
-    print(e)
-    sys.exit(-1)
-except FilesNPathsError as e:
-    print(e)
-    sys.exit(-2)
-except DictIOError as e:
-    print(e)
-    sys.exit(-3)
-except SamplesError as e:
-    print(e)
-    sys.exit(-4)
+    args = parser.parse_args()
 
+    try:
+        args.mode = 'contigs'
+        d = interactive.ContigsInteractive(args)
+        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except DictIOError as e:
+        print(e)
+        sys.exit(-3)
+    except SamplesError as e:
+        print(e)
+        sys.exit(-4)
 
-app = BottleApplication(d, args)
-app.run_application(args.ip_address, args.port_number)
+    app = BottleApplication(d, args)
+    app.run_application(args.ip_address, args.port_number)
