@@ -118,16 +118,17 @@
             var table_str = "";
             table_array.forEach(function(table_line) {
                 table_str += '<tr>';
+                var use_human_readable_for_this_line = human_readable;
 
                 if (human_readable_keys.indexOf(table_line[0]) == -1) {
-                    human_readable = false;
+                    use_human_readable_for_this_line = false;
                 }
 
                 table_line.forEach(function(table_item, i) { 
                     var td_class = (i > 0) ? 'text-center' : '';
 
-                    if (human_readable && i > 0) {
-                        table_str += '<td class="' + td_class + '">' + getReadableSeqSizeString(table_item) + '</td>';
+                    if (use_human_readable_for_this_line && i > 0) {
+                        table_str += '<td class="' + td_class + '">' + getReadableSeqSizeString(parseInt(table_item)) + '</td>';
                     } else {
                         table_str += '<td class="' + td_class + '">' + table_item + '</td>';
                     }
