@@ -7,6 +7,7 @@
 """
 
 import os
+import json
 import math
 import pandas as pd
 from itertools import chain
@@ -723,6 +724,10 @@ class Pangenome(GenomeStorage):
                 gene_sequences_in_pc.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
 
             # alignment
+            if self.debug:
+                self.run.info_single('Aligning sequences in PC %s' % pc_name, nl_before=2, nl_after=1)
+                print(json.dumps(gene_sequences_in_pc, indent=2))
+
             alignments = self.aligner(run=r).run_stdin(gene_sequences_in_pc)
 
             for gene_entry in PCs_dict[pc_name]:
