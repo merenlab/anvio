@@ -35,6 +35,8 @@ def write_stats_to_file(tables, output_file):
         f.write("%s\n" % "\t".join(map(str, line)))
     f.close()
 
+    run.info("Output file", output_file)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Start the anvi'o interactive interactive for viewing or comparing contigs statistics")
