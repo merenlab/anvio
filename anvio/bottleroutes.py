@@ -11,6 +11,7 @@ import os
 import re
 import io
 import sys
+import time
 import json
 import random
 import argparse
@@ -141,6 +142,11 @@ class BottleApplication(Bottle):
                     sys.exit(0)
 
             if not self.server_only:
+                # Sometimes browser opens before web server actually starts so we see
+                # message like "Website can not be reached" and user needs to refresh
+                # I have added sleep below to delay web browser little bit.
+                time.sleep(1000)
+
                 utils.open_url_in_browser(url="http://%s:%d" % (ip, port),
                                           browser_path=self.browser_path,
                                           run=run)
