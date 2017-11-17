@@ -36,7 +36,6 @@ function Node(label) {
     this.sibling = null;
     this.label = label;
     this.id = 0;
-    this.weight = 0;
     this.xy = [];
     this.edge_length = 0.0;
     this.path_length = 0.0;
@@ -320,23 +319,6 @@ Tree.prototype.SerializeNode = function(node) {
 };
 
 //--------------------------------------------------------------------------------------------------
-Tree.prototype.ComputeWeights = function(p) {
-    if (p) {
-        p.weight = 0;
-
-        this.ComputeWeights(p.child);
-        this.ComputeWeights(p.sibling);
-
-        if (p.IsLeaf()) {
-            p.weight = 1;
-        }
-        if (p.ancestor) {
-            p.ancestor.weight += p.weight;
-        }
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
 Tree.prototype.ComputeDepths = function() {
     for (var i in this.nodes) {
         if (this.nodes[i].IsLeaf()) {
@@ -350,7 +332,6 @@ Tree.prototype.ComputeDepths = function() {
         }
     }
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
