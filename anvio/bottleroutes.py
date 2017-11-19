@@ -145,7 +145,7 @@ class BottleApplication(Bottle):
                 # Sometimes browser opens before web server actually starts so we see
                 # message like "Website can not be reached" and user needs to refresh
                 # I have added sleep below to delay web browser little bit.
-                time.sleep(1000)
+                time.sleep(1.5)
 
                 utils.open_url_in_browser(url="http://%s:%d" % (ip, port),
                                           browser_path=self.browser_path,
