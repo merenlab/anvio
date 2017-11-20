@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+import gzip
+import h5py
+import time
+import argparse
+import numpy as np
+
+import anvio.db as db
+import anvio.terminal as terminal 
+
+from anvio.errors import ConfigError
+
+current_version = "21"
+next_version = "22"
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+split_coverages_table_name       = 'split_coverages'
+split_coverages_table_structure  = ['split_name', 'sample_name', 'coverages']
+split_coverages_table_types      = [    'str'   ,     'str'    ,   'blob'   ]
+
+
+def convert_numpy_array_to_binary_blob(array, compress=True):
+    if compress:
+        return gzip.compress(memoryview(array), compresslevel=1)
+    else:
+        return memoryview(array)
+
+
+def upgrade_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False):
+    auxiliary_path = os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.h5')
+    new_auxiliary_path = os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
+
+    if not os.path.exists(auxiliary_path):
+        raise ConfigError("This upgrade scripts targets AUXILIARY-DATA.h5, but couldn't find any.")
+
+    fp = h5py.File(auxiliary_path, 'r')
+
+    db = db.DB(new_auxiliary_path, '2', new_database=True)
+
+    db.set_meta_value('db_type', 'auxiliary data for coverages')
+    db.set_meta_value('contigs_db_hash', fp.attr['hash'])
+    db.set_meta_value('creation_date', time.time())
+    db.create_table(split_coverages_table_name, split_coverages_table_structure, split_coverages_table_types)
+    db._exec("""CREATE INDEX IF NOT EXISTS covering_index ON %s(split_name, sample_name)""" % (split_coverages_table_name))
+
+    sample_names_in_db = set(list(list(fp['/data/coverages'].values())[0].keys()))
+    split_names_in_db = list(fp['/data/coverages'].keys())
+
+    run.info("Auxiliary data file found", auxiliary_path)
+    run.info("Splits found", len(split_names_in_db))
+    run.info("Samples found", len(sample_names_in_db))
+    run.info("New auxiliary data path", new_auxiliary_path)
+
+    progress.new('Processing auxiliary')
+    counter, total = 0, len(sample_names_in_db)
+
+    entries = []
+    for split_name in split_names_in_db:
+        for sample_name in sample_names_in_db:
+            enries.append(split_name, sample_name, convert_numpy_array_to_binary_blob(fp['/data/coverages/%s/%s' % (split_name, sample_name)].value))
+
+        counter += 1
+        progress.update('Completed %d of %d' % (counter, total))
+
+        if counter % 10 == 0:
+            progress.update("Writing buffer to the database...")
+            db.insert_many(split_coverages_table_name, entries=entries)
+            entries = []
+
+    db.insert_many(split_coverages_table_name, entries=entries)
+
+    progress.end()
+    db.close()
+    fp.close()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='A simple script to upgrade profile database and AUXILIARY-DATA.h5 from version %s to version %s' % (current_version, next_version))
+    parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = "An anvi'o profile database of version %s" % current_version)
+    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
+    parser.add_argument('--ignore-auxiliary', default=False, action="store_true", help = "Do not bother me with warnings")
+    args = parser.parse_args()
+
+    try:
+        update_profile_db(args.profile_db, just_do_it = args.just_do_it, ignore_auxiliary = args.ignore_auxiliary)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
