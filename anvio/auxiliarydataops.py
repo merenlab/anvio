@@ -56,6 +56,8 @@ class AuxiliaryDataForSplitCoverages(object):
 
         self.db.create_table(t.split_coverages_table_name, t.split_coverages_table_structure, t.split_coverages_table_types)
 
+        self.db._exec("""CREATE INDEX IF NOT EXISTS covering_index ON %s(split_name, sample_name)""" % (t.split_coverages_table_name))
+
 
     def check_hash(self):
         actual_db_hash = self.db.get_meta_value('contigs_db_hash')
