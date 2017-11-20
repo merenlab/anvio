@@ -436,7 +436,7 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
 
 def convert_numpy_array_to_binary_blob(array, compress=True):
     if compress:
-        return gzip.compress(memoryview(array))
+        return gzip.compress(memoryview(array), compresslevel=1)
     else:
         return memoryview(array)
 
