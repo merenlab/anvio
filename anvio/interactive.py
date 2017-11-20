@@ -266,7 +266,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
                                    clustering of protein clusters (PCs) in it. Maybe you skipped the clustering step, maybe\
                                    anvi'o skipped it on your behalf because you had too many PCs or something. Regardless of\
-                                   who did what, you don't get to display your pangenome at this particular instance. Sorry :/" \
+                                   who did what, you don't get to display your pangenome at this particular instance. In some\
+                                   cases using a parameter like `--min-occurrence 2`, which would reduce the number of PCs by\
+                                   removing singletons that appear in only one genome can help solve this issue. Sorry :/" \
                                                             % (self.p_meta['project_name']))
             else:
                 if self.item_order_path:
