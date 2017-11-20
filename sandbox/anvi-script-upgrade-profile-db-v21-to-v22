@@ -32,7 +32,7 @@ def convert_numpy_array_to_binary_blob(array, compress=True):
         return memoryview(array)
 
 
-def upgrade_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False):
+def update_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False):
     auxiliary_path = os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.h5')
     new_auxiliary_path = os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
 
@@ -40,14 +40,14 @@ def upgrade_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False
         raise ConfigError("This upgrade scripts targets AUXILIARY-DATA.h5, but couldn't find any.")
 
     fp = h5py.File(auxiliary_path, 'r')
+    G = lambda x: fp.attrs[x].decode('utf-8') if isinstance(fp.attrs[x], bytes) else fp.attrs[x]
+    auxiliary_db = db.DB(new_auxiliary_path, '2', new_database=True)
 
-    db = db.DB(new_auxiliary_path, '2', new_database=True)
-
-    db.set_meta_value('db_type', 'auxiliary data for coverages')
-    db.set_meta_value('contigs_db_hash', fp.attr['hash'])
-    db.set_meta_value('creation_date', time.time())
-    db.create_table(split_coverages_table_name, split_coverages_table_structure, split_coverages_table_types)
-    db._exec("""CREATE INDEX IF NOT EXISTS covering_index ON %s(split_name, sample_name)""" % (split_coverages_table_name))
+    auxiliary_db.set_meta_value('db_type', 'auxiliary data for coverages')
+    auxiliary_db.set_meta_value('contigs_db_hash', G('hash'))
+    auxiliary_db.set_meta_value('creation_date', time.time())
+    auxiliary_db.create_table(split_coverages_table_name, split_coverages_table_structure, split_coverages_table_types)
+    auxiliary_db._exec("""CREATE INDEX IF NOT EXISTS covering_index ON %s(split_name, sample_name)""" % (split_coverages_table_name))
 
     sample_names_in_db = set(list(list(fp['/data/coverages'].values())[0].keys()))
     split_names_in_db = list(fp['/data/coverages'].keys())
@@ -61,22 +61,22 @@ def upgrade_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False
     counter, total = 0, len(sample_names_in_db)
 
     entries = []
-    for split_name in split_names_in_db:
-        for sample_name in sample_names_in_db:
-            enries.append(split_name, sample_name, convert_numpy_array_to_binary_blob(fp['/data/coverages/%s/%s' % (split_name, sample_name)].value))
+    for sample_name in sample_names_in_db:
+        for split_name in split_names_in_db:
+            entries.append((split_name, sample_name, convert_numpy_array_to_binary_blob(fp['/data/coverages/%s/%s' % (split_name, sample_name)].value),))
 
         counter += 1
         progress.update('Completed %d of %d' % (counter, total))
 
         if counter % 10 == 0:
             progress.update("Writing buffer to the database...")
-            db.insert_many(split_coverages_table_name, entries=entries)
+            auxiliary_db.insert_many(split_coverages_table_name, entries=entries)
             entries = []
 
-    db.insert_many(split_coverages_table_name, entries=entries)
+    auxiliary_db.insert_many(split_coverages_table_name, entries=entries)
 
     progress.end()
-    db.close()
+    auxiliary_db.close()
     fp.close()
 
 
