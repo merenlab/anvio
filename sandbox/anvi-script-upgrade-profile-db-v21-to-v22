@@ -76,7 +76,7 @@ def update_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False)
     auxiliary_db.insert_many(split_coverages_table_name, entries=entries)
 
     progress.end()
-    auxiliary_db.close()
+    auxiliary_db.disconnect()
     fp.close()
 
 
