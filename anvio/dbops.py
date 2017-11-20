@@ -781,7 +781,9 @@ class PanSuperclass(object):
         self.genome_names = self.p_meta['genome_names']
         self.protein_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
-        if self.p_meta['PCs_ordered']:
+        # FIXME: Is this the future where the pan db version is > 6? Great. Then the if statement here no longer
+        # needs to check whether 'PCs_ordered' is a valid key in self.p_meta:
+        if 'PCs_ordered' in self.p_meta and self.p_meta['PCs_ordered']:
             self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
             self.item_orders = pan_db.db.get_table_as_dict(t.item_orders_table_name)
 
