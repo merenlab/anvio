@@ -73,6 +73,7 @@ class AuxiliaryDataForSplitCoverages(object):
 
     def store(self):
         self.db.insert_many(t.split_coverages_table_name, entries=self.coverage_entries)
+        self.coverage_entries = []
 
 
     def get_all_known_split_names(self):
