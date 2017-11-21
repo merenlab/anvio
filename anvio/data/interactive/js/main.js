@@ -1979,6 +1979,7 @@ function storeRefinedBins() {
     });
 }
 
+
 function storeCollection() {
     var collection_name = $('#storeCollection_name').val();
 
@@ -1989,9 +1990,25 @@ function storeCollection() {
         $('#storeCollection_name').focus();
         return;
     }
-         
-    data = {};
-    colors = {};
+
+    var collection_info = serializeCollection();
+
+    $.post("/store_collection", {
+        source: collection_name,
+        data: JSON.stringify(collection_info['data'], null, 4),
+        colors: JSON.stringify(collection_info['colors'], null, 4),
+    },
+    function(server_response, status){
+        toastr.info(server_response, "Server");
+    });
+
+    $('#modStoreCollection').modal('hide');    
+}
+
+
+function serializeCollection() {
+    var data = {};
+    var colors = {};
 
     $('#tbody_bins tr').each(
         function(index, bin) {
@@ -2018,17 +2035,9 @@ function storeCollection() {
         }
     );
 
-    $.post("/store_collection", {
-        source: collection_name,
-        data: JSON.stringify(data, null, 4),
-        colors: JSON.stringify(colors, null, 4),
-    },
-    function(server_response, status){
-        toastr.info(server_response, "Server");
-    });
-
-    $('#modStoreCollection').modal('hide');    
+    return {'data': data, 'colors': colors};
 }
+
 
 function generateSummary() {
     var collection = $('#summaryCollection_list').val();
