@@ -108,6 +108,8 @@ def update_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False)
         auxiliary_db.disconnect()
         fp.close()
 
+        run.info_single('Done! New auxiliary data file "%s" created successfully you may delete old "%s"' % (new_auxiliary_path, auxiliary_path))
+
     profile_db.remove_meta_key_value_pair('version')
     profile_db.set_version(next_version)
     profile_db.disconnect()
