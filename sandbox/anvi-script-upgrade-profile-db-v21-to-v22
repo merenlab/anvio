@@ -10,6 +10,7 @@ import argparse
 import numpy as np
 
 import anvio.db as db
+import anvio.dbops as dbops
 import anvio.terminal as terminal 
 
 from anvio.errors import ConfigError
