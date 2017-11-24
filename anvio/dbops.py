@@ -101,8 +101,6 @@ class ContigsSuperclass(object):
         self.split_name_to_genes_in_splits_entry_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
-        self.auxiliary_contigs_data_available = False
-        self.auxiliary_contigs_data_path = None
         self.nt_positions_info = None
 
         self.gene_function_call_sources = []
@@ -3977,10 +3975,6 @@ def get_split_names_in_profile_db(profile_db_path):
     profile_db.disconnect()
 
     return split_names
-
-
-def get_auxiliary_data_path_for_contigs_db(contigs_db_path):
-    return ''.join(contigs_db_path[:-3]) + '-AUXILIARY.db'
 
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):

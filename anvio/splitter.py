@@ -103,9 +103,6 @@ class ProfileSplitter:
             b.do_contigs_db()
             b.do_profile_db()
 
-            if self.summary.auxiliary_contigs_data_available:
-                b.do_auxiliary_contigs_data()
-
             if self.summary.auxiliary_profile_data_available:
                 b.do_auxiliary_profile_data()
 
