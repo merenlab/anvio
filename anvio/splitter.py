@@ -198,6 +198,7 @@ class BinSplitter(summarizer.Bin):
                     t.hmm_hits_splits_table_name: ('split', self.split_names),
                     t.splits_info_table_name: ('split', self.split_names),
                     t.splits_taxonomy_table_name: ('split', self.split_names),
+                    t.nt_position_info_table_name: ('contig_name', self.contig_names),
                     'kmer_contigs': ('contig', self.split_names),
                     'kmer_splits': ('contig', self.split_names),
                 }
@@ -233,30 +234,6 @@ class BinSplitter(summarizer.Bin):
         if self.compress_auxiliary_data:
             self.progress.update('Compressing the profile db auxiliary data file ...')
             utils.gzip_compress_file(new_auxiliary_profile_data_path)
-
-        self.progress.end()
-
-
-    def do_auxiliary_contigs_data(self):
-        self.progress.new('Splitting "%s"' % self.bin_id)
-        self.progress.update('Subsetting the auxiliary data (for contigs db)')
-
-        new_auxiliary_contigs_data_path = dbops.get_auxiliary_data_path_for_contigs_db(self.bin_contigs_db_path)
-        parent_auxiliary_contigs_data_path = self.summary.auxiliary_contigs_data_path
-
-        bin_contigs_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(new_auxiliary_contigs_data_path,
-                                                                                self.contigs_db_hash,
-                                                                                create_new=True)
-
-        parent_contigs_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(parent_auxiliary_contigs_data_path,
-                                                                                self.summary.a_meta['contigs_db_hash'])
-
-        for contig_name in self.contig_names:
-            bin_contigs_auxiliary.append(contig_name, parent_contigs_auxiliary.get(contig_name))
-
-        bin_contigs_auxiliary.store()
-        bin_contigs_auxiliary.close()
-        parent_contigs_auxiliary.close()
 
         self.progress.end()
 
