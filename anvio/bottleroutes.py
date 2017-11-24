@@ -345,7 +345,7 @@ class BottleApplication(Bottle):
         coverages = auxiliary_coverages_db.get(split_name)
         auxiliary_coverages_db.close()
 
-        data['coverage'] = [coverages[layer] for layer in layers]
+        data['coverage'] = [coverages[layer].tolist() for layer in layers]
 
         ## get the variability information dict for split:
         progress.new('Variability')
