@@ -113,7 +113,7 @@ class AuxiliaryDataForSplitCoverages(object):
         for row in rows:
             sample_name, coverage_blob = row # unpack sqlite row tuple
 
-            split_coverage[sample_name] = utils.convert_binary_blob_to_numpy_array(coverage_blob, dtype=self.numpy_data_type).tolist()
+            split_coverage[sample_name] = utils.convert_binary_blob_to_numpy_array(coverage_blob, dtype=self.numpy_data_type)
         
         return split_coverage
 
