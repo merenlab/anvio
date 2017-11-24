@@ -30,21 +30,21 @@ progress = terminal.Progress()
 
 
 def main(args):
-    if args.pc_id and args.pc_ids_file:
-        raise ConfigError('You should either declare a single PC name, or PC names in a file')
+    if args.gene_cluster_id and args.gene_cluster_ids_file:
+        raise ConfigError('You should either declare a single gene cluster name, or gene cluster names in a file')
 
-    if (args.pc_id or args.pc_ids_file) and args.collection_name:
-        raise ConfigError('You can either declare specific list of PCs to work with (through `--pc-id` or `--pc-ids-file`) or\
+    if (args.gene_cluster_id or args.gene_cluster_ids_file) and args.collection_name:
+        raise ConfigError('You can either declare specific list of gene clusters to work with (through `--gene-cluster-id` or `--gene-cluster-ids-file`) or\
                            go the collection way using parameters `--collection-name` and `--bin-name`. Those are not to be\
                            mixed. If you need to know what collections are available in the pan database, use the flag \
                            `--list-collections`.')
 
     if not args.output_file:
-        args.output_file = os.path.join(os.path.dirname(os.path.abspath(args.pan_db)), 'protein-cluster-alignments-output-with-an-ugly-name.fa')
+        args.output_file = os.path.join(os.path.dirname(os.path.abspath(args.pan_db)), 'gene-cluster-alignments-output-with-an-ugly-name.fa')
 
     filesnpaths.is_output_file_writable(args.output_file)
 
-    pc_ids = set([])
+    gene_cluster_ids = set([])
     if args.collection_name or args.list_collections or args.list_bins:
         progress.new('Initializing')
         progress.update('...')
@@ -57,49 +57,49 @@ def main(args):
 
         pan.collections.is_bin_in_collection(collection_name=args.collection_name, bin_name=args.bin_id)
         collection_dict = pan.collections.get_collection_dict(args.collection_name)
-        pc_ids = set(collection_dict[args.bin_id])
+        gene_cluster_ids = set(collection_dict[args.bin_id])
 
-        run.info('Mode', 'Reporting alignments for a protein clusters from in the collection %s and bin %s.' % (args.collection_name, args.bin_id))
-    elif (args.pc_id or args.pc_ids_file):
-        if args.pc_id:
-            pc_ids = set([args.pc_id])
-            run.info('Mode', 'Reporting alignments for a single protein cluster.')
+        run.info('Mode', 'Reporting alignments for a gene clusters from in the collection %s and bin %s.' % (args.collection_name, args.bin_id))
+    elif (args.gene_cluster_id or args.gene_cluster_ids_file):
+        if args.gene_cluster_id:
+            gene_cluster_ids = set([args.gene_cluster_id])
+            run.info('Mode', 'Reporting alignments for a single gene cluster.')
         else:
-            columns = utils.get_columns_of_TAB_delim_file(args.pc_ids_file, include_first_column=True)
+            columns = utils.get_columns_of_TAB_delim_file(args.gene_cluster_ids_file, include_first_column=True)
             if len(columns) != 1:
-                raise ConfigError("The input file for PC IDs must contain a single column. It seems yours has %d :/" % len(columns))
+                raise ConfigError("The input file for gene cluster IDs must contain a single column. It seems yours has %d :/" % len(columns))
 
-            pc_ids = set([p.strip('\n') for p in open(args.pc_ids_file, 'rU').readlines()])
-            run.info('Mode', 'Reporting alignments for a list of protein clusters from an input file.')
+            gene_cluster_ids = set([p.strip('\n') for p in open(args.gene_cluster_ids_file, 'rU').readlines()])
+            run.info('Mode', 'Reporting alignments for a list of gene clusters from an input file.')
     else:
-        run.info('Mode', 'Reporting alignments for all protein clusters.')
+        run.info('Mode', 'Reporting alignments for all gene clusters.')
 
     pan = dbops.PanSuperclass(args)
-    pan.init_protein_clusters()
+    pan.init_gene_clusters()
 
-    if not pc_ids:
-        run.warning('By not specifying any criteria for protein cluster names to be reported, you elected to report everything.')
+    if not gene_cluster_ids:
+        run.warning('By not specifying any criteria for gene cluster names to be reported, you elected to report everything.')
 
-        pc_ids = pan.protein_cluster_names
+        gene_cluster_ids = pan.gene_cluster_names
 
-        if len(pc_ids) > 2500:
-            run.warning('Congratulations. You have like a lot of PCs in this database. Maybe it is a good time to get a coffee or something.')
+        if len(gene_cluster_ids) > 2500:
+            run.warning('Congratulations. You have like a lot of gene clusters in this database. Maybe it is a good time to get a coffee or something.')
 
-    run.info('Number of protein clusters to report', len(pc_ids))
+    run.info('Number of gene clusters to report', len(gene_cluster_ids))
 
-    if args.concatenate_pcs:
-        pan.write_sequences_in_PCs_for_phylogenomics(pc_names=pc_ids,
-                                                     output_file_path=args.output_file,
-                                                     skip_multiple_gene_calls=args.skip_multiple_gene_calls,
-                                                     report_DNA_sequences=args.report_DNA_sequences,
-                                                     align_with=args.align_with)
+    if args.concatenate_gene_clusters:
+        pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_cluster_names=gene_cluster_ids,
+                                                               output_file_path=args.output_file,
+                                                               skip_multiple_gene_calls=args.skip_multiple_gene_calls,
+                                                               report_DNA_sequences=args.report_DNA_sequences,
+                                                               align_with=args.align_with)
     else:
-        pan.write_sequences_in_PCs_to_file(pc_names=pc_ids,
-                                           output_file_path=args.output_file,
-                                           report_DNA_sequences=args.report_DNA_sequences)
+        pan.write_sequences_in_gene_clusters_to_file(gene_cluster_names=gene_cluster_ids,
+                                                     output_file_path=args.output_file,
+                                                     report_DNA_sequences=args.report_DNA_sequences)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export aligned sequences in protein clusters from anvi'o pan genomes")
+    parser = argparse.ArgumentParser(description="Export aligned sequences in gene clusters from anvi'o pan genomes")
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
@@ -110,12 +110,12 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupB.add_argument(*anvio.A('report-DNA-sequences'), **anvio.K('report-DNA-sequences'))
 
-    groupC = parser.add_argument_group('SELECTION', "Which protein clusters should be exported. You can ask for a single PC,\
-                                       or multiple ones listed in a file, or you can use a collection and bin name to list PCs\
-                                       of interest. If you give nothing, this program will export alignments for every single PC\
+    groupC = parser.add_argument_group('SELECTION', "Which gene clusters should be exported. You can ask for a single gene cluster,\
+                                       or multiple ones listed in a file, or you can use a collection and bin name to list gene clusters\
+                                       of interest. If you give nothing, this program will export alignments for every single gene cluster\
                                        found in the profile database (and this is called 'customer service').")
-    groupC.add_argument(*anvio.A('pc-id'), **anvio.K('pc-id'))
-    groupC.add_argument(*anvio.A('pc-ids-file'), **anvio.K('pc-ids-file'))
+    groupC.add_argument(*anvio.A('gene-cluster-id'), **anvio.K('gene-cluster-id'))
+    groupC.add_argument(*anvio.A('gene-cluster-ids-file'), **anvio.K('gene-cluster-ids-file'))
     groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
 
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
 
     groupE = parser.add_argument_group('CONCATENATED OUTPUT', "Concatenated output for phylogenomics.")
-    groupE.add_argument(*anvio.A('concatenate-pcs'), **anvio.K('concatenate-pcs'))
+    groupE.add_argument(*anvio.A('concatenate-gene-clusters'), **anvio.K('concatenate-gene-clusters'))
     groupE.add_argument(*anvio.A('skip-multiple-gene-calls'), **anvio.K('skip-multiple-gene-calls'))
     groupE.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
 

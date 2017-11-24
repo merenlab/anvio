@@ -55,12 +55,12 @@ class GeneCaller:
         self.tmp_dirs.append(output_dir)
         gene_caller = self.gene_callers[self.gene_caller]()
 
-        gene_calls_dict, protein_sequences_dict = gene_caller.process(self.fasta_file_path, output_dir)
+        gene_calls_dict, amino_acid_sequences_dict = gene_caller.process(self.fasta_file_path, output_dir)
 
         if not self.debug:
             self.clean_tmp_dirs()
 
-        return gene_calls_dict, protein_sequences_dict
+        return gene_calls_dict, amino_acid_sequences_dict
 
 
     def clean_tmp_dirs(self):

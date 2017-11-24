@@ -193,7 +193,7 @@ class GenomeDescriptions(object):
         # get amino acid sequences.
         # FIXME: this should be done in the contigs super.
         contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
-        aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_protein_sequences_table_name)
+        aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
         contigs_db.disconnect()
 
         return (function_calls_dict, aa_sequences_dict, dna_sequences_dict)
@@ -224,7 +224,7 @@ class GenomeDescriptions(object):
                 self.run.warning("Some of your genomes (%d of the %d, to be precise) seem to have no functional annotation. Since this workflow\
                                   can only use matching functional annotations across all genomes involved, having even one genome without\
                                   any functions means that there will be no matching function across all. Things will continue to work, but\
-                                  you will have no functions at the end for your protein clusters." % \
+                                  you will have no functions at the end for your gene clusters." % \
                                                 (len(genomes_with_no_functional_annotation), len(self.genomes)))
 
             # make sure it is clear.

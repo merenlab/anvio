@@ -215,15 +215,15 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
 
-        # init protein clusters and functins from Pan super.
-        self.init_protein_clusters()
+        # init gene clusters and functins from Pan super.
+        self.init_gene_clusters()
 
         if not self.skip_init_functions:
-            self.init_protein_clusters_functions()
+            self.init_gene_clusters_functions()
 
         # see if COG functions or categories are available
-        self.cog_functions_are_called = 'COG_FUNCTION' in self.protein_clusters_function_sources
-        self.cog_categories_are_called = 'COG_CATEGORY' in self.protein_clusters_function_sources
+        self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
+        self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
 
 
     def process(self):
@@ -233,7 +233,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # let bin names known to all
         bin_ids = list(self.collection_profile.keys())
 
-        genome_names = ', '.join(list(self.protein_clusters.values())[0].keys())
+        genome_names = ', '.join(list(self.gene_clusters.values())[0].keys())
 
         # set up the initial summary dictionary
         self.summary['meta'] = { \
@@ -249,8 +249,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 'anvio_version': __version__,
                 'pan': self.p_meta,
                 'genomes': {'num_genomes': self.genomes_storage.num_genomes,
-                            'functions_available': True if len(self.protein_clusters_function_sources) else False,
-                            'function_sources': self.protein_clusters_function_sources},
+                            'functions_available': True if len(self.gene_clusters_function_sources) else False,
+                            'function_sources': self.gene_clusters_function_sources},
                 'percent_of_genes_collection': 0.0,
                 'genome_names': genome_names
         }
@@ -259,11 +259,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.summary['basics_pretty'] = { \
                 'pan': [('Created on', self.p_meta['creation_date']),
                         ('Version', anvio.__pan__version__),
-                        ('Number of genes', pretty(int(self.p_meta['num_genes_in_PCs']))),
-                        ('Number of protein clusters', pretty(int(self.p_meta['num_PCs']))),
+                        ('Number of genes', pretty(int(self.p_meta['num_genes_in_gene_clusters']))),
+                        ('Number of gene clusters', pretty(int(self.p_meta['num_gene_clusters']))),
                         ('Partial genes excluded', 'Yes' if self.p_meta['exclude_partial_gene_calls'] else 'No'),
                         ('Minbit parameter', self.p_meta['minbit']),
-                        ('PC min occurrence parameter', pretty(int(self.p_meta['pc_min_occurrence']))),
+                        ('Gene cluster min occurrence parameter', pretty(int(self.p_meta['gene_cluster_min_occurrence']))),
                         ('MCL inflation parameter', self.p_meta['mcl_inflation']),
                         ('NCBI blastp or DIAMOND?', 'NCBI blastp' if self.p_meta['use_ncbi_blast'] else ('DIAMOND (and it was %s)' % ('sensitive' if self.p_meta['diamond_sensitive'] else 'not sensitive'))),
                         ('Number of genomes used', pretty(int(self.p_meta['num_genomes'])))],
@@ -271,14 +271,14 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 'genomes': [('Created on', 'Storage DB knows nothing :('),
                             ('Version', anvio.__genomes_storage_version__),
                             ('Number of genomes described', pretty(self.genomes_storage.num_genomes)),
-                            ('Functional annotation', 'Available' if len(self.protein_clusters_function_sources) else 'Not available :/'),
-                            ('Functional annotation sources', '--' if not len(self.protein_clusters_function_sources) else ', '.join(self.protein_clusters_function_sources))],
+                            ('Functional annotation', 'Available' if len(self.gene_clusters_function_sources) else 'Not available :/'),
+                            ('Functional annotation sources', '--' if not len(self.gene_clusters_function_sources) else ', '.join(self.gene_clusters_function_sources))],
         }
 
         self.summary['files'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from the superclass!
 
-        self.generate_protein_clusters_file(collection_dict)
+        self.generate_gene_clusters_file(collection_dict)
 
         if self.debug:
             import json
@@ -287,25 +287,25 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.index_html = SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate(quick=self.quick)
 
 
-    def generate_protein_clusters_file(self, collection_dict, compress_output=True):
-        """Generates the proteins summary file"""
+    def generate_gene_clusters_file(self, collection_dict, compress_output=True):
+        """Generates the gene summary file"""
 
-        # generate a dict of protein cluster ~ bin id relationships
-        pc_name_to_bin_name= dict(list(zip(self.protein_clusters_in_pan_db_but_not_binned, [None] * len(self.protein_clusters_in_pan_db_but_not_binned))))
+        # generate a dict of gene cluster ~ bin id relationships
+        gene_cluster_name_to_bin_name= dict(list(zip(self.gene_clusters_in_pan_db_but_not_binned, [None] * len(self.gene_clusters_in_pan_db_but_not_binned))))
         for bin_id in collection_dict:
-            for pc_name in collection_dict[bin_id]:
-                pc_name_to_bin_name[pc_name] = bin_id
+            for gene_cluster_name in collection_dict[bin_id]:
+                gene_cluster_name_to_bin_name[gene_cluster_name] = bin_id
 
         ###############################################
-        # generate an output file for protein clusters.
+        # generate an output file for gene clusters.
         ###############################################
-        output_file_obj = self.get_output_file_handle(prefix='protein_clusters_summary.txt', compress_output=compress_output, add_project_name=True)
+        output_file_obj = self.get_output_file_handle(prefix='gene_clusters_summary.txt', compress_output=compress_output, add_project_name=True)
 
         # standard headers
-        header = ['unique_id', 'protein_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id']
+        header = ['unique_id', 'gene_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id']
 
         # extend the header with functions if there are any
-        for source in self.protein_clusters_function_sources:
+        for source in self.gene_clusters_function_sources:
             if self.quick:
                 header.append(source + '_ACC')
             else:
@@ -316,27 +316,27 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         AA_sequences = None
         if not self.quick:
             header.append('aa_sequence')
-            AA_sequences = self.get_sequences_for_PCs(pc_names=self.protein_cluster_names)
+            AA_sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=self.gene_cluster_names)
 
         # write the header
         output_file_obj.write(('\t'.join(header) + '\n').encode('utf-8'))
 
-        #sequences = self.get_AA_sequences_for_PCs
+        #sequences = self.get_AA_sequences_for_gene_clusters
 
-        self.progress.new('Protein clusters summary file')
+        self.progress.new('Gene clusters summary file')
         self.progress.update('...')
 
         # uber loop for the file content
         unique_id = 1
-        for pc_name in self.protein_clusters:
-            for genome_name in self.protein_clusters[pc_name]:
-                for gene_caller_id in self.protein_clusters[pc_name][genome_name]:
-                    entry = [unique_id, pc_name, pc_name_to_bin_name[pc_name], genome_name, gene_caller_id]
+        for gene_cluster_name in self.gene_clusters:
+            for genome_name in self.gene_clusters[gene_cluster_name]:
+                for gene_caller_id in self.gene_clusters[gene_cluster_name][genome_name]:
+                    entry = [unique_id, gene_cluster_name, gene_cluster_name_to_bin_name[gene_cluster_name], genome_name, gene_caller_id]
 
-                    for function_source in self.protein_clusters_function_sources:
-                        annotations_dict = self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id]
+                    for function_source in self.gene_clusters_function_sources:
+                        annotations_dict = self.gene_clusters_functions_dict[gene_cluster_name][genome_name][gene_caller_id]
                         if function_source in annotations_dict:
-                            annotation_blob = self.protein_clusters_functions_dict[pc_name][genome_name][gene_caller_id][function_source]
+                            annotation_blob = self.gene_clusters_functions_dict[gene_cluster_name][genome_name][gene_caller_id][function_source]
 
                             # FIXME: this is an artifact from Py2 to Py3 swtich. DBs generated in Py2 and used from Py3 will have type
                             # bytes for annotation_blob. so we will convert them to str.. If the db is generated with Py3, there is no
@@ -352,7 +352,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                             entry.append('')
 
                     if not self.quick:
-                        entry.append(AA_sequences[pc_name][genome_name][gene_caller_id])
+                        entry.append(AA_sequences[gene_cluster_name][genome_name][gene_caller_id])
 
                     output_file_obj.write(('\t'.join([str(e) if e not in [None, 'UNKNOWN'] else '' for e in entry]) + '\n').encode('utf-8'))
                     unique_id += 1

@@ -28,7 +28,7 @@ gene_ids = set([p.strip() for p in open(args.genes_list).readlines()])
 
 db = dbops.ContigsDatabase(args.contigs_db, quiet=False)
 contig_sequences = db.db.get_table_as_dict(t.contig_sequences_table_name)
-genes_in_contigs = db.db.get_table_as_dict(t.genes_contigs_table_name)
+genes_in_contigs = db.db.get_table_as_dict(t.genes_in_contigs_table_name)
 db.disconnect()
 
 for gene_id in gene_ids:
