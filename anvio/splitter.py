@@ -186,7 +186,7 @@ class BinSplitter(summarizer.Bin):
                     t.contig_sequences_table_name: ('contig', self.contig_names),
                     t.contigs_info_table_name: ('contig', self.contig_names),
                     t.gene_function_calls_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    t.gene_protein_sequences_table_name: ('gene_callers_id', self.gene_caller_ids),
+                    t.gene_amino_acid_sequences_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.genes_in_contigs_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.genes_in_splits_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.genes_in_splits_summary_table_name: ('split', self.split_names),

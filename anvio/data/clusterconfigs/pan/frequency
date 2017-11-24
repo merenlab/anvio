@@ -1,5 +1,5 @@
 [general]
 
-[PresenceAbsenceData !PAN.db::PC_frequencies]
+[PresenceAbsenceData !PAN.db::gene_cluster_frequencies]
 normalize = False
 log = True
