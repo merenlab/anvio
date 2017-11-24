@@ -16,7 +16,7 @@ contigs_db_version = "10"
 profile_db_version = "22"
 pan_db_version = "7"
 samples_info_db_version = "2"
-auxiliary_data_version = "1"
+auxiliary_data_version = "2"
 genomes_storage_vesion = "4"
 
 versions_for_db_types = {'contigs': contigs_db_version,
