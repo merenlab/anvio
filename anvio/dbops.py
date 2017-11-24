@@ -185,22 +185,15 @@ class ContigsSuperclass(object):
         for entry in list(self.genes_in_splits.values()):
             self.gene_callers_id_to_split_name_dict[entry['gene_callers_id']] = entry['split']
 
-        contigs_db.disconnect()
-
         self.progress.update('Accessing the auxiliary data file')
-        auxiliary_contigs_data_path = get_auxiliary_data_path_for_contigs_db(self.contigs_db_path)
-        if os.path.exists(auxiliary_contigs_data_path):
-            self.auxiliary_contigs_data_available = True
-            self.auxiliary_contigs_data_path = auxiliary_contigs_data_path
-            self.nt_positions_info = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, self.a_meta['contigs_db_hash'])
-            self.progress.end()
-        else:
-            self.progress.end()
-            self.run.warning("Auxiliary contigs data ('%s') is not available. Some operations related to\
-                              variability analyses will not be available." % auxiliary_contigs_data_path)
 
-        if self.auxiliary_contigs_data_available:
-            self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (auxiliary_contigs_data_path, anvio.__auxiliary_data_version__))
+        self.nt_positions_info = {}
+        for contig_name, nt_position_row in contigs_db.db.get_table_as_dict(t.nt_position_info_table_name).items():
+            self.nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_position_row['position_info'], 'uint8')
+        
+        self.progress.end()
+
+        contigs_db.disconnect()
 
         self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
@@ -350,15 +343,12 @@ class ContigsSuperclass(object):
         See `init_nt_position_info_dict` for more info."""
 
         if not self.nt_positions_info:
-            raise ConfigError("get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!\
-                                This may happen if you don't have the '.h5' file for your contigs database in the same\
-                                directory with your contigs database. But if you do have it there, then anvi'o really\
-                                needs an adult :(")
+            raise ConfigError("get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!")
 
-        if not self.nt_positions_info.is_known_contig(contig_name):
+        if not contig_name in self.nt_positions_info:
             return (0, 0, 0)
 
-        position_info = self.nt_positions_info.get(contig_name)[pos_in_contig]
+        position_info = self.nt_positions_info[contig_name][pos_in_contig]
 
         if not position_info:
             return (0, 0, 0)
@@ -1902,6 +1892,7 @@ class ContigsDatabase:
         self.db.create_table(t.genes_in_splits_summary_table_name, t.genes_in_splits_summary_table_structure, t.genes_in_splits_summary_table_types)
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
+        self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
 
         return self.db
 
@@ -2054,12 +2045,7 @@ class ContigsDatabase:
 
         contigs_kmer_table = KMerTablesForContigsAndSplits('kmer_contigs', k=kmer_size)
         splits_kmer_table = KMerTablesForContigsAndSplits('kmer_splits', k=kmer_size)
-
-        # create an instance from AuxiliaryDataForNtPositions to store information
-        # about each nt position while looping over contigs
-        auxiliary_contigs_data_path = get_auxiliary_data_path_for_contigs_db(self.db_path)
-        nt_positions_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(auxiliary_contigs_data_path, contigs_db_hash, create_new=True)
-
+        nt_positions_table = TableForNtPositions()
         contigs_info_table = InfoTableForContigs(split_length)
         splits_info_table = InfoTableForSplits()
 
@@ -2089,7 +2075,7 @@ class ContigsDatabase:
             self.progress.append('and %d nts. Now computing: auxiliary ... ' % contig_length)
             if genes_in_contig:
                 nt_position_info_list = self.compress_nt_position_info(contig_length, genes_in_contig, genes_in_contigs_dict)
-                nt_positions_auxiliary.append(contig_name, nt_position_info_list)
+                nt_positions_table.append(contig_name, nt_position_info_list)
 
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(contig_sequence)
 
@@ -2109,11 +2095,10 @@ class ContigsDatabase:
 
             db_entries_contig_sequences.append((contig_name, contig_sequence), )
 
-        nt_positions_auxiliary.store()
-        nt_positions_auxiliary.close()
         self.progress.end()
 
         self.db.set_meta_value('kmer_size', kmer_size)
+        nt_positions_table.store(self.db)
         contigs_kmer_table.store(self.db)
         splits_kmer_table.store(self.db)
         contigs_info_table.store(self.db)
@@ -3779,6 +3764,24 @@ class TableForGeneFunctions(Table):
 
     def sanity_check(self):
         pass
+
+
+class TableForNtPositions(object):
+    def __init__(self, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
+        self.numpy_data_type = 'uint8'
+        self.db_entries = []
+
+
+    def append(self, contig_name, position_info_list):
+        position_info_blob = utils.convert_numpy_array_to_binary_blob(numpy.array(position_info_list, dtype=self.numpy_data_type))
+        self.db_entries.append((contig_name, position_info_blob, ))
+
+
+    def store(self, db):
+        db.insert_many(t.nt_position_info_table_name, entries=self.db_entries)
+        self.db_entries = []
 
 
 class GenesInSplits:
