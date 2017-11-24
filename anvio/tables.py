@@ -105,6 +105,12 @@ hmm_hits_splits_table_name             = 'hmm_hits_in_splits'
 hmm_hits_splits_table_structure        = ['entry_id', 'hmm_hit_entry_id', 'split', 'percentage_in_split', 'source']
 hmm_hits_splits_table_types            = [ 'numeric',      'numeric'    ,  'text',       'numeric'      ,  'text' ]
 
+# following table keeps nt poisition info
+
+nt_position_info_table_name       = 'nt_position_info'
+nt_position_info_table_structure  = ['contig_name', 'position_info']
+nt_position_info_table_types      = [    'str'    ,      'blob'    ]
+
 
 ####################################################################################################
 #
@@ -197,18 +203,6 @@ samples_attribute_aliases_table_types      = [ 'str' ,     'str'  ]
 split_coverages_table_name       = 'split_coverages'
 split_coverages_table_structure  = ['split_name', 'sample_name', 'coverages']
 split_coverages_table_types      = [    'str'   ,     'str'    ,   'blob'   ]
-
-
-
-####################################################################################################
-#
-#     TABLE DESCRIPTIONS FOR THE CONTIGS AUXILIARY NT POSITION INFO DATABASE
-#
-####################################################################################################
-
-nt_position_info_table_name       = 'nt_position_info'
-nt_position_info_table_structure  = ['contig_name', 'position_info']
-nt_position_info_table_types      = [    'str'    ,      'blob'    ]
 
 
 ####################################################################################################
