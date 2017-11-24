@@ -1,4 +1,4 @@
 [general]
 
-[PresenceAbsenceData !PAN.db::PC_presence_absence]
+[PresenceAbsenceData !PAN.db::gene_cluster_presence_absence]
 normalize = False

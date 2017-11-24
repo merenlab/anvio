@@ -10,7 +10,7 @@ mkdir $output_dir/pan_test
 cp $files/mock_data_for_pangenomics/*.fa                      $output_dir/pan_test/
 cp $files/mock_data_for_pangenomics/functions/*functions*     $output_dir/pan_test/
 cp $files/mock_data_for_pangenomics/external-genomes.txt      $output_dir/pan_test/
-cp $files/mock_data_for_pangenomics/example-PC-collection.txt $output_dir/pan_test/
+cp $files/mock_data_for_pangenomics/example-gene-clusters-collection.txt $output_dir/pan_test/
 cp $files/mock_data_for_pangenomics/default-state.json        $output_dir/pan_test/
 cp $files/example_description.md                              $output_dir/pan_test/
 cd $output_dir/pan_test
@@ -34,29 +34,29 @@ anvi-pan-genome -g TEST-GENOMES.db -o TEST/ -n TEST --use-ncbi-blast --descripti
 INFO "Running the pangenome analysis again utilizing previous search results"
 anvi-pan-genome -g TEST-GENOMES.db -o TEST/ -n ANOTHER_TEST --use-ncbi-blast --min-occurrence 2 --description example_description.md
 
-INFO "Importing an example collection of protein clusters"
-anvi-import-collection -p TEST/TEST-PAN.db -C test_collection example-PC-collection.txt
+INFO "Importing an example collection of gene clusters"
+anvi-import-collection -p TEST/TEST-PAN.db -C test_collection example-gene-clusters-collection.txt
 
 INFO "Exporting the collection 'test_collection'"
 anvi-export-collection -p TEST/TEST-PAN.db -C test_collection -O exported_collection --include-unbinned
 
-INFO "List available aligners for aligning sequences in PCs"
-anvi-export-pc-alignments --list-aligners
+INFO "List available aligners for aligning sequences in gene clusters"
+anvi-export-gene-cluster-alignments --list-aligners
 
-INFO "Exporting aligned amino acid sequences for some protein clusters"
-anvi-export-pc-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b PCB_1_CORE -o aligned_gene_sequences_in_PCB_1_CORE_AA.fa
+INFO "Exporting aligned amino acid sequences for some gene clusters"
+anvi-export-gene-cluster-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa
 
-INFO "Exporting aligned DNA sequences for some protein clusters"
-anvi-export-pc-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b PCB_1_CORE -o aligned_gene_sequences_in_PCB_1_CORE_DNA.fa --report-DNA-sequences
+INFO "Exporting aligned DNA sequences for some gene clusters"
+anvi-export-gene-cluster-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_DNA.fa --report-DNA-sequences
 
 INFO "First five line from the AA output"
-head -n 5 aligned_gene_sequences_in_PCB_1_CORE_AA.fa
+head -n 5 aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa
 
 INFO "First five line from the DNA output"
-head -n 5 aligned_gene_sequences_in_PCB_1_CORE_DNA.fa
+head -n 5 aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_DNA.fa
 
-INFO "Exporting concatenated amino acid sequences for some protein clusters for phylogenomics"
-anvi-export-pc-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b PCB_1_CORE -o aligned_gene_sequences_in_PCB_1_CORE_AA.fa --concatenate-pcs
+INFO "Exporting concatenated amino acid sequences for some gene clusters for phylogenomics"
+anvi-export-gene-cluster-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa --concatenate-gene-clusters
 
 INFO "Summarizing the pan, using the test collection (in quick mode)"
 anvi-summarize -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -o TEST_SUMMARY_QUICK --quick

@@ -615,16 +615,16 @@ function menu_callback(action, param) {
             window.open(generate_inspect_link('inspect', item_name), '_blank');
             break;
 
-        case 'inspect_protein_cluster':
+        case 'inspect_gene_cluster':
             sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-            window.open(generate_inspect_link('proteinclusters', item_name), '_blank');
+            window.open(generate_inspect_link('geneclusters', item_name), '_blank');
             break;
 
-        case 'get_AA_sequences_for_PC':
+        case 'get_AA_sequences_for_gene_cluster':
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/get_AA_sequences_for_PC/' + item_name + '?timestamp=' + new Date().getTime(),
+                url: '/data/get_AA_sequences_for_gene_cluster/' + item_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
                     var output = '';
 

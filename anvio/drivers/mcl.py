@@ -55,11 +55,11 @@ class MCL:
 
         line_no = 1
         for line in open(self.clusters_file_path).readlines():
-            clusters_dict['PC_%08d' % line_no] = line.strip().split('\t')
+            clusters_dict['GC_%08d' % line_no] = line.strip().split('\t')
 
             line_no += 1
 
-        self.run.info('Number of protein clusters', '%s' % pp(len(clusters_dict)))
+        self.run.info('Number of gene clusters', '%s' % pp(len(clusters_dict)))
 
         return clusters_dict
 
@@ -70,7 +70,7 @@ class MCL:
         self.progress.new('MCL')
         self.progress.update('clustering (using %d thread(s)) ...' % self.num_threads)
 
-        cmd_line = ['mcl', 
+        cmd_line = ['mcl',
                     self.mcl_input_file_path,
                     '--abc',
                     '-I', self.inflation,
