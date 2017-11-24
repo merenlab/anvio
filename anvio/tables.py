@@ -14,7 +14,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 contigs_db_version = "9"
 profile_db_version = "21"
-pan_db_version = "6"
+pan_db_version = "7"
 samples_info_db_version = "2"
 auxiliary_data_version = "1"
 genomes_storage_vesion = "4"
@@ -30,9 +30,9 @@ versions_for_db_types = {'contigs': contigs_db_version,
 #
 ####################################################################################################
 
-pan_protein_clusters_table_name        = 'protein_clusters'
-pan_protein_clusters_table_structure   = ['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name', 'alignment_summary']
-pan_protein_clusters_table_types       = ['numeric' ,     'numeric'   ,         'str'       ,      'str'   ,        'str'       ]
+pan_gene_clusters_table_name           = 'gene_clusters'
+pan_gene_clusters_table_structure      = ['entry_id', 'gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
+pan_gene_clusters_table_types          = ['numeric' ,     'numeric'   ,         'str'       ,      'str'   ,        'str'       ]
 
 
 ####################################################################################################
@@ -65,13 +65,13 @@ genes_in_splits_table_name             = 'genes_in_splits'
 genes_in_splits_table_structure        = ['entry_id', 'split', 'gene_callers_id', 'start_in_split', 'stop_in_split', 'percentage_in_split']
 genes_in_splits_table_types            = [ 'numeric',  'text',      'numeric'   ,    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
-genes_in_splits_summary_table_name     = 'genes_in_splits_summary'
+genes_in_splits_summary_table_name      = 'genes_in_splits_summary'
 genes_in_splits_summary_table_structure = ['split', 'num_genes', 'avg_gene_length', 'ratio_coding']
 genes_in_splits_summary_table_types     = [ 'text',  'numeric' ,     'numeric'    ,   'numeric'   ]
 
-gene_protein_sequences_table_name      = 'gene_protein_sequences'
-gene_protein_sequences_table_structure = ['gene_callers_id', 'sequence']
-gene_protein_sequences_table_types     = [     'numeric'   ,   'text'  ]
+gene_amino_acid_sequences_table_name      = 'gene_amino_acid_sequences'
+gene_amino_acid_sequences_table_structure = ['gene_callers_id', 'sequence']
+gene_amino_acid_sequences_table_types     = [     'numeric'   ,   'text'  ]
 
 gene_function_calls_table_name         = 'gene_functions'
 gene_function_calls_table_structure    = ['entry_id', 'gene_callers_id', 'source', 'accession', 'function', 'e_value']

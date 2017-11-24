@@ -81,7 +81,7 @@ var current_view = '';
 var layer_order;
 
 var completeness_dict = {};
-var PC_bins_summary_dict = {}
+var gene_cluster_bins_summary_dict = {}
 
 var sort_column;
 var sort_order;
@@ -325,7 +325,7 @@ function initData() {
                 $('.pan-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/pan-bg.png)');
 
-                $('#completion_title').attr('title', 'PCs').html('PCs');
+                $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
                 $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
                 $('#splits_title').hide();
                 $('#len_title').hide();
@@ -1656,7 +1656,7 @@ function updateBinsWindow(bin_list) {
         var bin_id = bin_list[_i];
 
         if (mode === 'pan'){
-            updateProteinClustersBin(bin_id);
+            updateGeneClustersBin(bin_id);
         } else {
             updateComplateness(bin_id);
 
@@ -1688,20 +1688,20 @@ function updateBinsWindow(bin_list) {
 }
 
 
-function updateProteinClustersBin(bin_id) {
+function updateGeneClustersBin(bin_id) {
     if (mode !== 'pan'){ 
         return;
     }
 
     $.ajax({
         type: "POST",
-        url: "/data/proteinclusterssummary",
+        url: "/data/geneclusterssummary",
         cache: false,
         data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
         success: function(data){
-            PC_bins_summary_dict[bin_id] = data;
+            gene_cluster_bins_summary_dict[bin_id] = data;
             $('#redundancy_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);
-            $('#completeness_' + bin_id).val(data['num_PCs']).parent().attr('data-value', data['num_PCs']);
+            $('#completeness_' + bin_id).val(data['num_gene_clusters']).parent().attr('data-value', data['num_gene_clusters']);
 
             $('#completeness_' + bin_id).attr("disabled", false);
             $('#redundancy_' + bin_id).attr("disabled", false);
@@ -1865,7 +1865,7 @@ function exportSvg(dontDownload) {
             };
 
             if (mode == 'pan') {
-                _bin_info['pcs'] = $('#completeness_' + bin_id).val(); 
+                _bin_info['gene_clusters'] = $('#completeness_' + bin_id).val(); 
                 _bin_info['gene-calls'] = $('#redundancy_' + bin_id).val(); 
             } else {
                 _bin_info['contig-length'] = $('#contig_length_' + bin_id).html();
@@ -2249,7 +2249,7 @@ function showSaveStateWindow()
 }
 
 function showGeneratePhylogeneticTreeWindow() {
-    $('#phylogeny_pc').empty();
+    $('#phylogeny_gene_cluster').empty();
     $('#phylogeny_programs').empty();
     $('#modPhylogeneticTree :input').attr("disabled", false);
     $('.generating-tree').hide();
@@ -2284,7 +2284,7 @@ function showGeneratePhylogeneticTreeWindow() {
                             var bin_id = $(bin).attr('bin-id');
                             var bin_name = $('#bin_name_' + bin_id).val();
 
-                            $('#phylogeny_pc').append('<option value="' + bin_id + '">' + bin_name + '</option>');
+                            $('#phylogeny_gene_cluster').append('<option value="' + bin_id + '">' + bin_name + '</option>');
                         }
                     );
                     $('#modPhylogeneticTree').modal('show');
@@ -2294,16 +2294,16 @@ function showGeneratePhylogeneticTreeWindow() {
 
 function generatePhylogeneticTree() {
     new_phylogeny_name = $('#phylogeny_name').val();
-    pc_list = [];
-    pcs_id = $('#phylogeny_pc').val();
-    for (var i=0; i < SELECTED[pcs_id].length; i++) {
-        if (label_to_node_map[SELECTED[pcs_id][i]].IsLeaf()) {
-            pc_list.push(SELECTED[pcs_id][i]);
+    gene_cluster_list = [];
+    gene_clusters_id = $('#phylogeny_gene_cluster').val();
+    for (var i=0; i < SELECTED[gene_clusters_id].length; i++) {
+        if (label_to_node_map[SELECTED[gene_clusters_id][i]].IsLeaf()) {
+            gene_cluster_list.push(SELECTED[gene_clusters_id][i]);
         } 
     }
 
-    if (pc_list.length == 0) {
-        alert("The Bin you selected does not contain any PCs.");
+    if (gene_cluster_list.length == 0) {
+        alert("The Bin you selected does not contain any gene_clusters.");
         return;
     }
 
@@ -2323,7 +2323,7 @@ function generatePhylogeneticTree() {
             'skip_multiple_genes': $('#phylogeny_skip_multiple_gene_calls').is(':checked'),
             'program': $('#phylogeny_programs').val(),
             'aligner': $('#phylogeny_aligners').val(),
-            'pcs': pc_list,
+            'gene_clusters': gene_cluster_list,
             'store_tree': $('#phylogeny_store_generated_tree').is(':checked'),
         },
         success: function(response) {

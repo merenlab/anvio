@@ -264,8 +264,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.p_meta['item_orders'] or not len([o for o in self.p_meta['item_orders'].values() if o['type'] == 'newick']):
             if self.p_meta['db_type'] == 'pan':
                 raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
-                                   clustering of protein clusters (PCs) in it. Maybe you skipped the clustering step, maybe\
-                                   anvi'o skipped it on your behalf because you had too many PCs or something. Regardless of\
+                                   clustering of gene clusters in it. Maybe you skipped the clustering step, maybe\
+                                   anvi'o skipped it on your behalf because you had too many gene clusters or something. Regardless of\
                                    who did what, you don't get to display your pangenome at this particular instance. Sorry :/" \
                                                             % (self.p_meta['project_name']))
             else:
@@ -743,10 +743,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         PanSuperclass.__init__(self, self.args)
 
-        self.init_protein_clusters()
+        self.init_gene_clusters()
 
         if not self.skip_init_functions:
-            self.init_protein_clusters_functions()
+            self.init_gene_clusters_functions()
 
         self.init_additional_layer_data()
 
