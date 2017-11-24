@@ -110,7 +110,7 @@ done
 
 
 INFO "Merging profiles"
-anvi-merge $output_dir/*/*.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --description $files/example_description.md
+anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --description $files/example_description.md
 
 INFO "Merging profiles without any clustering"
 anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED-WO-CLUSTERING \
