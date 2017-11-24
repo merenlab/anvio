@@ -5,9 +5,7 @@ import os
 import sys
 import gzip
 import h5py
-import time
 import argparse
-import numpy as np
 
 import anvio.db as db
 import anvio.dbops as dbops
@@ -62,7 +60,6 @@ def update_contigs_db(contigs_db_path, just_do_it=False):
         raise ConfigError("%s, the target of this script does not seem to be where it should have been :/" % auxiliary_path)
 
     fp = h5py.File(auxiliary_path, 'r')
-    G = lambda x: fp.attrs[x].decode('utf-8') if isinstance(fp.attrs[x], bytes) else fp.attrs[x]
 
     contigs_db.create_table(nt_position_info_table_name, nt_position_info_table_structure, nt_position_info_table_types)
 
@@ -97,7 +94,7 @@ def update_contigs_db(contigs_db_path, just_do_it=False):
 
     os.remove(auxiliary_path)
 
-    run.info_single('Done! Your contigs db is now %s, and the now-obsolete ".h5" file is gone!' % next_version, nl_after=1)
+    run.info_single('Done! Your contigs db is now %s, and the now-obsolete ".h5" file is gone!' % next_version, nl_after=1, nl_before=1)
 
 
 if __name__ == '__main__':
