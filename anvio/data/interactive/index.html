@@ -513,22 +513,38 @@
                         <div id="search_tab_content">
                             <span data-help='search-expression'>Search with expression</span>
                             <div class="form-horizontal">
-                                <select id="searchLayerList" data-help="search-layer"></select>
-                                <select id="searchOperator" data-help="search-operator">
-                                    <option value="6">Contains</option>
-                                    <option value="0">==</option>
-                                    <option value="1">!=</option>
-                                    <option value="2">&gt;</option>
-                                    <option value="3">&lt;</option>
-                                    <option value="4">&gt;=</option>
-                                    <option value="5">&lt;=</option>
-                                </select>
-                                <input id="searchValue" value="" data-help="search-value">
-                                <br />
-                                <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="searchContigs();" data-help="search-button"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button>
-                                    <div id="search_result_message"></div>
-                                </div>
+                                <table style="width: 100%;">
+                                    <tr>
+                                        <td style="width: 25%;">Field</td>
+                                        <td><select id="searchLayerList" data-help="search-layer" style="width: 100%;"></select></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Operator</td>
+                                        <td>
+                                            <select id="searchOperator" data-help="search-operator" style="width: 100%;">
+                                                <option value="6">Contains</option>
+                                                <option value="0">==</option>
+                                                <option value="1">!=</option>
+                                                <option value="2">&gt;</option>
+                                                <option value="3">&lt;</option>
+                                                <option value="4">&gt;=</option>
+                                                <option value="5">&lt;=</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Term</td>
+                                        <td><input id="searchValue" value="" data-help="search-value" style="width: 100%;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>&nbsp;</td>
+                                        <td><button type="button" class="btn btn-default btn-sm" onclick="searchContigs();" data-help="search-button"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>&nbsp;</td>
+                                        <td><div id="search_result_message"></div></td>
+                                    </tr>
+                                </table>
                             </div>
                             <span>Search functions</span>
                             <div class="form-horizontal">
