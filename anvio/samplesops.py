@@ -209,11 +209,7 @@ class SamplesInformation:
                                 able to create an empty samples information database, too. Do you need this?\
                                 Write to us!")
 
-        if samples_information_path:
-            self.process_samples_information_file(samples_information_path)
-        else:
-            self.samples_information_dict, self.aliases_to_attributes_dict = self.convert_samples_information_dict(self.samples_information_dict)
-
+        self.process_samples_information_file(samples_information_path)
         self.process_samples_order_file(samples_order_path)
         self.process_single_order_data(single_order_path, single_order_name)
         self.update_samples_order_dict()
