@@ -1171,7 +1171,7 @@ class Bin:
                     self.gene_non_outlier_coverages[gene_callers_id][sample_name] = A('non_outlier_mean_coverage')
                     self.gene_non_outlier_coverage_stds[gene_callers_id][sample_name] = A('non_outlier_coverage_std')
                     self.gene_coverage_per_position[gene_callers_id][sample_name] = A('gene_coverage_per_position')
-                    self.gene_non_outlier_positions[gene_callers_id][sample_name] = A('gene_non_outlier_positions')
+                    self.gene_non_outlier_positions[gene_callers_id][sample_name] = A('non_outlier_positions')
 
         # populate coverage values per nucleutide for the bin.
         if self.summary.split_coverage_values_per_nt_dict:
