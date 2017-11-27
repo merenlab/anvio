@@ -1275,6 +1275,8 @@ class ProfileSuperclass(object):
         self.contigs_db_path = A('contigs_db')
         self.split_names_of_interest = A('split_names_of_interest')
         init_gene_coverages = A('init_gene_coverages')
+        populate_nt_level_coverage = A('populate_nt_level_coverage')
+        outliers_threshold = A('outliers_threshold')
 
         if self.split_names_of_interest and not isinstance(self.split_names_of_interest, type(set([]))):
             raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set().\
@@ -1362,7 +1364,7 @@ class ProfileSuperclass(object):
         self.progress.end()
 
         if init_gene_coverages:
-            self.init_gene_level_coverage_stats_dicts()
+            self.init_gene_level_coverage_stats_dicts(outliers_threshold=outliers_threshold, populate_nt_level_coverage=populate_nt_level_coverage)
 
         if self.auxiliary_profile_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__auxiliary_data_version__))
