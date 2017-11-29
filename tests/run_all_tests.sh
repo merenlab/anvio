@@ -337,6 +337,12 @@ INFO "Running anvi-mcg-classifier"
 mkdir -p $output_dir/MCG_CLASSIFIER_OUTPUTS
 anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG
 
+INFO "Running anvi-mcg-classifier including only SAMPLE-01 and SAMPLE-02"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG_INCLUDE --include-samples $files/samples_to_include_for_mcg.txt
+
+INFO "Running anvi-mcg-classifier excluding SAMPLE-01"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG_EXCLUDE --exclude-samples $files/samples_to_exclude_for_mcg.txt
+
 INFO "Running anvi-mcg-classifier on a collection"
 anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG_CONCOCT -C CONCOCT
 
