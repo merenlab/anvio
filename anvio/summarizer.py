@@ -1069,7 +1069,8 @@ class ContigSummarizer(SummarizerSuperClass):
         summary['num_contigs'] = num_contigs
         summary['n_values'] = self.calculate_N_values(contig_lengths, total_length, N=100)
         summary['contig_lengths'] = contig_lengths
-        summary['single_copy_gene_counts'] = hmm.get_single_copy_gene_counts()
+        summary['gene_hit_counts_per_hmm_source'] = hmm.get_gene_hit_counts_per_hmm_source()
+        summary['num_genomes_per_SCG_source_dict'] = hmm.get_num_genomes_from_SCG_sources_dict()
 
         self.progress.end()
 

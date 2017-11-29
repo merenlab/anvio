@@ -21,6 +21,7 @@ import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
 from scipy import odr as odr
+from anvio.mcgops import MCGPlots
 from anvio.errors import ConfigError
 from anvio.dbops import ProfileSuperclass
 from anvio.sequence import get_list_of_outliers
@@ -72,7 +73,7 @@ class MetagenomeCentricGeneClassifier:
         self.number_of_positive_samples = None
         self.negative_samples = pd.DataFrame.empty
         self.number_of_negative_samples = None
-        self.gene_class_information = pd.DataFrame.empty
+        self.gene_class_df = pd.DataFrame.empty
         self.samples_detection_information = pd.DataFrame.empty
         self.gene_presence_absence_in_samples_initiated = False
         self.gene_presence_absence_in_samples = pd.DataFrame.empty
@@ -239,6 +240,7 @@ class MetagenomeCentricGeneClassifier:
         negative_samples = []
 
         self.progress.new("Setting presence/absence in samples")
+        progress.update('...')
         num_samples, counter = len(self.samples), 1
         detection = {}
         for sample in self.samples:
@@ -270,12 +272,13 @@ class MetagenomeCentricGeneClassifier:
     def init_samples_coverage_stats_dict(self):
         """ populate the samples_coverage_stats_dict."""
         if not self.sample_detection_information_was_initiated:
-            self.init_sample_detection_information
+            self.init_sample_detection_information()
 
         self.samples_coverage_stats_dicts = pd.DataFrame(index=self.samples, columns=columns_for_samples_coverage_stats_dict)
 
         num_samples, counter = len(self.samples), 1
         self.progress.new("Finding nucleotide positions in samples with outlier coverage values")
+        progress.update('...')
         for sample in self.positive_samples:
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
@@ -305,6 +308,7 @@ class MetagenomeCentricGeneClassifier:
         plot_dir = self.output_file_prefix + '-TS-plots' + '/'
         os.makedirs(plot_dir, exist_ok=True)
         self.progress.new('Saving figures of taxon specific distributions to pdf')
+        progress.update('...')
         number_of_fininshed = 0
         for sample in self.positive_samples:
             coverages_pdf_output = plot_dir + sample + additional_description + '-coverages.pdf'
@@ -363,10 +367,17 @@ class MetagenomeCentricGeneClassifier:
     def init_gene_presence_absence_in_samples(self):
         gene_callers_id = list(self.profile_db.gene_level_coverage_stats_dict.keys())
         self.gene_presence_absence_in_samples = pd.DataFrame(index=gene_callers_id, columns=self.samples)
+
+        num_samples, counter = len(self.samples), 1
+        self.progress.new('Computing gene presence/absence in samples')
+        progress.update('...')
         for sample in self.samples:
+            if num_samples > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d samples...' % (counter, num_samples))
             for gene_id in gene_callers_id:
                 self.gene_presence_absence_in_samples.loc[gene_id, sample] = get_presence_absence_information(self.profile_db.gene_level_coverage_stats_dict[gene_id][sample]['detection'], self.alpha)
         self.gene_presence_absence_in_samples_initiated = True
+        self.progress.end()
 
 
     def init_gene_coverage_stats_dict_of_dfs(self):
@@ -377,9 +388,15 @@ class MetagenomeCentricGeneClassifier:
             mean coverage accross samples as an array in order to perform regression
             (see init_gene_coverage_consistency_information for example of usage).
         """
+        num_genes, counter = len(self.profile_db.gene_level_coverage_stats_dict.keys()), 1
+        self.progress.new("Initializing gene coverage stats dictionary of dataframes")
+        progress.update('...')
         for gene_id, coverage_stats in self.profile_db.gene_level_coverage_stats_dict.items():
+            if num_genes > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d genes...' % (counter, num_genes))
             self.gene_coverage_stats_dict_of_dfs[gene_id] = pd.DataFrame.from_dict(coverage_stats, orient='index')
         self.gene_coverage_stats_dict_of_dfs_initiated = True
+        self.progress.end()
 
 
     def init_gene_coverage_consistency_information(self):
@@ -393,6 +410,8 @@ class MetagenomeCentricGeneClassifier:
             For each gene, the regression is performed only according to samples in which
             the gene is present (according to the detection critrea).
         """
+        if not self.samples_coverage_stats_dicts_was_initiated:
+            self.init_samples_coverage_stats_dict()
         
         if not self.gene_presence_absence_in_samples_initiated:
             self.init_gene_presence_absence_in_samples()
@@ -400,7 +419,13 @@ class MetagenomeCentricGeneClassifier:
         if not self.gene_coverage_stats_dict_of_dfs_initiated:
             self.init_gene_coverage_stats_dict_of_dfs()
 
+        self.progress.new("Computing coverage consistency for all genes.")
+        progress.update('...')
+        num_genes, counter = len(self.profile_db.gene_level_coverage_stats_dict.keys()), 1
         for gene_id in self.profile_db.gene_level_coverage_stats_dict.keys():
+            if num_genes > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d genes...' % (counter, num_genes))
+
             # samples in which the gene is present
             _samples = self.gene_presence_absence_in_samples.loc[gene_id,self.gene_presence_absence_in_samples.loc[gene_id,]==True].index
             # mean and std of non-outlier nt in each sample
@@ -416,8 +441,6 @@ class MetagenomeCentricGeneClassifier:
                 _model = lambda B, c: B[0] * c
                 _odr = odr.ODR(_data, odr.Model(_model), beta0=[3])
                 odr_output = _odr.run()
-                run.info_single('Orthogonal Distance Regression results for gene %s' % gene_id)
-                odr_output.pprint()
                 
                 # store results
                 self.gene_coverage_consistency_dict[gene_id] = {}
@@ -437,19 +460,124 @@ class MetagenomeCentricGeneClassifier:
                     self.gene_coverage_consistency_dict[gene_id]['converged'] = False
 
         self.gene_coverage_consistency_dict_initiated = True
+        self.progress.end()
+
+
+    def get_gene_specificity(self, gene_id):
+        """ return True for gene if it occurs in positive samples and doesn't occur in negative samples.
+        
+            Ambiguous occurences are not counted as anything. This means that if a gene is ambiguously
+            occuring in a negative sample it could still be counted as "specific". It also means that
+            if a gene is only ambiguously occuring in positive samples then it would be considered
+            as "non-specific".
+        """
+
+        if self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] > 1 and self.gene_class_df.loc[gene_id, 'occurence_in_negative_samples'] == 0:
+            return True
+        else:
+            return False
+        # TODO: if there are no occurences of the gene at all, then we should maybe return None instead of False
+
+
+    def get_gene_coverage_consistency(self, gene_id):
+        """ return true if the gene's coverage is consistent accross positive samples, False otherwise."""
+
+        # TODO: make sure coverage_consistency_dict has been initiated
+        if self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] == 0:
+            # if the gene doesn't occur in positive samlpes then there is no classification
+            return None
+        elif self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] == 1:
+            # if the gene occurs only in one positive sample then return True.
+            # XXX: we might prefer to return None, we should consider this in the future.
+            return True
+        elif self.gene_coverage_consistency_dict[gene_id]['converged']: 
+                # FIXME: this is where we use an arbitrary threshold again :-(
+                # if the slope precision is smaller than the threshold then the regression
+                # fit is considered accurate enough and the gene coverage is considered consistent.
+            return self.gene_coverage_consistency_dict[gene_id]['slope_precision'] > 0.5
+        else:
+            # The regression didn't converege so the coverage is probably not consistent.
+            return False
+
+
+    def determine_if_gene_is_core(self, gene_id, gene_specificity):
+        """ return True for core gene, False for accessory gene
+        
+            If the gene is specific to positive samples, then core would be considered if it
+            occurs in all positive samples. Otherwise it would be considered core if it 
+            occurs in all positive AND all negative samples.
+            Ambiguous occurences of a gene are not considered (i.e. they are the same as absence).
+        """
+
+        if gene_specificity:
+            # return True if the the gene occurs in all positive samples.
+            return self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] == len(self.positive_samples)
+        else:
+            # return True if the gene occurs in all positive AND all negative samples
+            return self.gene_class_df.loc[gene_id, 'occurence_in_positive_and_negative_samples'] == len(self.positive_samples) + len(self.negative_samples)
+
+
+    def init_gene_class_df(self):
+        """ generate dictionary with the class information per gene.
+
+            This dictionary could be later use to produce an additional-layer
+            text file for vizualization.
+        """
+
+        # TODO: make sure gene presence absence was calculated
+        if not self.gene_coverage_consistency_dict_initiated:
+            self.init_gene_coverage_consistency_information()
+        # XXX: only negative and positive samples are used here
+        # ambiguous samples are ignored as if they were never
+        # there. This is not ideal, but is easy to do.
+        self.gene_class_df = pd.DataFrame(index=list(self.profile_db.gene_level_coverage_stats_dict.keys()))
+        for gene_id in self.profile_db.gene_level_coverage_stats_dict.keys():
+            # determine the number of occurences in positive samples
+            self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] = np.sum(self.gene_presence_absence_in_samples.loc[gene_id, self.positive_samples])
+            # determine the number of occurences in negative samples
+            self.gene_class_df.loc[gene_id, 'occurence_in_negative_samples'] = np.sum(self.gene_presence_absence_in_samples.loc[gene_id, self.negative_samples])
+            # set the occurence_in_positive_and_negative_samples
+            self.gene_class_df.loc[gene_id, 'occurence_in_positive_and_negative_samples'] = self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] + self.gene_class_df.loc[gene_id, 'occurence_in_negative_samples']
+            
+            gene_specificity = self.get_gene_specificity(gene_id)
+            gene_coverage_consistency = self.get_gene_coverage_consistency(gene_id)
+            # determine core accessory
+            gene_is_core = self.determine_if_gene_is_core(gene_id, gene_specificity)
+
+            self.gene_class_df.loc[gene_id, 'specificity'] = gene_specificity
+            self.gene_class_df.loc[gene_id, 'coverage_consistency'] =gene_coverage_consistency 
+            self.gene_class_df.loc[gene_id, 'core'] = gene_is_core
+            self.gene_class_df.loc[gene_id, 'MCG_class'] = get_class_string(gene_specificity, gene_coverage_consistency, gene_is_core) 
 
 
     def get_gene_classes(self):
         """ The main process of this class - computes the class information for each gene"""
-        # need to start a new gene_class_information dict
-        # this is due to the fact that if the algorithm is ran on a list of bins then this necessary
-        self.gene_class_information = pd.DataFrame(index=self.gene_coverages.index,columns=['gene_class'])
-
-        # set the presence/absence values for samples
-        self.init_sample_detection_information()
-
-        # find the taxon-specific genes for each sample
+        # Create the plots for nucleotide-level coverage data per sample.
         self.plot_TS()
+
+        # generate plots for coverage consistency information for each gene.
+        self.gen_gene_consistency_plots() 
+
+        # create the gene_class_df
+        self.init_gene_class_df()
+
+
+    def gen_gene_consistency_plots(self):
+        """ generate and save the gene consistency plots for each gene."""
+
+        if not self.gene_coverage_consistency_dict_initiated:
+            self.init_gene_coverage_consistency_information()
+
+        num_genes, counter = len(self.profile_db.gene_level_coverage_stats_dict.keys()), 1
+        progress.new('Plotting gene consistency information')
+        progress.update('...')
+        for gene_id in self.profile_db.gene_level_coverage_stats_dict.keys():
+            if num_genes > 100 and counter % 100 == 0:
+                self.progress.update('%d of %d genes...' % (counter, num_genes))
+            p = MCGPlots(self, gene_id, run=run, progress=progress)
+            p.plot()
+
+        progress.end()
 
 
     def get_coverage_and_detection_dict(self,bin_id):
@@ -502,6 +630,7 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
     samples as keys and the concatenated coverage values for all splits as one array
     """
     progress.new('Merging coverage values accross splits')
+    progress.update('...')
 
     d = {}
     if samples is None:
@@ -542,9 +671,51 @@ def get_non_outliers_information(v, MAD_threshold=2.5):
 
     return non_outlier_indices, d
 
+# The order of the strings is very important since it is used in get_class_string
+class_short_names = ['NNA', 'SNA', 'NCA',\
+                     'SCA', 'NNC', 'SNC',\
+                     'NCC', 'SCC']
+class_long_names = ['Non-specific_Non-consistent_Accessory', 'Specific_Non-consistent_Accessory', 'Non-specific_Consistent_Accessory',\
+                    'Specific_Consistent_Accessory', 'Non-specific_Non-consistent_Core', 'Specific_Non-consistent_Core',\
+                    'Non-specific_Consistent_Core', 'Specific_Consistent_Core']
+class_short_name_long_name_dict = dict(zip(class_short_names,class_long_names))
+
+
+def get_class_long_name_from_short_name(short_name):
+    return class_short_name_long_name_dict[short_name]
+
+
+def get_class_string(gene_specificity, gene_coverage_consistency, gene_is_core):
+    """ Takes the values of the three categories and returns a string to represent the class."""
+    value_list = [gene_specificity, gene_coverage_consistency, gene_is_core]
+    if None in value_list:
+        return 'NA'
+    # converting the list of booleans to a number
+    # this solution was takes from here: https://stackoverflow.com/a/4066807/7115450
+    index = sum(1<<i for i, b in enumerate(value_list) if b)
+    return class_short_names[index]
+
 
 def get_presence_absence_information(detection, alpha):
     """ Helper function to determine presence/absence according to a threshold."""
+    ##### WHAT WE SHOULD DO IN THE FUTURE #####
+    # Arbitrary cut-offs are terrible.
+    # If we assume there are no accessory genes (we will get back to this later),
+    # then if the gnomes is present, then we expect ALL of it to be present. Thus,
+    # if we had an unlimited number of reads, then we expect detection to be 1.
+    # as the number of reads gets smaller, the expected detection value is smaller.
+    # for a given genome size, a given read length, and the number of reads mapped to 
+    # the genome, we can compute the following value: "what is the probability that 
+    # the detection value will be greater than the actual detection value", if that 
+    # probability is high, then that is a good sign that the genome is not present 
+    # in the sample, and that any reads that we got are due to non-specific coverage.
+    # the same thing could be calculated for a given gene.
+    # we can create a measure for agreement between the mean coverage of a gene
+    # and the detection of the gene. It would simply be the probability that the
+    # coverage of the gene would exist with a detection that is higher than the 
+    # actual detection of the gene. All we need for that is the read length, 
+    # gene/genome length, and the expected genomic portion shared by two genomes that 
+    # belong to the population in question.
     if detection >= 0.5 + alpha:
         return True
     elif detection <= 0.5 - alpha:

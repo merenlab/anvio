@@ -11,6 +11,7 @@ import os
 import re
 import io
 import sys
+import time
 import json
 import random
 import argparse
@@ -142,6 +143,11 @@ class BottleApplication(Bottle):
                     sys.exit(0)
 
             if not self.server_only:
+                # Sometimes browser opens before web server actually starts so we see
+                # message like "Website can not be reached" and user needs to refresh
+                # I have added sleep below to delay web browser little bit.
+                time.sleep(1.5)
+
                 utils.open_url_in_browser(url="http://%s:%d" % (ip, port),
                                           browser_path=self.browser_path,
                                           run=run)
@@ -278,14 +284,14 @@ class BottleApplication(Bottle):
 
             if items_order['type'] == 'newick':
                 run.info_single("The newick order '%s' has been requested" % (items_order_id))
-                return json.dumps(items_order['data'])
             elif items_order['type'] == 'basic':
                 run.info_single("The basic order '%s' has been requested" % (items_order_id))
-                return json.dumps(items_order['data'].split(','))
             else:
                 return json.dumps({'error': "The interface requested something anvi'o doesn't know about. Item orders\
                                              can only be in the form of 'newick' or 'basic'. But the interface requested\
                                              a '%s'. We are all confused here :/" % items_order_id})
+
+            return json.dumps(items_order['data'])
 
         return json.dumps("")
 
@@ -843,4 +849,4 @@ class BottleApplication(Bottle):
 
 
     def get_contigs_stats(self):
-        return json.dumps(self.interactive.get_contigs_stats())
+        return json.dumps({'stats': self.interactive.contigs_stats, 'tables': self.interactive.tables})
