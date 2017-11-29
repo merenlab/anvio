@@ -1153,6 +1153,8 @@ class Bin:
         self.gene_non_outlier_coverages = {}
         self.gene_non_outlier_coverage_stds = {}
         self.split_coverage_values_per_nt_dict = {}
+        self.gene_coverage_per_position = {}
+        self.gene_non_outlier_positions = {}
 
         A = lambda x: self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name][x]
 
@@ -1161,12 +1163,16 @@ class Bin:
             for gene_callers_id in self.gene_caller_ids:
                 self.gene_coverages[gene_callers_id], self.gene_detection[gene_callers_id] = {}, {}
                 self.gene_non_outlier_coverages[gene_callers_id], self.gene_non_outlier_coverage_stds[gene_callers_id] = {}, {}
+                self.gene_coverage_per_position[gene_callers_id], self.gene_non_outlier_positions[gene_callers_id] = {}, {}
 
                 for sample_name in self.summary.p_meta['samples']:
                     self.gene_coverages[gene_callers_id][sample_name] = A('mean_coverage')
                     self.gene_detection[gene_callers_id][sample_name] = A('detection')
                     self.gene_non_outlier_coverages[gene_callers_id][sample_name] = A('non_outlier_mean_coverage')
                     self.gene_non_outlier_coverage_stds[gene_callers_id][sample_name] = A('non_outlier_coverage_std')
+                    if 'gene_coverage_per_position' in self.summary.gene_level_coverage_stats_dict:
+                        self.gene_coverage_per_position[gene_callers_id][sample_name] = A('gene_coverage_per_position')
+                        self.gene_non_outlier_positions[gene_callers_id][sample_name] = A('non_outlier_positions')
 
         # populate coverage values per nucleutide for the bin.
         if self.summary.split_coverage_values_per_nt_dict:
