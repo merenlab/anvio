@@ -178,7 +178,7 @@ class VariabilitySuper(object):
 
         if self.quince_mode:
             self.progress.update('Accessing auxiliary data file ...')
-            auxiliary_data_file_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
+            auxiliary_data_file_path = dbops.get_auxiliary_data_path_for_profile_db(self.profile_db_path)
             if not os.path.exists(auxiliary_data_file_path):
                 raise ConfigError("Anvi'o needs the auxiliary data file to run this program with '--quince-mode' flag.\
                                     However it wasn't found at '%s' :/" % auxiliary_data_file_path)

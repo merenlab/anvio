@@ -27,7 +27,7 @@ anvi-gen-contigs-database -f $files/contigs.fa \
                           -L 1000 \
                           --external-gene-calls $files/example_external_gene_calls.txt \
                           --project-name 'Contigs DB with external gene calls'
-rm -rf $output_dir/CONTIGS.db $output_dir/CONTIGS.h5
+rm -rf $output_dir/CONTIGS.db
 
 INFO "Generating a new contigs database with the default gene caller"
 anvi-gen-contigs-database -f $files/contigs.fa \
