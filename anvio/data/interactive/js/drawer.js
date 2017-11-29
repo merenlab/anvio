@@ -376,7 +376,6 @@ Drawer.prototype.initialize_tree = function() {
             return;
         }
         this.tree.ComputeDepths();
-        this.tree.ComputeWeights(this.tree.root);
 
         var n = new NodeIterator(this.tree.root);
         var q = n.Begin();

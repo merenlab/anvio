@@ -770,9 +770,21 @@ class PanSuperclass(object):
         self.genome_names = self.p_meta['genome_names']
         self.gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
-        if self.p_meta['gene_clusters_ordered']:
+        # FIXME: Is this the future where the pan db version is > 6? Great. Then the if statement here no longer
+        # needs to check whether 'gene_clusters_ordered' is a valid key in self.p_meta:
+        if 'gene_clusters_ordered' in self.p_meta and self.p_meta['gene_clusters_ordered']:
             self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
             self.item_orders = pan_db.db.get_table_as_dict(t.item_orders_table_name)
+
+            # we need to convert data for 'basic' item orders to array in order to avoid compatibility issues with
+            # other additional item orders in pan and full mode (otherwise interactive class gets complicated
+            # unnecessarily).
+            for item_order in self.item_orders:
+                if self.item_orders[item_order]['type'] == 'basic':
+                    try:
+                        self.item_orders[item_order]['data'] = self.item_orders[item_order]['data'].split(',')
+                    except:
+                        raise ConfigError("Something is wrong with the basic order `%s` in this pan database :(" % (item_order))
         else:
             self.p_meta['available_item_orders'] = None
             self.p_meta['default_item_order'] = None
@@ -1299,6 +1311,14 @@ class ProfileSuperclass(object):
         if self.p_meta['contigs_ordered'] and 'available_item_orders' in self.p_meta:
             self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
             self.item_orders = profile_db.db.get_table_as_dict(t.item_orders_table_name)
+
+            for item_order in self.item_orders:
+                if self.item_orders[item_order]['type'] == 'basic':
+                    try:
+                        self.item_orders[item_order]['data'] = self.item_orders[item_order]['data'].split(',')
+                    except:
+                        raise ConfigError("Something is wrong with the basic order `%s` in this profile database :(" % (item_order))
+
         elif self.p_meta['contigs_ordered'] and 'available_item_orders' not in self.p_meta:
             self.progress.end()
             self.run.warning("Your profile database thinks the hierarchical item_order was done, yet it contains no entries\

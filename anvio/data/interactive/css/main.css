@@ -506,7 +506,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 #search_result_message, #search_result_message_functions {
-  padding-left: 20px;
   display: inline-block;
   height: 30px;
   padding-top: 7px;
@@ -519,6 +518,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
   display: block;
   max-width: 100%;
   overflow: scroll;
+}
+
+#search_tab_content td {
+    padding: 6px;
 }
 
 #bins-table > tbody > tr > td { padding: 5px; }
