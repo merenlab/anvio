@@ -31,7 +31,7 @@ pp = terminal.pretty_print
 class AuxiliaryDataForSplitCoverages(object):
     def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
-        self.db_hash = db_hash
+        self.db_hash = str(db_hash)
         self.version = anvio.__auxiliary_data_version__
         self.file_path = file_path
         self.quiet = quiet
@@ -60,7 +60,7 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def check_hash(self):
-        actual_db_hash = self.db.get_meta_value('contigs_db_hash')
+        actual_db_hash = str(self.db.get_meta_value('contigs_db_hash'))
         if self.db_hash != actual_db_hash:
             raise AuxiliaryDataError('The hash value inside Auxiliary Database "%s" does not match with Contigs Database hash "%s",\
                                       this files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
