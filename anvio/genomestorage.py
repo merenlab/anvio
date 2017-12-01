@@ -58,6 +58,7 @@ class GenomeStorage(object):
         self.genome_info_entries = []
         self.gene_info_entries = []
         self.gene_functions_entries = []
+        self.gene_functions_entry_id = 0
 
         if create_new:
             self.create_tables()
@@ -112,6 +113,7 @@ class GenomeStorage(object):
 
         self.num_genomes = len(self.genome_names)
         self.functions_are_available = self.db.get_meta_value('functions_are_available')
+        self.gene_functions_entry_id = self.db.get_max_value_in_column(t.genome_gene_function_calls_table_name, 'entry_id')
 
         ## load the data
         where_clause = """genome_name IN (%s)""" % ",".join('"' + item + '"' for item in self.genome_names)
@@ -265,8 +267,9 @@ class GenomeStorage(object):
             return
 
         accession, function, e_value = annotation
-        values = (genome_name, 0, gene_caller_id, source, accession, function, e_value, )
+        values = (genome_name, self.gene_functions_entry_id, gene_caller_id, source, accession, function, e_value, )
 
+        self.gene_functions_entry_id += 1
         self.gene_functions_entries.append(values)
 
 
