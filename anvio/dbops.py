@@ -454,7 +454,7 @@ class ContigsSuperclass(object):
         for search_term in search_terms:
             self.progress.new('Search function')
             self.progress.update('Searching for term "%s"' % search_term)
-            response = contigs_db.db._exec('''select gene_callers_id, source, function from gene_functions where function LIKE "%%''' + search_term + '''%%";''').fetchall()
+            response = contigs_db.db._exec('''select gene_callers_id, source, accession, function from gene_functions where function LIKE "%%''' + search_term + '''%%";''').fetchall()
 
             full_report.extend([(r[0], r[1], r[2], search_term, self.gene_callers_id_to_split_name_dict[r[0]]) for r in response])
 
