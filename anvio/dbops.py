@@ -442,6 +442,7 @@ class ContigsSuperclass(object):
 
         self.run.info('Search terms', '%d found' % (len(search_terms)))
         matching_gene_caller_ids = dict([(search_term, {}) for search_term in search_terms])
+        matching_accession_calls = dict([(search_term, {}) for search_term in search_terms])
         matching_function_calls = dict([(search_term, {}) for search_term in search_terms])
         split_names = dict([(search_term, {}) for search_term in search_terms])
         full_report = []
@@ -454,12 +455,13 @@ class ContigsSuperclass(object):
         for search_term in search_terms:
             self.progress.new('Search function')
             self.progress.update('Searching for term "%s"' % search_term)
-            response = contigs_db.db._exec('''select gene_callers_id, source, function from gene_functions where function LIKE "%%''' + search_term + '''%%";''').fetchall()
+            response = contigs_db.db._exec('''select gene_callers_id, source, accession, function from gene_functions where function LIKE "%%''' + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%";''').fetchall()
 
-            full_report.extend([(r[0], r[1], r[2], search_term, self.gene_callers_id_to_split_name_dict[r[0]]) for r in response])
+            full_report.extend([(r[0], r[1], r[2], r[3], search_term, self.gene_callers_id_to_split_name_dict[r[0]]) for r in response])
 
             matching_gene_caller_ids[search_term] = set([m[0] for m in response])
-            matching_function_calls[search_term] = list(set([m[2] for m in response]))
+            matching_accession_calls[search_term] = list(set([m[2] for m in response]))
+            matching_function_calls[search_term] = list(set([m[3] for m in response]))
             split_names[search_term] = [self.gene_callers_id_to_split_name_dict[gene_callers_id] for gene_callers_id in matching_gene_caller_ids[search_term]]
 
             self.progress.end()
