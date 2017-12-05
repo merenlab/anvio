@@ -152,8 +152,11 @@ class VariabilitySuper(object):
         if self.engine not in ['NT', 'AA']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
-        # set items of interest while you are at it.
+        # Set items of interest while you are at it. Ensure self.items is sorted alphabetically.
+        # This is required for resolving ties in coverage alphabetically, which is described in the
+        # docstring of self.insert_additional_fields.
         self.items = constants.amino_acids if self.engine == 'AA' else list(constants.nucleotides)
+        self.items = sorted(self.items)
 
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
@@ -247,26 +250,6 @@ class VariabilitySuper(object):
 
         # we're done here. bye.
         profile_db.disconnect()
-
-
-    def filter(self, filter_name, test_func):
-        self.progress.new('Filtering based on "%s"' % filter_name)
-
-        entry_ids_to_remove, counter = set([]), 0
-
-        for entry_id in self.data:
-            if counter % 1000 == 0:
-                self.progress.update('identifying entries to remove :: %s' % pp(counter))
-
-            counter += 1
-
-            if test_func(self.data[entry_id]):
-                entry_ids_to_remove.add(entry_id)
-                continue
-
-        self.progress.end()
-
-        self.remove_entries_from_data(entry_ids_to_remove, reason=filter_name)
 
 
     def check_if_data_is_empty(self):
@@ -417,6 +400,15 @@ class VariabilitySuper(object):
         NOTE if the coverage is 0 (which is stupid, but it can exist if both
         --min-coverage-in-each-sample is 0 and --quince-mode is active), departure_from_consensus
         and n2n1ratio are set to 0.
+
+        NOTE To get a first glance at variation, we display competing_nts during inspect mode in the
+        interactive interface, which means they are stored. I (Evan) don't know how the
+        competing_nts are computed during this process, but after looking at 3 datasets (Infant Gut,
+        E. Faecalis; TARA Oceans, HIMB083; and Mushroom Spring, Synechococcus), there were no "N"
+        counts (--engine NT), which makes me think that consensus and competing_nts are calculated
+        without consideration of "N" values. In contrast, the variability table is not prejudiced to
+        N, and treats it like any other item in self.items. This means it can be the consensus
+        value, or be one of the items in competing_nts, etc.
         """
 
         # First, we just make sure that whatever operations we have performed on self.data, we have
@@ -440,15 +432,15 @@ class VariabilitySuper(object):
 
         # the first and second most common items, according to the 2nd convention in the docstring,
         # are now defined for each entry in two pandas Series.
-        items_first  = self.data.loc[entry_ids, self.items].columns[item_index_order[:,0]]
-        items_second = self.data.loc[entry_ids, self.items].columns[item_index_order[:,1]]
+        items_first_and_second  = self.data.loc[entry_ids, self.items].columns[item_index_order[:,:2]]
 
         # we also calculate the coverage values for the first and second most common items
         sorted_coverage = np.sort(self.data.loc[entry_ids, self.items].values, axis=1)
         coverages_first =  pd.Series(sorted_coverage[:,-1], index=self.data.loc[entry_ids].index)
         coverages_second = pd.Series(sorted_coverage[:,-2], index=self.data.loc[entry_ids].index)
 
-        self.data.loc[entry_ids, "consensus"] = items_first
+        # define consensus as the first most common item (hence `[:,0]`)
+        self.data.loc[entry_ids, "consensus"] = items_first_and_second[:,0]
 
         # if the coverage is zero, departure_from_consensus = 0
         self.data.loc[coverage_zero, "departure_from_consensus"] = 0
@@ -459,18 +451,26 @@ class VariabilitySuper(object):
         self.data.loc[coverage_zero, "n2n1ratio"] = 0
         self.data.loc[coverage_nonzero, "n2n1ratio"] = coverages_second[coverage_nonzero] / coverages_first[coverage_nonzero]
 
-        if self.engine == 'AA':
-            # first naively concatenate the first and second most common
-            self.data.loc[entry_ids, "competing_aas"] = items_first + items_second
-            # if the most common has a coverage equal to the total coverage, pair the most common with itself
-            self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == self.data[self.items].max(axis=1)), "competing_aas"] = self.data["consensus"]*2
-            # alphabetize the pairs so that AlaTrp ends up the same as TrpAla
-            self.data.loc[entry_ids, "competing_aas"] = self.data.loc[entry_ids, "competing_aas"].apply(lambda x: ''.join(sorted([x[:3], x[3:]])))
+        # we name the competing_items column differently depending on the engine used
+        competing_items = "competing_aas" if self.engine=="AA" else "competing_nts" if self.engine=="NT" else "competing_codons"
 
-        competing = "competing_aas" if self.engine == "AA" else "competing_nts"
+        # This step computes the "competing_items" column. First, convert items_first_and_second
+        # [which has shape (len(entry_ids), 2)] into a numpy array, then sort them alphabetically
+        # (in order to comply with convention 1 in docstring). Then, sum along the sorted axis.
+        # Since the elements are of type str, the sum operator concatenates the strings together.
+        # Finally, if the coverage of the most common item is equal to the total coverage, we pair
+        # the most common item with itself.
+        self.data.loc[entry_ids, competing_items] = np.sum(np.sort(items_first_and_second.values, axis=1), axis=1) # V/\
+        self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == self.data[self.items].max(axis=1)), competing_items] = self.data["consensus"]*2
+
+        # Loop through each SSM, filling each corresponding column entry by entry using the `apply`
+        # operator. Instead of using self.substitution_scoring_matrices[m], we speed things up by
+        # converting to a dictionary we call `substitution_scoring_matrix` that takes as its input
+        # an entry from competing_items instead of having to pull from the first AND second most
+        # common item, and then indexing a triple-nested dictionary.
         for m in self.substitution_scoring_matrices:
             substitution_scoring_matrix = utils.convert_SSM_to_single_accession(self.substitution_scoring_matrices[m])
-            self.data.loc[entry_ids, m] = self.data.loc[entry_ids, competing].apply(lambda x: substitution_scoring_matrix.get(x, None))
+            self.data.loc[entry_ids, m] = self.data.loc[entry_ids, competing_items].apply(lambda x: substitution_scoring_matrix.get(x, None))
 
 
     def filter_based_on_scattering_factor(self):
@@ -874,8 +874,8 @@ class VariabilitySuper(object):
             new_structure.append('split_name')
 
         # Update entry_id with sequential numbers based on the final ordering of the data:
-        self.data = self.data.reset_index()
-        self.data.entry_id = self.data.index
+        self.data.reset_index(drop=True, inplace=True)
+        self.data["entry_id"] = self.data.index
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
         utils.store_dataframe_as_TAB_delimited_file(self.data, self.args.output_file, columns=new_structure)
