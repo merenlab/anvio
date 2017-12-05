@@ -4,7 +4,6 @@
 """Classes to make sense of single nucleotide variation"""
 
 
-
 import os
 import sys
 import copy
@@ -154,7 +153,7 @@ class VariabilitySuper(object):
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
         # set items of interest while you are at it.
-        self.items = constants.amino_acids if self.engine == 'AA' else sorted(list(constants.nucleotides))
+        self.items = constants.amino_acids if self.engine == 'AA' else list(constants.nucleotides)
 
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
@@ -233,7 +232,7 @@ class VariabilitySuper(object):
         # data is one of them, since they will be read from different tables.
         # another one is the substitution scoring matrices.
         if self.engine == 'NT':
-            self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name)
+            self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, table_structure=t.variable_nts_table_structure)
             self.progress.end()
 
         elif self.engine == 'AA':
