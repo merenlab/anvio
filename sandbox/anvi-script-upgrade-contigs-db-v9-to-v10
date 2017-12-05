@@ -90,7 +90,7 @@ def update_contigs_db(contigs_db_path, just_do_it=False):
 
     # we also want to upgrade this table name, which was renamed within #654 re:
     # merenlab/pc_to_gene_cluster PR
-    profile_db._exec('ALTER TABLE gene_protein_sequences RENAME TO gene_amino_acid_sequences;')
+    contigs_db._exec('ALTER TABLE gene_protein_sequences RENAME TO gene_amino_acid_sequences;')
 
     contigs_db.remove_meta_key_value_pair('version')
     contigs_db.set_version(next_version)
