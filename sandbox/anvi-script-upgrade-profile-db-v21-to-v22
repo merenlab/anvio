@@ -115,10 +115,6 @@ def update_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False)
         run.info_single("(anvi'o just created a new, up-to-date auxiliary data file (which ends with extension .db), and deleted \
                          the old one (the one that ended with the extension .h5)).", nl_before=2, nl_after=1)
 
-    # we also want to upgrade this table name, which was renamed within #654 re:
-    # merenlab/pc_to_gene_cluster PR
-    profile_db._exec('ALTER TABLE gene_protein_sequences RENAME TO gene_amino_acid_sequences;')
-
     profile_db.remove_meta_key_value_pair('version')
     profile_db.set_version(next_version)
     profile_db.disconnect()
