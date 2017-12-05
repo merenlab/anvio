@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import time
+import h5py
+import shutil
+import argparse
+import anvio.db as db
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError
+
+current_version = '4'
+next_version    = '5'
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_completion', 'percent_redundancy',
+                         'genes_are_called', 'avg_gene_length', 'num_genes_per_kb', ]
+
+gene_function_calls_table_name         = 'gene_functions'
+gene_function_calls_table_structure    = ['entry_id', 'gene_callers_id', 'source', 'accession', 'function', 'e_value']
+gene_function_calls_table_types        = [ 'numeric',     'numeric'    ,  'text' ,    'text'  ,   'text'  , 'numeric']
+
+genome_info_table_name       = 'genome_info'
+genome_info_table_structure  = ['genome_name', 'genome_hash', 'external_genome'] + essential_genome_info
+genome_info_table_types      = [    'str'    ,      'str'   ,     'numeric'    ] + ['numeric'] * len(essential_genome_info)
+
+gene_info_table_name       = 'gene_info'
+gene_info_table_structure  = ['genome_name', 'gene_caller_id', 'aa_sequence', 'dna_sequence', 'partial', 'length' ]
+gene_info_table_types      = [    'str'    ,     'numeric'   ,    'text'    ,     'text'    , 'numeric', 'numeric']
+
+genome_gene_function_calls_table_name      = 'gene_function_calls'
+genome_gene_function_calls_table_structure = ['genome_name', ] + gene_function_calls_table_structure[:]
+genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_calls_table_types[:]
+
+
+def update_genomes_storage(genomes_storage_path):
+    if genomes_storage_path is None:
+        raise ConfigError("No database path is given.")
+
+    fp = h5py.File(genomes_storage_path, 'r')
+
+    if fp.attrs['version'] != current_version:
+        fp.close()
+        raise ConfigError("Genome storage version is not %s." % current_version)
+
+    run.info("Auxiliary database found", genomes_storage_path)
+
+    genome_storage_db_path = genomes_storage_path[:-3] + '.db'
+    filesnpaths.is_output_file_writable(genome_storage_db_path, ok_if_exists=False)
+
+    backup_genomes_storage_path = genomes_storage_path + '.v4'
+    shutil.copyfile(genomes_storage_path, backup_genomes_storage_path)
+
+    run.info("Backup file created", backup_genomes_storage_path)
+
+    genomes_db = db.DB(genome_storage_db_path, next_version, new_database=True)
+    genomes_db.create_table(genome_info_table_name, genome_info_table_structure, genome_info_table_types)
+    genomes_db.create_table(gene_info_table_name, gene_info_table_structure, gene_info_table_types)
+    genomes_db.create_table(genome_gene_function_calls_table_name, genome_gene_function_calls_table_structure, genome_gene_function_calls_table_types)
+    genomes_db.set_meta_value('db_type', 'genomes data storage')
+    genomes_db.set_meta_value('creation_date', time.time())
+    genomes_db.set_meta_value('functions_are_available', False)
+
+    run.info("New auxiliary database path", genome_storage_db_path)    
+
+    I = lambda genome_name, key: fp['/info/genomes/%s/%s' % (genome_name, key)].value 
+
+    genome_names = [d for d in fp['/info/genomes']]
+
+    progress.new('Adding genomes')
+    genome_info_entries = []
+    for genome_name in genome_names:
+        values = (genome_name, )
+
+        for column_name in genome_info_table_structure[1:]:
+            attr = I(genome_name, column_name)
+            values += (attr, )
+
+        genome_info_entries.append(values)
+    genomes_db.insert_many(genome_info_table_name, entries=genome_info_entries)
+    del genome_info_entries
+    progress.end()
+
+    progress.new('Adding genes')
+    gene_entries = []
+    for genome_name in genome_names:
+        for gene_callers_id in fp['/data/genomes/%s' % genome_name]:
+            G = lambda key: fp['/data/genomes/%s/%s/%s' % (genome_name, gene_callers_id, key)].value 
+            gene_entries.append((genome_name, gene_callers_id, G('aa_sequence'), G('dna_sequence'), int(G('partial')), int(G('length')), ))
+    genomes_db.insert_many(gene_info_table_name, entries=gene_entries)
+
+
+    genomes_db.disconnect()
+    progress.end()
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='A simple script to upgrade genomes storage from version %s to version %s' % (current_version, next_version))
+    parser.add_argument('genomes_storage', metavar = 'GENOMES_STORAGE', help = "An anvi'o genomes storage of version %s" % current_version)
+    args = parser.parse_args()
+
+    try:
+        update_genomes_storage(args.genomes_storage)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
