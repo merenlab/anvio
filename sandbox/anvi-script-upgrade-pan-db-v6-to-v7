@@ -1,0 +1,130 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+
+import anvio.db as db
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+current_version = '6'
+next_version    = '7'
+
+
+def update_pan_db(pan_db_path, just_do_it = False):
+    if pan_db_path is None:
+        raise ConfigError("No database path is given.")
+
+    # make sure someone is not being funny
+    dbops.is_pan_db(pan_db_path)
+
+    # make sure the version is accurate
+    pan_db = db.DB(pan_db_path, None, ignore_version = True)
+    if str(pan_db.get_version()) != current_version:
+        raise ConfigError("Version of this pan database is not %s (hence, this script cannot really do anything)." % current_version)
+
+    if not just_do_it:
+        try:
+            run.warning("This script will upgrade your pan database from v%s to v%s. Why this update became necessary is detailed here:\
+                         https://github.com/merenlab/anvio/issues/644. Basically every occurrence of 'PCs' or 'protein clusters' in your\
+                         databse will become 'gene clusters' clean. Feel free to use the older notation in your manuscripts in case the\
+                         arguments laid out in the URL above do not apply to your study. You can just press ENTER to continue. If you\
+                         want to cancel the upgrade and think more about it, press CTRL+C now. If you want to avoid this message the\
+                         next time, use '--just-do-it'." % (current_version, next_version))
+            input("Press ENTER to continue...\n")
+        except:
+            print()
+            sys.exit()
+
+    progress.new("Trying to upgrade the pan database")
+    progress.update('...')
+
+    # update keys
+    for old_key, new_key in [('maxbit', 'minbit')]:
+        try:
+            pan_db.set_meta_value(new_key, pan_db.get_meta_value(old_key))
+        except:
+            pass
+
+    # remove stuff that are not irrelevant
+    try:
+        pan_db.remove_meta_key_value_pair('maxbit')
+    except:
+        pass
+
+
+    # take care of the self table
+    self_table = pan_db.get_table_as_list_of_tuples('self')
+    pan_db.cursor.execute('ALTER TABLE self RENAME TO self_TEMP;')
+    pan_db.cursor.execute('CREATE TABLE self (key text, value text);')
+
+    for key, val in self_table:
+        new_key = key.replace('PC', 'gene_cluster').replace('pc', 'gene_cluster')
+        new_val = val.replace('PC', 'gene_cluster').replace('pc', 'gene_cluster')
+
+        pan_db.set_meta_value(new_key, new_val)
+
+    pan_db.cursor.execute('DROP TABLE self_TEMP;')
+
+    # take care of the views table
+    views_table = pan_db.get_table_as_list_of_tuples('views')
+    pan_db.cursor.execute('ALTER TABLE views RENAME TO views_TEMP;')
+    pan_db.cursor.execute('CREATE TABLE views (view_id str, target_table str);')
+
+    values = []
+    for view, target in views_table:
+        new_view = view.replace('PC', 'gene_cluster').replace('pc', 'gene_cluster')
+        new_target = target.replace('PC', 'gene_cluster').replace('pc', 'gene_cluster')
+        values.append((new_view, new_target),)
+
+    pan_db.insert_many('views', values)
+
+    pan_db.cursor.execute('DROP TABLE views_TEMP;')
+
+    # rename tables
+    pan_db._exec('ALTER TABLE PC_frequencies RENAME TO gene_cluster_frequencies;')
+    pan_db._exec('ALTER TABLE PC_presence_absence RENAME TO gene_cluster_presence_absence;')
+    pan_db._exec('ALTER TABLE protein_clusters RENAME TO gene_clusters;')
+
+
+    # protein_cluster_id -> gene_cluster_id in table gene_clusters.
+    pan_db.cursor.execute('ALTER TABLE gene_clusters RENAME TO gene_clusters_TEMP;')
+    pan_db.cursor.execute('CREATE TABLE gene_clusters (entry_id numeric, gene_caller_id numeric, gene_cluster_id str, genome_name str, alignment_summary str);')
+    pan_db.cursor.execute('INSERT INTO gene_clusters(entry_id, gene_caller_id, gene_cluster_id, genome_name, alignment_summary) SELECT entry_id, gene_caller_id, protein_cluster_id, genome_name, alignment_summary FROM gene_clusters_TEMP;')
+    pan_db.cursor.execute('DROP TABLE gene_clusters_TEMP;')
+
+    # commit
+    try:
+        pan_db._exec('COMMIT')
+    except:
+        pass
+
+    # set the version
+    pan_db.remove_meta_key_value_pair('version')
+    pan_db.set_version(next_version)
+
+    # bye
+    pan_db.disconnect()
+    progress.end()
+
+    run.info_single('Done! Your pan db is now %s.' % next_version)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='A simple script to upgrade pan database from version %s to version %s' % (current_version, next_version))
+    parser.add_argument('pan_db', metavar = 'PAN_DB', help = "An anvi'o pan database of version %s" % current_version)
+    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
+    args = parser.parse_args()
+
+    try:
+        update_pan_db(args.pan_db, just_do_it = args.just_do_it)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
