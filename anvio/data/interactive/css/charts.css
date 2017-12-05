@@ -328,3 +328,6 @@ tr:nth-child(odd) {
     background-color: #FFFFFF;
 }
 
+.borderless td, .borderless th {
+    border: none;
+}
