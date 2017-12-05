@@ -36,6 +36,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
+pd.options.display.max_columns=100
 pp = terminal.pretty_print
 progress = terminal.Progress()
 run = terminal.Run(width=62)
@@ -395,37 +396,71 @@ class VariabilitySuper(object):
 
 
     def insert_additional_fields(self, entry_ids=[]):
+        """
+        This calculates the following columns: consensus, n2n1 ratio, competing_aas,
+        departure_from_consensus, and all substitution scoring matrices.
+
+        NOTE For defining the "consensus" column and the "competing_aas" column (or related column
+        for different --engine values), it is important to make it explict how we resolve ties. If
+        you finish reading this comment and still do not understand, then I have failed you. It's
+        an issue because suppose Ala and Trp are tied for sharing the most reads. Is the consensus
+        Ala or Trp? Is competing_aas AlaTrp or TrpAla? In a separate example, if Ser is most
+        common and Gly and Glu are tied for second, should Gly or Glu be a part of competing_aas
+        and should it be GlxSer or SerGlx? There are three rules that define our conventions:
+
+            1. Competing_aas ALWAYS appear in alphabetical order. Even if Cys is most common, and
+               Ala is second most commond, competing_aas = AlaCys.  
+            2. Ties are always resolved alphabetically. If there is a 3-way tie for second between
+               His, Met, and Thr, the item including in competing_aas will be His.
+            3. If the coverage of the second-most common item is 0, the most common is paired with
+               itself.
+
+        NOTE if the coverage is 0 (which is stupid, but it can exist if both
+        --min-coverage-in-each-sample is 0 and --quince-mode is active), departure_from_consensus
+        and n2n1ratio are set to 0.
+        """
+
+        # First, we just make sure that whatever operations we have performed on self.data, we have
+        # not altered the types of coverage values from int. I am learning that with pandas
+        # DataFrames, it is WORTH being explicit with types, even at the cost of redundancy.
+        self.data.loc[:, self.items] = self.data.loc[:, self.items].astype(int)
 
         if not len(entry_ids):
             entry_ids = list(self.data.index)
 
-        # index those with and without non-zero coverage
+        # index entries with and without non-zero coverage (introduced by --quince-mode)
         coverage_zero = self.data.index.isin(entry_ids) & (self.data["coverage"] == 0)
         coverage_nonzero = self.data.index.isin(entry_ids) & (self.data["coverage"] > 0)
 
-        argsorted_coverage = np.argsort(self.data.loc[entry_ids, self.items].values, axis=1)
-        sorted_coverage = np.sort(self.data.loc[entry_ids, self.items].values, axis=1)
+        # rank the items of each entry from 1 - 21 (for --engine AA) based on item coverage.
+        # method="first" ensures alphabetic ordering in the case of ties. Convert the rank DataFrame
+        # into a numpy array, and find the order of indices that sort each entry's items based on
+        # their ranks. type(ranks) = pd.DataFrame, type(item_index_order) = numpy array
+        ranks = self.data.loc[entry_ids, self.items].rank(ascending=False, axis=1, method="first").astype(int)
+        item_index_order = np.argsort(ranks.values, axis=1)
 
-        # NOTE FIXME If there is a tie in coverage between either the most common or second most common, I don't
-        # understand which item is picked. Ideally it would be alphabetically but it seems to be random.
-        items_first =  self.data.loc[entry_ids, self.items].columns[argsorted_coverage][:,-1]
-        items_second = self.data.loc[entry_ids, self.items].columns[argsorted_coverage][:,-2]
+        # the first and second most common items, according to the 2nd convention in the docstring,
+        # are now defined for each entry in two pandas Series.
+        items_first  = self.data.loc[entry_ids, self.items].columns[item_index_order[:,0]]
+        items_second = self.data.loc[entry_ids, self.items].columns[item_index_order[:,1]]
+
+        # we also calculate the coverage values for the first and second most common items
+        sorted_coverage = np.sort(self.data.loc[entry_ids, self.items].values, axis=1)
         coverages_first =  pd.Series(sorted_coverage[:,-1], index=self.data.loc[entry_ids].index)
         coverages_second = pd.Series(sorted_coverage[:,-2], index=self.data.loc[entry_ids].index)
 
         self.data.loc[entry_ids, "consensus"] = items_first
 
-        # if the coverage is zero, departure_from_consensus = -1
-        self.data.loc[coverage_zero, "departure_from_consensus"] = -1
+        # if the coverage is zero, departure_from_consensus = 0
+        self.data.loc[coverage_zero, "departure_from_consensus"] = 0
         self.data.loc[coverage_nonzero, "departure_from_consensus"] = \
                     (self.data.loc[coverage_nonzero, "coverage"] - coverages_first) / self.data.loc[coverage_nonzero, "coverage"]
 
-        # if the coverage is zero, n2n1ratio = -1
-        self.data.loc[coverage_zero, "n2n1ratio"] = -1
+        # if the coverage is zero, n2n1ratio = 0
+        self.data.loc[coverage_zero, "n2n1ratio"] = 0
         self.data.loc[coverage_nonzero, "n2n1ratio"] = coverages_second[coverage_nonzero] / coverages_first[coverage_nonzero]
 
         if self.engine == 'AA':
-
             # first naively concatenate the first and second most common
             self.data.loc[entry_ids, "competing_aas"] = items_first + items_second
             # if the most common has a coverage equal to the total coverage, pair the most common with itself
@@ -687,7 +722,7 @@ class VariabilitySuper(object):
             # item, pj is the frequency of the jth item, and S_{i,j} is the substitution matrix score for the i->j
             # substitution. If you remember, we already set i=j entries to zero so they contribute zero weight to
             # the score.
-            self.data.loc[keep, SMM + "weighted"] = normalization * np.sum(freq_table[np.newaxis, :].T * freq_table[:, np.newaxis].T * matrix, axis=(1,2))
+            self.data.loc[keep, SMM + "_weighted"] = normalization * np.sum(freq_table[np.newaxis, :].T * freq_table[:, np.newaxis].T * matrix, axis=(1,2))
 
         if not self.quince_mode:
             self.progress.end()
@@ -1078,14 +1113,26 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
                     next_available_entry_id += 1
 
-        # convert to pandas DataFrame (its faster to build and convert a dictionary than to build DataFrame row by row)
+        # convert to pandas DataFrame (its faster to build and convert a dictionary than to build
+        # DataFrame row by row).
         new_entries = pd.DataFrame(new_entries).T
+
+        # before concatenating the new entries, store the self.data column order. Also, check that
+        # no columns exist in new_entries but not in self.data. This is unacceptable, and could have
+        # happened if code for new_entries was changed or if the workflow in process() is
+        # significantly reworked.
+        column_order = self.data.columns.tolist()
+        if len([x for x in new_entries.columns.tolist() if x not in self.data.columns.tolist()]):
+            raise ValueError("Columns found in new_entries exist that aren't in self.data.")
 
         # concatenate new columns to self.data
         self.data = pd.concat([self.data, new_entries])
         new_entries.set_index("entry_id", drop=False, inplace=True)
+        self.data = self.data[column_order]
 
-        # fill in additional fields for new entries
+        # fill in additional fields for new entries. insert_additional_fields takes a list of
+        # entry_ids to consider for self.data, which here is provided from new_entries (what I'm
+        # saying is new_entries is not passed, only the entry_id's in new_entries
         self.insert_additional_fields(list(new_entries["entry_id"]))
 
         self.progress.end()
