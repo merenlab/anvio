@@ -122,7 +122,7 @@ function loadAll() {
 
 
 function showSetMaxValuesDialog() {
-    var table = '<table class="table borderless"><thead class="thead-light"><tr><th>Sample</th><th>Max Coverage</th></tr></thead><tbody>';
+    var table = '<table class="table borderless"><thead class="thead-light"><tr><th>Sample</th><th>Max Coverage</th><th>Limit Max Coverage</th></tr></thead><tbody>';
 
     var _state = JSON.parse(state);
     var max_coverage_values;
@@ -137,15 +137,17 @@ function showSetMaxValuesDialog() {
         var layer_index = layers.indexOf(layer_name);
 
         if (parseFloat(_state['layers'][layer_name]['height']) > 0) {
-            var max_val;
+            var max_val
+            var actual_max_val = Math.max.apply(null, coverage[layer_index]);;
             if (has_max_coverage_values) {
                 max_val = max_coverage_values[j];
             } else {
-                max_val = Math.max(20, Math.max.apply(null, coverage[layer_index]));
+                max_val = 0;
             }
     
             table += '<tr> \
                         <td>' + layer_name + '</td> \
+                        <td>' + actual_max_val + '</td> \
                         <td style="text-align: center;"><input type="text" size="5" value="' + max_val + '"/></td> \
                       </tr>';
 
@@ -241,12 +243,10 @@ function createCharts(state){
         if (parseFloat(state['layers'][layers_ordered[i]]['height']) == 0)
           continue;
 
-        var max_coverage_val = (typeof sessionStorage.max_coverage !== 'undefined') ? sessionStorage.max_coverage[j] : -1;
-
         charts.push(new Chart({
                         name: layers[layer_index],
                         coverage: coverage[layer_index],
-                        max_coverage: (has_max_coverage_values) ? max_coverage_values[j] : -1,
+                        max_coverage: (has_max_coverage_values) ? max_coverage_values[j] : 0,
                         variability_a: variability[layer_index][0],
                         variability_b: variability[layer_index][1],
                         variability_c: variability[layer_index][2],
@@ -370,7 +370,7 @@ function Chart(options){
 
     // this.max_coverage comes from options, -1 means not available
     // this.maxCoverage used in charts
-    if (this.max_coverage == -1) {
+    if (this.max_coverage == 0) {
         this.maxCoverage = Math.max(20, Math.max.apply(null, this.coverage));
     } else {
         this.maxCoverage = this.max_coverage;
