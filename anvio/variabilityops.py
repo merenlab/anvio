@@ -287,19 +287,28 @@ class VariabilitySuper(object):
             self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
             self.sample_ids = sorted(list(self.samples_of_interest))
             self.progress.new('Filtering based on samples of interest')
+            entries_before = len(self.data.index)
             self.data = self.data.loc[self.data["sample_id"].isin(self.samples_of_interest)]
+            entries_after = len(self.data.index)
+            self.report_removed_entries_from_data(entries_before, entries_after, reason="samples of interest")
             self.progress.end()
 
         if self.genes_of_interest:
             self.run.info('Num genes of interest', pp(len(self.genes_of_interest)))
             self.progress.new('Filtering based on genes of interest')
+            entries_before = len(self.data.index)
             self.data = self.data.loc[self.data["corresponding_gene_call"].isin(self.genes_of_interest)]
+            entries_after = len(self.data.index)
+            self.report_removed_entries_from_data(entries_before, entries_after, reason="genes of interest")
             self.progress.end()
 
         if self.splits_of_interest:
             self.run.info('Num splits of interest', pp(len(self.splits_of_interest)))
             self.progress.new('Filtering based on splits of interest')
+            entries_before = len(self.data.index)
             self.data = self.data.loc[self.data["split_name"].isin(self.splits_of_interest)]
+            entries_after = len(self.data.index)
+            self.report_removed_entries_from_data(entries_before, entries_after, reason="splits of interest")
             self.progress.end()
 
         # let's report the number of positions reported in each sample before filtering any further:
@@ -309,13 +318,19 @@ class VariabilitySuper(object):
         if self.min_departure_from_reference:
             self.run.info('Min departure from reference', self.min_departure_from_reference)
             self.progress.new('Filtering based on min departure from reference')
+            entries_before = len(self.data.index)
             self.data = self.data.loc[self.data["departure_from_reference"] >= self.min_departure_from_reference]
+            entries_after = len(self.data.index)
+            self.report_removed_entries_from_data(entries_before, entries_after, reason="min departure from reference")
             self.progress.end()
 
         if self.max_departure_from_reference < 1:
             self.run.info('Max departure from reference', self.max_departure_from_reference)
             self.progress.new('Filtering based on max departure from reference')
+            entries_before = len(self.data.index)
             self.data = self.data.loc[self.data["departure_from_reference"] <= self.max_departure_from_reference]
+            entries_after = len(self.data.index)
+            self.report_removed_entries_from_data(entries_before, entries_after, reason="max departure from reference")
             self.progress.end()
 
         if self.engine == 'NT':
@@ -336,8 +351,11 @@ class VariabilitySuper(object):
 
         self.progress.update('counting occurrences of each position across samples ...')
 
-        occurrences = self.data.unique_pos_identifier_str.value_counts()
-        self.data = self.data[self.data.unique_pos_identifier_str.isin(occurrences[occurrences >= self.min_occurrence].index)]
+        occurrences = self.data["unique_pos_identifier_str"].value_counts()
+        entries_before = len(self.data.index)
+        self.data = self.data[self.data["unique_pos_identifier_str"].isin(occurrences[occurrences >= self.min_occurrence].index)]
+        entries_after = len(self.data.index)
+        self.report_removed_entries_from_data(entries_before, entries_after, reason="min occurrence")
         self.progress.end()
 
 
