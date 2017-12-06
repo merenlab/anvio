@@ -267,7 +267,7 @@ class VariabilitySuper(object):
             self.data = self.data[self.data['departure_from_consensus'] >= self.min_departure_from_consensus]
             entries_after = len(self.data.index)
             self.progress.end()
-            self.report_removed_entries_from_data(entries_before, entries_after, reason="min departure from consensus")
+            self.report_change_in_entry_number(entries_before, entries_after, reason="min departure from consensus")
 
         if self.max_departure_from_consensus < 1:
             self.run.info('Max departure from consensus', self.max_departure_from_consensus)
@@ -276,7 +276,7 @@ class VariabilitySuper(object):
             self.data = self.data[self.data['departure_from_consensus'] <= self.max_departure_from_consensus]
             entries_after = len(self.data.index)
             self.progress.end()
-            self.report_removed_entries_from_data(entries_before, entries_after, reason="max departure from consensus")
+            self.report_change_in_entry_number(entries_before, entries_after, reason="max departure from consensus")
 
         self.check_if_data_is_empty()
 
@@ -301,7 +301,7 @@ class VariabilitySuper(object):
             self.data = self.data.loc[self.data["sample_id"].isin(self.samples_of_interest)]
             entries_after = len(self.data.index)
             self.progress.end()
-            self.report_removed_entries_from_data(entries_before, entries_after, reason="samples of interest")
+            self.report_change_in_entry_number(entries_before, entries_after, reason="samples of interest")
 
         if self.genes_of_interest:
             self.run.info('Num genes of interest', pp(len(self.genes_of_interest)))
@@ -310,7 +310,7 @@ class VariabilitySuper(object):
             self.data = self.data.loc[self.data["corresponding_gene_call"].isin(self.genes_of_interest)]
             entries_after = len(self.data.index)
             self.progress.end()
-            self.report_removed_entries_from_data(entries_before, entries_after, reason="genes of interest")
+            self.report_change_in_entry_number(entries_before, entries_after, reason="genes of interest")
 
         if self.splits_of_interest:
             self.run.info('Num splits of interest', pp(len(self.splits_of_interest)))
@@ -319,7 +319,7 @@ class VariabilitySuper(object):
             self.data = self.data.loc[self.data["split_name"].isin(self.splits_of_interest)]
             entries_after = len(self.data.index)
             self.progress.end()
-            self.report_removed_entries_from_data(entries_before, entries_after, reason="splits of interest")
+            self.report_change_in_entry_number(entries_before, entries_after, reason="splits of interest")
 
         # let's report the number of positions reported in each sample before filtering any further:
         num_positions_each_sample = dict(self.data.sample_id.value_counts())
@@ -332,7 +332,7 @@ class VariabilitySuper(object):
             self.data = self.data.loc[self.data["departure_from_reference"] >= self.min_departure_from_reference]
             entries_after = len(self.data.index)
             self.progress.end()
-            self.report_removed_entries_from_data(entries_before, entries_after, reason="min departure from reference")
+            self.report_change_in_entry_number(entries_before, entries_after, reason="min departure from reference")
 
         if self.max_departure_from_reference < 1:
             self.run.info('Max departure from reference', self.max_departure_from_reference)
@@ -341,7 +341,7 @@ class VariabilitySuper(object):
             self.data = self.data.loc[self.data["departure_from_reference"] <= self.max_departure_from_reference]
             entries_after = len(self.data.index)
             self.progress.end()
-            self.report_removed_entries_from_data(entries_before, entries_after, reason="max departure from reference")
+            self.report_change_in_entry_number(entries_before, entries_after, reason="max departure from reference")
 
         if self.engine == 'NT':
             self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
@@ -366,7 +366,7 @@ class VariabilitySuper(object):
         self.data = self.data[self.data["unique_pos_identifier_str"].isin(occurrences[occurrences >= self.min_occurrence].index)]
         entries_after = len(self.data.index)
         self.progress.end()
-        self.report_removed_entries_from_data(entries_before, entries_after, reason="min occurrence")
+        self.report_change_in_entry_number(entries_before, entries_after, reason="min occurrence")
 
 
     def set_unique_pos_identification_numbers(self):
@@ -544,13 +544,19 @@ class VariabilitySuper(object):
         self.remove_entries_from_data(entry_ids_to_remove, reason="minimum scatter")
 
 
-    def report_removed_entries_from_data(self, num_before, num_after, reason="unknown reason"):
-        """Just tells people how many were there before and after a filtering step"""
+    def report_change_in_entry_number(self, num_before, num_after, reason="unknown reason", added=False):
+        """
+        Reports how many entries were removed during a filtering step. If added=True, then it
+        reports the number gained (quince mode)
+        """
+        changed = "removed" if not added else "added"
 
-        self.run.info('Remaining entries after "%s"' % (reason),
-                      '%s (%s were removed)' % (pp(num_after),
-                                               pp(num_before - num_after)),
+        self.run.info('Entries after "%s"' % (reason),
+                      '%s (%s were %s)' % (pp(num_after),
+                                           pp(abs(num_before - num_after)),
+                                           changed),
                       mc='green')
+
         self.check_if_data_is_empty()
 
 
@@ -581,7 +587,7 @@ class VariabilitySuper(object):
 
         self.progress.end()
 
-        self.report_removed_entries_from_data(num_entries_before, num_entries_after, reason="min cov for all samples")
+        self.report_change_in_entry_number(num_entries_before, num_entries_after, reason="min cov for all samples")
 
 
     def filter_based_on_num_positions_from_each_split(self):
@@ -604,7 +610,7 @@ class VariabilitySuper(object):
         entries_after = len(self.data.index)
 
         self.progress.end()
-        self.report_removed_entries_from_data(entries_before, entries_after, reason="num positions each split")
+        self.report_change_in_entry_number(entries_before, entries_after, reason="num positions each split")
 
 
     def compute_comprehensive_variability_scores(self):
@@ -1139,9 +1145,11 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
             raise ValueError("Columns found in new_entries exist that aren't in self.data.")
 
         # concatenate new columns to self.data
+        entries_before = len(self.data.index)
         self.data = pd.concat([self.data, new_entries])
         new_entries.set_index("entry_id", drop=False, inplace=True)
         self.data = self.data[column_order]
+        entries_after = len(self.data.index)
 
         # fill in additional fields for new entries. insert_additional_fields takes a list of
         # entry_ids to consider for self.data, which here is provided from new_entries (what I'm
@@ -1149,6 +1157,8 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.insert_additional_fields(list(new_entries["entry_id"]))
 
         self.progress.end()
+
+        self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode", added=True)
 
 
 class ConsensusSequences(VariableNtPositionsEngine, VariableAAPositionsEngine):
