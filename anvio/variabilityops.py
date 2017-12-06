@@ -552,9 +552,9 @@ class VariabilitySuper(object):
         changed = "removed" if not added else "added"
 
         self.run.info('Entries after "%s"' % (reason),
-                      '%s (%s were %s)' % (pp(num_after),
-                                           pp(abs(num_before - num_after)),
-                                           changed),
+                         '%s (%s were %s)' % (pp(num_after),
+                                              pp(abs(num_before - num_after)),
+                                              changed),
                       mc='green')
 
         self.check_if_data_is_empty()
