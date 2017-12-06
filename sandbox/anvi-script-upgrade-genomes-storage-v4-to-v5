@@ -68,7 +68,7 @@ def update_genomes_storage(genomes_storage_path):
 
     run.info("New auxiliary database path", genome_storage_db_path)    
 
-    I = lambda genome_name, key: fp['/info/genomes/%s/%s' % (genome_name, key)].value 
+    I = lambda genome_name, key: fp['/info/genomes/%s/%s' % (genome_name, key)]
 
     genome_names = [d for d in fp['/info/genomes']]
 
@@ -79,7 +79,13 @@ def update_genomes_storage(genomes_storage_path):
 
         for column_name in genome_info_table_structure[1:]:
             attr = I(genome_name, column_name)
-            values += (attr, )
+
+            if attr.dtype == 'int64':
+                values += (int(attr.value), )
+            elif attr.dtype == 'float64':
+                values += (float(attr.value), )
+            else:
+                values += ((attr.value), )
 
         genome_info_entries.append(values)
     genomes_db.insert_many(genome_info_table_name, entries=genome_info_entries)
