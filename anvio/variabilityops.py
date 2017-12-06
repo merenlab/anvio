@@ -516,43 +516,13 @@ class VariabilitySuper(object):
         self.remove_entries_from_data(entry_ids_to_remove, reason="minimum scatter")
 
 
-    def remove_entries_from_data(self, entry_ids_to_remove=set([]), reason="unknown reason"):
-        """Safely remove entries from self.data"""
-
-        if not entry_ids_to_remove:
-            return
-
-        self.progress.new('Data removal for "%s"' % reason)
-        self.progress.update('...')
-
-        num_entries_before = len(self.data)
-
-        # when data is removed, one of the dictionaries to also update is `self.unique_pos_id_to_entry_id`,
-        # however, not at all stages of the process this dictionary is present. hence, we need to determine
-        # whether we need to work with it early on:
-        unique_pos_id_to_entry_id_needs_updating = 'unique_pos_identifier_str' in self.data[next(iter(entry_ids_to_remove))]
-
-        self.progress.update('removing %s entries from data...' % pp(len(entry_ids_to_remove)))
-        unique_pos_ids_to_remove = set([])
-        for entry_id in entry_ids_to_remove:
-            if unique_pos_id_to_entry_id_needs_updating:
-                unique_pos_ids_to_remove.add(self.data[entry_id]['unique_pos_identifier_str'])
-            self.data.pop(entry_id)
-
-        if self.unique_pos_id_to_entry_id:
-            self.progress.update('removing %s unique positions...' % pp(len(unique_pos_ids_to_remove)))
-            for unique_pos_id in unique_pos_ids_to_remove:
-                self.unique_pos_id_to_entry_id.pop(unique_pos_id)
-
-        num_entries_after = len(self.data)
-
-        self.progress.end()
+    def report_removed_entries_from_data(self, num_before, num_after, reason="unknown reason"):
+        """Just tells people how many were there before and after a filtering step"""
 
         self.run.info('Remaining entries after "%s"' % (reason),
-                      '%s (%s was removed)' % (pp(num_entries_after),
-                                               pp(num_entries_before - num_entries_after)),
+                      '%s (%s was removed)' % (pp(num_after),
+                                               pp(num_before - num_after)),
                       mc='green')
-
         self.check_if_data_is_empty()
 
 
@@ -568,10 +538,22 @@ class VariabilitySuper(object):
         self.progress.new('Examining coverage of each variable position in each sample')
         self.progress.update('...')
 
-        pos_to_keep = self.data.loc[self.data["coverage"] >= self.min_coverage_in_each_sample, "unique_pos_identifier"].unique()
+        num_entries_before = len(self.data.index)
+
+        # get the minimum coverage for each unique_pos_identifier
+        min_cov_each_pos = self.data.groupby("unique_pos_identifier")["coverage"].min()
+
+        # get a list of all unique_pos_identifiers with min cov > self.min_coverage_in_each_sample].index
+        pos_to_keep = list(min_cov_each_pos[min_cov_each_pos >= self.min_coverage_in_each_sample].index)
+
+        # only include entries with unique_pos_identifier in pos_to_keep
         self.data = self.data[self.data["unique_pos_identifier"].isin(pos_to_keep)]
 
+        num_entries_after = len(self.data.index)
+
         self.progress.end()
+
+        self.report_removed_entries_from_data(num_entries_before, num_entries_after, reason="min cov for all samples")
 
 
     def filter_based_on_num_positions_from_each_split(self):
