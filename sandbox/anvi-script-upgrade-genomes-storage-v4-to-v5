@@ -99,7 +99,22 @@ def update_genomes_storage(genomes_storage_path):
             G = lambda key: fp['/data/genomes/%s/%s/%s' % (genome_name, gene_callers_id, key)].value 
             gene_entries.append((genome_name, gene_callers_id, G('aa_sequence'), G('dna_sequence'), int(G('partial')), int(G('length')), ))
     genomes_db.insert_many(gene_info_table_name, entries=gene_entries)
+    del gene_entries
+    progress.end()
 
+    progress.new('Adding functions')
+    functions_entries = []
+    entry_id_counter = 0
+    for genome_name in genome_names:
+        for gene_callers_id in fp['/data/genomes/%s' % genome_name]:
+            functions_path = '/data/genomes/%s/%s/functions' % (genome_name, gene_callers_id)
+            if functions_path in fp:
+                for source in fp[functions_path]:
+                    annotation_list = fp['/data/genomes/%s/%s/functions/%s' % (genome_name, gene_callers_id, source)].value.split('|||')
+
+                    functions_entries.append((genome_name, entry_id_counter, gene_callers_id, source, annotation_list[0], annotation_list[1], 0, ))
+                    entry_id_counter += 1
+    genomes_db.insert_many(genome_gene_function_calls_table_name, entries=functions_entries)
 
     genomes_db.disconnect()
     progress.end()
