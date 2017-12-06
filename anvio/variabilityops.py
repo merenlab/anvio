@@ -262,11 +262,21 @@ class VariabilitySuper(object):
     def apply_advanced_filters(self):
         if self.min_departure_from_consensus:
             self.run.info('Min departure from consensus', self.min_departure_from_consensus)
+            self.progress.new('Filtering based on min departure from consensus')
+            entries_before = len(self.data.index)
             self.data = self.data[self.data['departure_from_consensus'] >= self.min_departure_from_consensus]
+            entries_after = len(self.data.index)
+            self.report_removed_entries_from_data(entries_before, entries_after, reason="min departure from consensus")
+            self.progress.end()
 
         if self.max_departure_from_consensus < 1:
             self.run.info('Max departure from consensus', self.max_departure_from_consensus)
+            self.progress.new('Filtering based on max departure from consensus')
+            entries_before = len(self.data.index)
             self.data = self.data[self.data['departure_from_consensus'] <= self.max_departure_from_consensus]
+            entries_after = len(self.data.index)
+            self.report_removed_entries_from_data(entries_before, entries_after, reason="max departure from consensus")
+            self.progress.end()
 
         self.check_if_data_is_empty()
 
@@ -588,9 +598,13 @@ class VariabilitySuper(object):
         subsample_func = lambda x: pd.Series(x.unique()) if len(x.unique()) <= self.num_positions_from_each_split else\
                                    pd.Series(np.random.choice(x.unique(), size=self.num_positions_from_each_split, replace=False))
         unique_positions_to_keep = self.data.groupby('split_name')['unique_pos_identifier'].apply(subsample_func)
+
+        entries_before = len(self.data.index)
         self.data = self.data[self.data['unique_pos_identifier'].isin(unique_positions_to_keep)]
+        entries_after = len(self.data.index)
 
         self.progress.end()
+        self.report_removed_entries_from_data(entries_before, entries_after, reason="num positions each split")
 
 
     def compute_comprehensive_variability_scores(self):
