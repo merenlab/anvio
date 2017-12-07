@@ -129,6 +129,9 @@ class BLAST:
         if self.names_dict:
             self.ununique_search_results()
 
+        # show user that log-file has been created
+        self.run.info('BLASTP log', self.run.log_file_path)
+
         self.run.info('BLASTP results', self.search_output_path)
 
 

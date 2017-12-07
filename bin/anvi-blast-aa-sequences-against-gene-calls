@@ -73,18 +73,20 @@ if __name__ == '__main__':
     parser.add_argument('query_fasta', help="A FASTA file of query amino acid sequences.")
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'), required=True)
-    parser.add_argument("--evalue", metavar="BLAST", default="1e-5", help=\
-    """specify the -evalue parameter for BLAST. The default is set to "1e-5".
-    If you're sad that you don't see any hits, you can try increasing that
-    value, understanding that the quality of alignment decreases with
-    increasing --evalue.""")
+    parser.add_argument("--evalue", metavar="BLAST", default="1e-5", type=float, help=\
+    """specify the -evalue parameter for BLAST. If you don't know what this is, you can find out
+    here: https://blast.ncbi.nlm.nih.gov/blast/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=FAQ.
+    The default is set to 1e-5. If you're sad that you don't see any hits, you can try increasing
+    the value, understanding that the quality of alignment decreases with increasing --evalue.
+    Should be expressed in scientific notation (e.g. 1e-10) or as a decimal (e.g. 0.0001).""")
     parser.add_argument("--out-fmt", metavar="BLAST", default="6", help=\
-    """specify the -outfmt parameter for BLAST. The default is 6 which creates a
-    tabularized output. For a complete list of options here's some easy to digest documentation:
-    http://www.metagenomics.wiki/tools/blast/blastn-output-format-6. Here is a table format I like: 
-    "6 qseqid sseqid pident qlen length mismatch gapopen qstart qend sstart send evalue bitscore".""")
+    """specify the -outfmt parameter for BLAST. The default is 6 which creates a tabularized output.
+    For a complete list of options here's some easy to digest documentation:
+    http://www.metagenomics.wiki/tools/blast/blastn-output-format-6. Here is a table format I like:
+    "6 qseqid sseqid pident qlen length mismatch gapopen qstart qend sstart send evalue bitscore"
+    (Don't forget the quotation marks).""")
 
-    args = parser.parse_args() 
+    args = parser.parse_args()
 
     try:
         main(args)
