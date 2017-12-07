@@ -339,6 +339,16 @@ class SequencesForHMMHits:
         if min_num_bins_gene_occurs < 0:
             raise ConfigError("But the minimum number of bins a gene is expected to be found can't be a negative value now. Right? :/")
 
+        all_bins = set([])
+
+        for entry in hmm_sequences_dict_for_splits.values():
+            all_bins.add(entry['bin_id'])
+
+        if min_num_bins_gene_occurs > len(all_bins):
+            raise ConfigError("OK. Well. This is awkward. You have like %d bins, eh? And you are asking anvi'o to remove any\
+                               that occurs in less than %d bins. Do you see the problem here? Maybe it is time to take a break\
+                               from work :(" % (len(all_bins), min_num_bins_gene_occurs))
+
         gene_occurrences_accross_bins = self.get_gene_num_occurrences_across_bins(hmm_sequences_dict_for_splits)
 
         genes_to_remove = set([])
@@ -348,6 +358,16 @@ class SequencesForHMMHits:
                 genes_to_remove.add(gene_name)
 
         genes_to_keep = all_genes.difference(genes_to_remove)
+
+        self.run.info_single("Hi! The anvi'o funciton that was supposed to remove genes that were occurring in\
+                              less than X number of bins due to the use of `--min-num-bins-gene-occurs` is \
+                              speaking. What follows is a report of what happened after anvi'o tried to remove\
+                              genes that were occurring in at least %d of the %d bins you had at this point." \
+                                    % (min_num_bins_gene_occurs, len(all_bins)), nl_before=1, nl_after=1)
+
+        self.run.info('All genes (%d)' % len(all_genes), ', '.join(all_genes), nl_after=1)
+        self.run.info('Genes occurred in at least %d of %d bins (%d)' % (min_num_bins_gene_occurs, len(all_bins), len(genes_to_keep)), ', '.join(genes_to_keep), nl_after=1, mc='green')
+        self.run.info('Genes that are no more in the analysis (%d)' % (len(genes_to_remove)), ', '.join(genes_to_remove) if genes_to_remove else 'None.', nl_after=1, mc='red')
 
         if len(genes_to_remove):
             return (utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', genes_to_keep), genes_to_remove)
@@ -370,6 +390,16 @@ class SequencesForHMMHits:
                 bins_to_remove.add(bin_name)
 
         bins_to_keep = all_bins.difference(bins_to_remove)
+
+        self.run.info_single("Hi there! The anvi'o function that kills bins is speaking (we are here because you used\
+                              the --max-num-genes-missing-from-bin parameter to remove bins that are not good enough for\
+                              your analysis becasue they are missing lots of genes. What follows is a report of what \
+                              happened.", nl_before=1, nl_after=1)
+
+        self.run.info('All bins (%d)' % len(all_bins), ', '.join(all_bins), nl_after=1)
+        self.run.info('Bins that missed at most %d of %d genes (%d)' % (max_num_genes_missing, len(gene_names), len(bins_to_keep)), ', '.join(bins_to_keep), nl_after=1, mc='green')
+        self.run.info('Bins that are no more in the analysis (%d)' % (len(bins_to_remove)), ', '.join(bins_to_remove) if bins_to_remove else 'None. Lovely.', nl_after=1, mc='red')
+
 
         if len(bins_to_remove):
             return (utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'bin_id', bins_to_keep), bins_to_remove)
@@ -491,7 +521,7 @@ class SequencesForHMMHits:
             if wrap:
                 sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
-            f.write('>%s genes:%s|separator:%s\n' % (bin_name, ','.join(gene_names), separator))
+            f.write('>%s num_genes:%d|genes:%s|separator:%s\n' % (bin_name, len(gene_names), ','.join(gene_names), separator))
             f.write('%s\n' % sequence)
 
         if len(gene_names_missing_from_everywhere):

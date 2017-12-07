@@ -48,6 +48,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.min_mean_coverage = A('min_mean_coverage')
         self.min_coverage_for_variability = A('min_coverage_for_variability')
         self.contigs_shall_be_clustered = A('cluster_contigs')
+        self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.sample_id = A('sample_name')
         self.report_variability_full = A('report_variability_full')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
@@ -69,7 +70,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # whehther the profile database is a blank (without any BAM files or reads):
         self.blank = A('blank_profile')
 
-        if self.blank:
+        if not self.blank and self.contigs_shall_be_clustered and self.skip_hierarchical_clustering:
+            raise ConfigError("You are confused, and confusing anvi'o, too. You can't as hierarchical clustering\
+                               to be performed with one flag, and try to skip it with another one :(")
+
+        if self.blank and self.contigs_shall_be_clustered and self.skip_hierarchical_clustering:
+            raise ConfigError("So you want to generate a blank profile, and you both want hierarchical clustering\
+                               of your contigs to be performed, and skipped. No.")
+
+        if self.blank and self.contigs_shall_be_clustered:
+            raise ConfigError("When the blank profile is asked to be generated, there is no need to ask for the\
+                               hierarchical clustering of contigs. It is going to be done by default. If it is\
+                               not changing anything, why is anvi'o upset with you? Because. Let's don't use flags\
+                               we don't need.")
+
+        if self.blank and not self.skip_hierarchical_clustering:
             self.contigs_shall_be_clustered = True
 
         if args.contigs_of_interest:

@@ -58,7 +58,7 @@ def main(args):
     if args.full_report:
         report = open(args.full_report, 'w')
 
-        report.write('\t'.join(['gene_callers_id', 'source', 'function', 'search_term', 'split_name']) + '\n')
+        report.write('\t'.join(['gene_callers_id', 'source', 'accession', 'function', 'search_term', 'split_name']) + '\n')
 
         for entry in full_report:
             report.write('\t'.join([str(item) for item in entry]) + '\n')

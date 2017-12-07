@@ -172,6 +172,12 @@ def main(args):
                          they occurred in less than %d bins/genomes in your analysis. This is the list of genes that gon'\
                          buhbye: %s." % (len(genes_removed), int(args.min_num_bins_gene_occurs), ', '.join(genes_removed)))
 
+            # update the gene names variable .. this is such a mess :( "WHO WROTE THIS SHIT CODE", yelled Meren, looking
+            # at this cursed main function in his office on a Saturday night, knowing very well who did it. thanks
+            # to his lack of shame he said to himself "well, I guess it is OK if it stays like this for now".
+            if(gene_names):
+                gene_names = [g for g in gene_names if g not in genes_removed]
+
     if not hmm_sequences_dict:
         raise ConfigError("Your selections resulted in 0 hits. There is nothing to report. Are you\
                             sure you have the right set of gene names and sources? If you\
