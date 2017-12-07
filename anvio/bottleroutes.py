@@ -11,6 +11,7 @@ import os
 import re
 import io
 import sys
+import time
 import json
 import random
 import argparse
@@ -95,7 +96,7 @@ class BottleApplication(Bottle):
         self.route('/data/news',                               callback=self.get_news)
         self.route('/data/<name>',                             callback=self.send_data)
         self.route('/data/view/<view_id>',                     callback=self.get_view_data)
-        self.route('/tree/<items_ordering_id>',                callback=self.get_items_ordering)
+        self.route('/tree/<items_order_id>',                   callback=self.get_items_order)
         self.route('/state/autoload',                          callback=self.state_autoload)
         self.route('/state/all',                               callback=self.state_all)
         self.route('/state/get/<state_name>',                  callback=self.get_state)
@@ -141,6 +142,11 @@ class BottleApplication(Bottle):
                     sys.exit(0)
 
             if not self.server_only:
+                # Sometimes browser opens before web server actually starts so we see
+                # message like "Website can not be reached" and user needs to refresh
+                # I have added sleep below to delay web browser little bit.
+                time.sleep(1.5)
+
                 utils.open_url_in_browser(url="http://%s:%d" % (ip, port),
                                           browser_path=self.browser_path,
                                           run=run)
@@ -242,9 +248,9 @@ class BottleApplication(Bottle):
             if self.interactive.mode == 'refine':
                 bin_prefix = list(self.interactive.bins)[0] + "_" if len(self.interactive.bins) == 1 else "Refined_",
 
-            return json.dumps( { "title":                               self.interactive.title,
+            return json.dumps( { "title":                              self.interactive.title,
                                  "description":                        (self.interactive.p_meta['description']),
-                                 "clusterings":                        (self.interactive.p_meta['default_clustering'], self.interactive.p_meta['clusterings']),
+                                 "item_orders":                        (self.interactive.p_meta['default_item_order'], self.interactive.p_meta['item_orders']),
                                  "views":                              (self.interactive.default_view, dict(list(zip(list(self.interactive.views.keys()), list(self.interactive.views.keys()))))),
                                  "contigLengths":                      dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info]),
                                  "defaultView":                        self.interactive.views[self.interactive.default_view],
@@ -271,20 +277,20 @@ class BottleApplication(Bottle):
         return json.dumps(self.interactive.views[view_id])
 
 
-    def get_items_ordering(self, items_ordering_id):
-        if items_ordering_id in self.interactive.p_meta['clusterings']:
-            items_ordering = self.interactive.p_meta['clusterings'][items_ordering_id]
+    def get_items_order(self, items_order_id):
+        if items_order_id in self.interactive.p_meta['item_orders']:
+            items_order = self.interactive.p_meta['item_orders'][items_order_id]
 
-            if 'newick' in items_ordering:
-                run.info_single("The newick order '%s' has been requested" % (items_ordering_id))
-                return json.dumps(items_ordering['newick'])
-            elif 'basic' in items_ordering:
-                run.info_single("The list order '%s' has been requested" % (items_ordering_id))
-                return json.dumps(items_ordering['basic'])
+            if items_order['type'] == 'newick':
+                run.info_single("The newick order '%s' has been requested" % (items_order_id))
+            elif items_order['type'] == 'basic':
+                run.info_single("The basic order '%s' has been requested" % (items_order_id))
             else:
-                return json.dumps({'error': "The interface requested something anvi'o doesn't know about. Item orderings\
+                return json.dumps({'error': "The interface requested something anvi'o doesn't know about. Item orders\
                                              can only be in the form of 'newick' or 'basic'. But the interface requested\
-                                             a '%s'. We are all confused here :/" % items_ordering_id})
+                                             a '%s'. We are all confused here :/" % items_order_id})
+
+            return json.dumps(items_order['data'])
 
         return json.dumps("")
 
@@ -778,17 +784,17 @@ class BottleApplication(Bottle):
                 utils.store_array_as_TAB_delimited_file(self.interactive.views[view_name][1:], view_path, self.interactive.views[view_name][0])
                 args.view_data = view_path
 
-            ordering_name = request.forms.get('ordering')
-            if ordering_name in self.interactive.p_meta['clusterings']:
+            item_order_name = request.forms.get('ordering')
+            if item_order_name in self.interactive.p_meta['item_orders']:
                 ordering_path = filesnpaths.get_temp_file_path()
-                items_ordering = self.interactive.p_meta['clusterings'][ordering_name]
+                items_order = self.interactive.p_meta['item_orders'][item_order_name]
 
                 f = open(ordering_path, 'w')
-                if 'newick' in items_ordering:
-                    f.write(items_ordering['newick'])
+                if items_order['type'] == 'newick':
+                    f.write(items_order['data'])
                     args.tree = ordering_path
-                elif 'basic' in items_ordering:
-                    f.write("\n".join(items_ordering['basic']))
+                elif items_order['type'] == 'basic':
+                    f.write("\n".join(items_order['data']))
                     args.items_order = ordering_path
                 f.close()
 
@@ -838,4 +844,4 @@ class BottleApplication(Bottle):
 
 
     def get_contigs_stats(self):
-        return json.dumps(self.interactive.get_contigs_stats())
+        return json.dumps({'stats': self.interactive.contigs_stats, 'tables': self.interactive.tables})

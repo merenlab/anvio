@@ -18,6 +18,7 @@
 
 label {
     font-weight: unset;
+    user-select: none; 
 }
 
 .histogram_axis text {

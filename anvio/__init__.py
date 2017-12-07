@@ -1066,8 +1066,9 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "If you are not planning to use the interactive interface (or if you have other\
-                      means to add a tree of contigs in the database) you may skip the clustering step\
-                      and simply just merge multiple runs."}
+                      means to add a tree of contigs in the database) you may skip the step where\
+                      hierarchical clustering of your items are preformed based on default clustering\
+                      recipes matching to your database type."}
                 ),
     'enforce-hierarchical-clustering': (
             ['--enforce-hierarchical-clustering'],
@@ -1354,6 +1355,13 @@ D = {
              'action': 'store_true',
              'help': "Specify this flag if you would like to output coverages of individual 'splits', rather than their 'parent'\
                       contig coverages."}
+                ),
+    'report-as-text': (
+            ['--report-as-text'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you give this flag, Anvi'o will not open new browser to show Contigs database statistics and write all stats \
+                      to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
                 ),
 }
 

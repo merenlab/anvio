@@ -258,7 +258,7 @@ function initData() {
     function (response)
         {
         var titleResponse = [ response.title ];
-        var clusteringsResponse = [ response.clusterings ];
+        var itemOrdersResponse = [ response.item_orders ];
         var viewsResponse = [ response.views ];
         var contigLengthsResponse = [ response.contigLengths ];
         var defaultViewResponse = [ response.defaultView ];
@@ -410,8 +410,8 @@ function initData() {
             /* 
             //  Clusterings
             */
-            var default_tree = clusteringsResponse[0][0];
-            var available_trees = clusteringsResponse[0][1];
+            var default_tree = itemOrdersResponse[0][0];
+            var available_trees = itemOrdersResponse[0][1];
             var available_trees_combo = getComboBoxContent(default_tree, available_trees);
 
             $('#trees_container').append(available_trees_combo);
@@ -1436,7 +1436,7 @@ function drawTree() {
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
 
-                if (autoload_collection !== null)
+                if (autoload_collection !== null && mode !== 'refine')
                 {
                     loadCollection(autoload_collection);
                     autoload_collection = null;
@@ -1558,31 +1558,59 @@ function newBin(id, binState) {
     });
 }
 
-function deleteBin(id) {
-    if (confirm('Are you sure?')) {
-
-        $('#bin_row_' + id).remove();
-        $('#tbody_bins input[type=radio]').last().prop('checked', true);
-        bin_count--;
-
-        for (var i = 0; i < SELECTED[id].length; i++) {
-            var node_id = label_to_node_map[SELECTED[id][i]].id;
-            $("#line" + node_id).css('stroke-width', '1');
-            $("#arc" + node_id).css('stroke-width', '1');
-            $("#line" + node_id).css('stroke', LINE_COLOR);
-            $("#arc" + node_id).css('stroke', LINE_COLOR);
-        }
-
-        SELECTED[id] = [];
-        delete completeness_dict[id];
-
-        if (bin_count==0)
-        {
-            newBin();
-        }
-
-        redrawBins();
+function deleteBin(id, show_confirm) {
+    if (typeof show_confirm === 'undefined') {
+        show_confirm = true;
     }
+
+    if (show_confirm && !confirm('Are you sure?')) {
+        return;
+    }
+
+    $('#bin_row_' + id).remove();
+    $('#tbody_bins input[type=radio]').last().prop('checked', true);
+    bin_count--;
+
+    for (var i = 0; i < SELECTED[id].length; i++) {
+        var node = label_to_node_map[SELECTED[id][i]];
+
+        if (typeof node === 'undefined' || !node.hasOwnProperty('id')) {
+            continue;
+        }
+
+        var node_id = node.id;
+        $("#line" + node_id).css('stroke-width', '1');
+        $("#arc" + node_id).css('stroke-width', '1');
+        $("#line" + node_id).css('stroke', LINE_COLOR);
+        $("#arc" + node_id).css('stroke', LINE_COLOR);
+    }
+
+    SELECTED[id] = [];
+    delete completeness_dict[id];
+
+    if (bin_count==0)
+    {
+        newBin();
+    }
+
+    redrawBins();
+}
+
+function deleteAllBins() {
+    if (!confirm('Are you sure you want to remove all bins?')) {
+        return;
+    }
+    var bin_ids_to_delete = [];
+
+    $('#tbody_bins tr').each(
+        function(index, bin) {
+            bin_ids_to_delete.push($(bin).attr('bin-id'));
+        }
+    );
+
+    bin_ids_to_delete.map(function(bin_id) { 
+        deleteBin(bin_id, false);
+    });
 }
 
 function showGenSummaryWindow() {
@@ -1951,6 +1979,7 @@ function storeRefinedBins() {
     });
 }
 
+
 function storeCollection() {
     var collection_name = $('#storeCollection_name').val();
 
@@ -1961,9 +1990,25 @@ function storeCollection() {
         $('#storeCollection_name').focus();
         return;
     }
-         
-    data = {};
-    colors = {};
+
+    var collection_info = serializeCollection();
+
+    $.post("/store_collection", {
+        source: collection_name,
+        data: JSON.stringify(collection_info['data'], null, 4),
+        colors: JSON.stringify(collection_info['colors'], null, 4),
+    },
+    function(server_response, status){
+        toastr.info(server_response, "Server");
+    });
+
+    $('#modStoreCollection').modal('hide');    
+}
+
+
+function serializeCollection() {
+    var data = {};
+    var colors = {};
 
     $('#tbody_bins tr').each(
         function(index, bin) {
@@ -1990,17 +2035,9 @@ function storeCollection() {
         }
     );
 
-    $.post("/store_collection", {
-        source: collection_name,
-        data: JSON.stringify(data, null, 4),
-        colors: JSON.stringify(colors, null, 4),
-    },
-    function(server_response, status){
-        toastr.info(server_response, "Server");
-    });
-
-    $('#modStoreCollection').modal('hide');    
+    return {'data': data, 'colors': colors};
 }
+
 
 function generateSummary() {
     var collection = $('#summaryCollection_list').val();

@@ -22,7 +22,7 @@ import anvio.ccollections as ccollections
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
 from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible, get_description_in_db
-from anvio.dbops import get_default_clustering_id, get_split_names_in_profile_db
+from anvio.dbops import get_default_item_order_name, get_split_names_in_profile_db
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError
 
@@ -68,7 +68,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.fasta_file = A('fasta_file')
         self.view_data_path = A('view_data')
         self.tree = A('tree')
-        self.items_order_path = A('items_order')
+        self.item_order_path = A('items_order')
         self.title = A('title')
         self.output_dir = A('output_dir')
         self.show_views = A('show_views')
@@ -185,15 +185,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # unnecessary splits stored in views dicts.
         self.prune_view_dicts()
 
-        self.process_external_items_order()
+        self.process_external_item_order()
         self.gen_alphabetical_orders_of_items()
-        if not self.p_meta['default_clustering'] and len(self.p_meta['available_clusterings']):
-            self.p_meta['default_clustering'] = self.p_meta['available_clusterings'][0]
+        if not self.p_meta['default_item_order'] and len(self.p_meta['available_item_orders']):
+            self.p_meta['default_item_order'] = self.p_meta['available_item_orders'][0]
 
         # we are going to iterate the newick trees, and make sure that internal nodes have labels
-        for clustering_name in self.p_meta['clusterings']:
-            if 'newick' in self.p_meta['clusterings'][clustering_name]:
-                tree = Tree(self.p_meta['clusterings'][clustering_name]['newick'], format=1)
+        for item_order_name in self.p_meta['item_orders']:
+            if self.p_meta['item_orders'][item_order_name]['type'] == 'newick':
+                tree = Tree(self.p_meta['item_orders'][item_order_name]['data'], format=1)
 
                 node_counter = 0
                 for node in tree.traverse():
@@ -204,7 +204,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 if node_counter > 0:
                     # if we did not changed any branch name there is no need to spend time for
                     # serialization back to newick
-                    self.p_meta['clusterings'][clustering_name]['newick'] = tree.write(format=1)
+                    self.p_meta['item_orders'][item_order_name]['data'] = tree.write(format=1)
 
         # if there are any HMM search results in the contigs database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
@@ -234,8 +234,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # we expect to have a default clustering to be set when the code makes it way here, but there is an exception
         # to that (it is when the user provides an items order file). please pay attention:
-        if not self.p_meta['default_clustering']:
-            if self.items_order_path:
+        if not self.p_meta['default_item_order']:
+            if self.item_order_path:
                 # this is a special situation where we are not in manual mode, but we don't have a default clustering.
                 # yet the user has an items order file. here we will set the displauyed items to be the items in the view
                 # data.
@@ -247,11 +247,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
-        default_clustering = self.p_meta['clusterings'][self.p_meta['default_clustering']]
-        if 'newick' in default_clustering:
-            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_clustering['newick'], reverse=True)
-        elif 'basic' in default_clustering:
-            self.displayed_item_names_ordered = default_clustering['basic']
+        default_item_order = self.p_meta['item_orders'][self.p_meta['default_item_order']]
+        if default_item_order['type'] == 'newick':
+            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_item_order['data'], reverse=True)
+        elif default_item_order['type'] == 'basic':
+            self.displayed_item_names_ordered = default_item_order['data']
         else:
             raise ConfigError("There is something wrong here, and anvi'o needs and adult :( Something that should\
                                never happen happened. The default clustering does not have a basic or newick type.")
@@ -261,15 +261,17 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.mode == 'manual':
             return
 
-        if not self.p_meta['clusterings']:
+        if not self.p_meta['item_orders'] or not len([o for o in self.p_meta['item_orders'].values() if o['type'] == 'newick']):
             if self.p_meta['db_type'] == 'pan':
                 raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
                                    clustering of protein clusters (PCs) in it. Maybe you skipped the clustering step, maybe\
                                    anvi'o skipped it on your behalf because you had too many PCs or something. Regardless of\
-                                   who did what, you don't get to display your pangenome at this particular instance. Sorry :/" \
+                                   who did what, you don't get to display your pangenome at this particular instance. In some\
+                                   cases using a parameter like `--min-occurrence 2`, which would reduce the number of PCs by\
+                                   removing singletons that appear in only one genome can help solve this issue. Sorry :/" \
                                                             % (self.p_meta['project_name']))
             else:
-                if self.items_order_path:
+                if self.item_order_path:
                     self.run.warning("This merged profile database does not seem to have any hierarchical clustering\
                                       of splits that is required by the interactive interface. But it seems you did provide\
                                       an items order file. So anvi'o will try to use that and display your data.")
@@ -315,11 +317,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 else:
                     item_layer_data_tuple.append((layer_type(self.additional_layers_dict[item][layer]), item))
 
-            self.p_meta['available_clusterings'].append('>> %s:none:none' % layer)
-            self.p_meta['clusterings']['>> %s' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple)]}
+            self.p_meta['available_item_orders'].append('>> %s:none:none' % layer)
+            self.p_meta['item_orders']['>> %s' % layer] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple)]}
 
-            self.p_meta['available_clusterings'].append('>> %s_(reverse):none:none' % layer)
-            self.p_meta['clusterings']['>> %s_(reverse)' % layer] = {'basic': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
+            self.p_meta['available_item_orders'].append('>> %s_(reverse):none:none' % layer)
+            self.p_meta['item_orders']['>> %s_(reverse)' % layer] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
 
         self.progress.end()
 
@@ -341,59 +343,59 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.update('...')
 
         # add an alphabetical order:
-        self.p_meta['clusterings']['<> Alphabetical:none:none'] = {'basic': sorted(self.displayed_item_names_ordered[::-1], reverse=True)}
-        self.p_meta['available_clusterings'].append('<> Alphabetical:none:none')
+        self.p_meta['item_orders']['<> Alphabetical:none:none'] = {'type': 'basic', 'data': sorted(self.displayed_item_names_ordered[::-1], reverse=True)}
+        self.p_meta['available_item_orders'].append('<> Alphabetical:none:none')
 
         # and the reverse-alphabetical, too:
-        self.p_meta['clusterings']['<> Alphabetical_(reverse):none:none'] = {'basic': sorted(self.displayed_item_names_ordered)}
-        self.p_meta['available_clusterings'].append('<> Alphabetical_(reverse):none:none')
+        self.p_meta['item_orders']['<> Alphabetical_(reverse):none:none'] = {'type': 'basic', 'data': sorted(self.displayed_item_names_ordered)}
+        self.p_meta['available_item_orders'].append('<> Alphabetical_(reverse):none:none')
 
         self.progress.end()
 
 
-    def process_external_items_order(self):
-        """This function processes self.items_order_path to update available clusterings"""
+    def process_external_item_order(self):
+        """This function processes self.item_order_path to update available item orders"""
 
-        if not self.items_order_path:
+        if not self.item_order_path:
             return
 
-        filesnpaths.is_file_exists(self.items_order_path)
+        filesnpaths.is_file_exists(self.item_order_path)
 
-        items_order = [l.strip() for l in open(self.items_order_path, 'rU').readlines()]
-        self.run.info('Items order', 'An items order with %d items is found at %s.' % (len(items_order), self.items_order_path), mc='cyan')
+        item_order = [l.strip() for l in open(self.item_order_path, 'rU').readlines()]
+        self.run.info('Items order', 'An items order with %d items is found at %s.' % (len(item_order), self.item_order_path), mc='cyan')
 
         self.progress.new('External items order')
         self.progress.update('...')
 
         # make sure all items we will be working with is in items order.
-        items_order_set = set(items_order)
-        missing_items = [i for i in self.displayed_item_names_ordered if i not in items_order_set]
+        item_order_set = set(item_order)
+        missing_items = [i for i in self.displayed_item_names_ordered if i not in item_order_set]
         if (missing_items):
             self.progress.end()
             raise ConfigError("While processing your items order file, anvi'o realized that some of the items in your view data are not\
                                in your items order file. In fact there are like %d of them missing, and one of the missing items look\
                                like this if it makes any sense: '%s'" % (len(missing_items), missing_items.pop()))
 
-        if len(items_order) != len(self.displayed_item_names_ordered):
+        if len(item_order) != len(self.displayed_item_names_ordered):
             self.progress.end()
             raise ConfigError("While processing your items order file, anvi'o realized that the number of items described in your file\
                                (%s) is not equal to the number of items you have in your view data (%s). This is totally a deal\
-                               breaker :/" % (pp(len(items_order)), pp(len(self.displayed_item_names_ordered))))
+                               breaker :/" % (pp(len(item_order)), pp(len(self.displayed_item_names_ordered))))
 
         # because of the special case of items order, the clusterings and available_clusterings items
         # may not be initialized. check them first.
-        if not self.p_meta['clusterings']:
-            self.p_meta['clusterings'] = {}
-        if not self.p_meta['available_clusterings']:
-            self.p_meta['available_clusterings'] = []
+        if not self.p_meta['item_orders']:
+            self.p_meta['item_orders'] = {}
+        if not self.p_meta['available_item_orders']:
+            self.p_meta['available_item_orders'] = []
 
         # add an alphabetical order:
-        self.p_meta['clusterings']['<> User order:none:none'] = {'basic': items_order[::-1]}
-        self.p_meta['available_clusterings'].append('<> User order:none:none')
+        self.p_meta['item_orders']['<> User order:none:none'] = { 'type': 'basic', 'data': item_order[::-1]}
+        self.p_meta['available_item_orders'].append('<> User order:none:none')
 
         # and the reverse-alphabetical, too:
-        self.p_meta['clusterings']['<> User order (reverse):none:none'] = {'basic': items_order}
-        self.p_meta['available_clusterings'].append('<> User order (reverse):none:none')
+        self.p_meta['item_orders']['<> User order (reverse):none:none'] = {'type': 'basic', 'data': item_order}
+        self.p_meta['available_item_orders'].append('<> User order (reverse):none:none')
 
         self.progress.end()
 
@@ -432,7 +434,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if self.view:
             raise ConfigError("You can't use '--view' parameter when you are running the interactive interface\
-                                in manual mode")
+                               in manual mode")
 
         if self.show_views:
             raise ConfigError("Sorry, there are no views to show in manual mode :/")
@@ -464,16 +466,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.default_view = self.p_meta['default_view']
 
         # set some default organizations of data:
-        self.p_meta['clusterings'] = {}
-        self.p_meta['available_clusterings'] = []
-        self.p_meta['default_clustering'] = []
+        self.p_meta['item_orders'] = {}
+        self.p_meta['available_item_orders'] = []
+        self.p_meta['default_item_order'] = []
 
         # if we have a tree, let's make arrangements for it:
         if self.tree:
-            clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
-            self.p_meta['default_clustering'] = clustering_id
-            self.p_meta['available_clusterings'].append(clustering_id)
-            self.p_meta['clusterings'][clustering_id] = {'newick': newick_tree_text}
+            item_order_name = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
+            self.p_meta['default_item_order'] = item_order_name
+            self.p_meta['available_item_orders'].append(item_order_name)
+            self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
 
         if self.view_data_path:
             # sanity of the view data
@@ -543,9 +545,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         for config_name in self.clustering_configs:
             config_path = self.clustering_configs[config_name]
 
-            config = ClusteringConfiguration(config_path, 
-                                            self.input_directory, 
-                                            db_paths={'CONTIGS.db': self.contigs_db_path, 
+            config = ClusteringConfiguration(config_path,
+                                            self.input_directory,
+                                            db_paths={'CONTIGS.db': self.contigs_db_path,
                                                       'PROFILE.db': self.profile_db_path},
                                             row_ids_of_interest=self.split_names_of_interest)
 
@@ -556,7 +558,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 progress.end()
                 continue
 
-            clusterings[clustering_id] = {'newick': newick}
+            clusterings[clustering_id] = {'type': 'newick', 'data': newick}
 
         run.info('available_clusterings', list(clusterings.keys()))
 
@@ -596,15 +598,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Number of bins', len(self.bins))
         self.run.info('Number of splits', len(self.split_names_of_interest))
 
-        clusterings = self.cluster_splits_of_interest()
+        item_orders = self.cluster_splits_of_interest()
         default_clustering_class = constants.merged_default if self.is_merged else constants.single_default
 
-        default_clustering_id = dbops.get_default_clustering_id(default_clustering_class, clusterings)
+        default_item_order = dbops.get_default_item_order_name(default_clustering_class, item_orders)
 
-        self.clusterings = clusterings
-        self.p_meta['clusterings'] = clusterings
-        self.p_meta['available_clusterings'] = list(self.clusterings.keys())
-        self.p_meta['default_clustering'] = default_clustering_id
+        self.item_orders = item_orders
+        self.p_meta['item_orders'] = item_orders
+        self.p_meta['available_item_orders'] = list(self.item_orders.keys())
+        self.p_meta['default_item_order'] = default_item_order
 
         self.collections = ccollections.Collections()
         self.collections.populate_collections_dict(self.profile_db_path)
@@ -651,9 +653,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # the one we have. that will be LOVELY.
         self.load_full_mode()
 
-        # FIXME: `clusterings` should become `orderings` thorughout the code.
-        self.p_meta['available_clusterings'] = []
-        self.p_meta['clusterings'] = {}
+        self.p_meta['available_item_orders'] = []
+        self.p_meta['item_orders'] = {}
 
         # we just cleared out all orderings the full mode added, let's make sure to add the
         # user tree if there is one.
@@ -674,9 +675,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 for header in d['header']:
                      d['dict'][bin_id][header] = numpy.mean([v['dict'][split_name][header] for split_name in self.collection[bin_id]])
 
-            clustering_id = ':'.join([view, self.distance, self.linkage])
-            self.p_meta['available_clusterings'].append(clustering_id)
-            self.p_meta['clusterings'][clustering_id] = {'newick': clustering.get_newick_tree_data_for_dict(d['dict'], distance=self.distance, linkage=self.linkage)}
+            item_order_name = ':'.join([view, self.distance, self.linkage])
+            self.p_meta['available_item_orders'].append(item_order_name)
+            self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': clustering.get_newick_tree_data_for_dict(d['dict'], distance=self.distance, linkage=self.linkage)}
 
             # clustering is done, we can get prepared for the expansion of the view dict
             # with new layers. Note that these layers are going to be filled later.
@@ -687,7 +688,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             views_for_collection[view] = d
 
         default_clustering_class = 'mean_coverage' if self.p_meta['merged'] else 'single'
-        self.p_meta['default_clustering'] = get_default_clustering_id(default_clustering_class, self.p_meta['clusterings'])
+        self.p_meta['default_item_order'] = get_default_item_order_name(default_clustering_class, self.p_meta['available_item_orders'])
 
         # replace self.views with the new view:
         self.views = views_for_collection
@@ -751,7 +752,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.init_additional_layer_data()
 
-        self.p_meta['clusterings'] = self.clusterings
+        self.p_meta['item_orders'] = self.item_orders
 
         self.load_pan_views()
         self.default_view = self.p_meta['default_view']
@@ -850,7 +851,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             self.default_view = self.view
 
-        self.p_meta['clusterings'] = self.clusterings
+        self.p_meta['item_orders'] = self.item_orders
 
         # add user tree if there is one
         self.add_user_tree()
@@ -880,13 +881,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def add_user_tree(self):
         if self.tree:
             clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
-            if not self.p_meta['clusterings']:
-                self.p_meta['default_clustering'] = clustering_id
-                self.p_meta['available_clusterings'] = [clustering_id]
-                self.p_meta['clusterings'] = {clustering_id: {'newick': open(os.path.abspath(self.tree)).read()}}
+            if not self.p_meta['item_orders']:
+                self.p_meta['default_item_order'] = clustering_id
+                self.p_meta['available_item_orders'] = [clustering_id]
+                self.p_meta['item_orders'] = {clustering_id: {'type': 'newick', 'data': open(os.path.abspath(self.tree)).read()}}
                 run.info('Additional Tree', "Splits will be organized based on '%s'." % clustering_id)
             else:
-                self.p_meta['clusterings'][clustering_id] = {'newick': open(os.path.abspath(self.tree)).read()}
+                self.p_meta['item_orders'][clustering_id] = {'type': 'newick', 'data': open(os.path.abspath(self.tree)).read()}
                 run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
 
 
@@ -1097,13 +1098,85 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
 class ContigsInteractive():
-    def __init__(self, args):
+    def __init__(self, args, run=run, progress=progress):
         self.mode = 'contigs'
-        
+        self.run = run
+        self.progress = progress
+
         self.contigs_stats = {}
-        
+
         for contig_db_path in args.input:
             self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path).get_summary_dict_for_assembly()
 
-    def get_contigs_stats(self):
-        return self.contigs_stats
+        self.tables = {}
+        self.generate_tables()
+
+    def generate_tables(self):
+        self.tables['header'] = [c['project_name'] for c in self.contigs_stats.values()]
+
+        ##
+        ##  Table for basic stats
+        ##
+
+        basic_stats = []
+        basic_stats.append(['Total Length'] + [c['total_length'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Num Contigs'] + [c['num_contigs'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Num Genes (' + constants.default_gene_caller + ')'] + [c['num_genes'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Longest Contig'] + [c['total_length'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Shortest Contig'] + [c['total_length'] for c in self.contigs_stats.values()])
+        basic_stats.append(['N50'] + [c['n_values'][49]['num_contigs'] for c in self.contigs_stats.values()])
+        basic_stats.append(['N75'] + [c['n_values'][74]['num_contigs'] for c in self.contigs_stats.values()])
+        basic_stats.append(['N90'] + [c['n_values'][89]['num_contigs'] for c in self.contigs_stats.values()])
+        basic_stats.append(['L50'] + [c['n_values'][49]['length'] for c in self.contigs_stats.values()])
+        basic_stats.append(['L75'] + [c['n_values'][74]['length'] for c in self.contigs_stats.values()])
+        basic_stats.append(['L90'] + [c['n_values'][89]['length'] for c in self.contigs_stats.values()])
+
+        self.tables['basic_stats'] = basic_stats
+
+        ##
+        ##  Table for hmm hits
+        ##
+
+        all_hmm_sources = set()
+        for c in self.contigs_stats.values():
+            for source in c['gene_hit_counts_per_hmm_source'].keys():
+                all_hmm_sources.add(source)
+
+        hmm_table = []
+        for source in all_hmm_sources:
+            line = [source]
+            for c in self.contigs_stats.values():
+                if source in c['gene_hit_counts_per_hmm_source']:
+                    line.append(sum(c['gene_hit_counts_per_hmm_source'][source].values()))
+                else:
+                    line.append('n/a')
+
+            hmm_table.append(line)
+
+        self.tables['hmm'] = hmm_table
+
+        ##
+        ##  Table for SCG genome prediction
+        ##
+
+        source_to_domain = {}
+        all_scg_sources = set()
+        for c in self.contigs_stats.values():
+            for source in c['num_genomes_per_SCG_source_dict'].keys():
+                all_scg_sources.add(source)
+
+                if source not in source_to_domain:
+                    source_to_domain[source] = c['num_genomes_per_SCG_source_dict'][source]['domain']
+
+        scg_table = []
+        for source in all_scg_sources:
+            line = [source_to_domain[source] + ' (' + source + ')']
+            for c in self.contigs_stats.values():
+                if source in c['num_genomes_per_SCG_source_dict']:
+                    line.append(c['num_genomes_per_SCG_source_dict'][source]['num_genomes'])
+                else:
+                    line.append('n/a')
+
+            scg_table.append(line)
+
+        self.tables['scg'] = scg_table

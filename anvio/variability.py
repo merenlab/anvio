@@ -92,7 +92,7 @@ def get_competing_items(reference, items_frequency_tuples_list=[]):
         # the contig for this particular `pos`) may not be one of these. but here,
         # we don't care about that.
 
-        # FIXME: CONGRATULATIONS. YOU DID FIND THE SHITTIEST PIECE OF CODE IN THIS
+        # FIXME: CONGRATULATIONS. YOU DID FIND THE NTH SHITTIEST PIECE OF CODE IN THIS
         #        REPOSITORY. IF YOU SEND US AN E-MAIL, SOMEONE WILL RESPOND WITH A
         #        FORMAL APOLOGY FOR THIS MONSTROSITY.
         if num_items > 2 and items_frequency_tuples_list[1][1] == items_frequency_tuples_list[2][1]:

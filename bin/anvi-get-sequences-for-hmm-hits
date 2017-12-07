@@ -102,16 +102,24 @@ def main(args):
         s = hmmopswrapper.SequencesForHMMHitsWrapperForMultipleContigs(args, hmm_sources)
         splits_dict = s.splits_dict
     else:
+        info_table = hmmops.SequencesForHMMHits(args.contigs_db).hmm_hits_info
+
+        # let's quickly check whether we have all the hmm_sources the user may have
+        # requested has anything to do with the ones we have in the database
+        if hmm_sources:
+            missing_hmm_sources = [s for s in hmm_sources if s not in info_table]
+            if(missing_hmm_sources):
+                raise ConfigError("At least one of the HMM sources you requested are missing form the HMMs the contigs database\
+                                   knows about :/ Here they are: '%s'" % (', '.join(missing_hmm_sources)))
+
         if args.list_hmm_sources:
-            info_table = hmmops.SequencesForHMMHits(args.contigs_db).hmm_hits_info
             for source in info_table:
                 t = info_table[source]
                 run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
             sys.exit(0)
 
         if args.list_available_gene_names:
-            info_table = hmmops.SequencesForHMMHits(args.contigs_db).hmm_hits_info
-            for source in set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else None or info_table:
+            for source in hmm_sources or info_table:
                 t = info_table[source]
                 run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
             sys.exit(0)
@@ -163,6 +171,12 @@ def main(args):
             run.warning("The `--min-num-bins-gene-occurs` parameter caused the removal of %d genes from your analysis because \
                          they occurred in less than %d bins/genomes in your analysis. This is the list of genes that gon'\
                          buhbye: %s." % (len(genes_removed), int(args.min_num_bins_gene_occurs), ', '.join(genes_removed)))
+
+            # update the gene names variable .. this is such a mess :( "WHO WROTE THIS SHIT CODE", yelled Meren, looking
+            # at this cursed main function in his office on a Saturday night, knowing very well who did it. thanks
+            # to his lack of shame he said to himself "well, I guess it is OK if it stays like this for now".
+            if(gene_names):
+                gene_names = [g for g in gene_names if g not in genes_removed]
 
     if not hmm_sequences_dict:
         raise ConfigError("Your selections resulted in 0 hits. There is nothing to report. Are you\

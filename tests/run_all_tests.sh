@@ -56,6 +56,9 @@ anvi-run-hmms -c $output_dir/CONTIGS.db -H $files/external_hmm_profile
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db -I Ribosomal_RNAs
 
+INFO "Export genomic locus using HMM"
+anvi-export-locus -c $output_dir/CONTIGS.db -O $output_dir/exported_locus_from_hmm -n 200,2 -s S-AdoMet_synt_C --use-hmm --hmm-sources Campbell_et_al
+
 INFO "Recovering completeness esimates for the contigs db"
 anvi-compute-completeness -c $output_dir/CONTIGS.db
 
@@ -75,6 +78,9 @@ INFO "Export all functional annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db -o $output_dir/exported_functions_from_all_sources.txt
 echo
 head $output_dir/exported_functions_from_all_sources.txt | tr ' ' @@ | column -t | tr @@ ' '
+
+INFO "Export genomic locus using functional annotation search"
+anvi-export-locus -c $output_dir/CONTIGS.db -O $output_dir/exported_locus_from_functions -n 2,200 -s NusB
 
 INFO "Export only Pfam annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db -o $output_dir/exported_functions_from_source_Pfam.txt --annotation-sources Pfam
@@ -121,7 +127,7 @@ anvi-export-splits-and-coverages -c $output_dir/CONTIGS.db -p $output_dir/SAMPLE
 INFO "Generating per-nt position coverage values for a single split across samples"
 anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db -o $output_dir/contig_1720_split_00001_coverages.txt --split-name 204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00001
 
-INFO "Generating per-nt position coverage values for a splits in a bin across samples"
+INFO "Generating per-nt position coverage values for splits in a bin across samples"
 anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/split_coverages_in_Bin_1.txt -C CONCOCT -b Bin_1
 
 INFO "Cluster contigs in the newly generated coverages file"
@@ -326,6 +332,16 @@ anvi-split -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C
 
 INFO "Listing all collections and bins available in the merged profile"
 anvi-show-collections-and-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db
+
+INFO "Running anvi-mcg-classifier"
+mkdir -p $output_dir/MCG_CLASSIFIER_OUTPUTS
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG
+
+INFO "Running anvi-mcg-classifier on a collection"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG_CONCOCT -C CONCOCT
+
+INFO "Running anvi-mcg-classifier on a single bin in a collection"
+anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG_Bin_1 -C CONCOCT -b Bin_1
 
 INFO 'A dry run with an items order file for the merged profile without any clustering'
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \

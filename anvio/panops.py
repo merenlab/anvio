@@ -7,7 +7,10 @@
 """
 
 import os
+import json
 import math
+import pandas as pd
+from itertools import chain
 
 import anvio
 import anvio.utils as utils
@@ -103,7 +106,7 @@ class Pangenome(GenomeStorage):
                        'gene_alignments_computed': False if self.skip_alignments else True,
                        'genomes_storage_hash': self.genomes_storage_hash,
                        'project_name': self.project_name,
-                       'PCs_clustered': False,
+                       'PCs_ordered': False,
                        'description': self.description if self.description else '_No description is provided_',
                       }
 
@@ -460,7 +463,47 @@ class Pangenome(GenomeStorage):
         return PCs_dict
 
 
-    def cluster_PCs(self):
+    def gen_synteny_based_ordering_of_PCs(self, PCs_dict):
+        """Take the dictionary of PCs, and order PCs per genome based on synteny of genes.
+
+           This adds more orders to the pangenomic output so the user can enforce ordering of
+           PCs based on the synteny of genes they contain in a given genome.
+
+           The synteny in this context is defined by the gene caller ids. Gene caller ids
+           follow a numerical order in anvi'o contigs databases for genes that are coming
+           from the same contig. Of course, the synteny does not mean much for genmes that
+           fragmented into multiple contigs.
+        """
+
+        # yes. this is meren converting the PCs_dict into a pandas data frame :/ if you are reading
+        # this line and if you are not evan, don't tell evan about this. everyone else: i don't know
+        # what you're talking about.
+        df = pd.DataFrame(list(chain.from_iterable(list(PCs_dict.values()))))
+        df = df.sort_values(by=['genome_name', 'gene_caller_id'])
+        df = df.reset_index(drop=True)
+
+        # forced synteny
+        for genome_name in df.genome_name.unique():
+            pcs_in_genome = df.loc[(df.genome_name == genome_name)].protein_cluster_id.unique()
+            pcs_not_described = df.loc[~df.protein_cluster_id.isin(pcs_in_genome)].protein_cluster_id.unique()
+            pcs_order_based_on_genome_synteny = list(pcs_in_genome) + list(pcs_not_described)
+
+            order_name = 'Forced synteny <> %s' % genome_name
+
+            dbops.add_items_order_to_db(self.pan_db_path, order_name, ','.join(pcs_order_based_on_genome_synteny), order_data_type_newick=False, run=self.run)
+
+        PC_PC_edges = []
+        # network description of PC-PC relationshops given the gene synteny.
+        gene_ordered_list_of_PCs = list(zip(df.gene_caller_id, df.protein_cluster_id))
+        for index in range(1, len(gene_ordered_list_of_PCs)):
+            (GENE_A, PC_A), (GENE_B, PC_B) = gene_ordered_list_of_PCs[index-1], gene_ordered_list_of_PCs[index]
+            if GENE_A == GENE_B - 1:
+                PC_PC_edges.append((PC_A, PC_B), )
+
+        # FIXME: Do something with PC_PC_edges.
+
+
+    def gen_hierarchical_clustering_of_PCs(self):
         """Uses a clustering configuration to add hierarchical clustering of protein clusters into the pan db
 
         Note how this function cheats the system to create an enchanced clustering configuration:
@@ -497,9 +540,9 @@ class Pangenome(GenomeStorage):
             # update the clustering configs:
             updated_clustering_configs[config_name] = enhanced_config_path
 
-            dbops.do_hierarchical_clusterings(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
-                                              input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
-                                              distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
+            dbops.do_hierarchical_clustering_of_items(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
+                                                      input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
+                                                      distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
     def gen_samples_db(self):
@@ -681,6 +724,10 @@ class Pangenome(GenomeStorage):
                 gene_sequences_in_pc.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
 
             # alignment
+            if self.debug:
+                self.run.info_single('Aligning sequences in PC %s' % pc_name, nl_before=2, nl_after=1)
+                print(json.dumps(gene_sequences_in_pc, indent=2))
+
             alignments = self.aligner(run=r).run_stdin(gene_sequences_in_pc)
 
             for gene_entry in PCs_dict[pc_name]:
@@ -725,7 +772,10 @@ class Pangenome(GenomeStorage):
         self.store_PCs(PCs_dict)
 
         # generate a hierarchical clustering of protein clusters (or don't)
-        self.cluster_PCs()
+        self.gen_hierarchical_clustering_of_PCs()
+
+        # generate orderings of PCs based on synteny of genes
+        self.gen_synteny_based_ordering_of_PCs(PCs_dict)
 
         # gen samples info and order files
         self.gen_samples_db()

@@ -41,8 +41,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    args = parser.parse_args()
-
     try:
         s = dbops.SamplesInformationDatabase(args.samples_information_db, run, progress, quiet=False)
         s.update(args.samples_information_file, args.samples_order_file, args.single_order_file, args.order_name)

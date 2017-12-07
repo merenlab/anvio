@@ -17,6 +17,9 @@ import configparser
 import multiprocessing
 import urllib.request, urllib.error, urllib.parse
 
+import numpy as np
+import pandas as pd
+
 from email.mime.text import MIMEText
 from collections import Counter
 
@@ -397,6 +400,44 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
     return output_path
 
 
+def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str=""):
+    """
+    Stores a pandas DataFrame as a tab-delimited file.
+
+    PARAMS
+    ======
+    d: pandas DataFrame
+        DataFrame you want to save.
+    output_path: string
+        Output_path for the file. Checks if file is writable.
+    columns: list, pandas.Index, tuple (default = d.columns)
+        Columns in DataFrame to write. Default is all, in the order they appear.
+    include_index: Boolean (default = False)
+        Should the index be included as the first column? Default is no.
+    index_label: String (default = "index")
+        If include_index is True, this is the header for the index.
+    naughty_characters: list (default = [np.inf, -np.inf])
+        A list of elements that are replaced with rep_str. Note that all np.nan's (aka NaN's) are also replaced with
+        rep_str.
+    rep_str: String (default = "")
+        The string that elements belonging to naughty_characters are replaced by.
+
+    RETURNS
+    =======
+    output_path
+    """
+
+    filesnpaths.is_output_file_writable(output_path)
+
+    if not columns:
+        columns = d.columns
+
+    d.replace(naughty_characters, np.nan, inplace=True)
+
+    d.to_csv(output_path, sep="\t", columns=columns, index=include_index, index_label=index_label, na_rep=rep_str)
+    return output_path
+
+
 def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None):
     if not file_obj:
         filesnpaths.is_output_file_writable(output_path)
@@ -658,6 +699,11 @@ def get_all_ids_from_fasta(input_file):
         ids.append(fasta.id)
 
     return ids
+
+
+def get_ordinal_from_integer(num):
+    """append 'st', 'nd', or 'th' to integer to make categorical. num must be integer"""
+    return'%d%s' % (num, {11:'th', 12:'th', 13:'th'}.get(num%100, {1:'st', 2:'nd', 3:'rd'}.get(num%10,'th')))
 
 
 def get_read_lengths_from_fasta(input_file):
@@ -931,6 +977,52 @@ def get_codon_order_to_nt_positions_dict(gene_call):
     return codon_order_to_nt_positions
 
 
+def convert_sequence_indexing(index, source="anvio", destination="not anvio"):
+    """
+    Anvi'o zero-indexes sequences. For example, the methionine that every
+    ORF starts with has the index 0. This is in contrast to the rest of the
+    world, in which the methionine is indexed by 1. This function converts
+    between the two. 
+    
+    index : integer
+        The sequence index you are converting. 
+    source : string
+        The convention you are converting from. Must be either "anvio" or "not
+        anvio"
+    destination : string
+        The convention you are converting to. Must be either "anvio" or "not
+        anvio"
+    """
+
+    if source not in ["anvio", "not anvio"] or destination not in ["anvio", "not anvio"]:
+        raise ValueError("Must be 'anvio' or 'not anvio'.")
+
+    if source == "anvio" and destination == "not anvio":
+        return index + 1
+
+    if source == "not anvio" and destination == "anvio":
+        return index - 1
+
+    return index
+
+def convert_SSM_to_single_accession(matrix_data):
+    """
+    The substitution scores from the SSM dictionaries created in anvio.data.SSMs are accessed via a dictionary of
+    dictionaries, e.g.  data["Ala"]["Trp"]. This returns a new dictionary accessed via the concatenated sequence element
+    pair, e.g. data["AlaTrp"], data["AT"], etc.  where they are ordered alphabetically.
+    """
+    items = matrix_data.keys()
+    new_data = {}
+
+    for row in items:
+        for column in items:
+
+            if row > column:
+                continue
+            new_data[''.join([row, column])] = matrix_data[row][column]
+    return new_data
+
+
 def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
     sequence = sequence.upper()
 
@@ -958,6 +1050,23 @@ def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=Fal
 
 
 def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
+
+    list_of_codons = get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict)
+    list_of_AAs = []
+
+    for codon in list_of_codons:
+
+        # if concensus sequence contains shitty characters, we will not continue
+        if codon not in constants.codon_to_AA:
+            continue
+
+        # genes in the reverse direction are already handled in get_list_of_codons_for_gene_call so
+        # all we do is transform codons to AAs
+        list_of_AAs.append(constants.codon_to_AA[codon])
+
+    return list_of_AAs
+
+def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict):
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call)
 
     if gene_call['contig'] not in contig_sequences_dict:
@@ -972,20 +1081,14 @@ def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
                             this function does not seem to be an anvi'o contig sequences dict :/ It\
                             doesn't have the item 'sequence' in it.")
 
-    list_of_AAs = []
+    list_of_codons = []
     for codon_order in codon_order_to_nt_positions:
         nt_positions = codon_order_to_nt_positions[codon_order]
         reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
-        # if concensus sequence contains shitty characters, we will not continue
-        if reference_codon_sequence not in constants.codon_to_AA:
-            continue
-        # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
-        conv_dict = constants.codon_to_AA_RC if gene_call['direction'] == 'r' else constants.codon_to_AA
+        list_of_codons.append(constants.codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence)
 
-        list_of_AAs.append(conv_dict[reference_codon_sequence])
-
-    return list_of_AAs
+    return list_of_codons
 
 
 def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_dict):

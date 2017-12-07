@@ -319,10 +319,10 @@ class BinSplitter(summarizer.Bin):
         self.progress.end()
 
         if not self.skip_hierarchical_clustering:
-            dbops.do_hierarchical_clusterings(self.bin_profile_db_path, constants.clustering_configs['merged' if merged else 'single'], self.split_names, \
-                                              self.database_paths, input_directory=self.bin_output_directory, \
-                                              default_clustering_config=constants.merged_default, distance=self.distance, \
-                                              linkage=self.linkage, run=terminal.Run(verbose=False), progress=self.progress)
+            dbops.do_hierarchical_clustering_of_items(self.bin_profile_db_path, constants.clustering_configs['merged' if merged else 'single'], self.split_names, \
+                                                      self.database_paths, input_directory=self.bin_output_directory, \
+                                                      default_clustering_config=constants.merged_default, distance=self.distance, \
+                                                      linkage=self.linkage, run=terminal.Run(verbose=False), progress=self.progress)
 
         # add a collection
         collection_dict = {'ALL_SPLITS': self.split_names}
