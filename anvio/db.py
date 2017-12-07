@@ -6,6 +6,7 @@
 
 import os
 import sqlite3
+import pandas as pd
 
 import anvio
 import anvio.filesnpaths as filesnpaths
@@ -266,6 +267,50 @@ class DB:
                 results_dict[row[0]] = entry
 
         return results_dict
+
+
+    def get_table_as_dataframe(self, table, table_structure=None, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
+        """
+        get_table_as_dict() uses the first column as the key in the resulting
+        dictionary. For pandas DataFrames there are two reasonable design
+        approaches. The first mimics this approach and uses the first column as
+        the index of the DataFrame. The approach I take instead is to keep the
+        first column as a column in the DataFrame (it is afterall, a column)
+        and use numerical indices for the DataFrame.
+        """
+        if not table_structure:
+            table_structure = self.get_table_structure(table)
+
+        columns_to_return = table_structure
+
+        if omit_parent_column:
+            if '__parent__' in table_structure:
+                columns_to_return.remove('__parent__')
+                table_structure.remove('__parent__')
+
+        if columns_of_interest:
+            for col in table_structure[1:]:
+                if col not in columns_of_interest:
+                    columns_to_return.remove(col)
+
+        if len(columns_to_return) == 1:
+            if error_if_no_data:
+                raise ConfigError("get_table_as_dataframe :: after removing an column that was not mentioned in the columns\
+                                    of interest by the client, nothing was left to return...")
+            else:
+                return {}
+
+        if keys_of_interest:
+            keys_of_interest = set(keys_of_interest)
+
+        rows = self.get_all_rows_from_table(table)
+        results_df = pd.DataFrame(rows, columns=table_structure)
+
+        if keys_of_interest:
+            results_df = results_df.loc[results_df.index.isin(keys_of_interest)]
+        results_df = results_df.loc[:, columns_to_return]
+
+        return results_df
 
 
     def get_some_rows_from_table_as_dict(self, table, where_clause, error_if_no_data=True, string_the_key=False):
