@@ -24,6 +24,10 @@ split_coverages_table_name       = 'split_coverages'
 split_coverages_table_structure  = ['split_name', 'sample_name', 'coverages']
 split_coverages_table_types      = [    'str'   ,     'str'    ,   'blob'   ]
 
+item_additional_data_table_name      = 'item_additional_data'
+item_additional_data_table_structure = ['entry_id', 'sample_id', 'split_name', 'key', 'value', 'type']
+item_additional_data_table_types     = [ 'numeric',    'text'  ,    'text'   , 'str',  'str' ,  'str']
+
 
 def convert_numpy_array_to_binary_blob(array, compress=True):
     if compress:
@@ -114,6 +118,9 @@ def update_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False)
 
         run.info_single("(anvi'o just created a new, up-to-date auxiliary data file (which ends with extension .db), and deleted \
                          the old one (the one that ended with the extension .h5)).", nl_before=2, nl_after=1)
+
+    # we also added a totally new table to this version:
+    profile_db.create_table(item_additional_data_table_name, item_additional_data_table_structure, item_additional_data_table_types)
 
     profile_db.remove_meta_key_value_pair('version')
     profile_db.set_version(next_version)

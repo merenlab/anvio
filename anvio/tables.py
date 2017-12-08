@@ -122,6 +122,10 @@ item_orders_table_name               = 'item_orders'
 item_orders_table_structure          = ['name', 'type', 'data']
 item_orders_table_types              = [ 'str',  'str',  'str']
 
+item_additional_data_table_name      = 'item_additional_data'
+item_additional_data_table_structure = ['entry_id', 'sample_id', 'split_name', 'key', 'value', 'type']
+item_additional_data_table_types     = [ 'numeric',    'text'  ,    'text'   , 'str',  'str' ,  'str']
+
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']
 states_table_types                   = ['text',  'text'  ,      'text'    ]
@@ -141,7 +145,7 @@ views_table_types                    = [  'str'  ,      'str'    ]
 # notice that atomic data table is the only table that doesn't have a name. because how we use this table is a bit tricky.
 # for single profiles, contents of this table is stored as "atomic data", however, for merged profiles,
 # each column of the atomic data table becomes its own table, where the row names remain identical, yet columns
-# become sample names. 
+# become sample names.
 atomic_data_table_structure          = ['contig', 'std_coverage', 'mean_coverage', 'mean_coverage_Q2Q3', 'max_normalized_ratio', 'relative_abundance', 'detection', 'abundance', 'variability', '__parent__']
 atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'   ,      'numeric'      ,        'numeric'      ,      'numeric'     ,   'numeric' ,  'numeric' ,   'numeric'  ,    'text'   ]
 

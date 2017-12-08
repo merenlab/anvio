@@ -17,6 +17,10 @@ progress = terminal.Progress()
 current_version = '6'
 next_version    = '7'
 
+item_additional_data_table_name      = 'item_additional_data'
+item_additional_data_table_structure = ['entry_id', 'sample_id', 'split_name', 'key', 'value', 'type']
+item_additional_data_table_types     = [ 'numeric',    'text'  ,    'text'   , 'str',  'str' ,  'str']
+
 
 def update_pan_db(pan_db_path, just_do_it = False):
     if pan_db_path is None:
@@ -109,6 +113,9 @@ def update_pan_db(pan_db_path, just_do_it = False):
     # set the version
     pan_db.remove_meta_key_value_pair('version')
     pan_db.set_version(next_version)
+
+    # we also added a totally new table to this version:
+    profile_db.create_table(item_additional_data_table_name, item_additional_data_table_structure, item_additional_data_table_types)
 
     # bye
     pan_db.disconnect()
