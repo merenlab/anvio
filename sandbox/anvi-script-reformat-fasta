@@ -145,7 +145,7 @@ if __name__ == '__main__':
                               in case you need to go back to this information later. It is not\
                               mandatory to declare one, but it is a very good idea to have it.")
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         reformat_FASTA(args)

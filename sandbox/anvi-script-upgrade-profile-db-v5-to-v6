@@ -59,7 +59,7 @@ def update_profile_db_from_v5_to_v6(profile_db_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade profile database to from version 5 version 6')
     parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = 'Profile database (of version 5)')
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         update_profile_db_from_v5_to_v6(args.profile_db)

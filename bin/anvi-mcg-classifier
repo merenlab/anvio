@@ -68,7 +68,7 @@ if __name__ == '__main__':
                             http://www.sciencedirect.com/science/article/pii/S0022103113000668 \
                             ')
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

@@ -53,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--name', metavar = 'STATE_NAME', default = None, required = True,
                         help = 'State name.')
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

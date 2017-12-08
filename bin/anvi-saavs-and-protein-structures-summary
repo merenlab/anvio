@@ -64,7 +64,7 @@ if __name__ == '__main__':
 
 
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

@@ -84,7 +84,7 @@ if __name__ == '__main__':
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     parser.add_argument('--skip-runinfo', default=False, action="store_true", help = "Do not bother trying to upgrade the runinfo file")
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         update_profile_db_from_v14_to_v15(args.profile_db, just_do_it = args.just_do_it, skip_runinfo = args.skip_runinfo)

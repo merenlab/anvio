@@ -128,7 +128,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('skip-multiple-gene-calls'), **anvio.K('skip-multiple-gene-calls'))
     groupE.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

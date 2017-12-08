@@ -83,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
     parser.add_argument(*anvio.A('description'), **anvio.K('description'))
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings.")
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         update_contigs_db(args.contigs_db, args.project_name, args.description, just_do_it = args.just_do_it)

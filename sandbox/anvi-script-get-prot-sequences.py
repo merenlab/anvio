@@ -20,7 +20,7 @@ parser.add_argument('contigs_db', metavar = 'CONTIGS_DB',
 parser.add_argument('genes_list', metavar = 'PROT_IDs',
                     help = 'Protein IDs.')
 
-args = parser.parse_args()
+args, unknown = parser.parse_known_args()
 
 gene_ids = set([p.strip() for p in open(args.genes_list).readlines()])
 

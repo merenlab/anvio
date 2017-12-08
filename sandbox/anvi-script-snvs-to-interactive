@@ -94,7 +94,7 @@ if __name__ == '__main__':
                         is %(default).2f.")
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

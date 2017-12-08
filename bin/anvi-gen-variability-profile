@@ -54,8 +54,8 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('min-occurrence-of-variable-positions'), **anvio.K('min-occurrence-of-variable-positions'))
     groupE.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
 
-    args = parser.parse_args()
-    
+    args, unknown = parser.parse_known_args()
+
     try:
         if args.engine not in variability_engines:
             raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)

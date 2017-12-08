@@ -90,7 +90,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('drop-previous-annotations'), **anvio.K('drop-previous-annotations'))
     parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

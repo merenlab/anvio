@@ -73,7 +73,7 @@ if __name__ == '__main__':
                                           "class". The rest of the rows shold be single-copy genes.')
     parser.add_argument('-o', '--output', default = "cpr-scg.classifier", help = "Output file name for the classifier.")
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)
