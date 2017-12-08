@@ -1,0 +1,20 @@
+one_contig_five_genes.fa :
+
+    Took 5 genes from ../contigs.fa that had best matches to PDB, and concatenated their
+    sequences back-to-back.
+
+01/02/02.ini :
+
+    configuration files to create the short reads from using anvi-script-gen-short-reads
+
+proteins.fa :
+
+    Amino acid sequences of the proteins.
+
+STRUCTURES/ :
+
+    Contains .pdb files for each of the proteins (calculated them from RaptorX).
+
+RAPTORXPROPERTY :
+
+    All the labeling files generated from RaptorX. May come in handy.

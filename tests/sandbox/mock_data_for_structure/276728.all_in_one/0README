@@ -1,0 +1,28 @@
+-----------------------------------------------------------------
+Explanation of files in seqid.all_in_one.zip,
+where seqid is a number assigned by RaptorX to the query sequence
+-----------------------------------------------------------------
+
+0README         : This README file.
+
+seqid.fasta     : The user input sequence in FASTA format.
+
+seqid.domain    : Domain boundary and assignment for each residue. Segments marked by 0 are not modeled.
+
+seqid.pdb       : The predicted model for the whole sequence in PDB format.
+
+seqid.png       : The image of the predicted model for the whole sequence in PNG format.
+
+labeling/       : The folder contains the following files.
+  seqid.ss3     : 3-class secondary structure prediction 
+  seqid.ss8     : 8-class secondary structure prediction 
+  seqid.diso    : disorder prediction
+  seqid.acc     : solvent accessibility (ACC) prediction
+
+domX/           : The folder contains all results for the X-th domain where X is the domain number.
+  pdbs/         : The subfolder for predicted 3D models.
+  alignments/   : The subfolder for the alignments/scores.
+  ModelRank.rtf : The ranking of the predicted models in pdbs/
+
+
+In this package, except the image file, all the other files can be opened by WordPad on Windows or vi on Linux.
