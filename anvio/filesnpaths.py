@@ -3,7 +3,6 @@
 """File/Path operations"""
 
 import os
-import h5py
 import json
 import time
 import shutil
