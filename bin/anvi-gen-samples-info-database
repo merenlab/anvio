@@ -39,7 +39,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('OUTPUT', "The output business.")
     groupC.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path', {'default': 'SAMPLES.db'}))
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         s = dbops.SamplesInformationDatabase(args.output_db_path, run, progress, quiet=False)

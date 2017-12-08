@@ -99,7 +99,7 @@ if __name__ == '__main__':
                          sequences and their coverages for 'splits'. By using this flag, you can report contig sequences\
                          and coverages instead. For obvious reasons, you can't use this flag with `--splits-mode` flag.")
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

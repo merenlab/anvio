@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
 
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
     user_config = configparser.ConfigParser()
     user_config.read(args.configuration)
 

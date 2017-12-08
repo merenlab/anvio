@@ -76,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument('profile_db')
     parser.add_argument('summary_cp')
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         create_HDF5_summary_from_summary_cp(args)

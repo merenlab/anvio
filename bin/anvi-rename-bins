@@ -260,7 +260,7 @@ if __name__ == '__main__':
                                 single-copy genes will be very low. This flag will select the collection with the highest\
                                 completion estimate, and use that instead of taking the average.")
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

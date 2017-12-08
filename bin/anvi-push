@@ -48,7 +48,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group("RISKY CLICKS", "As the name suggests!")
     groupC.add_argument(*anvio.A('delete-if-exists'), **anvio.K('delete-if-exists'))
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     args.password = getpass.getpass('Enter your password for the server: ')
 

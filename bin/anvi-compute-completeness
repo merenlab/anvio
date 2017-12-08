@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('completeness-source'), **anvio.K('completeness-source'))
 
     try:
-        args, unknown = parser.parse_known_args()
+        args = anvio.get_args(parser)
         compute_completeness(args)
     except ConfigError as e:
         print(e)

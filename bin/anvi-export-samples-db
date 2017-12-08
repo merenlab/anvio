@@ -30,7 +30,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
     parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         s = dbops.SamplesInformationDatabase(args.samples_information_db, run, progress, quiet=False)

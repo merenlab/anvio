@@ -103,7 +103,7 @@ if __name__ == '__main__':
                       'The same story with the `--distance`, except, the system default for this one\
                        is %s.' % constants.linkage_method_default}))
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         pan = panops.Pangenome(args, run, progress)

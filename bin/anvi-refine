@@ -69,7 +69,7 @@ groupF.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
 groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
 groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
-args, unknown = parser.parse_known_args()
+args = anvio.get_args(parser)
 
 try:
     args.mode = 'refine'
