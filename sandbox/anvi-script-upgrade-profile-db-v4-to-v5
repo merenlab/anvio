@@ -82,7 +82,7 @@ def update_profile_db_from_v4_to_v5(profile_db_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade profile database to version 5 and import all state files into database')
     parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = 'Profile database')
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         update_profile_db_from_v4_to_v5(args.profile_db)

@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
     parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

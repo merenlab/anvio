@@ -38,7 +38,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         setup = COGsSetup(args)

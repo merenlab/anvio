@@ -85,7 +85,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output-file', metavar = 'OUTPUT_FILE',
                         help = 'Where to store the information. The default is\
                                 "%(default)s".', default = 'data.txt')
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args.itep_clusters, args.output_file)

@@ -134,7 +134,7 @@ if __name__ == '__main__':
     parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = "An anvi'o profile database of version %s" % current_version)
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     parser.add_argument('--ignore-auxiliary', default=False, action="store_true", help = "Do not bother me with warnings")
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         update_profile_db(args.profile_db, just_do_it = args.just_do_it, ignore_auxiliary = args.ignore_auxiliary)

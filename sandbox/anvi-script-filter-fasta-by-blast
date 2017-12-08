@@ -145,7 +145,7 @@ if __name__ == '__main__':
                                 identity at matched regions has a `pident` of 100 but a `proper_pident` of 50. The\
                                 default is %(default).1f%%.")
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         filter_FASTA_by_blast_results(args)

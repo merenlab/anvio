@@ -52,7 +52,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
     groupB.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     try:

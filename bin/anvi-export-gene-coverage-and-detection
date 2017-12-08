@@ -61,7 +61,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

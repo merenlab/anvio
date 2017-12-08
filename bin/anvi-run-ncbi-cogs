@@ -43,7 +43,7 @@ if __name__ == '__main__':
                         help="What program to use for database searching. The default is 'diamond',\
                               but you can also use NCBI's 'blastp' if you like.")
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

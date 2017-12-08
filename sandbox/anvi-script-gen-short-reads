@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
 
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
     user_config = configparser.ConfigParser()
     user_config.read(args.configuration)
 

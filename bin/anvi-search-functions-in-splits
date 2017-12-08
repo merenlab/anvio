@@ -62,7 +62,7 @@ def main(args):
 
         for entry in full_report:
             report.write('\t'.join([str(item) for item in entry]) + '\n')
-        report.close() 
+        report.close()
 
         run.info('Full report', args.full_report)
 
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

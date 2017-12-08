@@ -31,8 +31,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('max-num-unique-positions'), **anvio.K('max-num-unique-positions'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'network.gexf'}))
 
-    args = parser.parse_args()
-    
+    args, unknown = parser.parse_known_args()
+
     try:
         variable_nt_positions = VariabilityNetwork(args)
         variable_nt_positions.generate()

@@ -122,7 +122,7 @@ def update_genomes_storage(genomes_storage_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade genomes storage from version %s to version %s' % (current_version, next_version))
     parser.add_argument('genomes_storage', metavar = 'GENOMES_STORAGE', help = "An anvi'o genomes storage of version %s" % current_version)
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         update_genomes_storage(args.genomes_storage)

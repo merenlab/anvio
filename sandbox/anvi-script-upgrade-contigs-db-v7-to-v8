@@ -72,7 +72,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database from version %s to version %s' % (current_version, next_version))
     parser.add_argument('contigs_db', metavar = 'CONTIGS_DB', help = 'Contigs database')
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         update_contigs_db(args.contigs_db, just_do_it = args.just_do_it)

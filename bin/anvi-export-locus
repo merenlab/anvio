@@ -197,7 +197,8 @@ if __name__ == '__main__':
                             If you choose this option, you must also say which HMM source to use.')
     groupC.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
     groupC.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-    args = parser.parse_args()
+
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

@@ -64,7 +64,7 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('PROGRAM', "The program that will be used for generating tree. Available options: " + ", ".join(list(driver_modules['phylogeny'].keys())))
     groupD.add_argument(*anvio.A('program'), **anvio.K('program'))
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

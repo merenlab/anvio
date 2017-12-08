@@ -90,7 +90,7 @@ if __name__ == '__main__':
                                   you would like to find translated DNA sequences for your gene calls in the genes output\
                                   file.")
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         main(args)

@@ -68,7 +68,7 @@ if __name__ == '__main__':
     groupZ.add_argument(*anvio.A('queue-size'), **anvio.K('queue-size'))
     groupZ.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size'))
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
         profiler = anvio.profiler.BAMProfiler(args)
