@@ -3,7 +3,9 @@
 
 """Exceptions"""
 
+import sys
 import textwrap
+import traceback
 
 from anvio.ttycolors import color_text
 
@@ -39,7 +41,18 @@ class AnvioError(Exception, object):
         for error_line in error_lines[1:]:
             error_message.append('%s%s' % (' ' * (len(self.error_type) + 2), error_line))
 
+        if '--debug' in sys.argv:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+
+            sep = color_text('=' * 80, 'red')
+
+            print(color_text('\nTraceback for debugging', 'red'))
+            print(sep)
+            traceback.print_tb(exc_traceback, limit=100, file=sys.stdout)
+            print(sep)
+
         return '\n\n' + '\n'.join(error_message) + '\n\n'
+
 
     def clear_text(self):
         return '%s: %s' % (self.error_type, self.e)
