@@ -46,7 +46,7 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('MISC', 'Categoryless flags and parameters.')
     groupD.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         a = dbops.ContigsDatabase(args.output_db_path, run, progress, quiet=False, skip_init = True)

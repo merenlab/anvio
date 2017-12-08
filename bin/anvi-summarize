@@ -90,7 +90,7 @@ if __name__ == '__main__':
                                   you would like to find translated DNA sequences for your gene calls in the genes output\
                                   file.")
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

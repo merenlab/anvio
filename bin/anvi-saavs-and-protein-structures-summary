@@ -64,7 +64,7 @@ if __name__ == '__main__':
 
 
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

@@ -72,7 +72,7 @@ if __name__ == '__main__':
     parser.add_argument('--use-version', default='0.12.6', metavar="EMAPPER_VERSION",
                         help='The version of eggnog-mapper that generated the annotation file.')
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

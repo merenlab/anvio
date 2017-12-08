@@ -86,7 +86,7 @@ if __name__ == '__main__':
                               clean after itself by deleting it. The use of this flag will make sure the temporary output\
                               files do not go anywhere so you can play with them further..")
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         signal.signal(signal.SIGINT, __catch_sig)

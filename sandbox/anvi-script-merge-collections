@@ -80,7 +80,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output-file', metavar = 'OUTPUT_FILE', default = None, required = True,
                         help = 'Output file name.')
 
-    args, unknown = parser.parse_known_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)
