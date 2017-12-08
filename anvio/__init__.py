@@ -19,6 +19,29 @@ except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
 
+def get_args(parser):
+    """A helper function to parse args anvi'o way.
+
+       This function allows us to make sure some ad hoc parameters such as `--debug`
+       can be used with any anvi'o program spontaneously even if they are not explicitly
+       defined as an accepted argument, yet flags (or parameters) anvi'o does not expect
+       to see can still be sorted out.
+    """
+
+    allowed_ad_hoc_flags = ['--version', '--debug']
+
+    args, unknown = parser.parse_known_args()
+
+    # if there are any args in the unknown that we do not expect to find
+    # we we will make argparse complain about those.
+    if len([f for f in unknown if f not in allowed_ad_hoc_flags]):
+        for f in allowed_ad_hoc_flags:
+            parser.add_argument(f, action='store_true')
+        parser.parse_args()
+
+    return args
+
+
 import anvio.tables as tables
 import anvio.constants as constants
 
