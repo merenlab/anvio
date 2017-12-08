@@ -84,6 +84,10 @@ class GenomeStorage(object):
                                running. If you are a developer, you probably already figured what is\
                                wrong. If you are a cat, you need to send us an e-mail immediately.")
 
+        if self.storage_path.endswith('.h5'):
+            raise ConfigError("We recenlty switched from HD5 files (.h5) to Sqlite (.db) files for the genome storage, \
+                              you can upgrade your genome storage using script 'anvi-script-upgrade-genomes-storage-v4-to-v5'.")
+
         filesnpaths.is_file_exists(self.storage_path)
 
 
