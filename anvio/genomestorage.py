@@ -133,8 +133,15 @@ class GenomeStorage(object):
                 'aa_sequence': aa_sequence,
                 'dna_sequence': dna_sequence,
                 'partial': partial,
-                'length': length
+                'length': length,
+                'functions': {}
             }
+
+            functions = self.db.get_some_rows_from_table(t.genome_gene_function_calls_table_name, 
+                                                         'genome_name = "%s" and gene_callers_id = "%s"' % (genome_name, gene_caller_id))
+
+            for row in functions:
+                self.gene_info[genome_name][gene_caller_id]['functions'][row[3]] = "%s|||%s" % (row[4], row[5])
 
         self.run.info('Genomes storage', 'Initialized (storage hash: %s)' % (self.get_storage_hash()))
         self.run.info('Num genomes in storage', len(self.get_all_genome_names()))
@@ -312,6 +319,16 @@ class GenomeStorage(object):
         column_name = 'dna_sequence' if report_DNA_sequences else 'aa_sequence' 
 
         return self.gene_info[genome_name][gene_caller_id][column_name]
+
+
+    def get_gene_functions(self, genome_name, gene_callers_id):
+        if not self.functions_are_available:
+            raise ConfigError("Functions are not available in this genome storage ('%s'). " % self.storage_path)
+
+        self.is_known_genome(genome_name)
+        self.is_known_gene_call(genome_name, gene_callers_id)
+
+        return self.gene_info[genome_name][gene_callers_id]['functions']
 
 
     def get_all_genome_names(self):
