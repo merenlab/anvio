@@ -64,6 +64,9 @@ def update_pan_db(pan_db_path, just_do_it = False):
         pass
 
 
+    # learn additional_data_headers for later:
+    additional_data_headers = pan_db.get_meta_value('additional_data_headers').split(',')
+
     # take care of the self table
     self_table = pan_db.get_table_as_list_of_tuples('self')
     pan_db.cursor.execute('ALTER TABLE self RENAME TO self_TEMP;')
@@ -110,15 +113,33 @@ def update_pan_db(pan_db_path, just_do_it = False):
     except:
         pass
 
+    # we also added a totally new table to this version:
+    pan_db.create_table(item_additional_data_table_name, item_additional_data_table_structure, item_additional_data_table_types)
+
     # set the version
     pan_db.remove_meta_key_value_pair('version')
     pan_db.set_version(next_version)
 
-    # we also added a totally new table to this version:
-    pan_db.create_table(item_additional_data_table_name, item_additional_data_table_structure, item_additional_data_table_types)
+    # we have one more thing to do: getting rid of the 'additional_data' table without losing data, by carrying
+    # its content into our new item_additional_data_table
+    additional_data_table_dict = pan_db.get_table_as_dict('additional_data')
 
-    # bye
+    # close the db temporarily
     pan_db.disconnect()
+
+    # update the contents of the item_additional_data_table
+    args = argparse.Namespace(pan_db=pan_db_path, just_do_it=True)
+    item_additional_data_table = dbops.TableForItemAdditionalData(args)
+    item_additional_data_table.add(additional_data_headers, additional_data_table_dict)
+
+    # open the database again to remove stuff
+    pan_db = db.DB(pan_db_path, None, ignore_version = True)
+    pan_db.remove_meta_key_value_pair('additional_data_headers')
+    pan_db._exec("DROP TABLE additional_data")
+
+    # now bye for real!
+    pan_db.disconnect()
+
     progress.end()
 
     run.info_single('Done! Your pan db is now %s.' % next_version)
