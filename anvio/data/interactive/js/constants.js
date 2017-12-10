@@ -150,23 +150,23 @@ var named_layers = {
         'norm': 'none',
         'pretty_name': 'Num genes per kbp',
     },
-    'num_genomes_pc_has_hits': {
+    'num_genomes_gene_cluster_has_hits': {
         'height': 180,
         'color': '#002e4f',
         'norm': 'none',
         'pretty_name': 'Num genomes',
     },
-    'num_genes_in_pc': {
+    'num_genes_in_gene_cluster': {
         'height': 180,
         'color': '#002e4f',
         'norm': 'sqrt',
-        'pretty_name': 'Num genes in PC',
+        'pretty_name': 'Num genes',
     },
     'SCG': {
         'height': 180,
         'color': '#4f1111',
         'norm': 'none',
-        'pretty_name': 'Single-copy Core Genes',
+        'pretty_name': 'SCG Clusters',
     },
     'total_length': {
         'height': 180,
