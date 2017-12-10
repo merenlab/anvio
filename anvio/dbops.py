@@ -2532,6 +2532,7 @@ class TableForItemAdditionalData(Table):
         database.disconnect()
 
         if not len(item_names):
+            self.progress.end()
             return None, {}
 
         d = {}
