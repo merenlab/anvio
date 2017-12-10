@@ -1046,6 +1046,7 @@ class PanSuperclass(object):
             self.progress.end()
             return
 
+        self.progress.new('Recovering functions')
         # too many shitty nested loops here, but it is quite efficient since we work only with a dict
         # in memory
         for annotation_source in self.gene_clusters_function_sources:
