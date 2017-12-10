@@ -743,6 +743,11 @@ class PanSuperclass(object):
         self.views = {}
         self.collection_profile = {}
 
+        # the following two are initialized via `init_items_additional_data()` and use information
+        # stored in item additional data tables in the pan database
+        self.items_additional_data_dict = None
+        self.items_additional_data_keys = None
+
         self.num_gene_clusters = None
         self.num_genes_in_gene_clusters = None
 
@@ -1025,27 +1030,27 @@ class PanSuperclass(object):
         self.progress.end()
 
 
-    def init_additional_layer_data(self):
+    def init_items_additional_data(self):
         """Recover additional data stored in the pan database `additional data` table."""
 
         self.progress.new('Initializing additional layer data')
         self.progress.update('...')
         pan_db = PanDatabase(self.pan_db_path)
-        self.additional_layers_dict = pan_db.db.get_table_as_dict('additional_data')
-        self.additional_layers_headers = pan_db.db.get_meta_value('additional_data_headers').split(',')
+        self.items_additional_data_dict = pan_db.db.get_table_as_dict('additional_data')
+        self.items_additional_data_keys = pan_db.db.get_meta_value('additional_data_headers').split(',')
         pan_db.disconnect()
 
-        if len([h for h in self.additional_layers_headers if h not in list(self.additional_layers_dict.values())[0].keys()]):
+        if len([h for h in self.items_additional_data_keys if h not in list(self.items_additional_data_dict.values())[0].keys()]):
             self.progress.end()
             raise ConfigError("Something that should never happen happened :( At least one additional data header that\
                                 appears in the self table of your pan database is not in the dictionary recovered for this\
                                 data from another table. Anvi'o needs an adult :(")
 
-        # In fact we are done here since we have our `additional_layers_dict` all filled up with sweet data.
+        # In fact we are done here since we have our `items_additional_data_dict` all filled up with sweet data.
         # But if functions are initialized, we can also get a summary of gene clusters based on whether most
         # genes in them were annotated with known functions or not for a given annotation source. Of course,
         # for this to happen, we need to check whther functions were initialied prior to the call to
-        # `init_additional_layer_data`.
+        # `init_items_additional_data`.
         if not self.functions_initialized:
             # no? k. bye.
             self.progress.end()
@@ -1059,7 +1064,7 @@ class PanSuperclass(object):
                 continue
 
             self.progress.update('Computing known/unknown dict for %s' % annotation_source)
-            for gene_cluster_id in self.additional_layers_dict:
+            for gene_cluster_id in self.items_additional_data_dict:
                 hits = Counter({})
                 for genome_id in self.gene_clusters_functions_dict[gene_cluster_id]:
                     for gene_callers_id in self.gene_clusters_functions_dict[gene_cluster_id][genome_id]:
@@ -1069,11 +1074,11 @@ class PanSuperclass(object):
                             hits['UNKNOWN'] += 1
 
                 if not hits or hits.most_common()[0][0] == 'UNKNOWN':
-                    self.additional_layers_dict[gene_cluster_id][annotation_source] = 'UNKNOWN'
+                    self.items_additional_data_dict[gene_cluster_id][annotation_source] = 'UNKNOWN'
                 else:
-                    self.additional_layers_dict[gene_cluster_id][annotation_source] = 'KNOWN'
+                    self.items_additional_data_dict[gene_cluster_id][annotation_source] = 'KNOWN'
 
-            self.additional_layers_headers.append(annotation_source)
+            self.items_additional_data_keys.append(annotation_source)
 
         self.progress.end()
 
@@ -1253,6 +1258,11 @@ class ProfileSuperclass(object):
         # this one becomes the object that gives access to the auxiliary data ops for split coverages
         # used heavily in interactive interface to show stuff (see bottle routes and all).
         self.split_coverage_values = None
+
+        # the following two are initialized via `init_items_additional_data()` and use information
+        # stored in item additional data tables
+        self.items_additional_data_dict = None
+        self.items_additional_data_keys = None
 
         self.auxiliary_profile_data_available = None
         self.auxiliary_data_path = None
@@ -1560,6 +1570,11 @@ class ProfileSuperclass(object):
         self.progress.end()
 
         return d
+
+
+    def init_items_additional_data(self):
+        items_additional_data = TableForItemAdditionalData(self.args)
+        self.items_additional_data_keys, self.items_additional_data_dict = items_additional_data.get()
 
 
     def init_collection_profile(self, collection_name):
@@ -2507,6 +2522,8 @@ class TableForItemAdditionalData(Table):
     def get(self):
         """Will return the additional data keys and the dict."""
 
+        self.progress.new('Recovering item additional keys and data')
+        self.progress.update('...')
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         item_additional_data = database.get_table_as_dict(t.item_additional_data_table_name)
         item_additional_data_keys = sorted(database.get_single_column_from_table(t.item_additional_data_table_name, 'key', unique=True))
@@ -2516,7 +2533,9 @@ class TableForItemAdditionalData(Table):
         if not len(item_names):
             return None, {}
 
-        d = dict.fromkeys(item_names, {})
+        d = {}
+        for item_name in item_names:
+            d[item_name] = {}
 
         for entry in item_additional_data.values():
             split_name = entry['split_name']
@@ -2532,6 +2551,8 @@ class TableForItemAdditionalData(Table):
             for key in item_additional_data_keys:
                 if key not in d[split_name]:
                     d[split_name][key] = None
+
+        self.progress.end()
 
         return item_additional_data_keys, d
 
