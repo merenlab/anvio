@@ -48,15 +48,10 @@ def update_genomes_storage(genomes_storage_path):
         fp.close()
         raise ConfigError("Genome storage version is not %s." % current_version)
 
-    run.info("Auxiliary database found", genomes_storage_path)
+    run.info("Outdated genomes storage found", genomes_storage_path)
 
     genome_storage_db_path = genomes_storage_path[:-3] + '.db'
     filesnpaths.is_output_file_writable(genome_storage_db_path, ok_if_exists=False)
-
-    backup_genomes_storage_path = genomes_storage_path + '.v4'
-    shutil.copyfile(genomes_storage_path, backup_genomes_storage_path)
-
-    run.info("Backup file created", backup_genomes_storage_path)
 
     genomes_db = db.DB(genome_storage_db_path, next_version, new_database=True)
     genomes_db.create_table(genome_info_table_name, genome_info_table_structure, genome_info_table_types)
@@ -66,13 +61,12 @@ def update_genomes_storage(genomes_storage_path):
     genomes_db.set_meta_value('creation_date', time.time())
     genomes_db.set_meta_value('functions_are_available', False)
 
-    run.info("New auxiliary database path", genome_storage_db_path)    
-
     I = lambda genome_name, key: fp['/info/genomes/%s/%s' % (genome_name, key)]
 
     genome_names = [d for d in fp['/info/genomes']]
 
-    progress.new('Adding genomes')
+    progress.new('Bleep bloop')
+    progress.update('Adding genomes')
     genome_info_entries = []
     for genome_name in genome_names:
         values = (genome_name, )
@@ -90,19 +84,17 @@ def update_genomes_storage(genomes_storage_path):
         genome_info_entries.append(values)
     genomes_db.insert_many(genome_info_table_name, entries=genome_info_entries)
     del genome_info_entries
-    progress.end()
 
-    progress.new('Adding genes')
+    progress.update('Adding genes')
     gene_entries = []
     for genome_name in genome_names:
         for gene_callers_id in fp['/data/genomes/%s' % genome_name]:
-            G = lambda key: fp['/data/genomes/%s/%s/%s' % (genome_name, gene_callers_id, key)].value 
+            G = lambda key: fp['/data/genomes/%s/%s/%s' % (genome_name, gene_callers_id, key)].value
             gene_entries.append((genome_name, gene_callers_id, G('aa_sequence'), G('dna_sequence'), int(G('partial')), int(G('length')), ))
     genomes_db.insert_many(gene_info_table_name, entries=gene_entries)
     del gene_entries
-    progress.end()
 
-    progress.new('Adding functions')
+    progress.update('Adding functions')
     functions_entries = []
     entry_id_counter = 0
     for genome_name in genome_names:
@@ -117,7 +109,14 @@ def update_genomes_storage(genomes_storage_path):
     genomes_db.insert_many(genome_gene_function_calls_table_name, entries=functions_entries)
 
     genomes_db.disconnect()
+
     progress.end()
+
+    run.info("New auxiliary database path", genome_storage_db_path)
+
+    run.warning("You can now remove this file (unless something went horribly wrong \
+                 and anvi'o has no clue): %s" % genome_storage_db_path, lc='green')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade genomes storage from version %s to version %s' % (current_version, next_version))
