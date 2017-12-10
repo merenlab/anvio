@@ -2635,7 +2635,8 @@ class TableForItemAdditionalData(Table):
                 predicted_key_type = type_class.__name__ if type_class else None
 
             key_types[key] = predicted_key_type
-            self.run.info('Key "%s"' % key, 'Predicted type: %s' % (key_types[key]))
+            self.run.info('Key "%s"' % key, 'Predicted type: %s' % (key_types[key]), \
+                                            nl_after = 1 if key == keys_list[-1] else 0)
 
         # we be responsible here.
         keys_already_in_db = [c for c in keys_list if c in self.item_additional_data_keys]
