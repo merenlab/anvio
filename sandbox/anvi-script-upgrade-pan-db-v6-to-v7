@@ -115,7 +115,7 @@ def update_pan_db(pan_db_path, just_do_it = False):
     pan_db.set_version(next_version)
 
     # we also added a totally new table to this version:
-    profile_db.create_table(item_additional_data_table_name, item_additional_data_table_structure, item_additional_data_table_types)
+    pan_db.create_table(item_additional_data_table_name, item_additional_data_table_structure, item_additional_data_table_types)
 
     # bye
     pan_db.disconnect()
