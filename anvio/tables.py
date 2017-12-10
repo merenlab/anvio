@@ -123,8 +123,8 @@ item_orders_table_structure          = ['name', 'type', 'data']
 item_orders_table_types              = [ 'str',  'str',  'str']
 
 item_additional_data_table_name      = 'item_additional_data'
-item_additional_data_table_structure = ['entry_id', 'split_name', 'key', 'value', 'type']
-item_additional_data_table_types     = [ 'numeric',    'text'   , 'str',  'str' ,  'str']
+item_additional_data_table_structure = ['entry_id', 'item_name', 'key', 'value', 'type']
+item_additional_data_table_types     = [ 'numeric',   'text'   , 'str',  'str' ,  'str']
 
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']
