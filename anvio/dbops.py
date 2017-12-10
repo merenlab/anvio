@@ -2533,7 +2533,7 @@ class TableForItemAdditionalData(Table):
 
         if not len(item_names):
             self.progress.end()
-            return None, {}
+            return [], {}
 
         d = {}
         for item_name in item_names:
