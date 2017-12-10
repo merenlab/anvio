@@ -2528,7 +2528,7 @@ class TableForItemAdditionalData(Table):
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         item_additional_data = database.get_table_as_dict(self.table_name)
         item_additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
-        item_names = database.get_single_column_from_table(self.table_name, 'split_name', unique=True)
+        item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True)
         database.disconnect()
 
         if not len(item_names):
@@ -2539,19 +2539,19 @@ class TableForItemAdditionalData(Table):
             d[item_name] = {}
 
         for entry in item_additional_data.values():
-            split_name = entry['split_name']
+            item_name = entry['item_name']
             key = entry['key']
             value = entry['value']
 
             if entry['type'] in ['int', 'float']:
-                d[split_name][key] = eval(entry['type'])(value)
+                d[item_name][key] = eval(entry['type'])(value)
             else:
-                d[split_name][key] = value
+                d[item_name][key] = value
 
-        for split_name in d:
+        for item_name in d:
             for key in item_additional_data_keys:
-                if key not in d[split_name]:
-                    d[split_name][key] = None
+                if key not in d[item_name]:
+                    d[item_name][key] = None
 
         self.progress.end()
 
@@ -2605,13 +2605,13 @@ class TableForItemAdditionalData(Table):
            * `data_dict`: a dictionary that should follow this format:
 
                 d = {
-                        'split_name_01': {'key_01': value,
-                                          'key_02': value,
-                                          'key_03': value
-                                          },
-                        'split_name_02': {'key_01': value,
-                                          'key_03': value,
-                                          },
+                        'item_name_01': {'key_01': value,
+                                         'key_02': value,
+                                         'key_03': value
+                                         },
+                        'item_name_02': {'key_01': value,
+                                         'key_03': value,
+                                         },
                         (...)
                     }
 
