@@ -132,6 +132,9 @@ class Pangenome(object):
 
         dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values)
 
+        # know thyself.
+        self.args.pan_db = self.pan_db_path
+
 
     def get_output_file_path(self, file_name, delete_if_exists=False):
         output_file_path = os.path.join(self.output_dir, file_name)
@@ -463,19 +466,9 @@ class Pangenome(object):
                                         table_types=table_types,
                                         view_name = 'gene_cluster_presence_absence')
 
-        additional_data_structure = ['gene_cluster', 'num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'SCG']
-        dbops.TablesForViews(self.pan_db_path).create_new_view(
-                                        data_dict=self.additional_view_data,
-                                        table_name='additional_data',
-                                        table_structure=additional_data_structure,
-                                        table_types=['text', 'numeric', 'numeric', 'numeric'],
-                                        view_name = None)
-
-        # add additional data structure to the self table, so we can have them initially ordered
-        # in the interface the way additional_data_structure suggests:
-        pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
-        pan_db.db.set_meta_value('additional_data_headers', ','.join(additional_data_structure[1:]))
-        pan_db.disconnect()
+        item_additional_data_table = dbops.TableForItemAdditionalData(self.args)
+        item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'SCG']
+        item_additional_data_table.add(item_additional_data_keys, self.additional_view_data)
 
         ########################################################################################
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
@@ -548,10 +541,10 @@ class Pangenome(object):
 
             # setup the additional section based on the number of genomes we have:
             if config_name == 'presence-absence':
-                additional_config_section="""\n[AdditionalData !PAN.db::additional_data]\ncolumns_to_use = %s\nnormalize = False\n""" \
+                additional_config_section="""\n[AdditionalData !PAN.db::item_additional_data]\ntable_form=dataframe\ncolumns_to_use = %s\nnormalize = False\n""" \
                                         % ','.join(['num_genomes_gene_cluster_has_hits'] * (int(round(len(self.genomes) / 2))))
             elif config_name == 'frequency':
-                additional_config_section="""\n[AdditionalData !PAN.db::additional_data]\ncolumns_to_use = %s\nnormalize = False\nlog=True\n""" \
+                additional_config_section="""\n[AdditionalData !PAN.db::item_additional_data]\ntable_form=dataframe\ncolumns_to_use = %s\nnormalize = False\nlog=True\n""" \
                                         % ','.join(['num_genes_in_gene_cluster'] * (int(round(math.sqrt(len(self.genomes))))))
 
             # write the content down in to file at the new path:
