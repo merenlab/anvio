@@ -101,8 +101,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.samples_order_dict = {}
         self.samples_information_default_layer_order = {}
 
-        self.additional_layers_dict = {}
-        self.additional_layers_headers = []
+        self.items_additional_data_dict = {}
+        self.items_additional_data_keys = []
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
@@ -217,8 +217,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
 
-            self.additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=self.additional_layers_dict, assign_none_for_missing=True)
-            self.additional_layers_headers = self.additional_layers_headers + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
+            self.items_additional_data_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=self.items_additional_data_dict, assign_none_for_missing=True)
+            self.items_additional_data_keys = self.items_additional_data_keys + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         self.check_names_consistency()
         self.gen_orders_for_items_based_on_additional_layers_data()
@@ -298,9 +298,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
         skipped_additional_data_layers = []
         # go through additional layers that are not of type `bar`.
-        for layer in [additional_layer for additional_layer in self.additional_layers_headers if '!' not in additional_layer]:
+        for layer in [additional_layer for additional_layer in self.items_additional_data_keys if '!' not in additional_layer]:
             self.progress.update('for "%s" ...' % layer)
-            layer_type = utils.get_predicted_type_of_items_in_a_dict(self.additional_layers_dict, layer)
+            layer_type = utils.get_predicted_type_of_items_in_a_dict(self.items_additional_data_dict, layer)
 
             if layer_type == None:
                 skipped_additional_data_layers.append(layer)
@@ -308,14 +308,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             item_layer_data_tuple = []
             for item in self.displayed_item_names_ordered:
-                if item not in self.additional_layers_dict:
+                if item not in self.items_additional_data_dict:
                     if layer_type != str:
                         raise ConfigError("'%s' is looks like numerical layer but value for '%s' is missing or empty. \
                                           We do not support empty values for numerical layers yet." % (layer, item))
                     else:
                         item_layer_data_tuple.append(('', item))
                 else:
-                    item_layer_data_tuple.append((layer_type(self.additional_layers_dict[item][layer]), item))
+                    item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
 
             self.p_meta['available_item_orders'].append('>> %s:none:none' % layer)
             self.p_meta['item_orders']['>> %s' % layer] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple)]}
@@ -755,7 +755,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.skip_init_functions:
             self.init_gene_clusters_functions()
 
-        self.init_additional_layer_data()
+        self.init_items_additional_data()
 
         self.p_meta['item_orders'] = self.item_orders
 
@@ -784,6 +784,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.init_functions()
 
         ProfileSuperclass.__init__(self, self.args)
+
+        # init item additional data
+        self.init_items_additional_data()
 
         # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
         # all the split sequences since only now we know the mun_contig_length that was used to profile
@@ -991,8 +994,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             json_header.extend(view_headers)
 
             # (6) then add 'additional' headers as the outer ring:
-            if self.additional_layers_headers:
-                json_header.extend(self.additional_layers_headers)
+            if self.items_additional_data_keys:
+                json_header.extend(self.items_additional_data_keys)
 
             # (7) finally add hmm search results
             if self.hmm_searches_dict:
@@ -1024,7 +1027,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
                 # (6) adding additional layers
-                json_entry.extend([self.additional_layers_dict[split_name][header] if split_name in self.additional_layers_dict else None for header in self.additional_layers_headers])
+                json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
 
                 # (7) adding hmm stuff
                 if self.hmm_searches_dict:
