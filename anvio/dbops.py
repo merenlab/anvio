@@ -1031,20 +1031,10 @@ class PanSuperclass(object):
 
 
     def init_items_additional_data(self):
-        """Recover additional data stored in the pan database `additional data` table."""
+        """Recover additional data stored in the pan database."""
 
-        self.progress.new('Initializing additional layer data')
-        self.progress.update('...')
-        pan_db = PanDatabase(self.pan_db_path)
-        self.items_additional_data_dict = pan_db.db.get_table_as_dict('additional_data')
-        self.items_additional_data_keys = pan_db.db.get_meta_value('additional_data_headers').split(',')
-        pan_db.disconnect()
-
-        if len([h for h in self.items_additional_data_keys if h not in list(self.items_additional_data_dict.values())[0].keys()]):
-            self.progress.end()
-            raise ConfigError("Something that should never happen happened :( At least one additional data header that\
-                                appears in the self table of your pan database is not in the dictionary recovered for this\
-                                data from another table. Anvi'o needs an adult :(")
+        items_additional_data = TableForItemAdditionalData(self.args)
+        self.items_additional_data_keys, self.items_additional_data_dict = items_additional_data.get()
 
         # In fact we are done here since we have our `items_additional_data_dict` all filled up with sweet data.
         # But if functions are initialized, we can also get a summary of gene clusters based on whether most
