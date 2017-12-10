@@ -2486,9 +2486,10 @@ class TableForItemAdditionalData(Table):
        pan and profile databases. Related issue: https://github.com/merenlab/anvio/issues/662.
     """
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=run, p=progress, table_name=t.item_additional_data_table_name):
         self.run = r
         self.progress = p
+        self.table_name = table_name
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
@@ -2504,7 +2505,7 @@ class TableForItemAdditionalData(Table):
         self.db_version = get_required_version_for_db(self.db_path)
 
         database = db.DB(self.db_path, self.db_version)
-        self.item_additional_data_keys = sorted(database.get_single_column_from_table(t.item_additional_data_table_name, 'key'))
+        self.item_additional_data_keys = database.get_single_column_from_table(self.table_name, 'key')
         database.disconnect()
 
         Table.__init__(self, self.db_path, self.db_version, self.run, self.progress)
@@ -2525,9 +2526,9 @@ class TableForItemAdditionalData(Table):
         self.progress.new('Recovering item additional keys and data')
         self.progress.update('...')
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
-        item_additional_data = database.get_table_as_dict(t.item_additional_data_table_name)
-        item_additional_data_keys = sorted(database.get_single_column_from_table(t.item_additional_data_table_name, 'key', unique=True))
-        item_names = database.get_single_column_from_table(t.item_additional_data_table_name, 'split_name', unique=True)
+        item_additional_data = database.get_table_as_dict(self.table_name)
+        item_additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
+        item_names = database.get_single_column_from_table(self.table_name, 'split_name', unique=True)
         database.disconnect()
 
         if not len(item_names):
@@ -2567,7 +2568,7 @@ class TableForItemAdditionalData(Table):
 
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
-        item_additional_data_keys = sorted(database.get_single_column_from_table(t.item_additional_data_table_name, 'key', unique=True))
+        item_additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
 
         if not len(item_additional_data_keys):
             self.run.info_single('There is nothing to remove --the items additional data table is already empty :(')
@@ -2587,11 +2588,11 @@ class TableForItemAdditionalData(Table):
                     # what the hell, user?
                     return
 
-                database._exec('''DELETE from %s WHERE key="%s"''' % (t.item_additional_data_table_name, key))
+                database._exec('''DELETE from %s WHERE key="%s"''' % (self.table_name, key))
 
             self.run.warning("Data for the following keys removed from the database: '%s'. #SAD." % (', '.join(keys_list)))
         else:
-            database._exec('''DELETE from %s''' % (t.item_additional_data_table_name))
+            database._exec('''DELETE from %s''' % (self.table_name))
 
             self.run.warning("All data from the items additional data table is removed (wow).")
 
@@ -2653,17 +2654,17 @@ class TableForItemAdditionalData(Table):
                                    about nothin' for this once.")
 
         db_entries = []
-        self.set_next_available_id(t.item_additional_data_table_name)
+        self.set_next_available_id(self.table_name)
         for item_name in data_dict:
             for key in data_dict[item_name]:
-                db_entries.append(tuple([self.next_id(t.item_additional_data_table_name),
+                db_entries.append(tuple([self.next_id(self.table_name),
                                          item_name,
                                          key,
                                          data_dict[item_name][key],
                                          key_types[key]]))
 
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.item_additional_data_table_name, db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
 
         self.run.info('New data added to the db', '%s.' % (', '.join(keys_list)))
@@ -2671,11 +2672,11 @@ class TableForItemAdditionalData(Table):
 
     def list_keys(self):
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
-        item_additional_data_keys = sorted(database.get_single_column_from_table(t.item_additional_data_table_name, 'key', unique=True))
+        item_additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
 
         self.run.warning('', 'AVAILABLE DATA KEYS (%d FOUND)' % (len(item_additional_data_keys)), lc='yellow')
         for key in item_additional_data_keys:
-            rows = database.get_some_rows_from_table_as_dict(t.item_additional_data_table_name, 'key="%s"' % key)
+            rows = database.get_some_rows_from_table_as_dict(self.table_name, 'key="%s"' % key)
             self.run.info_single('%s (%s, describes %d items)' % (key, list(rows.values())[0]['type'], len(rows)),
                                  nl_after = 1 if key == item_additional_data_keys[-1] else 0)
 
