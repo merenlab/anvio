@@ -755,7 +755,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.skip_init_functions:
             self.init_gene_clusters_functions()
 
-        self.init_items_additional_data()
+        PanSuperclass.init_items_additional_data(self)
 
         self.p_meta['item_orders'] = self.item_orders
 
@@ -786,7 +786,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         ProfileSuperclass.__init__(self, self.args)
 
         # init item additional data
-        self.init_items_additional_data()
+        ProfileSuperclass.init_items_additional_data(self)
 
         # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
         # all the split sequences since only now we know the mun_contig_length that was used to profile
