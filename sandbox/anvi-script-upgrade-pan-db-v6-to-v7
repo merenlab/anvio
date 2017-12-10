@@ -18,8 +18,8 @@ current_version = '6'
 next_version    = '7'
 
 item_additional_data_table_name      = 'item_additional_data'
-item_additional_data_table_structure = ['entry_id', 'sample_id', 'split_name', 'key', 'value', 'type']
-item_additional_data_table_types     = [ 'numeric',    'text'  ,    'text'   , 'str',  'str' ,  'str']
+item_additional_data_table_structure = ['entry_id', 'item_name', 'key', 'value', 'type']
+item_additional_data_table_types     = [ 'numeric',   'text'   , 'str',  'str' ,  'str']
 
 
 def update_pan_db(pan_db_path, just_do_it = False):
