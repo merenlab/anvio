@@ -4377,18 +4377,10 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
 
     anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, tuple([order_name, 'newick' if order_data_type_newick else 'basic', order_data]))
 
-    try:
-        anvio_db.db.remove_meta_key_value_pair('available_item_orders')
-    except:
-        pass
     anvio_db.db.set_meta_value('available_item_orders', ','.join(available_item_orders))
 
     # We don't consider basic orders as orders becasue we are rebels.
     if order_data_type_newick:
-        try:
-            anvio_db.db.remove_meta_key_value_pair('gene_clusters_ordered' if db_type == 'pan' else 'contigs_ordered')
-        except:
-            pass
         anvio_db.db.set_meta_value('gene_clusters_ordered' if db_type == 'pan' else 'contigs_ordered', True)
 
     try:
@@ -4398,10 +4390,6 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
         default_item_order_is_set = False
 
     if make_default or not default_item_order_is_set:
-        try:
-            anvio_db.db.remove_meta_key_value_pair('default_item_order')
-        except:
-            pass
         anvio_db.db.set_meta_value('default_item_order', order_name)
 
     anvio_db.disconnect()

@@ -89,6 +89,7 @@ class DB:
 
 
     def set_meta_value(self, key, value):
+        self.remove_meta_key_value_pair(key)
         self._exec('''INSERT INTO self VALUES(?,?)''', (key, value,))
         self.commit()
 
