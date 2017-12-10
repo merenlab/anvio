@@ -1312,6 +1312,14 @@ class ProfileSuperclass(object):
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
 
+        if self.p_meta['blank'] and not self.p_meta['contigs_db_hash']:
+            raise ConfigError("ProfileSuperclass is upset, because it seems you are tyring to initialize a blank anvi'o profile\
+                               database that is not associated with a contigs database. This will not work for multiple reasons.\
+                               The current technical limitation is that blank profile databases that are in this situation do not\
+                               keep track of split names they are working with. Yes. We too know that this is a serious design\
+                               flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o\
+                               profile and pan databases maintain a table with all item names they are supposed to be working with.")
+
         if self.p_meta['contigs_ordered'] and 'available_item_orders' in self.p_meta:
             self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
             self.item_orders = profile_db.db.get_table_as_dict(t.item_orders_table_name)
@@ -3992,7 +4000,12 @@ def get_split_names_in_profile_db(profile_db_path):
 
     profile_db = ProfileDatabase(profile_db_path)
 
-    if int(profile_db.meta['merged']):
+    if int(profile_db.meta['blank']):
+        run.warning("dbops::get_split_names_in_profile_db is speaking. Someone asked for the split names in a blank profile database.\
+                     Sadly, anvi'o does not keep track of split names in blank profile databases. This function will return an\
+                     empty set as split names to not kill your mojo, but whatever you were trying to do will not work :(")
+        split_names = set([])
+    elif int(profile_db.meta['merged']):
         split_names = set(profile_db.db.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'contig'))
     else:
         split_names = set(profile_db.db.get_single_column_from_table('atomic_data_splits', 'contig'))
