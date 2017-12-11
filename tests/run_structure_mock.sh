@@ -81,15 +81,12 @@ else
 fi
 
 INFO "anvi-gen-variability for AA"
-anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
-                             -c test-output/one_contig_five_genes.db \
-                             -o test-output/variability_AA.txt \
-                             -C default \
-                             -b bin1 \
-                             --quince-mode \
-                             --engine AA
-
-column -t test-output/variability_AA.txt | head
+anvi-map-variability-on-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
+                                  -c test-output/one_contig_five_genes.db \
+                                  -C default \
+                                  -b bin1 \
+                                  -S mock_data_for_structure/STRUCTURES \
+                                  --quince-mode
 
 INFO "Do you want thhe interactive interface? Run the following:"
 
