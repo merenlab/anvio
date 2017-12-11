@@ -1,0 +1,129 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+import gzip
+import h5py
+import argparse
+
+import anvio
+import anvio.db as db
+import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+class Upgrader(object):
+    def __init__(self, args):
+        self.args = args
+        self.db_path = args.input
+        self.db_type = None
+        self.db_version = None
+        self.target_version = None
+
+        filesnpaths.is_file_exists(self.db_path)
+        self.get_db_meta()
+        self.get_target_version()
+
+        run.info('Database Path', self.db_path)
+        run.info('Detected Type', self.db_type)
+        run.info('Current Version', self.db_version)
+        run.info('Target Version', self.target_version)
+
+    def get_db_meta(self):
+#        try:
+        if self.db_path.endswith('.db'):
+            db_conn = db.DB(self.db_path, None, ignore_version=True)
+            
+            db_type = db_conn.get_meta_value('db_type')
+            if db_type == 'genomes data storage':
+                self.db_type = 'genome'
+            else:
+                self.db_type = db_type
+
+            self.db_version = int(db_conn.get_meta_value('version'))
+            
+            db_conn.disconnect()
+        elif self.db_path.endswith('GENOMES.h5'):
+            fp = h5py.File(self.db_path, 'r')
+
+            self.db_type = 'genome'
+            self.db_version = int(fp.attrs['version'])
+
+            fp.close()
+        # except:
+        #     raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
+        #                         it is not at all..' % self.db_path)
+
+
+    def get_target_version(self):
+        version = None
+        if self.db_type == 'genome':
+            version = t.genomes_storage_vesion
+        elif self.db_type == 'profile':
+            version = t.profile_storage_vesion
+        elif self.db_type == 'pan':
+            version = t.pan_db_version
+        elif self.db_type == 'contigs':
+            version = t.contigs_db_version
+
+        version = int(version)
+
+        if args.target_version:
+            target = int(args.target_version)
+
+            if target =< self.db_version:
+                raise ConfigError("Target version ('%s') can not be lower than db version ('%s'). " (target, self.db_version))
+            elif target > version:
+                raise ConfigError("Target version ('%s') can not be higher than highest available version ('%s') for this type. " (target, version))
+
+            version = target
+
+        self.target_version = int(version)
+
+
+    def upgrade(self):
+        tasks = []
+        migrations_path = os.path.join(os.path.dirname(anvio.__file__), 'migrations', self.db_type)
+
+        for i in range(self.db_version, self.target_version):
+            script_path = os.path.join(migrations_path, "v%s-to-v%s" % (i, i + 1))
+
+            if not filesnpaths.is_file_exists(script_path, dont_raise=True):
+                raise ConfigError("Anvi'o can not find a upgrade script required \
+                        for this operation: %s " % (script_path))
+
+            tasks.append(script_path)
+
+            import anvio.migrations as migrations
+
+            import contigs.v3tov4
+            upgrade_scripts = {
+                'contigs': {'v3-to-v4': contigs.v3tov4,
+                            'v4-to-v5': contigs},
+                'profile': {}
+            }
+
+            migrations.upgrade_scripts['contigs'][version].upgrade()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument('input', metavar = 'DATABASE', nargs=None, help = "Anvio'o databases to upgrade")
+    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
+    parser.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
+    args, unknown = parser.parse_known_args()
+
+    try:
+        Upgrader(args).upgrade()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
