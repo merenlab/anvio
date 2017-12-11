@@ -28,8 +28,8 @@ distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlat
 linkage_methods = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
