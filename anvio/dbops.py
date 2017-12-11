@@ -122,6 +122,13 @@ class ContigsSuperclass(object):
         if A('mode') == 'pan' or A('mode') == 'manual':
             return
 
+        if not self.contigs_db_path:
+            raise ConfigError("Someone (hopefully, you) is trying to initialize the Contigs Super Class without a contigs database path.\
+                               There are many ways this can happen, but .. do you think you were trying to run anvi-interactive in\
+                               manual mode but without a --manual flag right before this? Just a gut feeling... No? Well, then we \
+                               are really in a big trouble. Please run what you did before seeing this again with a `--debug` flag,\
+                               and send us an e-mail :(")
+
         self.contigs_db_path = args.contigs_db
         filesnpaths.is_file_exists(self.contigs_db_path)
 
