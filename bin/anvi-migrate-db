@@ -50,7 +50,7 @@ class Migrater(object):
             elif self.db_path.endswith('GENOMES.h5'):
                 fp = h5py.File(self.db_path, 'r')
 
-                self.db_type = 'genome'
+                self.db_type = 'genomestorage'
                 self.db_version = int(fp.attrs['version'])
 
                 fp.close()
@@ -61,7 +61,6 @@ class Migrater(object):
 
     def get_target_version(self):
         version = None
-        print(self.db_type)
         if self.db_type == 'genomestorage':
             version = t.genomes_storage_vesion
         elif self.db_type == 'profile':
