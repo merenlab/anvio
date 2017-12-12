@@ -19,15 +19,15 @@ current_version = '16'
 next_version    = '17'
 
 
-def update_profile_db(profile_db_path, just_do_it = False):
-    if profile_db_path is None:
+def migrate(db_path, just_do_it = False):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    dbops.is_profile_db(profile_db_path)
+    dbops.is_profile_db(db_path)
 
     # make sure the version is accurate
-    profile_db = db.DB(profile_db_path, None, ignore_version = True)
+    profile_db = db.DB(db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != current_version:
         raise ConfigError("Version of this profile database is not %s (hence, this script cannot really do anything)." % current_version)
 
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     args, unknown = parser.parse_known_args()
 
     try:
-        update_profile_db(args.profile_db, just_do_it = args.just_do_it)
+        migrate(args.profile_db, just_do_it = args.just_do_it)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

@@ -17,15 +17,15 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False, skip_runinfo = False):
-    if profile_db_path is None:
+def migrate(db_path, just_do_it = False, skip_runinfo = False):
+    if db_path is None:
         raise ConfigError("No profile database is given.")
 
     # make sure someone is not being funny
-    dbops.is_profile_db(profile_db_path)
+    dbops.is_profile_db(db_path)
 
     # make sure the version is 5
-    profile_db = db.DB(profile_db_path, None, ignore_version = True)
+    profile_db = db.DB(db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != '14':
         raise ConfigError("Version of this profile database is not 14 (hence, this script cannot really do anything).")
 
@@ -46,7 +46,7 @@ def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False, skip_
     progress.new("Trying to upgrade the %s profile database" % 'merged' if is_merged else 'single')
 
     # update the runinfo.cp
-    input_dir = os.path.dirname(os.path.abspath(profile_db_path))
+    input_dir = os.path.dirname(os.path.abspath(db_path))
     P = lambda x: os.path.join(input_dir, x)
     E = lambda x: os.path.exists(x)
     
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     args, unknown = parser.parse_known_args()
 
     try:
-        update_profile_db_from_v14_to_v15(args.profile_db, just_do_it = args.just_do_it, skip_runinfo = args.skip_runinfo)
+        migrate(args.profile_db, just_do_it = args.just_do_it, skip_runinfo = args.skip_runinfo)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
