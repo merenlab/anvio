@@ -62,7 +62,7 @@ def main(args):
     # get list of genes of interest
     table = variability_engine.data
     #genes = [str(gene) for gene in list(table["corresponding_gene_call"].unique()[-3:])]
-    genes = ["2"]
+    genes = ["3"]
 
     ############# CREATE TEMP PATH FOR PRE-MODELLER ##################
 
