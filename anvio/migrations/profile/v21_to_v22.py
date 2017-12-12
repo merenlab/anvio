@@ -36,13 +36,13 @@ def convert_numpy_array_to_binary_blob(array, compress=True):
         return memoryview(array)
 
 
-def update_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False):
-    if profile_db_path is None:
+def migrate(db_path, just_do_it=False, ignore_auxiliary=False):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
-    dbops.is_profile_db(profile_db_path)
+    dbops.is_profile_db(db_path)
 
-    profile_db = db.DB(profile_db_path, None, ignore_version = True)
+    profile_db = db.DB(db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != current_version:
         raise ConfigError("Version of this profile database is not %s (hence, this script cannot really do anything)." % current_version)
 
@@ -66,8 +66,8 @@ def update_profile_db(profile_db_path, just_do_it=False, ignore_auxiliary=False)
     if ignore_auxiliary:
         run.warning("Ignoring auxiliary data")
     else:
-        auxiliary_path = os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.h5')
-        new_auxiliary_path = os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
+        auxiliary_path = os.path.join(os.path.dirname(db_path), 'AUXILIARY-DATA.h5')
+        new_auxiliary_path = os.path.join(os.path.dirname(db_path), 'AUXILIARY-DATA.db')
 
         if not os.path.exists(auxiliary_path):
             raise ConfigError("Althought he actual purpose of this script is to upgrade your AUXILIARY-DATA.h5 file, it doesn't seem to be where \
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     args, unknown = parser.parse_known_args()
 
     try:
-        update_profile_db(args.profile_db, just_do_it = args.just_do_it, ignore_auxiliary = args.ignore_auxiliary)
+        migrate(args.profile_db, just_do_it = args.just_do_it, ignore_auxiliary = args.ignore_auxiliary)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
