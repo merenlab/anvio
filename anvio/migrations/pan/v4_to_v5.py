@@ -18,7 +18,7 @@ current_version = '4'
 next_version    = '5'
 
 
-def migrate(db_path, just_do_it = False):
+def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
@@ -29,19 +29,6 @@ def migrate(db_path, just_do_it = False):
     pan_db = db.DB(db_path, None, ignore_version = True)
     if str(pan_db.get_version()) != current_version:
         raise ConfigError("Version of this pan database is not %s (hence, this script cannot really do anything)." % current_version)
-
-    if not just_do_it:
-        try:
-            run.warning("This script will upgrade your pan database from v%s to v%s. This upgrade will simply add a new field into\
-                         your single or merged pan database to store a 'description' about the data represented in it. So you have\
-                         a field to store information to remember later on, or make sure others have access to some information about\
-                         the database when you are working with it. You can just press ENTER to continue.\
-                         If you want to cancel the upgrade and think more about it, press CTRL+C now. If you want to avoid\
-                         this message the next time, use '--just-do-it'." % (current_version, next_version))
-            input("Press ENTER to continue...\n")
-        except:
-            print()
-            sys.exit()
 
     progress.new("Trying to upgrade the pan database")
     progress.update('...')
@@ -60,11 +47,10 @@ def migrate(db_path, just_do_it = False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade pan database from version %s to version %s' % (current_version, next_version))
     parser.add_argument('pan_db', metavar = 'PAN_DB', help = "An anvi'o pan database of version %s" % current_version)
-    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     args, unknown = parser.parse_known_args()
 
     try:
-        migrate(args.pan_db, just_do_it = args.just_do_it)
+        migrate(args.pan_db)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
