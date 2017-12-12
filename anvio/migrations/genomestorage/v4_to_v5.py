@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+import os
 import sys
 import time
 import h5py
@@ -112,14 +113,11 @@ def migrate(db_path):
     genomes_db.insert_many(genome_gene_function_calls_table_name, entries=functions_entries)
 
     genomes_db.disconnect()
-
+    
     progress.end()
 
+    os.remove(db_path)
     run.info("New auxiliary database path", genome_storage_db_path)
-
-    run.warning("You can now remove this file (unless something went horribly wrong \
-                 and anvi'o has no clue): %s" % genome_storage_db_path, lc='green')
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade genomes storage from version %s to version %s' % (current_version, next_version))
