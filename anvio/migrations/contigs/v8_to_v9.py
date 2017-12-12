@@ -19,7 +19,7 @@ progress = terminal.Progress()
 current_version = '8'
 next_version    = '9'
 
-def migrate(db_path, project_name, description=None, just_do_it = False):
+def migrate(db_path, project_name, description=None):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
@@ -30,21 +30,6 @@ def migrate(db_path, project_name, description=None, just_do_it = False):
     contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:
         raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
-
-    if not just_do_it:
-        try:
-            run.warning("This script will try to upgrade your contigs database from v%s to v%s. The reason for this change\
-                         is our late realization that it would be much better if we had project names associated with our\
-                         contigs databases. This upgrade will simply set the project name you provided to this script in\
-                         your contigs database. We also added an option to add descriptions into the contigs databases. So,\
-                         OPTIONALLY, you can proivde a description for your contigs databae while you are upgrading it. But\
-                         this is not mandatory. If you think you are ready, just press ENTER to continue.\
-                         If you want to cancel the upgrade and think more about it, press CTRL+C now. If you want to avoid\
-                         this message the next time, use '--just-do-it'." % (current_version, next_version))
-            input("Press ENTER to continue...\n")
-        except:
-            print()
-            sys.exit()
 
     if not project_name:
         raise ConfigError('You must provide a project name. Please see the help menu.')
@@ -86,7 +71,7 @@ if __name__ == '__main__':
     args, unknown = parser.parse_known_args()
 
     try:
-        migrate(args.contigs_db, args.project_name, args.description, just_do_it = args.just_do_it)
+        migrate(args.contigs_db, args.project_name, args.description)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
