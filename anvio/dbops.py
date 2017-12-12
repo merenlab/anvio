@@ -1322,6 +1322,7 @@ class ProfileSuperclass(object):
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
 
         if self.p_meta['blank'] and not self.p_meta['contigs_db_hash']:
+            self.progress.end()
             raise ConfigError("ProfileSuperclass is upset, because it seems you are tyring to initialize a blank anvi'o profile\
                                database that is not associated with a contigs database. This will not work for multiple reasons.\
                                The current technical limitation is that blank profile databases that are in this situation do not\
@@ -1338,6 +1339,7 @@ class ProfileSuperclass(object):
                     try:
                         self.item_orders[item_order]['data'] = self.item_orders[item_order]['data'].split(',')
                     except:
+                        self.progress.end()
                         raise ConfigError("Something is wrong with the basic order `%s` in this profile database :(" % (item_order))
 
         elif self.p_meta['contigs_ordered'] and 'available_item_orders' not in self.p_meta:
@@ -2526,7 +2528,7 @@ class TableForItemAdditionalData(Table):
         self.progress.update('...')
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         item_additional_data = database.get_table_as_dict(self.table_name)
-        item_additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
+        item_additional_data_keys = database.get_single_column_from_table(self.table_name, 'key', unique=True)
         item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True)
         database.disconnect()
 
@@ -2708,11 +2710,14 @@ class TableForItemAdditionalData(Table):
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         item_additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
 
-        self.run.warning('', 'AVAILABLE DATA KEYS (%d FOUND)' % (len(item_additional_data_keys)), lc='yellow')
-        for key in item_additional_data_keys:
-            rows = database.get_some_rows_from_table_as_dict(self.table_name, 'key="%s"' % key)
-            self.run.info_single('%s (%s, describes %d items)' % (key, list(rows.values())[0]['type'], len(rows)),
-                                 nl_after = 1 if key == item_additional_data_keys[-1] else 0)
+        if not len(item_additional_data_keys):
+            self.run.info_single('There are no item additional data in this database :/', nl_before=1, nl_after=1, mc='red')
+        else:
+            self.run.warning('', 'AVAILABLE DATA KEYS (%d FOUND)' % (len(item_additional_data_keys)), lc='yellow')
+            for key in item_additional_data_keys:
+                rows = database.get_some_rows_from_table_as_dict(self.table_name, 'key="%s"' % key)
+                self.run.info_single('%s (%s, describes %d items)' % (key, list(rows.values())[0]['type'], len(rows)),
+                                     nl_after = 1 if key == item_additional_data_keys[-1] else 0)
 
         database.disconnect()
 
