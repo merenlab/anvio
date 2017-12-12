@@ -61,7 +61,8 @@ def main(args):
 
     # get list of genes of interest
     table = variability_engine.data
-    genes = [str(gene) for gene in list(table["corresponding_gene_call"].unique()[-3:])]
+    #genes = [str(gene) for gene in list(table["corresponding_gene_call"].unique()[-3:])]
+    genes = ["2"]
 
     ############# CREATE TEMP PATH FOR PRE-MODELLER ##################
 
@@ -105,8 +106,7 @@ def main(args):
         ############### INITIALIZE MODELLER DRIVER ############
 
         mod = MODELLER.MODELLER(single_gene_fasta_path, directory=tmp_dir)
-        mod.fasta_to_pir()
-        mod.close()
+        mod.process()
 
 
 if __name__ == '__main__':
