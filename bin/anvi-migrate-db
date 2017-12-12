@@ -93,7 +93,7 @@ class Migrater(object):
             script_name = "v%s_to_v%s" % (i, i + 1)
 
             if not self.db_type in migration_scripts or not script_name in migration_scripts[self.db_type]:
-                raise ConfigError("Anvi'o can not find a upgrade script required \
+                raise ConfigError("Anvi'o can not find a migrate script required \
                     for this operation. (DB Type: %s, Script name: %s) " % (self.db_type, script_name))
 
             tasks.append(script_name)
@@ -104,7 +104,7 @@ class Migrater(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument('input', metavar = 'DATABASE', nargs=None, help = "Anvio'o databases to upgrade")
+    parser.add_argument('input', metavar = 'DATABASE', nargs=None, help = "Anvio'o database for migration")
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     parser.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
     args, unknown = parser.parse_known_args()
