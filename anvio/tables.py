@@ -21,7 +21,9 @@ genomes_storage_vesion = "5"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
-                         'pan': pan_db_version}
+                         'pan': pan_db_version,
+                         'samples_information': samples_info_db_version,
+                         'genomestorage': genomes_storage_vesion}
 
 
 ####################################################################################################

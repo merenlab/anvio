@@ -60,19 +60,10 @@ class Migrater(object):
 
 
     def get_target_version(self):
-        version = None
-        if self.db_type == 'genomestorage':
-            version = t.genomes_storage_vesion
-        elif self.db_type == 'profile':
-            version = t.profile_storage_vesion
-        elif self.db_type == 'pan':
-            version = t.pan_db_version
-        elif self.db_type == 'contigs':
-            version = t.contigs_db_version
-        elif self.db_type == 'samples_information':
-            version = t.samples_info_db_version
-
-        version = int(version)
+        if self.db_type in t.versions_for_db_types:
+            version = int(t.versions_for_db_types[self.db_type])
+        else:
+            raise ConfigError("Anvi'o does not have any version information about this ('%s') database type" % self.db_type)
 
         if args.target_version:
             target = int(args.target_version)
