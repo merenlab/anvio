@@ -68,7 +68,7 @@ rule profile:
         contigs = output_dir + "/TEST.db"
     output:
         profile = output_dir + "/TEST/{sample}/PROFILE.db",
-        aux = output_dir + "/TEST/{sample}/AUXILIARY-DATA.h5",
+        aux = output_dir + "/TEST/{sample}/AUXILIARY-DATA.db",
         runlog = output_dir + "/TEST/{sample}/RUNLOG.txt"
     params:
         name = "{sample}",
@@ -82,7 +82,7 @@ rule merge:
         contigs = rules.gen_contigs_db.output.db
     output:
         profile = output_dir + "/TEST/MERGED-SAMPLES/PROFILE.db",
-        aux = output_dir + "/TEST/MERGED-SAMPLES/AUXILIARY-DATA.h5",
+        aux = output_dir + "/TEST/MERGED-SAMPLES/AUXILIARY-DATA.db",
         runlog = output_dir + "/TEST/MERGED-SAMPLES/RUNLOG.txt"
     params:
         output_dir = output_dir + "/TEST/MERGED-SAMPLES",
