@@ -4162,6 +4162,17 @@ def get_required_version_for_db(db_path):
     return t.versions_for_db_types[db_type]
 
 
+def is_blank_profile(db_path):
+    if get_db_type(db_path) != 'profile':
+        return False
+
+    database = db.DB(db_path, None, ignore_version=True)
+    blank = database.get_meta_value('blank')
+    database.disconnect()
+
+    return blank
+
+
 def get_db_type(db_path):
     filesnpaths.is_file_exists(db_path)
 
