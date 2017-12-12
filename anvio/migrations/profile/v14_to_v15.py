@@ -17,7 +17,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def migrate(db_path, just_do_it = False, skip_runinfo = False):
+def migrate(db_path):
     if db_path is None:
         raise ConfigError("No profile database is given.")
 
@@ -53,10 +53,7 @@ def migrate(db_path, just_do_it = False, skip_runinfo = False):
     runinfo_path = P('RUNINFO.cp') if E(P('RUNINFO.cp')) else None
     runinfo_path = P('RUNINFO.mcp') if E(P('RUNINFO.mcp')) else None
 
-    if not skip_runinfo:
-        if not runinfo_path:
-            raise ConfigError("I can't find the runinfo file around this profile :(")
-
+    if runinfo_path:
         runinfo = dictio.read_serialized_object(runinfo_path)
         if 'blank' not in runinfo:
             runinfo['blank'] = False
@@ -79,15 +76,11 @@ def migrate(db_path, just_do_it = False, skip_runinfo = False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade profile database to from version 14 version 15')
-
     parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = 'Profile database (of version 14)')
-    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
-    parser.add_argument('--skip-runinfo', default=False, action="store_true", help = "Do not bother trying to upgrade the runinfo file")
-
     args, unknown = parser.parse_known_args()
 
     try:
-        migrate(args.profile_db, just_do_it = args.just_do_it, skip_runinfo = args.skip_runinfo)
+        migrate(args.profile_db)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
