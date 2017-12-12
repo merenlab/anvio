@@ -69,6 +69,8 @@ class Migrater(object):
             version = t.pan_db_version
         elif self.db_type == 'contigs':
             version = t.contigs_db_version
+        elif self.db_type == 'samples_information':
+            version = t.samples_info_db_version
 
         version = int(version)
 
