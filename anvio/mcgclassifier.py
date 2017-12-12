@@ -307,7 +307,18 @@ class MetagenomeCentricGeneClassifier:
             self.run.info_single('The mean and std of non-outliers in sample %s are: %s, %s respectively' % (sample, self.samples_coverage_stats_dicts['non_outlier_mean_coverage'][sample], self.samples_coverage_stats_dicts['non_outlier_coverage_std'][sample]))
             number_of_non_outliers = len(self.non_outlier_indices[sample])
             self.run.info_single('The number of non-outliers is %s of %s (%.2f%%)' % (number_of_non_outliers, self.total_length, 100.0 * number_of_non_outliers / self.total_length))
+        self.samples_coverage_stats_dicts_was_initiated = True
         self.progress.end()
+
+
+    def store_samples_coverage_stats_dict(self):
+        """ sotre samples_coverage_stats_dict into TAB-delimited file"""
+
+        if not self.samples_coverage_stats_dicts_was_initiated:
+            raise ConfigError("can't dtore samples_coverage_stats_dict, because it wasn't initiated")
+
+        output_file_path = self.output_file_prefix + '-samples-coverage-stats.txt'
+        self.samples_coverage_stats_dicts.to_csv(output_file_path, sep='\t', index_label='sample')
 
 
     def plot_TS(self):
@@ -600,15 +611,17 @@ class MetagenomeCentricGeneClassifier:
     def save_gene_class_information_in_additional_layers(self, additional_description=''):
         if not self.additional_layers_to_append:
             additional_column_titles = []
-            additional_layers_df = self.gene_class_information
+            additional_layers_df = self.gene_class_df
         else:
             additional_layers_df = pd.read_table(self.additional_layers_to_append)
             try:
                 # concatinating the gene_class_information with the user provided additional layers
-                additional_layers_df.join(self.gene_class_information, how='outer')
+                additional_layers_df.join(self.gene_class_df, how='outer')
             except ValueError as e:
                 raise ConfigError("Something went wrong. This is what we know: %s. This could be happening because \
-                you have columns in your --additional-layers file with the following title: %s" % (e, self.gene_class_information.columns.tolist()))
+                you have columns in your --additional-layers file with the following title: %s" % (e, self.gene_class_df.columns.tolist()))
+        output_file_path = self.output_file_prefix + '-additional-layers.txt'
+        additional_layers_df.to_csv(output_file_path, sep='\t', index_label='gene_callers_id')
 
 
     def save_samples_information(self, additional_description=''):
@@ -683,8 +696,8 @@ class MetagenomeCentricGeneClassifier:
             self.get_gene_classes()
             if self.store_gene_detection_and_coverage_tables:
                 self.save_gene_detection_and_coverage()
-            #self.save_gene_class_information_in_additional_layers()
-            #self.save_samples_information()
+            self.save_gene_class_information_in_additional_layers()
+            self.store_samples_coverage_stats_dict()
 
 
 def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):
