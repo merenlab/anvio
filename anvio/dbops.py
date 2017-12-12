@@ -2599,7 +2599,31 @@ class TableForItemAdditionalData(Table):
         database.disconnect()
 
 
-    def add(self, keys_list, data_dict):
+    def check_item_names(self, data_dict):
+        """Compares item names found in the data dict to the ones in the db"""
+
+        items_in_db = get_all_item_names_from_the_database(self.db_path)
+        items_in_data = set(data_dict.keys())
+
+        items_in_data_but_not_in_db = items_in_data.difference(items_in_db)
+        if len(items_in_data_but_not_in_db):
+            raise ConfigError("Well. %d of %d item names in your additional data are only in your data (which\
+                               that they are not in the %s database you are working with (which means bad news)).\
+                               Since there is no reason to add additional data for items that do not exist in your\
+                               database, anvi'o will stop you right there. Please fix your data and come again. In\
+                               case you want to see a random item that is only in your data, here is one: %s. Stuff\
+                               in your db looks like this: %s." \
+                                    % (len(items_in_data_but_not_in_db), len(items_in_data), self.db_type, \
+                                       items_in_data_but_not_in_db.pop(), items_in_db.pop()))
+
+        items_in_db_but_not_in_data = items_in_db.difference(items_in_data)
+        if len(items_in_db_but_not_in_data):
+            self.run.warning("Your input contains additional data for only %d of %d total number of items in your %s\
+                              database. Just wanted to make sure you know what's up, but we cool." \
+                                % (len(items_in_db) - len(items_in_db_but_not_in_data), len(items_in_db), self.db_type))
+
+
+    def add(self, keys_list, data_dict, skip_check_names=False):
         """Main function to add data into the item additional data table.
 
            * `data_dict`: a dictionary that should follow this format:
@@ -2654,6 +2678,15 @@ class TableForItemAdditionalData(Table):
                                    `--just-do-it` flag, and watch anvi'o make an exception just for you and complain\
                                    about nothin' for this once.")
 
+        if skip_check_names:
+            self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of item names\
+                              between your additional data and the %s database you are attempting to update. So be it.\
+                              Anvi'o will not check anything, but if things don't look the way you expected them to look,\
+                              you will not blame anvi'o for your poorly prepared data, but choose between yourself or\
+                              Obama." % (self.db_type))
+        else:
+            self.check_item_names(data_dict)
+
         db_entries = []
         self.set_next_available_id(self.table_name)
         for item_name in data_dict:
@@ -2684,7 +2717,7 @@ class TableForItemAdditionalData(Table):
         database.disconnect()
 
 
-    def populate_from_file(self, additional_data_file_path):
+    def populate_from_file(self, additional_data_file_path, skip_check_names=False):
         filesnpaths.is_file_tab_delimited(additional_data_file_path)
 
         keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
@@ -2695,7 +2728,7 @@ class TableForItemAdditionalData(Table):
                                It does not seem to have any additional keys for data :/" \
                                             % (additional_data_file_path))
 
-        self.add(keys, data)
+        self.add(keys, data, skip_check_names)
 
 
 class TablesForViews(Table):
