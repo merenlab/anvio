@@ -9,15 +9,16 @@ migration_scripts = {}
 
 base_path = os.path.dirname(__file__)
 
-for script_file in Path(base_path).glob('*/v*_to_v*.py'):
-    script_path, script_name = os.path.split(script_file)
+for script_full_path in Path(base_path).glob('*/v*_to_v*.py'):
+    script_path, script_filename = os.path.split(script_full_path)
 
-    db_type = os.path.dirname(script_path)
+    script_name = script_filename[:-3]
+    db_type = os.path.basename(script_path)
 
     if not db_type in migration_scripts:
         migration_scripts[db_type] = {}
 
-    spec = importlib.util.spec_from_file_location(script_name[:-3], script_file)
+    spec = importlib.util.spec_from_file_location(script_name, script_full_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     
