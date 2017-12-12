@@ -16,6 +16,8 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import Bio.PDB as PDB
 
+from anvio.errors import ConfigError, FilesNPathsError
+
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2016, The anvio Project"
@@ -91,13 +93,41 @@ class MODELLER:
 
             self.download_structures()
 
+            self.run_align_to_templates()
+
+            self.run_get_model()
+
             self.close()
 
         except self.EndProcess:
             self.close()
 
+    def run_get_model(self):
+        """
+        This is the magic of MODELLER. Based on the template alignment file, the structures of the
+        templates, and satisfaction of physical constraints, the target protein structure is
+        approximated.
+        """
+        script_name = "get-model.py"
 
-    def parse_search_results(self, max_matches=5, min_proper_pident=25.0):
+        # check script exists, then copy the script into the working directory
+        self.copy_script_to_directory(script_name)
+
+        command = [self.mod,
+                   script_name,
+                   self.alignment_to_templates_pir,
+                   self.gene_id,
+                   self.best_template_ids_fname,
+                   str(10),
+                   str(3.0)]
+
+        command = " ".join(command)
+
+        self.run_command(command)
+        run.info("get_model", "done")
+
+
+    def parse_search_results(self, max_matches=5, min_proper_pident=30.0):
         """
         Parses search results and finds best matches to align against.
         """
@@ -136,18 +166,28 @@ class MODELLER:
     def download_structures(self):
         """
         Downloads structure files for self.top_seq_seq_matches using Bioppython
+        If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
         """
         # get complete list of PDB codes
         pdb_list = PDB.PDBList()
+
+        # make a folder to store the template PDBs
+        self.template_pdbs = os.path.join(self.directory, "TEMPLATE_PDBS")
+        os.mkdir(self.template_pdbs)
+
+        # function to get the filepath of downloaded pdb, given its 4-letter code
+        func_fname = lambda x: os.path.join(self.template_pdbs, "pdb" + x + ".ent")
 
         for match in self.top_seq_matches:
 
             # download structure into self.directory; suppress Biopython output
             with HiddenPrints(): # FIXME the anvi'o SuppressAllOutput does not work
-                pdb_list.retrieve_pdb_file(match[0], file_format="pdb", overwrite=True)
+                pdb_list.retrieve_pdb_file(match[0], file_format="pdb", pdir=self.template_pdbs, overwrite=True)
 
             # if structure was not downloaded, that sucks. We remove it from self.top_seq_matches
-            if not utils.filesnpaths.is_file_exists(match[0]+".pdb", dont_raise=True):
+            if utils.filesnpaths.is_file_exists(func_fname(match[0]), dont_raise=True):
+                run.info(match[0], "downloaded")
+            else:
                 run.warning("{} could not be downloaded. Moving onto the next match.".format(match[0]))
                 self.top_seq_matches.remove(match)
 
@@ -156,35 +196,44 @@ class MODELLER:
             raise self.EndProcess
 
 
-    def run_compare(self):
+    def run_align_to_templates(self):
         """
-        After identifying best candidate proteins based on sequence data, this function
-        compares the candidate proteins based on structural and sequence information to determine
-        which is the best template to model from.
+        After identifying best candidate proteins based on sequence data, this function aligns the
+        candidate proteins based on structural and sequence information as well as to the target
+        protein. This alignment file is the make input (besides structures) for the homology
+        modelling aspect of MODELLER.
         """
-        script_name = "compare.py"
+        script_name = "align_to_templates.py"
 
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
 
-        # First, write ids and chains to file read by compare.py MODELLER script
-        f = open("{}_best_sequence_matches.txt".format(self.gene_id), "w")
+        # First, write ids and chains to file read by align_to_templates.py MODELLER script
+        self.best_template_ids_fname = "{}_best_template_ids.txt".format(self.gene_id)
+        f = open(self.best_template_ids_fname, "w")
         for match in self.top_seq_matches:
             f.write("{}\t{}\n".format(match[0], match[1]))
         f.close()
 
-        # name pir file by the gene_id (i.e. defline of the fasta)
-        self.search_results = "{}_search_results.prf".format(self.gene_id)
+        # name of the output. .pir is the standard format for MODELLER, .pap is human readable
+        # protein_family computes a matrix comparing the different templates agianst one another
+        self.alignment_to_templates_pir = "{}_align_to_templates.ali".format(self.gene_id)
+        self.alignment_to_templates_pap = "{}_align_to_templates.pap".format(self.gene_id)
+        self.template_family_matrix     = "{}_protein_family.mat".format(self.gene_id)
 
         command = [self.mod,
                    script_name,
                    self.target_pir,
-                   self.database_path,
-                   self.search_results]
+                   self.best_template_ids_fname,
+                   self.alignment_to_templates_pir,
+                   self.alignment_to_templates_pap,
+                   self.template_family_matrix]
         command = " ".join(command)
 
-        self.run_command(command, check_output=self.search_results)
-        run.info("search_results", self.search_results)
+        self.run_command(command, check_output=[self.alignment_to_templates_pir, 
+                                                self.alignment_to_templates_pap,
+                                                self.template_family_matrix])
+        run.info("run_align_to_templates", "done")
 
 
     def run_search(self):
@@ -206,7 +255,7 @@ class MODELLER:
                    self.search_results]
         command = " ".join(command)
 
-        self.run_command(command, check_output=self.search_results)
+        self.run_command(command, check_output=[self.search_results])
         run.info("search_results", self.search_results)
 
 
@@ -260,7 +309,7 @@ class MODELLER:
                    bin_db_path]
         command = " ".join(command)
 
-        self.run_command(command, check_output=bin_db_path)
+        self.run_command(command, check_output=[bin_db_path])
         run.info("binarized database", bin_db_path)
 
 
@@ -301,7 +350,7 @@ class MODELLER:
                    self.target_pir]
         command = " ".join(command)
 
-        self.run_command(command, check_output=self.target_pir)
+        self.run_command(command, check_output=[self.target_pir])
         run.info("target pir", self.target_pir)
 
 
@@ -310,7 +359,8 @@ class MODELLER:
         os.system(command)
 
         if check_output:
-            utils.filesnpaths.is_file_exists(check_output)
+            for output in check_output:
+                utils.filesnpaths.is_file_exists(output)
 
 
     def close(self):
