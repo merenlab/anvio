@@ -456,10 +456,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         except:
             pass
 
-        # get additional data?
-        items_additional_data_table = dbops.TableForItemAdditionalData(self.args)
-        self.items_additional_data_keys, self.items_additional_data_dict = items_additional_data_table.get()
-
         view_data_path = os.path.abspath(self.view_data_path) if self.view_data_path else None
         self.p_meta['splits_fasta'] = os.path.abspath(self.fasta_file) if self.fasta_file else None
         self.p_meta['output_dir'] = None
@@ -540,6 +536,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # read description from self table, if it is not available get_description function will return placeholder text
         self.p_meta['description'] = get_description_in_db(self.profile_db_path)
+
+        # get additional data
+        items_additional_data_table = dbops.TableForItemAdditionalData(self.args)
+        self.items_additional_data_keys, self.items_additional_data_dict = items_additional_data_table.get()
 
         if self.title:
             self.title = self.title
