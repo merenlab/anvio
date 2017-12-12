@@ -8,7 +8,6 @@ import argparse
 
 import anvio
 import anvio.dbops as dbops
-import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -21,12 +20,10 @@ __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
 
 
-run = terminal.Run()
-
-
 def main(args):
-    table_for_item_additional_data = dbops.TableForItemAdditionalData(args)
-    table_for_item_additional_data.populate_from_file(args.data_file)
+    # - you're ugly.
+    # - no u :(
+    dbops.TableForItemAdditionalData(args).populate_from_file(args.data_file, skip_check_names=dbops.is_blank_profile(args.pan_or_profile_db))
 
 
 if __name__ == '__main__':
