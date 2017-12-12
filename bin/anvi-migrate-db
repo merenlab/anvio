@@ -99,7 +99,11 @@ class Migrater(object):
             tasks.append(script_name)
 
         for script_name in tasks:
-            migration_scripts[self.db_type][script_name].migrate(self.db_path)
+            try:
+                migration_scripts[self.db_type][script_name].migrate(self.db_path)
+            except:
+                print()
+                sys.exit()
 
 
 if __name__ == '__main__':
