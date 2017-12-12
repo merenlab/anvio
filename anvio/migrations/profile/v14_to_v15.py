@@ -17,15 +17,15 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False, skip_runinfo = False):
-    if profile_db_path is None:
+def migrate(db_path):
+    if db_path is None:
         raise ConfigError("No profile database is given.")
 
     # make sure someone is not being funny
-    dbops.is_profile_db(profile_db_path)
+    dbops.is_profile_db(db_path)
 
     # make sure the version is 5
-    profile_db = db.DB(profile_db_path, None, ignore_version = True)
+    profile_db = db.DB(db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != '14':
         raise ConfigError("Version of this profile database is not 14 (hence, this script cannot really do anything).")
 
@@ -46,17 +46,14 @@ def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False, skip_
     progress.new("Trying to upgrade the %s profile database" % 'merged' if is_merged else 'single')
 
     # update the runinfo.cp
-    input_dir = os.path.dirname(os.path.abspath(profile_db_path))
+    input_dir = os.path.dirname(os.path.abspath(db_path))
     P = lambda x: os.path.join(input_dir, x)
     E = lambda x: os.path.exists(x)
     
     runinfo_path = P('RUNINFO.cp') if E(P('RUNINFO.cp')) else None
     runinfo_path = P('RUNINFO.mcp') if E(P('RUNINFO.mcp')) else None
 
-    if not skip_runinfo:
-        if not runinfo_path:
-            raise ConfigError("I can't find the runinfo file around this profile :(")
-
+    if runinfo_path:
         runinfo = dictio.read_serialized_object(runinfo_path)
         if 'blank' not in runinfo:
             runinfo['blank'] = False
@@ -79,15 +76,11 @@ def update_profile_db_from_v14_to_v15(profile_db_path, just_do_it = False, skip_
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade profile database to from version 14 version 15')
-
     parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = 'Profile database (of version 14)')
-    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
-    parser.add_argument('--skip-runinfo', default=False, action="store_true", help = "Do not bother trying to upgrade the runinfo file")
-
     args, unknown = parser.parse_known_args()
 
     try:
-        update_profile_db_from_v14_to_v15(args.profile_db, just_do_it = args.just_do_it, skip_runinfo = args.skip_runinfo)
+        migrate(args.profile_db)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
