@@ -18,15 +18,15 @@ progress = terminal.Progress()
 current_version = '6'
 next_version    = '7'
 
-def update_contigs_db(contigs_db_path, just_do_it = False):
-    if contigs_db_path is None:
+def migrate(db_path, just_do_it = False):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    dbops.is_contigs_db(contigs_db_path)
+    dbops.is_contigs_db(db_path)
 
     # make sure the version is 2
-    contigs_db = db.DB(contigs_db_path, None, ignore_version = True)
+    contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:
         raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
 
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     args, unknown = parser.parse_known_args()
 
     try:
-        update_contigs_db(args.contigs_db, just_do_it = args.just_do_it)
+        migrate(args.contigs_db, just_do_it = args.just_do_it)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

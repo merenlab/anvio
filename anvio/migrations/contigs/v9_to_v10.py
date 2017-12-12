@@ -30,13 +30,13 @@ def convert_numpy_array_to_binary_blob(array, compress=True):
         return memoryview(array)
 
 
-def update_contigs_db(contigs_db_path, just_do_it=False):
-    if contigs_db_path is None:
+def migrate(db_path, just_do_it=False):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
-    dbops.is_contigs_db(contigs_db_path)
+    dbops.is_contigs_db(db_path)
 
-    contigs_db = db.DB(contigs_db_path, None, ignore_version = True)
+    contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:
         raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
 
@@ -54,7 +54,7 @@ def update_contigs_db(contigs_db_path, just_do_it=False):
             print()
             sys.exit()
 
-    auxiliary_path = ''.join(contigs_db_path[:-3]) + '.h5'
+    auxiliary_path = ''.join(db_path[:-3]) + '.h5'
 
     if not os.path.exists(auxiliary_path):
         raise ConfigError("%s, the target of this script does not seem to be where it should have been :/" % auxiliary_path)
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     args, unknown = parser.parse_known_args()
 
     try:
-        update_contigs_db(args.contigs_db, just_do_it = args.just_do_it)
+        migrate(args.contigs_db, just_do_it = args.just_do_it)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
