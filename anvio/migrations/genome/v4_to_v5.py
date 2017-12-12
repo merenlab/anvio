@@ -4,7 +4,6 @@
 import sys
 import time
 import h5py
-import shutil
 import argparse
 import anvio.db as db
 import anvio.terminal as terminal
@@ -38,11 +37,11 @@ genome_gene_function_calls_table_structure = ['genome_name', ] + gene_function_c
 genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_calls_table_types[:]
 
 
-def update_genomes_storage(genomes_storage_path):
-    if genomes_storage_path is None:
+def migrate(db_path):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
-    fp = h5py.File(genomes_storage_path, 'r')
+    fp = h5py.File(db_path, 'r')
 
     if fp.attrs['version'] != current_version:
         fp.close()
@@ -51,9 +50,9 @@ def update_genomes_storage(genomes_storage_path):
     old_storage_hash = fp.attrs['hash']
     functions_are_available = fp.attrs['functions_are_available']
 
-    run.info("Outdated genomes storage found (%s)" % old_storage_hash, genomes_storage_path)
+    run.info("Outdated genomes storage found (%s)" % old_storage_hash, db_path)
 
-    genome_storage_db_path = genomes_storage_path[:-3] + '.db'
+    genome_storage_db_path = db_path[:-3] + '.db'
     filesnpaths.is_output_file_writable(genome_storage_db_path, ok_if_exists=False)
 
     genomes_db = db.DB(genome_storage_db_path, next_version, new_database=True)
@@ -128,7 +127,7 @@ if __name__ == '__main__':
     args, unknown = parser.parse_known_args()
 
     try:
-        update_genomes_storage(args.genomes_storage)
+        migrate(args.genomes_storage)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
