@@ -19,7 +19,7 @@ progress = terminal.Progress()
 current_version = '8'
 next_version    = '9'
 
-def migrate(db_path, project_name, description=None):
+def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
@@ -31,14 +31,11 @@ def migrate(db_path, project_name, description=None):
     if str(contigs_db.get_version()) != current_version:
         raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
 
-    if not project_name:
-        raise ConfigError('You must provide a project name. Please see the help menu.')
-
     progress.new("Trying to upgrade the contigs database")
     progress.update('...')
 
     contigs_db.remove_meta_key_value_pair('project_name')
-    contigs_db.set_meta_value('project_name', project_name)
+    contigs_db.set_meta_value('project_name', "NO_NAME")
     contigs_db.commit()
 
     # set the version
@@ -56,8 +53,7 @@ def migrate(db_path, project_name, description=None):
     # bye to you too
     progress.end()
 
-    if description:
-        dbops.update_description_in_db_from_file(db_path, description)
+    dbops.update_description_in_db(db_path, 'No description is given')
 
     run.info_single("The contigs database successfully upgraded from version %s to %s!" % (current_version, next_version))
 
@@ -65,13 +61,10 @@ def migrate(db_path, project_name, description=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database from version %s to version %s' % (current_version, next_version))
     parser.add_argument('contigs_db', metavar = 'CONTIGS_DB', help = 'Contigs database')
-    parser.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
-    parser.add_argument(*anvio.A('description'), **anvio.K('description'))
-    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings.")
     args, unknown = parser.parse_known_args()
 
     try:
-        migrate(args.contigs_db, args.project_name, args.description)
+        migrate(args.contigs_db)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
