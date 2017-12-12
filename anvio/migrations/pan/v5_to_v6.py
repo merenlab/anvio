@@ -19,15 +19,15 @@ current_version = '5'
 next_version    = '6'
 
 
-def update_pan_db(pan_db_path, just_do_it = False):
-    if pan_db_path is None:
+def migrate(db_path, just_do_it = False):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    dbops.is_pan_db(pan_db_path)
+    dbops.is_pan_db(db_path)
 
     # make sure the version is accurate
-    pan_db = db.DB(pan_db_path, None, ignore_version = True)
+    pan_db = db.DB(db_path, None, ignore_version = True)
     if str(pan_db.get_version()) != current_version:
         raise ConfigError("Version of this pan database is not %s (hence, this script cannot really do anything)." % current_version)
 
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     args, unknown = parser.parse_known_args()
 
     try:
-        update_pan_db(args.pan_db, just_do_it = args.just_do_it)
+        migrate(args.pan_db, just_do_it = args.just_do_it)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
