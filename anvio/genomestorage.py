@@ -40,7 +40,7 @@ pp = terminal.pretty_print
 
 class GenomeStorage(object):
     def __init__(self, storage_path, storage_hash=None,  genome_names_to_focus=None, create_new=False, run=run, progress=progress):
-        self.db_type = 'genomes data storage'
+        self.db_type = 'genomestorage'
         self.version = anvio.__genomes_storage_version__
         self.run = run
         self.storage_hash = storage_hash
@@ -92,6 +92,9 @@ class GenomeStorage(object):
 
 
     def init(self):
+        if self.db_type != self.db.get_meta_value('db_type'):
+            raise ConfigError('It seems, this database ("%s") is not a genome storage.' % self.storage_path)
+
         if self.storage_hash:
             if self.storage_hash != self.get_storage_hash():
                 raise ConfigError("Requested storage hash ('%s') does not match with the one readed from database ('%s')." % 

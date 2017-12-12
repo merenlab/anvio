@@ -18,33 +18,17 @@ progress = terminal.Progress()
 current_version = '7'
 next_version    = '8'
 
-def update_contigs_db(contigs_db_path, just_do_it = False):
-    if contigs_db_path is None:
+def migrate(db_path):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    dbops.is_contigs_db(contigs_db_path)
+    dbops.is_contigs_db(db_path)
 
     # make sure the version is 2
-    contigs_db = db.DB(contigs_db_path, None, ignore_version = True)
+    contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:
         raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
-
-    if not just_do_it:
-        try:
-            run.warning("This script will try to upgrade your contigs database from v%s to v%s. It happens to be that this\
-                         upgrade will in fact remove every functional annotation from the database, and you will need to\
-                         re-import them. If you have never dealt with functions, you don't need to care. If you did, continue\
-                         reading. If you imported your functions using the program `anvi-import-functions` with a parser,\
-                         you may want to save the content of the `gene_functions` table using the program `anvi-export-table`\
-                         program. BUT, if you used the program `anvi-run-ncbi-cogs`, just re-run it without trying to do any\
-                         hacks. Really. Make your life simpler. If you think you are ready, just press ENTER to continue.\
-                         If you want to cancel the upgrade and think more about it, press CTRL+C now. If you want to avoid\
-                         this message the next time, use '--just-do-it'." % (current_version, next_version))
-            input("Press ENTER to continue...\n")
-        except:
-            print()
-            sys.exit()
 
     progress.new("Trying to upgrade the contigs database")
     progress.update('...')
@@ -71,11 +55,10 @@ def update_contigs_db(contigs_db_path, just_do_it = False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database from version %s to version %s' % (current_version, next_version))
     parser.add_argument('contigs_db', metavar = 'CONTIGS_DB', help = 'Contigs database')
-    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     args, unknown = parser.parse_known_args()
 
     try:
-        update_contigs_db(args.contigs_db, just_do_it = args.just_do_it)
+        migrate(args.contigs_db)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

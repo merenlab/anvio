@@ -3,7 +3,6 @@
 
 import sys
 import h5py
-import shutil
 import argparse
 import anvio.terminal as terminal
 
@@ -15,14 +14,11 @@ next_version    = '4'
 run = terminal.Run()
 progress = terminal.Progress()
 
-def update_genomes_storage(genomes_storage_path):
-    if genomes_storage_path is None:
+def migrate(db_path):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
-    backup_genomes_storage_path = genomes_storage_path + '.v3'
-    shutil.copyfile(genomes_storage_path, backup_genomes_storage_path)
-
-    fp = h5py.File(genomes_storage_path, 'a')
+    fp = h5py.File(db_path, 'a')
 
     if fp.attrs['version'] != current_version:
       fp.close()
@@ -45,7 +41,7 @@ def update_genomes_storage(genomes_storage_path):
                      delete it if everything seems to be working (if you are seeing this message and yet you still\
                      have not your command line back, you can kill this process by pressing CTRL + C and it will not\
                      affect anything --for some reason in some cases the process just hangs, and we have not been\
-                     able to identify the problem).' % (backup_genomes_storage_path), nl_after=1, nl_before=1)
+                     able to identify the problem).' % (backup_db_path), nl_after=1, nl_before=1)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade genomes storage from version %s to version %s' % (current_version, next_version))
@@ -53,7 +49,7 @@ if __name__ == '__main__':
     args, unknown = parser.parse_known_args()
 
     try:
-        update_genomes_storage(args.genomes_storage)
+        migrate(args.genomes_storage)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

@@ -30,31 +30,17 @@ def convert_numpy_array_to_binary_blob(array, compress=True):
         return memoryview(array)
 
 
-def update_contigs_db(contigs_db_path, just_do_it=False):
-    if contigs_db_path is None:
+def migrate(db_path):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
-    dbops.is_contigs_db(contigs_db_path)
+    dbops.is_contigs_db(db_path)
 
-    contigs_db = db.DB(contigs_db_path, None, ignore_version = True)
+    contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:
         raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
 
-    if not just_do_it:
-        try:
-            run.warning("This script will try to upgrade your profile database from v%s to v%s. Here is the idea behind this upgrade: \
-                         We have been maintaining an axuiliary data file for anvi'o contigs databases. But we decided that this data \
-                         could be stored in contigs databases, reducing the clutter on our file systems. If you think you are ready, \
-                         just press ENTER to continue. If you want to cancel the upgrade and think more about it, press CTRL+C now. \
-                         If you want to avoid this message the next time, use '--just-do-it'. PLEASE NOTE, running this script will\
-                         remove the obsolete '.h5' file from your directory once it is successfully finished upgrading your contigs \
-                         database. If you would like to save it for some reason, please consider backing it up first." % (current_version, next_version))
-            input("Press ENTER to continue...\n")
-        except:
-            print()
-            sys.exit()
-
-    auxiliary_path = ''.join(contigs_db_path[:-3]) + '.h5'
+    auxiliary_path = ''.join(db_path[:-3]) + '.h5'
 
     if not os.path.exists(auxiliary_path):
         raise ConfigError("%s, the target of this script does not seem to be where it should have been :/" % auxiliary_path)
@@ -104,11 +90,10 @@ def update_contigs_db(contigs_db_path, just_do_it=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade CONTIGS.db and CONTIGS.h5 from version %s to version %s' % (current_version, next_version))
     parser.add_argument('contigs_db', metavar = 'CONTIGS_DB', help = 'Contigs database at version %s' % current_version)
-    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     args, unknown = parser.parse_known_args()
 
     try:
-        update_contigs_db(args.contigs_db, just_do_it = args.just_do_it)
+        migrate(args.contigs_db)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

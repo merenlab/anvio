@@ -553,6 +553,12 @@ D = {
              'type': int,
              'help': "A single gene id."}
                 ),
+    'target-version': (
+            ['-t', '--target-version'],
+            {'metavar': 'VERSION',
+             'type': int,
+             'help': "Anvi'o will stop upgrading your database when it reaches to this version. "}
+                ),
     'delimiter': (
             ['--delimiter'],
             {'metavar': 'CHAR',

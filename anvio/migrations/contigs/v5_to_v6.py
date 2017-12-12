@@ -16,28 +16,17 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def update_contigs_db_from_v5_to_v6(contigs_db_path, just_do_it = False):
-    if contigs_db_path is None:
+def migrate(db_path):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    dbops.is_contigs_db(contigs_db_path)
+    dbops.is_contigs_db(db_path)
 
     # make sure the version is 2
-    contigs_db = db.DB(contigs_db_path, None, ignore_version = True)
+    contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != '5':
         raise ConfigError("Version of this contigs database is not 5 (hence, this script cannot really do anything).")
-
-    if not just_do_it:
-        try:
-            run.warning('This script will try to upgrade your contigs database. As a result of this, you will lose\
-                         any existing annotations of taxonomy, and you will have to re-import them later. If you are\
-                         OK with that, just press ENTER to continue. If you want to cancel the upgrade, press CTRL+C\
-                         now. If you want to avoid this message the next time, use "--just-do-it" flag.')
-            input("Press ENTER to continue...\n")
-        except:
-            print()
-            sys.exit()
 
     progress.new("Trying to upgrade the contigs database")
     progress.update('...')
@@ -71,11 +60,10 @@ def update_contigs_db_from_v5_to_v6(contigs_db_path, just_do_it = False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database from version 5 to version 6')
     parser.add_argument('contigs_db', metavar = 'CONTIGS_DB', help = 'Contigs database')
-    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     args, unknown = parser.parse_known_args()
 
     try:
-        update_contigs_db_from_v5_to_v6(args.contigs_db, just_do_it = args.just_do_it)
+        migrate(args.contigs_db)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

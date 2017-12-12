@@ -19,41 +19,23 @@ progress = terminal.Progress()
 current_version = '8'
 next_version    = '9'
 
-def update_contigs_db(contigs_db_path, project_name, description=None, just_do_it = False):
-    if contigs_db_path is None:
+def migrate(db_path):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    dbops.is_contigs_db(contigs_db_path)
+    dbops.is_contigs_db(db_path)
 
     # make sure the current version matches
-    contigs_db = db.DB(contigs_db_path, None, ignore_version = True)
+    contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:
         raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
-
-    if not just_do_it:
-        try:
-            run.warning("This script will try to upgrade your contigs database from v%s to v%s. The reason for this change\
-                         is our late realization that it would be much better if we had project names associated with our\
-                         contigs databases. This upgrade will simply set the project name you provided to this script in\
-                         your contigs database. We also added an option to add descriptions into the contigs databases. So,\
-                         OPTIONALLY, you can proivde a description for your contigs databae while you are upgrading it. But\
-                         this is not mandatory. If you think you are ready, just press ENTER to continue.\
-                         If you want to cancel the upgrade and think more about it, press CTRL+C now. If you want to avoid\
-                         this message the next time, use '--just-do-it'." % (current_version, next_version))
-            input("Press ENTER to continue...\n")
-        except:
-            print()
-            sys.exit()
-
-    if not project_name:
-        raise ConfigError('You must provide a project name. Please see the help menu.')
 
     progress.new("Trying to upgrade the contigs database")
     progress.update('...')
 
     contigs_db.remove_meta_key_value_pair('project_name')
-    contigs_db.set_meta_value('project_name', project_name)
+    contigs_db.set_meta_value('project_name', "NO_NAME")
     contigs_db.commit()
 
     # set the version
@@ -71,8 +53,7 @@ def update_contigs_db(contigs_db_path, project_name, description=None, just_do_i
     # bye to you too
     progress.end()
 
-    if description:
-        dbops.update_description_in_db_from_file(contigs_db_path, description)
+    dbops.update_description_in_db(db_path, 'No description is given')
 
     run.info_single("The contigs database successfully upgraded from version %s to %s!" % (current_version, next_version))
 
@@ -80,13 +61,10 @@ def update_contigs_db(contigs_db_path, project_name, description=None, just_do_i
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database from version %s to version %s' % (current_version, next_version))
     parser.add_argument('contigs_db', metavar = 'CONTIGS_DB', help = 'Contigs database')
-    parser.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
-    parser.add_argument(*anvio.A('description'), **anvio.K('description'))
-    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings.")
     args, unknown = parser.parse_known_args()
 
     try:
-        update_contigs_db(args.contigs_db, args.project_name, args.description, just_do_it = args.just_do_it)
+        migrate(args.contigs_db)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
