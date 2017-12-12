@@ -93,9 +93,9 @@ class Migrater(object):
         for script_name in tasks:
             try:
                 migration_scripts[self.db_type][script_name].migrate(self.db_path)
-            except:
-                print()
-                sys.exit()
+            except ConfigError as e:
+                print(e)
+                sys.exit(-1)
 
             # special cases #
             # after this script is done genome storage changes extension from .h5 to .db
