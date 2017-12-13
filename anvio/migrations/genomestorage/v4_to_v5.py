@@ -60,6 +60,8 @@ def migrate(db_path):
     genomes_db.create_table(genome_info_table_name, genome_info_table_structure, genome_info_table_types)
     genomes_db.create_table(gene_info_table_name, gene_info_table_structure, gene_info_table_types)
     genomes_db.create_table(genome_gene_function_calls_table_name, genome_gene_function_calls_table_structure, genome_gene_function_calls_table_types)
+    genomes_db._exec("CREATE INDEX covering_index ON %s (gene_callers_id, genome_name);" % genome_gene_function_calls_table_name)
+
     genomes_db.set_meta_value('db_type', 'genomestorage')
     genomes_db.set_meta_value('creation_date', time.time())
     genomes_db.set_meta_value('hash', old_storage_hash)
