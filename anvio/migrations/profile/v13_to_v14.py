@@ -53,7 +53,7 @@ def migrate(db_path):
     profile_db.disconnect()
     progress.end()
 
-    run.info_single("Database successfully upgraded to version 14!")
+    run.info_single("Database successfully upgraded to version 14!", nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':

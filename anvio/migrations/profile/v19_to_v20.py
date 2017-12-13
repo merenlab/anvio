@@ -65,7 +65,7 @@ def migrate(db_path):
     profile_db.disconnect()
     progress.end()
 
-    run.info_single('Done! Your profile db is now %s.' % next_version)
+    run.info_single('Your profile db is now %s.' % next_version, nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':

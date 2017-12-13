@@ -43,6 +43,8 @@ def migrate(db_path):
     pan_db.disconnect()
     progress.end()
 
+    run.info_single('Your pan db is now %s.' % next_version, nl_after=1, nl_before=1, mc='green')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade pan database from version %s to version %s' % (current_version, next_version))
