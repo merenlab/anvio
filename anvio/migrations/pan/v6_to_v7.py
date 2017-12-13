@@ -34,9 +34,6 @@ def migrate(db_path):
     if str(pan_db.get_version()) != current_version:
         raise ConfigError("Version of this pan database is not %s (hence, this script cannot really do anything)." % current_version)
 
-    progress.new("Trying to upgrade the pan database")
-    progress.update('...')
-
     # update keys
     for old_key, new_key in [('maxbit', 'minbit')]:
         try:
