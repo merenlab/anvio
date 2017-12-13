@@ -37,7 +37,6 @@ def migrate(db_path):
     fp.attrs['version'] = next_version
     fp.close()
 
-    run.info_single('Done! ' % next_version)
     run.info_single('Your pan db is now %s  (if this process seems to be stuck here, and you are not seeing new lines,\
                      you can kill this process by pressing CTRL + C once and things will likely continue just as expected\
                      --for some reason in some cases the process just hangs, and we have not been able to identify the\
