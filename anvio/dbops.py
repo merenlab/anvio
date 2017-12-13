@@ -1964,17 +1964,35 @@ class ContigsDatabase:
             raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be\
                                 skipped. Please make up your mind.")
 
+        filesnpaths.is_file_fasta_formatted(contigs_fasta)
+        contigs_fasta = os.path.abspath(contigs_fasta)
+
+        # let the user see what's up
+        self.run.info('Input FASTA file', contigs_fasta)
+
         if not project_name:
-            raise ConfigError("Sorry, you must provide a project name for your contigs database :/")
+            project_name = '.'.join(os.path.basename(os.path.abspath(contigs_fasta)).split('.')[:-1])
+
+            if project_name:
+                self.run.warning("You are generating a new anvi'o contigs database, but you are not specifying a\
+                                  project name for it. FINE. Anvi'o, in desperation, will use the input file name\
+                                  to set the project name for this contigs database (which is '%s'). If you are not\
+                                  happy with that, feel free to kill and restart this process. If you are not happy\
+                                  with this name, but you don't like killing things either, maybe next time you\
+                                  should either name your FASTA files better, or use the `--project-name` parameter\
+                                  to set your desired name." % project_name, "Anvi'o made things up for you")
+            else:
+                raise ConfigError("Sorry, you must provide a project name for your contigs database :/ Anvi'o tried\
+                                   to make up one, but failed.")
+
+        self.run.info('Name', project_name, mc='green')
+        self.run.info('Description', os.path.abspath(description_file_path) if description_file_path else 'No description is given', mc='green')
 
         if description_file_path:
             filesnpaths.is_file_plain_text(description_file_path)
             description = open(os.path.abspath(description_file_path), 'rU').read()
         else:
             description = ''
-
-        filesnpaths.is_file_fasta_formatted(contigs_fasta)
-        contigs_fasta = os.path.abspath(contigs_fasta)
 
         # go throught he FASTA file to make sure there are no surprises with deflines and sequence lengths.
         self.progress.new('Checking deflines and contig lengths')
@@ -2045,10 +2063,6 @@ class ContigsDatabase:
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
-        # let the user see what's up
-        self.run.info('Name', project_name, mc='green')
-        self.run.info('Description', os.path.abspath(description_file_path) if description_file_path else 'No description is given', mc='green')
-        self.run.info('Input FASTA file', contigs_fasta)
         self.run.info('Split Length', pp(split_length))
         self.run.info('K-mer size', kmer_size)
         self.run.info('Skip gene calling?', skip_gene_calling)
