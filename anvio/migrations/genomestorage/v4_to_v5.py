@@ -79,7 +79,7 @@ def migrate(db_path):
             # dirty workaround for backwards compatibility,
             # "percent_completion" may be "percent_complete" in some old genome storages, 
             # because ozcan forgot to add that into upgrade script :(
-            if column_name == 'percent_completion' and '/info/genomes/%s/percent_completion' not in fp:
+            if column_name == 'percent_completion' and '/info/genomes/%s/percent_completion' % genome_name not in fp:
                 column_name = 'percent_complete'
 
             attr = I(genome_name, column_name)
