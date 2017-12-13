@@ -31,25 +31,13 @@ def migrate(db_path):
 
     is_merged = profile_db.get_meta_value('merged')
 
-    if not just_do_it:
-        try:
-            run.warning('This script will try to upgrade your profile database. If things go south, you will end up having to\
-                         re-profile your data :/ It may be a good idea to back it up first. If you already backed your stuff\
-                         or you are certain that it will work, or if you are a lucky person in general, press ENTER to continue.\
-                         If you want to cancel the upgrade, press CTRL+C now. If you want to avoid this message the next time,\
-                         use "--just-do-it" flag.')
-            input("Press ENTER to continue...\n")
-        except:
-            print()
-            sys.exit()
-
     progress.new("Trying to upgrade the %s profile database" % 'merged' if is_merged else 'single')
 
     # update the runinfo.cp
     input_dir = os.path.dirname(os.path.abspath(db_path))
     P = lambda x: os.path.join(input_dir, x)
     E = lambda x: os.path.exists(x)
-    
+
     runinfo_path = P('RUNINFO.cp') if E(P('RUNINFO.cp')) else None
     runinfo_path = P('RUNINFO.mcp') if E(P('RUNINFO.mcp')) else None
 
@@ -71,7 +59,7 @@ def migrate(db_path):
     profile_db.disconnect()
     progress.end()
 
-    run.info_single("Database successfully upgraded to version 15!")
+    run.info_single("Database successfully upgraded to version 15!", nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':

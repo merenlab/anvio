@@ -113,11 +113,14 @@ def migrate(db_path):
     genomes_db.insert_many(genome_gene_function_calls_table_name, entries=functions_entries)
 
     genomes_db.disconnect()
-    
+
     progress.end()
 
     os.remove(db_path)
-    run.info("New auxiliary database path", genome_storage_db_path)
+
+    run.info_single("Your genomes storage is now at version %s. The new on is at %s, and anvi'o just removed\
+                     the old one, which was at %s from your disk." % (next_version, genome_storage_db_path, db_path), nl_after=1, nl_before=1, mc='green')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade genomes storage from version %s to version %s' % (current_version, next_version))

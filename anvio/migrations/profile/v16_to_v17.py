@@ -77,6 +77,8 @@ def migrate(db_path):
     profile_db.disconnect()
     progress.end()
 
+    run.info_single("Database successfully upgraded to version 17!", nl_after=1, nl_before=1, mc='green')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade profile database from version %s to version %s' % (current_version, next_version))

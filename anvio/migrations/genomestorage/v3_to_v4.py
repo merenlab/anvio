@@ -37,11 +37,12 @@ def migrate(db_path):
     fp.attrs['version'] = next_version
     fp.close()
 
-    run.info_single('The update is done! Your old genome storage file is saved as a backup at "%s". Feel free to\
-                     delete it if everything seems to be working (if you are seeing this message and yet you still\
-                     have not your command line back, you can kill this process by pressing CTRL + C and it will not\
-                     affect anything --for some reason in some cases the process just hangs, and we have not been\
-                     able to identify the problem).' % (backup_db_path), nl_after=1, nl_before=1)
+    run.info_single('Done! ' % next_version)
+    run.info_single('Your pan db is now %s  (if this process seems to be stuck here, and you are not seeing new lines,\
+                     you can kill this process by pressing CTRL + C once and things will likely continue just as expected\
+                     --for some reason in some cases the process just hangs, and we have not been able to identify the\
+                     problem).' % next_version, nl_after=1, nl_before=1, mc='green')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade genomes storage from version %s to version %s' % (current_version, next_version))
