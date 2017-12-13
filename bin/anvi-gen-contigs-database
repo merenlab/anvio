@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     groupA = parser.add_argument_group('MANDATORY INPUTS', 'Things you really need to provide to be in business.')
     groupA.add_argument(*anvio.A('contigs-fasta'), **anvio.K('contigs-fasta'))
-    groupA.add_argument(*anvio.A('project-name'), **anvio.K('project-name', {'required': True}))
+    groupA.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
 
     groupB = parser.add_argument_group('OPTIONAL INPUTS', 'Things you may want to tweak.')
     groupB.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path', {'default': 'CONTIGS.db'}))
