@@ -4509,7 +4509,7 @@ def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path):
             Table.__init__(self, db_path, version, run, progress)
 
     h = T(contigs_db_path, anvio.__contigs__version__)
-    h.export_sequences_table_in_db_into_FASTA_file(t .gene_amino_acid_sequences_table_name, output_file_path = output_file_path)
+    h.export_sequences_table_in_db_into_FASTA_file(t.gene_amino_acid_sequences_table_name, output_file_path = output_file_path)
 
     return output_file_path
 
