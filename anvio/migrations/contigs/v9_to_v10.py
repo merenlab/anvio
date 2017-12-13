@@ -84,7 +84,8 @@ def migrate(db_path):
 
     os.remove(auxiliary_path)
 
-    run.info_single('Done! Your contigs db is now %s, and the now-obsolete ".h5" file is gone!' % next_version, nl_after=1, nl_before=1)
+    run.info_single("The contigs database is now %s, and the now-obsolete '.h5' file is gone forever\
+                     and ever." % (next_version), nl_after=1)
 
 
 if __name__ == '__main__':
