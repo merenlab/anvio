@@ -25,8 +25,8 @@ split_coverages_table_structure  = ['split_name', 'sample_name', 'coverages']
 split_coverages_table_types      = [    'str'   ,     'str'    ,   'blob'   ]
 
 item_additional_data_table_name      = 'item_additional_data'
-item_additional_data_table_structure = ['entry_id', 'sample_id', 'split_name', 'key', 'value', 'type']
-item_additional_data_table_types     = [ 'numeric',    'text'  ,    'text'   , 'str',  'str' ,  'str']
+item_additional_data_table_structure = ['entry_id', 'item_name', 'key', 'value', 'type']
+item_additional_data_table_types     = [ 'numeric',   'text'   , 'str',  'str' ,  'str']
 
 
 def convert_numpy_array_to_binary_blob(array, compress=True):
