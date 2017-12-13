@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
 import sys
-import gzip
 import h5py
 import argparse
 
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -42,10 +39,10 @@ class Migrater(object):
         try:
             if self.db_path.endswith('.db'):
                 db_conn = db.DB(self.db_path, None, ignore_version=True)
-                
+
                 self.db_type = db_conn.get_meta_value('db_type')
                 self.db_version = int(db_conn.get_meta_value('version'))
-                
+
                 db_conn.disconnect()
             elif self.db_path.endswith('GENOMES.h5'):
                 fp = h5py.File(self.db_path, 'r')
@@ -105,7 +102,7 @@ class Migrater(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument('input', metavar = 'DATABASE', nargs=None, help = "Anvio'o database for migration")
+    parser.add_argument('input', metavar = 'DATABASE', nargs=None, help = "Anvi'o database for migration")
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     parser.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
     args, unknown = parser.parse_known_args()
