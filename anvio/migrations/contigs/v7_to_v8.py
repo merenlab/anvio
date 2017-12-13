@@ -48,9 +48,8 @@ def migrate(db_path):
 
     # bye
     progress.end()
-    run.info_single("The contigs database successfully upgraded from version %s to %s!" % (current_version, next_version))
-    run.warning("The only thing this upgrade did was to reset your functional annotations :/ \
-                 But you know, `anvi-run-ncbi-cogs` is pretty fast!")
+    run.info_single("The contigs database is now %s! The only thing this upgrade did was to reset your\
+                     functional annotations :/ But you know, `anvi-run-ncbi-cogs` is pretty fast!" % (next_version), nl_after=1)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database from version %s to version %s' % (current_version, next_version))
