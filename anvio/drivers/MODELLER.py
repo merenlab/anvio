@@ -216,7 +216,7 @@ class MODELLER:
 
     def download_structures(self):
         """
-        Downloads structure files for self.top_seq_seq_matches using Bioppython
+        Downloads structure files for self.top_seq_seq_matches using Biopython
         If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
         """
         self.progress.new("Downloading homologs from PDB")
@@ -435,8 +435,8 @@ class MODELLER:
 
     def run_command(self, command, script_name, progress_name, check_output=None):
         """
-        Runs a command. Must provide script_name (e.g. script.py) and progress_name (e.g. BINARIZING
-        DATABASE). Optionally can provide list of output files whose existences are checked to make
+        Runs a command. Must provide script_name (e.g. "script.py") and progress_name (e.g. "BINARIZING
+        DATABASE"). Optionally can provide list of output files whose existences are checked to make
         sure command was successfully ran.
         """
         # run the command

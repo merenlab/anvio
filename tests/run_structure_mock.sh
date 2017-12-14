@@ -61,6 +61,9 @@ then
 elif [ $1 = "continue"  ]
 then
     cd sandbox
+    
+    rm -rf test-output/STRUCTURES
+    rm -rf test-output/STRUCTURES_full
 
     if [ ! -f "test-output/one_contig_five_genes.db"  ]
     then
@@ -80,7 +83,7 @@ else
         exit -1
 fi
 
-INFO "anvi-gen-variability for AA"
+INFO "anvi-map-variability-on-structure"
 anvi-map-variability-on-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
                                   -c test-output/one_contig_five_genes.db \
                                   -C default \
@@ -90,9 +93,14 @@ anvi-map-variability-on-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
 
 INFO "anvi-model-protein-structures"
 anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
-                              -C default \
-                              -b bin1 \
-                              -S mock_data_for_structure/STRUCTURES 
+                              --gene-caller-ids 2 \
+                              --output-dir test-output/STRUCTURES
+
+INFO "anvi-model-protein-structures --black-no-sugar"
+anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
+                              --gene-caller-ids 2 \
+                              --output-dir test-output/STRUCTURES_full \
+                              --black-no-sugar
 
 INFO "Do you want thhe interactive interface? Run the following:"
 

@@ -24,7 +24,8 @@ a = automodel(env,
               alnfile=ALIGNMENT,            # alignment filename
               knowns=template_ids,          # codes of the templates
               sequence=TARGET_ID,           # code of the target
-              assess_methods=assess.GA341)  # request GA341 assessment
+              assess_methods=(assess.GA341,
+                              assess.DOPE))
 
 # prepare for an extremely fast optimization
 if VERY_FAST:
@@ -54,6 +55,7 @@ except FileExistsError:
     pass
 
 models = a.outputs
+print(models)
 for ind, model in enumerate(models):
     os.rename(model['name'], os.path.join(MODEL_PDBS, "%s_model_%d.pdb" % (TARGET_ID, ind+1)))
 

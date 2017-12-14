@@ -1363,6 +1363,14 @@ D = {
              'help': "If you give this flag, Anvi'o will not open new browser to show Contigs database statistics and write all stats \
                       to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
                 ),
+    'black-no-sugar': (
+            ['--black-no-sugar'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, the output folder contains one structure file for each gene that was modelled, and that's it. That's \
+                      two sugar and two cream. If you give this flag, you've used MODELLER or related software, you're a structural \
+                      biologist, or you're a masochist."}
+                ),
 }
 
 # two functions that works with the dictionary above.

@@ -7,23 +7,14 @@ sup
 
 """
 
-import os
 import sys
+import anvio
 import argparse
 
-import anvio
-import anvio.db as db
-import anvio.dbops as dbops
-import anvio.tables as t
-import anvio.fastalib as u
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.structureops as structops
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.drivers import MODELLER
-from anvio.structureops import mess_around
-from anvio.variabilityops import variability_engines
 
 
 __author__ = "A. Murat Eren"
@@ -41,32 +32,46 @@ progress = terminal.Progress()
 
 def main(args):
 
-    structure = structops(args)
-    structops.process()
+    structure = structops.Structure(args)
+    structure.model_structures()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Identifies genes in your contigs database that encode proteins that are \
                                                   homologous to proteins with solved structures. If sufficiently similar \
                                                   homologs are identified, they are used as structural templates to predict \
-                                                  the 3D structure of proteins in your contigs database.")
+                                                  the 3D structure of proteins in your contigs database. This means we are \
+                                                  at the mercy of structural biologists: if they have not solved a structure \
+                                                  of a protein sufficiently similar in AA sequence to yours, this isn't going \
+                                                  to work. But it's worth a try! The software we are using is MODELLER, more \
+                                                  of which can be learned about at https://salilab.org/modeller/, or in our \
+                                                  tutorial at FIXME")
 
-    groupT = parser.add_argument_group('STRUCTURES', 'Declaring relevant protein structures (.pdb files)')
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
-    groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are two\
-                                                  ways to do it. One, you can give a file path with split names,\
-                                                  or, as an alternative, you can provide a collection id with a\
-                                                  bin name.')
-    groupO = parser.add_argument_group('OUTPUT', 'Output file and output style')
-    groupE = parser.add_argument_group('EXTRAS', 'Parameters that will help you to do a very precise analysis.\
-                                                  If you declare nothing from this bunch, you will get "everything"\
-                                                  to play with, which is not necessarily a good thing...')
+    groupG = parser.add_argument_group('GENES', 'Specifying which genes you want to be modelled.')
+    groupO = parser.add_argument_group('OUTPUT', 'Output file and output style.')
+    groupM = parser.add_argument_group('MODELLER PARAMS', 'Parameters for MODELLER\'s homology modeling.')
 
-    groupT.add_argument('--structures', '-S', required=True, help="Path of the folder which all .pdb files are stored in.")
-    groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    groupE.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
-    groupE.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id'))
+    groupG.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
+    groupG.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupO.add_argument(*anvio.A('black-no-sugar'), **anvio.K('black-no-sugar'))
+
+    groupM.add_argument("--num-models", "-N", help = \
+        """Number of models""")
+    groupM.add_argument("--deviation", "-d", help = \
+        """Deviation (angstroms)""")
+    groupM.add_argument("--database", "-D", help = \
+        """Which database name do you want to use? Default is "pdb_95". Must have either the
+        extension .bin or .pir.""")
+    groupM.add_argument("--best", "-b", help = \
+        """How should the best model be decided? If not supplied, the average structure across all
+        models is considered best. Otherwise, the best model structure can be determined with
+        different scores. These are the ones currently available: 'DOPE', 'GA341', 'molpdf'. To
+        learn more see the MODELLER tutorial: https://salilab.org/modeller/tutorial/basic.html """)
+    groupM.add_argument("--very-fast", help = \
+        """Speed things up at the cost of accuracy.""")
 
     args = parser.parse_args()
 
