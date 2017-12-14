@@ -18,7 +18,6 @@ import argparse
 import anvio
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.structureops import mess_around
 from anvio.variabilityops import variability_engines
 from anvio.drivers import MODELLER
 import Bio.PDB as PDB
