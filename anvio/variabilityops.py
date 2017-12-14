@@ -45,7 +45,6 @@ class VariabilitySuper(object):
     def __init__(self, args={}, p=progress, r=run):
         self.args = args
 
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         if args.engine not in variability_engines:
             raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
         self.data = {}
@@ -202,8 +201,8 @@ class VariabilitySuper(object):
 
             self.splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
         else:
-            # OK. no collection id. we will go oldschool. we whope to find what we are looking for in
-            # self.splits_of_interst_path  at this point (which may have been filled through the command
+            # OK. no collection id. we will go oldschool. we hope to find what we are looking for in
+            # self.splits_of_interest_path  at this point (which may have been filled through the command
             # line client), or in self.splits_of_interest (which may have been filled in by another program)
             if not self.splits_of_interest:
                 if not self.splits_of_interest_path:

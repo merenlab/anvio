@@ -54,59 +54,7 @@ def main(args):
     if args.output_file:
         variability_engine.report()
 
-    ########################################################
-    ########################################################
-
-    ############# DEFINE GENES OF INTEREST ##################
-
-    # get list of genes of interest
-    table = variability_engine.data
-    #genes = [str(gene) for gene in list(table["corresponding_gene_call"].unique()[-3:])]
-    genes = ["3"]
-
-    ############# CREATE TEMP PATH FOR PRE-MODELLER ##################
-
-    tmp_dir = filesnpaths.get_temp_directory_path()
-
-    ############# WRITE FASTA OF ALL GENES ###########
-    """
-    The ideal workflow will be to rewrite export_aa_sequences_from_contigs_db to accept
-    a list of genes of interest. I will then loop through the genes of interest and 
-    write single-gene FASTA files. Currently, I parse through a FASTA of ALL genes and 
-    ignore those that are not in the genes of interest.
-    """
-    # create fasta file of all genes in database
-    progress.new('GETTING GENE SEQUENCES')
-    progress.update("Exporting AA gene sequences from contigs database...")
-    all_genes_fasta_path = os.path.join(tmp_dir, "all_genes.fasta")
-    dbops.export_aa_sequences_from_contigs_db(args.contigs_db, all_genes_fasta_path)
-    progress.end()
-
-    ######## LOOP THROUGH EACH GENE IN FASTA ########
-
-    fasta = u.SequenceSource(all_genes_fasta_path)
-
-    while next(fasta):
-
-        # do nothing if not gene of interest
-        if fasta.id not in genes:
-            continue
-
-        # define temp file with format <gene_callers_id>.fasta
-        single_gene_fasta_path = os.path.join(tmp_dir, "{}.fasta".format(fasta.id))
-
-        # write single gene fasta
-        single_gene_fasta = u.FastaOutput(single_gene_fasta_path)
-        single_gene_fasta.write_id(fasta.id)
-        single_gene_fasta.write_seq(fasta.seq, split = False)
-
-        # close fasta
-        single_gene_fasta.close()
-
-        ############### INITIALIZE MODELLER DRIVER ############
-
-        mod = MODELLER.MODELLER(single_gene_fasta_path, directory=tmp_dir)
-        mod.process()
+    # THEN DO STUFF
 
 
 if __name__ == '__main__':
