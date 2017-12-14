@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""
+DEVELOPMENT NOTES:
+==================
+sup
+
+"""
+
+import os
+import sys
+import argparse
+
+import anvio
+import anvio.db as db
+import anvio.dbops as dbops
+import anvio.tables as t
+import anvio.fastalib as u
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+import anvio.structureops as structops
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.drivers import MODELLER
+from anvio.structureops import mess_around
+from anvio.variabilityops import variability_engines
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+
+    structure = structops(args)
+    structops.process()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Identifies genes in your contigs database that encode proteins that are \
+                                                  homologous to proteins with solved structures. If sufficiently similar \
+                                                  homologs are identified, they are used as structural templates to predict \
+                                                  the 3D structure of proteins in your contigs database.")
+
+    groupT = parser.add_argument_group('STRUCTURES', 'Declaring relevant protein structures (.pdb files)')
+    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
+    groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are two\
+                                                  ways to do it. One, you can give a file path with split names,\
+                                                  or, as an alternative, you can provide a collection id with a\
+                                                  bin name.')
+    groupO = parser.add_argument_group('OUTPUT', 'Output file and output style')
+    groupE = parser.add_argument_group('EXTRAS', 'Parameters that will help you to do a very precise analysis.\
+                                                  If you declare nothing from this bunch, you will get "everything"\
+                                                  to play with, which is not necessarily a good thing...')
+
+    groupT.add_argument('--structures', '-S', required=True, help="Path of the folder which all .pdb files are stored in.")
+    groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupE.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
+    groupE.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id'))
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(2)

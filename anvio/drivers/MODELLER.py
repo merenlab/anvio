@@ -55,7 +55,6 @@ class MODELLER:
         # does target_fasta_path point to a fasta file?
         self.target_fasta_path = target_fasta_path
         utils.filesnpaths.is_file_fasta_formatted(self.target_fasta_path)
-        run.info("target fasta", self.target_fasta_path)
 
         # make sure target_fasta is valid
         target_fasta = u.SequenceSource(target_fasta_path, lazy_init=False)
@@ -68,20 +67,35 @@ class MODELLER:
             self.gene_id = target_fasta.id
         target_fasta.close()
 
-        # self.directory is defined because there are a lot of extraneous output and log
-        # files output by MODELLER so we cd into directory, do our business, and then cd back
-        # into the starting directory.
+        # the directory files will be dumped into
         self.directory = directory
         if not self.directory:
             self.directory = os.getcwd()
+
+        # copy fasta into the working directory
+        try:
+            shutil.copy2(self.target_fasta_path, self.directory)
+        except shutil.SameFileError:
+            pass
+
+        # There are a lot of extraneous output and log files that are dumped by MODELLER into the
+        # working directory. To catch them all, we cd into self.directory, do our business, and then
+        # cd back to the starting directory. by default self.directory is the current working
+        # directory, i.e. os.getcwd()
         self.start_dir = os.getcwd()
         os.chdir(self.directory)
 
 
     def process(self):
         """
-        This is the workflow for a standard protein search and model.
+        This is the workflow for a standard protein search search for homologous templates and then
+        modelling the structure of the target protein using the homologous protein structures.
         """
+
+        run.warning("Working directory: {}".format(self.directory),
+                    header='MODELLING STRUCTURE FOR GENE ID {}'.format(self.gene_id),
+                    lc="green")
+
         try:
             self.run_fasta_to_pir()
 
@@ -102,35 +116,55 @@ class MODELLER:
         except self.EndProcess:
             self.close()
 
+
     def run_get_model(self):
         """
         This is the magic of MODELLER. Based on the template alignment file, the structures of the
         templates, and satisfaction of physical constraints, the target protein structure is
-        approximated.
+        modelled.
         """
         script_name = "get-model.py"
 
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
 
+        # Super fast optimization (at the obvious cost of accuracy)
+        very_fast = False
+        # number of times the model is calculated
+        num_models = 3
+        # initial atom positions are randomized by this many angstroms to promote exploration of the
+        # solution space. Only relevant if num_models > 1. 4.0 is the MODELLER DEFAULT
+        deviation = 4.0
+
+        if not deviation and num_models > 1:
+            raise ConfigError("run_get_model::deviation must be > 0 if num_models > 1.")
+
         command = [self.mod,
                    script_name,
                    self.alignment_to_templates_pir,
                    self.gene_id,
                    self.best_template_ids_fname,
-                   str(10),
-                   str(3.0)]
+                   str(num_models),
+                   str(deviation),
+                   str(int(very_fast))]
 
         command = " ".join(command)
 
-        self.run_command(command)
-        run.info("get_model", "done")
+        self.run_command(command, 
+                         script_name = script_name,
+                         progress_name = "CALCULATING 3D MODEL")
+
+        self.run.info("Number of models", num_models)
+        self.run.info("fdasgaagkjagjk agsjlkgsadj", num_models)
 
 
-    def parse_search_results(self, max_matches=5, min_proper_pident=30.0):
+    def parse_search_results(self, max_matches=2, min_proper_pident=30.0):
         """
-        Parses search results and finds best matches to align against.
+        Parses search results and filters for best homologs to use as structure templates.
         """
+        self.progress.new("PARSE AND FILTER HOMOLOGS")
+        self.progress.update("Finding those with percent identicalness > {}%".format(min_proper_pident))
+
         # put names to the columns
         column_names = (      "idx"      ,  "code_and_chain"  ,       "type"     ,  "iteration_num"  ,
                             "seq_len"    , "start_pos_target" , "end_pos_target" , "start_pos_dbseq" ,
@@ -138,6 +172,9 @@ class MODELLER:
 
         # load the table as a dataframe
         search_df = pd.read_csv(self.search_results, sep="\s+", comment="#", names=column_names, index_col=False)
+
+        # matches found (-1 because target is included)
+        matches_found = len(search_df) - 1
 
         # add some useful columns
         search_df["proper_pident"] = search_df["seq_identity"] * search_df["align_length"] / \
@@ -150,10 +187,13 @@ class MODELLER:
         # the first max_matches.
         search_df = search_df[search_df["proper_pident"] >= min_proper_pident]
 
-        if not len(search_df):
+        matches_after_filter = len(search_df)
+        if not matches_after_filter:
             run.warning("Gene {} did not have a search result with percent identicalness above {}. No \
                          structure will be modelled".format(self.gene_id, min_proper_pident))
             raise self.EndProcess
+
+        self.progress.update("Keeping top {} matches as the template homologs".format(max_matches))
 
         # of those filtered, get up to <max_matches> of those with the highest proper_ident scores.
         search_df = search_df.sort_values("proper_pident", ascending=False)
@@ -162,38 +202,58 @@ class MODELLER:
         # Get their chain and 4-letter ids
         self.top_seq_matches = list(zip(search_df["code"], search_df["chain"]))
 
+        self.progress.end()
+        self.run.info("Max number of templates allowed", max_matches)
+        self.run.info("Number of candidate templates", matches_found)
+        self.run.info("After >{}% identical filter".format(min_proper_pident), matches_after_filter)
+        self.run.info("Number accepted as templates", len(self.top_seq_matches))
+        for i in range(len(self.top_seq_matches)):
+            self.run.info("Template {}".format(i+1), 
+                          "Protein ID: {}, Chain {} ({:.1f}% identical)".format(self.top_seq_matches[i][0],
+                                                                                self.top_seq_matches[i][1],
+                                                                                search_df["proper_pident"].iloc[i]))
+
 
     def download_structures(self):
         """
         Downloads structure files for self.top_seq_seq_matches using Bioppython
         If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
         """
+        self.progress.new("Downloading homologs from PDB")
         # get complete list of PDB codes
         pdb_list = PDB.PDBList()
 
-        # make a folder to store the template PDBs
-        self.template_pdbs = os.path.join(self.directory, "TEMPLATE_PDBS")
-        os.mkdir(self.template_pdbs)
+        # make a folder to store the template PDBs if it doesn't already exist
+        self.template_pdbs = "{}_TEMPLATE_PDBS".format(self.gene_id)
+        try:
+            os.mkdir(self.template_pdbs)
+        except FileExistsError:
+            pass
 
         # function to get the filepath of downloaded pdb, given its 4-letter code
-        func_fname = lambda x: os.path.join(self.template_pdbs, "pdb" + x + ".ent")
+        self.structure_fname = lambda x: os.path.join(self.template_pdbs, "pdb" + x + ".ent")
 
         for match in self.top_seq_matches:
+            self.progress.update("Downloading protein structure: {}".format(match[0]))
 
             # download structure into self.directory; suppress Biopython output
             with HiddenPrints(): # FIXME the anvi'o SuppressAllOutput does not work
                 pdb_list.retrieve_pdb_file(match[0], file_format="pdb", pdir=self.template_pdbs, overwrite=True)
 
             # if structure was not downloaded, that sucks. We remove it from self.top_seq_matches
-            if utils.filesnpaths.is_file_exists(func_fname(match[0]), dont_raise=True):
-                run.info(match[0], "downloaded")
-            else:
-                run.warning("{} could not be downloaded. Moving onto the next match.".format(match[0]))
+            if not utils.filesnpaths.is_file_exists(self.structure_fname(match[0]), dont_raise=True):
+                run.warning("The protein {} was matched to be homologous to protein with gene id {}, \
+                             but could not be downloaded. Moving onto the next match.".format(match[0]))
                 self.top_seq_matches.remove(match)
+        self.progress.end()
 
         if not len(self.top_seq_matches):
-            run.warning("No structures of the candidate proteins were downloadable. Probably something is wrong. Stopping here.")
+            run.warning("No structures of the homologous proteins were downloadable. Probably something \
+                         is wrong. Maybe you are not connected to the internet. Stopping here.")
             raise self.EndProcess
+
+        for i in range(len(self.top_seq_matches)):
+            self.run.info("{} structure file".format(self.top_seq_matches[i][0]), self.structure_fname(self.top_seq_matches[i][0]))
 
 
     def run_align_to_templates(self):
@@ -224,16 +284,23 @@ class MODELLER:
         command = [self.mod,
                    script_name,
                    self.target_pir,
+                   self.gene_id,
                    self.best_template_ids_fname,
                    self.alignment_to_templates_pir,
                    self.alignment_to_templates_pap,
                    self.template_family_matrix]
         command = " ".join(command)
 
-        self.run_command(command, check_output=[self.alignment_to_templates_pir, 
-                                                self.alignment_to_templates_pap,
-                                                self.template_family_matrix])
-        run.info("run_align_to_templates", "done")
+        self.run_command(command, 
+                         script_name = script_name, 
+                         progress_name = "CREATING MSA OF HOMOLOGS",
+                         check_output = [self.alignment_to_templates_pir, 
+                                         self.alignment_to_templates_pap,
+                                         self.template_family_matrix])
+
+        self.run.info("Similarity matrix of templates", self.template_family_matrix)
+        self.run.info("Target alignment to templates", ", ".join([self.alignment_to_templates_pap,
+                                                                  self.alignment_to_templates_pir]))
 
 
     def run_search(self):
@@ -255,8 +322,12 @@ class MODELLER:
                    self.search_results]
         command = " ".join(command)
 
-        self.run_command(command, check_output=[self.search_results])
-        run.info("search_results", self.search_results)
+        self.run_command(command, 
+                         script_name = script_name, 
+                         progress_name = "DB SEARCH FOR HOMOLOGS",
+                         check_output = [self.search_results])
+
+        run.info("Search results for similar AA sequences", self.search_results)
 
 
     def check_database(self):
@@ -309,8 +380,12 @@ class MODELLER:
                    bin_db_path]
         command = " ".join(command)
 
-        self.run_command(command, check_output=[bin_db_path])
-        run.info("binarized database", bin_db_path)
+        self.run_command(command, 
+                         script_name = script_name, 
+                         progress_name = "BINARIZING DATABASE",
+                         check_output=[bin_db_path])
+
+        self.run_info("new database", bin_db_path)
 
 
     def copy_script_to_directory(self, script_name):
@@ -350,17 +425,37 @@ class MODELLER:
                    self.target_pir]
         command = " ".join(command)
 
-        self.run_command(command, check_output=[self.target_pir])
-        run.info("target pir", self.target_pir)
+        self.run_command(command, 
+                         script_name = script_name, 
+                         progress_name = "CONVERT SEQUENCE TO MODELLER FORMAT", 
+                         check_output = [self.target_pir])
+
+        self.run.info("Target alignment file", self.target_pir)
 
 
-    def run_command(self, command, check_output=None):
-        # FIXME jazz this up with some self.progress updates
+    def run_command(self, command, script_name, progress_name, check_output=None):
+        """
+        Runs a command. Must provide script_name (e.g. script.py) and progress_name (e.g. BINARIZING
+        DATABASE). Optionally can provide list of output files whose existences are checked to make
+        sure command was successfully ran.
+        """
+        # run the command
+        self.progress.new(progress_name)
+        self.progress.update("Executing MODELLER script: {}".format(script_name))
         os.system(command)
 
+        # check the output
         if check_output:
             for output in check_output:
                 utils.filesnpaths.is_file_exists(output)
+
+        # MODELLER outputs a log that we rename right here, right now
+        old_log_name = os.path.splitext(script_name)[0] + ".log"
+        new_log_name = "{}_{}".format(self.gene_id, old_log_name)
+        os.rename(old_log_name, new_log_name)
+
+        self.progress.end()
+        self.run.info("log of {}".format(script_name), new_log_name)
 
 
     def close(self):
@@ -376,12 +471,13 @@ class MODELLER:
         pass
 
 
-class HiddenPrints:
+class HiddenPrints():
     """
     Has your pesky external library hardcoded print statements that you want to supress? Are you
     sick and tired of seeing messages you aren't in control of? Do your friends laugh at you behind
-    your back? Then you need the HiddenPrints class! Billy Mays here, introducing a class that
-    executes chunks of code while suppressing all print statements. Simply call your code like:
+    your back? Does Meren's terminal.SuppressAllOutput lead to a traceback? Then you need the
+    HiddenPrints class! Billy Mays here, introducing a class that executes chunks of code while
+    suppressing all print statements. Simply call your code like:
 
     with HiddenPrints():
         <your code here!>
@@ -392,17 +488,6 @@ class HiddenPrints:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout = self._original_stdout
-
-
-
-
-
-
-
-
-
-
-
 
 
 

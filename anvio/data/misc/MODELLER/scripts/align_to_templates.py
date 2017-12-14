@@ -6,10 +6,11 @@
 # aligned structures to generate an alignment suitable for modeling.
 import sys
 TARGET_PIR            = sys.argv[1]
-TEMPLATE_IDS_FILE     = sys.argv[2]
-ALIGNMENT_OUT_PIR     = sys.argv[3]
-ALIGNMENT_OUT_PAP     = sys.argv[4]
-PROTEIN_FAMILY_MATRIX = sys.argv[5]
+TARGET_ID             = sys.argv[2]
+TEMPLATE_IDS_FILE     = sys.argv[3]
+ALIGNMENT_OUT_PIR     = sys.argv[4]
+ALIGNMENT_OUT_PAP     = sys.argv[5]
+PROTEIN_FAMILY_MATRIX = sys.argv[6]
 
 # read in file written by MODELLER.run_compare()
 template_ids = [tuple(x.strip().split("\t")) for x in open(TEMPLATE_IDS_FILE).readlines()]
@@ -17,7 +18,7 @@ template_ids = [tuple(x.strip().split("\t")) for x in open(TEMPLATE_IDS_FILE).re
 from modeller import *
 
 env = environ()
-env.io.atom_files_directory = ['./TEMPLATE_PDBS']
+env.io.atom_files_directory = ['./%s_TEMPLATE_PDBS' % TARGET_ID]
 
 # Create an alignment of the 'A' chains of 1clf, 1dur, 1fca and 2fdn
 aln = alignment(env)

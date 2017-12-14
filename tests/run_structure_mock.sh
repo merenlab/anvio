@@ -88,6 +88,12 @@ anvi-map-variability-on-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
                                   -S mock_data_for_structure/STRUCTURES \
                                   --quince-mode
 
+INFO "anvi-model-protein-structures"
+anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
+                              -C default \
+                              -b bin1 \
+                              -S mock_data_for_structure/STRUCTURES 
+
 INFO "Do you want thhe interactive interface? Run the following:"
 
 echo "anvi-interactive -p `pwd`/test-output/SAMPLES-MERGED/PROFILE.db -c `pwd`/test-output/one_contig_five_genes.db"
