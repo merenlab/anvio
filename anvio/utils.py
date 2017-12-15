@@ -18,7 +18,6 @@ import multiprocessing
 import urllib.request, urllib.error, urllib.parse
 
 import numpy as np
-import pandas as pd
 
 from email.mime.text import MIMEText
 from collections import Counter
