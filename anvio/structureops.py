@@ -14,7 +14,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.drivers.MODELLER as MODELLER
 
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -50,6 +50,24 @@ class Structure:
 
         # identify which genes user wants to model structures for
         self.get_genes_of_interest()
+
+        self.sanity_check()
+    
+
+    def sanity_check(self):
+        # check for genes that do not appear in the contigs database
+        bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_database]
+        if bad_gene_caller_ids:
+            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
+                               "These gene caller ids you provided are") + " not known to this contigs database: {}.\
+                               You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
+                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+
+        # Finally, raise warning if number of genes is greater than 20
+        if len(self.genes_of_interest) > 20:
+            run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is \
+                         {}, which is a lot (of time!). I'm putting you in timeout for 15 seconds, then I'm going to do \
+                         what you said to do. CTRL + C to cancel.".format(len(self.genes_of_interest)))
 
 
     def get_genes_of_interest(self):
@@ -94,23 +112,6 @@ class Structure:
             # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
             self.genes_of_interest = self.genes_in_database
             run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
-
-
-        # check for genes that do not appear in the contigs database
-        bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_database]
-        if bad_gene_caller_ids:
-            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
-                               "These gene caller ids you provided are") + " not known to this contigs database: {}.\
-                               You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
-                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
-
-        # Finally, raise warning if number of genes is greater than 20
-        if len(self.genes_of_interest) > 20:
-            import time
-            run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is \
-                         {}, which is a lot (of time!). I'm putting you in timeout for 15 seconds, then I'm going to do \
-                         what you said to do. CTRL + C to cancel.".format(len(self.genes_of_interest)))
-            time.sleep(15)
 
 
     def pick_best_model(self):
