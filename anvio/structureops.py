@@ -16,13 +16,13 @@ import anvio.drivers.MODELLER as MODELLER
 
 from anvio.errors import ConfigError
 
-run = terminal.Run()
-progress = terminal.Progress()
 
 class Structure:
 
-    def __init__(self, args):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
+        self.run = run
+        self.progress = progress
 
         # initialize self.arg parameters
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
@@ -65,7 +65,7 @@ class Structure:
 
         # Finally, raise warning if number of genes is greater than 20
         if len(self.genes_of_interest) > 20:
-            run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is \
+            self.run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is \
                          {}, which is a lot (of time!). I'm putting you in timeout for 15 seconds, then I'm going to do \
                          what you said to do. CTRL + C to cancel.".format(len(self.genes_of_interest)))
 
@@ -111,7 +111,7 @@ class Structure:
         if not self.genes_of_interest:
             # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
             self.genes_of_interest = self.genes_in_database
-            run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
+            self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
 
 
     def pick_best_model(self):
@@ -126,7 +126,7 @@ class Structure:
         Downloads structure files for self.top_seq_seq_matches using Biopython
         If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
         """
-        progress.new("Downloading homologs from PDB")
+        self.progress.new("Downloading homologs from PDB")
 
         # define directory path name to store the template PDBs (it can already exist)
         self.template_pdbs = os.path.join(self.modeller.directory, "{}_TEMPLATE_PDBS".format(self.modeller.gene_id))
@@ -137,12 +137,12 @@ class Structure:
         self.top_seq_matches = [(code, chain_code) for code, chain_code in self.top_seq_matches if code in downloaded]
 
         if not len(self.top_seq_matches):
-            run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something \
+            self.run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something \
                          is wrong. Maybe you are not connected to the internet. Stopping here.")
             raise self.EndModeller
 
-        progress.end()
-        run.info("structures downloaded for", ", ".join([code[0] for code in self.top_seq_matches]))
+        self.progress.end()
+        self.run.info("structures downloaded for", ", ".join([code[0] for code in self.top_seq_matches]))
 
 
     def parse_search_results(self):
@@ -155,8 +155,8 @@ class Structure:
             raise ConfigError("parse_search_results::You initiated this class without providing values for min_proper_pident \
                                and max_matches, which is required for this function.")
 
-        progress.new("PARSE AND FILTER HOMOLOGS")
-        progress.update("Finding those with percent identicalness > {}%".format(self.min_proper_pident))
+        self.progress.new("PARSE AND FILTER HOMOLOGS")
+        self.progress.update("Finding those with percent identicalness > {}%".format(self.min_proper_pident))
 
         # put names to the columns
         column_names = (      "idx"      ,  "code_and_chain"  ,       "type"     ,  "iteration_num"  ,
@@ -170,8 +170,8 @@ class Structure:
         matches_found = len(search_df) - 1
 
         if not matches_found:
-            progress.end()
-            run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".\
+            self.progress.end()
+            self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".\
                         format(self.modeller.gene_id))
             raise self.modeller.EndModeller
 
@@ -188,13 +188,13 @@ class Structure:
         # Order them and take the first self.modeller.max_matches.
         matches_after_filter = len(search_df)
         if not matches_after_filter:
-            progress.end()
-            run.warning("Gene {} did not have a search result with percent identicalness above or equal \
+            self.progress.end()
+            self.run.warning("Gene {} did not have a search result with percent identicalness above or equal \
                          to {}. The max found was {}%. No structure will be modelled.".\
                          format(self.modeller.gene_id, self.min_proper_pident, max_pident_found))
             raise self.modeller.EndModeller
 
-        progress.update("Keeping top {} matches as the template homologs".format(self.max_matches))
+        self.progress.update("Keeping top {} matches as the template homologs".format(self.max_matches))
 
         # of those filtered, get up to self.modeller.max_matches of those with the highest proper_ident scores.
         search_df = search_df.sort_values("proper_pident", ascending=False)
@@ -203,13 +203,13 @@ class Structure:
         # Get their chain and 4-letter ids
         self.top_seq_matches = list(zip(search_df["code"], search_df["chain"]))
 
-        progress.end()
-        run.info("Max number of templates allowed", self.max_matches)
-        run.info("Number of candidate templates", matches_found)
-        run.info("After >{}% identical filter".format(self.min_proper_pident), matches_after_filter)
-        run.info("Number accepted as templates", len(self.top_seq_matches))
+        self.progress.end()
+        self.run.info("Max number of templates allowed", self.max_matches)
+        self.run.info("Number of candidate templates", matches_found)
+        self.run.info("After >{}% identical filter".format(self.min_proper_pident), matches_after_filter)
+        self.run.info("Number accepted as templates", len(self.top_seq_matches))
         for i in range(len(self.top_seq_matches)):
-            run.info("Template {}".format(i+1), 
+            self.run.info("Template {}".format(i+1), 
                      "Protein ID: {}, Chain {} ({:.1f}% identical)".format(self.top_seq_matches[i][0],
                                                                            self.top_seq_matches[i][1],
                                                                            search_df["proper_pident"].iloc[i]))
@@ -234,7 +234,7 @@ class Structure:
             # Otherwise, only pertinent files are moved. See move_results_to_output_dir()
             self.modeller_dir = filesnpaths.get_temp_directory_path()
 
-            run.warning("Working directory: {}".format(self.modeller.directory),
+            self.run.warning("Working directory: {}".format(self.modeller.directory),
                          header='MODELLING STRUCTURE FOR GENE ID {}'.format(self.modeller.gene_id),
                          lc="green")
 
@@ -261,9 +261,10 @@ class Structure:
             # made for each instance of MODELLER (i.e. each protein), and files are moved into
             # self.output_dir afterwards. If --black-no-sugar is provided, everything is moved.
             # Otherwise, only pertinent files are moved. See move_results_to_output_dir()
-            self.modeller_dir = filesnpaths.get_temp_directory_path()
-            self.gene_fasta_path = filesnpaths.get_temp_file_path()
-            gene_fasta = u.FastaOutput(self.gene_fasta_path)
+            self.args.directory = filesnpaths.get_temp_directory_path()
+            self.args.target_fasta_path = filesnpaths.get_temp_file_path()
+
+            gene_fasta = u.FastaOutput(self.args.target_fasta_path)
             gene_fasta.write_id(fasta.id)
             gene_fasta.write_seq(fasta.seq, split = False)
             gene_fasta.close()
@@ -296,40 +297,40 @@ class Structure:
             for filepath in list_to_keep:
                 shutil.move(filepath, output_gene_dir)
 
-        run.warning("results folder: {}".format(output_gene_dir),
+        self.run.warning("results folder: {}".format(output_gene_dir),
                      header='FINISHED STRUCTURE FOR GENE ID {}'.format(self.modeller.gene_id),
                      lc="green")
 
 
     def run_modeller(self):
-            self.modeller = MODELLER.MODELLER(self.gene_fasta_path, directory = self.modeller_dir)
+        self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
 
-            run.warning("Working directory: {}".format(self.modeller.directory),
-                         header='MODELLING STRUCTURE FOR GENE ID {}'.format(self.modeller.gene_id),
-                         lc="blue")
+        self.run.warning("Working directory: {}".format(self.modeller.directory),
+                     header='MODELLING STRUCTURE FOR GENE ID {}'.format(self.modeller.gene_id),
+                     lc="cyan")
 
-            try:
-                self.modeller.run_fasta_to_pir()
+        try:
+            self.modeller.run_fasta_to_pir()
 
-                self.modeller.check_database()
+            self.modeller.check_database()
 
-                self.modeller.run_search()
+            self.modeller.run_search()
 
-                self.parse_search_results()
+            self.parse_search_results()
 
-                self.download_structures()
+            self.download_structures()
 
-                self.modeller.run_align_to_templates(self.top_seq_matches)
+            self.modeller.run_align_to_templates(self.top_seq_matches)
 
-                self.modeller.run_get_model(self.num_models, self.deviation, self.very_fast)
+            self.modeller.run_get_model(self.num_models, self.deviation, self.very_fast)
 
-                self.modeller.tidyup()
+            self.modeller.tidyup()
 
-                self.move_results_to_output_dir()
+            self.move_results_to_output_dir()
 
-            except self.modeller.EndModeller as e:
-                print(e)
-                self.modeller.abort()
+        except self.modeller.EndModeller as e:
+            print(e)
+            self.modeller.abort()
 
 
 
