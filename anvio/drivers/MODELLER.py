@@ -27,9 +27,10 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
 pp = terminal.pretty_print
+
+J = lambda x, y: os.path.join(x, y)
+
 
 class MODELLER:
     """
@@ -41,7 +42,7 @@ class MODELLER:
     parameters required to run the script.
     """
 
-    def __init__(self, target_fasta_path, database_name="pdb_95", directory=None, run=run, progress=progress):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         """ 
         PARAMS:
         =======
@@ -77,15 +78,22 @@ class MODELLER:
             created if it doesn't already exist)
         """
 
+        self.args = args
         self.run = run
         self.progress = progress
+
+        A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
+        null = lambda x: x
+        self.executable = A('executable', null) or "mod9.19"
+        self.target_fasta_path = A('target_fasta_path', null)
+        self.database_name = A('database_name', null) or "pdb_95"
+        self.directory = A('directory', null)
 
         self.alignment_pap_path = None
         self.alignment_pir_path = None
         self.get_template_path = None
         self.search_results_path = None
         self.target_pir_path = None
-        self.target_fasta_path = None
         self.template_family_matrix_path = None
         self.template_info_path = None
         self.template_pdbs = None
@@ -95,26 +103,28 @@ class MODELLER:
         self.scripts = {}
 
         # check that MODELLER exists
-        utils.is_program_exists('mod9.19') # FIXME
-        self.mod = "mod9.19"
+        utils.is_program_exists(self.executable)
+
+        if A('executable', null):
+            self.run.warning("As per your request, anvi'o will use %s to run MODELER." % self.executable)
+        else:
+            self.run.info_single("Anvi'o found the default executable for MODELLER, %s, and will\
+                                  use it." % self.executable, nl_before=1)
 
         # All MODELLER scripts are housed in self.script_folder
-        self.scripts_folder = os.path.abspath("/Users/evan/Software/anvio/anvio/data/misc/MODELLER/scripts") # FIXME
+        self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
         if utils.filesnpaths.is_dir_empty(self.scripts_folder):
             raise ConfigError("Anvi'o houses all its MODELLER scripts in {}, but your directory \
                                contains no scripts. You should change that.")
 
         # All MODELLER databases are housed in self.database_dir
-        self.database_name = database_name
-        self.database_dir = os.path.abspath("/Users/evan/Software/anvio/anvio/data/misc/MODELLER/db") # FIXME
-
+        self.database_dir = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
 
         # does target_fasta_path point to a fasta file?
-        self.target_fasta_path = target_fasta_path
         utils.filesnpaths.is_file_fasta_formatted(self.target_fasta_path)
 
         # make sure target_fasta is valid
-        target_fasta = u.SequenceSource(target_fasta_path, lazy_init=False)
+        target_fasta = u.SequenceSource(self.target_fasta_path, lazy_init=False)
         if target_fasta.total_seq != 1:
             raise ConfigError("MODELLER::The input FASTA file must have exactly one sequence.\
                                You provided one with {}.".format(target_fasta.total_seq))
@@ -125,7 +135,6 @@ class MODELLER:
         target_fasta.close()
 
         # the directory files will be dumped into
-        self.directory = directory
         if not self.directory:
             self.directory = os.getcwd()
         self.directory = filesnpaths.check_output_directory(self.directory, ok_if_exists=True)
@@ -134,7 +143,7 @@ class MODELLER:
         # copy fasta into the working directory
         try:
             shutil.copy2(self.target_fasta_path, self.directory)
-            self.target_fasta_path = os.path.join(self.directory, self.target_fasta_path)
+            self.target_fasta_path = J(self.directory, self.target_fasta_path)
         except shutil.SameFileError:
             pass
 
@@ -160,8 +169,8 @@ class MODELLER:
         if criteria == "GA341_score":
             best_basename = self.model_info.loc[self.model_info[criteria].idxmax(axis=0), "name"]
 
-        new_best_file_path = os.path.join(self.directory, "{}.pdb".format(self.gene_id))
-        os.rename(os.path.join(self.directory, best_basename), new_best_file_path)
+        new_best_file_path = J(self.directory, "{}.pdb".format(self.gene_id))
+        os.rename(J(self.directory, best_basename), new_best_file_path)
         return new_best_file_path
 
 
@@ -226,8 +235,8 @@ class MODELLER:
                 new_basename = "model_{}.pdb".format(model_num)
 
             # rename the files (an reflect changes in self.model_info)
-            file_path = os.path.join(self.directory, basename)
-            new_file_path = os.path.join(self.directory, new_basename)
+            file_path = J(self.directory, basename)
+            new_file_path = J(self.directory, new_basename)
             os.rename(file_path, new_file_path)
             self.model_info.loc[model, "name"] = new_basename
 
@@ -244,7 +253,7 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         # model info
-        self.model_info_path = os.path.join(self.directory, "{}_model_info.txt".format(self.gene_id))
+        self.model_info_path = J(self.directory, "{}_model_info.txt".format(self.gene_id))
 
         self.run.info("Number of models", num_models)
         self.run.info("deviation", str(deviation) + " angstroms")
@@ -253,7 +262,7 @@ class MODELLER:
         if not deviation and num_models > 1:
             raise ConfigError("run_get_model::deviation must be > 0 if num_models > 1.")
 
-        command = [self.mod,
+        command = [self.executable,
                    script_name,
                    self.alignment_pir_path,
                    self.gene_id,
@@ -286,7 +295,7 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         # First, write ids and chains to file read by align_to_templates.py MODELLER script
-        self.template_info_path = os.path.join(self.directory, "{}_best_template_ids.txt".format(self.gene_id))
+        self.template_info_path = J(self.directory, "{}_best_template_ids.txt".format(self.gene_id))
         f = open(self.template_info_path, "w")
         for match in templates_info:
             f.write("{}\t{}\n".format(match[0], match[1]))
@@ -294,11 +303,11 @@ class MODELLER:
 
         # name of the output. .pir is the standard format for MODELLER, .pap is human readable
         # protein_family computes a matrix comparing the different templates agianst one another
-        self.alignment_pir_path = os.path.join(self.directory, "{}_alignment.ali".format(self.gene_id))
-        self.alignment_pap_path = os.path.join(self.directory, "{}_alignment.pap".format(self.gene_id))
-        self.template_family_matrix_path = os.path.join(self.directory, "{}_protein_family.mat".format(self.gene_id))
+        self.alignment_pir_path = J(self.directory, "{}_alignment.ali".format(self.gene_id))
+        self.alignment_pap_path = J(self.directory, "{}_alignment.pap".format(self.gene_id))
+        self.template_family_matrix_path = J(self.directory, "{}_protein_family.mat".format(self.gene_id))
 
-        command = [self.mod,
+        command = [self.executable,
                    script_name,
                    self.target_pir_path,
                    self.gene_id,
@@ -329,9 +338,9 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         # name pir file by the gene_id (i.e. defline of the fasta)
-        self.search_results_path = os.path.join(self.directory, "{}_search_results.prf".format(self.gene_id))
+        self.search_results_path = J(self.directory, "{}_search_results.prf".format(self.gene_id))
 
-        command = [self.mod,
+        command = [self.executable,
                    script_name,
                    self.target_pir_path,
                    self.database_path,
@@ -342,7 +351,7 @@ class MODELLER:
                          progress_name = "DB SEARCH FOR HOMOLOGS",
                          check_output = [self.search_results_path])
 
-        run.info("Search results for similar AA sequences", os.path.basename(self.search_results_path))
+        self.run.info("Search results for similar AA sequences", os.path.basename(self.search_results_path))
 
 
     def check_database(self):
@@ -354,36 +363,37 @@ class MODELLER:
         if extension not in [".bin",".pir",""]:
             raise ConfigError("MODELLER :: The only possible database extensions are .bin and .pir")
 
-        bin_db_path = os.path.join(self.database_dir, extensionless+".bin")
-        pir_db_path = os.path.join(self.database_dir, extensionless+".pir")
+        bin_db_path = J(self.database_dir, extensionless+".bin")
+        pir_db_path = J(self.database_dir, extensionless+".pir")
         bin_exists = utils.filesnpaths.is_file_exists(bin_db_path, dont_raise=True)
         pir_exists = utils.filesnpaths.is_file_exists(pir_db_path, dont_raise=True)
 
-        if pir_exists and bin_exists:
-            self.database_path = bin_db_path
+        self.database_path = bin_db_path
+
+        if bin_exists:
             return
 
-        if not pir_exists and bin_exists:
-            self.database_path = bin_db_path
-            return
+        if not pir_exists and not bin_exists:
+            self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension \
+                              of either .bin or .pir, but didn't find anything matching that criteria. FIXME".\
+                              format(self.database_dir, 
+                                     self.database_name, 
+                                     ", ".join(os.listdir(self.database_dir)),
+                                     os.path.abspath(J(self.database_dir, "00_README"))))
+
+            db_download_path = os.path.join(self.database_dir, "pdb_95.pir.gz")
+            utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
+
+            utils.run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
+        
+            pir_exists = utils.filesnpaths.is_file_exists(pir_db_path, dont_raise=True)
 
         if pir_exists and not bin_exists:
             self.run.warning("Your database is not in binary format. That means accessing its contents is slower \
                               than it could be. Anvi'o is going to make a binary format. Just FYI")
             self.run_binarize_database(pir_db_path, bin_db_path)
-            self.database_path = bin_db_path
+
             return
-
-        if not pir_exists and not bin_exists:
-            raise ConfigError("Anvi'o looked in {} for a database with the name {} and with an extension \
-                               of either .bin or .pir, but didn't find anything matching that criteria. Here \
-                               are the files anvi'o did find: {}. You should take a look at 00_README, which gives \
-                               some easy instructions for obtaining a database :) Here is its full path: {}".\
-                               format(self.database_dir, 
-                                      self.database_name, 
-                                      ", ".join(os.listdir(self.database_dir)),
-                                      os.path.abspath(os.path.join(self.database_dir, "00_README"))))
-
 
 
     def run_binarize_database(self, pir_db_path, bin_db_path):
@@ -399,7 +409,7 @@ class MODELLER:
         # name pir file by the gene_id (i.e. defline of the fasta)
         self.target_pir_path = "{}.pir".format(self.gene_id)
 
-        command = [self.mod,
+        command = [self.executable,
                    script_name,
                    pir_db_path,
                    bin_db_path]
@@ -420,14 +430,14 @@ class MODELLER:
         file is output in the directory of the script. By copying the script into self.directory,
         the log is written there instead of anvio/data/misc/MODELLER/scripts/. 
         """
-        script_path = os.path.join(self.scripts_folder, script_name)
+        script_path = J(self.scripts_folder, script_name)
         try:
             utils.filesnpaths.is_file_exists(script_path)
         except:
             raise ConfigError("MODELLER :: The script {} is not in {}".format(script_name, self.scripts_folder))
 
         # add script to scripts dictionary
-        self.scripts[script_name] = os.path.join(self.directory, script_name)
+        self.scripts[script_name] = J(self.directory, script_name)
 
         # If all is well, copy script to self.directory
         shutil.copy2(script_path, self.directory)
@@ -444,9 +454,9 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         # name pir file by the gene_id (i.e. defline of the fasta)
-        self.target_pir_path = os.path.join(self.directory, "{}.pir".format(self.gene_id))
+        self.target_pir_path = J(self.directory, "{}.pir".format(self.gene_id))
 
-        command = [self.mod,
+        command = [self.executable,
                    script_name,
                    self.target_fasta_path,
                    self.target_pir_path]
@@ -478,18 +488,24 @@ class MODELLER:
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = process.communicate()
 
+
         # if MODELLER script gave a traceback, it is caught here and everything is stopped
         if process.returncode: 
-            #format the error
-            error = str(error).replace("\\n", "\n").replace("\\'","\'")[2:-1].strip()
             self.progress.end()
-            self.run.warning(error, header="\nTraceback message for {}".format(script_name), lc='red', raw=True)
-            raise ModellerError("The MODELLER script {} did not execute properly. Hopefully it is clear \
-                                 from the above error message what went wrong. If you think you may have \
-                                 accidentally messed with this script, you can go to \
-                                 https://github.com/merenlab/anvio/tree/master/anvio/data/misc/MODELLER/scripts \
-                                 to replace it. Otherwise, you have identified a bug and should report \
-                                 it to the anvi'o developers. Congratulations *streamers*".format(script_name))
+
+            licence_key_error = True if error.decode('utf-8').find('Invalid license key') > -1 else False
+
+            print(error)
+            if licence_key_error:
+                raise ModellerError("INSTRUCTIONS")
+            else:
+                #format the error
+                error = str(error).replace("\\n", "\n").replace("\\'","\'")[2:-1].strip()
+
+                print(terminal.c(error, color='red'))
+
+                raise ModellerError("The MODELLER script {} did not execute properly. Hopefully it is clear \
+                                     from the following output: {}".format(script_name, error))
 
         # If we made it this far, the MODELLER script ran to completion. Now check outputs exist
         if check_output:
