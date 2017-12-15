@@ -1825,6 +1825,38 @@ def download_file(url, output_file_path, progress=progress, run=run):
     run.info('Downloaded succesfully', output_file_path)
 
 
+def download_protein_structures(protein_code_list, output_dir):
+    """ 
+    Downloads protein structures using Biopython. protein_code_list is a list
+    of 4-letter protein codes. Returns list of successful downloads
+    """
+    import Bio.PDB as PDB
+    from anvio.terminal import SuppressAllOutput2
+
+    progress.new("Downloading proteins from PDB")
+
+    filesnpaths.gen_output_directory(output_dir)
+
+    pdb_list = PDB.PDBList()
+
+    # this rule may one day change
+    get_protein_path = lambda x: os.path.join(output_dir, "pdb" + x + ".ent")
+
+    for protein_code in protein_code_list:
+        progress.update("Downloading protein structure: {}".format(protein_code))
+
+        with SuppressAllOutput2(): # FIXME SuppressAllOutput gives error
+            pdb_list.retrieve_pdb_file(protein_code, file_format="pdb", pdir=output_dir, overwrite=True)
+
+        # raise warning if structure was not downloaded
+        if not filesnpaths.is_file_exists(get_protein_path(protein_code), dont_raise=True):
+            run.warning("The protein {} could not be downloaded.".format(protein_code))
+            protein_code_list.remove(protein_code)
+
+    progress.end()
+    return protein_code_list
+
+
 def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run):
     if filesnpaths.is_file_exists(output_file_path, dont_raise=True):
         raise FilesNPathsError("The output file already exists. Anvi'o does not like overwriting stuff.")

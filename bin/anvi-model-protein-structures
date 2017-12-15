@@ -33,7 +33,7 @@ progress = terminal.Progress()
 def main(args):
 
     structure = structops.Structure(args)
-    structure.model_structures()
+    structure.process()
 
 
 if __name__ == '__main__':
@@ -58,20 +58,30 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupO.add_argument(*anvio.A('black-no-sugar'), **anvio.K('black-no-sugar'))
 
-    groupM.add_argument("--num-models", "-N", help = \
-        """Number of models""")
-    groupM.add_argument("--deviation", "-d", help = \
-        """Deviation (angstroms)""")
-    groupM.add_argument("--database", "-D", help = \
-        """Which database name do you want to use? Default is "pdb_95". Must have either the
-        extension .bin or .pir.""")
-    groupM.add_argument("--best", "-b", help = \
-        """How should the best model be decided? If not supplied, the average structure across all
-        models is considered best. Otherwise, the best model structure can be determined with
-        different scores. These are the ones currently available: 'DOPE', 'GA341', 'molpdf'. To
-        learn more see the MODELLER tutorial: https://salilab.org/modeller/tutorial/basic.html """)
-    groupM.add_argument("--very-fast", help = \
-        """Speed things up at the cost of accuracy.""")
+    groupM.add_argument("--num-models", "-N", type=int, default=3, help = \
+                        """Number of models""")
+
+    groupM.add_argument("--deviation", "-d", type=float, default=4.0, help = \
+                        """Deviation (angstroms)""")
+
+    groupM.add_argument("--database", "-D", type=str, default="pdb_95", help = \
+                        """Which database name do you want to use? Default is "pdb_95". Must have either the
+                        extension .bin or .pir.""")
+
+    groupM.add_argument("--best", "-b", type=str, default="average", help = \
+                        """How should the best model be decided? If not supplied, the average structure across all
+                        models is considered best. Otherwise, the best model structure can be determined with
+                        different scores. These are the ones currently available: 'DOPE', 'GA341', 'molpdf'. To
+                        learn more see the MODELLER tutorial: https://salilab.org/modeller/tutorial/basic.html """)
+
+    groupM.add_argument("--very-fast", action = 'store_true', help = \
+                        """Speed things up at the cost of accuracy.""")
+
+    groupM.add_argument("--percent-identical-cutoff", "-p", type=float, default=25, help = \
+                        """Percent identical.""")
+
+    groupM.add_argument("--max-number-templates", "-T", type=int, default=5, help = \
+                        """Max number of templates to use""")
 
     args = parser.parse_args()
 
