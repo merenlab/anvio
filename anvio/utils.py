@@ -1830,7 +1830,6 @@ def download_protein_structures(protein_code_list, output_dir):
     of 4-letter protein codes. Returns list of successful downloads
     """
     import Bio.PDB as PDB
-    from anvio.terminal import SuppressAllOutput2
 
     progress.new("Downloading proteins from PDB")
 
@@ -1844,7 +1843,7 @@ def download_protein_structures(protein_code_list, output_dir):
     for protein_code in protein_code_list:
         progress.update("Downloading protein structure: {}".format(protein_code))
 
-        with SuppressAllOutput2(): # FIXME SuppressAllOutput gives error
+        with SuppressAllOutput(): # FIXME SuppressAllOutput gives error
             pdb_list.retrieve_pdb_file(protein_code, file_format="pdb", pdir=output_dir, overwrite=True)
 
         # raise warning if structure was not downloaded
