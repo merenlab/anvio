@@ -64,15 +64,22 @@ if __name__ == '__main__':
     groupM.add_argument("--deviation", "-d", type=float, default=4.0, help = \
                         """Deviation (angstroms)""")
 
-    groupM.add_argument("--database", "-D", type=str, default="pdb_95", help = \
-                        """Which database name do you want to use? Default is "pdb_95". Must have either the
-                        extension .bin or .pir.""")
+    groupM.add_argument("--database-name", "-D", type=str, default="pdb_95", help = \
+                        """Which database name do you want to use? Default is "pdb_95". If you have
+                        your own database it must have either the extension .bin or .pir. If you
+                        don't have a database, don't worry, we will take care of you. """)
 
-    groupM.add_argument("--best", "-b", type=str, default="average", help = \
-                        """How should the best model be decided? If not supplied, the average structure across all
-                        models is considered best. Otherwise, the best model structure can be determined with
-                        different scores. These are the ones currently available: 'DOPE', 'GA341', 'molpdf'. To
-                        learn more see the MODELLER tutorial: https://salilab.org/modeller/tutorial/basic.html """)
+    groupM.add_argument("--best", "-b", type=str, default="DOPE_score", help = \
+                        """How should the best model be decided? The options are any of GA341_score,
+                        DOPE_score, molpdf, and average. GA341 is an absolute measure, where a good
+                        model will have a score near 1.0, whereas anything below 0.6 can be
+                        considered bad. DOPE and molpdf scores are relative energy measures, where
+                        lower scores are better. DOPE has been generally shown to be a better
+                        distinguisher between good and bad models than molpdf. By default, DOPE is
+                        used. To learn more see the MODELLER tutorial:
+                        https://salilab.org/modeller/tutorial/basic.html.  If --black-no-sugar flag
+                        is provided. This parameter will not do anything.
+                        """)
 
     groupM.add_argument("--very-fast", action = 'store_true', help = \
                         """Speed things up at the cost of accuracy.""")

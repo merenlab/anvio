@@ -31,7 +31,12 @@ aln.malign()
 aln.malign3d()
 aln.compare_structures()
 aln.id_table(matrix_file=PROTEIN_FAMILY_MATRIX)
-env.dendrogram(matrix_file=PROTEIN_FAMILY_MATRIX, cluster_cut=-1.0)
+
+# if there is only one template this will fail
+try:
+    env.dendrogram(matrix_file=PROTEIN_FAMILY_MATRIX, cluster_cut=-1.0)
+except:
+    pass
 
 # Align the target sequence to the previously-aligned structures
 align_block = len(aln)
