@@ -37,7 +37,7 @@ class Structure:
         self.full_output = A('black_no_sugar', bool)
 
         # MODELLER params
-        self.modeller_database = A('database', null)
+        self.modeller_database = A('database_name', null)
         self.best = A('best', null)
         self.max_matches = A('max_number_templates', null)
         self.min_proper_pident = A('percent_identical_cutoff', null)
@@ -55,6 +55,7 @@ class Structure:
     
 
     def sanity_check(self):
+
         # check for genes that do not appear in the contigs database
         bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_database]
         if bad_gene_caller_ids:
@@ -66,8 +67,13 @@ class Structure:
         # Finally, raise warning if number of genes is greater than 20
         if len(self.genes_of_interest) > 20:
             self.run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is \
-                         {}, which is a lot (of time!). I'm putting you in timeout for 15 seconds, then I'm going to do \
-                         what you said to do. CTRL + C to cancel.".format(len(self.genes_of_interest)))
+                              {}, which is a lot (of time!). If its taking too long, consider using the --very-fast flag. \
+                              CTRL + C to cancel.".format(len(self.genes_of_interest)))
+
+        # if self.percent_identical_cutoff is < 25, you should be careful about accuracy of models
+        if self.min_proper_pident < 25:
+            self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention \
+                              to the quality of the proteins...".format(self.min_proper_pident))
 
 
     def get_genes_of_interest(self):
@@ -112,13 +118,6 @@ class Structure:
             # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
             self.genes_of_interest = self.genes_in_database
             self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
-
-
-    def pick_best_model(self):
-        """
-        MODELLER has modelled some models. Assuming not
-        """
-        pass
 
 
     def download_structures(self):
@@ -289,8 +288,7 @@ class Structure:
 
         else:
             filesnpaths.gen_output_directory(output_gene_dir)
-            best_structure_filepath = self.modeller.pick_best_model(self.best)
-            list_to_keep = [best_structure_filepath,
+            list_to_keep = [self.best_structure_filepath,
                             self.modeller.alignment_pap_path,
                             self.modeller.search_results_path,
                             self.modeller.model_info_path]
@@ -303,6 +301,7 @@ class Structure:
 
 
     def run_modeller(self):
+
         self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
 
         self.run.warning("Working directory: {}".format(self.modeller.directory),
@@ -325,6 +324,11 @@ class Structure:
             self.modeller.run_get_model(self.num_models, self.deviation, self.very_fast)
 
             self.modeller.tidyup()
+
+            if not self.full_output:
+                self.best_structure_filepath = self.modeller.pick_best_model()
+
+            self.modeller.rewrite_model_info()
 
             self.move_results_to_output_dir()
 
