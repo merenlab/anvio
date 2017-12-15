@@ -5,10 +5,11 @@ Interface to MODELLER (https://salilab.org/modeller/).
 
 import os
 import sys
-import tempfile
-
 import anvio
 import shutil
+import tempfile
+import subprocess
+
 import pandas as pd
 import anvio.utils as utils
 import anvio.fastalib as u
@@ -16,7 +17,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import Bio.PDB as PDB
 
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError, FilesNPathsError, ModellerError
 
 
 __author__ = "A. Murat Eren"
@@ -33,24 +34,82 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 class MODELLER:
+    """
+    This class is a driver to run MODELLER scripts. MODELLER scripts are written
+    in python 2.3 which is the language MODELLER uses to, you can make as many
+    MODELLER scripts as you want, and they are all stored in
+    anvio/data/misc/MODELLER/scripts. each script should have its own function
+    in this class called run_<script_name>(self, <params>) which initializes the
+    parameters required to run the script.
+    """
 
-    def __init__(self, target_fasta_path, database="pdb_95", directory=None, run=run, progress=progress):
+    def __init__(self, target_fasta_path, database_name="pdb_95", directory=None, run=run, progress=progress):
+        """ 
+        PARAMS:
+        =======
+
+        target_fasta_path : str
+            The fasta file for the protein you are trying to predict the
+            structure of.  This is the only parameter needed for intialization.
+            There should be exactly 1 sequence in the fasta, and it should be an
+            amino acid sequence.
+
+        database_name : str (default = "pdb_95")
+            This is the name of the database used to finding homologous proteins
+            from.  If you want to use your own database (it should be in .pir or
+            .bin format), just put it in anvio/data/misc/MODELLER/db. There is
+            no need to specify the extension when providing this parameter;
+            anvi'o automatically uses a binary version of your database, and if
+            only .pir format is available, anvi'o creates a binary version
+            automatically. The default value is "pdb_95", which can be
+            downloaded (and should updated periodically) from
+            https://salilab.org/modeller/supplemental.html.  It is made by
+            taking all structures from the PDB, clustering them into clusters of
+            95% sequence identity, and then taking a single representative from
+            each cluster.
+
+        directory : str (default = current working directory)
+            MODELLER outputs a lot of files into the current working directory.
+            To manage this, you can supply a directory name where all MODELLER
+            scripts from this instance will run in. Whenever a script method is
+            called, anvi'o cds into directory, runs the MODELLER script, and
+            then cds back into the original directory. By default everything is
+            output into the current working directory, so it is highly
+            recommended you specify a directory to be created (it will be
+            created if it doesn't already exist)
+        """
+
         self.run = run
         self.progress = progress
+
+        self.alignment_pap_path = None
+        self.alignment_pir_path = None
+        self.get_template_path = None
+        self.search_results_path = None
+        self.target_pir_path = None
+        self.target_fasta_path = None
+        self.template_family_matrix_path = None
+        self.template_info_path = None
+        self.template_pdbs = None
+        self.model_info = None
+
+        self.logs = {}
+        self.scripts = {}
 
         # check that MODELLER exists
         utils.is_program_exists('mod9.19') # FIXME
         self.mod = "mod9.19"
 
         # All MODELLER scripts are housed in self.script_folder
-        self.scripts_folder = "/Users/evan/Software/anvio/anvio/data/misc/MODELLER/scripts" # FIXME
+        self.scripts_folder = os.path.abspath("/Users/evan/Software/anvio/anvio/data/misc/MODELLER/scripts") # FIXME
         if utils.filesnpaths.is_dir_empty(self.scripts_folder):
             raise ConfigError("Anvi'o houses all its MODELLER scripts in {}, but your directory \
                                contains no scripts. You should change that.")
 
-        # All MODELLER databases are housed in self.database_folder
-        self.database = database
-        self.database_folder = "/Users/evan/Software/anvio/anvio/data/misc/MODELLER/db" # FIXME
+        # All MODELLER databases are housed in self.database_dir
+        self.database_name = database_name
+        self.database_dir = os.path.abspath("/Users/evan/Software/anvio/anvio/data/misc/MODELLER/db") # FIXME
+
 
         # does target_fasta_path point to a fasta file?
         self.target_fasta_path = target_fasta_path
@@ -71,53 +130,111 @@ class MODELLER:
         self.directory = directory
         if not self.directory:
             self.directory = os.getcwd()
+        self.directory = filesnpaths.check_output_directory(self.directory, ok_if_exists=True)
+        filesnpaths.gen_output_directory(self.directory)
 
         # copy fasta into the working directory
         try:
             shutil.copy2(self.target_fasta_path, self.directory)
+            self.target_fasta_path = os.path.join(self.directory, self.target_fasta_path)
         except shutil.SameFileError:
             pass
 
-        # There are a lot of extraneous output and log files that are dumped by MODELLER into the
-        # working directory. To catch them all, we cd into self.directory, do our business, and then
-        # cd back to the starting directory. by default self.directory is the current working
-        # directory, i.e. os.getcwd()
+        # store the original directory so we can cd back and forth between
+        # self.directory and self.start_dir
         self.start_dir = os.getcwd()
-        os.chdir(self.directory)
 
 
-    def process(self):
+    def pick_best_model(self, criteria):
         """
-        This is the workflow for a standard protein search search for homologous templates and then
-        modelling the structure of the target protein using the homologous protein structures.
+        The user is not interested in all of this output. They just want a pdb file for a given
+        self.gene_id. renames as <gene_id>.pdb.
+
+        criteria must be one of the ["molpdf", "GA341_score", "DOPE_score", "average"]
         """
 
-        run.warning("Working directory: {}".format(self.directory),
-                    header='MODELLING STRUCTURE FOR GENE ID {}'.format(self.gene_id),
-                    lc="green")
+        if criteria == "average":
+            best_basename = "average.pdb"
 
-        try:
-            self.run_fasta_to_pir()
+        if criteria in ["molpself.model_info", "DOPE_score"]:
+            best_basename = self.model_info.loc[self.model_info[criteria].idxmin(axis=0), "name"]
 
-            self.check_database()
+        if criteria == "GA341_score":
+            best_basename = self.model_info.loc[self.model_info[criteria].idxmax(axis=0), "name"]
 
-            self.run_search()
-
-            self.parse_search_results()
-
-            self.download_structures()
-
-            self.run_align_to_templates()
-
-            self.run_get_model()
-
-            self.close()
-
-        except self.EndProcess:
-            self.close()
+        new_best_file_path = os.path.join(self.directory, "{}.pdb".format(self.gene_id))
+        os.rename(os.path.join(self.directory, best_basename), new_best_file_path)
+        return new_best_file_path
 
 
-    def run_get_model(self):
+    def abort(self):
+        """
+        For whatever reason, this gene was not modelled. Make sure we are in the directory we
+        started in and remove any folders and files that just aren't needed anymore.
+        """
+        os.chdir(self.start_dir)
+
+        stuff_to_remove = [self.template_pdbs,
+                           self.scripts.get("align_to_templates.py"),
+                           self.scripts.get("binarize-database.py"),
+                           self.scripts.get("search.py"),
+                           self.scripts.get("fasta_to_pir.py"),
+                           self.scripts.get("get-model.py")]
+
+        for thing in stuff_to_remove:
+            try:
+                if os.path.isfile(thing):
+                    os.remove(thing)
+                if os.path.isdir(thing):
+                    shutil.rmtree(thing)
+            except TypeError:
+                continue
+
+
+    def rewrite_model_info(self):
+        """
+        If changes rename changes or additional columns have been added to self.info_model, those
+        changes can be reflected in model_info.txt if this function is ran.
+        """
+        self.model_info.to_csv(self.model_info_path, sep="\t", index=False)
+
+
+    def tidyup(self): 
+        """
+        get-model.py has been ran. Some of the files in here are unnecessary, some of the names are
+        disgusting. rename from "2.B99990001.pdb" to "model_1.pdb" if normal model. Rename from
+        "cluster.ini" to "average_raw.pdb" and "cluster.opt" to "average.pdb"
+        """
+        if not "get-model.py" in self.scripts.keys():
+            raise ConfigError("You are out of line calling tidyup without running get-model.py")
+
+        # remove all copies of all scrips that were ran
+        for script_name, file_path in self.scripts.items():
+            os.remove(file_path)
+
+        # what are the pdb file names? load model_info.txt to find out
+        self.model_info = pd.read_csv(self.model_info_path, sep="\t", index_col=False)
+
+        for model in self.model_info.index:
+            basename = self.model_info.loc[model, "name"]
+
+            # determine the new basename
+            if basename == "cluster.opt":
+                new_basename = "average.pdb"
+            elif basename == "cluster.ini":
+                new_basename = "average_raw.pdb"
+            else:
+                model_num = os.path.splitext(basename)[0][-1]
+                new_basename = "model_{}.pdb".format(model_num)
+
+            # rename the files (an reflect changes in self.model_info)
+            file_path = os.path.join(self.directory, basename)
+            new_file_path = os.path.join(self.directory, new_basename)
+            os.rename(file_path, new_file_path)
+            self.model_info.loc[model, "name"] = new_basename
+
+
+    def run_get_model(self, num_models, deviation, very_fast):
         """
         This is the magic of MODELLER. Based on the template alignment file, the structures of the
         templates, and satisfaction of physical constraints, the target protein structure is
@@ -128,140 +245,42 @@ class MODELLER:
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
 
-        # Super fast optimization (at the obvious cost of accuracy)
-        very_fast = False
-        # number of times the model is calculated
-        num_models = 3
-        # initial atom positions are randomized by this many angstroms to promote exploration of the
-        # solution space. Only relevant if num_models > 1. 4.0 is the MODELLER DEFAULT
-        deviation = 4.0
+        # model info
+        self.model_info_path = os.path.join(self.directory, "{}_model_info.txt".format(self.gene_id))
+
+        self.run.info("Number of models", num_models)
+        self.run.info("deviation", str(deviation) + " angstroms")
+        self.run.info("fast optimization", str(very_fast))
 
         if not deviation and num_models > 1:
             raise ConfigError("run_get_model::deviation must be > 0 if num_models > 1.")
 
         command = [self.mod,
                    script_name,
-                   self.alignment_to_templates_pir,
+                   self.alignment_pir_path,
                    self.gene_id,
-                   self.best_template_ids_fname,
+                   self.template_info_path,
                    str(num_models),
                    str(deviation),
-                   str(int(very_fast))]
-
-        command = " ".join(command)
+                   str(int(very_fast)),
+                   self.model_info_path]
 
         self.run_command(command, 
                          script_name = script_name,
                          progress_name = "CALCULATING 3D MODEL")
 
-        self.run.info("Number of models", num_models)
-        self.run.info("fdasgaagkjagjk agsjlkgsadj", num_models)
+        self.run.info("model info", os.path.basename(self.model_info_path))
 
 
-    def parse_search_results(self, max_matches=2, min_proper_pident=30.0):
-        """
-        Parses search results and filters for best homologs to use as structure templates.
-        """
-        self.progress.new("PARSE AND FILTER HOMOLOGS")
-        self.progress.update("Finding those with percent identicalness > {}%".format(min_proper_pident))
-
-        # put names to the columns
-        column_names = (      "idx"      ,  "code_and_chain"  ,       "type"     ,  "iteration_num"  ,
-                            "seq_len"    , "start_pos_target" , "end_pos_target" , "start_pos_dbseq" ,
-                        "send_pos_dbseq" ,   "align_length"   ,   "seq_identity" ,      "evalue"      )
-
-        # load the table as a dataframe
-        search_df = pd.read_csv(self.search_results, sep="\s+", comment="#", names=column_names, index_col=False)
-
-        # matches found (-1 because target is included)
-        matches_found = len(search_df) - 1
-
-        # add some useful columns
-        search_df["proper_pident"] = search_df["seq_identity"] * search_df["align_length"] / \
-                                     search_df.iloc[0, search_df.columns.get_loc("seq_len")]
-        search_df["code"] = search_df["code_and_chain"].str[:-1]
-        search_df["chain"] = search_df["code_and_chain"].str[-1]
-
-        # filter results by min_proper_pident FIXME I assume number of hits returned is not 0. Need
-        # to learn about handling exceptions so process ends if length is zero. Order them and take
-        # the first max_matches.
-        search_df = search_df[search_df["proper_pident"] >= min_proper_pident]
-
-        matches_after_filter = len(search_df)
-        if not matches_after_filter:
-            run.warning("Gene {} did not have a search result with percent identicalness above {}. No \
-                         structure will be modelled".format(self.gene_id, min_proper_pident))
-            raise self.EndProcess
-
-        self.progress.update("Keeping top {} matches as the template homologs".format(max_matches))
-
-        # of those filtered, get up to <max_matches> of those with the highest proper_ident scores.
-        search_df = search_df.sort_values("proper_pident", ascending=False)
-        search_df = search_df.iloc[:min([len(search_df), max_matches])]
-
-        # Get their chain and 4-letter ids
-        self.top_seq_matches = list(zip(search_df["code"], search_df["chain"]))
-
-        self.progress.end()
-        self.run.info("Max number of templates allowed", max_matches)
-        self.run.info("Number of candidate templates", matches_found)
-        self.run.info("After >{}% identical filter".format(min_proper_pident), matches_after_filter)
-        self.run.info("Number accepted as templates", len(self.top_seq_matches))
-        for i in range(len(self.top_seq_matches)):
-            self.run.info("Template {}".format(i+1), 
-                          "Protein ID: {}, Chain {} ({:.1f}% identical)".format(self.top_seq_matches[i][0],
-                                                                                self.top_seq_matches[i][1],
-                                                                                search_df["proper_pident"].iloc[i]))
-
-
-    def download_structures(self):
-        """
-        Downloads structure files for self.top_seq_seq_matches using Biopython
-        If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
-        """
-        self.progress.new("Downloading homologs from PDB")
-        # get complete list of PDB codes
-        pdb_list = PDB.PDBList()
-
-        # make a folder to store the template PDBs if it doesn't already exist
-        self.template_pdbs = "{}_TEMPLATE_PDBS".format(self.gene_id)
-        try:
-            os.mkdir(self.template_pdbs)
-        except FileExistsError:
-            pass
-
-        # function to get the filepath of downloaded pdb, given its 4-letter code
-        self.structure_fname = lambda x: os.path.join(self.template_pdbs, "pdb" + x + ".ent")
-
-        for match in self.top_seq_matches:
-            self.progress.update("Downloading protein structure: {}".format(match[0]))
-
-            # download structure into self.directory; suppress Biopython output
-            with HiddenPrints(): # FIXME the anvi'o SuppressAllOutput does not work
-                pdb_list.retrieve_pdb_file(match[0], file_format="pdb", pdir=self.template_pdbs, overwrite=True)
-
-            # if structure was not downloaded, that sucks. We remove it from self.top_seq_matches
-            if not utils.filesnpaths.is_file_exists(self.structure_fname(match[0]), dont_raise=True):
-                run.warning("The protein {} was matched to be homologous to protein with gene id {}, \
-                             but could not be downloaded. Moving onto the next match.".format(match[0]))
-                self.top_seq_matches.remove(match)
-        self.progress.end()
-
-        if not len(self.top_seq_matches):
-            run.warning("No structures of the homologous proteins were downloadable. Probably something \
-                         is wrong. Maybe you are not connected to the internet. Stopping here.")
-            raise self.EndProcess
-
-        for i in range(len(self.top_seq_matches)):
-            self.run.info("{} structure file".format(self.top_seq_matches[i][0]), self.structure_fname(self.top_seq_matches[i][0]))
-
-
-    def run_align_to_templates(self):
+    def run_align_to_templates(self, templates_info):
         """
         After identifying best candidate proteins based on sequence data, this function aligns the
         candidate proteins based on structural and sequence information as well as to the target
         protein. This alignment file is the make input (besides structures) for the homology
         modelling aspect of MODELLER.
+
+        templates_info is a list of 2-tuples; the zeroth element is the 4-letter protein code
+        and the first element is the chain number. an example is [('4sda', 'A'), ('iq8p', 'E')]
         """
         script_name = "align_to_templates.py"
 
@@ -269,38 +288,37 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         # First, write ids and chains to file read by align_to_templates.py MODELLER script
-        self.best_template_ids_fname = "{}_best_template_ids.txt".format(self.gene_id)
-        f = open(self.best_template_ids_fname, "w")
-        for match in self.top_seq_matches:
+        self.template_info_path = os.path.join(self.directory, "{}_best_template_ids.txt".format(self.gene_id))
+        f = open(self.template_info_path, "w")
+        for match in templates_info:
             f.write("{}\t{}\n".format(match[0], match[1]))
         f.close()
 
         # name of the output. .pir is the standard format for MODELLER, .pap is human readable
         # protein_family computes a matrix comparing the different templates agianst one another
-        self.alignment_to_templates_pir = "{}_align_to_templates.ali".format(self.gene_id)
-        self.alignment_to_templates_pap = "{}_align_to_templates.pap".format(self.gene_id)
-        self.template_family_matrix     = "{}_protein_family.mat".format(self.gene_id)
+        self.alignment_pir_path = os.path.join(self.directory, "{}_alignment.ali".format(self.gene_id))
+        self.alignment_pap_path = os.path.join(self.directory, "{}_alignment.pap".format(self.gene_id))
+        self.template_family_matrix_path = os.path.join(self.directory, "{}_protein_family.mat".format(self.gene_id))
 
         command = [self.mod,
                    script_name,
-                   self.target_pir,
+                   self.target_pir_path,
                    self.gene_id,
-                   self.best_template_ids_fname,
-                   self.alignment_to_templates_pir,
-                   self.alignment_to_templates_pap,
-                   self.template_family_matrix]
-        command = " ".join(command)
+                   self.template_info_path,
+                   self.alignment_pir_path,
+                   self.alignment_pap_path,
+                   self.template_family_matrix_path]
 
         self.run_command(command, 
                          script_name = script_name, 
                          progress_name = "CREATING MSA OF HOMOLOGS",
-                         check_output = [self.alignment_to_templates_pir, 
-                                         self.alignment_to_templates_pap,
-                                         self.template_family_matrix])
+                         check_output = [self.alignment_pir_path, 
+                                         self.alignment_pap_path,
+                                         self.template_family_matrix_path])
 
-        self.run.info("Similarity matrix of templates", self.template_family_matrix)
-        self.run.info("Target alignment to templates", ", ".join([self.alignment_to_templates_pap,
-                                                                  self.alignment_to_templates_pir]))
+        self.run.info("Similarity matrix of templates", os.path.basename(self.template_family_matrix_path))
+        self.run.info("Target alignment to templates", ", ".join([os.path.basename(self.alignment_pir_path),
+                                                                  os.path.basename(self.alignment_pap_path)]))
 
 
     def run_search(self):
@@ -313,21 +331,20 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         # name pir file by the gene_id (i.e. defline of the fasta)
-        self.search_results = "{}_search_results.prf".format(self.gene_id)
+        self.search_results_path = os.path.join(self.directory, "{}_search_results.prf".format(self.gene_id))
 
         command = [self.mod,
                    script_name,
-                   self.target_pir,
+                   self.target_pir_path,
                    self.database_path,
-                   self.search_results]
-        command = " ".join(command)
+                   self.search_results_path]
 
         self.run_command(command, 
                          script_name = script_name, 
                          progress_name = "DB SEARCH FOR HOMOLOGS",
-                         check_output = [self.search_results])
+                         check_output = [self.search_results_path])
 
-        run.info("Search results for similar AA sequences", self.search_results)
+        run.info("Search results for similar AA sequences", os.path.basename(self.search_results_path))
 
 
     def check_database(self):
@@ -335,12 +352,12 @@ class MODELLER:
         Checks for the .bin version of database. If it only finds the .pir version, it binarizes it.
         Sets the db filepath.
         """
-        extensionless, extension = os.path.splitext(self.database)
+        extensionless, extension = os.path.splitext(self.database_name)
         if extension not in [".bin",".pir",""]:
             raise ConfigError("MODELLER :: The only possible database extensions are .bin and .pir")
 
-        bin_db_path = os.path.join(self.database_folder, extensionless+".bin")
-        pir_db_path = os.path.join(self.database_folder, extensionless+".pir")
+        bin_db_path = os.path.join(self.database_dir, extensionless+".bin")
+        pir_db_path = os.path.join(self.database_dir, extensionless+".pir")
         bin_exists = utils.filesnpaths.is_file_exists(bin_db_path, dont_raise=True)
         pir_exists = utils.filesnpaths.is_file_exists(pir_db_path, dont_raise=True)
 
@@ -353,12 +370,22 @@ class MODELLER:
             return
 
         if pir_exists and not bin_exists:
+            self.run.warning("Your database is not in binary format. That means accessing its contents is slower \
+                         than it could be. Anvi'o is going to make a binary format. Just FYI")
             self.run_binarize_database(pir_db_path, bin_db_path)
             self.database_path = bin_db_path
             return
 
         if not pir_exists and not bin_exists:
-            raise ConfigError("The database {} does not exist in {}".format(self.database, self.database_folder))
+            raise ConfigError("Anvi'o looked in {} for a database with the name {} and with an extension \
+                               of either .bin or .pir, but didn't find anything matching that criteria. Here \
+                               are the files anvi'o did find: {}. You should take a look at 00_README, which gives \
+                               some easy instructions for obtaining a database :) Here is its full path: {}".\
+                               format(self.database_dir, 
+                                      self.database_name, 
+                                      ", ".join(os.listdir(self.database_dir)),
+                                      os.path.abspath(os.path.join(self.database_dir, "00_README"))))
+
 
 
     def run_binarize_database(self, pir_db_path, bin_db_path):
@@ -372,20 +399,19 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         # name pir file by the gene_id (i.e. defline of the fasta)
-        self.target_pir = "{}.pir".format(self.gene_id)
+        self.target_pir_path = "{}.pir".format(self.gene_id)
 
         command = [self.mod,
                    script_name,
                    pir_db_path,
                    bin_db_path]
-        command = " ".join(command)
 
         self.run_command(command, 
                          script_name = script_name, 
                          progress_name = "BINARIZING DATABASE",
                          check_output=[bin_db_path])
 
-        self.run_info("new database", bin_db_path)
+        self.run.info("new database", bin_db_path)
 
 
     def copy_script_to_directory(self, script_name):
@@ -402,6 +428,9 @@ class MODELLER:
         except:
             raise ConfigError("MODELLER :: The script {} is not in {}".format(script_name, self.scripts_folder))
 
+        # add script to scripts dictionary
+        self.scripts[script_name] = os.path.join(self.directory, script_name)
+
         # If all is well, copy script to self.directory
         shutil.copy2(script_path, self.directory)
 
@@ -417,34 +446,54 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         # name pir file by the gene_id (i.e. defline of the fasta)
-        self.target_pir = "{}.pir".format(self.gene_id)
+        self.target_pir_path = os.path.join(self.directory, "{}.pir".format(self.gene_id))
 
         command = [self.mod,
                    script_name,
                    self.target_fasta_path,
-                   self.target_pir]
-        command = " ".join(command)
+                   self.target_pir_path]
 
         self.run_command(command, 
                          script_name = script_name, 
                          progress_name = "CONVERT SEQUENCE TO MODELLER FORMAT", 
-                         check_output = [self.target_pir])
+                         check_output = [self.target_pir_path])
 
-        self.run.info("Target alignment file", self.target_pir)
+        self.run.info("Target alignment file", os.path.basename(self.target_pir_path))
 
 
     def run_command(self, command, script_name, progress_name, check_output=None):
         """
-        Runs a command. Must provide script_name (e.g. "script.py") and progress_name (e.g. "BINARIZING
-        DATABASE"). Optionally can provide list of output files whose existences are checked to make
-        sure command was successfully ran.
+        Runs a script. Must provide script_name (e.g. "script.py") and progress_name (e.g.
+        "BINARIZING DATABASE"). Optionally can provide list of output files whose existences are
+        checked to make sure command was successfully ran. We ALWAYS cd into the MODELLER's
+        directory before running a script, and we ALWAYS cd back into the original directory after
+        running a script.
         """
+        # first things first, we CD into MODELLER's directory
+        os.chdir(self.directory)
+
         # run the command
         self.progress.new(progress_name)
         self.progress.update("Executing MODELLER script: {}".format(script_name))
-        os.system(command)
 
-        # check the output
+        # try and execute the command
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, error = process.communicate()
+
+        # if MODELLER script gave a traceback, it is caught here and everything is stopped
+        if process.returncode: 
+            #format the error
+            error = str(error).replace("\\n", "\n").replace("\\'","\'")[2:-1].strip()
+            self.progress.end()
+            self.run.warning(error, header="\nTraceback message for {}".format(script_name), lc='red', raw=True)
+            raise ModellerError("The MODELLER script {} did not execute properly. Hopefully it is clear \
+                                 from the above error message what went wrong. If you think you may have \
+                                 accidentally messed with this script, you can go to \
+                                 https://github.com/merenlab/anvio/tree/master/anvio/data/misc/MODELLER/scripts \
+                                 to replace it. Otherwise, you have identified a bug and should report \
+                                 it to the anvi'o developers. Congratulations *streamers*".format(script_name))
+
+        # If we made it this far, the MODELLER script ran to completion. Now check outputs exist
         if check_output:
             for output in check_output:
                 utils.filesnpaths.is_file_exists(output)
@@ -454,20 +503,17 @@ class MODELLER:
         new_log_name = "{}_{}".format(self.gene_id, old_log_name)
         os.rename(old_log_name, new_log_name)
 
+        # add to logs
+        self.logs[script_name] = new_log_name
+
         self.progress.end()
         self.run.info("log of {}".format(script_name), new_log_name)
 
-
-    def close(self):
-        """
-        Change directories back to self.start_dir. Could also have options selectively bring back
-        log files and PDB files to self.start_dir if self.directory != self.start_dir.
-        """
-        # make back to starting directory
+        # last things last, we CD back into the starting directory
         os.chdir(self.start_dir)
 
 
-    class EndProcess(Exception): 
+    class EndModeller(Exception): 
         pass
 
 

@@ -41,6 +41,19 @@ class SuppressAllOutput(object):
         sys.stdout = self.old_stdout
 
 
+class SuppressAllOutput2():
+    """
+    SuppressAllOutput gives an error when running utils.download_protein_structures.  This doesn't.
+    Not sure why but maybe you know, Meren.
+    """
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout = self._original_stdout
+
+
 def remove_spaces(text):
     while True:
         if text.find("  ") > -1:
@@ -185,14 +198,14 @@ class Run:
         self.write(info_line, quiet=quiet)
 
 
-    def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80):
+    def info_single(self, message, prepend="* ", mc='yellow', nl_before=0, nl_after=0, cut_after=80):
         if isinstance(message, str):
             message = remove_spaces(message)
 
         if cut_after:
-            message_line = c("* %s\n" % (textwrap.fill(str(message), cut_after)), mc)
+            message_line = c("%s%s\n" % (prepend, textwrap.fill(str(message), cut_after)), mc)
         else:
-            message_line = c("* %s\n" % str(message), mc)
+            message_line = c("%s%s\n" % (prepend, str(message)), mc)
 
         message_line = ('\n' * nl_before) + message_line + ('\n' * nl_after)
 

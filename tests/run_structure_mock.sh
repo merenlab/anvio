@@ -91,10 +91,12 @@ anvi-map-variability-on-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
                                   -S mock_data_for_structure/STRUCTURES \
                                   --quince-mode
 
+
 INFO "anvi-model-protein-structures"
 anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
                               --gene-caller-ids 2 \
-                              --output-dir test-output/STRUCTURES
+                              --output-dir test-output/STRUCTURES \
+
 
 INFO "anvi-model-protein-structures --black-no-sugar"
 anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
@@ -102,7 +104,8 @@ anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
                               --output-dir test-output/STRUCTURES_full \
                               --black-no-sugar
 
-INFO "Do you want thhe interactive interface? Run the following:"
+
+INFO "Do you want the interactive interface? Run the following:"
 
 echo "anvi-interactive -p `pwd`/test-output/SAMPLES-MERGED/PROFILE.db -c `pwd`/test-output/one_contig_five_genes.db"
 echo

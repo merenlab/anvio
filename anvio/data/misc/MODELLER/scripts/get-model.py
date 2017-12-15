@@ -6,6 +6,7 @@ TEMPLATE_IDS_FILE  = sys.argv[3]
 NUM_MODELS         = int(sys.argv[4])
 DEVIATION          = float(sys.argv[5])
 VERY_FAST          = int(sys.argv[6])
+MODEL_INFO         = sys.argv[7]
 
 # read in file written by MODELLER.run_align_to_templates(); creates tuple, e.g (1durA, 2fdnB, ...)
 template_ids = tuple(["".join(x.strip().split("\t")) for x in open(TEMPLATE_IDS_FILE).readlines()])
@@ -44,19 +45,45 @@ a.make()
 # Create the average model (unoptimized: cluster.ini, optimized: cluster.opt).
 a.cluster()
 
-# rename the model structures. we do this here instead of in the anvi'o driver because we have
-# direct access to the file names (they don't have to be guessed).  Model files are renamed here
-# according to a logic that is assumed by the anvi'o driver. Mess this with and you mess with
-# anvi'o.
-MODEL_PDBS = "%s_MODEL_PDBS" % TARGET_ID
-try:
-    os.mkdir(MODEL_PDBS)
-except FileExistsError:
-    pass
+###################################################################################################
+
+"""
+`a` has the important attribute `outputs` that is a list of dictionaries giving
+information about each model. I write this information into a text-delimited file
+for further analysis with anvi'o
+"""
 
 models = a.outputs
-print(models)
-for ind, model in enumerate(models):
-    os.rename(model['name'], os.path.join(MODEL_PDBS, "%s_model_%d.pdb" % (TARGET_ID, ind+1)))
 
-os.rename("cluster.opt", os.path.join(MODEL_PDBS, TARGET_ID+"_model_avg.pdb"))
+model_info = {}
+ignore = ["pdfterms", 'failure']
+for model in models:
+    for key in model:
+        if key in ignore:
+            continue
+        if key not in model_info.keys():
+            model_info[key] = []
+        if key == "GA341 score":
+            model_info[key].append(model[key][0])
+        else:
+            model_info[key].append(model[key])
+
+# manually add average structures
+model_info['num'].extend([NUM_MODELS+1, NUM_MODELS+2])
+model_info['name'].extend(["cluster.opt", "cluster.ini"])
+model_info['molpdf'].extend(["",""])
+model_info['GA341 score'].extend(["",""])
+model_info['DOPE score'].extend(["",""])
+
+columns = ['num', 'name', 'molpdf', 'GA341 score', 'DOPE score']
+f = open(MODEL_INFO, "w")
+f.write("\t".join([column.replace(" ","_") for column in columns]) + "\n")
+
+for i in range(NUM_MODELS+2):
+    line = []
+    for column in columns:
+        line.append(str(model_info[column][i]))
+    f.write("\t".join(line) + "\n")
+f.close()
+
+
