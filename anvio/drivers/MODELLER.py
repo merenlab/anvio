@@ -7,7 +7,6 @@ import os
 import sys
 import anvio
 import shutil
-import tempfile
 import subprocess
 
 import pandas as pd
@@ -15,9 +14,8 @@ import anvio.utils as utils
 import anvio.fastalib as u
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import Bio.PDB as PDB
 
-from anvio.errors import ConfigError, FilesNPathsError, ModellerError
+from anvio.errors import ConfigError, ModellerError
 
 
 __author__ = "A. Murat Eren"
@@ -176,10 +174,10 @@ class MODELLER:
 
         stuff_to_remove = [self.template_pdbs,
                            self.scripts.get("align_to_templates.py"),
-                           self.scripts.get("binarize-database.py"),
+                           self.scripts.get("binarize_database.py"),
                            self.scripts.get("search.py"),
                            self.scripts.get("fasta_to_pir.py"),
-                           self.scripts.get("get-model.py")]
+                           self.scripts.get("get_model.py")]
 
         for thing in stuff_to_remove:
             try:
@@ -201,12 +199,12 @@ class MODELLER:
 
     def tidyup(self): 
         """
-        get-model.py has been ran. Some of the files in here are unnecessary, some of the names are
+        get_model.py has been ran. Some of the files in here are unnecessary, some of the names are
         disgusting. rename from "2.B99990001.pdb" to "model_1.pdb" if normal model. Rename from
         "cluster.ini" to "average_raw.pdb" and "cluster.opt" to "average.pdb"
         """
-        if not "get-model.py" in self.scripts.keys():
-            raise ConfigError("You are out of line calling tidyup without running get-model.py")
+        if not "get_model.py" in self.scripts.keys():
+            raise ConfigError("You are out of line calling tidyup without running get_model.py")
 
         # remove all copies of all scrips that were ran
         for script_name, file_path in self.scripts.items():
@@ -240,7 +238,7 @@ class MODELLER:
         templates, and satisfaction of physical constraints, the target protein structure is
         modelled.
         """
-        script_name = "get-model.py"
+        script_name = "get_model.py"
 
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
@@ -371,7 +369,7 @@ class MODELLER:
 
         if pir_exists and not bin_exists:
             self.run.warning("Your database is not in binary format. That means accessing its contents is slower \
-                         than it could be. Anvi'o is going to make a binary format. Just FYI")
+                              than it could be. Anvi'o is going to make a binary format. Just FYI")
             self.run_binarize_database(pir_db_path, bin_db_path)
             self.database_path = bin_db_path
             return
@@ -390,10 +388,10 @@ class MODELLER:
 
     def run_binarize_database(self, pir_db_path, bin_db_path):
         """
-        Databases can be read in .pir format, but can be more quickly read in binarized format. This
-        does that.
+            Databases can be read in .pir format, but can be more quickly read in binarized format. This
+            does that.
         """
-        script_name = "binarize-database.py"
+        script_name = "binarize_database.py"
 
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
