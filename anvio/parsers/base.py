@@ -14,8 +14,8 @@ from anvio.utils import get_TAB_delimited_file_as_dictionary as get_dict
 from anvio.utils import get_FASTA_file_as_dictionary as get_dict_f
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = "1.0.0"

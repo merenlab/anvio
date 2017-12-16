@@ -16,8 +16,8 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -101,9 +101,21 @@ class Table(object):
         self.next_available_id[table] = 0
 
 
-    def export_sequences_table_in_db_into_FASTA_file(self, table=t.contig_sequences_table_name, output_file_path=None):
+    def export_sequences_table_in_db_into_FASTA_file(self, table=t.contig_sequences_table_name, output_file_path=None, item_names=set([])):
+        '''Exports a sequence table from the contigs database.
+
+            - t.contig_sequences_table_name: contig sequences (where item_names are contig names)
+            - t.gene_amino_acid_sequences_table_name: amino acid sequences for gene calls (item_names are gene caller ids)
+
+
+          If `item_names` are specified, only those sequences with matching ids to something in this set will be reported.
+          '''
+
         if self.db_type != 'contigs':
             return None
+
+        if not isinstance(item_names, set):
+            raise ConfigError("`item_names` must be of type `set`")
 
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -124,6 +136,22 @@ class Table(object):
         sequences_table = database.get_table_as_dict(table)
         database.disconnect()
 
+        if len(item_names):
+            total_num_items_in_db = len(sequences_table)
+            item_names_to_remove = set(list(sequences_table.keys())).difference(item_names)
+
+            for item_name in item_names_to_remove:
+                if item_name in item_names_to_remove:
+                    sequences_table.pop(item_name)
+
+            # who does this for their users:
+            num_items_to_be_reported = len(sequences_table)
+            optional_info = ("It turned out %d of the item ids you requested was actually in the database." \
+                                    % len(sequences_table)) if num_items_to_be_reported != len(item_names) else ''
+
+            self.run.warning("You asked anvi'o to report only %d items from a database that contained %d. %s" \
+                                        % (len(item_names), total_num_items_in_db, optional_info))
+
         if not len([sequences_table]):
             raise ConfigError("There are no sequences to report in table '%s'." % (table))
 
@@ -132,18 +160,18 @@ class Table(object):
 
         sequences_fasta = u.FastaOutput(output_file_path)
 
-        seq_ids_not_reported = set([])
+        blank_seq_ids_not_reported = set([])
 
         for seq_id in sequences_table:
             if len(sequences_table[seq_id]['sequence']):
                 sequences_fasta.write_id(seq_id)
                 sequences_fasta.write_seq(sequences_table[seq_id]['sequence'], split=False)
             else:
-                seq_ids_not_reported.add(seq_id)
+                blank_seq_ids_not_reported.add(seq_id)
 
         self.progress.end()
 
-        if len(seq_ids_not_reported):
+        if len(blank_seq_ids_not_reported):
             self.run.warning("%d entries in the sequences table had blank sequences :/ This is related to the issue\
                              at https://github.com/merenlab/anvio/issues/565. If this is like mid-2018 and you still\
                              get this warning, please find an anvi'o developer and make them feel embarrassed. If it\
@@ -151,9 +179,9 @@ class Table(object):
                              analyses may have no sequences, and that's OK. This is a very minor issue due to on-the-fly\
                              addition of Ribosomal RNA gene calls to the contigs database, and will likely will not\
                              affect anything major. This warning will go away when anvi'o can seamlessly work with\
-                             multiple gene callers (which we are looking forward to implement in the future)." % len(seq_ids_not_reported))
+                             multiple gene callers (which we are looking forward to implement in the future)." % len(blank_seq_ids_not_reported))
 
-        self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table) - len(seq_ids_not_reported)))
+        self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table) - len(blank_seq_ids_not_reported)))
         self.run.info('FASTA', output_file_path)
 
         return output_file_path

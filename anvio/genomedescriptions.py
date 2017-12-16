@@ -12,8 +12,10 @@ import os
 import sys
 import copy
 import hashlib
+import argparse
 
 import anvio
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -23,8 +25,8 @@ import anvio.ccollections as ccollections
 from anvio.errors import ConfigError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2017, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -37,7 +39,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class GenomeDescriptions:
+class GenomeDescriptions(object):
     def __init__(self, args=None, run=run, progress=progress):
         self.args = args
         self.run = run
@@ -48,6 +50,9 @@ class GenomeDescriptions:
         self.external_genomes_dict = None
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.functions_are_available = False
+        self.function_annotation_sources = set([])
+
         self.input_file_for_internal_genomes = A('internal_genomes')
         self.input_file_for_external_genomes = A('external_genomes')
         self.list_hmm_sources = A('list_hmm_sources')          # <<< these two are look out of place, but if the args requests
@@ -165,8 +170,33 @@ class GenomeDescriptions:
             self.init_internal_genomes()
             self.init_external_genomes()
 
+
         # make sure it is OK to go with self.genomes
         self.sanity_check()
+
+
+    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name):
+        g = self.genomes[genome_name]
+
+        args = argparse.Namespace(contigs_db=g['contigs_db_path'])
+        contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
+
+        if self.functions_are_available:
+            contigs_super.init_functions(requested_sources=self.function_annotation_sources)
+            function_calls_dict = contigs_super.gene_function_calls_dict
+        else:
+            function_calls_dict = {}
+
+        # get dna sequences
+        gene_caller_ids_list, dna_sequences_dict = contigs_super.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(g['gene_caller_ids']))
+
+        # get amino acid sequences.
+        # FIXME: this should be done in the contigs super.
+        contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+        aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+        contigs_db.disconnect()
+
+        return (function_calls_dict, aa_sequences_dict, dna_sequences_dict)
 
 
     def init_functions(self):
@@ -194,7 +224,7 @@ class GenomeDescriptions:
                 self.run.warning("Some of your genomes (%d of the %d, to be precise) seem to have no functional annotation. Since this workflow\
                                   can only use matching functional annotations across all genomes involved, having even one genome without\
                                   any functions means that there will be no matching function across all. Things will continue to work, but\
-                                  you will have no functions at the end for your protein clusters." % \
+                                  you will have no functions at the end for your gene clusters." % \
                                                 (len(genomes_with_no_functional_annotation), len(self.genomes)))
 
             # make sure it is clear.

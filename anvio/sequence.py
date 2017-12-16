@@ -9,8 +9,8 @@ import collections
 import anvio
 import anvio.constants as constants
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -157,7 +157,7 @@ def get_indices_for_outlier_values(c):
     return set([p for p in range(0, c.size) if is_outlier[p]])
 
 
-def get_list_of_outliers(values, threshold=1.5):
+def get_list_of_outliers(values, threshold=None):
     """
     Returns a boolean array with True if values are outliers and False
     otherwise.
@@ -184,6 +184,9 @@ def get_list_of_outliers(values, threshold=1.5):
 
         http://www.sciencedirect.com/science/article/pii/S0022103113000668
     """
+
+    if threshold is None:
+        threshold = 1.5
 
     if len(values.shape) == 1:
         values = values[:, None]
