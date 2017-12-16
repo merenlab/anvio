@@ -10,8 +10,8 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError, FilesNPathsError, SamplesError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('OUTPUT', "The output business.")
     groupC.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path', {'default': 'SAMPLES.db'}))
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         s = dbops.SamplesInformationDatabase(args.output_db_path, run, progress, quiet=False)

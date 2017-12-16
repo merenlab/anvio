@@ -11,8 +11,8 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -145,7 +145,7 @@ if __name__ == '__main__':
                               in case you need to go back to this information later. It is not\
                               mandatory to declare one, but it is a very good idea to have it.")
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         reformat_FASTA(args)

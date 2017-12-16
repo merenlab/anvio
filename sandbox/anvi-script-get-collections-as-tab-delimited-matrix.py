@@ -23,7 +23,7 @@ parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required':
 parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
 parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': "COLLECTIONS.txt"}))
 
-args = parser.parse_args()
+args = anvio.get_args(parser)
 
 filesnpaths.is_file_exists(args.output_file)
 

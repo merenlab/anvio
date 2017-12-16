@@ -15,8 +15,8 @@ from anvio.errors import ConfigError
 from anvio.drivers.prodigal import Prodigal
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -55,12 +55,12 @@ class GeneCaller:
         self.tmp_dirs.append(output_dir)
         gene_caller = self.gene_callers[self.gene_caller]()
 
-        gene_calls_dict, protein_sequences_dict = gene_caller.process(self.fasta_file_path, output_dir)
+        gene_calls_dict, amino_acid_sequences_dict = gene_caller.process(self.fasta_file_path, output_dir)
 
         if not self.debug:
             self.clean_tmp_dirs()
 
-        return gene_calls_dict, protein_sequences_dict
+        return gene_calls_dict, amino_acid_sequences_dict
 
 
     def clean_tmp_dirs(self):

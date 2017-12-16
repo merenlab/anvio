@@ -10,8 +10,8 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError, FilesNPathsError, SamplesError
 
 
-__author__ = "Özcan Esen"
-__copyright__ = "Copyright 2017, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('single-order-file'), **anvio.K('single-order-file'))
     groupC.add_argument(*anvio.A('order-name'), **anvio.K('order-name'))
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         s = dbops.SamplesInformationDatabase(args.samples_information_db, run, progress, quiet=False)

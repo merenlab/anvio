@@ -33,7 +33,7 @@ parser.add_argument('--source', default=None,
                     help = 'Source to focus on. If none declared, all single-copy gene sources\
                             are going to be listed.')
 
-args = parser.parse_args()
+args, unknown = parser.parse_known_args()
 
 contigs = set([])
 contig_lengths = {}
