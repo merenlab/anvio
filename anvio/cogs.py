@@ -150,7 +150,11 @@ class COGs:
         for gene_callers_id in self.hits:
             ncbi_protein_id = self.hits[gene_callers_id]['hit']
 
-            COG_ids = cogs_data.p_id_to_cog_id[ncbi_protein_id]
+            in_proteins_FASTA_not_in_cogs_CSV = []
+            if ncbi_protein_id not in cogs_data.p_id_to_cog_id:
+                in_proteins_FASTA_not_in_cogs_CSV.append((ncbi_protein_id, gene_callers_id),)
+            else:
+                COG_ids = cogs_data.p_id_to_cog_id[ncbi_protein_id]
 
             annotations = []
             categories = set([])
@@ -183,6 +187,24 @@ class COGs:
             self.run.warning('Although your COGs are successfully added to the database, there were some COG IDs your genes hit\
                               were among the ones that were not described in the raw data. Here is the list of %d COG IDs that\
                               were hit %d times: %s.' % (len(missing_cogs_found), hits_for_missing_cogs, ', '.join(missing_cogs_found)))
+
+        if len(in_proteins_FASTA_not_in_cogs_CSV):
+            # so some of the hits represented in the FASTA file from the NCBI were not put in the
+            # CSV file from NCBI to associate them with COGs
+            report_output_file_path = filesnpaths.get_temp_file_path()
+            report_output = open(report_output_file_path, 'w')
+            report_output.write('anvio_gene_callers_id\tNCBI_protein_id\n')
+
+            for protein_id, gene_callers_id in in_proteins_FASTA_not_in_cogs_CSV:
+                report_output.write('%s\t%s\n' % (gene_callers_id, protein_id))
+
+            report_output.close()
+
+            self.run.warning("This is important. %s hits for your genes that appeared in the proteins FASTA file from the NCBI had protein\
+                              IDs that were not described in the CSV file from the NCBI that associates each protein ID with a COG function.\
+                              That's OK if you don't care. But if you would like to take a look, anvi'o stored a report\
+                              file for you at %s" \
+                        % (len(in_proteins_FASTA_not_in_cogs_CSV), report_output_file_path))
 
 
     def search_with_diamond(self, aa_sequences_file_path):
