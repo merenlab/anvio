@@ -108,13 +108,13 @@ function generate_inspect_link(type, item_name) {
             if (type == 'inspect') {
                 return 'charts.html?id=' + item_name;
             } 
-            else if (type == 'proteinclusters') {
-                return 'proteinclusters.html?id=' + item_name;
+            else if (type == 'geneclusters') {
+                return 'geneclusters.html?id=' + item_name;
             }
         }
         else
         {
-            // on charts or pc page, so changing the ?id= part enough
+            // on charts or gene cluster page, so changing the ?id= part enough
             return url + '?id=' + item_name;
         }
     }
@@ -124,8 +124,8 @@ function generate_inspect_link(type, item_name) {
         var url = window.parent.location.href.split('?')[0];
         var new_url = "";
 
-        if (url.endsWith('/inspect') || url.endsWith('/proteinclusters')) {
-            // on charts or pc page
+        if (url.endsWith('/inspect') || url.endsWith('/geneclusters')) {
+            // on charts or gene cluster page
             new_url = url;
         }
         else

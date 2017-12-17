@@ -19,6 +19,29 @@ except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
 
+def get_args(parser):
+    """A helper function to parse args anvi'o way.
+
+       This function allows us to make sure some ad hoc parameters such as `--debug`
+       can be used with any anvi'o program spontaneously even if they are not explicitly
+       defined as an accepted argument, yet flags (or parameters) anvi'o does not expect
+       to see can still be sorted out.
+    """
+
+    allowed_ad_hoc_flags = ['--version', '--debug']
+
+    args, unknown = parser.parse_known_args()
+
+    # if there are any args in the unknown that we do not expect to find
+    # we we will make argparse complain about those.
+    if len([f for f in unknown if f not in allowed_ad_hoc_flags]):
+        for f in allowed_ad_hoc_flags:
+            parser.add_argument(f, action='store_true')
+        parser.parse_args()
+
+    return args
+
+
 import anvio.tables as tables
 import anvio.constants as constants
 
@@ -477,11 +500,11 @@ D = {
              'help': "The multiple sequnce alignment program to use when multiple seqeunce alignment is necessary. To see\
                       all available optons, use the flag `--list-aligners`."}
                 ),
-    'concatenate-pcs': (
-            ['--concatenate-pcs'],
+    'concatenate-gene-clusters': (
+            ['--concatenate-gene-clusters'],
             {'default': False,
              'action': 'store_true',
-             'help': "Concatenate output PCs in the same order to create a multi-gene alignment output that is suitable\
+             'help': "Concatenate output gene clusters in the same order to create a multi-gene alignment output that is suitable\
                       for phylogenomic analyses."}
                 ),
     'report-DNA-sequences': (
@@ -495,7 +518,7 @@ D = {
             ['--skip-multiple-gene-calls'],
             {'default': False,
              'action': 'store_true',
-             'help': "When generating concatenated output skip PCs contain multiple gene calls."}
+             'help': "When generating concatenated output skip gene clusters contain multiple gene calls."}
                 ),
     'list-available-gene-names': (
             ['-L', '--list-available-gene-names'],
@@ -529,6 +552,12 @@ D = {
             {'metavar': 'GENE_CALLER_ID',
              'type': int,
              'help': "A single gene id."}
+                ),
+    'target-version': (
+            ['-t', '--target-version'],
+            {'metavar': 'VERSION',
+             'type': int,
+             'help': "Anvi'o will stop upgrading your database when it reaches to this version. "}
                 ),
     'delimiter': (
             ['--delimiter'],
@@ -642,15 +671,15 @@ D = {
              'help': "A file with anvi'o gene caller IDs. There should be only one column in the file, and each line\
                       should correspond to a unique gene caller id (without a column header)."}
                 ),
-    'pc-id': (
-            ['--pc-id'],
-            {'metavar': 'PROTEIN_CLUSTER_ID',
-             'help': "Protein cluster ID you are interested in."}
+    'gene-cluster-id': (
+            ['--gene-cluster-id'],
+            {'metavar': 'GENE_CLUSTER_ID',
+             'help': "Gene cluster ID you are interested in."}
                 ),
-    'pc-ids-file': (
-            ['--pc-ids-file'],
+    'gene-cluster-ids-file': (
+            ['--gene-cluster-ids-file'],
             {'metavar': 'FILE_PATH',
-             'help': "Text file for protein clusters (each line should contain be a unique protein cluster id)."}
+             'help': "Text file for gene clusters (each line should contain be a unique gene cluster id)."}
                 ),
     'bin-id': (
             ['-b', '--bin-id'],
@@ -1035,7 +1064,7 @@ D = {
     'bins': (
             ['--bins'],
             {'metavar': 'BINS_DATA',
-             'help': "Tab-delimited file, first column contains tree leaves (protein clusters, splits, contigs etc.) \
+             'help': "Tab-delimited file, first column contains tree leaves (gene clusters, splits, contigs etc.) \
                       and second column contains which Bin they belong."
             }
       ),

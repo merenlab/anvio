@@ -10,8 +10,8 @@ from anvio.mcgclassifier import MetagenomeCentricGeneClassifier
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-__author__ = "Alon Shaiber"
-__copyright__ = "Copyright 2017, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -47,6 +47,9 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file', {'required': False}))
     groupB.add_argument('--exclude-samples', metavar='FILE', default=None, help='List of samples to exclude for the analysis.')
     groupB.add_argument('--include-samples', metavar='FILE', default=None, help='List of samples to include for the analysis.')
+    groupB.add_argument('--store-gene-detection-and-coverage-tables', action='store_true', default=False, help='If declared, then the gene mean coverages, the gene non outlier mean coverages, \
+                        and gene detections tables would be saved. \
+                        This is only relevant when working with a profile database')
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
     groupC.add_argument('--alpha', '--genome-detection-uncertainty', metavar='NUM', type=float, default=0.25,
                         help='Determines the range of sample detection values that are considered negative, ambiguous or positive. \
@@ -54,7 +57,18 @@ if __name__ == '__main__':
                         below  0.5-0.25 = 0.25 will be considered negative (i.e. donot contain the genome), samples with detection \
                         between 0.25 and 0.75 would be ambiguous (and hence would not be used for the classification), and samples with \
                         detection above 0.75 would be considered positive (i.e. contain the genome).')
-    args = parser.parse_args()
+    groupC.add_argument('--outliers_threshold', metavar='NUM', type=float, default=2.5,
+                            help='Threshold to use for the outlier detection. \
+                            Absolute deviation around the median is used. \
+                            To read more about the method please refer to: \
+                            Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and \
+                            Handle Outliers", The ASQC Basic References in Quality Control: \
+                            Statistical Techniques, Edward F. Mykytka, Ph.D., Editor. \
+                            Or to: \
+                            http://www.sciencedirect.com/science/article/pii/S0022103113000668 \
+                            ')
+
+    args = anvio.get_args(parser)
 
     try:
         main(args)

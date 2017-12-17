@@ -1,0 +1,114 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import h5py
+import argparse
+
+import anvio
+import anvio.db as db
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError
+from anvio.migrations import migration_scripts
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+class Migrater(object):
+    def __init__(self, args):
+        self.args = args
+        self.db_path = args.input
+        self.db_type = None
+        self.db_version = None
+        self.target_version = None
+
+        filesnpaths.is_file_exists(self.db_path)
+        self.get_db_meta()
+        self.get_target_version()
+
+        run.info('Database Path', self.db_path)
+        run.info('Detected Type', self.db_type)
+        run.info('Current Version', self.db_version)
+        run.info('Target Version', self.target_version)
+
+    def get_db_meta(self):
+        try:
+            if self.db_path.endswith('.db'):
+                db_conn = db.DB(self.db_path, None, ignore_version=True)
+
+                self.db_type = db_conn.get_meta_value('db_type')
+                self.db_version = int(db_conn.get_meta_value('version'))
+
+                db_conn.disconnect()
+            elif self.db_path.endswith('GENOMES.h5'):
+                fp = h5py.File(self.db_path, 'r')
+
+                self.db_type = 'genomestorage'
+                self.db_version = int(fp.attrs['version'])
+
+                fp.close()
+        except:
+            raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
+                                it is not at all..' % self.db_path)
+
+
+    def get_target_version(self):
+        if self.db_type in t.versions_for_db_types:
+            version = int(t.versions_for_db_types[self.db_type])
+        else:
+            raise ConfigError("Anvi'o does not have any version information about this ('%s') database type" % self.db_type)
+
+        if args.target_version:
+            target = int(args.target_version)
+
+            if target <= self.db_version:
+                raise ConfigError("Target version ('%s') can not be lower than db version ('%s'). " (target, self.db_version))
+            elif target > version:
+                raise ConfigError("Target version ('%s') can not be higher than highest available version ('%s') for this type. " (target, version))
+
+            version = target
+
+        self.target_version = int(version)
+
+
+    def process(self):
+        tasks = []
+
+        for i in range(self.db_version, self.target_version):
+            script_name = "v%s_to_v%s" % (i, i + 1)
+
+            if not self.db_type in migration_scripts or not script_name in migration_scripts[self.db_type]:
+                raise ConfigError("Anvi'o can not find a migrate script required \
+                    for this operation. (DB Type: %s, Script name: %s) " % (self.db_type, script_name))
+
+            tasks.append(script_name)
+
+        for script_name in tasks:
+            try:
+                migration_scripts[self.db_type][script_name].migrate(self.db_path)
+            except ConfigError as e:
+                print(e)
+                sys.exit(-1)
+
+            # special cases #
+            # after this script is done genome storage changes extension from .h5 to .db
+            if self.db_type == 'genomestorage' and script_name == 'v4_to_v5':
+                self.db_path = self.db_path[:-3] + '.db'
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument('input', metavar = 'DATABASE', nargs=None, help = "Anvi'o database for migration")
+    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
+    parser.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
+    args, unknown = parser.parse_known_args()
+
+    try:
+        Migrater(args).process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)

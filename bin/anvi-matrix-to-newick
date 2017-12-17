@@ -11,8 +11,8 @@ import anvio.clustering as clustering
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -26,7 +26,7 @@ progress = terminal.Progress()
 def main(args):
     if not args.output_file:
         args.output_file = args.input_matrix + '.newick'
-    
+
     run.info('Input matrix file', args.input_matrix)
     progress.new('Analyzing input file')
     clustering.get_newick_tree_data(args.input_matrix, args.output_file, linkage = args.linkage,
@@ -39,14 +39,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Takes an observation matrix, returns a newick tree.')
     parser.add_argument('input_matrix', metavar = 'PATH', default = None,
                         help = 'Input matrix')
-    
+
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
     parser.add_argument(*anvio.A('distance'), **anvio.K('distance'))
     parser.add_argument(*anvio.A('linkage'), **anvio.K('linkage'))
 
     try:
-        main(parser.parse_args())
+        args = anvio.get_args(parser)
+        main(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

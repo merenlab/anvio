@@ -14,8 +14,8 @@ import anvio.genomestorage as genomestorage
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
@@ -125,31 +125,31 @@ def main(args):
 
     per_gene_output_file.close()
 
-    progress.update('Computing ratio of genes present/absent per PC data ...')
-    gene_status_frequencies_in_PC = {}
-    for pc_name in pan_summary.protein_clusters:
+    progress.update('Computing ratio of genes present/absent per gene cluster data ...')
+    gene_status_frequencies_in_gene_cluster = {}
+    for gene_cluster_name in pan_summary.gene_clusters:
         status = {'EDG': 0, 'ECG': 0, 'NA': 0}
-        for genome_name in pan_summary.protein_clusters[pc_name]:
-            for gene_caller_id in pan_summary.protein_clusters[pc_name][genome_name]:
+        for genome_name in pan_summary.gene_clusters[gene_cluster_name]:
+            for gene_caller_id in pan_summary.gene_clusters[gene_cluster_name][genome_name]:
                 if genome_name not in gene_presence_in_the_environment_dict:
                     progress.end()
                     raise ConfigError("Something is fishy... Like, you generated a pangenome with an internal or external genomes file\
                                        that is not identical to the internal or external genomes file you are using to run this program.")
                 status[gene_presence_in_the_environment_dict[genome_name][gene_caller_id]] += 1
-        gene_status_frequencies_in_PC[pc_name] = status
+        gene_status_frequencies_in_gene_cluster[gene_cluster_name] = status
 
     progress.update('Storing the output')
     categories = ['EDG', 'ECG', 'NA']
     output = open(output_summary_path, 'w')
-    output.write('pc_name\tDetection!%s\n' % (';'.join(categories)))
-    for pc_name in gene_status_frequencies_in_PC:
-        freqs = ';'.join([str(gene_status_frequencies_in_PC[pc_name][cat]) for cat in categories])
-        output.write('%s\t%s\n' % (pc_name, freqs))
+    output.write('gene_cluster_name\tDetection!%s\n' % (';'.join(categories)))
+    for gene_cluster_name in gene_status_frequencies_in_gene_cluster:
+        freqs = ';'.join([str(gene_status_frequencies_in_gene_cluster[gene_cluster_name][cat]) for cat in categories])
+        output.write('%s\t%s\n' % (gene_cluster_name, freqs))
     output.close()
 
     progress.end()
 
-    run.info('PC summary file', output_summary_path)
+    run.info('Gene cluster summary file', output_summary_path)
     run.info('All gene classification', output_per_gene_summary_path)
 
 
@@ -186,7 +186,7 @@ if __name__ == '__main__':
                                                   data matrix for your display, and an extra file for per-gene classification.")
     groupD.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

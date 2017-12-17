@@ -28,6 +28,8 @@ var maxVariability = 0;
 var geneParser;
 var contextSvg;
 var state;
+var layers_ordered;
+var visible_layers;
 
 
 function loadAll() {
@@ -99,7 +101,9 @@ function loadAll() {
             if(previous_contig_name)
                 prev_str = '<a onclick="sessionStorage.state = state;" href="' + generate_inspect_link('inspect', previous_contig_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
-            document.getElementById("header").innerHTML = "<strong>" + contig_id + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
+            $('#header').append("<strong>" + contig_id + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
+            $('header').append('<button type="button" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
+                                <button type="button" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button>');
 
             if (typeof sessionStorage.state === 'undefined')
             {
@@ -114,15 +118,69 @@ function loadAll() {
             }
         }
     });
+}
 
+
+function showSetMaxValuesDialog() {
+    var table = '<table class="table borderless"><thead class="thead-light"><tr><th>Sample</th><th>Max Coverage</th><th>Limit Max Coverage</th></tr></thead><tbody>';
+
+    var _state = JSON.parse(state);
+    var max_coverage_values;
+    var has_max_coverage_values = (typeof sessionStorage.max_coverage !== 'undefined');
+    if (has_max_coverage_values) {
+        max_coverage_values = JSON.parse(sessionStorage.max_coverage);
+    }
+
+    var j=0;
+    for (i in layers_ordered) {
+        var layer_name = layers_ordered[i];
+        var layer_index = layers.indexOf(layer_name);
+
+        if (parseFloat(_state['layers'][layer_name]['height']) > 0) {
+            var max_val
+            var actual_max_val = Math.max.apply(null, coverage[layer_index]);;
+            if (has_max_coverage_values) {
+                max_val = max_coverage_values[j];
+            } else {
+                max_val = 0;
+            }
+    
+            table += '<tr> \
+                        <td>' + layer_name + '</td> \
+                        <td>' + actual_max_val + '</td> \
+                        <td style="text-align: center;"><input type="text" size="5" value="' + max_val + '"/></td> \
+                      </tr>';
+
+            j++;
+        }
+    }
+
+    $('#setMaxValuesDialog .modal-body').empty().append(table + '</tbody></table>');
+    $('#setMaxValuesDialog').modal('show');
+}
+
+
+function applyMaxValues() {
+    var max_values = []
+    $('#setMaxValuesDialog .modal-body tbody tr').each(function(index, row) {
+        max_values.push(parseInt($(row).find('td:last input').val()));
+    });
+
+    sessionStorage.max_coverage = JSON.stringify(max_values);
+    createCharts(JSON.parse(state));
+}
+
+
+function resetMaxValues() {
+    delete sessionStorage.max_coverage;
+    createCharts(JSON.parse(state));
 }
 
 
 function createCharts(state){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
-
-    var layers_ordered;
+    $('#chart-container, #context-container').empty();
 
     if (state['current-view'] == "single"){
         // if we are working with a non-merged single profile, we need to do some ugly hacks here,
@@ -134,7 +192,7 @@ function createCharts(state){
         layers_ordered = state['layer-order'].filter(function (value) { if (layers.indexOf(value)>-1) return true; return false; });
     }
 
-    var visible_layers = 0;
+    visible_layers = 0;
     for (i in layers_ordered)
     {
       var layer_id = layers_ordered[i];
@@ -172,6 +230,12 @@ function createCharts(state){
         }
     });
 
+    var max_coverage_values;
+    var has_max_coverage_values = (typeof sessionStorage.max_coverage !== 'undefined');
+    if (has_max_coverage_values) {
+        max_coverage_values = JSON.parse(sessionStorage.max_coverage);
+    }
+
     var j=0;
     for(var i = 0; i < layersCount; i++){
         var layer_index = layers.indexOf(layers_ordered[i]);
@@ -182,6 +246,7 @@ function createCharts(state){
         charts.push(new Chart({
                         name: layers[layer_index],
                         coverage: coverage[layer_index],
+                        max_coverage: (has_max_coverage_values) ? max_coverage_values[j] : 0,
                         variability_a: variability[layer_index][0],
                         variability_b: variability[layer_index][1],
                         variability_c: variability[layer_index][2],
@@ -279,6 +344,7 @@ function createCharts(state){
 
 function Chart(options){
     this.coverage = options.coverage;
+    this.max_coverage = options.max_coverage;
     this.variability_a = options.variability_a;
     this.variability_b = options.variability_b;
     this.variability_c = options.variability_c;
@@ -301,9 +367,15 @@ function Chart(options){
                             .range([0, this.width])
                             .domain([0, this.coverage.length]);
    
-    this.maxCoverage = Math.max.apply(null, this.coverage);
-    if(this.maxCoverage < 20)
-        this.maxCoverage = 20;
+
+    // this.max_coverage comes from options, -1 means not available
+    // this.maxCoverage used in charts
+    if (this.max_coverage == 0) {
+        this.maxCoverage = Math.max(20, Math.max.apply(null, this.coverage));
+    } else {
+        this.maxCoverage = this.max_coverage;
+    }
+
     this.yScale = d3.scale.linear()
                             .range([this.height,0])
                             .domain([0,this.maxCoverage]);
@@ -319,7 +391,7 @@ function Chart(options){
     this.area = d3.svg.area()
                             .x(function(d, i) { return xS(i); })
                             .y0(this.height)
-                            .y1(function(d) { return yS(d); });
+                            .y1(function(d) { return (yS(d) < 0) ? 0 : yS(d); });
 
     this.line = d3.svg.line()
                             .x(function(d, i) { return xS(i); })
