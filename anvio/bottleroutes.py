@@ -30,14 +30,15 @@ import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
+import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
 from anvio.dbops import SamplesInformationDatabase
 from anvio.errors import RefineError, ConfigError
 
 
-__author__ = "Ozcan Esen"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = ["A. Murat Eren"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -113,9 +114,9 @@ class BottleApplication(Bottle):
         self.route('/summary/<collection_name>/:filename#.*#', callback=self.send_summary_static)
         self.route('/data/gene/<gene_callers_id>',             callback=self.get_sequence_for_gene_call)
         self.route('/data/hmm/<bin_name>/<gene_name>',         callback=self.get_hmm_hit_from_bin)
-        self.route('/data/proteinclusterssummary',             callback=self.get_protein_clusters_summary, method='POST')
-        self.route('/data/get_AA_sequences_for_PC/<pc_name>',  callback=self.get_AA_sequences_for_PC)
-        self.route('/data/proteinclusters/<pc_name>',          callback=self.inspect_pc)
+        self.route('/data/geneclusterssummary',             callback=self.get_gene_clusters_summary, method='POST')
+        self.route('/data/get_AA_sequences_for_gene_cluster/<gene_cluster_name>',  callback=self.get_AA_sequences_for_gene_cluster)
+        self.route('/data/geneclusters/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
         self.route('/data/phylogeny/aligners',                 callback=self.get_available_aligners)
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
@@ -345,8 +346,12 @@ class BottleApplication(Bottle):
 
         layers = sorted(self.interactive.p_meta['samples'])
 
-        coverage_values_dict = self.interactive.split_coverage_values.get(split_name)
-        data['coverage'] = [coverage_values_dict[layer].tolist() for layer in layers]
+        auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
+                                                                                 self.interactive.p_meta['contigs_db_hash'])
+        coverages = auxiliary_coverages_db.get(split_name)
+        auxiliary_coverages_db.close()
+
+        data['coverage'] = [coverages[layer].tolist() for layer in layers]
 
         ## get the variability information dict for split:
         progress.new('Variability')
@@ -634,73 +639,73 @@ class BottleApplication(Bottle):
         return json.dumps({'sequence': sequence, 'header': header})
 
 
-    def get_protein_clusters_summary(self):
-        protein_cluster_ids = json.loads(request.forms.get('split_names'))
+    def get_gene_clusters_summary(self):
+        gene_cluster_ids = json.loads(request.forms.get('split_names'))
         bin_name = json.loads(request.forms.get('bin_name'))
 
-        summary = self.interactive.get_summary_for_PCs_list(protein_cluster_ids)
+        summary = self.interactive.get_summary_for_gene_clusters_list(gene_cluster_ids)
 
-        run.info_single('PC info has been requested for %d items in %s' % (len(protein_cluster_ids), bin_name))
+        run.info_single('Gene cluster info has been requested for %d items in %s' % (len(gene_cluster_ids), bin_name))
 
         return json.dumps({'functions': summary['functions'],
-                           'num_PCs': summary['num_PCs'],
+                           'num_gene_clusters': summary['num_gene_clusters'],
                            'genomes_contributing': summary['genomes_contributing'],
                            'num_gene_calls': summary['num_gene_calls']})
 
 
-    def get_AA_sequences_for_PC(self, pc_name):
+    def get_AA_sequences_for_gene_cluster(self, gene_cluster_name):
         data = {}
 
-        if pc_name not in self.interactive.protein_clusters:
+        if gene_cluster_name not in self.interactive.gene_clusters:
             return data
 
         if not self.interactive.genomes_storage_is_available:
             return data
 
-        # add the list of gene caller ids associated with this protein cluster into `data`:
-        for genome_name in self.interactive.protein_clusters[pc_name]:
-            for gene_callers_id in self.interactive.protein_clusters[pc_name][genome_name]:
+        # add the list of gene caller ids associated with this pootein cluster into `data`:
+        for genome_name in self.interactive.gene_clusters[gene_cluster_name]:
+            for gene_callers_id in self.interactive.gene_clusters[gene_cluster_name][genome_name]:
                 data['%s_%s' % (genome_name, str(gene_callers_id))] = self.interactive.genomes_storage.get_gene_sequence(genome_name, gene_callers_id)
 
         return json.dumps(data)
 
 
-    def inspect_pc(self, pc_name):
-        data = {'pc_name': pc_name,
+    def inspect_gene_cluster(self, gene_cluster_name):
+        data = {'gene_cluster_name': gene_cluster_name,
                 'genomes': [],
                 'index': None,
                 'gene_caller_ids': [],
                 'gene_caller_ids_in_genomes': {},
-                'aa_sequences_in_pc': {},
-                'previous_pc_name': None,
-                'next_pc_name': None,
+                'aa_sequences_in_gene_cluster': {},
+                'previous_gene_cluster_name': None,
+                'next_gene_cluster_name': None,
                 'index': None,
                 'total': None
                 }
 
-        if pc_name not in self.interactive.protein_clusters:
+        if gene_cluster_name not in self.interactive.gene_clusters:
             return data
 
         if not self.interactive.genomes_storage_is_available:
             return data
 
-        AA_sequences = self.interactive.get_sequences_for_PCs(pc_names=set([pc_name]))
+        AA_sequences = self.interactive.get_sequences_for_gene_clusters(gene_cluster_names=set([gene_cluster_name]))
 
-        # add the list of gene caller ids associated with this protein cluster into `data`:
-        for genome_name in self.interactive.protein_clusters[pc_name]:
-            data['aa_sequences_in_pc'][genome_name] = {}
-            for gene_callers_id in self.interactive.protein_clusters[pc_name][genome_name]:
+        # add the list of gene caller ids associated with this gene cluster into `data`:
+        for genome_name in self.interactive.gene_clusters[gene_cluster_name]:
+            data['aa_sequences_in_gene_cluster'][genome_name] = {}
+            for gene_callers_id in self.interactive.gene_clusters[gene_cluster_name][genome_name]:
                 data['gene_caller_ids'].append((gene_callers_id, genome_name), )
-                data['aa_sequences_in_pc'][genome_name][gene_callers_id] = AA_sequences[pc_name][genome_name][gene_callers_id]
+                data['aa_sequences_in_gene_cluster'][genome_name][gene_callers_id] = AA_sequences[gene_cluster_name][genome_name][gene_callers_id]
 
         # the dict that explains the distribution of genes in genomes:
-        data['gene_caller_ids_in_genomes'] = self.interactive.protein_clusters[pc_name]
+        data['gene_caller_ids_in_genomes'] = self.interactive.gene_clusters[gene_cluster_name]
 
         # add the list of genomes into data:
         data['genomes'] = sorted(data['gene_caller_ids_in_genomes'].keys())
 
         # get some contextual stuff
-        data['index'], data['total'], data['previous_pc_name'], data['next_pc_name'] = self.get_index_total_previous_and_next_items(pc_name)
+        data['index'], data['total'], data['previous_gene_cluster_name'], data['next_gene_cluster_name'] = self.get_index_total_previous_and_next_items(gene_cluster_name)
 
         return json.dumps(data)
 
@@ -739,7 +744,7 @@ class BottleApplication(Bottle):
         return json.dumps(list(drivers.Aligners().aligners.keys()))
 
     def generate_tree(self):
-        pcs = set(request.forms.getall('pcs[]'))
+        gene_clusters = set(request.forms.getall('gene_clusters[]'))
         name = request.forms.get('name')
         skip_multiple_gene_calls = request.forms.get('skip_multiple_genes')
         program = request.forms.get('program')
@@ -751,7 +756,7 @@ class BottleApplication(Bottle):
         tree_text = None
 
         try:
-            self.interactive.write_sequences_in_PCs_for_phylogenomics(pc_names=pcs, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls, align_with=aligner)
+            self.interactive.write_sequences_in_gene_clusters_for_phylogenomics(gene_cluster_names=gene_clusters, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls, align_with=aligner)
             drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file, temp_tree_file)
             tree_text = open(temp_tree_file,'rb').read().decode()
 

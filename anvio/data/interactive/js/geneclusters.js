@@ -1,5 +1,5 @@
 /**
- * Javascript library to visualize anvi'o protein clusterss
+ * Javascript library to visualize anvi'o gene clusterss
  *
  *  Author: A. Murat Eren <a.murat.eren@gmail.com>
  *  Credits: Özcan Esen
@@ -23,14 +23,14 @@ var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || 
 var genomes;
 var gene_caller_ids;
 var gene_caller_ids_in_genomes;
-var aa_sequences_in_pc;
-var previous_pc_name;
-var next_pc_name;
+var aa_sequences_in_gene_cluster;
+var previous_gene_cluster_name;
+var next_gene_cluster_name;
 var index;
 var total;
 
 var state;
-var pc_data;
+var gene_cluster_data;
 
 
 function loadAll() {
@@ -45,23 +45,23 @@ function loadAll() {
         return options;
     });
 
-    pc_name = getUrlVars()["id"];
-    document.title = pc_name + " detailed";
+    gene_cluster_name = getUrlVars()["id"];
+    document.title = gene_cluster_name + " detailed";
 
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/proteinclusters/' + pc_name,
-        success: function(_pc_data) {
-            pc_data = _pc_data;
-            genomes = pc_data.genomes;
-            gene_caller_ids = pc_data.gene_caller_ids;
-            gene_caller_ids_in_genomes = pc_data.gene_caller_ids_in_genomes;
-            aa_sequences_in_pc = pc_data.aa_sequences_in_pc;
-            previous_pc_name = pc_data.previous_pc_name;
-            next_pc_name = pc_data.next_pc_name;
-            index = pc_data.index;
-            total = pc_data.total;
+        url: '/data/geneclusters/' + gene_cluster_name,
+        success: function(_gene_cluster_data) {
+            gene_cluster_data = _gene_cluster_data;
+            genomes = gene_cluster_data.genomes;
+            gene_caller_ids = gene_cluster_data.gene_caller_ids;
+            gene_caller_ids_in_genomes = gene_cluster_data.gene_caller_ids_in_genomes;
+            aa_sequences_in_gene_cluster = gene_cluster_data.aa_sequences_in_gene_cluster;
+            previous_gene_cluster_name = gene_cluster_data.previous_gene_cluster_name;
+            next_gene_cluster_name = gene_cluster_data.next_gene_cluster_name;
+            index = gene_cluster_data.index;
+            total = gene_cluster_data.total;
 
             if(genomes.length == 0){
                 console.log('Warning: no genomes returned')
@@ -78,13 +78,13 @@ function loadAll() {
                 target_str = 'target="_top"';
             }
 
-            if(next_pc_name)
-                next_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="' + generate_inspect_link('proteinclusters', next_pc_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+            if(next_gene_cluster_name)
+                next_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="' + generate_inspect_link('geneclusters', next_gene_cluster_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
-            if(previous_pc_name)
-                prev_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="' + generate_inspect_link('proteinclusters', previous_pc_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+            if(previous_gene_cluster_name)
+                prev_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="' + generate_inspect_link('geneclusters', previous_gene_cluster_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
-            document.getElementById("header").innerHTML = "<strong>" + pc_name + "</strong> with " + gene_caller_ids.length + " genes detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
+            document.getElementById("header").innerHTML = "<strong>" + gene_cluster_name + "</strong> with " + gene_caller_ids.length + " genes detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 
             if (typeof sessionStorage.state === 'undefined')
             {
@@ -128,7 +128,7 @@ function createDisplay(){
         {
             var layer = state['layer-order'][layer_id];
 
-            if (pc_data.genomes.indexOf(layer) === -1)
+            if (gene_cluster_data.genomes.indexOf(layer) === -1)
                 continue;
             
             var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -136,7 +136,7 @@ function createDisplay(){
             rect.setAttribute('y', y_cord);
             rect.setAttribute('fill', state['layers'][layer]['color']);
             rect.setAttribute('opacity', 0.2);
-            rect.setAttribute('height', (Math.max(pc_data.gene_caller_ids_in_genomes[layer].length,1) * sequence_font_size * 1.5) + 10);
+            rect.setAttribute('height', (Math.max(gene_cluster_data.gene_caller_ids_in_genomes[layer].length,1) * sequence_font_size * 1.5) + 10);
             rect.setAttribute('width', 400);
             rect.setAttribute('class', 'sequenceBackground');
             rect.setAttribute('rx', 10);
@@ -155,8 +155,8 @@ function createDisplay(){
 
             sub_y_cord = y_cord + 5;
 
-            pc_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
-                sequence = pc_data.aa_sequences_in_pc[layer][caller_id];
+            gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
+                sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id];
 
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);

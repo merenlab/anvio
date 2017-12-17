@@ -5,6 +5,7 @@
 
 import os
 import sys
+import gzip
 import time
 import socket
 import shutil
@@ -16,7 +17,6 @@ import subprocess
 import configparser
 import multiprocessing
 import urllib.request, urllib.error, urllib.parse
-
 import numpy as np
 
 from email.mime.text import MIMEText
@@ -37,8 +37,8 @@ with SuppressAllOutput():
     from ete3 import Tree
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -176,7 +176,13 @@ def get_predicted_type_of_items_in_a_dict(d, key):
     if not_float:
         return str
     else:
-        return float
+        for item in items:
+            try:
+                int(item or 0)
+            except ValueError:
+                return float
+
+            return int
 
 
 def human_readable_file_size(nbytes):
@@ -469,6 +475,21 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
 
     f.close()
     return output_path
+
+
+
+def convert_numpy_array_to_binary_blob(array, compress=True):
+    if compress:
+        return gzip.compress(memoryview(array), compresslevel=1)
+    else:
+        return memoryview(array)
+
+
+def convert_binary_blob_to_numpy_array(blob, dtype, decompress=True):
+    if decompress:
+        return np.frombuffer(gzip.decompress(blob), dtype=dtype)
+    else:
+        return np.frombuffer(blob, dtype=dtype)
 
 
 def is_all_columns_present_in_TAB_delim_file(columns, file_path):

@@ -26,8 +26,8 @@ import anvio.auxiliarydataops as auxiliarydataops
 from anvio.errors import ConfigError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2017, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = ['Alon Shaiber']
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -179,7 +179,7 @@ class VariabilitySuper(object):
 
         if self.quince_mode:
             self.progress.update('Accessing auxiliary data file ...')
-            auxiliary_data_file_path = os.path.join(os.path.dirname(self.profile_db_path), 'AUXILIARY-DATA.h5')
+            auxiliary_data_file_path = dbops.get_auxiliary_data_path_for_profile_db(self.profile_db_path)
             if not os.path.exists(auxiliary_data_file_path):
                 raise ConfigError("Anvi'o needs the auxiliary data file to run this program with '--quince-mode' flag.\
                                     However it wasn't found at '%s' :/" % auxiliary_data_file_path)

@@ -2,26 +2,28 @@
 # pylint: disable=line-too-long
 """ Table schemas for databases."""
 
-from anvio.constants import codon_to_AA
+from anvio.constants import codon_to_AA, essential_genome_info
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "9"
-profile_db_version = "21"
-pan_db_version = "6"
+contigs_db_version = "10"
+profile_db_version = "22"
+pan_db_version = "7"
 samples_info_db_version = "2"
-auxiliary_data_version = "1"
-genomes_storage_vesion = "4"
+auxiliary_data_version = "2"
+genomes_storage_vesion = "5"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
-                         'pan': pan_db_version}
+                         'pan': pan_db_version,
+                         'samples_information': samples_info_db_version,
+                         'genomestorage': genomes_storage_vesion}
 
 
 ####################################################################################################
@@ -30,9 +32,9 @@ versions_for_db_types = {'contigs': contigs_db_version,
 #
 ####################################################################################################
 
-pan_protein_clusters_table_name        = 'protein_clusters'
-pan_protein_clusters_table_structure   = ['entry_id', 'gene_caller_id', 'protein_cluster_id', 'genome_name', 'alignment_summary']
-pan_protein_clusters_table_types       = ['numeric' ,     'numeric'   ,         'str'       ,      'str'   ,        'str'       ]
+pan_gene_clusters_table_name           = 'gene_clusters'
+pan_gene_clusters_table_structure      = ['entry_id', 'gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
+pan_gene_clusters_table_types          = ['numeric' ,     'numeric'   ,         'str'       ,      'str'   ,        'str'       ]
 
 
 ####################################################################################################
@@ -65,13 +67,13 @@ genes_in_splits_table_name             = 'genes_in_splits'
 genes_in_splits_table_structure        = ['entry_id', 'split', 'gene_callers_id', 'start_in_split', 'stop_in_split', 'percentage_in_split']
 genes_in_splits_table_types            = [ 'numeric',  'text',      'numeric'   ,    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
-genes_in_splits_summary_table_name     = 'genes_in_splits_summary'
+genes_in_splits_summary_table_name      = 'genes_in_splits_summary'
 genes_in_splits_summary_table_structure = ['split', 'num_genes', 'avg_gene_length', 'ratio_coding']
 genes_in_splits_summary_table_types     = [ 'text',  'numeric' ,     'numeric'    ,   'numeric'   ]
 
-gene_protein_sequences_table_name      = 'gene_protein_sequences'
-gene_protein_sequences_table_structure = ['gene_callers_id', 'sequence']
-gene_protein_sequences_table_types     = [     'numeric'   ,   'text'  ]
+gene_amino_acid_sequences_table_name      = 'gene_amino_acid_sequences'
+gene_amino_acid_sequences_table_structure = ['gene_callers_id', 'sequence']
+gene_amino_acid_sequences_table_types     = [     'numeric'   ,   'text'  ]
 
 gene_function_calls_table_name         = 'gene_functions'
 gene_function_calls_table_structure    = ['entry_id', 'gene_callers_id', 'source', 'accession', 'function', 'e_value']
@@ -105,6 +107,12 @@ hmm_hits_splits_table_name             = 'hmm_hits_in_splits'
 hmm_hits_splits_table_structure        = ['entry_id', 'hmm_hit_entry_id', 'split', 'percentage_in_split', 'source']
 hmm_hits_splits_table_types            = [ 'numeric',      'numeric'    ,  'text',       'numeric'      ,  'text' ]
 
+# following table keeps nt poisition info
+
+nt_position_info_table_name       = 'nt_position_info'
+nt_position_info_table_structure  = ['contig_name', 'position_info']
+nt_position_info_table_types      = [    'str'    ,      'blob'    ]
+
 
 ####################################################################################################
 #
@@ -115,6 +123,10 @@ hmm_hits_splits_table_types            = [ 'numeric',      'numeric'    ,  'text
 item_orders_table_name               = 'item_orders'
 item_orders_table_structure          = ['name', 'type', 'data']
 item_orders_table_types              = [ 'str',  'str',  'str']
+
+item_additional_data_table_name      = 'item_additional_data'
+item_additional_data_table_structure = ['entry_id', 'item_name', 'key', 'value', 'type']
+item_additional_data_table_types     = [ 'numeric',   'text'   , 'str',  'str' ,  'str']
 
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']
@@ -135,7 +147,7 @@ views_table_types                    = [  'str'  ,      'str'    ]
 # notice that atomic data table is the only table that doesn't have a name. because how we use this table is a bit tricky.
 # for single profiles, contents of this table is stored as "atomic data", however, for merged profiles,
 # each column of the atomic data table becomes its own table, where the row names remain identical, yet columns
-# become sample names. 
+# become sample names.
 atomic_data_table_structure          = ['contig', 'std_coverage', 'mean_coverage', 'mean_coverage_Q2Q3', 'max_normalized_ratio', 'relative_abundance', 'detection', 'abundance', 'variability', '__parent__']
 atomic_data_table_types              = [ 'text' ,   'numeric'   ,    'numeric'   ,      'numeric'      ,        'numeric'      ,      'numeric'     ,   'numeric' ,  'numeric' ,   'numeric'  ,    'text'   ]
 
@@ -186,4 +198,34 @@ samples_order_table_types                  = [    'str'   ,  'str' ,  'str' ]
 samples_attribute_aliases_table_name       = 'samples_attribute_aliases'
 samples_attribute_aliases_table_structure  = ['alias', 'attribute']
 samples_attribute_aliases_table_types      = [ 'str' ,     'str'  ]
+
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE PROFILE AUXILIARY COVERAGE DATABASE
+#
+####################################################################################################
+
+split_coverages_table_name       = 'split_coverages'
+split_coverages_table_structure  = ['split_name', 'sample_name', 'coverages']
+split_coverages_table_types      = [    'str'   ,     'str'    ,   'blob'   ]
+
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE GENOME STORAGE
+#
+####################################################################################################
+
+genome_info_table_name       = 'genome_info'
+genome_info_table_structure  = ['genome_name', 'genome_hash', 'external_genome'] + essential_genome_info
+genome_info_table_types      = [    'str'    ,     'text'   ,     'numeric'    ] + ['numeric'] * len(essential_genome_info)
+
+gene_info_table_name       = 'gene_info'
+gene_info_table_structure  = ['genome_name', 'gene_caller_id', 'aa_sequence', 'dna_sequence', 'partial', 'length' ]
+gene_info_table_types      = [    'str'    ,     'numeric'   ,    'text'    ,     'text'    , 'numeric', 'numeric']
+
+genome_gene_function_calls_table_name      = 'gene_function_calls'
+genome_gene_function_calls_table_structure = ['genome_name', ] + gene_function_calls_table_structure[:]
+genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_calls_table_types[:]
 

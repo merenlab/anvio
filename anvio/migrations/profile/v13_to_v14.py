@@ -15,31 +15,19 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def update_profile_db_from_v13_to_v14(profile_db_path, just_do_it = False):
-    if profile_db_path is None:
+def migrate(db_path):
+    if db_path is None:
         raise ConfigError("No profile database is given.")
 
     # make sure someone is not being funny
-    dbops.is_profile_db(profile_db_path)
+    dbops.is_profile_db(db_path)
 
     # make sure the version is 5
-    profile_db = db.DB(profile_db_path, None, ignore_version = True)
+    profile_db = db.DB(db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != '13':
         raise ConfigError("Version of this profile database is not 13 (hence, this script cannot really do anything).")
 
     is_merged = profile_db.get_meta_value('merged')
-
-    if not just_do_it:
-        try:
-            run.warning('This script will try to upgrade your profile database. If things go south, you will end up having to\
-                         re-profile your data :/ It may be a good idea to back it up first. If you already backed your stuff\
-                         or you are certain that it will work, or if you are a lucky person in general, press ENTER to continue.\
-                         If you want to cancel the upgrade, press CTRL+C now. If you want to avoid this message the next time,\
-                         use "--just-do-it" flag.')
-            input("Press ENTER to continue...\n")
-        except:
-            print()
-            sys.exit()
 
     progress.new("Trying to upgrade the %s profile database" % 'merged' if is_merged else 'single')
 
@@ -65,19 +53,16 @@ def update_profile_db_from_v13_to_v14(profile_db_path, just_do_it = False):
     profile_db.disconnect()
     progress.end()
 
-    run.info_single("Database successfully upgraded to version 14!")
+    run.info_single("Database successfully upgraded to version 14!", nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade profile database to from version 13 version 14')
-
     parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = 'Profile database (of version 13)')
-    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
-
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
-        update_profile_db_from_v13_to_v14(args.profile_db, just_do_it = args.just_do_it)
+        migrate(args.profile_db)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

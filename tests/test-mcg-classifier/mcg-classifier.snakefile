@@ -49,7 +49,6 @@ rule gen_contigs_db:
     input: files_dir + "/TEST.fa"
     output:
         db = output_dir + "/TEST.db",
-        aux = output_dir + "/TEST.h5"
     shell: "anvi-gen-contigs-database -f {input} -o {output.db} -n TEST >> {log} 2>&1"
 
 
@@ -69,7 +68,7 @@ rule profile:
         contigs = output_dir + "/TEST.db"
     output:
         profile = output_dir + "/TEST/{sample}/PROFILE.db",
-        aux = output_dir + "/TEST/{sample}/AUXILIARY-DATA.h5",
+        aux = output_dir + "/TEST/{sample}/AUXILIARY-DATA.db",
         runlog = output_dir + "/TEST/{sample}/RUNLOG.txt"
     params:
         name = "{sample}",
@@ -83,7 +82,7 @@ rule merge:
         contigs = rules.gen_contigs_db.output.db
     output:
         profile = output_dir + "/TEST/MERGED-SAMPLES/PROFILE.db",
-        aux = output_dir + "/TEST/MERGED-SAMPLES/AUXILIARY-DATA.h5",
+        aux = output_dir + "/TEST/MERGED-SAMPLES/AUXILIARY-DATA.db",
         runlog = output_dir + "/TEST/MERGED-SAMPLES/RUNLOG.txt"
     params:
         output_dir = output_dir + "/TEST/MERGED-SAMPLES",
@@ -110,7 +109,7 @@ rule run_mcg_classifier:
         nt_distribution = dynamic(output_dir + "/TEST-TS-plots/{p_sample}-coverages.pdf")
     params:
         output_prefix= output_dir + "/TEST"
-    shell: "anvi-mcg-classifier -p {input.profile} -c {input.contigs} -O {params.output_prefix} >> {log} 2>&1"
+    shell: "anvi-mcg-classifier -p {input.profile} -c {input.contigs} -O {params.output_prefix} --outliers_threshold 1.5 --alpha 0.15 --store-gene-detection-and-coverage-tables >> {log} 2>&1"
 
 
 rule run_mcg_classifier_collection:
@@ -124,7 +123,7 @@ rule run_mcg_classifier_collection:
     params:
         output_prefix= output_dir + "/TEST-collection",
         collection = "TEST"
-    shell: "anvi-mcg-classifier -p {input.profile} -c {input.contigs} -O {params.output_prefix} -C {params.collection} >> {log} 2>&1"
+    shell: "anvi-mcg-classifier -p {input.profile} -c {input.contigs} -O {params.output_prefix} -C {params.collection} --outliers_threshold 1.5 --alpha 0.15 --store-gene-detection-and-coverage-tables >> {log} 2>&1"
 
 def myreport(test_type):
     text = """

@@ -3,7 +3,6 @@
 
 import sys
 import h5py
-import shutil
 import argparse
 import anvio.terminal as terminal
 
@@ -15,14 +14,11 @@ next_version    = '4'
 run = terminal.Run()
 progress = terminal.Progress()
 
-def update_genomes_storage(genomes_storage_path):
-    if genomes_storage_path is None:
+def migrate(db_path):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
-    backup_genomes_storage_path = genomes_storage_path + '.v3'
-    shutil.copyfile(genomes_storage_path, backup_genomes_storage_path)
-
-    fp = h5py.File(genomes_storage_path, 'a')
+    fp = h5py.File(db_path, 'a')
 
     if fp.attrs['version'] != current_version:
       fp.close()
@@ -41,19 +37,19 @@ def update_genomes_storage(genomes_storage_path):
     fp.attrs['version'] = next_version
     fp.close()
 
-    run.info_single('The update is done! Your old genome storage file is saved as a backup at "%s". Feel free to\
-                     delete it if everything seems to be working (if you are seeing this message and yet you still\
-                     have not your command line back, you can kill this process by pressing CTRL + C and it will not\
-                     affect anything --for some reason in some cases the process just hangs, and we have not been\
-                     able to identify the problem).' % (backup_genomes_storage_path), nl_after=1, nl_before=1)
+    run.info_single('Your pan db is now %s  (if this process seems to be stuck here, and you are not seeing new lines,\
+                     you can kill this process by pressing CTRL + C once and things will likely continue just as expected\
+                     --for some reason in some cases the process just hangs, and we have not been able to identify the\
+                     problem).' % next_version, nl_after=1, nl_before=1, mc='green')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade genomes storage from version %s to version %s' % (current_version, next_version))
     parser.add_argument('genomes_storage', metavar = 'GENOMES_STORAGE', help = "An anvi'o genomes storage of version %s" % current_version)
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
-        update_genomes_storage(args.genomes_storage)
+        migrate(args.genomes_storage)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

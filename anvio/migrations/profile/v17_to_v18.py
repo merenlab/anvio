@@ -18,34 +18,17 @@ current_version = '17'
 next_version    = '18'
 
 
-def update_profile_db(profile_db_path, just_do_it = False):
-    if profile_db_path is None:
+def migrate(db_path):
+    if db_path is None:
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    dbops.is_profile_db(profile_db_path)
+    dbops.is_profile_db(db_path)
 
     # make sure the version is accurate
-    profile_db = db.DB(profile_db_path, None, ignore_version = True)
+    profile_db = db.DB(db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != current_version:
         raise ConfigError("Version of this profile database is not %s (hence, this script cannot really do anything)." % current_version)
-
-    if not just_do_it:
-        try:
-            run.warning("This script will upgrade your profile database from v%s to v%s. This upgrade will not work properly for merged\
-                         profiles: the best solution to upgrade merged profiles is to re-run anvi-merge. Why? Unfortunately due to an\
-                         earlier design flaw, anvi'o merged profile databases were not keeping the number of mapped reads for each\
-                         sample they had. There is no way anvi'o can figure out those numbers of you do not re-run the merging. But if\
-                         you are not willing to do it for a reason, that is OK. In this case anvi'o will just put 0's as the number of\
-                         mapped reads, and you will remember that this merged profile will not be as sharp as most other merged profile\
-                         friends in its classroom (yet it will still be special, and you will be proud of it and all). Anvi'o developers\
-                         are very sorry for making you go through these things. So. You can just press ENTER to continue.\
-                         If you want to cancel the upgrade and think more about it, press CTRL+C now. If you want to avoid\
-                         this message the next time, use '--just-do-it'." % (current_version, next_version))
-            input("Press ENTER to continue...\n")
-        except:
-            print()
-            sys.exit()
 
     is_merged = profile_db.get_meta_value('merged')
     is_blank = profile_db.get_meta_value('blank')
@@ -75,17 +58,16 @@ def update_profile_db(profile_db_path, just_do_it = False):
     profile_db.disconnect()
     progress.end()
 
-    run.info_single('Done! Your profile db is now %s.' % next_version)
+    run.info_single('Your profile db is now %s.' % next_version, nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade profile database from version %s to version %s' % (current_version, next_version))
     parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = "An anvi'o profile database of version %s" % current_version)
-    parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     try:
-        update_profile_db(args.profile_db, just_do_it = args.just_do_it)
+        migrate(args.profile_db)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

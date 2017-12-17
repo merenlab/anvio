@@ -43,8 +43,8 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
-__author__ = "Alon Shaiber"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -197,7 +197,8 @@ if __name__ == '__main__':
                             If you choose this option, you must also say which HMM source to use.')
     groupC.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
     groupC.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-    args = parser.parse_args()
+
+    args = anvio.get_args(parser)
 
     try:
         main(args)

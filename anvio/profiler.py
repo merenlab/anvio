@@ -22,8 +22,8 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 from anvio.errors import ConfigError
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -331,8 +331,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def store_split_coverages(self):
-        output_file = self.generate_output_destination('AUXILIARY-DATA.h5')
-        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True, open_in_append_mode=True)
+        output_file = self.generate_output_destination('AUXILIARY-DATA.db')
+        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True)
 
         contigs_counter = 1
         for contig in self.contigs:
@@ -341,6 +341,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             contigs_counter += 1
 
+        split_coverage_values.store()    
         split_coverage_values.close()
 
 
