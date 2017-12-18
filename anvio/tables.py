@@ -13,8 +13,8 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "10"
-profile_db_version = "22"
-pan_db_version = "7"
+profile_db_version = "23"
+pan_db_version = "8"
 samples_info_db_version = "2"
 auxiliary_data_version = "2"
 genomes_storage_vesion = "5"
@@ -34,7 +34,7 @@ versions_for_db_types = {'contigs': contigs_db_version,
 
 pan_gene_clusters_table_name           = 'gene_clusters'
 pan_gene_clusters_table_structure      = ['entry_id', 'gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
-pan_gene_clusters_table_types          = ['numeric' ,     'numeric'   ,         'str'       ,      'str'   ,        'str'       ]
+pan_gene_clusters_table_types          = ['numeric' ,     'numeric'   ,      'str'       ,     'str'    ,        'str'       ]
 
 
 ####################################################################################################
@@ -125,8 +125,16 @@ item_orders_table_structure          = ['name', 'type', 'data']
 item_orders_table_types              = [ 'str',  'str',  'str']
 
 item_additional_data_table_name      = 'item_additional_data'
-item_additional_data_table_structure = ['entry_id', 'item_name', 'key', 'value', 'type']
-item_additional_data_table_types     = [ 'numeric',   'text'   , 'str',  'str' ,  'str']
+item_additional_data_table_structure = ['entry_id', 'name', 'key', 'value', 'type']
+item_additional_data_table_types     = [ 'numeric', 'text', 'str',  'str' ,  'str']
+
+layer_orders_table_name              = 'item_orders'
+layer_orders_table_structure         = ['name', 'type', 'data']
+layer_orders_table_types             = [ 'str',  'str',  'str']
+
+layer_additional_data_table_name      = 'item_additional_data'
+layer_additional_data_table_structure = ['entry_id', 'name', 'key', 'value', 'type']
+layer_additional_data_table_types     = [ 'numeric', 'text', 'str',  'str' ,  'str']
 
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']
