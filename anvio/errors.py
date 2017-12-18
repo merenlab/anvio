@@ -41,7 +41,7 @@ class AnvioError(Exception, object):
         for error_line in error_lines[1:]:
             error_message.append('%s%s' % (' ' * (len(self.error_type) + 2), error_line))
 
-        if '--debug' in sys.argv:
+        if anvio.DEBUG:
             exc_type, exc_value, exc_traceback = sys.exc_info()
 
             sep = color_text('=' * 80, 'red')
