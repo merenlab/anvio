@@ -3617,6 +3617,9 @@ class TablesForCollections(Table):
     def append(self, collection_name, collection_dict, bins_info_dict={}):
         utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
 
+        for bin_name in collection_dict:
+            utils.is_this_name_OK_for_database('bin name', bin_name, stringent=False)
+
         if bins_info_dict:
             if set(collection_dict.keys()) - set(bins_info_dict.keys()):
                 raise ConfigError('Bins in the collection dict do not match to the ones in the bins info dict.\
