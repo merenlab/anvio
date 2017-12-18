@@ -155,6 +155,7 @@ class GenomeStorage(object):
         self.db.create_table(t.genome_info_table_name, t.genome_info_table_structure, t.genome_info_table_types)
         self.db.create_table(t.gene_info_table_name, t.gene_info_table_structure, t.gene_info_table_types)
         self.db.create_table(t.genome_gene_function_calls_table_name, t.genome_gene_function_calls_table_structure, t.genome_gene_function_calls_table_types)
+        self.db._exec("CREATE INDEX covering_index ON %s (gene_callers_id, genome_name);" % t.genome_gene_function_calls_table_name)
 
         self.db.set_meta_value('db_type', self.db_type)
         self.db.set_meta_value('creation_date', time.time())
