@@ -2494,33 +2494,32 @@ class KMerTablesForContigsAndSplits:
         db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.kmers_table_structure)))), self.db_entries)
 
 
-class TableForItemAdditionalData(Table):
-    """Implements the item additional data class.
+class AdditionalDataBaseClass(Table, object):
+    """Implements additional data ops super class.
 
-       This is the class where we maintain the item additional data tables in anvi'o
-       pan and profile databases. Related issue: https://github.com/merenlab/anvio/issues/662.
+       See TableForItemAdditionalData for usage example.
     """
 
-    def __init__(self, args, r=run, p=progress, table_name=t.item_additional_data_table_name):
-        self.run = r
-        self.progress = p
-        self.table_name = table_name
-
+    def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
         self.just_do_it = A('just_do_it')
 
         if not self.db_path:
-            raise ConfigError("ItemAdditionalData class is inherited with args object that did not\
+            raise ConfigError("AdditionalDataBaseClass is inherited with args object that did not\
                                contain any database path :/ Even though any of the following would\
                                have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
+
+        if not self.table_name:
+            raise ConfigError("AdditionalDataBaseClass does not know anything about the table it should\
+                               be working with.")
 
         is_pan_or_profile_db(self.db_path)
         self.db_type = get_db_type(self.db_path)
         self.db_version = get_required_version_for_db(self.db_path)
 
         database = db.DB(self.db_path, self.db_version)
-        self.item_additional_data_keys = database.get_single_column_from_table(self.table_name, 'key')
+        self.additional_data_keys = database.get_single_column_from_table(self.table_name, 'key')
         database.disconnect()
 
         Table.__init__(self, self.db_path, self.db_version, self.run, self.progress)
@@ -2530,9 +2529,13 @@ class TableForItemAdditionalData(Table):
         filesnpaths.is_output_file_writable(output_file_path)
 
         keys, data = self.get()
-        utils.store_dict_as_TAB_delimited_file(data, output_file_path, headers=['item'] + keys)
 
-        self.run.info('Output file', output_file_path)
+        if not(len(data)):
+            raise ConfigError("Additional data table for %s is empty. There is nothing to export :/" % self.target)
+
+        utils.store_dict_as_TAB_delimited_file(data, output_file_path, headers=[self.target] + keys)
+
+        self.run.info('Output file for %s' % self.target, output_file_path)
 
 
     def get(self):
@@ -2541,81 +2544,209 @@ class TableForItemAdditionalData(Table):
         self.progress.new('Recovering item additional keys and data')
         self.progress.update('...')
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
-        item_additional_data = database.get_table_as_dict(self.table_name)
-        item_additional_data_keys = database.get_single_column_from_table(self.table_name, 'key', unique=True)
-        item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True)
+        additional_data = database.get_table_as_dict(self.table_name)
+        additional_data_keys = database.get_single_column_from_table(self.table_name, 'key', unique=True)
+        additional_data_names = database.get_single_column_from_table(self.table_name, 'name', unique=True)
         database.disconnect()
 
-        if not len(item_names):
+        if not len(additional_data_names):
             self.progress.end()
             return [], {}
 
         d = {}
-        for item_name in item_names:
-            d[item_name] = {}
+        for additional_data_name in additional_data_names:
+            d[additional_data_name] = {}
 
-        for entry in item_additional_data.values():
-            item_name = entry['item_name']
+        for entry in additional_data.values():
+            additional_data_name = entry['name']
             key = entry['key']
             value = entry['value']
 
             if entry['type'] in ['int', 'float']:
-                d[item_name][key] = eval(entry['type'])(value)
+                d[additional_data_name][key] = eval(entry['type'])(value)
             else:
-                d[item_name][key] = value
+                d[additional_data_name][key] = value
 
-        for item_name in d:
-            for key in item_additional_data_keys:
-                if key not in d[item_name]:
-                    d[item_name][key] = None
+        for additional_data_name in d:
+            for key in additional_data_keys:
+                if key not in d[additional_data_name]:
+                    d[additional_data_name][key] = None
 
         self.progress.end()
 
-        return item_additional_data_keys, d
+        return additional_data_keys, d
 
 
-    def remove(self, keys_list):
-        '''Give this guy a list of key, and watch their demise.'''
+    def remove(self, data_keys_list):
+        '''Give this guy a list of key for additional data, and watch their demise.'''
 
-        if not isinstance(keys_list, list):
-            raise ConfigError("The remove function in ItemAdditionalData class wants you to watch\
+        if not isinstance(data_keys_list, list):
+            raise ConfigError("The remove function in AdditionalDataBaseClass wants you to watch\
                                yourself before you wreck yourself. In other words, can you please\
-                               make sure the keys you send is of type `list` thankyouverymuch.")
+                               make sure the keys you send is of type `list` thankyouverymuch?")
 
         database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
-        item_additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
+        additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
 
-        if not len(item_additional_data_keys):
-            self.run.info_single('There is nothing to remove --the items additional data table is already empty :(')
+        if not len(additional_data_keys):
+            self.run.info_single('There is nothing to remove --the %s additional data table is already empty :(' % self.target)
             database.disconnect()
 
             return
 
-        missing_keys = [k for k in keys_list if k not in item_additional_data_keys]
+        missing_keys = [k for k in data_keys_list if k not in additional_data_keys]
         if len(missing_keys) and not self.just_do_it:
             database.disconnect()
             raise ConfigError("The following keys you wanted to remove from the items additional data table are\
                                not really in the table: '%s'. Anvi'o is confused :/" % (', '.join(missing_keys)))
 
-        if keys_list:
-            for key in keys_list:
-                if key not in item_additional_data_keys:
+        if data_keys_list:
+            for key in data_keys_list:
+                if key not in additional_data_keys:
                     # what the hell, user?
                     return
 
                 database._exec('''DELETE from %s WHERE key="%s"''' % (self.table_name, key))
 
-            self.run.warning("Data for the following keys removed from the database: '%s'. #SAD." % (', '.join(keys_list)))
+            self.run.warning("%s data for the following keys removed from the database: '%s'. #SAD." % (self.target, ', '.join(data_keys_list)))
         else:
             database._exec('''DELETE from %s''' % (self.table_name))
 
-            self.run.warning("All data from the items additional data table is removed (wow).")
+            self.run.warning("All data from the %s additional data table is removed (wow)." % self.target)
 
         database.disconnect()
 
 
-    def check_item_names(self, data_dict):
+    def populate_from_file(self, additional_data_file_path, skip_check_names=False):
+        filesnpaths.is_file_tab_delimited(additional_data_file_path)
+
+        data_keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
+        data_dict = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
+
+        if not len(data_keys):
+            raise ConfigError("There is something wrong with the additional data file for %s at %s.\
+                               It does not seem to have any additional keys for data :/" \
+                                            % (self.target, additional_data_file_path))
+
+        self.add(data_keys, data_dict, skip_check_names)
+
+
+    def add(self, data_keys_list, data_dict, skip_check_names=False):
+        """Main function to add data into the item additional data table.
+
+           * `data_dict`: a dictionary that should follow this format:
+
+                d = {
+                        'item_name_01': {'data_key_01': value,
+                                         'data_key_02': value,
+                                         'data_key_03': value
+                                         },
+                        'item_name_02': {'data_key_01': value,
+                                         'data_key_03': value,
+                                         },
+                        (...)
+                    }
+
+           * `data_keys_list`: is a list of keys one or more of which should appear for each item
+                               in `data_dict`.
+        """
+
+        if not isinstance(data_keys_list, list):
+            raise ConfigError("List of keys must be of type `list`. Go away.")
+
+        if not isinstance(data_dict, dict):
+            raise ConfigError("Nope. Your data must be of type `dict`.")
+
+        self.run.warning(None, 'New %s additional data...' % self.target, lc="yellow")
+        key_types = {}
+        for key in data_keys_list:
+            if '!' in key:
+                predicted_key_type = "stackedbar"
+            else:
+                type_class = utils.get_predicted_type_of_items_in_a_dict(data_dict, key)
+                predicted_key_type = type_class.__name__ if type_class else None
+
+            key_types[key] = predicted_key_type
+            self.run.info('Key "%s"' % key, 'Predicted type: %s' % (key_types[key]), \
+                                            nl_after = 1 if key == data_keys_list[-1] else 0)
+
+        # we be responsible here.
+        keys_already_in_db = [c for c in data_keys_list if c in self.additional_data_keys]
+        if len(keys_already_in_db):
+            if self.just_do_it:
+                self.run.warning('The following keys in your data dict will replace the ones that are already\
+                                  in your %s database: %s.' % (self.db_type, ', '.join(keys_already_in_db)))
+
+                self.remove(keys_already_in_db)
+            else:
+                run.info('Keys already in the db', ', '.join(keys_already_in_db), nl_before=2, mc='red')
+
+                raise ConfigError("Some of the keys in your new data appear to be in the database already. If you\
+                                   want to replace those in the database with the ones in your new data use the\
+                                   `--just-do-it` flag, and watch anvi'o make an exception just for you and complain\
+                                   about nothin' for this once.")
+
+        if skip_check_names:
+            self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of the names of your %s\
+                              between your additional data and the %s database you are attempting to update. So be it.\
+                              Anvi'o will not check anything, but if things don't look the way you expected them to look,\
+                              you will not blame anvi'o for your poorly prepared data, but choose between yourself or\
+                              Obama." % (self.target, self.db_type))
+        else:
+            self.check_names(data_dict)
+
+        db_entries = []
+        self.set_next_available_id(self.table_name)
+        for item_name in data_dict:
+            for key in data_dict[item_name]:
+                db_entries.append(tuple([self.next_id(self.table_name),
+                                         item_name,
+                                         key,
+                                         data_dict[item_name][key],
+                                         key_types[key]]))
+
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, db_entries)
+        database.disconnect()
+
+        self.run.info('New data added to the db for your %s' % self.target, '%s.' % (', '.join(data_keys_list)))
+
+
+    def list_keys(self):
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
+
+        if not len(additional_data_keys):
+            self.run.info_single('There are no additional data for %s in this database :/' % self.target, nl_before=1, nl_after=1, mc='red')
+        else:
+            self.run.warning('', 'AVAILABLE DATA KEYS FOR %s (%d FOUND)' % (self.target.upper(), len(additional_data_keys)), lc='yellow')
+            for key in additional_data_keys:
+                rows = database.get_some_rows_from_table_as_dict(self.table_name, 'key="%s"' % key)
+                self.run.info_single('%s (%s, describes %d %s)' % (key, list(rows.values())[0]['type'], len(rows), self.target),
+                                     nl_after = 1 if key == additional_data_keys[-1] else 0)
+
+        database.disconnect()
+
+
+class TableForItemAdditionalData(AdditionalDataBaseClass):
+    """
+       This is the class where we maintain the item additional data table in anvi'o
+       pan and profile databases. Related issue: https://github.com/merenlab/anvio/issues/662.
+    """
+    def __init__(self, args, r=run, p=progress):
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.table_name = A('table_name') or t.item_additional_data_table_name
+
+        self.target = 'items'
+
+        AdditionalDataBaseClass.__init__(self, args)
+
+
+    def check_names(self, data_dict):
         """Compares item names found in the data dict to the ones in the db"""
 
         items_in_db = get_all_item_names_from_the_database(self.db_path)
@@ -2639,115 +2770,50 @@ class TableForItemAdditionalData(Table):
                                 % (len(items_in_db) - len(items_in_db_but_not_in_data), len(items_in_db), self.db_type))
 
 
-    def add(self, keys_list, data_dict, skip_check_names=False):
-        """Main function to add data into the item additional data table.
+class TableForLayerAdditionalData(AdditionalDataBaseClass):
+    """
+       This is the class where we maintain the layer additional data table in anvi'o
+       pan and profile databases.
 
-           * `data_dict`: a dictionary that should follow this format:
+       Once upon a time there was something called an anvi'o samples database. This
+       is one of two tables that made it irrelevant.
 
-                d = {
-                        'item_name_01': {'key_01': value,
-                                         'key_02': value,
-                                         'key_03': value
-                                         },
-                        'item_name_02': {'key_01': value,
-                                         'key_03': value,
-                                         },
-                        (...)
-                    }
+       Related issue: https://github.com/merenlab/anvio/issues/674.
+    """
 
-           * `keys_list`: is a list of keys one or more of which should appear for each item
-                          in `data_dict`.
-        """
+    def __init__(self, args, r=run, p=progress):
+        self.run = r
+        self.progress = p
+        self.table_name = t.layer_additional_data_table_name
 
-        if not isinstance(keys_list, list):
-            raise ConfigError("List of keys must be of type `list`. Go away.")
+        self.target = 'layers'
 
-        if not isinstance(data_dict, dict):
-            raise ConfigError("Nope. Your data must be of type `dict`.")
-
-        self.run.warning(None, 'New additional data...', lc="yellow")
-        key_types = {}
-        for key in keys_list:
-            if '!' in key:
-                predicted_key_type = "stackedbar"
-            else:
-                type_class = utils.get_predicted_type_of_items_in_a_dict(data_dict, key)
-                predicted_key_type = type_class.__name__ if type_class else None
-
-            key_types[key] = predicted_key_type
-            self.run.info('Key "%s"' % key, 'Predicted type: %s' % (key_types[key]), \
-                                            nl_after = 1 if key == keys_list[-1] else 0)
-
-        # we be responsible here.
-        keys_already_in_db = [c for c in keys_list if c in self.item_additional_data_keys]
-        if len(keys_already_in_db):
-            if self.just_do_it:
-                self.run.warning('The following keys in your data dict will replace the ones that are already\
-                                  in your %s database: %s.' % (self.db_type, ', '.join(keys_already_in_db)))
-
-                self.remove(keys_already_in_db)
-            else:
-                run.info('Keys already in the db', ', '.join(keys_already_in_db), nl_before=2, mc='red')
-
-                raise ConfigError("Some of the keys in your new data appear to be in the database already. If you\
-                                   want to replace those in the database with the ones in your new data use the\
-                                   `--just-do-it` flag, and watch anvi'o make an exception just for you and complain\
-                                   about nothin' for this once.")
-
-        if skip_check_names:
-            self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of item names\
-                              between your additional data and the %s database you are attempting to update. So be it.\
-                              Anvi'o will not check anything, but if things don't look the way you expected them to look,\
-                              you will not blame anvi'o for your poorly prepared data, but choose between yourself or\
-                              Obama." % (self.db_type))
-        else:
-            self.check_item_names(data_dict)
-
-        db_entries = []
-        self.set_next_available_id(self.table_name)
-        for item_name in data_dict:
-            for key in data_dict[item_name]:
-                db_entries.append(tuple([self.next_id(self.table_name),
-                                         item_name,
-                                         key,
-                                         data_dict[item_name][key],
-                                         key_types[key]]))
-
-        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, db_entries)
-        database.disconnect()
-
-        self.run.info('New data added to the db', '%s.' % (', '.join(keys_list)))
+        AdditionalDataBaseClass.__init__(self, args)
 
 
-    def list_keys(self):
-        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
-        item_additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
+    def check_names(self, data_dict):
+        """Compares layer names found in the data dict to the ones in the db"""
 
-        if not len(item_additional_data_keys):
-            self.run.info_single('There are no item additional data in this database :/', nl_before=1, nl_after=1, mc='red')
-        else:
-            self.run.warning('', 'AVAILABLE DATA KEYS (%d FOUND)' % (len(item_additional_data_keys)), lc='yellow')
-            for key in item_additional_data_keys:
-                rows = database.get_some_rows_from_table_as_dict(self.table_name, 'key="%s"' % key)
-                self.run.info_single('%s (%s, describes %d items)' % (key, list(rows.values())[0]['type'], len(rows)),
-                                     nl_after = 1 if key == item_additional_data_keys[-1] else 0)
+        layers_in_db = get_all_sample_names_from_the_database(self.db_path)
+        layers_in_data = set(data_dict.keys())
 
-        database.disconnect()
+        layers_in_data_but_not_in_db = layers_in_data.difference(layers_in_db)
+        if len(layers_in_data_but_not_in_db):
+            raise ConfigError("Well. %d of %d item names in your additional data are only in your data (which\
+                               that they are not in the %s database you are working with (which means bad news)).\
+                               Since there is no reason to add additional data for items that do not exist in your\
+                               database, anvi'o will stop you right there. Please fix your data and come again. In\
+                               case you want to see a random item that is only in your data, here is one: %s. Stuff\
+                               in your db looks like this: %s." \
+                                    % (len(layers_in_data_but_not_in_db), len(layers_in_data), self.db_type, \
+                                       layers_in_data_but_not_in_db.pop(), layers_in_db.pop()))
 
+        layers_in_db_but_not_in_data = layers_in_db.difference(layers_in_data)
+        if len(layers_in_db_but_not_in_data):
+            self.run.warning("Your input contains additional data for only %d of %d total number of items in your %s\
+                              database. Just wanted to make sure you know what's up, but we cool." \
+                                % (len(layers_in_db) - len(layers_in_db_but_not_in_data), len(layers_in_db), self.db_type))
 
-    def populate_from_file(self, additional_data_file_path, skip_check_names=False):
-        filesnpaths.is_file_tab_delimited(additional_data_file_path)
-
-        keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
-        data = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
-
-        if not len(keys):
-            raise ConfigError("There is something wrong with the additional data file at %s.\
-                               It does not seem to have any additional keys for data :/" \
-                                            % (additional_data_file_path))
-
-        self.add(keys, data, skip_check_names)
 
 
 class TablesForViews(Table):
@@ -4517,6 +4583,40 @@ def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path, gene_
                                                    item_names=gene_caller_ids)
 
     return output_file_path
+
+
+def get_all_sample_names_from_the_database(db_path):
+    """Returns all 'sample' names from a given database. At least it tries."""
+
+    db_type = get_db_type(db_path)
+    database = db.DB(db_path, get_required_version_for_db(db_path))
+
+    if db_type == 'profile':
+        samples = []
+        try:
+            samples = database.get_meta_value('samples').split(',')
+        except:
+            pass
+
+        return samples
+
+    elif db_type == 'pan':
+        internal_genome_names, external_genome_names = [], []
+        try:
+            internal_genome_names = database.get_meta_value('internal_genome_names').split(',')
+        except:
+            pass
+
+        try:
+            external_genome_names = database.get_meta_value('external_genome_names').split(',')
+        except:
+            pass
+
+        return [s for s in internal_genome_names + external_genome_names if s]
+
+    else:
+        raise ConfigError("`get_all_item_names_from_the_database` function does not know how to deal\
+                            with %s databases." % db_type)
 
 
 def get_all_item_names_from_the_database(db_path):
