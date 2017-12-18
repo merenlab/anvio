@@ -686,6 +686,16 @@ D = {
             {'metavar': 'BIN_NAME',
              'help': "Bin name you are interested in."}
                 ),
+    'bin-names-list': (
+            ['-b', '--bin-names-list'],
+            {'metavar': 'BIN NAMES',
+             'help': "Comma-separated list of bin names."}
+                ),
+    'new-bin-name': (
+            ['-B', '--new-bin-name'],
+            {'metavar': 'BIN NAME',
+             'help': "The new bin name."}
+                ),
     'bin-ids-file': (
             ['-B', '--bin-ids-file'],
             {'metavar': 'FILE_PATH',
@@ -1462,3 +1472,5 @@ __genomes_storage_version__  = set_version()
 if '-v' in sys.argv or '--version' in sys.argv:
     print_version()
     sys.exit()
+
+DEBUG = '--debug' in sys.argv
