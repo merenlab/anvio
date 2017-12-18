@@ -7,6 +7,7 @@ import sys
 import textwrap
 import traceback
 
+import anvio
 from anvio.ttycolors import color_text
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
