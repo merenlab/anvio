@@ -468,7 +468,13 @@ class Pangenome(object):
 
         item_additional_data_table = dbops.TableForItemAdditionalData(self.args)
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'SCG']
-        item_additional_data_table.add(item_additional_data_keys, self.additional_view_data)
+        item_additional_data_table.add(item_additional_data_keys, self.additional_view_data, skip_check_names=True)
+        #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
+        #                                                                                   /
+        # here we say skip_check_names=True, simply because there is no gene_clusters table has not been
+        # generated yet, but the check names functionality in dbops looks for the gene clsuters table to
+        # be certain. it is not a big deal here, since we absoluely know what gene cluster names we are
+        # working with.
 
         ########################################################################################
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
