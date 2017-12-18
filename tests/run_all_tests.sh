@@ -166,6 +166,12 @@ anvi-import-collection $files/example_files_for_external_binning_results/externa
                        --bins-info $files/example_files_for_external_binning_results/example_bins_info_file.txt \
                        --contigs-mode
 
+INFO "Merging Bin_2 and Bin_3 into a new bin in the collection 'CONTIGS_IMPORTED'"
+anvi-merge-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                --collection-name 'CONTIGS_IMPORTED' \
+                --bin-names-list Bin_2,Bin_3 \
+                --new-bin-name merged_bins
+
 INFO "Exporting the 'CONTIGS_IMPORTED' collection that was just imported"
 anvi-export-collection -p $output_dir/SAMPLES-MERGED/PROFILE.db -C CONTIGS_IMPORTED --output-file-prefix $output_dir/exported-collection
 
