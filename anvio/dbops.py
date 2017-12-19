@@ -1754,6 +1754,8 @@ class ProfileDatabase:
         # creating empty default tables
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
         self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
+        self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
+        self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
         self.db.create_table(t.variable_aas_table_name, t.variable_aas_table_structure, t.variable_aas_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
@@ -1845,6 +1847,8 @@ class PanDatabase:
         # creating empty default tables for standard anvi'o pan dbs
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
         self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
+        self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
+        self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
@@ -2618,7 +2622,14 @@ class AdditionalDataBaseClass(Table, object):
         database.disconnect()
 
 
-    def populate_from_file(self, additional_data_file_path, skip_check_names=False):
+    def populate_from_file(self, additional_data_file_path, skip_check_names=None):
+
+        if skip_check_names is None and is_blank_profile(self.db_path) and self.target == 'items':
+            # FIXME: this BS is here because blank abvi'o profiles do not know what items they have,
+            #        hence the get_all_item_names_from_the_database function eventually explodes if we
+            #        don't skip check names.
+            skip_check_names = True
+
         filesnpaths.is_file_tab_delimited(additional_data_file_path)
 
         data_keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
@@ -2694,7 +2705,13 @@ class AdditionalDataBaseClass(Table, object):
                               you will not blame anvi'o for your poorly prepared data, but choose between yourself or\
                               Obama." % (self.target, self.db_type))
         else:
-            self.check_names(data_dict)
+            if self.target == 'items':
+                TableForItemAdditionalData.check_names(self, data_dict)
+            elif self.target == 'layers':
+                TableForLayerAdditionalData.check_names(self, data_dict)
+            else:
+                raise ConfigError("Congratulations, you managed to hit an uncharted are in anvi'o. It is cerrtainly very\
+                                   curious how you got here unless you are trying to implement a new functionality.")
 
         db_entries = []
         self.set_next_available_id(self.table_name)
@@ -2784,7 +2801,9 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
     def __init__(self, args, r=run, p=progress):
         self.run = r
         self.progress = p
-        self.table_name = t.layer_additional_data_table_name
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.table_name = A('table_name') or t.layer_additional_data_table_name
 
         self.target = 'layers'
 
@@ -2810,10 +2829,35 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
 
         layers_in_db_but_not_in_data = layers_in_db.difference(layers_in_data)
         if len(layers_in_db_but_not_in_data):
-            self.run.warning("Your input contains additional data for only %d of %d total number of items in your %s\
+            self.run.warning("Your input contains additional data for only %d of %d total number of layers in your %s\
                               database. Just wanted to make sure you know what's up, but we cool." \
                                 % (len(layers_in_db) - len(layers_in_db_but_not_in_data), len(layers_in_db), self.db_type))
 
+
+class AdditionalDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalData):
+    """Gives seamless access to additional data tables.
+
+       Create an instance with args.additional_data_table = [items|layers|layer_orders]
+    """
+
+    def __init__(self, args, r=run, p=progress):
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        additional_data_table = A('additional_data_table')
+
+        if not additional_data_table:
+            raise ConfigError("When creating an instance from the AdditionalDataTableFactory class, the `args` object\
+                               must contain the `additional_data_table` variable.")
+
+        if additional_data_table == 'items':
+            TableForItemAdditionalData.__init__(self, args)
+        elif additional_data_table == 'layers':
+            TableForLayerAdditionalData.__init__(self, args)
+        else:
+            raise ConfigError("AdditionalDataTableFactory does not knonw about additional data tables for '%s' :(" \
+                                                                            % additional_data_table)
 
 
 class TablesForViews(Table):
