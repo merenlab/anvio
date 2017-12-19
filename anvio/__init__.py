@@ -325,6 +325,12 @@ D = {
                       every column. Anvi'o will try to deal with missing data nicely. Each column in this\
                       file will be visualized as a new layer in the tree."}
                 ),
+    'additional-data-table': (
+            ['-F', '--additional-data-table'],
+            {'metavar': 'NAME',
+             'help': "The additional table you are interested in accessing. Currently it an be 'items' or 'layers'\
+                      See most up-to-date online documentation for more information."}
+                ),
     'view': (
             ['--view'],
             {'metavar': 'NAME',
