@@ -5,7 +5,6 @@
 import sys
 import argparse
 
-
 import anvio
 import anvio.dbops as dbops
 
@@ -23,11 +22,11 @@ __email__ = "a.murat.eren@gmail.com"
 def main(args):
     # - you're ugly.
     # - no u :(
-    dbops.TableForItemAdditionalData(args).populate_from_file(args.data_file, skip_check_names=dbops.is_blank_profile(args.pan_or_profile_db))
+    dbops.AdditionalDataTableFactory(args).populate_from_file(args.data_file)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Import items additional data into pan and profile databases")
+    parser = argparse.ArgumentParser(description="Populate additional data tables in pan and profile databases.")
 
     parser.add_argument('data_file', metavar = "TAB DELIMITED FILE", help = 'The input file that describes additional data\
                         for each item. See this is as a table, where each the first column of each row is a split name,\
@@ -35,6 +34,7 @@ if __name__ == '__main__':
                         To get an example file to populate, you can use the program anvi-export-items-additional-data.')
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
+    parser.add_argument(*anvio.A('additional-data-table'), **anvio.K('additional-data-table', {'required': True}))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
