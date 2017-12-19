@@ -4690,6 +4690,6 @@ def get_all_item_names_from_the_database(db_path):
     if not len(all_items):
         raise ConfigError("dbops::get_all_item_names_from_the_database speaking. Something that should never happen happened :/\
                             There seems to be nothing in this %s database. Anvi'o is as confused as you are. Please get in touch\
-                            with a developer. They will love this story.")
+                            with a developer. They will love this story." % db_path)
 
     return all_items
