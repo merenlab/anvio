@@ -86,6 +86,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.bin_ids_file_path = A('bin_ids_file')
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
+        self.gene_view = A('gene_view')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
@@ -116,6 +117,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.mode:
             if self.manual_mode:
                 self.mode = 'manual'
+            elif self.gene_view:
+                # collection mode and gene view mode both uses collection_name
+                # so gene_view needs to be placed before collection view
+                self.mode = 'gene'
             elif self.collection_name or self.list_collections:
                 self.mode = 'collection'
             else:
@@ -148,6 +153,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Interactive mode', self.mode, mc='green')
         if self.mode == 'manual':
             self.load_manual_mode()
+        elif self.mode == 'gene':
+            self.load_gene_mode()
         elif self.mode == 'refine':
             self.load_full_mode()
             self.load_refine_mode()
@@ -889,6 +896,59 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 raise ConfigError("The requested state ('%s') is not available for this run. Please see\
                                           available states by running this program with --show-states flag." % self.state_autoload)
 
+        print(self.views)
+
+
+    def load_gene_mode(self):
+        ProfileSuperclass.__init__(self, self.args)
+
+        # init item additional data
+        ProfileSuperclass.init_items_additional_data(self)
+
+        self.init_gene_level_coverage_stats_dicts()
+
+        all_views = next(iter(next(iter(self.gene_level_coverage_stats_dict.values())).values())).keys()
+
+        for view in all_views:
+            self.views[view] = {
+                'table_name': 'genes', 
+                'header': self.p_meta['samples'], 
+                'dict': {}
+                }
+
+        self.collections.populate_collections_dict(self.profile_db_path)
+        splits_of_interest = self.collections.get_collection_dict(self.collection_name)[self.bin_id]
+
+        for split_name in splits_of_interest:
+            genes_in_splits_entries = self.split_name_to_genes_in_splits_entry_ids[split_name]
+
+            for genes_in_splits_entry in genes_in_splits_entries:
+                e = self.genes_in_splits[genes_in_splits_entry]
+                gene_callers_id = e['gene_callers_id']
+
+                for view in all_views:
+                    self.views[view]['dict'][gene_callers_id] = {}
+                    for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
+                        self.views[view]['dict'][gene_callers_id][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
+                        
+
+        self.states_table = TablesForStates(self.profile_db_path)
+
+        self.p_meta['default_item_order'] = 'something'
+        self.p_meta['available_item_orders'].append(item_order_name)
+        self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
+        
+        # for view in all_views:
+        #     self.views[view] =
+        #     for gene_callers_id in self.gene_level_coverage_stats_dict():
+        #         for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
+
+            # table_name = views_table[view]['target_table']
+            # self.views[view] = {'table_name': table_name,
+            #                     'header': pan_db.db.get_table_structure(table_name)[1:],
+            #                     'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
+
+        
 
     def add_user_tree(self):
         if self.tree:
