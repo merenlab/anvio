@@ -72,7 +72,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export a collection from an anvi'o database")
+    parser = argparse.ArgumentParser(description="Merge a given set of bins in an anvi'o collection")
 
     groupA = parser.add_argument_group("DB AND COLLECTION", "Simple enough. This guy needs a pan or profile database\
                                         and a collection name. You can get a list of available collections with another\
