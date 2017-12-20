@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Populate additional data tables"""
+"""Populate misc data tables"""
 
 import sys
 import argparse
@@ -26,15 +26,16 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Populate additional data tables in pan and profile databases.")
+    parser = argparse.ArgumentParser(description="Populate additional data or order tables in pan or profile databases for items or layers (the swiss army knife level stuff).")
 
-    parser.add_argument('data_file', metavar = "TAB DELIMITED FILE", help = 'The input file that describes additional data\
-                        for each item. See this is as a table, where each the first column of each row is a split name,\
-                        or a gene cluster id, and each column is a data. Here is an example: https://goo.gl/3ACBgL. \
-                        To get an example file to populate, you can use the program anvi-export-items-additional-data.')
+    parser.add_argument('data_file', metavar = "TAB DELIMITED FILE", help = 'The input file that describes an additional data\
+                        for layers or items. The expected format of this file depends on the data table you will target. This\
+                        can feel complicated, but we promise it is not (you probably have a PhD or working on one, so trust us\
+                        when we say "it is not complicated"). You need to read the online documentation if this is your first\
+                        time with this.')
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
-    parser.add_argument(*anvio.A('additional-data-table'), **anvio.K('additional-data-table', {'required': True}))
+    parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
