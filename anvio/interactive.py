@@ -99,10 +99,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.samples_information_dict = {}
         self.samples_order_dict = {}
-        self.samples_information_default_layer_order = {}
 
+        # dictionaries for additional data --these guys are all going to be filled up by item and layer
+        # additional data, and layer order data tables in pan and profile databases.
         self.items_additional_data_dict = {}
         self.items_additional_data_keys = []
+        self.layers_additional_data_dict = {}
+        self.layers_additional_data_keys = []
+        self.layers_order_data_dict = {}
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
@@ -127,7 +131,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.samples_information_db_path:
             samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
             self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
-            self.samples_information_default_layer_order = samples_information_db.get_samples_information_default_layer_order()
             samples_information_db.disconnect()
 
         if self.contigs_db_path:
@@ -538,8 +541,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['description'] = get_description_in_db(self.profile_db_path)
 
         # get additional data
-        items_additional_data_table = dbops.TableForItemAdditionalData(self.args)
-        self.items_additional_data_keys, self.items_additional_data_dict = items_additional_data_table.get()
+        self.items_additional_data_keys, self.items_additional_data_dict = dbops.TableForItemAdditionalData(self.args).get()
+        self.layers_additional_data_keys, self.layers_additional_data_dict = dbops.TableForLayerAdditionalData(self.args).get()
+        self.layers_order_data_dict = dbops.TableForLayerOrders(self.args).get()
 
         if self.title:
             self.title = self.title
