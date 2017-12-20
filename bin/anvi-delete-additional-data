@@ -5,7 +5,6 @@
 import sys
 import argparse
 
-
 import anvio
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -33,7 +32,7 @@ def main(args):
 
     keys_to_remove = [k.strip() for k in args.keys_to_remove.split(',')] if args.keys_to_remove else []
 
-    table_for_additional_data.remove(keys_list = keys_to_remove)
+    table_for_additional_data.remove(data_keys_list = keys_to_remove)
 
 
 if __name__ == '__main__':
