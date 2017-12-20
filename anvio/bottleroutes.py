@@ -260,9 +260,9 @@ class BottleApplication(Bottle):
                                  "readOnly":                           self.read_only,
                                  "binPrefix":                          bin_prefix,
                                  "sessionId":                          self.unique_session_id,
-                                 "samplesOrder":                       self.interactive.samples_order_dict,
-                                 "sampleInformation":                  self.interactive.samples_information_dict,
-                                 "sampleInformationDefaultLayerOrder": self.interactive.samples_information_default_layer_order,
+                                 "samplesOrder":                       self.interactive.layers_order_data_dict,
+                                 "sampleInformation":                  self.interactive.layers_additional_data_dict,
+                                 "sampleInformationDefaultLayerOrder": self.interactive.layers_additional_data_keys,
                                  "stateAutoload":                      self.interactive.state_autoload,
                                  "collectionAutoload":                 self.interactive.collection_autoload,
                                  "noPing":                             False,
@@ -826,10 +826,10 @@ class BottleApplication(Bottle):
                     utils.store_dict_as_TAB_delimited_file(self.interactive.samples_order_dict, samples_order_path, headers=['attributes', 'basic', 'newick'])
                     args.samples_order_file = samples_order_path
 
-                if len(self.interactive.samples_information_dict):
-                    samples_info_path = filesnpaths.get_temp_file_path()
-                    utils.store_dict_as_TAB_delimited_file(self.interactive.samples_information_dict, samples_info_path)
-                    args.samples_information_file = samples_info_path
+                if len(self.interactive.layers_additional_data_dict):
+                    layers_additional_data_path = filesnpaths.get_temp_file_path()
+                    utils.store_dict_as_TAB_delimited_file(self.interactive.layers_additional_data_dict, layers_additional_data_path)
+                    args.layers_additional_data_file = layers_additional_data_path
 
             collection_name = request.forms.get('collection')
             if collection_name in self.interactive.collections.collections_dict:
