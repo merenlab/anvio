@@ -33,7 +33,6 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
-from anvio.dbops import SamplesInformationDatabase
 from anvio.errors import RefineError, ConfigError
 
 
