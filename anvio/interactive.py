@@ -97,9 +97,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.auxiliary_profile_data_available = False
 
         # get additional data for items and layers, and get layer orders data.
-        self.items_additional_data_keys, self.items_additional_data_dict = dbops.TableForItemAdditionalData(self.args).get()
-        self.layers_additional_data_keys, self.layers_additional_data_dict = dbops.TableForLayerAdditionalData(self.args).get()
-        self.layers_order_data_dict = dbops.TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict)
+        a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
+        self.items_additional_data_keys, self.items_additional_data_dict = dbops.TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+        self.layers_additional_data_keys, self.layers_additional_data_dict = dbops.TableForLayerAdditionalData(self.args).get() if a_db_is_found else ([], {})
+        self.layers_order_data_dict = dbops.TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict) if a_db_is_found else {}
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
