@@ -187,7 +187,6 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         data_keys_list = list(data_dict.keys())
         data_key_types = {}
         for key in data_keys_list:
-            print('sik')
             predicted_key_type = data_dict[key]['data_type']
             data_key_types[key] = predicted_key_type
 
