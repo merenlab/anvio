@@ -10,16 +10,13 @@
 
 import time
 import hashlib
-import argparse
 
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.fastalib as fastalib
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 
@@ -86,7 +83,7 @@ class GenomeStorage(object):
 
         if self.storage_path.endswith('.h5'):
             raise ConfigError("We recenlty switched from HD5 files (.h5) to Sqlite (.db) files for the genome storage, \
-                              you can upgrade your genome storage using script 'anvi-script-upgrade-genomes-storage-v4-to-v5'.")
+                              you can upgrade your genome storage by running 'anvi-migrate-db %s'." % self.storage_path)
 
         filesnpaths.is_file_exists(self.storage_path)
 
