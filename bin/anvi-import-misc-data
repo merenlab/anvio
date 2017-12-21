@@ -22,7 +22,7 @@ __email__ = "a.murat.eren@gmail.com"
 def main(args):
     # - you're ugly.
     # - no u :(
-    dbops.AdditionalDataTableFactory(args).populate_from_file(args.data_file)
+    dbops.MiscDataTableFactory(args).populate_from_file(args.data_file)
 
 
 if __name__ == '__main__':

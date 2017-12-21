@@ -3061,8 +3061,8 @@ class TableForLayerOrders(OrderDataBaseClass):
                                                                      ', '.join(layers_in_db)))
 
 
-class AdditionalDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders):
-    """Gives seamless access to additional data or order tables.
+class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders):
+    """Gives seamless access to additional data or order tables in pan or profile databases.
 
        Create an instance with args.target_data_table = [items|layers|layer_orders], and you will be golden.
     """
@@ -3075,7 +3075,7 @@ class AdditionalDataTableFactory(TableForItemAdditionalData, TableForLayerAdditi
         target_data_table = A('target_data_table')
 
         if not target_data_table:
-            raise ConfigError("When creating an instance from the AdditionalDataTableFactory class, the `args` object\
+            raise ConfigError("When creating an instance from the MiscDataTableFactory class, the `args` object\
                                must contain the `target_data_table` variable.")
 
         if target_data_table == 'items':
@@ -3085,7 +3085,7 @@ class AdditionalDataTableFactory(TableForItemAdditionalData, TableForLayerAdditi
         elif target_data_table == 'layer_orders':
             TableForLayerOrders.__init__(self, args)
         else:
-            raise ConfigError("AdditionalDataTableFactory does not know about target data tables for '%s' :(\
+            raise ConfigError("MiscDataTableFactory does not know about target data tables for '%s' :(\
                                You can go to the online documentation, or you can try either 'items', 'layers',\
                                or 'layer_orders'" % target_data_table)
 
