@@ -24,7 +24,7 @@ run = terminal.Run()
 
 
 def main(args):
-    table_for_additional_data = dbops.AdditionalDataTableFactory(args)
+    table_for_additional_data = dbops.MiscDataTableFactory(args)
     table_for_additional_data.export(output_file_path=args.output_file)
 
 

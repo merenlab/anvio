@@ -24,7 +24,7 @@ run = terminal.Run()
 
 
 def main(args):
-    table_for_additional_data = dbops.AdditionalDataTableFactory(args)
+    table_for_additional_data = dbops.MiscDataTableFactory(args)
 
     if args.list_available_keys:
         table_for_additional_data.list_data_keys()
