@@ -14,7 +14,7 @@ import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -105,12 +105,6 @@ except FilesNPathsError as e:
 except DictIOError as e:
     print(e)
     sys.exit(-3)
-except SamplesError as e:
-    print(e)
-    sys.exit(-4)
-except HDF5Error as e:
-    print(e)
-    sys.exit(-5)
 
 if args.dry_run:
     run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
