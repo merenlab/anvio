@@ -177,9 +177,12 @@ def get_predicted_type_of_items_in_a_dict(d, key):
         return str
     else:
         for item in items:
-            if int(item or 0) == item:
-                continue
-            else:
+            try:
+                if int(item or 0) == item:
+                    continue
+                else:
+                    return float
+            except ValueError:
                 return float
 
         return int
