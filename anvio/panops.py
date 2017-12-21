@@ -468,7 +468,7 @@ class Pangenome(object):
 
         item_additional_data_table = dbops.TableForItemAdditionalData(self.args)
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'SCG']
-        item_additional_data_table.add(item_additional_data_keys, self.additional_view_data, skip_check_names=True)
+        item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
         #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
         #                                                                                   /
         # here we say skip_check_names=True, simply because there is no gene_clusters table has not been
@@ -564,68 +564,38 @@ class Pangenome(object):
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
-    # FIXME: these all need to be updated:
-    def gen_samples_db(self):
-        samples_info_file_path = self.gen_samples_info_file()
-        samples_order_file_path = self.gen_samples_order_file()
-
-        samples_db_output_path = self.get_output_file_path(self.project_name + '-SAMPLES.db', delete_if_exists=True)
-
-        s = dbops.SamplesInformationDatabase(samples_db_output_path, run=self.run, progress=self.progress, quiet=True)
-        s.create(samples_info_file_path, samples_order_file_path)
-
-
-    def gen_samples_order_file(self):
-        self.progress.new('Samples DB')
+    def populate_layers_additional_data_and_orders(self):
+        self.progress.new('Layers additional data and orders')
         self.progress.update('Copmputing the hierarchical clustering of the (transposed) view data')
 
-        samples_order_file_path = self.get_output_file_path(self.project_name + '-samples-order.txt')
-        samples_order = open(samples_order_file_path, 'w')
-        samples_order.write('attributes\tbasic\tnewick\n')
-
+        layer_orders_data_dict = {}
         for clustering_tuple in [('gene_cluster presence absence', self.view_data), ('gene_cluster frequencies', self.view_data_presence_absence)]:
             v, d = clustering_tuple
             newick = clustering.get_newick_tree_data_for_dict(d, transpose=True, distance = self.distance, linkage=self.linkage)
-            samples_order.write('%s\t\t%s\n' % (v, newick))
+            layer_orders_data_dict[v] = {'data_type': 'newick', 'data_value': newick}
 
-        samples_order.close()
+        self.progress.update('Generating layers additional data ..')
 
-        self.progress.end()
-
-        self.run.info("Anvi'o samples order", samples_order_file_path)
-
-        return samples_order_file_path
-
-
-    def gen_samples_info_file(self):
-        self.progress.new('Samples DB')
-        self.progress.update('Generating the samples information file ..')
-
-        samples_info_dict = {}
-        samples_info_file_path = self.get_output_file_path(self.project_name + '-samples-information.txt')
-
-        # set headers
-        headers = ['total_length']
+        layers_additional_data_dict = {}
+        layers_additional_data_keys = ['total_length']
 
         for h in ['percent_completion', 'percent_redundancy']:
             if h in list(self.genomes.values())[0]:
-                headers.append(h)
+                layers_additional_data_keys.append(h)
 
-        headers.extend(['gc_content', 'num_genes', 'avg_gene_length', 'num_genes_per_kb'])
+        layers_additional_data_keys.extend(['gc_content', 'num_genes', 'avg_gene_length', 'num_genes_per_kb'])
 
         for genome_name in self.genomes:
             new_dict = {}
-            for header in headers:
-                new_dict[header] = self.genomes[genome_name][header]
+            for key in layers_additional_data_keys:
+                new_dict[key] = self.genomes[genome_name][key]
 
-            samples_info_dict[genome_name] = new_dict
-
-        utils.store_dict_as_TAB_delimited_file(samples_info_dict, samples_info_file_path, headers=['samples'] + headers)
+            layers_additional_data_dict[genome_name] = new_dict
 
         self.progress.end()
-        self.run.info("Anvi'o samples information", samples_info_file_path)
 
-        return samples_info_file_path
+        dbops.TableForLayerOrders(self.args).add(layer_orders_data_dict)
+        dbops.TableForLayerAdditionalData(self.args).add(layers_additional_data_dict, layers_additional_data_keys)
 
 
     def sanity_check(self):
@@ -796,8 +766,8 @@ class Pangenome(object):
         # generate orderings of gene_clusters based on synteny of genes
         self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
 
-        # gen samples info and order files
-        self.gen_samples_db()
+        # populate layers additional data and orders
+        self.populate_layers_additional_data_and_orders()
 
         # done
         self.run.info('log file', self.run.log_file_path)
