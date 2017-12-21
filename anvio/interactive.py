@@ -100,13 +100,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.samples_information_dict = {}
         self.samples_order_dict = {}
 
-        # dictionaries for additional data --these guys are all going to be filled up by item and layer
-        # additional data, and layer order data tables in pan and profile databases.
-        self.items_additional_data_dict = {}
-        self.items_additional_data_keys = []
-        self.layers_additional_data_dict = {}
-        self.layers_additional_data_keys = []
-        self.layers_order_data_dict = {}
+        # get additional data for items and layers, and get layer orders data.
+        self.items_additional_data_keys, self.items_additional_data_dict = dbops.TableForItemAdditionalData(self.args).get()
+        self.layers_additional_data_keys, self.layers_additional_data_dict = dbops.TableForLayerAdditionalData(self.args).get()
+        self.layers_order_data_dict = dbops.TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict)
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
@@ -539,11 +536,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # read description from self table, if it is not available get_description function will return placeholder text
         self.p_meta['description'] = get_description_in_db(self.profile_db_path)
-
-        # get additional data
-        self.items_additional_data_keys, self.items_additional_data_dict = dbops.TableForItemAdditionalData(self.args).get()
-        self.layers_additional_data_keys, self.layers_additional_data_dict = dbops.TableForLayerAdditionalData(self.args).get()
-        self.layers_order_data_dict = dbops.TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict)
 
         if self.title:
             self.title = self.title
