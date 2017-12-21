@@ -2625,21 +2625,28 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         database.disconnect()
 
 
-    def data_dict_sanity_check(self, data_dict):
+    def data_dict_sanity_check(self, data_dict, treat_data_dict_as=None):
+        data_dict_type = treat_data_dict_as or self.target
+
         if not isinstance(data_dict, dict):
-            raise ConfigError("Nope. Your data must be of type `dict`.")
+            raise ConfigError("Nope. Your data must be of type %s, but it is a %s." % (type(dict()), type(data_dict)))
 
         if not len(data_dict):
-            raise ConfigError("The data dictionary seems to be empty. How dare you :(")
+            raise ConfigError("The data sent for sanity check seems to be empty.")
 
-        looks_like_layer_orders = sorted(list(data_dict.values())[0].keys()) == sorted(['data_type', 'data_value'])
+        # FIXME: we have two controls here. The first one is how we work with order data natively. The second one is how it
+        #        looks like when it is read through the .get() member function of the TableForLayerOrders because rest of
+        #        anvi'o does not know how to work with the native format. This should be fixed by teaching the rest of anvi'o
+        #        how to work with order data dicts in the native form.
+        looks_like_layer_orders = sorted(list(data_dict.values())[0].keys()) == sorted(['data_type', 'data_value']) or \
+                                  sorted(list(data_dict.values())[0].keys()) == sorted(['basic', 'newick'])
 
-        if looks_like_layer_orders and self.target is not 'layer_orders':
+        if looks_like_layer_orders and data_dict_type is not 'layer_orders':
             raise ConfigError("The data you sent here seems to describe an order, but you want anvi'o to treat it\
                                as additional data for %s. Not cool." % self.target)
 
-        if not looks_like_layer_orders and self.target is 'layer_orders':
-            raise ConfigError("The data you sent here does not describe a proper layer order data.")
+        if not looks_like_layer_orders and data_dict_type is 'layer_orders':
+            raise ConfigError("The data that claims to be a layer order data do not seem to be one.")
 
 
 class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
@@ -2649,8 +2656,17 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         AdditionalAndOrderDataBaseClass.__init__(self, args)
 
 
-    def get(self):
-        """Will return the layer order data dict."""
+    def get(self, additional_data_keys=None, additional_data_dict=None):
+        """Will return the layer order data dict.
+
+           If `additional_data_keys` and `additional_data_dict` variables are provided, it will return an order dict
+           with additioanl orders generated from data found in those. An example:
+
+                >>> layers_additional_data_table = TableForLayerAdditionalData(args)
+                >>> layer_orders_table = TableForLayerOrders(args)
+                >>> layer_additional_data_keys, layer_additional_data_dict = layers_additional_data_table.get()
+                >>> layer_orders_data_dict = layer_orders_table.get(layer_additional_data_keys, layer_additional_data_dict
+        """
 
         self.progress.new('Recovering layer order data')
         self.progress.update('...')
@@ -2671,7 +2687,29 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 raise ConfigError("Something is wrong :( Anvi'o just found an entry in %s table with an unrecognized\
                                    type of '%s'." % (self.target, data_type))
 
-        return d
+        if additional_data_keys and additional_data_dict:
+            return self.update_orders_dict_using_additional_data_dict(d, additional_data_keys, additional_data_dict)
+        else:
+            return d
+
+
+    def update_orders_dict_using_additional_data_dict(self, order_data_dict, additional_data_keys, additional_data_dict):
+        self.data_dict_sanity_check(order_data_dict, treat_data_dict_as='layer_orders')
+        self.data_dict_sanity_check(additional_data_dict, treat_data_dict_as='layers')
+
+        # FIXME: here we need to check whether the two dictionaries are in fact 'compatible' with respect to sample names
+        #        they describe.
+
+        for data_key in additional_data_keys:
+            if '!' in data_key:
+                # we don't order stacked bar charts
+                continue
+
+            layer_name_layer_data_tuples = [(additional_data_dict[layer][data_key], layer) for layer in additional_data_dict]
+            order_data_dict['>> ' + data_key] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples)])}
+            order_data_dict['>> ' + data_key + ' (reverse)'] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples, reverse=True)])}
+
+        return order_data_dict
 
 
     def add(self, data_dict, skip_check_names=False):
