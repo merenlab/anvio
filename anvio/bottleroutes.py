@@ -761,6 +761,7 @@ class BottleApplication(Bottle):
             tree_text = open(temp_tree_file,'rb').read().decode()
 
             if store_tree:
+                # FIXME: This will break:
                 if not self.interactive.samples_information_db_path:
                     raise ConfigError("This project does not have samples db")
 
@@ -821,6 +822,7 @@ class BottleApplication(Bottle):
                 args.description = description_path
 
             if request.forms.get('include_samples') == "true":
+                # FIXME: this will break
                 if len(self.interactive.samples_order_dict):
                     samples_order_path = filesnpaths.get_temp_file_path()
                     utils.store_dict_as_TAB_delimited_file(self.interactive.samples_order_dict, samples_order_path, headers=['attributes', 'basic', 'newick'])
