@@ -13,7 +13,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.summarizer as summarizer
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -141,9 +141,3 @@ if __name__ == '__main__':
     except DictIOError as e:
         print(e)
         sys.exit(-3)
-    except SamplesError as e:
-        print(e)
-        sys.exit(-4)
-    except HDF5Error as e:
-        print(e)
-        sys.exit(-5)
