@@ -9,6 +9,7 @@ import argparse
 
 import anvio.db as db
 import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
@@ -39,20 +40,43 @@ def get_temp_file_path():
     return temp_file_name
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None):
-    f = open(output_path, 'w')
+class Table(object):
+    def __init__(self, db_path, version, run=run, progress=progress, quiet=False, simple=False):
+        self.quiet = quiet
+        self.db_type = None
+        self.db_path = db_path
+        self.version = version
+        self.next_available_id = {}
 
-    f.write('%s\n' % '\t'.join(headers))
+        self.splits_info = None
+        self.contigs_info = None
+        self.split_length = None
+        self.genes_are_called = None
 
-    for k in sorted(d.keys()):
-        line = [str(k)]
-        for header in headers[1:]:
-            val = d[k][header]
-            line.append(str(val) if not isinstance(val, type(None)) else '')
+        self.run = run
+        self.progress = progress
 
-        f.write('%s\n' % '\t'.join(line))
+        database = db.DB(self.db_path, version, ignore_version=True)
+        self.db_type = database.get_meta_value('db_type')
 
-    f.close()
+
+    def next_id(self, table):
+        if table not in self.next_available_id:
+            raise ConfigError("If you need unique ids, you must call 'set_next_available_id' first")
+
+        self.next_available_id[table] += 1
+        return self.next_available_id[table] - 1
+
+
+    def set_next_available_id(self, table):
+        database = db.DB(self.db_path, self.version, ignore_version=True)
+        table_content = database.get_table_as_dict(table)
+        if table_content:
+            self.next_available_id[table] = max(table_content.keys()) + 1
+        else:
+            self.next_available_id[table] = 0
+
+        database.disconnect()
 
 
 class SamplesInformationDatabase:
@@ -108,10 +132,139 @@ class SamplesInformationDatabase:
 
         samples_information_dict, samples_order_dict = self.get_samples_information_and_order_dicts()
 
-        store_dict_as_TAB_delimited_file(samples_order_dict, order_output_path, headers=['attributes', 'data_type', 'data_value'])
-        store_dict_as_TAB_delimited_file(samples_information_dict, information_output_path, headers=['samples'] + sorted(list(list(samples_information_dict.values())[0].keys())))
+        utils.store_dict_as_TAB_delimited_file(samples_order_dict, order_output_path, headers=['attributes', 'data_type', 'data_value'])
+        utils.store_dict_as_TAB_delimited_file(samples_information_dict, information_output_path, headers=['samples'] + sorted(list(list(samples_information_dict.values())[0].keys())))
 
         return information_output_path, order_output_path
+
+
+class AdditionalAndOrderDataBaseClass(Table, object):
+    """This is a base class for common operations between order and additional data classes."""
+
+    def __init__(self, args):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
+        self.just_do_it = A('just_do_it')
+
+        if not self.db_path:
+            raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not\
+                               contain any database path :/ Even though any of the following would\
+                               have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
+
+        if not self.table_name:
+            raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should\
+                               be working with.")
+
+        database = db.DB(self.db_path, None, ignore_version=True)
+        self.additional_data_keys = database.get_single_column_from_table(self.table_name, 'data_key')
+        database.disconnect()
+
+        Table.__init__(self, self.db_path, None, self.run, self.progress)
+
+
+    def populate_from_file(self, additional_data_file_path, skip_check_names=None):
+        data_keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
+        data_dict = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
+
+        if not len(data_keys):
+            raise ConfigError("There is something wrong with the additional data file for %s at %s.\
+                               It does not seem to have any additional keys for data :/" \
+                                            % (self.target, additional_data_file_path))
+
+        if self.target == 'layer_orders':
+            OrderDataBaseClass.add(self, data_dict, skip_check_names)
+        else:
+            AdditionalDataBaseClass.add(self, data_dict, data_keys, skip_check_names)
+
+
+class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
+    """Implements a base class to deal with tables that keep order data."""
+
+    def __init__(self, args):
+        AdditionalAndOrderDataBaseClass.__init__(self, args)
+
+    def add(self, data_dict, skip_check_names=False):
+        data_keys_list = list(data_dict.keys())
+        data_key_types = {}
+        for key in data_keys_list:
+            print('sik')
+            predicted_key_type = data_dict[key]['data_type']
+            data_key_types[key] = predicted_key_type
+
+        db_entries = []
+        for item_name in data_dict:
+            db_entries.append(tuple([item_name,
+                                     data_dict[item_name]['data_type'],
+                                     data_dict[item_name]['data_value']]))
+
+        database = db.DB(self.db_path, None, ignore_version=True)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % self.table_name, db_entries)
+        database.disconnect()
+
+
+class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
+    """Implements additional data ops base class.
+
+       See TableForItemAdditionalData or TableForLayerAdditionalData for usage example.
+
+       See AdditionalAndOrderDataBaseClass for inherited functionality.
+    """
+
+    def __init__(self, args):
+        AdditionalAndOrderDataBaseClass.__init__(self, args)
+
+
+    def add(self, data_dict, data_keys_list, skip_check_names=False):
+        key_types = {}
+        for key in data_keys_list:
+            if '!' in key:
+                predicted_key_type = "stackedbar"
+            else:
+                type_class = utils.get_predicted_type_of_items_in_a_dict(data_dict, key)
+                predicted_key_type = type_class.__name__ if type_class else None
+
+            key_types[key] = predicted_key_type
+
+        db_entries = []
+        self.set_next_available_id(self.table_name)
+        for item_name in data_dict:
+            for key in data_dict[item_name]:
+                db_entries.append(tuple([self.next_id(self.table_name),
+                                         item_name,
+                                         key,
+                                         data_dict[item_name][key],
+                                         key_types[key]]))
+
+        database = db.DB(self.db_path, None, ignore_version=True)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, db_entries)
+        database.disconnect()
+
+
+class TableForLayerAdditionalData(AdditionalDataBaseClass):
+    def __init__(self, args, r=run, p=progress):
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.table_name = A('table_name') or layer_additional_data_table_name
+
+        self.target = 'layers'
+
+        AdditionalDataBaseClass.__init__(self, args)
+
+
+class TableForLayerOrders(OrderDataBaseClass):
+    def __init__(self, args, r=run, p=progress):
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.table_name = A('table_name') or layer_orders_table_name
+
+        self.allowde_types = ['newick', 'basic']
+        self.target = 'layer_orders'
+
+        OrderDataBaseClass.__init__(self, args)
 
 
 def check_samples_db_status():
@@ -185,21 +338,16 @@ def migrate(db_path):
     profile_db.set_version(next_version)
     profile_db.disconnect()
 
-    # THIS IS THE TRICKY PART, where things may go wrong in a couple of versions since we are
-    # using directly the dbops module to do the upgrade. so if those code changes in future versions
-    # and if a user wants to upgrade their 2 year old profile db, it may crash here. so we will do the
-    # entire thing in a try-catch block, so things still can go forward without the recovery of additional
-    # and order data from the samples database.
     if samples_db_path:
         try:
             samples_db = SamplesInformationDatabase(samples_db_path)
             layers_info_path, layers_order_path = samples_db.export_samples_db_files()
 
             args = argparse.Namespace(profile_db=db_path, target_data_table='layers')
-            dbops.TableForLayerAdditionalData(args).populate_from_file(layers_info_path)
+            TableForLayerAdditionalData(args).populate_from_file(layers_info_path)
 
             args = argparse.Namespace(profile_db=db_path, target_data_table='layers')
-            dbops.TableForLayerOrders(args).populate_from_file(layers_order_path)
+            TableForLayerOrders(args).populate_from_file(layers_order_path)
 
             os.remove(layers_info_path)
             os.remove(layers_order_path)
