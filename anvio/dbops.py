@@ -2919,7 +2919,13 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                               you will not blame anvi'o for your poorly prepared data, but choose between yourself or\
                               Obama." % (self.target, self.db_type))
         else:
-            TableForItemAdditionalData.check_names(self, data_dict)
+            if self.target == 'layers':
+                TableForLayerAdditionalData.check_names(self, data_dict)
+            elif self.target == 'items':
+                TableForItemAdditionalData.check_names(self, data_dict)
+            else:
+                raise ConfigError("Congratulations, you managed to hit an uncharted are in anvi'o. It is cerrtainly very\
+                                   curious how you got here unless you are trying to implement a new functionality.")
 
         db_entries = []
         self.set_next_available_id(self.table_name)
@@ -4868,7 +4874,7 @@ def get_all_sample_names_from_the_database(db_path):
     if db_type == 'profile':
         samples = []
         try:
-            samples = database.get_meta_value('samples').split(',')
+            samples = [s.strip() for s in database.get_meta_value('samples').split(',')]
         except:
             pass
 
@@ -4877,12 +4883,12 @@ def get_all_sample_names_from_the_database(db_path):
     elif db_type == 'pan':
         internal_genome_names, external_genome_names = [], []
         try:
-            internal_genome_names = database.get_meta_value('internal_genome_names').split(',')
+            internal_genome_names = [g.strip() for g in database.get_meta_value('internal_genome_names').split(',')]
         except:
             pass
 
         try:
-            external_genome_names = database.get_meta_value('external_genome_names').split(',')
+            external_genome_names = [g.strip() for g in database.get_meta_value('external_genome_names').split(',')]
         except:
             pass
 
