@@ -28,7 +28,6 @@ import anvio.kmers as kmers
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.contigops as contigops
-import anvio.samplesops as samplesops
 import anvio.filesnpaths as filesnpaths
 import anvio.genecalling as genecalling
 import anvio.auxiliarydataops as auxiliarydataops
@@ -2252,169 +2251,6 @@ class ContigsDatabase:
         self.db.disconnect()
 
 
-class SamplesInformationDatabase:
-    """To create an empty samples information database and/or access one.
-
-       The purpose of this database is to deal with sample-specific information. Such as
-       how should samples be organized in the interactive interface, or what environmental
-       data available about them?
-    """
-    def __init__(self, db_path, run=run, progress=progress, quiet=True):
-        self.db = None
-        self.db_path = db_path
-
-        self.run = run
-        self.progress = progress
-        self.quiet = quiet
-
-        self.meta = {}
-        self.init()
-
-
-    def init(self):
-        if not self.db_path:
-            raise ConfigError("When SamplesInformationDatabase is called, the db_path parameter cannot be\
-                                'None' type :/")
-
-        if os.path.exists(self.db_path):
-            is_samples_db(self.db_path)
-            self.db = db.DB(self.db_path, anvio.__samples__version__)
-            meta_table = self.db.get_table_as_dict('self')
-            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
-            self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
-            self.sample_names_for_order = set([s.strip() for s in self.meta['sample_names_for_order'].split(',')]) \
-                                                if self.meta['sample_names_for_order'] else self.samples
-            self.samples_information_default_layer_order = self.meta['samples_information_default_layer_order'].split(',')
-
-            self.run.info('Samples information database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
-        else:
-            self.db = None
-
-
-    def get_samples_information_and_order_dicts(self):
-        if not self.db:
-            raise ConfigError("The samples database has not been initialized. You are doing something wrong :/")
-
-        samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
-
-        samples_information_dict = samples.recover_samples_information_dict(self.db.get_table_as_dict(t.samples_information_table_name, error_if_no_data=False),
-                                                                            self.db.get_table_as_dict(t.samples_attribute_aliases_table_name, error_if_no_data=False))
-        samples_order_dict = self.db.get_table_as_dict(t.samples_order_table_name)
-
-        return samples_information_dict, samples_order_dict
-
-
-    def get_samples_information_default_layer_order(self):
-        if not self.db:
-            raise ConfigError("The samples database has not been initialized. You are doing something wrong :/")
-
-        return self.samples_information_default_layer_order
-
-
-    def create(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
-        is_db_ok_to_create(self.db_path, 'samples')
-
-        samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
-        samples.populate_from_input_files(samples_information_path, samples_order_path, single_order_path, single_order_name)
-
-        self.db = db.DB(self.db_path, anvio.__samples__version__, new_database=True)
-
-        self.write_samples_to_database(samples)
-
-        self.run.info('Samples information database', 'A new samples information database, %s, has been created.' % (self.db_path), quiet=self.quiet)
-        self.run.info('Number of samples', len(samples.sample_names), quiet=self.quiet)
-        self.run.info('Number of organizations', len(list(samples.samples_order_dict.keys())), quiet=self.quiet)
-
-
-    def export_samples_db_files(self, order_output_path='samples-order.txt', information_output_path='samples-information.txt', output_file_prefix=None):
-        """Export whatever information is stored in a ginve anvi'o samples database"""
-
-        samples_information_dict, samples_order_dict = self.get_samples_information_and_order_dicts()
-
-        if output_file_prefix:
-            order_output_path = output_file_prefix + '-' + order_output_path
-            information_output_path = output_file_prefix + '-' + information_output_path
-
-        filesnpaths.is_output_file_writable(order_output_path)
-        filesnpaths.is_output_file_writable(information_output_path)
-
-        utils.store_dict_as_TAB_delimited_file(samples_order_dict, order_output_path, headers=['attributes', 'basic', 'newick'])
-        utils.store_dict_as_TAB_delimited_file(samples_information_dict, information_output_path, headers=['samples'] + sorted(list(list(samples_information_dict.values())[0].keys())))
-
-        self.run.info('Samples information file', information_output_path, mc='green')
-        self.run.info('Samples order file', order_output_path, mc='green')
-
-
-    def update(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
-        # first recover what is already in the database
-        samples_information_dict, samples_order_dict = self.get_samples_information_and_order_dicts()
-
-        # inherit a samples object and update its member dicts:
-        samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
-        samples.samples_order_dict = samples_order_dict
-        samples.samples_information_dict = samples_information_dict
-
-        # add what we have now
-        samples.populate_from_input_files(samples_information_path, samples_order_path, single_order_path, single_order_name)
-
-        self.db = db.DB(self.db_path, anvio.__samples__version__, new_database=False)
-
-        self.write_samples_to_database(samples, update=True)
-
-        self.run.info('Samples information database', 'Samples information database, %s, has been updated.' % (self.db_path), quiet=self.quiet)
-        self.run.info('Number of samples', len(samples.sample_names), quiet=self.quiet)
-        self.run.info('Number of organizations', len(list(samples.samples_order_dict.keys())), quiet=self.quiet)
-
-
-    def write_samples_to_database(self, samples, update=False):
-        if update:
-            self.db.drop_table(t.samples_order_table_name)
-            self.db.drop_table(t.samples_attribute_aliases_table_name)
-            self.db.drop_table(t.samples_information_table_name)
-
-            self.db.remove_meta_key_value_pair('samples')
-            self.db.remove_meta_key_value_pair('available_orders')
-            self.db.remove_meta_key_value_pair('sample_names_for_order')
-            self.db.remove_meta_key_value_pair('samples_information_default_layer_order')
-        else:
-            # know thyself
-            self.db.set_meta_value('db_type', 'samples_information')
-
-            # set some useful meta values:
-            self.db.set_meta_value('creation_date', time.time())
-
-
-        # first create the easy one: the samples_order table.
-        available_orders = list(samples.samples_order_dict.keys())
-        db_entries = [(attribute, samples.samples_order_dict[attribute]['basic'], samples.samples_order_dict[attribute]['newick']) for attribute in samples.samples_order_dict]
-        self.db.create_table(t.samples_order_table_name, t.samples_order_table_structure, t.samples_order_table_types)
-        self.db._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % t.samples_order_table_name, db_entries)
-        self.db.set_meta_value('available_orders', ','.join(available_orders))
-
-        # then create the table that holds aliases for sample attributes:
-        self.db.create_table(t.samples_attribute_aliases_table_name, t.samples_attribute_aliases_table_structure, t.samples_attribute_aliases_table_types)
-        db_entries = sorted([(alias, samples.aliases_to_attributes_dict[alias]) for alias in samples.aliases_to_attributes_dict])
-        self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.samples_attribute_aliases_table_name, db_entries)
-
-        # then, create the harder one: the samples_information table.
-        aliases = sorted(samples.aliases_to_attributes_dict.keys())
-        samples_information_table_structure = ['samples'] + sorted(aliases)
-        samples_information_table_types = ['str'] + ['str'] * len(aliases)
-        self.db.create_table(t.samples_information_table_name, samples_information_table_structure, samples_information_table_types)
-        db_entries = [tuple([sample] + [samples.samples_information_dict[sample][h] for h in samples_information_table_structure[1:]]) for sample in samples.samples_information_dict]
-        self.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.samples_information_table_name, ','.join(['?'] * len(samples_information_table_structure))), db_entries)
-
-        # store samples described into the self table
-        self.db.set_meta_value('samples', ','.join(samples.sample_names) if samples.sample_names else None)
-        self.db.set_meta_value('sample_names_for_order', ','.join(samples.sample_names_in_samples_order_file) if samples.sample_names_in_samples_order_file else None)
-        self.db.set_meta_value('samples_information_default_layer_order', ','.join(samples.samples_information_default_layer_order) if hasattr(samples, 'samples_information_default_layer_order') else None)
-
-        self.disconnect()
-
-    def disconnect(self):
-        self.db.disconnect()
-
-
 ####################################################################################################
 #
 #     TABLES
@@ -4504,11 +4340,6 @@ def is_pan_db(db_path):
         raise ConfigError("'%s' is not an anvi'o pan database." % db_path)
 
 
-def is_samples_db(db_path):
-    if get_db_type(db_path) != 'samples_information':
-        raise ConfigError("'%s' is not an anvi'o samples database." % db_path)
-
-
 def is_db_ok_to_create(db_path, db_type):
     if os.path.exists(db_path):
         raise ConfigError("Anvi'o will not overwrite an existing %s database. Please choose a different name\
@@ -4583,62 +4414,6 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
                                % ('anvi-merge' if merged else 'anvi-profile', a_hash, p_hash))
 
     return True
-
-
-def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path, manual_mode_exception=False):
-    """Check whether every sample name in the profile database is represented in the samples information database"""
-    is_profile_db(profile_db_path)
-    is_samples_db(samples_db_path)
-
-    profile_db = ProfileDatabase(profile_db_path)
-    samples_db = SamplesInformationDatabase(samples_db_path)
-
-    if 'merged' in profile_db.meta and not int(profile_db.meta['merged']):
-        raise ConfigError("Samples databases are only useful if you are working on a merged profile.")
-
-    if manual_mode_exception:
-        # manual mode exception is a funny need. when the user wants to use --manual flag with anvi-interactive,
-        # and provides a blank name for profile.db, sample names for that profile db are automaticalaly populated
-        # from the data matrix file. so far so good. if the data matrix file is a mixed one, i.e., contains both
-        # sample names in the conventional sense with numerical view data, and additional data, then sample names
-        # coming from the first row of the file does not match with the entries in samples database. the best
-        # solution for this is to enforce the use of view_data and additional_data inputs separately. unfortunately
-        # that complicates the anvi-server interface unnecessarily.. so here we will simply pass the following
-        # important tests, and hope that the user did a good job making sure sample names in samples database do match
-        # the samples bit that appears in the data file :( I know, I know...
-        samples_in_samples_db_but_not_in_profile_db = samples_db.samples - profile_db.samples
-        if len(samples_in_samples_db_but_not_in_profile_db):
-            raise ConfigError("Anvi'o is upset with you :/ Please make sure your samples information files (or your\
-                                samples database) contain sample names from your data file. These sample names are in\
-                                your samples information, but not in your data file: '%s'. If this error does not make\
-                                any sense to you, please contact an anvi'o developer." % ', '.join(samples_in_samples_db_but_not_in_profile_db))
-        return
-
-
-    missing_samples = profile_db.samples - samples_db.samples
-    num_represented_samples = len(profile_db.samples) - len(missing_samples)
-
-    if len(missing_samples):
-        how_much_of_the_samples_are_represented_txt = 'none' if len(missing_samples) == len(profile_db.samples) else\
-                                                      'only %d of %d' % (num_represented_samples, len(profile_db.samples))
-
-        raise ConfigError("The samples information database you provided ('%s') does not seem to agree well with the profile\
-                            database ('%s'). More specifically, %s of the samples in the profile database are repesented in\
-                            the samples information database. Names for these missing samples go like this: %s ...,\
-                            while the sample names in the samples information database go like this: %s ... This could be due to\
-                            a simple typo, or you may be using the wrong or outdated samples information database. You may need to\
-                            regenerate the samples information database to fix this problem :/"\
-                                                % (samples_db_path, profile_db_path, how_much_of_the_samples_are_represented_txt,
-                                                   ', '.join(list(missing_samples)[0:3]), ', '.join(list(samples_db.samples)[0:3])))
-
-    if samples_db.sample_names_for_order:
-        missing_samples = samples_db.sample_names_for_order - profile_db.samples
-
-        if len(missing_samples):
-            raise ConfigError("The samples order information in the samples database do not match with the sample names in\
-                                the profile database (or the input data). To be precise, %d sample(s) occur(s) only in the\
-                                samples database, and not found in the profile database (or in the input data). Here is some of\
-                                them: %s ..." % (len(missing_samples), ', '.join(list(missing_samples)[0:3])))
 
 
 def get_split_names_in_profile_db(profile_db_path):

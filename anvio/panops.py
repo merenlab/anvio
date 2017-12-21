@@ -564,6 +564,7 @@ class Pangenome(object):
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
+    # FIXME: these all need to be updated:
     def gen_samples_db(self):
         samples_info_file_path = self.gen_samples_info_file()
         samples_order_file_path = self.gen_samples_order_file()

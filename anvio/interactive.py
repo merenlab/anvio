@@ -20,8 +20,8 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
-from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible, get_description_in_db
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
+from anvio.dbops import is_profile_db_and_contigs_db_compatible, get_description_in_db
 from anvio.dbops import get_default_item_order_name, get_split_names_in_profile_db
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError
@@ -63,7 +63,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
-        self.samples_information_db_path = A('samples_information_db')
         self.view = A('view')
         self.fasta_file = A('fasta_file')
         self.view_data_path = A('view_data')
@@ -97,9 +96,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.displayed_item_names_ordered = None
         self.auxiliary_profile_data_available = False
 
-        self.samples_information_dict = {}
-        self.samples_order_dict = {}
-
         # get additional data for items and layers, and get layer orders data.
         self.items_additional_data_keys, self.items_additional_data_dict = dbops.TableForItemAdditionalData(self.args).get()
         self.layers_additional_data_keys, self.layers_additional_data_dict = dbops.TableForLayerAdditionalData(self.args).get()
@@ -124,11 +120,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         ContigsSuperclass.__init__(self, self.args)
         self.init_splits_taxonomy(self.taxonomic_level)
-
-        if self.samples_information_db_path:
-            samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
-            self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
-            samples_information_db.disconnect()
 
         if self.contigs_db_path:
             self.completeness = Completeness(self.contigs_db_path)
@@ -160,12 +151,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         else:
             raise ConfigError("The interactive class is called with a mode that no one knows anything \
                                about. '%s'... What kind of a mode is that anyway :/" % self.mode)
-
-        # make sure the samples information database, if there is one, is in fact compatible with the profile database
-        # the reason we are doing this here is because when we are in 'self.manual_mode', the self.p_meta['samples'] is
-        # being filled within the self.load_manual_mode function based on the headers of the view data.
-        if self.profile_db_path and self.samples_information_db_path:
-            is_profile_db_and_samples_db_compatible(self.profile_db_path, self.samples_information_db_path, manual_mode_exception=self.manual_mode)
 
         if self.external_clustering:
             self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']

@@ -253,7 +253,7 @@ class MultipleRuns:
 
             sample_split_coverage_values.close()
 
-        merged_split_coverage_values.store()    
+        merged_split_coverage_values.store()
         merged_split_coverage_values.close()
 
         self.progress.end()
@@ -292,8 +292,6 @@ class MultipleRuns:
         # set database paths
         self.merged_profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
         self.database_paths['PROFILE.db'] = os.path.abspath(self.merged_profile_db_path)
-        self.samples_db_path = os.path.join(self.output_directory, 'SAMPLES.db')
-        self.database_paths['SAMPLES.db'] = os.path.abspath(self.samples_db_path)
 
         profile_db = dbops.ProfileDatabase(self.merged_profile_db_path)
 
@@ -427,6 +425,10 @@ class MultipleRuns:
 
            We use the ProfileSuperclass to load all the views we added into the meged profile,
            and generate clusterings of samples for each view to generate a default samples database."""
+
+        # FIXME FIXME FIXME
+        # THIS IS TOTALLY OBSOLETE.
+        # what is down below must be incorporated into layer additional data and layer order tables in profile
 
         self.run.info_single("SAMPLES.db stuff...", nl_before=1, nl_after=1, mc="blue")
 
