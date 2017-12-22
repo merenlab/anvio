@@ -2530,7 +2530,9 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
 
     def update_orders_dict_using_additional_data_dict(self, order_data_dict, additional_data_keys, additional_data_dict):
-        self.data_dict_sanity_check(order_data_dict, treat_data_dict_as='layer_orders')
+        if order_data_dict:
+            self.data_dict_sanity_check(order_data_dict, treat_data_dict_as='layer_orders')
+
         self.data_dict_sanity_check(additional_data_dict, treat_data_dict_as='layers')
 
         # FIXME: here we need to check whether the two dictionaries are in fact 'compatible' with respect to sample names
