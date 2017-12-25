@@ -86,17 +86,11 @@ class FilesNPathsError(AnvioError):
         self.error_type = 'File/Path Error'
         AnvioError.__init__(self)
 
+
 class DictIOError(AnvioError):
     def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'Dict IO Error'
-        AnvioError.__init__(self)
-
-
-class SamplesError(AnvioError):
-    def __init__(self, e=None):
-        self.e = remove_spaces(e)
-        self.error_type = 'Samples Info Error'
         AnvioError.__init__(self)
 
 

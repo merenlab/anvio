@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Export items additional data tables into TAB-delimited files"""
+"""Export misc data from target tables into TAB-delimited files"""
 
 import sys
 import argparse
-
 
 import anvio
 import anvio.dbops as dbops
@@ -25,14 +24,15 @@ run = terminal.Run()
 
 
 def main(args):
-    table_for_item_additional_data = dbops.TableForItemAdditionalData(args)
-    table_for_item_additional_data.export(output_file_path=args.output_file)
+    table_for_additional_data = dbops.MiscDataTableFactory(args)
+    table_for_additional_data.export(output_file_path=args.output_file)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export the contents of an items additional data table in a pan or profile databases")
+    parser = argparse.ArgumentParser(description="Export additional data or order tables in pan or profile databases for items or layers.")
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
+    parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = anvio.get_args(parser)

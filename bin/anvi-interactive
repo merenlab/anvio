@@ -14,7 +14,7 @@ import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -47,7 +47,6 @@ groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
 groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
 groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
 groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':
                                 "If you have a collection in your profile database, you can use this flag to start the\
                                 interactive interface with a tree showing your bins in your collection, instead of each\
@@ -106,12 +105,6 @@ except FilesNPathsError as e:
 except DictIOError as e:
     print(e)
     sys.exit(-3)
-except SamplesError as e:
-    print(e)
-    sys.exit(-4)
-except HDF5Error as e:
-    print(e)
-    sys.exit(-5)
 
 if args.dry_run:
     run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
