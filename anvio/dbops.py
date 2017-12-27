@@ -10,6 +10,7 @@ import time
 import copy
 import random
 import hashlib
+import argparse
 import datetime
 import textwrap
 
@@ -738,10 +739,17 @@ class PanSuperclass(object):
         self.run = r
         self.progress = p
 
+        self.run.width = 60
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_db_path = A('pan_db')
+        self.genomes_storage = A('genomes_storage')
+
         self.genome_names = []
         self.gene_clusters = {}
         self.gene_clusters_initialized = False
         self.gene_cluster_names = set([])
+        self.gene_cluster_names_in_db = set([])
         self.gene_clusters_gene_alignments = {}
         self.gene_clusters_gene_alignments_available = False
         self.gene_clusters_function_sources = []
@@ -762,10 +770,8 @@ class PanSuperclass(object):
         self.genomes_storage_has_functions = False
         self.functions_initialized = False
 
-        try:
-            self.pan_db_path = self.args.pan_db
-        except:
-            self.run.warning('PanSuperclass class called with args without pan_db_path member! Returning prematurely.')
+        if not self.pan_db_path:
+            self.run.warning('PanSuperclass class called with args without a pan_db variable! Returning prematurely.')
             return
 
         filesnpaths.is_file_exists(self.pan_db_path)
@@ -815,19 +821,19 @@ class PanSuperclass(object):
 
         self.progress.end()
 
-        if 'genomes_storage' in args.__dict__ and args.genomes_storage:
-            self.genomes_storage = genomestorage.GenomeStorage(args.genomes_storage,
-                                                                       self.p_meta['genomes_storage_hash'],
-                                                                       genome_names_to_focus=self.p_meta['genome_names'],
-                                                                       run=self.run,
-                                                                       progress=self.progress)
+        if self.genomes_storage:
+            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage,
+                                                               self.p_meta['genomes_storage_hash'],
+                                                               genome_names_to_focus=self.p_meta['genome_names'],
+                                                               run=self.run,
+                                                               progress=self.progress)
             self.genomes_storage_is_available = True
             self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
 
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
 
 
-    def get_sequences_for_gene_clusters(self, gene_cluster_names=set([]), skip_alignments=False, report_DNA_sequences=False):
+    def get_sequences_for_gene_clusters(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, report_DNA_sequences=False):
         """Returns a dictionary of sequences (aligned or not) in a given gene cluster:
 
         {
@@ -843,27 +849,47 @@ class PanSuperclass(object):
             (...)
         }
 
-        By default, it will return amino acid sequences. You can ask for DNA sequences if setting
+        You can call this function either with a `gene_clusters_dict`, or with a `gene_clusters_names` set. If you call it
+        with the dict, it will operate on it. If you call it with names, it will use self.gene_clusters to find the names
+        you specified. This looks like a shitty design, but was required to support exploratory / ad hoc user wishes through
+        both command line and interactive anvi'o interfaces.
+
+        By default, this funciton will report amino acid sequences. You can ask for DNA sequences if setting
         the flag `report_DNA_sequences` True.
 
         """
 
+        if gene_clusters_dict and gene_cluster_names:
+            raise ConfigError("OK. get_sequences_for_gene_clusters is speaking: You can call this function either with a\
+                               `gene_clusters_dict`, or with a `gene_clusters_names` set. If you call it with the dict,\
+                               it will operate on it. If you call it with names, it will use self.gene_clusters to find the names\
+                               you specified. This looks like a shitty design, but was required to support exploratory / ad hoc user wishes through\
+                               both command line and interactive anvi'o interfaces.")
+
         sequences = {}
 
+        if not gene_cluster_names and not gene_clusters_dict:
+            raise ConfigError("get_sequences_for_gene_clusters is speaking: You must call this function either with a `gene_clusters_dict`\
+                               or with a `gene_cluster_names` set.")
+
+        if not gene_cluster_names:
+            gene_cluster_names = set(list(gene_clusters_dict.keys()))
+
         if not isinstance(gene_cluster_names, type(set([]))) or not gene_cluster_names:
-            raise ConfigError("gene_cluster_names for get_sequences_for_gene_clusters must be a non-empty `list`.")
+            raise ConfigError("gene_cluster_names for get_sequences_for_gene_clusters must be a non-empty `set`.")
 
         if not self.genomes_storage_is_available:
             raise ConfigError("The pan anvi'o super class for is upset. You are attempting to get AA seqeunces for %s,\
                                but there is not genomes storage is available to get it." \
                                     % 'a gene cluster' if len(gene_cluster_names) > 1 else '%d gene_clusters' % len(gene_cluster_names))
 
-        if not self.gene_clusters_initialized:
+        if not self.gene_clusters_initialized and not len(gene_clusters_dict):
             self.init_gene_clusters()
+            gene_clusters_dict = self.gene_clusters
 
-        missing_gene_cluster_names = [p for p in gene_cluster_names if p not in self.gene_clusters]
+        missing_gene_cluster_names = [p for p in gene_cluster_names if p not in gene_clusters_dict]
         if len(missing_gene_cluster_names[0:5]):
-            raise ConfigError("get_sequences_for_gene_clusters: %d of %d gene clusters are missing in the pan database. Not good :/\
+            raise ConfigError("get_sequences_for_gene_clusters: %d of %d gene clusters are missing in your data. Not good :/\
                                Here are some of the missing ones; %s" \
                                         % (len(missing_gene_cluster_names), len(gene_cluster_names), ', '.join(missing_gene_cluster_names[0:5])))
 
@@ -872,9 +898,9 @@ class PanSuperclass(object):
         for gene_cluster_name in gene_cluster_names:
             self.progress.update("processing '%s' ..." % gene_cluster_name )
             sequences[gene_cluster_name] = {}
-            for genome_name in self.gene_clusters[gene_cluster_name]:
+            for genome_name in gene_clusters_dict[gene_cluster_name]:
                 sequences[gene_cluster_name][genome_name] = {}
-                for gene_callers_id in self.gene_clusters[gene_cluster_name][genome_name]:
+                for gene_callers_id in gene_clusters_dict[gene_cluster_name][genome_name]:
                     sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id, report_DNA_sequences=report_DNA_sequences)
 
                     if not skip_alignments and self.gene_clusters_gene_alignments_available:
@@ -888,23 +914,26 @@ class PanSuperclass(object):
         return sequences
 
 
-    def write_sequences_in_gene_clusters_to_file(self, gene_cluster_names=set([]), skip_alignments=False, output_file_path=None, report_DNA_sequences=False):
+    def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, output_file_path=None, report_DNA_sequences=False):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
-        sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=skip_alignments, report_DNA_sequences=report_DNA_sequences)
+        sequences_dict = self.get_sequences_for_gene_clusters(gene_clusters_dict=gene_clusters_dict,
+                                                              gene_cluster_names=gene_cluster_names,
+                                                              skip_alignments=skip_alignments,
+                                                              report_DNA_sequences=report_DNA_sequences)
 
         self.progress.new('Writing gene cluster seqeunces to file')
         sequence_counter = 0
-        for gene_cluster_name in gene_cluster_names:
-            for genome_name in sequences[gene_cluster_name]:
-                for gene_callers_id in sequences[gene_cluster_name][genome_name]:
+        for gene_cluster_name in sequences_dict:
+            for genome_name in sequences_dict[gene_cluster_name]:
+                for gene_callers_id in sequences_dict[gene_cluster_name][genome_name]:
                         output_file.write('>%08d|gene_cluster:%s|genome_name:%s|gene_callers_id:%d\n' % (sequence_counter,
                                                                                                          gene_cluster_name,
                                                                                                          genome_name,
                                                                                                          gene_callers_id))
-                        output_file.write('%s\n' % sequences[gene_cluster_name][genome_name][gene_callers_id])
+                        output_file.write('%s\n' % sequences_dict[gene_cluster_name][genome_name][gene_callers_id])
                         sequence_counter += 1
                         self.progress.update("processing '%s' ..." % gene_cluster_name)
 
@@ -912,16 +941,19 @@ class PanSuperclass(object):
         output_file.close()
 
         self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid', mc='green')
+        self.run.info('Num sequences reported', sequence_counter)
         self.run.info('Output FASTA file', output_file_path, mc='green')
 
 
-    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_cluster_names=set([]), skip_alignments=False, output_file_path=None, skip_multiple_gene_calls=False, report_DNA_sequences=False, align_with=None):
+    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, output_file_path=None, report_DNA_sequences=False, align_with=None):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
-        sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=skip_alignments, report_DNA_sequences=report_DNA_sequences)
-
+        sequences_dict = self.get_sequences_for_gene_clusters(gene_clusters_dict=gene_clusters_dict,
+                                                              gene_cluster_names=gene_cluster_names,
+                                                              skip_alignments=skip_alignments,
+                                                              report_DNA_sequences=report_DNA_sequences)
 
         if not self.gene_clusters_gene_alignments_available:
             aligner = aligners.select(align_with)
@@ -940,59 +972,49 @@ class PanSuperclass(object):
         for genome_name in self.genome_names:
             output_buffer[genome_name] = StringIO()
 
-        skipped_gene_clusters = []
         for gene_cluster_name in gene_cluster_names:
             multiple_gene_calls = False
             multiple_gene_call_genome = None
             sequence_length = None
 
             for genome_name in self.genome_names:
-                if len(sequences[gene_cluster_name][genome_name]) > 1:
+                if len(sequences_dict[gene_cluster_name][genome_name]) > 1:
                     multiple_gene_calls = True
                     multiple_gene_call_genome = genome_name
-                elif self.gene_clusters_gene_alignments_available and len(sequences[gene_cluster_name][genome_name]) == 1:
-                    sequence_length = len(get_first_value(sequences[gene_cluster_name][genome_name]))
+                elif self.gene_clusters_gene_alignments_available and len(sequences_dict[gene_cluster_name][genome_name]) == 1:
+                    sequence_length = len(get_first_value(sequences_dict[gene_cluster_name][genome_name]))
 
             if multiple_gene_calls:
-                if skip_multiple_gene_calls:
-                    skipped_gene_clusters.append(gene_cluster_name)
-                    continue
-                else:
-                    raise ConfigError("There are multiple gene calls in '%s' and sample '%s', if you want to continue use flag \
-                                        --skip-multiple-gene-calls" % (gene_cluster_name, multiple_gene_call_genome))
+                raise ConfigError("There are multiple gene calls in '%s' and sample '%s', which is not appropriate for phylogenomic\
+                                   analyses. If that is your purpose, use advanced filters (see help if you are not sure what this\
+                                   means) to remove gene clusters from your analysis if they contain multipel gene calls from any\
+                                   of the genomes in your pan." % (gene_cluster_name, multiple_gene_call_genome))
 
             if not self.gene_clusters_gene_alignments_available:
                 sequences_to_align = []
                 for genome_name in self.genome_names:
-                    if len(sequences[gene_cluster_name][genome_name]) == 1:
-                        sequences_to_align.append((genome_name, get_first_value(sequences[gene_cluster_name][genome_name])))
+                    if len(sequences_dict[gene_cluster_name][genome_name]) == 1:
+                        sequences_to_align.append((genome_name, get_first_value(sequences_dict[gene_cluster_name][genome_name])))
 
                 progress.update("Processing '" + gene_cluster_name + "'")
 
                 aligned_sequences = aligner(run=silent_run).run_stdin(sequences_list=sequences_to_align)
 
                 for genome_name in aligned_sequences:
-                    gene_caller_id = get_first_key(sequences[gene_cluster_name][genome_name])
-                    sequences[gene_cluster_name][genome_name][gene_caller_id] = aligned_sequences[genome_name]
+                    gene_caller_id = get_first_key(sequences_dict[gene_cluster_name][genome_name])
+                    sequences_dict[gene_cluster_name][genome_name][gene_caller_id] = aligned_sequences[genome_name]
 
                     if not sequence_length:
                         sequence_length = len(aligned_sequences[genome_name])
 
             for genome_name in self.genome_names:
-                if len(sequences[gene_cluster_name][genome_name]) == 1:
-                    output_buffer[genome_name].write(get_first_value(sequences[gene_cluster_name][genome_name]))
+                if len(sequences_dict[gene_cluster_name][genome_name]) == 1:
+                    output_buffer[genome_name].write(get_first_value(sequences_dict[gene_cluster_name][genome_name]))
                 else:
                     output_buffer[genome_name].write("-" * sequence_length)
 
         if not self.gene_clusters_gene_alignments_available:
             progress.end()
-
-        if len(skipped_gene_clusters):
-            self.run.warning("%s of %s gene_clusters contained multiple gene calls, and skipped during concatenation.\n '%s'" \
-                                                        % (pp(len(skipped_gene_clusters)), pp(len(gene_cluster_names)), ", ".join(skipped_gene_clusters)))
-
-        if len(skipped_gene_clusters) == len(gene_cluster_names):
-            raise ConfigError("Well. You have no gene_clusters left.. Bye :/")
 
         for genome_name in self.genome_names:
             output_file.write('>%s\n' % genome_name)
@@ -1080,9 +1102,329 @@ class PanSuperclass(object):
 
         self.progress.end()
 
+    def get_all_genome_names_in_gene_clusters_dict(self, gene_clusters_dict):
+        """Returns all genome names found in a `gene_clusters_dict`"""
 
-    def init_gene_clusters(self):
-        """Initializes the gene_clusters dictionary.
+        all_genomes = set([])
+
+        for entry in gene_clusters_dict.values():
+            for genome_name in entry:
+                all_genomes.add(genome_name)
+
+        return all_genomes
+
+
+    def get_gene_clusters_in_genomes_dict(self, gene_clusters_dict):
+        """Goes through the `gene_clusters_dict and returns gene clusters in genomes dict
+           as well as all genome names"""
+
+        all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
+
+        gene_clusters_in_genomes_dict = dict([(genome_name, set([])) for genome_name in all_genomes])
+
+        for genome_name in all_genomes:
+            gene_clusters_in_genomes_dict[genome_name] = set([])
+
+        for gene_cluster_name in gene_clusters_dict:
+            for genome_name in gene_clusters_dict[gene_cluster_name]:
+                if len(gene_clusters_dict[gene_cluster_name][genome_name]):
+                    gene_clusters_in_genomes_dict[genome_name].add(gene_cluster_name)
+
+        return gene_clusters_in_genomes_dict
+
+
+    def get_num_genes_contributed_per_genome_dict(self, gene_clusters_dict):
+        """Get a dictionary of gene cluster names and the number of genes contributed to each per genome"""
+
+
+    def get_basic_gene_clusters_stats(self, gene_clusters_dict):
+        """Returns two dictionaries: a dictionary of gene cluster names and their number of occurrences across all genomes,
+           and a dictionary for number of genes contributed by each genome into each gene cluster"""
+
+        all_gene_clusters = set(list(gene_clusters_dict.keys()))
+        all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
+
+        num_occurrences_accross_genomes = dict([(gene_cluster_name, set([])) for gene_cluster_name in all_gene_clusters])
+        num_genes_contributed_per_genome = dict([(gene_cluster_name, dict()) for gene_cluster_name in all_gene_clusters])
+
+        for gene_cluster_name in num_genes_contributed_per_genome:
+            for genome_name in all_genomes:
+                num_genes_contributed_per_genome[gene_cluster_name][genome_name] = 0
+
+        for gene_cluster_name in gene_clusters_dict:
+            for genome_name in gene_clusters_dict[gene_cluster_name]:
+                if len(gene_clusters_dict[gene_cluster_name][genome_name]):
+                    num_occurrences_accross_genomes[gene_cluster_name].add(genome_name)
+                    num_genes_contributed_per_genome[gene_cluster_name][genome_name] = len(gene_clusters_dict[gene_cluster_name][genome_name])
+
+        for gene_cluster_name in num_occurrences_accross_genomes:
+            num_occurrences_accross_genomes[gene_cluster_name] = len(num_occurrences_accross_genomes[gene_cluster_name])
+
+        return num_occurrences_accross_genomes, num_genes_contributed_per_genome
+
+
+    def get_num_gene_clusters_missing_per_genome_dict(self, gene_clusters_dict):
+        """Get a dictionary of how many gene_clusters each genome is missing"""
+
+        all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
+        gene_clusters_in_genomes_dict = self.get_gene_clusters_in_genomes_dict(gene_clusters_dict)
+
+        gene_cluster_names = set(list(gene_clusters_dict.keys()))
+
+        num_gene_clusters_missing_per_genome = dict([(genome_name, 0) for genome_name in all_genomes])
+
+        for genome_name in all_genomes:
+            for gene_cluster_name in gene_cluster_names:
+                if gene_cluster_name not in gene_clusters_in_genomes_dict[genome_name]:
+                    num_gene_clusters_missing_per_genome[genome_name] += 1
+
+        return num_gene_clusters_missing_per_genome
+
+
+    def filter_gene_clusters_from_gene_clusters_dict(self, gene_clusters_dict, min_num_genomes_gene_cluster_occurs=0,
+             max_num_genomes_gene_cluster_occurs=sys.maxsize, min_num_genes_from_each_genome=0, max_num_genes_from_each_genome=sys.maxsize):
+        """This takes in your `gene_clusters_dict`, and removes gene_clusters based on their occurrences across genomes.
+
+           The `min_num_genomes_gene_cluster_occurs` parameter defines what is the minimum number of genomes you want a gene to
+           be present. It removes all the gene_clusters that do not fit into that criterion. In contrast, `max_num_genomes_gene_cluster_occurs`
+           parameter will remove any gene cluster that occurs in more genomes than what the paramter asks for."""
+
+        def check(param, param_pretty):
+            if param is None:
+                raise ConfigError("filter_gene_clusters_from_gene_clusters_dict is speaking: %s is is literally 'None'. It can't be." % param_pretty)
+
+            if not isinstance(param, int):
+                try:
+                    param = int(param)
+                except ValueError:
+                    raise ConfigError("The parameter %s must occur should be of type int :/" % param_pretty)
+
+            return param
+
+
+        min_num_genomes_gene_cluster_occurs = check(min_num_genomes_gene_cluster_occurs, '--min-num-genomes-gene-cluster-occurs')
+        max_num_genomes_gene_cluster_occurs = check(max_num_genomes_gene_cluster_occurs, '--max-num-genomes-gene-cluster-occurs')
+        min_num_genes_from_each_genome = check(min_num_genes_from_each_genome, '--min-num-genes-from-each-genome')
+        max_num_genes_from_each_genome = check(max_num_genes_from_each_genome, '--max-num-genes-from-each-genome')
+
+        if min_num_genomes_gene_cluster_occurs < 0 or max_num_genomes_gene_cluster_occurs < 0:
+            raise ConfigError("When you ask for a negative value for the the minimum or maximum number of genomes a gene cluster is expected\
+                               to be found, you are pushing the boundaries of physics instead of biology. Let's focus on one field of science\
+                               at a time :(")
+
+        if min_num_genes_from_each_genome < 0 or max_num_genes_from_each_genome < 0:
+            raise ConfigError("Nice try. Min or max number of genes from each genome per gene cluster can't be a negative value.")
+
+        if min_num_genomes_gene_cluster_occurs > max_num_genomes_gene_cluster_occurs:
+            raise ConfigError("Min number of genomes a gene cluster should occur can't be larger than the max number of genomes a gene cluster\
+                               should occur. You're making anvi'o come up with the stupidest error messages.")
+
+        if min_num_genes_from_each_genome > max_num_genes_from_each_genome:
+            raise ConfigError("Min number of genes for each gene cluster can't be larger than the .. pfft. Anvi'o refuses to continue with this\
+                               error message. Check your parameters :(")
+
+        all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
+
+        if max_num_genomes_gene_cluster_occurs == sys.maxsize:
+            max_num_genomes_gene_cluster_occurs = len(all_genomes)
+
+        if max_num_genes_from_each_genome == sys.maxsize:
+            max_num_genes_from_each_genome = len(all_genomes)
+
+        if min_num_genomes_gene_cluster_occurs > len(all_genomes):
+            raise ConfigError("You have %d genomes, and you are asking anvi'o to remove any gene cluster that occurs in less than %d of them.\
+                               On the one hand, it is totally OK to make up a number like that. On the other, anvi'o would like to think that\
+                               that is not what you're doing." % (len(all_genomes), min_num_genomes_gene_cluster_occurs))
+
+        gene_cluster_occurrences_accross_genomes, num_genes_contributed_per_genome = self.get_basic_gene_clusters_stats(gene_clusters_dict)
+
+        gene_clusters_to_remove = set([])
+        all_gene_clusters = set(list(gene_cluster_occurrences_accross_genomes.keys()))
+        for gene_cluster_name in all_gene_clusters:
+            num_occurrence = gene_cluster_occurrences_accross_genomes[gene_cluster_name]
+            num_genes_from_genomes = num_genes_contributed_per_genome[gene_cluster_name]
+
+            if num_occurrence < min_num_genomes_gene_cluster_occurs or num_occurrence > max_num_genomes_gene_cluster_occurs:
+                gene_clusters_to_remove.add(gene_cluster_name)
+                continue
+
+            if len([g for g in all_genomes if num_genes_from_genomes[g] < min_num_genes_from_each_genome or num_genes_from_genomes[g] > max_num_genes_from_each_genome]):
+                gene_clusters_to_remove.add(gene_cluster_name)
+                continue
+
+        gene_clusters_to_keep = all_gene_clusters.difference(gene_clusters_to_remove)
+
+        if not len(gene_clusters_to_keep):
+            raise ConfigError("Bad news: the combination of your filters resulted in zero gene clusters :/ These are the filtesr anvi'o used: --min-num-genomes-gene-cluster-occurs %(min_oc)d,\
+                               --max-num-genomes-gene-cluster-occurs %(max_oc)d, --min-num-genes-from-each-genome %(min_g)d, and --max-num-genes-from-each-genome %(max_g)d. None of your \
+                               %(all_gcs)d gene clusters in your %(all_gs)d genomes that were included this analysis matched to this combination (please note that number of genomes\
+                               may be smaller than the actual number of genomes in the original pan genome if other filters were applied to the gene clusters dictionary prior)." % \
+                                            {'min_oc': min_num_genomes_gene_cluster_occurs, 'max_oc': max_num_genomes_gene_cluster_occurs,
+                                             'min_g': min_num_genes_from_each_genome, 'max_g': max_num_genes_from_each_genome,
+                                             'all_gcs': len(all_gene_clusters), 'all_gs': len(all_genomes)})
+
+        msg = "Based on --min-num-genomes-gene-cluster-occurs %d, --max-num-genomes-gene-cluster-occurs %d, \
+               --min-num-genes-from-each-genome %d, and --max-num-genes-from-each-genome %d (some of these \
+               may be default values, no need to panic)." \
+                            % (min_num_genomes_gene_cluster_occurs, max_num_genomes_gene_cluster_occurs,
+                               min_num_genes_from_each_genome, max_num_genes_from_each_genome)
+
+        # Baris Metin: lambda functions are ugly.
+        # Meren Urat : YOU'RE UGLY :(
+        M = lambda l: ', '.join(l) if anvio.DEBUG \
+                else ', '.join(list(l)[0:3] + ['(... %d more (`--debug` will show all))' % (len(l) - 3)]) if len(l) > 3 \
+                   else ', '.join(l)
+
+        self.run.warning(msg, "GENE CLUSTER FILTERS", lc="cyan")
+        self.run.info('All gene clusters (%d)' % len(all_gene_clusters), M(all_gene_clusters))
+        self.run.info('Gene clusters that passed the filter (%d)' % (len(gene_clusters_to_keep)), M(gene_clusters_to_keep), mc='green')
+        self.run.info('Genes clusters that filed the filter (%d)' % (len(gene_clusters_to_remove)), M(gene_clusters_to_remove) if gene_clusters_to_remove else 'None.', nl_after=1, mc='red')
+
+        if len(gene_clusters_to_remove):
+            for gene_cluster_name in gene_clusters_to_remove:
+                gene_clusters_dict.pop(gene_cluster_name)
+
+            return (gene_clusters_dict, gene_clusters_to_remove)
+        else:
+            return (gene_clusters_dict, set([]))
+
+
+    def filter_genomes_from_clusters_dict(self, gene_clusters_dict, max_num_gene_clusters_missing_from_genome=0):
+        """This takes a `gene_clusters_dict`, and goes through every genome to identify genomes that lack more than \
+           `max_num_gene_clusters_missing_from_genome` from a list of gene_clusters.
+
+           Note that it returns a filtered dictionary, AND the genomes that are removed."""
+
+        if not isinstance(max_num_gene_clusters_missing_from_genome, int):
+            try:
+                max_num_gene_clusters_missing_from_genome = int(max_num_gene_clusters_missing_from_genome)
+            except ValueError:
+                raise ConfigError("Well. The parameter max number of gene clusters missing from genome must be of type int.")
+
+        if max_num_gene_clusters_missing_from_genome < 0:
+            raise ConfigError("The parameter max number of gene clusters missing from genome can't be smaller than zero.\
+                               Well, it can be, as it is the case in this particlar instance, but maybe then you should\
+                               try a different platform to analyze your stuff.")
+
+        all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
+        num_gene_clusters_missing_per_genome = self.get_num_gene_clusters_missing_per_genome_dict(gene_clusters_dict)
+
+        genomes_to_remove = set([])
+        for genome_name in num_gene_clusters_missing_per_genome:
+            if num_gene_clusters_missing_per_genome[genome_name] > max_num_gene_clusters_missing_from_genome:
+                genomes_to_remove.add(genome_name)
+
+        genomes_to_keep = all_genomes.difference(genomes_to_remove)
+
+        self.run.warning(None, "FILTER GENOMES (--max-num-gene-clusters-missing-from-genome)", lc="cyan")
+        self.run.info('All genomes found (%d)' % len(all_genomes), ', '.join(all_genomes))
+        self.run.info('Genomes that missed AT MOST %d of the %d gene_clusters (%d)' % (max_num_gene_clusters_missing_from_genome, len(gene_clusters_dict), len(genomes_to_keep)), ', '.join(genomes_to_keep), mc='green')
+        self.run.info('Genomes that are no more in the analysis (%d)' % (len(genomes_to_remove)), ', '.join(genomes_to_remove) if genomes_to_remove else 'None. Lovely.', mc='red', nl_after=1)
+
+        if len(genomes_to_remove) == len(all_genomes):
+            raise ConfigError("Bad news: using --max-num-gene-clusters-missing-from-genome paramter with '%d' removed all of your\
+                               %d genomes from the analysis. This means every genome you have in your pangenome misses at least %d\
+                               of your %d gene clusters. Now you know :/" \
+                                    % (max_num_gene_clusters_missing_from_genome,
+                                       len(all_genomes),
+                                       max_num_gene_clusters_missing_from_genome,
+                                       len(gene_clusters_dict)))
+
+        if len(genomes_to_remove):
+            for gene_cluster_name in gene_clusters_dict:
+                for genome_name in genomes_to_remove:
+                    gene_clusters_dict[gene_cluster_name].pop(genome_name)
+            return (gene_clusters_dict, genomes_to_remove)
+        else:
+            return (gene_clusters_dict, set([]))
+
+
+    def filter_gene_clusters_dict(self, args, gene_clusters_dict=None):
+        """Returns filtered gene clusters dicts, without editing the `self.gene_clusters` dict,
+           UNLESS, it is provided a dictionary for gene clusters.
+
+           WIHTOUT GENE CLUSTERS DICT PARAMTER
+           ========================================================================================
+           This function looks for variables max_num_gene_clusters_missing_from_genome and
+           min_num_genomes_gene_cluster_occurs in args (see the example below), applies filters
+           to a fresh copy of self.gene_clusters, and returns a new dictionary. The reason we
+           avoid operating on the actual dictionary is to (1) allow testing of multiple parameters
+           without having to re-initialize the actual gene clusters dictionary from the database.
+           Although this seems to be a memory-intensive way of doing it, it will offer some
+           flexibility to interface operations.
+
+                >>> 
+                >>> pan = dbops.PanSuperclass(args)
+                >>> pan.init_gene_clusters()
+                >>>
+                >>> args = argparse.Namespace(max_num_gene_clusters_missing_from_genome=5, min_num_genomes_gene_cluster_occurs=10)
+                >>> filtered_gene_clusters = pan.filter_gene_clusters_dict(args)
+                >>>
+
+           WITH GENE CLUSTERS DICT PARAMTER
+           ========================================================================================
+           Does pretty much the same thing above, but it does not generate a fresh copy of the self.gene_clusters
+           and only operates on the incoming dictionary.
+        """
+
+        if not gene_clusters_dict:
+            if not self.gene_clusters_initialized:
+                raise ConfigError("You need to initialize the gene clusters dictionary if you want to apply filters on it.\
+                                   See relevant memeber functions in your instance of PanSuperClass.")
+
+            gene_clusters_dict = copy.deepcopy(self.gene_clusters)
+
+        if not isinstance(gene_clusters_dict, dict):
+            raise ConfigError("Houston, we have a problem. The gene clusters dict seems to be of type %s and not dict :/"\
+                            % type(gene_clusters_dict))
+
+        # let's see what the user wants.
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        max_num_gene_clusters_missing_from_genome = A('max_num_gene_clusters_missing_from_genome')
+        min_num_genomes_gene_cluster_occurs = A('min_num_genomes_gene_cluster_occurs')
+        max_num_genes_from_each_genome = A('max_num_genes_from_each_genome')
+        min_num_genes_from_each_genome = A('min_num_genes_from_each_genome')
+        max_num_genomes_gene_cluster_occurs = A('max_num_genomes_gene_cluster_occurs')
+        add_into_items_additional_data_table = A('add_into_items_additional_data_table')
+        just_do_it = A('just_do_it')
+
+        # remove genomes from the dict if necessary.
+        if max_num_gene_clusters_missing_from_genome:
+            gene_clusters_dict, genomes_removed = self.filter_genomes_from_clusters_dict(gene_clusters_dict, max_num_gene_clusters_missing_from_genome)
+
+        # remove gene clusters from the dict if necessary
+        if min_num_genomes_gene_cluster_occurs or max_num_genomes_gene_cluster_occurs:
+            gene_clusters_dict, gene_clusters_removed = \
+                    self.filter_gene_clusters_from_gene_clusters_dict(gene_clusters_dict,
+                                                                      min_num_genomes_gene_cluster_occurs,
+                                                                      max_num_genomes_gene_cluster_occurs,
+                                                                      min_num_genes_from_each_genome,
+                                                                      max_num_genes_from_each_genome)
+
+        # this is where we add the items in the resulting filtered dict into the items additonal data
+        # table:
+        if add_into_items_additional_data_table:
+            data_key = add_into_items_additional_data_table
+
+            if not self.gene_cluster_names_in_db:
+                self.init_gene_clusters()
+
+            items_additional_data_dict = {}
+
+            for gene_cluster_name in self.gene_cluster_names_in_db:
+                if gene_cluster_name in gene_clusters_dict:
+                    items_additional_data_dict[gene_cluster_name] = {data_key: True}
+                else:
+                    items_additional_data_dict[gene_cluster_name] = {data_key: False}
+
+            items_additional_data_table = TableForItemAdditionalData(argparse.Namespace(pan_db=self.pan_db_path, just_do_it=just_do_it))
+            items_additional_data_table.add(items_additional_data_dict, [data_key])
+
+        return gene_clusters_dict
+
+
+    def init_gene_clusters(self, gene_cluster_ids_to_focus=set([])):
+        """Initializes the gene_clusters dictionary (only for `gene_cluster_ids_to_focus` if necessary).
 
            At the end, the structure of this dictionary looks like this:
 
@@ -1106,11 +1448,15 @@ class PanSuperclass(object):
         pan_db = PanDatabase(self.pan_db_path)
 
         gene_clusters_long_list = pan_db.db.get_table_as_dict(t.pan_gene_clusters_table_name)
+        self.gene_cluster_names_in_db = pan_db.db.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id', unique=True)
 
         for entry in list(gene_clusters_long_list.values()):
             genome_name = entry['genome_name']
             gene_callers_id = entry['gene_caller_id']
             gene_cluster_id = entry['gene_cluster_id']
+
+            if gene_cluster_ids_to_focus and gene_cluster_id not in gene_cluster_ids_to_focus:
+                continue
 
             if gene_cluster_id not in self.gene_clusters:
                 self.gene_clusters[gene_cluster_id] = {}
@@ -1128,6 +1474,17 @@ class PanSuperclass(object):
         pan_db.disconnect()
         self.progress.end()
 
+        if not len(gene_cluster_ids_to_focus):
+            self.run.info_single("Gene clusters are initialized for all %d gene clusters in the database." % len(self.gene_clusters))
+        else:
+            self.run.info_single("A short announcement for the curious: anvi'o found %d gene clusters in the database, attempted to\
+                                  initialize a gene clusters dictionary for %d of them as requested by the user or the programmer, and\
+                                  managed to get back a gene clusters dictionary with %d items. We just hope all these make sense to you." \
+                                % (len(self.gene_cluster_names_in_db), len(gene_cluster_ids_to_focus), len(self.gene_clusters)), nl_after=1, nl_before=1)
+
+        # gene cluster names were set when we first initialized the class, but if we are here, it means the user may have
+        # alrady updated the list of gene clusters. let's keep ourselves up-to-date:
+        self.gene_cluster_names = set(list(self.gene_clusters.keys()))
         self.gene_clusters_initialized = True
 
 
@@ -2420,9 +2777,15 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
             self.run.warning("%s data for the following keys removed from the database: '%s'. #SAD." % (self.target, ', '.join(data_keys_list)))
         else:
+            if not self.just_do_it:
+                raise ConfigError("You did not provide a list of data keys to remove, which means you are about to delete everything in the\
+                                   %s additional data table. Just to be on the safe side, anvi'o is looking for a confirmation. If you\
+                                   try again with the --just-do-it flag flag, anvi'o will put on its business socks, and burn this table\
+                                   and everything in it to the ground." % self.target)
+
             database._exec('''DELETE from %s''' % (self.table_name))
 
-            self.run.warning("All data from the %s additional data table is removed (wow)." % self.target)
+            self.run.warning("All data from the %s additional data table is removed (ouch)." % self.target)
 
         database.disconnect()
 
@@ -2779,7 +3142,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
 
-        self.run.info('New data added to the db for your %s' % self.target, '%s.' % (', '.join(data_keys_list)))
+        self.run.info('New data added to the db for your %s' % self.target, '%s.' % (', '.join(data_keys_list)), nl_after=1)
 
 
 class TableForItemAdditionalData(AdditionalDataBaseClass):
