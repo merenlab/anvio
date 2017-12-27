@@ -96,7 +96,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Export aligned sequences in gene clusters from anvi'o pan genomes")
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
     groupB = parser.add_argument_group('OUTPUT', "You get to chose an output file name to report things. The default will be\
