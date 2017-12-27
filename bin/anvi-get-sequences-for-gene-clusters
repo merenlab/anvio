@@ -18,7 +18,7 @@ from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
-__credits__ = []
+__credits__ = ["Ryan Bartelme", "Jay Osvatic"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
@@ -93,7 +93,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export aligned sequences in gene clusters from anvi'o pan genomes")
+    parser = argparse.ArgumentParser(description="Do cool stuff with gene clusters in anvi'o pan genomes")
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
