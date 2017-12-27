@@ -450,6 +450,69 @@ D = {
                       analyses, where you may want to only focus on genes that are prevalent across the set of genomes\
                       you wish to analyze."}
                 ),
+    'max-num-gene-clusters-missing-from-genome': (
+            ['--max-num-gene-clusters-missing-from-genome'],
+            {'default': 0,
+             'metavar': 'INTEGER',
+             'help': "This filter will remove genomes from your report. If you have a list of gene cluster names, you can\
+                      use this parameter to omit any genome from your report if it is missing more than a number of genes\
+                      you desire. For instance, if you have 100 genomes in your pan genome, and you are interested in\
+                      working only with genomes that have all 5 specific gene clusters of your choice, you can use \
+                      '--max-num-gene-clusters-missing-from-genome 4' to remove remove the bins that\
+                      are missing more than 4 of those 5 genes. This is especially useful for phylogenomic analyses.\
+                      Parameter 0 will remove any genome that is missing any of the genes."}
+                ),
+    'min-num-genomes-gene-cluster-occurs': (
+            ['--min-num-genomes-gene-cluster-occurs'],
+            {'default': 0,
+             'metavar': 'INTEGER',
+             'help': "This filter will remove gene clusters from your report. Let's assume you have 100 genomes in your pan\
+                      genome analysis. You can use this parameter if you want to work only with gene clusters that occur in\
+                      at least X number of genomes. If you say '--min-num-genomes-gene-cluster-occurs 90', each\
+                      gene cluster in the analysis will be required at least to appear in 90 genomes. If a gene occurs in\
+                      less than that number of genomes, it simply will not be reported. This is especially useful for\
+                      phylogenomic analyses, where you may want to only focus on gene clusters that are prevalent across\
+                      the set of genomes you wish to analyze."}
+                ),
+    'max-num-genomes-gene-cluster-occurs': (
+            ['--max-num-genomes-gene-cluster-occurs'],
+            {'default': sys.maxsize,
+             'metavar': 'INTEGER',
+             'help': "This filter will remove gene clusters from your report. Let's assume you have 100 genomes in your pan\
+                      genome analysis. You can use this parameter if you want to work only with gene clusters that occur in\
+                      at most X number of genomes. If you say '--min-num-genomes-gene-cluster-occurs 1', you will get gene\
+                      clusters that are singletons. Combining this paramter with --min-num-genomes-gene-cluster-occurs can\
+                      give you a very precise way to filter your gene clusters."}
+                ),
+    'min-num-genes-from-each-genome': (
+            ['--min-num-genes-from-each-genome'],
+            {'default': 0,
+             'metavar': 'INTEGER',
+             'help': "This filter will remove gene clusters from your report. If you say '--min-num-genes-from-each-genome 2',\
+                      this filter will remove every gene cluster, to which every genome in your analysis contributed less than\
+                      2 genes. This can be useful to find out gene clusters with many genes from many genomes (such as conserved\
+                      multi-copy genes within a clade)."}
+                ),
+    'max-num-genes-from-each-genome': (
+            ['--max-num-genes-from-each-genome'],
+            {'default': sys.maxsize,
+             'metavar': 'INTEGER',
+             'help': "This filter will remove gene clusters from your report. If you say '--max-num-genes-from-each-genome 1',\
+                      every gene cluster that has more than one gene from any genome that contributes to it will be removed\
+                      from your analysis. This could be useful to remove gene clusters with paralogs from your report for\
+                      appropriate phylogenomic analyses. For instance, using '--max-num-genes-from-each-genome 1' and \
+                      'min-num-genomes-gene-cluster-occurs X' where X is the total number of your genomes, would give you the\
+                      single-copy gene cluters in your pan genome."}
+                ),
+    'add-into-items-additional-data-table': (
+            ['--add-into-items-additional-data-table'],
+            {'default': None,
+             'metavar': 'NAME',
+             'help': "If you use any of the filters, and would like to add the resulting item names into the items additional\
+                      data table of your database, you can use this parameter. You will need to give a name for these results to\
+                      be saved. If the given name is already in the items additoinal data table, its contents will be replaced\
+                      with the new one. Then you can run anvi-interactive or anvi-display-pan to 'see' the results of your filters."}
+                ),
     'concatenate-genes': (
             ['--concatenate-genes'],
             {'default': False,
