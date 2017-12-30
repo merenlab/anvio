@@ -321,8 +321,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # write the header
         output_file_obj.write(('\t'.join(header) + '\n').encode('utf-8'))
 
-        #sequences = self.get_AA_sequences_for_gene_clusters
-
         self.progress.new('Gene clusters summary file')
         self.progress.update('...')
 
