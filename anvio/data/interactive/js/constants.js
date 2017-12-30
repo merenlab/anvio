@@ -162,6 +162,18 @@ var named_layers = {
         'norm': 'sqrt',
         'pretty_name': 'Num genes',
     },
+    'num_genomes_pc_has_hits': {
+        'height': 180,
+        'color': '#002e4f',
+        'norm': 'none',
+        'pretty_name': 'Num genomes',
+    },
+    'num_genes_in_pc': {
+        'height': 180,
+        'color': '#002e4f',
+        'norm': 'sqrt',
+        'pretty_name': 'Num genes',
+    },
     'SCG': {
         'height': 180,
         'color': '#4f1111',
