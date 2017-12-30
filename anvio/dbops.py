@@ -1414,9 +1414,9 @@ class PanSuperclass(object):
 
             for gene_cluster_name in self.gene_cluster_names_in_db:
                 if gene_cluster_name in gene_clusters_dict:
-                    items_additional_data_dict[gene_cluster_name] = {data_key: True}
+                    items_additional_data_dict[gene_cluster_name] = {data_key: 'TRUE'}
                 else:
-                    items_additional_data_dict[gene_cluster_name] = {data_key: False}
+                    items_additional_data_dict[gene_cluster_name] = {data_key: None}
 
             items_additional_data_table = TableForItemAdditionalData(argparse.Namespace(pan_db=self.pan_db_path, just_do_it=just_do_it))
             items_additional_data_table.add(items_additional_data_dict, [data_key])
