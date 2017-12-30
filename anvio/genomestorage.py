@@ -94,7 +94,7 @@ class GenomeStorage(object):
 
         if self.storage_hash:
             if self.storage_hash != self.get_storage_hash():
-                raise ConfigError("Requested storage hash ('%s') does not match with the one readed from database ('%s')." % 
+                raise ConfigError("Requested storage hash ('%s') does not match with the one readed from database ('%s')." %
                     (self.storage_hash, self.get_sorage_hash))
 
         self.genome_names_in_db = self.get_all_genome_names()
@@ -119,11 +119,15 @@ class GenomeStorage(object):
         self.functions_are_available = self.db.get_meta_value('functions_are_available')
         self.gene_functions_entry_id = self.db.get_max_value_in_column(t.genome_gene_function_calls_table_name, 'entry_id')
 
+        self.progress.new('Recovering data from the db')
+
         ## load the data
+        self.progress.update('Loading genomes basic info...')
         where_clause = """genome_name IN (%s)""" % ",".join('"' + item + '"' for item in self.genome_names)
         self.genomes_info = self.db.get_some_rows_from_table_as_dict(t.genome_info_table_name, where_clause)
 
         self.gene_info = {}
+        self.progress.update('Loading gene functions for %s genomes...' % len(self.genomes_info))
         for gene_info_tuple in self.db.get_some_rows_from_table(t.gene_info_table_name, where_clause):
             genome_name, gene_caller_id, aa_sequence, dna_sequence, partial, length = gene_info_tuple
             if genome_name not in self.gene_info:
@@ -137,11 +141,13 @@ class GenomeStorage(object):
                 'functions': {}
             }
 
-            functions = self.db.get_some_rows_from_table(t.genome_gene_function_calls_table_name, 
+            functions = self.db.get_some_rows_from_table(t.genome_gene_function_calls_table_name,
                                                          'genome_name = "%s" and gene_callers_id = "%s"' % (genome_name, gene_caller_id))
 
             for row in functions:
                 self.gene_info[genome_name][gene_caller_id]['functions'][row[3]] = "%s|||%s" % (row[4], row[5])
+
+        self.progress.end()
 
         self.run.info('Genomes storage', 'Initialized (storage hash: %s)' % (self.get_storage_hash()))
         self.run.info('Num genomes in storage', len(self.get_all_genome_names()))
