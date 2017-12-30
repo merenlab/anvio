@@ -883,8 +883,9 @@ class PanSuperclass(object):
                                but there is not genomes storage is available to get it." \
                                     % 'a gene cluster' if len(gene_cluster_names) > 1 else '%d gene_clusters' % len(gene_cluster_names))
 
-        if not self.gene_clusters_initialized and not len(gene_clusters_dict):
-            self.init_gene_clusters()
+        if gene_clusters_dict is None:
+            if not self.gene_clusters_initialized:
+                self.init_gene_clusters()
             gene_clusters_dict = self.gene_clusters
 
         missing_gene_cluster_names = [p for p in gene_cluster_names if p not in gene_clusters_dict]
