@@ -215,8 +215,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
 
-        # init gene clusters and functins from Pan super.
+        # init gene clusters and functions from Pan super.
         self.init_gene_clusters()
+
+        # init items additional data.
+        self.init_items_additional_data()
 
         if not self.skip_init_functions:
             self.init_gene_clusters_functions()
@@ -304,13 +307,17 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # standard headers
         header = ['unique_id', 'gene_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id']
 
+        # extend the header with items additional data keys
+        for items_additional_data_key in self.items_additional_data_keys:
+            header.append(items_additional_data_key)
+
         # extend the header with functions if there are any
-        for source in self.gene_clusters_function_sources:
+        for function_source in self.gene_clusters_function_sources:
             if self.quick:
-                header.append(source + '_ACC')
+                header.append(function_source + '_ACC')
             else:
-                header.append(source + '_ACC')
-                header.append(source)
+                header.append(function_source + '_ACC')
+                header.append(function_source)
 
         # if this is not a quick summary, have AA sequences in the output
         AA_sequences = None
@@ -331,6 +338,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 for gene_caller_id in self.gene_clusters[gene_cluster_name][genome_name]:
                     entry = [unique_id, gene_cluster_name, gene_cluster_name_to_bin_name[gene_cluster_name], genome_name, gene_caller_id]
 
+                    # populate the entry with item aditional data
+                    for items_additional_data_key in self.items_additional_data_keys:
+                        entry.append(self.items_additional_data_dict[gene_cluster_name][items_additional_data_key])
+
+                    # populate the entry with functions.
                     for function_source in self.gene_clusters_function_sources:
                         annotations_dict = self.gene_clusters_functions_dict[gene_cluster_name][genome_name][gene_caller_id]
                         if function_source in annotations_dict:
