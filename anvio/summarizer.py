@@ -269,7 +269,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                         ('Gene cluster min occurrence parameter', pretty(int(self.p_meta['gene_cluster_min_occurrence']))),
                         ('MCL inflation parameter', self.p_meta['mcl_inflation']),
                         ('NCBI blastp or DIAMOND?', 'NCBI blastp' if self.p_meta['use_ncbi_blast'] else ('DIAMOND (and it was %s)' % ('sensitive' if self.p_meta['diamond_sensitive'] else 'not sensitive'))),
-                        ('Number of genomes used', pretty(int(self.p_meta['num_genomes'])))],
+                        ('Number of genomes used', pretty(int(self.p_meta['num_genomes']))),
+                        ('Items aditional data keys', '--' if not self.items_additional_data_keys else ', '.join(self.items_additional_data_keys))],
 
                 'genomes': [('Created on', 'Storage DB knows nothing :('),
                             ('Version', anvio.__genomes_storage_version__),
