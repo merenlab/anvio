@@ -535,6 +535,12 @@ D = {
              'help': "The multiple sequnce alignment program to use when multiple seqeunce alignment is necessary. To see\
                       all available optons, use the flag `--list-aligners`."}
                 ),
+    'list-aligners': (
+            ['--list-aligners'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Show available software for multiple sequence alignment."}
+                ),
     'concatenate-gene-clusters': (
             ['--concatenate-gene-clusters'],
             {'default': False,
