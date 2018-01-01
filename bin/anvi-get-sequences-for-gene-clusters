@@ -83,7 +83,6 @@ def main(args):
     if args.concatenate_gene_clusters:
         pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=filtered_gene_clusters_dict,
                                                                output_file_path=args.output_file,
-                                                               skip_multiple_gene_calls=args.skip_multiple_gene_calls,
                                                                report_DNA_sequences=args.report_DNA_sequences,
                                                                align_with=args.align_with)
     else:
