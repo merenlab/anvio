@@ -915,7 +915,8 @@ class PanSuperclass(object):
         return sequences
 
 
-    def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, output_file_path=None, report_DNA_sequences=False):
+    def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), \
+                                                  skip_alignments=False, output_file_path=None, report_DNA_sequences=False):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
@@ -946,7 +947,8 @@ class PanSuperclass(object):
         self.run.info('Output FASTA file', output_file_path, mc='green')
 
 
-    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, output_file_path=None, report_DNA_sequences=False, align_with=None):
+    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, gene_cluster_names=set([]), \
+                    skip_alignments=False, output_file_path=None, report_DNA_sequences=False, align_with=None):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
@@ -987,9 +989,11 @@ class PanSuperclass(object):
 
             if multiple_gene_calls:
                 raise ConfigError("There are multiple gene calls in '%s' and sample '%s', which is not appropriate for phylogenomic\
-                                   analyses. If that is your purpose, use advanced filters (see help if you are not sure what this\
-                                   means) to remove gene clusters from your analysis if they contain multipel gene calls from any\
-                                   of the genomes in your pan." % (gene_cluster_name, multiple_gene_call_genome))
+                                   analyses. Please use advanced filters (see help if you are not sure what this means) to remove\
+                                   gene clusters from your analysis if they contain multiple gene calls from any\
+                                   of the genomes in your pan (not to tell you what to do, but '--max-num-genes-from-each-genome 1'\
+                                   would make sure gene clusters that contain multiple genes from a given genome would be removed\
+                                   from your final list)." % (gene_cluster_name, multiple_gene_call_genome))
 
             if not self.gene_clusters_gene_alignments_available:
                 sequences_to_align = []
