@@ -130,6 +130,7 @@ if __name__ == '__main__':
     groupF = parser.add_argument_group('CONCATENATED OUTPUT', "Concatenated output for phylogenomics.")
     groupF.add_argument(*anvio.A('concatenate-gene-clusters'), **anvio.K('concatenate-gene-clusters'))
     groupF.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
+    groupE.add_argument(*anvio.A('list-aligners'), **anvio.K('list-aligners'))
 
     groupG = parser.add_argument_group('TOTALLY IRRELEVANT', "Just in case you need it.")
     groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
