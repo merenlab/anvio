@@ -1981,6 +1981,11 @@ class ProfileSuperclass(object):
 
         self.progress.new('Initializing the collection profile for "%s" ...' % collection_name)
         for table_name in table_names:
+
+            # if SNVs are not profiled, skip the `variability` table
+            if table_name == 'variability' and not self.p_meta['SNVs_profiled']:
+                continue
+
             self.progress.update('Populating collection profile for each "view" ... %s' % table_name)
             if self.p_meta['merged']:
                 table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column=True)
