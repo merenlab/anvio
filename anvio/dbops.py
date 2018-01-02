@@ -122,7 +122,7 @@ class ContigsSuperclass(object):
         if A('mode') == 'pan' or A('mode') == 'manual':
             return
 
-        self.contigs_db_path = args.contigs_db
+        self.contigs_db_path = A('contigs_db')
 
         if not self.contigs_db_path:
             raise ConfigError("Someone (hopefully, you) is trying to initialize the Contigs Super Class without a contigs database path.\
