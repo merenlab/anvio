@@ -136,8 +136,8 @@ anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt
 INFO "Cluster contigs in the newly generated coverages file using 'canberra' distance, and 'complete' linkage"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt --distance canberra --linkage complete -o $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs_CANB_COMP.newick
 
-#INFO "Generating network descriptions for samples based on ORFs and functions"
-#anvi-gen-network -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db
+INFO "Generating network descriptions for samples based on gene functions"
+anvi-gen-network -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db --annotation-source Pfam
 
 INFO "Use anvi-experimental-organization to generate a tree from a new configuration to store it in a file (not in the database)"
 anvi-experimental-organization $files/example_clustering_configuration.ini -i $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED/EXP-ORG-FILE.txt --skip-store-in-db
