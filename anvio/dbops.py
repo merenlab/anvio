@@ -1480,7 +1480,7 @@ class PanSuperclass(object):
         self.progress.end()
 
         if not len(gene_cluster_ids_to_focus):
-            self.run.info_single("Gene clusters are initialized for all %d gene clusters in the database." % len(self.gene_clusters))
+            self.run.info_single("Gene clusters are initialized for all %d gene clusters in the database." % len(self.gene_clusters), nl_before=1, nl_after=1)
         else:
             self.run.info_single("A short announcement for the curious: anvi'o found %d gene clusters in the database, attempted to\
                                   initialize a gene clusters dictionary for %d of them as requested by the user or the programmer, and\
