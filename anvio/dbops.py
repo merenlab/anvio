@@ -81,6 +81,7 @@ class DBClassFactory:
 
 class ContigsSuperclass(object):
     def __init__(self, args, r=run, p=progress):
+        self.args = args
         self.run = r
         self.progress = p
 
@@ -118,10 +119,11 @@ class ContigsSuperclass(object):
         # an object that is in `pan` or `manual` mode, neither of which will have a contigs database
         # associated with the call. so having done our part, we will quietly return from here hoping
         # that we are not driving a developer crazy somewhere by doing so.
-        A = lambda x: self.__dict__[x] if x in self.__dict__ else None
-        if A('mode') == 'pan' or A('mode') == 'manual':
+        D = lambda x: self.__dict__[x] if x in self.__dict__ else None
+        if D('mode') == 'pan' or D('mode') == 'manual':
             return
 
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
 
         if not self.contigs_db_path:
