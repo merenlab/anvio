@@ -137,6 +137,20 @@ var named_layers = {
         'pretty_name': 'Length',
         'type': 'bar',
     },
+    'num_gene_clusters': {
+        'height': 220,
+        'color': '#661111',
+        'norm': 'none',
+        'pretty_name': 'Num gene clusters',
+        'type': 'bar',
+    },
+    'singleton_gene_clusters': {
+        'height': 220,
+        'color': '#661111',
+        'norm': 'none',
+        'pretty_name': 'Singleton gene clusters',
+        'type': 'bar',
+    },
     'gc_content': {
         'height': 180,
         'color': '#004a0f',
@@ -182,7 +196,7 @@ var named_layers = {
     },
     'total_length': {
         'height': 180,
-        'color': '#121261',
+        'color': '#414141',
         'norm': 'none',
         'pretty_name': 'Total length',
     },
@@ -236,7 +250,7 @@ var named_layers = {
     },
     'percent_completion': {
         'height': 200,
-        'color': '#004400',
+        'color': '#000077',
         'norm': 'none',
         'min': 0,
         'max': 100,

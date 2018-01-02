@@ -577,13 +577,13 @@ class Pangenome(object):
         self.progress.update('Generating layers additional data ..')
 
         layers_additional_data_dict = {}
-        layers_additional_data_keys = ['total_length']
+        layers_additional_data_keys = ['total_length', 'gc_content']
 
         for h in ['percent_completion', 'percent_redundancy']:
             if h in list(self.genomes.values())[0]:
                 layers_additional_data_keys.append(h)
 
-        layers_additional_data_keys.extend(['gc_content', 'num_genes', 'avg_gene_length', 'num_genes_per_kb'])
+        layers_additional_data_keys.extend(['num_genes', 'avg_gene_length', 'num_genes_per_kb'])
 
         for genome_name in self.genomes:
             new_dict = {}
@@ -591,6 +591,22 @@ class Pangenome(object):
                 new_dict[key] = self.genomes[genome_name][key]
 
             layers_additional_data_dict[genome_name] = new_dict
+
+        # summarize gene cluster stats across genomes
+        layers_additional_data_keys.extend(['num_gene_clusters', 'singleton_gene_clusters'])
+        for genome_name in self.genomes:
+            layers_additional_data_dict[genome_name]['num_gene_clusters'] = 0
+            layers_additional_data_dict[genome_name]['singleton_gene_clusters'] = 0
+            for gene_cluster in self.view_data_presence_absence:
+                genomes_contributing_to_gene_cluster = [t[0] for t in self.view_data_presence_absence[gene_cluster].items() if t[1]]
+
+                # tracking singletons
+                if len(genomes_contributing_to_gene_cluster) == 1 and genomes_contributing_to_gene_cluster[0] == genome_name:
+                    layers_additional_data_dict[genome_name]['singleton_gene_clusters'] += 1
+
+                # tracking the total number of gene clusters
+                if self.view_data_presence_absence[gene_cluster][genome_name]:
+                    layers_additional_data_dict[genome_name]['num_gene_clusters'] += 1
 
         self.progress.end()
 
