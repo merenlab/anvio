@@ -427,6 +427,19 @@ class ContigsSuperclass(object):
         self.gene_function_calls_initiated = True
 
 
+    def list_function_sources(self):
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=terminal.Run(verbose=False))
+        gene_function_sources = contigs_db.meta['gene_function_sources']
+        contigs_db.disconnect()
+
+        if not len(gene_function_sources):
+            self.run.info_single('No functional annotations found in this contigs database :/', nl_before=1, nl_after=1, mc='red')
+        else:
+            self.run.warning('', 'AVAILABLE FUNCTIONS (%d FOUND)' % (len(gene_function_sources)), lc='yellow')
+            for source in gene_function_sources:
+                self.run.info_single('%s' % (source), nl_after = 1 if source == gene_function_sources[-1] else 0)
+
+
     def search_splits_for_gene_functions(self, search_terms, verbose=False, full_report=False):
         if not isinstance(search_terms, list):
             raise ConfigError("Search terms must be of type 'list'")
