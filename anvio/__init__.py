@@ -387,9 +387,16 @@ D = {
              'action': 'store_true',
              'help': "List available HMM sources in the contigs database and quit."}
                 ),
+    'annotation-source': (
+            ['--annotation-source'],
+            {'metavar': 'SOURCE NAME',
+             'default': None,
+             'help': "Get functional annotations for a specific annotation source. You can use the flag\
+                      '--list-annotation-sources' to learn about what sources are available."}
+                ),
     'annotation-sources': (
             ['--annotation-sources'],
-            {'metavar': 'SOURCE NAME',
+            {'metavar': 'SOURCE NAME[S]',
              'default': None,
              'help': "Get functional annotations for a specific list of annotation sources. You\
                       can specifiy one or more sources by separating them from each other with a comma\
