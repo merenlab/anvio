@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Searches for a given function name, reports back split names"""
+"""Searches contigs database for a given function"""
 
 import sys
 
@@ -27,17 +27,28 @@ progress = terminal.Progress()
 
 
 def main(args):
-    c = ContigsSuperclass(args)
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    annotation_sources = A('annotation_sources')
+    delimiter = A('delimiter')
+    search_terms = A('search_terms')
+    basic_report_path = A('output_file') or 'search_results.txt'
+    full_report_path = A('full_report')
 
-    output_file_path = args.output_file if args.output_file else 'search_results.txt'
-    filesnpaths.is_output_file_writable(output_file_path)
+    # straighten things out
+    search_terms = [s.strip() for s in search_terms.split(delimiter)]
+    annotation_sources = [a.strip() for a in annotation_sources.split(delimiter)] if annotation_sources else None
 
-    if args.full_report:
-        filesnpaths.is_output_file_writable(args.full_report)
+    contigs_db = ContigsSuperclass(args)
+    if A('list_annotation_sources'):
+        contigs_db.list_function_sources()
+        sys.exit()
 
-    search_terms = [s.strip() for s in args.search_terms.split(args.delimiter)]
+    # basic tests
+    filesnpaths.is_output_file_writable(basic_report_path)
+    filesnpaths.is_output_file_writable(full_report_path) if full_report_path else None
 
-    matching_split_names_dict, full_report = c.search_splits_for_gene_functions(search_terms, verbose = args.verbose)
+    # do the search
+    matching_split_names_dict, verbose_output = contigs_db.search_splits_for_gene_functions(search_terms, requested_sources=annotation_sources, verbose = args.verbose)
 
     all_split_names = set([])
 
@@ -53,26 +64,32 @@ def main(args):
             if split_name in matching_split_names_dict[search_term]:
                 results_dict[split_name][search_term + '_hits'] = search_term
 
-    utils.store_dict_as_TAB_delimited_file(results_dict, output_file_path, headers = ['contigs'] + [s + '_hits' for s in search_terms])
+    utils.store_dict_as_TAB_delimited_file(results_dict, basic_report_path, headers = ['contigs'] + [s + '_hits' for s in search_terms])
 
-    if args.full_report:
-        report = open(args.full_report, 'w')
+    if full_report_path:
+        report = open(full_report_path, 'w')
 
         report.write('\t'.join(['gene_callers_id', 'source', 'accession', 'function', 'search_term', 'split_name']) + '\n')
 
-        for entry in full_report:
+        for entry in verbose_output:
             report.write('\t'.join([str(item) for item in entry]) + '\n')
         report.close()
 
-        run.info('Full report', args.full_report)
+        run.info('Full report', full_report_path)
 
-    run.info('Additional metadata compatible output', output_file_path)
+    run.info('Additional metadata compatible output file', basic_report_path)
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='A script to generate summaries for a given list of splts')
+    parser = argparse.ArgumentParser(description="Search functions in an anvi'o contigs database. Basically, this program searches for one or more search terms\
+                                                  you define in functional annotations of genes in an anvi'o contigs database, and generates multiple reports.\
+                                                  The simpler report (which also is the default one) simply tells you which contigs contain genes with functions\
+                                                  matching to serach terms you used. This file is only useful to quickly highlight matching contigs in the interface\
+                                                  by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also request a much more\
+                                                  comprehensive report, which gives you anything you might need to know, including the matching gene caller id,\
+                                                  functional annotation source, and full function name for each hit and serach term.")
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))
@@ -80,6 +97,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('full-report'), **anvio.K('full-report'))
     parser.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+    parser.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
+    parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
 
 
     args = anvio.get_args(parser)
