@@ -287,7 +287,11 @@ class MetagenomeCentricGeneClassifier:
 
 
     def init_samples_coverage_stats_dict(self):
-        """ populate the samples_coverage_stats_dict."""
+        """ populate the samples_coverage_stats_dict.
+        
+            This dataframe is used to calculate the gene consistency information.
+            It is also used for plotting purposes (both for the nucleotide-coverage-distribution plots and the gene-consistency plots).
+        """
         if not self.sample_detection_information_was_initiated:
             self.init_sample_detection_information()
 
