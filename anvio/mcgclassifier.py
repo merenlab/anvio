@@ -265,6 +265,7 @@ class MetagenomeCentricGeneClassifier:
         num_samples, counter = len(self.samples), 1
         detection = {}
         for sample in self.samples:
+            # TODO: if coverage_values_per_nt is not available then use gene_detections to estimate the detection value of a sample
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
             print("total length for %s is %s" % (sample, self.total_length))
