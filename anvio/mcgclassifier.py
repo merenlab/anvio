@@ -451,18 +451,23 @@ class MetagenomeCentricGeneClassifier:
             _samples = self.gene_presence_absence_in_samples.loc[gene_id,self.gene_presence_absence_in_samples.loc[gene_id,]==True].index
             # mean and std of non-outlier nt in each sample
             x = self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_mean_coverage']
-            # TODO: this will only be available in full mode (in manual mode, set std_x to None)
-            std_x = self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_coverage_std']
+            if "non_outlier_coverage_std" in self.samples_coverage_stats_dicts:
+                # we only expect to have the sample coverage std in "full" mode
+                std_x = self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_coverage_std'].values
+            else:
+                std_x = None
+
             if len(_samples) > 1:
                 # mean and std of non-outlier nt in the gene (in each sample)
-                y = self.gene_non_outlier_coverages.loc[gene_id, _samples]
+                y = self.gene_non_outlier_coverages.loc[gene_id, _samples].values
                 if self.gene_non_outlier_coverage_stds:
-                    std_y = self.gene_non_outlier_coverage_stds.loc[gene_id, _samples]
+                    # checking if 
+                    std_y = self.gene_non_outlier_coverage_stds.loc[gene_id, _samples].values
                 else:
                     std_y = None
 
                 # performing the regression using ODR
-                _data = odr.RealData(list(x.values), list(y.values), list(std_x.values), list(std_y.values))
+                _data = odr.RealData(x, y, std_x, std_y)
                 _model = lambda B, c: B[0] * c
                 _odr = odr.ODR(_data, odr.Model(_model), beta0=[3])
                 odr_output = _odr.run()
@@ -475,7 +480,7 @@ class MetagenomeCentricGeneClassifier:
 
                 # compute R squered
                 f = lambda b: lambda _x: b*_x
-                R_squered = 1 - sum((np.apply_along_axis(f(odr_output.beta[0]),0,x)-y.values)**2) / sum((y-np.mean(y.values))**2)
+                R_squered = 1 - sum((np.apply_along_axis(f(odr_output.beta[0]),0,x)-y)**2) / sum((y-np.mean(y))**2)
 
                 # Check if converged
                 self.gene_coverage_consistency_dict[gene_id]['R_squered'] = R_squered
