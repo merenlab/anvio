@@ -2850,7 +2850,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         database.disconnect()
 
 
-    def data_dict_sanity_check(self, data_dict, treat_data_dict_as=None):
+    def data_dict_sanity_check(self, data_dict, data_keys_list=None, treat_data_dict_as=None):
         data_dict_type = treat_data_dict_as or self.target
 
         if not isinstance(data_dict, dict):
@@ -2858,6 +2858,9 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         if not len(data_dict):
             raise ConfigError("The data sent for sanity check seems to be empty.")
+
+        if data_keys_list and not isinstance(data_keys_list, list):
+            raise ConfigError("List of keys must be of type `list`. Go away (and come back).")
 
         # FIXME: we have two controls here. The first one is how we work with order data natively. The second one is how it
         #        looks like when it is read through the .get() member function of the TableForLayerOrders because rest of
@@ -2872,6 +2875,13 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         if not looks_like_layer_orders and data_dict_type is 'layer_orders':
             raise ConfigError("The data that claims to be a layer order data do not seem to be one.")
+
+        if data_keys_list:
+            for item_or_layer_name in data_dict:
+                for key in data_keys_list:
+                    if key not in data_dict[item_or_layer_name]:
+                        raise ConfigError("Your data dictionary fails the sanity check since at least one item in it (i.e., %s) is\
+                                           missing any data for the key '%s'." % (item_or_layer_name, key))
 
 
 class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
@@ -2922,7 +2932,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         if order_data_dict:
             self.data_dict_sanity_check(order_data_dict, treat_data_dict_as='layer_orders')
 
-        self.data_dict_sanity_check(additional_data_dict, treat_data_dict_as='layers')
+        self.data_dict_sanity_check(additional_data_dict, data_keys_list=additional_data_keys, treat_data_dict_as='layers')
 
         # FIXME: here we need to check whether the two dictionaries are in fact 'compatible' with respect to sample names
         #        they describe.
@@ -3099,16 +3109,13 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                in `data_dict`.
         """
 
-        self.data_dict_sanity_check(data_dict)
+        self.data_dict_sanity_check(data_dict, data_keys_list=data_keys_list)
 
         if self.target not in ['items', 'layers']:
             raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But\
                                you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user,\
                                check your flags to make sure you are targeting the right data table. If you are a programmer,\
                                you are fired." % (self.target, self.db_type))
-
-        if not isinstance(data_keys_list, list):
-            raise ConfigError("List of keys must be of type `list`. Go away (and come back).")
 
         self.run.warning(None, 'New %s additional data...' % self.target, lc="yellow")
         key_types = {}
@@ -3157,7 +3164,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         db_entries = []
         self.set_next_available_id(self.table_name)
         for item_name in data_dict:
-            for key in data_dict[item_name]:
+            for key in data_keys_list:
                 db_entries.append(tuple([self.next_id(self.table_name),
                                          item_name,
                                          key,
