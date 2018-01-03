@@ -244,6 +244,10 @@ class MetagenomeCentricGeneClassifier:
     def init_sample_detection_information(self):
         """ Determine  positive, negative, and ambiguous samples with the genome detection information
         (--alpha, --genome-detection-uncertainty)
+
+            The coverage_values_per_nt is used to calculate the detection value (portion of nucleotides
+            covered) for a sample. Then, a cutoff for detection values is used to determine the presence
+            or absence of the genome in each sample.
         """
 
         # FIXME: some of the following variables are never used.
