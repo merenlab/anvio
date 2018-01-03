@@ -289,7 +289,7 @@ INFO "Oligotype linkmers report generated for adjacent nucleotide positions"
 anvi-oligotype-linkmers -i $output_dir/adjacent_linkmers.txt -o $output_dir/
 
 INFO "Search for functions to get split names with matching genes"
-anvi-search-functions-in-splits -c $output_dir/CONTIGS.db --search transporter,kinase -o $output_dir/transporter-hits.txt --verbose
+anvi-search-functions -c $output_dir/CONTIGS.db --search transporter,kinase -o $output_dir/transporter-hits.txt --verbose
 
 INFO "Get all short reads that map to the gene ID 38 (which is a Zinc transpoprter)"
 anvi-get-short-reads-mapping-to-a-gene -c $output_dir/CONTIGS.db --gene-caller-id 38 --leeway 100 -i $output_dir/*bam -o $output_dir/reads-mapping-to-gene-id-38.fa
