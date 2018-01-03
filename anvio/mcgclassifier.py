@@ -451,11 +451,15 @@ class MetagenomeCentricGeneClassifier:
             _samples = self.gene_presence_absence_in_samples.loc[gene_id,self.gene_presence_absence_in_samples.loc[gene_id,]==True].index
             # mean and std of non-outlier nt in each sample
             x = self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_mean_coverage']
+            # TODO: this will only be available in full mode (in manual mode, set std_x to None)
             std_x = self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_coverage_std']
             if len(_samples) > 1:
                 # mean and std of non-outlier nt in the gene (in each sample)
                 y = self.gene_non_outlier_coverages.loc[gene_id, _samples]
-                std_y = self.gene_non_outlier_coverage_stds.loc[gene_id, _samples]
+                if self.gene_non_outlier_coverage_stds:
+                    std_y = self.gene_non_outlier_coverage_stds.loc[gene_id, _samples]
+                else:
+                    std_y = None
 
                 # performing the regression using ODR
                 _data = odr.RealData(list(x.values), list(y.values), list(std_x.values), list(std_y.values))
