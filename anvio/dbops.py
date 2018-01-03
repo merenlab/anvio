@@ -383,15 +383,7 @@ class ContigsSuperclass(object):
         gene_function_sources_in_db = set(contigs_db.meta['gene_function_sources'] or [])
 
         if requested_sources:
-            missing_sources = [s for s in requested_sources if s not in gene_function_sources_in_db]
-            if len(missing_sources):
-                if dont_panic:
-                    requested_sources = [s for s in requested_sources if s in gene_function_sources_in_db]
-                else:
-                    self.progress.end()
-                    raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here\
-                                        they are (or here it is, whatever): %s." % \
-                                                    (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
+            self.check_functional_annotation_sources(requested_sources, dont_panic=dont_panic)
 
             hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name,
                                                                   '''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources])),
@@ -440,9 +432,40 @@ class ContigsSuperclass(object):
                 self.run.info_single('%s' % (source), nl_after = 1 if source == gene_function_sources[-1] else 0)
 
 
-    def search_splits_for_gene_functions(self, search_terms, verbose=False, full_report=False):
+    def check_functional_annotation_sources(self, sources=None, dont_panic=False):
+        """Checks whether a given list of sources for functional annotation is valid.
+
+           When `dont_panic` is True, quietly returns a list of sources that are matching to the
+           ones in the database.
+        """
+
+        if not sources:
+            return
+
+        if sources and not isinstance(sources, list):
+            raise ConfigError("Sources for functional annotations must be of type `list`.")
+
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=terminal.Run(verbose=False))
+        gene_function_sources_in_db = contigs_db.meta['gene_function_sources']
+        contigs_db.disconnect()
+
+        missing_sources = [s for s in sources if s not in gene_function_sources_in_db]
+
+        if len(missing_sources):
+            if dont_panic:
+                # quietly return matching sources
+                return [s for s in sources if s in gene_function_sources_in_db]
+            else:
+                raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here\
+                                   they are (or here it is, whatever): %s." % \
+                                                 (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
+
+
+    def search_splits_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False):
         if not isinstance(search_terms, list):
             raise ConfigError("Search terms must be of type 'list'")
+
+        self.check_functional_annotation_sources(requested_sources)
 
         search_terms = [s.strip() for s in search_terms]
 
@@ -460,15 +483,20 @@ class ContigsSuperclass(object):
         split_names = dict([(search_term, {}) for search_term in search_terms])
         full_report = []
 
-        if not self.gene_function_calls_initiated:
-            self.init_functions()
-
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
         for search_term in search_terms:
-            self.progress.new('Search function')
+            self.progress.new('Search functions')
             self.progress.update('Searching for term "%s"' % search_term)
-            response = contigs_db.db._exec('''select gene_callers_id, source, accession, function from gene_functions where function LIKE "%%''' + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%";''').fetchall()
+
+            query = '''select gene_callers_id, source, accession, function from gene_functions where (function LIKE "%%''' \
+                            + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%")'''
+            if requested_sources:
+                query += ''' AND source IN (%s);''' % (', '.join(["'%s'" % s for s in requested_sources]))
+            else:
+                query += ';'
+
+            response = contigs_db.db._exec(query).fetchall()
 
             full_report.extend([(r[0], r[1], r[2], r[3], search_term, self.gene_callers_id_to_split_name_dict[r[0]]) for r in response])
 
