@@ -323,7 +323,7 @@ class MetagenomeCentricGeneClassifier:
 
     def plot_nucleotide_coverage_distribution(self):
         """ Creates a pdf file with the following plots for each sample the sorted nucleotide coverages \
-        (with a the outliers in red and non-outliers in blue), and a histogram of coverages for the non-outliers"""
+        (with the outliers in red and non-outliers in blue), and a histogram of coverages for the non-outliers"""
         # Creating a dircetory for the plots. If running on bins, each bin would be in a separate sub-directory
 
         if not self.samples_coverage_stats_dicts_was_initiated:
