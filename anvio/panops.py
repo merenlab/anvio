@@ -394,7 +394,7 @@ class Pangenome(object):
         for gene_cluster in gene_clusters:
             self.view_data[gene_cluster] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.view_data_presence_absence[gene_cluster] = dict([(genome_name, 0) for genome_name in self.genomes])
-            self.additional_view_data[gene_cluster] = {'num_genes_in_gene_cluster': 0, 'num_genomes_gene_cluster_has_hits': 0, 'SCG': 0}
+            self.additional_view_data[gene_cluster] = {'num_genes_in_gene_cluster': 0, 'num_genomes_gene_cluster_has_hits': 0, 'SCG': 0, 'max_num_paralogs': 0}
 
             for gene_entry in gene_clusters_dict[gene_cluster]:
                 genome_name = gene_entry['genome_name']
@@ -404,6 +404,7 @@ class Pangenome(object):
                 self.additional_view_data[gene_cluster]['num_genes_in_gene_cluster'] += 1
 
             self.additional_view_data[gene_cluster]['SCG'] = 1 if set(self.view_data[gene_cluster].values()) == set([1]) else 0
+            self.additional_view_data[gene_cluster]['max_num_paralogs'] = max(self.view_data[gene_cluster].values())
 
             self.additional_view_data[gene_cluster]['num_genomes_gene_cluster_has_hits'] = len([True for genome in self.view_data[gene_cluster] if self.view_data[gene_cluster][genome] > 0])
 
@@ -467,7 +468,7 @@ class Pangenome(object):
                                         view_name = 'gene_cluster_presence_absence')
 
         item_additional_data_table = dbops.TableForItemAdditionalData(self.args)
-        item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'SCG']
+        item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
         item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
         #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
         #                                                                                   /
