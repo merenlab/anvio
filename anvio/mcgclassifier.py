@@ -321,7 +321,7 @@ class MetagenomeCentricGeneClassifier:
         self.samples_coverage_stats_dicts.to_csv(output_file_path, sep='\t', index_label='sample')
 
 
-    def plot_TS(self):
+    def plot_nucleotide_coverage_distribution(self):
         """ Creates a pdf file with the following plots for each sample the sorted nucleotide coverages \
         (with a the outliers in red and non-outliers in blue), and a histogram of coverages for the non-outliers"""
         # Creating a dircetory for the plots. If running on bins, each bin would be in a separate sub-directory
@@ -333,7 +333,7 @@ class MetagenomeCentricGeneClassifier:
         if self.additional_description:
             additional_description = '-' + self.additional_description
 
-        plot_dir = self.output_file_prefix + '-TS-plots' + '/'
+        plot_dir = self.output_file_prefix + '-nucleotide-coverage-distribution-plots' + '/'
         os.makedirs(plot_dir, exist_ok=True)
         self.progress.new('Saving figures of taxon specific distributions to pdf')
         progress.update('...')
@@ -571,7 +571,7 @@ class MetagenomeCentricGeneClassifier:
         self.init_gene_presence_absence_in_samples()
 
         # Create the plots for nucleotide-level coverage data per sample.
-        self.plot_TS()
+        self.plot_nucleotide_coverage_distribution()
 
         # compute gene consistency information
         self.init_gene_coverage_consistency_information()
