@@ -1883,7 +1883,7 @@ class ProfileSuperclass(object):
         num_splits, counter = len(split_names), 1
         # go through all the split names
         for split_name in split_names:
-            if num_splits > 100 and counter % 100 == 0:
+            if num_splits > 10 and counter % 10 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
             # recover split coverage values from the auxiliary data file:
