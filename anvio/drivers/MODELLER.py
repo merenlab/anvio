@@ -141,7 +141,7 @@ class MODELLER:
     def pick_best_model(self):
         """
         The user is not interested in all of this output. They just want a pdb file for a given
-        self.gene_id. renames as <gene_id>.pdb.
+        self.gene_id. renames as gene_<gene_id>.pdb.
 
         self.best must be one of the ["molpdf", "GA341_score", "DOPE_score", "average"]
         """
@@ -223,11 +223,9 @@ class MODELLER:
         for model in self.model_info.index:
             basename = self.model_info.loc[model, "name"]
 
-            # determine the new basename
-            if basename == "cluster.ini":
-                new_basename = "average.pdb"
-            elif basename == "cluster.opt":
-                new_basename = "average_opt.pdb"
+            # The default names are bad. This is where they are defined
+            if basename == "cluster.opt":
+                new_basename = "gene_{}_ModelAvg.pdb".format(self.gene_id)
             else:
                 model_num = os.path.splitext(basename)[0][-3:]
                 new_basename = "gene_{}_Model{}.pdb".format(self.gene_id, model_num)
@@ -373,31 +371,29 @@ class MODELLER:
 
         if not pir_exists and not bin_exists:
             self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension \
-                              of either .bin or .pir, but didn't find anything matching that criteria. FIXME".\
+                              of either .bin or .pir, but didn't find anything matching that \
+                              criteria. We'll try and download the best database we know of from \
+                              https://salilab.org/modeller/downloads/pdb_95.pir.gz and use that.".\
                               format(self.database_dir, 
-                                     self.database_name, 
-                                     ", ".join(os.listdir(self.database_dir)),
-                                     os.path.abspath(J(self.database_dir, "00_README"))))
+                                     self.database_name))
 
             db_download_path = os.path.join(self.database_dir, "pdb_95.pir.gz")
             utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
-
             utils.run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
-        
+
             pir_exists = utils.filesnpaths.is_file_exists(pir_db_path, dont_raise=True)
 
         if pir_exists and not bin_exists:
             self.run.warning("Your database is not in binary format. That means accessing its contents is slower \
                               than it could be. Anvi'o is going to make a binary format. Just FYI")
             self.run_binarize_database(pir_db_path, bin_db_path)
-
             return
 
 
     def run_binarize_database(self, pir_db_path, bin_db_path):
         """
-            Databases can be read in .pir format, but can be more quickly read in binarized format. This
-            does that.
+        Databases can be read in .pir format, but can be more quickly read in binarized format. This
+        does that.
         """
         script_name = "binarize_database.py"
 

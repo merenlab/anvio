@@ -1818,7 +1818,7 @@ def download_file(url, output_file_path, progress=progress, run=run):
     try:
         response = urllib.request.urlopen(url)
     except Exception as e:
-        raise ConfigError("Something went wrong with your donwload attempt. Here is the\
+        raise ConfigError("Something went wrong with your download attempt. Here is the\
                             problem: '%s'" % e)
 
     file_size = int(response.headers['Content-Length'])

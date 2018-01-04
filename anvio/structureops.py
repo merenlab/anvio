@@ -220,58 +220,23 @@ class Structure:
         modelling the structure of the target protein using the homologous protein structures.
         """
 
-        """
-        sqlite-migration branch has a parameter passed to dbops.export_aa_sequences_from_contigs_db
-        that lets you pass genes of interest. When these branches are merged, the code will look
-        like this:
-
         for gene in self.genes_of_interest:
 
             # MODELLER outputs a lot of stuff into its working directory. A temporary directory is made
             # for each instance of MODELLER (i.e. each protein), and files are moved into
             # self.output_dir afterwards. If --black-no-sugar is provided, everything is moved.
             # Otherwise, only pertinent files are moved. See move_results_to_output_dir()
-            self.modeller_dir = filesnpaths.get_temp_directory_path()
-
-            self.run.warning("Working directory: {}".format(self.modeller.directory),
-                         header='MODELLING STRUCTURE FOR GENE ID {}'.format(self.modeller.gene_id),
-                         lc="green")
-
-            self.self.gene_fasta_path = os.path.join(self.modeller_dir, "{}.fasta".format(gene))
-
-            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.gene_fasta_path, set([gene]))
-
-            self.run_modeller()
-
-            self.move_results_to_output_dir()
-
-        """
-        #vvvvvvvvvvvvvvvvvvvvvvv UGLY DONT LOOK, WILL BE REPLACED WITH ABOVE CODE vvvvvvvvvvvvvvvvvvvv
-        #vvvvvvvvvvvvvvvvvvvvvvv UGLY DONT LOOK, WILL BE REPLACED WITH ABOVE CODE vvvvvvvvvvvvvvvvvvvv
-        #vvvvvvvvvvvvvvvvvvvvvvv UGLY DONT LOOK, WILL BE REPLACED WITH ABOVE CODE vvvvvvvvvvvvvvvvvvvv
-        all_genes_fasta_path = filesnpaths.get_temp_file_path()
-        dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, all_genes_fasta_path)
-        fasta = u.SequenceSource(all_genes_fasta_path)
-        while next(fasta):
-            if int(fasta.id) not in self.genes_of_interest:
-                continue
-
-            # MODELLER outputs a lot of stuff into its working directory. A temporary directory is
-            # made for each instance of MODELLER (i.e. each protein), and files are moved into
-            # self.output_dir afterwards. If --black-no-sugar is provided, everything is moved.
-            # Otherwise, only pertinent files are moved. See move_results_to_output_dir()
             self.args.directory = filesnpaths.get_temp_directory_path()
             self.args.target_fasta_path = filesnpaths.get_temp_file_path()
 
-            gene_fasta = u.FastaOutput(self.args.target_fasta_path)
-            gene_fasta.write_id(fasta.id)
-            gene_fasta.write_seq(fasta.seq, split = False)
-            gene_fasta.close()
+            self.run.warning("Working directory: {}".format(self.args.directory),
+                              header='MODELLING STRUCTURE FOR GENE ID {}'.format(gene),
+                              lc="cyan")
+
+            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([gene]))
 
             self.run_modeller()
-        #^^^^^^^^^^^^^^^^^^^^^^^^ UGLY DONT LOOK, WILL BE REPLACED WITH ABOVE CODE ^^^^^^^^^^^^^^^^^^^^
-        #^^^^^^^^^^^^^^^^^^^^^^^^ UGLY DONT LOOK, WILL BE REPLACED WITH ABOVE CODE ^^^^^^^^^^^^^^^^^^^^
-        #^^^^^^^^^^^^^^^^^^^^^^^^ UGLY DONT LOOK, WILL BE REPLACED WITH ABOVE CODE ^^^^^^^^^^^^^^^^^^^^
+            self.move_results_to_output_dir()
 
 
     def move_results_to_output_dir(self):
@@ -329,8 +294,6 @@ class Structure:
                 self.best_structure_filepath = self.modeller.pick_best_model()
 
             self.modeller.rewrite_model_info()
-
-            self.move_results_to_output_dir()
 
         except self.modeller.EndModeller as e:
             print(e)
