@@ -100,7 +100,7 @@ anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
 
 INFO "anvi-model-protein-structures --black-no-sugar"
 anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
-                              --gene-caller-ids 2 \
+                              --gene-caller-ids 2,3,4 \
                               --output-dir test-output/STRUCTURES_full \
                               --black-no-sugar
 
