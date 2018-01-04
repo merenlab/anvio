@@ -297,6 +297,7 @@ class MetagenomeCentricGeneClassifier:
             This dataframe is used to calculate the gene consistency information.
             It is also used for plotting purposes (both for the nucleotide-coverage-distribution plots and the gene-consistency plots).
         """
+        # TODO: move this to wrapper class
         if not self.sample_detection_information_was_initiated:
             self.init_sample_detection_information()
 
@@ -311,7 +312,9 @@ class MetagenomeCentricGeneClassifier:
 
             # loop through positive samples
             # get the non-outlier information
-            self.non_outlier_indices[sample], self.samples_coverage_stats_dicts.loc[sample,] = get_non_outliers_information(self.coverage_values_per_nt[sample], MAD_threshold=self.outliers_threshold)
+            non_outlier_indices, self.samples_coverage_stats_dicts.loc[sample,] = get_non_outliers_information(self.coverage_values_per_nt[sample], MAD_threshold=self.outliers_threshold)
+            self.non_outlier_indices[sample] = non_outlier_indices
+            # TODO: in manual mode this will either be supplied or it will be calculated from gene coverages
 
             self.run.info_single('The mean and std of non-outliers in sample %s are: %s, %s respectively' % (sample, self.samples_coverage_stats_dicts['non_outlier_mean_coverage'][sample], self.samples_coverage_stats_dicts['non_outlier_coverage_std'][sample]))
             number_of_non_outliers = len(self.non_outlier_indices[sample])

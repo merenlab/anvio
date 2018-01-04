@@ -63,9 +63,8 @@ class MCGPlots:
 
                 self.gene_nuc_coverage_dict[sample] = {}
                 self.gene_nuc_coverage_dict[sample]['non_outliers'] = non_outliers
-                self.gene_nuc_coverage_dict[sample]['x1'] = np.array([mcg.samples_coverage_stats_dicts.loc[sample,'non_outlier_mean_coverage']] * len(non_outliers))
+                self.gene_nuc_coverage_dict[sample]['x'] = np.array([mcg.samples_coverage_stats_dicts.loc[sample,'non_outlier_mean_coverage']] * len(non_outliers))
                 self.gene_nuc_coverage_dict[sample]['outliers'] = outliers
-                self.gene_nuc_coverage_dict[sample]['x2'] = np.array([mcg.samples_coverage_stats_dicts.loc[sample,'non_outlier_mean_coverage']] * len(outliers))
 
         if self.plot_sample_nuc_coverage:
            for sample in self.samples:
@@ -116,8 +115,8 @@ class MCGPlots:
 
         if self.plot_gene_nuc_coverage:
             for sample in self.samples:
-                plt.scatter(self.gene_nuc_coverage_dict[sample]['x1'], self.gene_nuc_coverage_dict[sample]['non_outliers'], c='b',s=1)
-                plt.scatter(self.gene_nuc_coverage_dict[sample]['x2'], self.gene_nuc_coverage_dict[sample]['outliers'], c='r',s=1)
+                plt.scatter(self.gene_nuc_coverage_dict[sample]['x'], self.gene_nuc_coverage_dict[sample]['non_outliers'], c='b',s=1)
+                plt.scatter(self.gene_nuc_coverage_dict[sample]['x'], self.gene_nuc_coverage_dict[sample]['outliers'], c='r',s=1)
 
         if self.plot_sample_nuc_coverage:
             for sample in self.samples:
