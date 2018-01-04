@@ -1453,8 +1453,11 @@ D = {
 }
 
 # two functions that works with the dictionary above.
-def A(param_id):
-    return D[param_id][0]
+def A(param_id, exclude_param=None):
+    if exclude_param:
+        return [p for p in D[param_id][0] if p != exclude_param]
+    else:
+        return D[param_id][0]
 
 def K(param_id, params_dict={}):
     kwargs = copy.deepcopy(D[param_id][1])
