@@ -10,7 +10,8 @@ migration_scripts = {}
 base_path = os.path.dirname(__file__)
 
 for script_full_path in Path(base_path).glob('*/v*_to_v*.py'):
-    script_path, script_filename = os.path.split(str(script_full_path))
+    script_full_path = str(script_full_path)
+    script_path, script_filename = os.path.split(script_full_path)
 
     script_name = script_filename[:-3]
     db_type = os.path.basename(script_path)
