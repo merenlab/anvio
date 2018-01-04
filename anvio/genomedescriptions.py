@@ -424,12 +424,13 @@ class GenomeDescriptions(object):
                                          ', '.join(['%d gene calls by "%s"' % (tpl[1], tpl[0]) for \
                                                          tpl in self.genomes[genome_name]['gene_calls_from_other_gene_callers'].items()])))
 
-            self.run.warning("PLEASE READ CAREFULLY. Some of your genomes had gene calls identified by gene callers other than\
-                              the gene caller anvi'o used (which should be 'prodigal' unless you specified another one). As a\
-                              result, the following genomes contained gene calls coming from other gene callers that did not\
-                              get processed. This may be exactly what you expected to happen, but if was not, you may need to\
-                              use the `--gene-caller` flag to make sure anvi'o is using the gene caller it should be using. Here\
-                              is the list: %s." % (', '.join(info)), lc='green')
+            gene_caller = list(self.genomes.values())[0]['gene_caller']
+            self.run.warning("Some of your genomes had gene calls identified by gene callers other than\
+                              the gene caller anvi'o used, which was set to '%s' either by default, or because you asked for it.\
+                              The following genomes contained genes that were not processed (this may be exactly what you expect\
+                              to happen, but if was not, you may need to use the `--gene-caller` flag to make sure anvi'o is using\
+                              the gene caller it should be using): %s." % \
+                                            (gene_caller, ', '.join(info)), header="PLEASE READ CAREFULLY", lc='green')
 
         # check whether every genome has at least one gene call.
         genomes_with_no_gene_calls = [g for g in self.genomes if not self.genomes[g]['num_genes']]
