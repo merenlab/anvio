@@ -704,6 +704,8 @@ class Pangenome(object):
         self.progress.update('...')
         gene_cluster_names = list(gene_clusters_dict.keys())
         num_gene_clusters = len(gene_cluster_names)
+        # FIXME: This should be parallelized. We know the number of threads the user allocated for this job via
+        #        self.num_threads.
         for i in range(0, num_gene_clusters):
             self.progress.update('%d of %d' % (i, num_gene_clusters)) if i % 10 == 0 else None
             gene_cluster_name = gene_cluster_names[i]
