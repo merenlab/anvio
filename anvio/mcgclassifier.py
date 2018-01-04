@@ -65,6 +65,7 @@ class MetagenomeCentricGeneClassifier:
         self.include_samples = A('include_samples')
         self.store_gene_detection_and_coverage_tables = A('store_gene_detection_and_coverage_tables')
         self.outliers_threshold = A('outliers_threshold')
+        self.gen_mcg_figures = A('gen_mcg_figures')
         self.profile_db = {}
         self.coverage_values_per_nt = {}
         self.gene_coverages = {}
@@ -591,13 +592,14 @@ class MetagenomeCentricGeneClassifier:
         # find occurence of genes in the samples
         self.init_gene_presence_absence_in_samples()
 
-        # Create the plots for nucleotide-level coverage data per sample.
-        self.plot_nucleotide_coverage_distribution()
-
         # compute gene consistency information
         self.init_gene_coverage_consistency_information()
-        # generate plots for coverage consistency information for each gene.
-        self.gen_gene_consistency_plots() 
+
+        if self.gen_mcg_figures:
+            # Create the plots for nucleotide-level coverage data per sample.
+            self.plot_nucleotide_coverage_distribution()
+            # generate plots for coverage consistency information for each gene.
+            self.gen_gene_consistency_plots() 
 
         # create the gene_class_df
         self.init_gene_class_df()

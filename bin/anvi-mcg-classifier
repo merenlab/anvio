@@ -50,6 +50,7 @@ if __name__ == '__main__':
     groupB.add_argument('--store-gene-detection-and-coverage-tables', action='store_true', default=False, help='If declared, then the gene mean coverages, the gene non outlier mean coverages, \
                         and gene detections tables would be saved. \
                         This is only relevant when working with a profile database')
+    groupB.add_argument(*anvio.A('gen-mcg-figures'), **anvio.K('gen-mcg-figures'))
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
     groupC.add_argument('--alpha', '--genome-detection-uncertainty', metavar='NUM', type=float, default=0.25,
                         help='Determines the range of sample detection values that are considered negative, ambiguous or positive. \
