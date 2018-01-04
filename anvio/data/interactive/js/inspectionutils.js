@@ -111,6 +111,9 @@ function show_sequence(gene_id) {
         cache: false,
         url: '/data/gene/' + gene_id + '?timestamp=' + new Date().getTime(),
         success: function(data) {
+            // remove previous modal window
+            $('.modal-sequence').remove();
+
             $('body').append('<div class="modal modal-sequence"> \
                 <div class="modal-dialog"> \
                     <div class="modal-content"> \
