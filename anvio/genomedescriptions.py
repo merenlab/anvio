@@ -182,7 +182,7 @@ class GenomeDescriptions(object):
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
 
         if self.functions_are_available:
-            contigs_super.init_functions(requested_sources=self.function_annotation_sources)
+            contigs_super.init_functions(requested_sources=list(self.function_annotation_sources))
             function_calls_dict = contigs_super.gene_function_calls_dict
         else:
             function_calls_dict = {}
