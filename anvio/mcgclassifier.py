@@ -69,7 +69,7 @@ class MetagenomeCentricGeneClassifier:
         self.coverage_values_per_nt = {}
         self.gene_coverages = {}
         self.gene_detections = {}
-        self.gene_coverage_per_position = {}
+        self.gene_coverage_values_per_nt = {}
         self.gene_non_outlier_positions = {}
         self.samples = {}
         self.sample_detection_information_was_initiated = False
@@ -160,14 +160,14 @@ class MetagenomeCentricGeneClassifier:
         if self.profile_db.gene_level_coverage_stats_dict:
             for gene_callers_id in gene_caller_ids:
                 gene_coverages[gene_callers_id], gene_non_outlier_coverage_stds[gene_callers_id], gene_non_outlier_mean_coverage[gene_callers_id], gene_detection[gene_callers_id] = {}, {}, {}, {}
-                self.gene_coverage_per_position[gene_callers_id], self.gene_non_outlier_positions[gene_callers_id] = {}, {}
+                self.gene_coverage_values_per_nt[gene_callers_id], self.gene_non_outlier_positions[gene_callers_id] = {}, {}
 
                 for sample_name in self.profile_db.p_meta['samples']:
                     gene_coverages[gene_callers_id][sample_name] = A('mean_coverage')
                     gene_detection[gene_callers_id][sample_name] = A('detection')
                     gene_non_outlier_mean_coverage[gene_callers_id][sample_name] = A('non_outlier_mean_coverage')
                     gene_non_outlier_coverage_stds[gene_callers_id][sample_name] = A('non_outlier_coverage_std')
-                    self.gene_coverage_per_position[gene_callers_id][sample_name] = A('gene_coverage_per_position')
+                    self.gene_coverage_values_per_nt[gene_callers_id][sample_name] = A('gene_coverage_values_per_nt')
                     self.gene_non_outlier_positions[gene_callers_id][sample_name] = A('non_outlier_positions')
                     
 
@@ -297,6 +297,7 @@ class MetagenomeCentricGeneClassifier:
             This dataframe is used to calculate the gene consistency information.
             It is also used for plotting purposes (both for the nucleotide-coverage-distribution plots and the gene-consistency plots).
         """
+        # TODO: move this to wrapper class
         if not self.sample_detection_information_was_initiated:
             self.init_sample_detection_information()
 
@@ -311,7 +312,9 @@ class MetagenomeCentricGeneClassifier:
 
             # loop through positive samples
             # get the non-outlier information
-            self.non_outlier_indices[sample], self.samples_coverage_stats_dicts.loc[sample,] = get_non_outliers_information(self.coverage_values_per_nt[sample], MAD_threshold=self.outliers_threshold)
+            non_outlier_indices, self.samples_coverage_stats_dicts.loc[sample,] = get_non_outliers_information(self.coverage_values_per_nt[sample], MAD_threshold=self.outliers_threshold)
+            self.non_outlier_indices[sample] = non_outlier_indices
+            # TODO: in manual mode this will either be supplied or it will be calculated from gene coverages
 
             self.run.info_single('The mean and std of non-outliers in sample %s are: %s, %s respectively' % (sample, self.samples_coverage_stats_dicts['non_outlier_mean_coverage'][sample], self.samples_coverage_stats_dicts['non_outlier_coverage_std'][sample]))
             number_of_non_outliers = len(self.non_outlier_indices[sample])
@@ -629,7 +632,7 @@ class MetagenomeCentricGeneClassifier:
         self.init_coverage_and_detection_dataframes(_bin.gene_coverages, _bin.gene_detection, _bin.gene_non_outlier_coverages, _bin.gene_non_outlier_coverage_stds)
 
         # populate gene per-position information
-        self.gene_coverage_per_position = _bin.gene_coverage_per_position
+        self.gene_coverage_values_per_nt = _bin.gene_coverage_values_per_nt
         self.gene_non_outlier_positions = _bin.gene_non_outlier_positions
 
     def save_gene_class_information_in_additional_layers(self, additional_description=''):
