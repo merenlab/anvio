@@ -57,9 +57,9 @@ class MCGPlots:
         if self.plot_gene_nuc_coverage:
             for sample in self.samples:
             # getting outlier and non outlier nucleotide coverage for the gene
-                non_outliers = mcg.gene_coverage_per_position[gene_id][sample][mcg.gene_non_outlier_positions[gene_id][sample]]
+                non_outliers = mcg.gene_coverage_values_per_nt[gene_id][sample][mcg.gene_non_outlier_positions[gene_id][sample]]
                 outlier_positions = np.logical_not(mcg.gene_non_outlier_positions[gene_id][sample])
-                outliers = mcg.gene_coverage_per_position[gene_id][sample][outlier_positions]
+                outliers = mcg.gene_coverage_values_per_nt[gene_id][sample][outlier_positions]
 
                 self.gene_nuc_coverage_dict[sample] = {}
                 self.gene_nuc_coverage_dict[sample]['non_outliers'] = non_outliers

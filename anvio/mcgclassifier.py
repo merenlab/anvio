@@ -69,7 +69,7 @@ class MetagenomeCentricGeneClassifier:
         self.coverage_values_per_nt = {}
         self.gene_coverages = {}
         self.gene_detections = {}
-        self.gene_coverage_per_position = {}
+        self.gene_coverage_values_per_nt = {}
         self.gene_non_outlier_positions = {}
         self.samples = {}
         self.sample_detection_information_was_initiated = False
@@ -160,14 +160,14 @@ class MetagenomeCentricGeneClassifier:
         if self.profile_db.gene_level_coverage_stats_dict:
             for gene_callers_id in gene_caller_ids:
                 gene_coverages[gene_callers_id], gene_non_outlier_coverage_stds[gene_callers_id], gene_non_outlier_mean_coverage[gene_callers_id], gene_detection[gene_callers_id] = {}, {}, {}, {}
-                self.gene_coverage_per_position[gene_callers_id], self.gene_non_outlier_positions[gene_callers_id] = {}, {}
+                self.gene_coverage_values_per_nt[gene_callers_id], self.gene_non_outlier_positions[gene_callers_id] = {}, {}
 
                 for sample_name in self.profile_db.p_meta['samples']:
                     gene_coverages[gene_callers_id][sample_name] = A('mean_coverage')
                     gene_detection[gene_callers_id][sample_name] = A('detection')
                     gene_non_outlier_mean_coverage[gene_callers_id][sample_name] = A('non_outlier_mean_coverage')
                     gene_non_outlier_coverage_stds[gene_callers_id][sample_name] = A('non_outlier_coverage_std')
-                    self.gene_coverage_per_position[gene_callers_id][sample_name] = A('gene_coverage_per_position')
+                    self.gene_coverage_values_per_nt[gene_callers_id][sample_name] = A('gene_coverage_values_per_nt')
                     self.gene_non_outlier_positions[gene_callers_id][sample_name] = A('non_outlier_positions')
                     
 
@@ -632,7 +632,7 @@ class MetagenomeCentricGeneClassifier:
         self.init_coverage_and_detection_dataframes(_bin.gene_coverages, _bin.gene_detection, _bin.gene_non_outlier_coverages, _bin.gene_non_outlier_coverage_stds)
 
         # populate gene per-position information
-        self.gene_coverage_per_position = _bin.gene_coverage_per_position
+        self.gene_coverage_values_per_nt = _bin.gene_coverage_values_per_nt
         self.gene_non_outlier_positions = _bin.gene_non_outlier_positions
 
     def save_gene_class_information_in_additional_layers(self, additional_description=''):
