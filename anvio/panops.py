@@ -61,7 +61,7 @@ class Pangenome(object):
         self.skip_alignments = A('skip_alignments')
         self.align_with = A('align_with')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
-        self.debug = A('debug')
+        self.debug = anvio.DEBUG
         self.min_percent_identity = A('min_percent_identity')
         self.gene_cluster_min_occurrence = A('min_occurrence')
         self.mcl_inflation = A('mcl_inflation')
@@ -700,7 +700,7 @@ class Pangenome(object):
         r = terminal.Run()
         r.verbose = False
 
-        self.progress.new('Aligning genes in amino acid sequences')
+        self.progress.new('Aligning amino acid sequences for genes in gene clusters')
         self.progress.update('...')
         gene_cluster_names = list(gene_clusters_dict.keys())
         num_gene_clusters = len(gene_cluster_names)
