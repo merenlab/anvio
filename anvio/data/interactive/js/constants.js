@@ -314,6 +314,30 @@ function getNamedCategoryColor(name)
     }
 }
 
+/*
+example:
+
+    named_stack_bar_colors = {
+        'bars_main': {
+            'A': '#FF0000',
+            'B': '#00FF00',
+            'C': '#0000FF',
+        },
+    };
+*/
+
+named_stack_bar_colors = {};
+
+function getNamedStackbarColors(stackbar_layer_name, bar_name)
+{
+    if (named_stack_bar_colors.hasOwnProperty(stackbar_layer_name) && 
+        named_stack_bar_colors[stackbar_layer_name].hasOwnProperty(bar_name)) {
+            return named_stack_bar_colors[stackbar_layer_name][bar_name];
+    }
+
+    return randomColor({luminosity: 'dark'});
+}
+
 pretty_names = {
     'tnf-cov': 'Seq. Composition + Diff. Coverage',
     'cov': 'Differential coverage',
