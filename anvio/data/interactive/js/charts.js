@@ -147,13 +147,26 @@ function showSetMaxValuesDialog() {
     
             table += '<tr> \
                         <td>' + layer_name + '</td> \
-                        <td>' + actual_max_val + '</td> \
-                        <td style="text-align: center;"><input type="text" size="5" value="' + max_val + '"/></td> \
+                        <td><a href="#" onclick="$(\'#max_multiple\').val(\'' + actual_max_val + '\')">' + actual_max_val + '</a></td> \
+                        <td style="text-align: center;"><input class="form-control input-sm max-coverage-input" type="text" size="5" value="' + max_val + '"/></td> \
                       </tr>';
 
             j++;
         }
     }
+
+    table += '<tr> \
+                <td>Set Max for all samples:</td> \
+                <td>&nbsp;</td> \
+                <td style="text-align: center;"><div class="input-group">\
+                    <input class="form-control input-sm" id="max_multiple" type="text" size="5" value="0"/> \
+                        <span class="input-group-btn"> \
+                            <button type="button" class="btn btn-default btn-sm" onclick="$(\'.max-coverage-input\').val($(\'#max_multiple\').val());">Set</button> \
+                        </span> \
+                    </div> \
+                </td> \
+            </tr>';
+
 
     $('#setMaxValuesDialog .modal-body').empty().append(table + '</tbody></table>');
     $('#setMaxValuesDialog').modal('show');
