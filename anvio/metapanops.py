@@ -26,12 +26,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
 
 class MetaPangenome(object):
-    def __init__(self, args=None, run=run, progress=progress):
+    def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
@@ -73,8 +70,8 @@ class MetaPangenome(object):
 
 
     def init_pan_summary(self):
-        progress.new('Pan summary')
-        progress.update('Initializing...')
+        self.progress.new('Pan summary')
+        self.progress.update('Initializing...')
 
         args = summarizer.ArgsTemplateForSummarizerClass()
         args.pan_db = self.pan_db_path
@@ -84,12 +81,12 @@ class MetaPangenome(object):
 
         self.pan_summary = summarizer.PanSummarizer(args)
 
-        progress.end()
+        self.progress.end()
 
 
     def init_genome_descriptions(self):
-        progress.new('Genome descriptions')
-        progress.update('Initializing')
+        self.progress.new('Genome descriptions')
+        self.progress.update('Initializing')
 
         self.descriptions = genomedescriptions.GenomeDescriptions(self.args)
 
@@ -113,9 +110,9 @@ class MetaPangenome(object):
 
         self.descriptions.load_genomes_descriptions(skip_functions=True)
 
-        progress.end()
+        self.progress.end()
 
-        run.info("Internal genomes found", "%d (%s)" % (len(self.descriptions.internal_genome_names), ', '.join(self.descriptions.internal_genome_names)))
+        self.run.info("Internal genomes found", "%d (%s)" % (len(self.descriptions.internal_genome_names), ', '.join(self.descriptions.internal_genome_names)))
 
 
     def set_sample_names(self):
@@ -126,7 +123,7 @@ class MetaPangenome(object):
         for profile_db_path in set([g['profile_db_path'] for g in list(self.descriptions.internal_genomes_dict.values())]):
             self.sample_names.extend(sorted(list(dbops.ProfileDatabase(profile_db_path).samples)))
 
-        run.info("Samples found", "%d (%s)" % (len(self.sample_names), ', '.join(self.sample_names)), nl_after=1)
+        self.run.info("Samples found", "%d (%s)" % (len(self.sample_names), ', '.join(self.sample_names)), nl_after=1)
 
 
     def get_summary_object_for_profile_db(self, profile_db_path, init_gene_coverages=True):
@@ -155,8 +152,8 @@ class MetaPangenome(object):
 
 
     def get_genomes_across_metagenomes_dict(self, data_key='mean_coverage'):
-        progress.new('Recovering data for genomes across metagenomes')
-        progress.update('...')
+        self.progress.new('Recovering data for genomes across metagenomes')
+        self.progress.update('...')
 
         genomes_across_metagenomes = {}
         for genome_name in self.descriptions.internal_genome_names:
@@ -166,14 +163,14 @@ class MetaPangenome(object):
 
         D = lambda: summary.collection_profile[genome_name][data_key]
         for profile_db_path in self.unique_profile_db_path_to_internal_genome_name:
-            progress.update('"%s" from profile db at %s ...' % (data_key, profile_db_path))
+            self.progress.update('"%s" from profile db at %s ...' % (data_key, profile_db_path))
             summary = self.get_summary_object_for_profile_db(profile_db_path, init_gene_coverages=False)
 
             for genome_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
                 for sample_name in D():
                     genomes_across_metagenomes[genome_name][sample_name] = D()[sample_name]
 
-        progress.end()
+        self.progress.end()
 
         return genomes_across_metagenomes
 
@@ -195,19 +192,19 @@ class MetaPangenome(object):
         if not isinstance(self.min_detection, float):
             raise ConfigError("Minimum detection must be of type `float`")
 
-        run.info('Fraction of median coverage for core genes', self.fraction_of_median_coverage)
-        run.info('Min detection of a genome in at last one metagenome', self.min_detection)
+        self.run.info('Fraction of median coverage for core genes', self.fraction_of_median_coverage)
+        self.run.info('Min detection of a genome in at last one metagenome', self.min_detection)
 
-        progress.new('Working on gene presence/absence')
-        progress.update('...')
+        self.progress.new('Working on gene presence/absence')
+        self.progress.update('...')
 
         gene_presence_in_the_environment_dict = {}
         for profile_db_path in self.unique_profile_db_path_to_internal_genome_name:
-            progress.update('Collection info from profile db at %s ...' % (profile_db_path))
+            self.progress.update('Collection info from profile db at %s ...' % (profile_db_path))
             summary = self.get_summary_object_for_profile_db(profile_db_path)
 
             for genome_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
-                progress.update('Working on genome %s in profile db %s ...' % (genome_name, profile_db_path))
+                self.progress.update('Working on genome %s in profile db %s ...' % (genome_name, profile_db_path))
 
                 # for each genome, first we will see whether it is detected in at least one metagenome
                 detection_across_metagenomes = summary.collection_profile[genome_name]['detection']
@@ -257,7 +254,7 @@ class MetaPangenome(object):
 
         gene_presence_in_the_environment_dict = self.get_gene_presence_in_the_environment_dict()
 
-        progress.update('Computing ratio of genes present/absent per gene cluster data ...')
+        self.progress.update('Computing ratio of genes present/absent per gene cluster data ...')
 
         gene_status_frequencies_in_gene_cluster = {}
         for gene_cluster_name in self.pan_summary.gene_clusters:
@@ -265,13 +262,13 @@ class MetaPangenome(object):
             for genome_name in self.pan_summary.gene_clusters[gene_cluster_name]:
                 for gene_caller_id in self.pan_summary.gene_clusters[gene_cluster_name][genome_name]:
                     if genome_name not in gene_presence_in_the_environment_dict:
-                        progress.end()
+                        self.progress.end()
                         raise ConfigError("Something is wrong... It seems you generated a pangenome with an internal genomes file\
                                            that is not identical to the internal genomes file you are using to run this program.")
                     status[gene_presence_in_the_environment_dict[genome_name][gene_caller_id]] += 1
             gene_status_frequencies_in_gene_cluster[gene_cluster_name] = status
 
-        progress.end()
+        self.progress.end()
 
         # setting up the items data dictionary
         items_additional_data_dict = {}
