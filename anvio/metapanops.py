@@ -14,7 +14,6 @@ import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.ccollections as ccollections
 import anvio.genomedescriptions as genomedescriptions
-from anvio.drivers import Aligners
 
 from anvio.errors import ConfigError
 
@@ -29,8 +28,6 @@ __email__ = "a.murat.eren@gmail.com"
 
 run = terminal.Run()
 progress = terminal.Progress()
-pp = terminal.pretty_print
-aligners = Aligners()
 
 
 class MetaPangenome(object):
