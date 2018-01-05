@@ -2604,7 +2604,6 @@ function loadState()
                             }
 
                             if (state.hasOwnProperty('categorical_data_colors')) {
-                                categorical_data_colors = {};
                                 for (var key in state['categorical_data_colors'])
                                 {
                                     var layer_id = getLayerId(key);
@@ -2616,7 +2615,6 @@ function loadState()
                             }
 
                             if (state.hasOwnProperty('stack_bar_colors')) {
-                                stack_bar_colors = {};
                                 for (var key in state['stack_bar_colors'])
                                 {
                                     var layer_id = getLayerId(key);
