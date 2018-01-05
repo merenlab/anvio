@@ -102,8 +102,11 @@ function loadAll() {
                 prev_str = '<a onclick="sessionStorage.state = state;" href="' + generate_inspect_link('inspect', previous_contig_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
             $('#header').append("<strong>" + contig_id + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
-            $('header').append('<button type="button" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
-                                <button type="button" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button>');
+
+            $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px;"> \
+                                    <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
+                                    <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button> \
+                                </div>');
 
             if (typeof sessionStorage.state === 'undefined')
             {
