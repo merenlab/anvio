@@ -208,6 +208,17 @@ D = {
                       Please let us know if you used this and things failed, so we can tell you that you shouldn't have really used it\
                       if you didn't like failures at the first place (smiley)."}
                 ),
+    'gen-mcg-figures': (
+            ['--gen-mcg-figures'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "For those of you who wish to dig deeper, a collection of figures could be created to allow\
+                      you to get insight into how the classification was generated. This is especially useful to\
+                      identify cases in which you shouldn't trust the classification (for example due to a large\
+                      number of outliers). NOTICE: if you ask anvi'o to generate these figures then it will\
+                      significantly extend the execution time. To learn about which figures are created and what\
+                      they mean, contact your nearest anvi'o developer, because currently it is a well-hidden secret."}
+                ),
     'skip-SNV-profiling': (
             ['--skip-SNV-profiling'],
             {'default': False,

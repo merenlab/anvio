@@ -65,11 +65,13 @@ class MetagenomeCentricGeneClassifier:
         self.include_samples = A('include_samples')
         self.store_gene_detection_and_coverage_tables = A('store_gene_detection_and_coverage_tables')
         self.outliers_threshold = A('outliers_threshold')
+        self.gen_mcg_figures = A('gen_mcg_figures')
         self.profile_db = {}
         self.coverage_values_per_nt = {}
         self.gene_coverages = {}
-        self.gene_detections = {}
+        self.gene_detections = None
         self.gene_coverage_values_per_nt = {}
+        self.gene_non_outlier_coverage_std = None
         self.gene_non_outlier_positions = {}
         self.samples = {}
         self.sample_detection_information_was_initiated = False
@@ -406,7 +408,7 @@ class MetagenomeCentricGeneClassifier:
 
     def init_gene_presence_absence_in_samples(self):
         """ Determining presence and absence of genes in samples according to gene detection values."""
-        if not self.gene_detections:
+        if self.gene_detections is None:
             # making sure that a gene detections table exists
             raise ConfigError("gene presence/absence in samples cannot be determined without a gene detections table,\
                                 but it seems that you don't have a gene detections table.")
@@ -463,11 +465,11 @@ class MetagenomeCentricGeneClassifier:
             if len(_samples) > 1:
                 # mean and std of non-outlier nt in the gene (in each sample)
                 y = self.gene_non_outlier_coverages.loc[gene_id, _samples].values
-                if self.gene_non_outlier_coverage_stds:
+                if self.gene_non_outlier_coverage_stds is None:
                     # checking if 
-                    std_y = self.gene_non_outlier_coverage_stds.loc[gene_id, _samples].values
-                else:
                     std_y = None
+                else:
+                    std_y = self.gene_non_outlier_coverage_stds.loc[gene_id, _samples].values
 
                 # performing the regression using ODR
                 _data = odr.RealData(x, y, std_x, std_y)
@@ -591,13 +593,14 @@ class MetagenomeCentricGeneClassifier:
         # find occurence of genes in the samples
         self.init_gene_presence_absence_in_samples()
 
-        # Create the plots for nucleotide-level coverage data per sample.
-        self.plot_nucleotide_coverage_distribution()
-
         # compute gene consistency information
         self.init_gene_coverage_consistency_information()
-        # generate plots for coverage consistency information for each gene.
-        self.gen_gene_consistency_plots() 
+
+        if self.gen_mcg_figures:
+            # Create the plots for nucleotide-level coverage data per sample.
+            self.plot_nucleotide_coverage_distribution()
+            # generate plots for coverage consistency information for each gene.
+            self.gen_gene_consistency_plots() 
 
         # create the gene_class_df
         self.init_gene_class_df()
