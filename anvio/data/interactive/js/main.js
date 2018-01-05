@@ -555,7 +555,7 @@ function populateColorDicts() {
                 var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
                 for (var j=0; j < bars.length; j++)
                 {
-                    stack_bar_colors[layer_id].push(randomColor({luminosity: 'dark'}));
+                    stack_bar_colors[layer_id].push(getNamedStackbarColors(layer_name.split('!')[0], bars[j]));
                 } 
             }
         }
