@@ -225,6 +225,10 @@ var named_layers = {
         'norm': 'none',
         'pretty_name': 'Detection',
     },
+    'ECG_EAG_Ratio!ECG;EAG;NA': {
+        'height': 400,
+        'pretty_name': 'ECG/EAG Ratio',
+    },
     'abundance': {
         'height': 0,
         'color': '#818181',
@@ -293,7 +297,7 @@ named_category_colors = {
     'KNOWN': '#00AA00',
     'UNKNOWN': '#F0F0F0',
     'ECG': '#00AA00',
-    'EDG': '#AA0000',
+    'EAG': '#AA0000',
     'NA': '#F0F0F0',
     'TSC': '#e38181',
     'TSA': '#0000AA',
@@ -387,7 +391,7 @@ function getPrettyName(name)
     return name;
 }
 
-function getClusteringPrettyName(name) 
+function getClusteringPrettyName(name)
 {
     var name_parts = name.split(':').map(getPrettyName);
 
@@ -408,7 +412,7 @@ function getNamedLayerDefaults(layer, attribute, default_value)
         if (attribute == 'color')  return '#882222'
     }
 
-    /* Some ad-hoc manipulation of special hmms_ single hmm layers */ 
+    /* Some ad-hoc manipulation of special hmms_ single hmm layers */
     if (layer.substring(0, 5) == "hmms_"){
         if (attribute == 'height') return '150';
         if (attribute == 'norm')   return 'sqrt';
