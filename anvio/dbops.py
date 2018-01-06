@@ -2847,7 +2847,13 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def export(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
 
-        keys, data = self.get()
+        if self.target in ['layers', 'items']:
+            keys, data = AdditionalDataBaseClass.get(self)
+        elif self.target in ['layer_orders']:
+            data = OrderDataBaseClass.get(self, native_form=True)
+            keys = ['data_type', 'data_value']
+        else:
+            raise ConfigError("Your target table '%s' does not make any sense" % self.target)
 
         if not(len(data)):
             raise ConfigError("Additional data table for %s is empty. There is nothing to export :/" % self.target)
@@ -2919,7 +2925,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         AdditionalAndOrderDataBaseClass.__init__(self, args)
 
 
-    def get(self, additional_data_keys=None, additional_data_dict=None):
+    def get(self, additional_data_keys=None, additional_data_dict=None, native_form=False):
         """Will return the layer order data dict.
 
            If `additional_data_keys` and `additional_data_dict` variables are provided, it will return an order dict
@@ -2929,6 +2935,15 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 >>> layer_orders_table = TableForLayerOrders(args)
                 >>> layer_additional_data_keys, layer_additional_data_dict = layers_additional_data_table.get()
                 >>> layer_orders_data_dict = layer_orders_table.get(layer_additional_data_keys, layer_additional_data_dict
+
+           The `native_form` is tricky. Normaly in this function we turn the data read from the table into
+           the legacy data structure anvi'o has been using before all these were implemented. So, by default,
+           we return the data in that legacy format so everyting else would continue working. But if the
+           programmer is interested in exporting the order data as an output file, we don't want to follow that
+           silly legacy format. So the parameter `native_form` simply returns the data in native form. Export
+           functions use the native form. At some point the rest of the anvi'o codebase should be fixed to
+           work only with the native form, and there is no need to this tyranny. Here is a FIXME for that
+           in case one day someone wants to address that.
         """
 
         self.progress.new('Recovering layer order data')
@@ -2937,6 +2952,9 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         order_data = database.get_table_as_dict(self.table_name)
         database.disconnect()
         self.progress.end()
+
+        if native_form:
+            return order_data
 
         d = {}
         for order_name in order_data:
