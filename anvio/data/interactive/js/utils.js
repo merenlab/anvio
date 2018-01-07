@@ -398,18 +398,53 @@ function readableNumber(num) {
 }
 
 //--------------------------------------------------------------------------------------------------
-function getReadableSeqSizeString(seqSizeInBases, fixed) {
+function getReadableSeqSizeString(seqSizeInBases) {
     // function based on answer at http://stackoverflow.com/questions/10420352/converting-file-size-in-bytes-to-human-readable
     var i = -1;
-    var baseUnits = [' kB', ' MB', ' GB', ' TB'];
+    var baseUnits = [' K', ' M', ' G', ' T'];
+
+    // if the number is less than a K, return as is
+    if (seqSizeInBases < 1000)
+        return seqSizeInBases;
+
     do {
         seqSizeInBases = seqSizeInBases / 1000;
         i++;
     } while (seqSizeInBases >= 1000);
-    fixed = fixed ? fixed : fixed == 0 ? 0 : 1;
-    return Math.max(seqSizeInBases, 0.1).toFixed(fixed) + baseUnits[i];
+
+    return Math.round(seqSizeInBases) + baseUnits[i];
 };
 
+//--------------------------------------------------------------------------------------------------
+function getCommafiedNumberString(number, decimals, dec_point, thousands_sep) {
+    // function modified from https://stackoverflow.com/a/2901136
+
+    if(isNaN(parseInt(number)))
+        return number;
+
+    var n = !isFinite(+number) ? 0 : +number,
+        prec = !isFinite(+decimals) ? 2 : Math.abs(decimals),
+        sep = (typeof thousands_sep === 'undefined') ? ',' : thousands_sep,
+        dec = (typeof dec_point === 'undefined') ? '.' : dec_point,
+        toFixedFix = function (n, prec) {
+            // Fix for IE parseFloat(0.55).toFixed(0) = 0;
+            var k = Math.pow(10, prec);
+            return Math.round(n * k) / k;
+        },
+        s = (prec ? toFixedFix(n, prec) : Math.round(n)).toString().split('.');
+    if (s[0].length > 3) {
+        s[0] = s[0].replace(/\B(?=(?:\d{3})+(?!\d))/g, sep);
+    }
+    if ((s[1] || '').length < prec) {
+        s[1] = s[1] || '';
+        s[1] += new Array(prec - s[1].length + 1).join('0');
+    }
+
+    if(s[1] > 0)
+        return s.join(dec);
+    else
+        return s[0];
+}
 
 //--------------------------------------------------------------------------------------------------
 function linePath(p0, p1)
