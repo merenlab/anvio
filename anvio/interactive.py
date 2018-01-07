@@ -1112,18 +1112,30 @@ class ContigsInteractive():
         ##  Table for basic stats
         ##
 
+        self.progress.new('Generating stats tables')
+        self.progress.update('Basic stats ...')
         basic_stats = []
         basic_stats.append(['Total Length'] + [c['total_length'] for c in self.contigs_stats.values()])
         basic_stats.append(['Num Contigs'] + [c['num_contigs'] for c in self.contigs_stats.values()])
         basic_stats.append(['Num Genes (' + constants.default_gene_caller + ')'] + [c['num_genes'] for c in self.contigs_stats.values()])
-        basic_stats.append(['Longest Contig'] + [c['total_length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['Shortest Contig'] + [c['total_length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['N50'] + [c['n_values'][49]['num_contigs'] for c in self.contigs_stats.values()])
-        basic_stats.append(['N75'] + [c['n_values'][74]['num_contigs'] for c in self.contigs_stats.values()])
-        basic_stats.append(['N90'] + [c['n_values'][89]['num_contigs'] for c in self.contigs_stats.values()])
-        basic_stats.append(['L50'] + [c['n_values'][49]['length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['L75'] + [c['n_values'][74]['length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['L90'] + [c['n_values'][89]['length'] for c in self.contigs_stats.values()])
+
+        self.progress.update('Contig lengths ...')
+        contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
+        MAX_L = lambda: [max(lengths) for lengths in contig_lengths_for_all]
+        MIN_L = lambda: [min(lengths) for lengths in contig_lengths_for_all]
+        basic_stats.append(['Longest Contig'] + MAX_L())
+        basic_stats.append(['Shortest Contig'] + MIN_L())
+
+        self.progress.update('N/L values ...')
+        n_values = [c['n_values'] for c in self.contigs_stats.values()]
+        N = lambda n: [n_value[n]['num_contigs'] for n_value in n_values]
+        L = lambda n: [n_value[n]['length'] for n_value in n_values]
+        basic_stats.append(['N50'] + N(49))
+        basic_stats.append(['N75'] + N(74))
+        basic_stats.append(['N90'] + N(89))
+        basic_stats.append(['L50'] + L(49))
+        basic_stats.append(['L75'] + L(74))
+        basic_stats.append(['L90'] + L(89))
 
         self.tables['basic_stats'] = basic_stats
 
@@ -1131,6 +1143,7 @@ class ContigsInteractive():
         ##  Table for hmm hits
         ##
 
+        self.progress.update('HMMs summary ...')
         all_hmm_sources = set()
         for c in self.contigs_stats.values():
             for source in c['gene_hit_counts_per_hmm_source'].keys():
@@ -1152,7 +1165,7 @@ class ContigsInteractive():
         ##
         ##  Table for SCG genome prediction
         ##
-
+        self.progress.update('Num genome prediction ...')
         source_to_domain = {}
         all_scg_sources = set()
         for c in self.contigs_stats.values():
@@ -1174,3 +1187,5 @@ class ContigsInteractive():
             scg_table.append(line)
 
         self.tables['scg'] = scg_table
+
+        self.progress.end()
