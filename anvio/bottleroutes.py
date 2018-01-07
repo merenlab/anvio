@@ -850,4 +850,6 @@ class BottleApplication(Bottle):
 
 
     def get_contigs_stats(self):
-        return json.dumps({'stats': self.interactive.contigs_stats, 'tables': self.interactive.tables})
+        return json.dumps({'stats': self.interactive.contigs_stats,
+                           'tables': self.interactive.tables,
+                           'human_readable_keys': self.interactive.human_readable_keys})
