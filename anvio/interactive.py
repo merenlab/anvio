@@ -1106,12 +1106,17 @@ class ContigsInteractive():
         self.generate_tables()
 
     def generate_tables(self):
+        # let's keep track of all keys we will need to access later from the interface. if
+        # we don't do this, non-standard keys (such as 'Gene caller (prodigal)' becomes very
+        # inaccessable when we need to access to it the way we access to 'N50' or 'Contig
+        # Lengths'):
+        self.human_readable_keys = []
+
         self.tables['header'] = [c['project_name'] for c in self.contigs_stats.values()]
 
         ##
         ##  Table for basic stats
         ##
-
         self.progress.new('Generating stats tables')
         self.progress.update('Basic stats ...')
         basic_stats = []
@@ -1138,11 +1143,11 @@ class ContigsInteractive():
         basic_stats.append(['L90'] + L(89))
 
         self.tables['basic_stats'] = basic_stats
+        self.human_readable_keys.extend([e[0] for e in basic_stats])
 
         ##
         ##  Table for hmm hits
         ##
-
         self.progress.update('HMMs summary ...')
         all_hmm_sources = set()
         for c in self.contigs_stats.values():
@@ -1158,6 +1163,7 @@ class ContigsInteractive():
                 else:
                     line.append('n/a')
 
+            self.human_readable_keys.append(line[0])
             hmm_table.append(line)
 
         self.tables['hmm'] = hmm_table
@@ -1184,6 +1190,7 @@ class ContigsInteractive():
                 else:
                     line.append('n/a')
 
+            self.human_readable_keys.append(line[0])
             scg_table.append(line)
 
         self.tables['scg'] = scg_table
