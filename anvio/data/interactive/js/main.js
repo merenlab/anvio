@@ -2329,7 +2329,6 @@ function generatePhylogeneticTree() {
         url: '/data/phylogeny/generate_tree?timestamp=' + new Date().getTime(),
         data: {
             'name': $('#phylogeny_name').val(),
-            'skip_multiple_genes': $('#phylogeny_skip_multiple_gene_calls').is(':checked'),
             'program': $('#phylogeny_programs').val(),
             'aligner': $('#phylogeny_aligners').val(),
             'gene_clusters': gene_cluster_list,
