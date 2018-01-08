@@ -759,13 +759,10 @@ class BottleApplication(Bottle):
             tree_text = open(temp_tree_file,'rb').read().decode()
 
             if store_tree:
-                # FIXME: This will break:
-                if not self.interactive.samples_information_db_path:
-                    raise ConfigError("This project does not have samples db")
+                dbops.TableForLayerOrders(self.interactive.args).add({name: {'data_type': 'newick', 'data_value': tree_text}})
 
-                samples_information_db = SamplesInformationDatabase(self.interactive.samples_information_db_path)
-                samples_information_db.update(single_order_path=temp_tree_file, single_order_name=name)
-                self.interactive.samples_order_dict[name] = {'newick': tree_text, 'basic': ''}
+                # TO DO: instead of injecting new newick tree, we can use TableForLayerOrders.get()
+                self.interactive.layers_order_data_dict[name] = {'newick': tree_text, 'basic': None}
         except Exception as e:
             message = str(e.clear_text()) if 'clear_text' in dir(e) else str(e)
             return json.dumps({'status': 1, 'message': message})
