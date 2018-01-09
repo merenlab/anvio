@@ -33,7 +33,6 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
-from anvio.dbops import SamplesInformationDatabase
 from anvio.errors import RefineError, ConfigError
 
 
@@ -260,9 +259,9 @@ class BottleApplication(Bottle):
                                  "readOnly":                           self.read_only,
                                  "binPrefix":                          bin_prefix,
                                  "sessionId":                          self.unique_session_id,
-                                 "samplesOrder":                       self.interactive.samples_order_dict,
-                                 "sampleInformation":                  self.interactive.samples_information_dict,
-                                 "sampleInformationDefaultLayerOrder": self.interactive.samples_information_default_layer_order,
+                                 "samplesOrder":                       self.interactive.layers_order_data_dict,
+                                 "sampleInformation":                  self.interactive.layers_additional_data_dict,
+                                 "sampleInformationDefaultLayerOrder": self.interactive.layers_additional_data_keys,
                                  "stateAutoload":                      self.interactive.state_autoload,
                                  "collectionAutoload":                 self.interactive.collection_autoload,
                                  "noPing":                             False,
@@ -746,7 +745,6 @@ class BottleApplication(Bottle):
     def generate_tree(self):
         gene_clusters = set(request.forms.getall('gene_clusters[]'))
         name = request.forms.get('name')
-        skip_multiple_gene_calls = request.forms.get('skip_multiple_genes')
         program = request.forms.get('program')
         aligner = request.forms.get('aligner')
         store_tree = request.forms.get('store_tree')
@@ -756,17 +754,15 @@ class BottleApplication(Bottle):
         tree_text = None
 
         try:
-            self.interactive.write_sequences_in_gene_clusters_for_phylogenomics(gene_cluster_names=gene_clusters, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls, align_with=aligner)
+            self.interactive.write_sequences_in_gene_clusters_for_phylogenomics(gene_cluster_names=gene_clusters, output_file_path=temp_fasta_file, align_with=aligner)
             drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file, temp_tree_file)
             tree_text = open(temp_tree_file,'rb').read().decode()
 
             if store_tree:
-                if not self.interactive.samples_information_db_path:
-                    raise ConfigError("This project does not have samples db")
+                dbops.TableForLayerOrders(self.interactive.args).add({name: {'data_type': 'newick', 'data_value': tree_text}})
 
-                samples_information_db = SamplesInformationDatabase(self.interactive.samples_information_db_path)
-                samples_information_db.update(single_order_path=temp_tree_file, single_order_name=name)
-                self.interactive.samples_order_dict[name] = {'newick': tree_text, 'basic': ''}
+                # TO DO: instead of injecting new newick tree, we can use TableForLayerOrders.get()
+                self.interactive.layers_order_data_dict[name] = {'newick': tree_text, 'basic': None}
         except Exception as e:
             message = str(e.clear_text()) if 'clear_text' in dir(e) else str(e)
             return json.dumps({'status': 1, 'message': message})
@@ -821,15 +817,16 @@ class BottleApplication(Bottle):
                 args.description = description_path
 
             if request.forms.get('include_samples') == "true":
+                # FIXME: this will break
                 if len(self.interactive.samples_order_dict):
                     samples_order_path = filesnpaths.get_temp_file_path()
                     utils.store_dict_as_TAB_delimited_file(self.interactive.samples_order_dict, samples_order_path, headers=['attributes', 'basic', 'newick'])
                     args.samples_order_file = samples_order_path
 
-                if len(self.interactive.samples_information_dict):
-                    samples_info_path = filesnpaths.get_temp_file_path()
-                    utils.store_dict_as_TAB_delimited_file(self.interactive.samples_information_dict, samples_info_path)
-                    args.samples_information_file = samples_info_path
+                if len(self.interactive.layers_additional_data_dict):
+                    layers_additional_data_path = filesnpaths.get_temp_file_path()
+                    utils.store_dict_as_TAB_delimited_file(self.interactive.layers_additional_data_dict, layers_additional_data_path)
+                    args.layers_additional_data_file = layers_additional_data_path
 
             collection_name = request.forms.get('collection')
             if collection_name in self.interactive.collections.collections_dict:
@@ -849,4 +846,6 @@ class BottleApplication(Bottle):
 
 
     def get_contigs_stats(self):
-        return json.dumps({'stats': self.interactive.contigs_stats, 'tables': self.interactive.tables})
+        return json.dumps({'stats': self.interactive.contigs_stats,
+                           'tables': self.interactive.tables,
+                           'human_readable_keys': self.interactive.human_readable_keys})

@@ -136,8 +136,8 @@ anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt
 INFO "Cluster contigs in the newly generated coverages file using 'canberra' distance, and 'complete' linkage"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt --distance canberra --linkage complete -o $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs_CANB_COMP.newick
 
-#INFO "Generating network descriptions for samples based on ORFs and functions"
-#anvi-gen-network -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db
+INFO "Generating network descriptions for samples based on gene functions"
+anvi-gen-network -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db --annotation-source Pfam
 
 INFO "Use anvi-experimental-organization to generate a tree from a new configuration to store it in a file (not in the database)"
 anvi-experimental-organization $files/example_clustering_configuration.ini -i $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED/EXP-ORG-FILE.txt --skip-store-in-db
@@ -269,18 +269,15 @@ anvi-get-sequences-for-hmm-hits -c $output_dir/CONTIGS.db -o $output_dir/ABC_tra
 INFO "Get AA sequences for HMM hits for a bin in a collection"
 anvi-get-sequences-for-hmm-hits -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1 -o $output_dir/hmm_hits_sequences_in_Bin_1.txt --get-aa-sequences
 
-INFO "Generate a new samples information database with a single newick order"
-anvi-gen-samples-info-database --single-order $files/samples-single-order-newick.txt -n A_BASIC_ORDER -o $output_dir/SAMPLES.db
-rm $output_dir/SAMPLES.db
+INFO "Import layer additional data from file"
+anvi-import-misc-data $files/samples-information.txt \
+                      -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                      --target-data-table layers
 
-INFO "Generate a samples information database with samples information and samples order"
-anvi-gen-samples-info-database -D $files/samples-information.txt -R $files/samples-order.txt -o $output_dir/SAMPLES.db
-
-INFO "Update an existing samples database with a basic order"
-anvi-update-samples-info-database -s $output_dir/SAMPLES.db --single-order $files/samples-single-order-basic.txt -n ADDITIONAL_BASIC_ORDER
-
-INFO "Update an existing samples database with a newick tree order"
-anvi-update-samples-info-database -s $output_dir/SAMPLES.db --single-order $files/samples-single-order-newick.txt -n ADDITIONAL_NEWICK_ORDER
+INFO "Import layer orders from file"
+anvi-import-misc-data $files/samples-order.txt \
+                      -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                      --target-data-table layer_orders
 
 INFO "Get linkmers from all BAM files for some distant positions"
 anvi-report-linkmers --contigs-and-positions $files/distant_positions_for_linkmers.txt -i $output_dir/*.bam -o $output_dir/distant_linkmers.txt
@@ -292,7 +289,7 @@ INFO "Oligotype linkmers report generated for adjacent nucleotide positions"
 anvi-oligotype-linkmers -i $output_dir/adjacent_linkmers.txt -o $output_dir/
 
 INFO "Search for functions to get split names with matching genes"
-anvi-search-functions-in-splits -c $output_dir/CONTIGS.db --search transporter,kinase -o $output_dir/transporter-hits.txt --verbose
+anvi-search-functions -c $output_dir/CONTIGS.db --search transporter,kinase -o $output_dir/transporter-hits.txt --verbose
 
 INFO "Get all short reads that map to the gene ID 38 (which is a Zinc transpoprter)"
 anvi-get-short-reads-mapping-to-a-gene -c $output_dir/CONTIGS.db --gene-caller-id 38 --leeway 100 -i $output_dir/*bam -o $output_dir/reads-mapping-to-gene-id-38.fa
@@ -352,7 +349,6 @@ anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONT
 INFO 'A dry run with an items order file for the merged profile without any clustering'
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
-                 -s $output_dir/SAMPLES.db \
                  --items-order $files/example_items_order_file.txt \
                  --dry-run
 
@@ -362,7 +358,6 @@ anvi-display-contigs-stats $output_dir/CONTIGS.db
 INFO "Firing up the interactive interface for merged samples"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
-                 -s $output_dir/SAMPLES.db \
                  -A $files/additional_view_data.txt \
                  -t $output_dir/SAMPLES-MERGED/EXP-ORG-FILE.txt \
                  -V $files/additional_view.txt \
@@ -378,4 +373,4 @@ INFO "Firing up the interactive interface in 'COLLECTION' mode"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT
 
 INFO "Firing up the interactive interface to refine a bin"
-anvi-refine -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -s $output_dir/SAMPLES.db -C CONCOCT -b Bin_1
+anvi-refine -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1

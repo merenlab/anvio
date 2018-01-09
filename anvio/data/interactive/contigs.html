@@ -165,8 +165,6 @@
 
 
         function array_to_table(table_array, placeholder_text) {
-            var human_readable_keys = ['L50', 'L75', 'L90', 'Shortest Contig', 'Longest Contig', 'Total Length'];
-
             var table_str = "";
             table_array.forEach(function(table_line) {
                 table_str += '<tr>';
@@ -191,7 +189,7 @@
                     if (human_readable && i > 0) {
                         table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + getReadableSeqSizeString(parseInt(table_item)) + '</td>';
                     } else {
-                        table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + table_item + '</td>';
+                        table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + getCommafiedNumberString(table_item) + '</td>';
                     }
                 });
 
@@ -227,6 +225,7 @@
             contig_db_names = Object.keys(contigs_stats);
 
             tables = response['tables']
+            human_readable_keys = response['human_readable_keys']
 
             contig_db_names.forEach(function(name) {
                 contigs_stats[name]['project_name'] = contigs_stats[name]['project_name'].replace(/_/g, ' ');

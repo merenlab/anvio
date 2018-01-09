@@ -555,7 +555,7 @@ function populateColorDicts() {
                 var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
                 for (var j=0; j < bars.length; j++)
                 {
-                    stack_bar_colors[layer_id].push(randomColor({luminosity: 'dark'}));
+                    stack_bar_colors[layer_id].push(getNamedCategoryColor(bars[j]));
                 } 
             }
         }
@@ -2329,7 +2329,6 @@ function generatePhylogeneticTree() {
         url: '/data/phylogeny/generate_tree?timestamp=' + new Date().getTime(),
         data: {
             'name': $('#phylogeny_name').val(),
-            'skip_multiple_genes': $('#phylogeny_skip_multiple_gene_calls').is(':checked'),
             'program': $('#phylogeny_programs').val(),
             'aligner': $('#phylogeny_aligners').val(),
             'gene_clusters': gene_cluster_list,
@@ -2604,7 +2603,6 @@ function loadState()
                             }
 
                             if (state.hasOwnProperty('categorical_data_colors')) {
-                                categorical_data_colors = {};
                                 for (var key in state['categorical_data_colors'])
                                 {
                                     var layer_id = getLayerId(key);
@@ -2616,7 +2614,6 @@ function loadState()
                             }
 
                             if (state.hasOwnProperty('stack_bar_colors')) {
-                                stack_bar_colors = {};
                                 for (var key in state['stack_bar_colors'])
                                 {
                                     var layer_id = getLayerId(key);

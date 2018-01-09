@@ -536,6 +536,10 @@ function drawSamplesLayers(settings) {
                     value == 'None';
                 }
 
+                if (typeof samples_categorical_colors[samples_layer_name] === 'undefined') {
+                    samples_categorical_colors[samples_layer_name] = {};
+                }
+
                 if (typeof samples_categorical_colors[samples_layer_name][value] === 'undefined')
                 {
                     samples_categorical_colors[samples_layer_name][value] = randomColor({luminosity: 'dark'});

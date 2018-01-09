@@ -20,8 +20,8 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
-from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible, get_description_in_db
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
+from anvio.dbops import is_profile_db_and_contigs_db_compatible, get_description_in_db
 from anvio.dbops import get_default_item_order_name, get_split_names_in_profile_db
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError
@@ -63,7 +63,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
-        self.samples_information_db_path = A('samples_information_db')
         self.view = A('view')
         self.fasta_file = A('fasta_file')
         self.view_data_path = A('view_data')
@@ -98,12 +97,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.displayed_item_names_ordered = None
         self.auxiliary_profile_data_available = False
 
-        self.samples_information_dict = {}
-        self.samples_order_dict = {}
-        self.samples_information_default_layer_order = {}
-
-        self.items_additional_data_dict = {}
-        self.items_additional_data_keys = []
+        # get additional data for items and layers, and get layer orders data.
+        a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
+        self.items_additional_data_keys, self.items_additional_data_dict = dbops.TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+        self.layers_additional_data_keys, self.layers_additional_data_dict = dbops.TableForLayerAdditionalData(self.args).get() if a_db_is_found else ([], {})
+        self.layers_order_data_dict = dbops.TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict) if a_db_is_found else {}
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
@@ -128,12 +126,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         ContigsSuperclass.__init__(self, self.args)
         self.init_splits_taxonomy(self.taxonomic_level)
-
-        if self.samples_information_db_path:
-            samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
-            self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
-            self.samples_information_default_layer_order = samples_information_db.get_samples_information_default_layer_order()
-            samples_information_db.disconnect()
 
         if self.contigs_db_path:
             self.completeness = Completeness(self.contigs_db_path)
@@ -167,12 +159,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         else:
             raise ConfigError("The interactive class is called with a mode that no one knows anything \
                                about. '%s'... What kind of a mode is that anyway :/" % self.mode)
-
-        # make sure the samples information database, if there is one, is in fact compatible with the profile database
-        # the reason we are doing this here is because when we are in 'self.manual_mode', the self.p_meta['samples'] is
-        # being filled within the self.load_manual_mode function based on the headers of the view data.
-        if self.profile_db_path and self.samples_information_db_path:
-            is_profile_db_and_samples_db_compatible(self.profile_db_path, self.samples_information_db_path, manual_mode_exception=self.manual_mode)
 
         if self.external_clustering:
             self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']
@@ -543,10 +529,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # read description from self table, if it is not available get_description function will return placeholder text
         self.p_meta['description'] = get_description_in_db(self.profile_db_path)
-
-        # get additional data
-        items_additional_data_table = dbops.TableForItemAdditionalData(self.args)
-        self.items_additional_data_keys, self.items_additional_data_dict = items_additional_data_table.get()
 
         if self.title:
             self.title = self.title
@@ -1184,31 +1166,49 @@ class ContigsInteractive():
         self.generate_tables()
 
     def generate_tables(self):
+        # let's keep track of all keys we will need to access later from the interface. if
+        # we don't do this, non-standard keys (such as 'Gene caller (prodigal)' becomes very
+        # inaccessable when we need to access to it the way we access to 'N50' or 'Contig
+        # Lengths'):
+        self.human_readable_keys = []
+
         self.tables['header'] = [c['project_name'] for c in self.contigs_stats.values()]
 
         ##
         ##  Table for basic stats
         ##
-
+        self.progress.new('Generating stats tables')
+        self.progress.update('Basic stats ...')
         basic_stats = []
         basic_stats.append(['Total Length'] + [c['total_length'] for c in self.contigs_stats.values()])
         basic_stats.append(['Num Contigs'] + [c['num_contigs'] for c in self.contigs_stats.values()])
         basic_stats.append(['Num Genes (' + constants.default_gene_caller + ')'] + [c['num_genes'] for c in self.contigs_stats.values()])
-        basic_stats.append(['Longest Contig'] + [c['total_length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['Shortest Contig'] + [c['total_length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['N50'] + [c['n_values'][49]['num_contigs'] for c in self.contigs_stats.values()])
-        basic_stats.append(['N75'] + [c['n_values'][74]['num_contigs'] for c in self.contigs_stats.values()])
-        basic_stats.append(['N90'] + [c['n_values'][89]['num_contigs'] for c in self.contigs_stats.values()])
-        basic_stats.append(['L50'] + [c['n_values'][49]['length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['L75'] + [c['n_values'][74]['length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['L90'] + [c['n_values'][89]['length'] for c in self.contigs_stats.values()])
+
+        self.progress.update('Contig lengths ...')
+        contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
+        MAX_L = lambda: [max(lengths) for lengths in contig_lengths_for_all]
+        MIN_L = lambda: [min(lengths) for lengths in contig_lengths_for_all]
+        basic_stats.append(['Longest Contig'] + MAX_L())
+        basic_stats.append(['Shortest Contig'] + MIN_L())
+
+        self.progress.update('N/L values ...')
+        n_values = [c['n_values'] for c in self.contigs_stats.values()]
+        N = lambda n: [n_value[n]['num_contigs'] for n_value in n_values]
+        L = lambda n: [n_value[n]['length'] for n_value in n_values]
+        basic_stats.append(['N50'] + N(49))
+        basic_stats.append(['N75'] + N(74))
+        basic_stats.append(['N90'] + N(89))
+        basic_stats.append(['L50'] + L(49))
+        basic_stats.append(['L75'] + L(74))
+        basic_stats.append(['L90'] + L(89))
 
         self.tables['basic_stats'] = basic_stats
+        self.human_readable_keys.extend([e[0] for e in basic_stats])
 
         ##
         ##  Table for hmm hits
         ##
-
+        self.progress.update('HMMs summary ...')
         all_hmm_sources = set()
         for c in self.contigs_stats.values():
             for source in c['gene_hit_counts_per_hmm_source'].keys():
@@ -1223,6 +1223,7 @@ class ContigsInteractive():
                 else:
                     line.append('n/a')
 
+            self.human_readable_keys.append(line[0])
             hmm_table.append(line)
 
         self.tables['hmm'] = hmm_table
@@ -1230,7 +1231,7 @@ class ContigsInteractive():
         ##
         ##  Table for SCG genome prediction
         ##
-
+        self.progress.update('Num genome prediction ...')
         source_to_domain = {}
         all_scg_sources = set()
         for c in self.contigs_stats.values():
@@ -1249,6 +1250,9 @@ class ContigsInteractive():
                 else:
                     line.append('n/a')
 
+            self.human_readable_keys.append(line[0])
             scg_table.append(line)
 
         self.tables['scg'] = scg_table
+
+        self.progress.end()

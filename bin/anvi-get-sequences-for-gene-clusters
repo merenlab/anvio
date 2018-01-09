@@ -13,12 +13,12 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.summarizer as summarizer
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
-__credits__ = []
+__credits__ = ["Ryan Bartelme", "Jay Osvatic"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
@@ -75,34 +75,27 @@ def main(args):
         run.info('Mode', 'Reporting alignments for all gene clusters.')
 
     pan = dbops.PanSuperclass(args)
-    pan.init_gene_clusters()
+    pan.init_gene_clusters(gene_cluster_ids)
 
-    if not gene_cluster_ids:
-        run.warning('By not specifying any criteria for gene cluster names to be reported, you elected to report everything.')
-
-        gene_cluster_ids = pan.gene_cluster_names
-
-        if len(gene_cluster_ids) > 2500:
-            run.warning('Congratulations. You have like a lot of gene clusters in this database. Maybe it is a good time to get a coffee or something.')
-
-    run.info('Number of gene clusters to report', len(gene_cluster_ids))
+    # this will simply return pan.gene_clusters if there are no filters requested
+    filtered_gene_clusters_dict = pan.filter_gene_clusters_dict(args)
 
     if args.concatenate_gene_clusters:
-        pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_cluster_names=gene_cluster_ids,
+        pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=filtered_gene_clusters_dict,
                                                                output_file_path=args.output_file,
-                                                               skip_multiple_gene_calls=args.skip_multiple_gene_calls,
                                                                report_DNA_sequences=args.report_DNA_sequences,
                                                                align_with=args.align_with)
     else:
-        pan.write_sequences_in_gene_clusters_to_file(gene_cluster_names=gene_cluster_ids,
+        pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict=filtered_gene_clusters_dict,
                                                      output_file_path=args.output_file,
                                                      report_DNA_sequences=args.report_DNA_sequences)
 
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export aligned sequences in gene clusters from anvi'o pan genomes")
+    parser = argparse.ArgumentParser(description="Do cool stuff with gene clusters in anvi'o pan genomes")
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
     groupB = parser.add_argument_group('OUTPUT', "You get to chose an output file name to report things. The default will be\
@@ -110,7 +103,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupB.add_argument(*anvio.A('report-DNA-sequences'), **anvio.K('report-DNA-sequences'))
 
-    groupC = parser.add_argument_group('SELECTION', "Which gene clusters should be exported. You can ask for a single gene cluster,\
+    groupC = parser.add_argument_group('SELECTION', "Which gene clusters should be reported. You can ask for a single gene cluster,\
                                        or multiple ones listed in a file, or you can use a collection and bin name to list gene clusters\
                                        of interest. If you give nothing, this program will export alignments for every single gene cluster\
                                        found in the profile database (and this is called 'customer service').")
@@ -119,14 +112,28 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
 
-    groupD = parser.add_argument_group('OTHER STUFF', "Yes. Stuff that are not like the ones above.")
-    groupD.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
-    groupD.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
+    groupD = parser.add_argument_group('ADVANCED FILTERS', "If you are here you must be looking for ways to specify\
+                                        exactly what you want from that database of gene clusters. These filters will\
+                                        be applied to what your previous selections reported.")
+    groupD.add_argument(*anvio.A('min-num-genomes-gene-cluster-occurs'), **anvio.K('min-num-genomes-gene-cluster-occurs'))
+    groupD.add_argument(*anvio.A('max-num-genomes-gene-cluster-occurs'), **anvio.K('max-num-genomes-gene-cluster-occurs'))
+    groupD.add_argument(*anvio.A('min-num-genes-from-each-genome'), **anvio.K('min-num-genes-from-each-genome'))
+    groupD.add_argument(*anvio.A('max-num-genes-from-each-genome'), **anvio.K('max-num-genes-from-each-genome'))
+    groupD.add_argument(*anvio.A('max-num-gene-clusters-missing-from-genome'), **anvio.K('max-num-gene-clusters-missing-from-genome'))
+    groupD.add_argument(*anvio.A('add-into-items-additional-data-table'), **anvio.K('add-into-items-additional-data-table'))
 
-    groupE = parser.add_argument_group('CONCATENATED OUTPUT', "Concatenated output for phylogenomics.")
-    groupE.add_argument(*anvio.A('concatenate-gene-clusters'), **anvio.K('concatenate-gene-clusters'))
-    groupE.add_argument(*anvio.A('skip-multiple-gene-calls'), **anvio.K('skip-multiple-gene-calls'))
-    groupE.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
+    groupE = parser.add_argument_group('OTHER STUFF', "Yes. Stuff that are not like the ones above.")
+    groupE.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupE.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
+
+    groupF = parser.add_argument_group('CONCATENATED OUTPUT', "Concatenated output for phylogenomics.")
+    groupF.add_argument(*anvio.A('concatenate-gene-clusters'), **anvio.K('concatenate-gene-clusters'))
+    groupF.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
+    groupF.add_argument(*anvio.A('list-aligners'), **anvio.K('list-aligners'))
+
+    groupG = parser.add_argument_group('TOTALLY IRRELEVANT', "Just in case you need it.")
+    groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
 
     args = anvio.get_args(parser)
 
@@ -141,9 +148,3 @@ if __name__ == '__main__':
     except DictIOError as e:
         print(e)
         sys.exit(-3)
-    except SamplesError as e:
-        print(e)
-        sys.exit(-4)
-    except HDF5Error as e:
-        print(e)
-        sys.exit(-5)

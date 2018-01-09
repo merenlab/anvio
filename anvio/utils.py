@@ -178,11 +178,14 @@ def get_predicted_type_of_items_in_a_dict(d, key):
     else:
         for item in items:
             try:
-                int(item or 0)
+                if int(item or 0) == item:
+                    continue
+                else:
+                    return float
             except ValueError:
                 return float
 
-            return int
+        return int
 
 
 def human_readable_file_size(nbytes):
