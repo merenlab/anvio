@@ -209,7 +209,7 @@ D = {
                       if you didn't like failures at the first place (smiley)."}
                 ),
     'gen-figures': (
-            ['--gen-mcg-figures'],
+            ['--gen-figures'],
             {'default': False,
              'action': 'store_true',
              'help': "For those of you who wish to dig deeper, a collection of figures could be created to allow\
