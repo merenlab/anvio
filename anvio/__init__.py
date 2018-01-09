@@ -208,7 +208,7 @@ D = {
                       Please let us know if you used this and things failed, so we can tell you that you shouldn't have really used it\
                       if you didn't like failures at the first place (smiley)."}
                 ),
-    'gen-mcg-figures': (
+    'gen-figures': (
             ['--gen-mcg-figures'],
             {'default': False,
              'action': 'store_true',
