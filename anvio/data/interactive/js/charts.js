@@ -102,8 +102,11 @@ function loadAll() {
                 prev_str = '<a onclick="sessionStorage.state = state;" href="' + generate_inspect_link('inspect', previous_contig_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
             $('#header').append("<strong>" + contig_id + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
-            $('header').append('<button type="button" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
-                                <button type="button" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button>');
+
+            $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px;"> \
+                                    <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
+                                    <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button> \
+                                </div>');
 
             if (typeof sessionStorage.state === 'undefined')
             {
@@ -147,13 +150,26 @@ function showSetMaxValuesDialog() {
     
             table += '<tr> \
                         <td>' + layer_name + '</td> \
-                        <td>' + actual_max_val + '</td> \
-                        <td style="text-align: center;"><input type="text" size="5" value="' + max_val + '"/></td> \
+                        <td><a href="#" onclick="$(\'#max_multiple\').val(\'' + actual_max_val + '\')">' + actual_max_val + '</a></td> \
+                        <td style="text-align: center;"><input class="form-control input-sm max-coverage-input" type="text" size="5" value="' + max_val + '"/></td> \
                       </tr>';
 
             j++;
         }
     }
+
+    table += '<tr> \
+                <td>Set Max for all samples:</td> \
+                <td>&nbsp;</td> \
+                <td style="text-align: center;"><div class="input-group">\
+                    <input class="form-control input-sm" id="max_multiple" type="text" size="5" value="0"/> \
+                        <span class="input-group-btn"> \
+                            <button type="button" class="btn btn-default btn-sm" onclick="$(\'.max-coverage-input\').val($(\'#max_multiple\').val());">Set</button> \
+                        </span> \
+                    </div> \
+                </td> \
+            </tr>';
+
 
     $('#setMaxValuesDialog .modal-body').empty().append(table + '</tbody></table>');
     $('#setMaxValuesDialog').modal('show');

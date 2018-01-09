@@ -29,7 +29,7 @@
 
   If all you want is the sequence of a gene matching a search pattern then use:
   for HMM: anvi-get-sequences-for-hmm-hits
-  for functional annotations: anvi-search-functions-in-splits
+  for functional annotations: anvi-search-functions
 """
 
 import sys

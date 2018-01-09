@@ -312,8 +312,8 @@ class ClusteringConfiguration:
 
                 # time to differentially store table contents.
                 if table_form == 'dataframe':
-                    args = argparse.Namespace(pan_or_profile_db=database_path)
-                    table = dbops.TableForItemAdditionalData(args, table_name=table)
+                    args = argparse.Namespace(pan_or_profile_db=database_path, table_name=table)
+                    table = dbops.TableForItemAdditionalData(args)
                     table_keys_list, table_data_dict = table.get()
                     store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
                 else:

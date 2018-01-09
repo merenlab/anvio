@@ -15,7 +15,7 @@ import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -48,7 +48,6 @@ groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
 groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
 groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
 groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
 groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
 groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
@@ -84,9 +83,6 @@ except FilesNPathsError as e:
 except DictIOError as e:
     print(e)
     sys.exit(-3)
-except SamplesError as e:
-    print(e)
-    sys.exit(-4)
 
 
 app = BottleApplication(d, args)

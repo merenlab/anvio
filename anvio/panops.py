@@ -61,7 +61,7 @@ class Pangenome(object):
         self.skip_alignments = A('skip_alignments')
         self.align_with = A('align_with')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
-        self.debug = A('debug')
+        self.debug = anvio.DEBUG
         self.min_percent_identity = A('min_percent_identity')
         self.gene_cluster_min_occurrence = A('min_occurrence')
         self.mcl_inflation = A('mcl_inflation')
@@ -394,7 +394,7 @@ class Pangenome(object):
         for gene_cluster in gene_clusters:
             self.view_data[gene_cluster] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.view_data_presence_absence[gene_cluster] = dict([(genome_name, 0) for genome_name in self.genomes])
-            self.additional_view_data[gene_cluster] = {'num_genes_in_gene_cluster': 0, 'num_genomes_gene_cluster_has_hits': 0, 'SCG': 0}
+            self.additional_view_data[gene_cluster] = {'num_genes_in_gene_cluster': 0, 'num_genomes_gene_cluster_has_hits': 0, 'SCG': 0, 'max_num_paralogs': 0}
 
             for gene_entry in gene_clusters_dict[gene_cluster]:
                 genome_name = gene_entry['genome_name']
@@ -404,6 +404,7 @@ class Pangenome(object):
                 self.additional_view_data[gene_cluster]['num_genes_in_gene_cluster'] += 1
 
             self.additional_view_data[gene_cluster]['SCG'] = 1 if set(self.view_data[gene_cluster].values()) == set([1]) else 0
+            self.additional_view_data[gene_cluster]['max_num_paralogs'] = max(self.view_data[gene_cluster].values())
 
             self.additional_view_data[gene_cluster]['num_genomes_gene_cluster_has_hits'] = len([True for genome in self.view_data[gene_cluster] if self.view_data[gene_cluster][genome] > 0])
 
@@ -467,8 +468,14 @@ class Pangenome(object):
                                         view_name = 'gene_cluster_presence_absence')
 
         item_additional_data_table = dbops.TableForItemAdditionalData(self.args)
-        item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'SCG']
-        item_additional_data_table.add(item_additional_data_keys, self.additional_view_data)
+        item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
+        item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
+        #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
+        #                                                                                   /
+        # here we say skip_check_names=True, simply because there is no gene_clusters table has not been
+        # generated yet, but the check names functionality in dbops looks for the gene clsuters table to
+        # be certain. it is not a big deal here, since we absoluely know what gene cluster names we are
+        # working with.
 
         ########################################################################################
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
@@ -558,67 +565,54 @@ class Pangenome(object):
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
-    def gen_samples_db(self):
-        samples_info_file_path = self.gen_samples_info_file()
-        samples_order_file_path = self.gen_samples_order_file()
-
-        samples_db_output_path = self.get_output_file_path(self.project_name + '-SAMPLES.db', delete_if_exists=True)
-
-        s = dbops.SamplesInformationDatabase(samples_db_output_path, run=self.run, progress=self.progress, quiet=True)
-        s.create(samples_info_file_path, samples_order_file_path)
-
-
-    def gen_samples_order_file(self):
-        self.progress.new('Samples DB')
+    def populate_layers_additional_data_and_orders(self):
+        self.progress.new('Layers additional data and orders')
         self.progress.update('Copmputing the hierarchical clustering of the (transposed) view data')
 
-        samples_order_file_path = self.get_output_file_path(self.project_name + '-samples-order.txt')
-        samples_order = open(samples_order_file_path, 'w')
-        samples_order.write('attributes\tbasic\tnewick\n')
-
+        layer_orders_data_dict = {}
         for clustering_tuple in [('gene_cluster presence absence', self.view_data), ('gene_cluster frequencies', self.view_data_presence_absence)]:
             v, d = clustering_tuple
             newick = clustering.get_newick_tree_data_for_dict(d, transpose=True, distance = self.distance, linkage=self.linkage)
-            samples_order.write('%s\t\t%s\n' % (v, newick))
+            layer_orders_data_dict[v] = {'data_type': 'newick', 'data_value': newick}
 
-        samples_order.close()
+        self.progress.update('Generating layers additional data ..')
 
-        self.progress.end()
-
-        self.run.info("Anvi'o samples order", samples_order_file_path)
-
-        return samples_order_file_path
-
-
-    def gen_samples_info_file(self):
-        self.progress.new('Samples DB')
-        self.progress.update('Generating the samples information file ..')
-
-        samples_info_dict = {}
-        samples_info_file_path = self.get_output_file_path(self.project_name + '-samples-information.txt')
-
-        # set headers
-        headers = ['total_length']
+        layers_additional_data_dict = {}
+        layers_additional_data_keys = ['total_length', 'gc_content']
 
         for h in ['percent_completion', 'percent_redundancy']:
             if h in list(self.genomes.values())[0]:
-                headers.append(h)
+                layers_additional_data_keys.append(h)
 
-        headers.extend(['gc_content', 'num_genes', 'avg_gene_length', 'num_genes_per_kb'])
+        layers_additional_data_keys.extend(['num_genes', 'avg_gene_length', 'num_genes_per_kb'])
 
         for genome_name in self.genomes:
             new_dict = {}
-            for header in headers:
-                new_dict[header] = self.genomes[genome_name][header]
+            for key in layers_additional_data_keys:
+                new_dict[key] = self.genomes[genome_name][key]
 
-            samples_info_dict[genome_name] = new_dict
+            layers_additional_data_dict[genome_name] = new_dict
 
-        utils.store_dict_as_TAB_delimited_file(samples_info_dict, samples_info_file_path, headers=['samples'] + headers)
+        # summarize gene cluster stats across genomes
+        layers_additional_data_keys.extend(['num_gene_clusters', 'singleton_gene_clusters'])
+        for genome_name in self.genomes:
+            layers_additional_data_dict[genome_name]['num_gene_clusters'] = 0
+            layers_additional_data_dict[genome_name]['singleton_gene_clusters'] = 0
+            for gene_cluster in self.view_data_presence_absence:
+                genomes_contributing_to_gene_cluster = [t[0] for t in self.view_data_presence_absence[gene_cluster].items() if t[1]]
+
+                # tracking singletons
+                if len(genomes_contributing_to_gene_cluster) == 1 and genomes_contributing_to_gene_cluster[0] == genome_name:
+                    layers_additional_data_dict[genome_name]['singleton_gene_clusters'] += 1
+
+                # tracking the total number of gene clusters
+                if self.view_data_presence_absence[gene_cluster][genome_name]:
+                    layers_additional_data_dict[genome_name]['num_gene_clusters'] += 1
 
         self.progress.end()
-        self.run.info("Anvi'o samples information", samples_info_file_path)
 
-        return samples_info_file_path
+        dbops.TableForLayerOrders(self.args).add(layer_orders_data_dict)
+        dbops.TableForLayerAdditionalData(self.args).add(layers_additional_data_dict, layers_additional_data_keys)
 
 
     def sanity_check(self):
@@ -706,10 +700,12 @@ class Pangenome(object):
         r = terminal.Run()
         r.verbose = False
 
-        self.progress.new('Aligning genes in amino acid sequences')
+        self.progress.new('Aligning amino acid sequences for genes in gene clusters')
         self.progress.update('...')
         gene_cluster_names = list(gene_clusters_dict.keys())
         num_gene_clusters = len(gene_cluster_names)
+        # FIXME: This should be parallelized. We know the number of threads the user allocated for this job via
+        #        self.num_threads.
         for i in range(0, num_gene_clusters):
             self.progress.update('%d of %d' % (i, num_gene_clusters)) if i % 10 == 0 else None
             gene_cluster_name = gene_cluster_names[i]
@@ -789,8 +785,8 @@ class Pangenome(object):
         # generate orderings of gene_clusters based on synteny of genes
         self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
 
-        # gen samples info and order files
-        self.gen_samples_db()
+        # populate layers additional data and orders
+        self.populate_layers_additional_data_and_orders()
 
         # done
         self.run.info('log file', self.run.log_file_path)
