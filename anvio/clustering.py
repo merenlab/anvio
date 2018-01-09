@@ -4,6 +4,8 @@
 
 import os
 import numpy as np
+import pandas as pd
+
 from sklearn import manifold
 from sklearn import preprocessing
 from scipy.cluster import hierarchy
@@ -83,34 +85,23 @@ def is_distance_metric_OK(distance):
                             is a list of all the available ones: %s" % (distance, ', '.join(distance_metrics)))
 
 
-def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_method_default, distance=constants.distance_metric_default):
+def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_method_default, distance=constants.distance_metric_default, norm='l1'):
     is_distance_and_linkage_compatible(distance, linkage)
 
-    matrix_file = filesnpaths.get_temp_file_path()
-    utils.store_dict_as_TAB_delimited_file(d, matrix_file, ['items'] + list(d[list(d.keys())[0]].keys()))
+    vectors = pd.DataFrame(d)
 
-    newick = get_newick_tree_data(matrix_file, transpose=transpose, distance=distance, linkage=linkage)
+    if transpose:
+        vectors = vectors.transpose()
 
-    os.remove(matrix_file)
+    id_to_sample_dict = dict([(i, vectors.index[i]) for i in range(len(vectors.index))])
+
+    newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict)
+
     return newick
 
 
-def get_newick_tree_data(observation_matrix_path, output_file_name=None, linkage=constants.linkage_method_default,
-                         distance=constants.distance_metric_default, norm='l1', progress=progress, transpose=False):
-
+def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict):
     is_distance_and_linkage_compatible(distance, linkage)
-    filesnpaths.is_file_exists(observation_matrix_path)
-    filesnpaths.is_file_tab_delimited(observation_matrix_path)
-
-    if output_file_name:
-        output_file_name = os.path.abspath(output_file_name)
-        output_directory = os.path.dirname(output_file_name)
-        if not os.access(output_directory, os.W_OK):
-            raise ConfigError("You do not have write permission for the output directory: '%s'" % output_directory)
-
-    id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose)
-
-    vectors = np.array(vectors)
 
     # normalize vectors:
     vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
@@ -118,10 +109,24 @@ def get_newick_tree_data(observation_matrix_path, output_file_name=None, linkage
     tree = get_clustering_as_tree(vectors, linkage, distance, progress)
     newick = get_tree_object_in_newick(tree, id_to_sample_dict)
 
+    return newick
+
+
+def create_newick_file_from_matrix_file(observation_matrix_path, output_file_name, linkage=constants.linkage_method_default,
+                         distance=constants.distance_metric_default, norm='l1', progress=progress, transpose=False):
+    is_distance_and_linkage_compatible(distance, linkage)
+    filesnpaths.is_file_exists(observation_matrix_path)
+    filesnpaths.is_file_tab_delimited(observation_matrix_path)
+    filesnpaths.is_output_file_writable(output_file_name)
+
+    id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose)
+
+    vectors = np.array(vectors)
+
+    newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict)
+
     if output_file_name:
         open(output_file_name, 'w').write(newick.strip() + '\n')
-
-    return newick
 
 
 def get_scaled_vectors(vectors, user_seed=None, n_components=12, normalize=True, progress=progress):
