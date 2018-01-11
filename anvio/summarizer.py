@@ -1347,10 +1347,20 @@ class Bin:
 
         headers = ['gene_callers_id'] + self.summary.p_meta['samples']
 
-        utils.store_dict_as_TAB_delimited_file(self.gene_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_coverages.txt'))
-        utils.store_dict_as_TAB_delimited_file(self.gene_detection, None, headers=headers, file_obj=self.get_output_file_handle('gene_detection.txt'))
-        utils.store_dict_as_TAB_delimited_file(self.gene_non_outlier_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_non_outlier_coverages.txt'))
-        utils.store_dict_as_TAB_delimited_file(self.gene_non_outlier_coverage_stds, None, headers=headers, file_obj=self.get_output_file_handle('gene_non_outlier_coverage_stds.txt'))
+        for key, file_name in [('mean_coverage', 'gene_coverages.txt'),
+                               ('detection', 'gene_detection.txt'),
+                               ('non_outlier_mean_coverage', 'gene_non_outlier_coverages.txt'),
+                               ('non_outlier_coverage_std', 'gene_non_outlier_coverage_stds.txt')]:
+            # we will create a new dictionary here by subestting values of `key` from self.gene_level_coverage_stats_dict,
+            # so we can store that information into `file_name`. magical stuff .. by us .. level 3000 wizards who can summon
+            # inefficiency at most random places. SHUT UP.
+            d = {}
+            for gene_callers_id in self.gene_level_coverage_stats_dict:
+                d[gene_callers_id] = {}
+                for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
+                    d[gene_callers_id][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][key]
+
+            utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=self.get_output_file_handle(file_name))
 
 
     def store_genes_basic_info(self):
