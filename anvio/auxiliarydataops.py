@@ -10,10 +10,8 @@ import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import HDF5Error, AuxiliaryDataError
+from anvio.errors import AuxiliaryDataError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -89,7 +87,6 @@ class AuxiliaryDataForSplitCoverages(object):
         self.progress.update('...')
 
         split_coverages = {}
-        all_known_splits = self.get_all_known_split_names()
 
         for split_name in split_names:
             self.progress.update('Processing split "%s"' % split_name)
