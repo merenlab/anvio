@@ -878,28 +878,28 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 raise ConfigError("The requested state ('%s') is not available for this run. Please see\
                                           available states by running this program with --show-states flag." % self.state_autoload)
 
-        print(self.views)
-
 
     def load_gene_mode(self):
-        ProfileSuperclass.__init__(self, self.args)
+        profile_db = ProfileSuperclass(self.args)
 
         # init item additional data
-        ProfileSuperclass.init_items_additional_data(self)
+        #profile_db.init_items_additional_data()
+        self.genes_in_splits_summary_dict = {}
 
-        self.init_gene_level_coverage_stats_dicts()
+        profile_db.init_gene_level_coverage_stats_dicts()
 
-        all_views = next(iter(next(iter(self.gene_level_coverage_stats_dict.values())).values())).keys()
+        all_views = next(iter(next(iter(profile_db.gene_level_coverage_stats_dict.values())).values())).keys()
 
         for view in all_views:
             self.views[view] = {
                 'table_name': 'genes', 
-                'header': self.p_meta['samples'], 
+                'header': profile_db.p_meta['samples'], 
                 'dict': {}
                 }
 
         self.collections.populate_collections_dict(self.profile_db_path)
         splits_of_interest = self.collections.get_collection_dict(self.collection_name)[self.bin_id]
+        all_gene_callers_ids = []
 
         for split_name in splits_of_interest:
             genes_in_splits_entries = self.split_name_to_genes_in_splits_entry_ids[split_name]
@@ -907,18 +907,32 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             for genes_in_splits_entry in genes_in_splits_entries:
                 e = self.genes_in_splits[genes_in_splits_entry]
                 gene_callers_id = e['gene_callers_id']
+                all_gene_callers_ids.append(gene_callers_id)
 
                 for view in all_views:
-                    self.views[view]['dict'][gene_callers_id] = {}
-                    for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
-                        self.views[view]['dict'][gene_callers_id][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
+                    self.views[view]['dict'][str(gene_callers_id)] = {}
+                    for sample_name in profile_db.gene_level_coverage_stats_dict[gene_callers_id]:
+                        self.views[view]['dict'][str(gene_callers_id)][sample_name] = profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
                         
 
         self.states_table = TablesForStates(self.profile_db_path)
 
-        self.p_meta['default_item_order'] = 'something'
-        self.p_meta['available_item_orders'].append(item_order_name)
-        self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
+        self.p_meta['default_item_order'] = 'mean_coverage'
+        self.default_view = 'mean_coverage'
+
+        self.p_meta['available_item_orders'] = []
+        self.p_meta['item_orders'] = {}
+
+        for view in all_views:
+            item_order_name = view
+            newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], linkage=self.linkage, distance=self.distance, transpose=True)
+            
+            self.p_meta['available_item_orders'].append(item_order_name)
+            self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
+
+        self.p_meta['item_orders']['synteny'] = {'type': 'basic', 'data': list(map(str, sorted(all_gene_callers_ids)))}
+
+        self.title = "Genes in '%s'" % self.bin_id
         
         # for view in all_views:
         #     self.views[view] =
