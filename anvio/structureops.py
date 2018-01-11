@@ -7,6 +7,7 @@ import os
 import shutil
 
 import pandas as pd
+import anvio.db as db
 import anvio.dbops as dbops
 import anvio.fastalib as u
 import anvio.utils as utils
@@ -16,8 +17,54 @@ import anvio.drivers.MODELLER as MODELLER
 
 from anvio.errors import ConfigError
 
+class StructureDatabase(object):
+    def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+        self.db_type = 'structure'
+        self.db_hash = str(db_hash)
+        self.version = anvio.__auxiliary_data_version__
+        self.file_path = file_path
+        self.quiet = quiet
+        self.run = run
+        self.progress = progress
+        self.entries = []
 
-class Structure:
+        self.db = db.DB(self.file_path, self.version, new_database=create_new)
+
+        if create_new:
+            self.create_tables()
+
+        if not ignore_hash:
+            self.check_hash()
+
+    def create_tables(self):
+        self.db.set_meta_value('db_type', self.db_type)
+        self.db.set_meta_value('profile_db_hash', self.db_hash)
+        self.db.set_meta_value('creation_date', time.time())
+
+        self.db.create_table(t.structure_table_name, t.structure_table_structure, t.structure_table_types)
+
+
+    def check_hash(self):
+        actual_db_hash = str(self.db.get_meta_value('profile_db_hash'))
+        if self.db_hash != actual_db_hash:
+            raise ConfigError('The hash value inside Structure Database "%s" does not match with Profile Database hash "%s",\
+                                      this files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
+
+
+    def append(self, gene_id, pdb_path):
+        pdb_content = open(pdb_path, 'rb').read()
+        self.entries.append((gene_id, pdb_content))
+
+
+    def store(self):
+        self.db.insert_many(t.structure_table_name, entries=self.entries)
+        self.entries = []
+
+    def close(self):
+        self.db.disconnect()
+
+
+class Structure(object):
 
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args

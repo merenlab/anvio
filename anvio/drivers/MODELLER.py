@@ -485,14 +485,17 @@ class MODELLER:
         # if MODELLER script gave a traceback, it is caught here and everything is stopped
         if process.returncode: 
             self.progress.end()
+            error = error.decode('utf-8').strip()
 
-            licence_key_error = True if error.decode('utf-8').find('Invalid license key') > -1 else False
+            is_licence_key_error = True if error.find('Invalid license key') > -1 else False            
 
-            if licence_key_error:
-                raise ModellerError("INSTRUCTIONS")
+            if is_licence_key_error:
+                license_target_file = error.split('\n')[-1]
+                raise ModellerError("MODELLER could not find your licence key. Please go to https://salilab.org/modeller/ and \
+                                    get a new license. After you receive an e-mail with your key, please open '%s' \
+                                    and replace 'XXXXX' with your key, save the file and try again. " % license_target_file)
             else:
-                #format the error
-                error = "\n"+str(error).replace("\\n", "\n").replace("\\'","\'")[2:-1].strip()
+                error = "\n".join(error.split('\n')[2:-1])
                 print(terminal.c(error, color='red'))
                 raise ModellerError("The MODELLER script {} did not execute properly. Hopefully it is clear \
                                      from the above error message".format(script_name))
