@@ -18,6 +18,7 @@ pan_db_version = "7"
 samples_info_db_version = "2"
 auxiliary_data_version = "2"
 genomes_storage_vesion = "5"
+structure_db_version = "1"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
@@ -228,4 +229,15 @@ gene_info_table_types      = [    'str'    ,     'numeric'   ,    'text'    ,   
 genome_gene_function_calls_table_name      = 'gene_function_calls'
 genome_gene_function_calls_table_structure = ['genome_name', ] + gene_function_calls_table_structure[:]
 genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_calls_table_types[:]
+
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE PROFILE AUXILIARY COVERAGE DATABASE
+#
+####################################################################################################
+
+structures_table_name       = 'structures'
+structures_table_structure  = [ 'gene_id', 'pdb_content']
+structures_table_types      = [ 'numeric',    'blob'    ]
 
