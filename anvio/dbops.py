@@ -1737,7 +1737,7 @@ class ProfileSuperclass(object):
         self.progress.new('Initializing the profile database superclass')
 
         self.progress.update('Loading split names')
-        self.split_names = get_split_names_in_profile_db(self.profile_db_path)
+        self.split_names = utils.get_all_item_names_from_the_database(self.profile_db_path)
 
         if self.split_names == self.split_names_of_interest:
             # the user is being silly. nick that split_names_of_interest
@@ -2868,26 +2868,6 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
                                % ('anvi-merge' if merged else 'anvi-profile', a_hash, p_hash))
 
     return True
-
-
-def get_split_names_in_profile_db(profile_db_path):
-    utils.is_profile_db(profile_db_path)
-
-    profile_db = ProfileDatabase(profile_db_path)
-
-    if int(profile_db.meta['blank']):
-        run.warning("dbops::get_split_names_in_profile_db is speaking. Someone asked for the split names in a blank profile database.\
-                     Sadly, anvi'o does not keep track of split names in blank profile databases. This function will return an\
-                     empty set as split names to not kill your mojo, but whatever you were trying to do will not work :(")
-        split_names = set([])
-    elif int(profile_db.meta['merged']):
-        split_names = set(profile_db.db.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'contig'))
-    else:
-        split_names = set(profile_db.db.get_single_column_from_table('atomic_data_splits', 'contig'))
-
-    profile_db.disconnect()
-
-    return split_names
 
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):
