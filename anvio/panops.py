@@ -27,6 +27,9 @@ from anvio.drivers import Aligners
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
+from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerOrders, TableForLayerAdditionalData
+from anvio.tables.geneclusters import TableForGeneClusters
+from anvio.tables.views import TablesForViews
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -453,21 +456,21 @@ class Pangenome(object):
         ########################################################################################
         table_structure=['gene_cluster'] + sorted(self.genomes.keys())
         table_types=['text'] + ['numeric'] * len(self.genomes)
-        dbops.TablesForViews(self.pan_db_path).create_new_view(
+        TablesForViews(self.pan_db_path).create_new_view(
                                         data_dict=self.view_data,
                                         table_name='gene_cluster_frequencies',
                                         table_structure=table_structure,
                                         table_types=table_types,
                                         view_name = 'gene_cluster_frequencies')
 
-        dbops.TablesForViews(self.pan_db_path).create_new_view(
+        TablesForViews(self.pan_db_path).create_new_view(
                                         data_dict=self.view_data_presence_absence,
                                         table_name='gene_cluster_presence_absence',
                                         table_structure=table_structure,
                                         table_types=table_types,
                                         view_name = 'gene_cluster_presence_absence')
 
-        item_additional_data_table = dbops.TableForItemAdditionalData(self.args)
+        item_additional_data_table = TableForItemAdditionalData(self.args)
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
         item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
         #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
@@ -611,8 +614,8 @@ class Pangenome(object):
 
         self.progress.end()
 
-        dbops.TableForLayerOrders(self.args).add(layer_orders_data_dict)
-        dbops.TableForLayerAdditionalData(self.args).add(layers_additional_data_dict, layers_additional_data_keys)
+        TableForLayerOrders(self.args).add(layer_orders_data_dict)
+        TableForLayerAdditionalData(self.args).add(layers_additional_data_dict, layers_additional_data_keys)
 
 
     def sanity_check(self):
@@ -648,7 +651,7 @@ class Pangenome(object):
         self.progress.new('Storing gene clusters in the database')
         self.progress.update('...')
 
-        table_for_gene_clusters = dbops.TableForGeneClusters(self.pan_db_path, run=self.run, progress=self.progress)
+        table_for_gene_clusters = TableForGeneClusters(self.pan_db_path, run=self.run, progress=self.progress)
 
         num_genes_in_gene_clusters = 0
         for gene_cluster_name in gene_clusters_dict:

@@ -34,6 +34,7 @@ import anvio.vbgmm as vbgmm
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -144,7 +145,7 @@ class CONCOCT:
                                                             #  \
                                                             #    poor man's random color generator
 
-        c = dbops.TablesForCollections(self.profile_db_path)
+        c = TablesForCollections(self.profile_db_path)
         c.append(collection_name, data, bin_info_dict)
 
         self.run.info('CONCOCT results in db', self.profile_db_path, display_only=True)
