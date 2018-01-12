@@ -60,7 +60,7 @@ splits_info_table_types                = ['text' ,     'numeric     ','numeric',
 
 genes_in_contigs_table_name             = 'genes_in_contigs'
 genes_in_contigs_table_structure        = ['gene_callers_id', 'contig', 'start' , 'stop'  , 'direction', 'partial', 'source', 'version']
-genes_in_contigs_table_types            = [     'numeric'   ,  'text' ,'numeric','numeric',   'text'   , 'numeric',  'text' ,   'text' ]
+genes_in_contigs_table_types            = [    'numeric'    ,  'text' ,'numeric','numeric',   'text'   , 'numeric',  'text' ,   'text' ]
 
 genes_in_splits_table_name             = 'genes_in_splits'
 genes_in_splits_table_structure        = ['entry_id', 'split', 'gene_callers_id', 'start_in_split', 'stop_in_split', 'percentage_in_split']
