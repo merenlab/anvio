@@ -34,6 +34,8 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
 from anvio.errors import RefineError, ConfigError
+from anvio.tables.miscdata import TableForLayerOrders
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -41,8 +43,8 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = ["A. Murat Eren"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Ozcan Esen"
+__email__ = "ozcanesen@gmail.com"
 
 
 run = terminal.Run()
@@ -504,7 +506,7 @@ class BottleApplication(Bottle):
 
         # the db here is either a profile db, or a pan db, but it can't be both:
         db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
-        collections = dbops.TablesForCollections(db_path)
+        collections = TablesForCollections(db_path)
         try:
             collections.append(source, data, bins_info_dict)
         except ConfigError as e:
@@ -759,7 +761,7 @@ class BottleApplication(Bottle):
             tree_text = open(temp_tree_file,'rb').read().decode()
 
             if store_tree:
-                dbops.TableForLayerOrders(self.interactive.args).add({name: {'data_type': 'newick', 'data_value': tree_text}})
+                TableForLayerOrders(self.interactive.args).add({name: {'data_type': 'newick', 'data_value': tree_text}})
 
                 # TO DO: instead of injecting new newick tree, we can use TableForLayerOrders.get()
                 self.interactive.layers_order_data_dict[name] = {'newick': tree_text, 'basic': None}

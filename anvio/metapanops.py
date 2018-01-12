@@ -16,6 +16,8 @@ import anvio.ccollections as ccollections
 import anvio.genomedescriptions as genomedescriptions
 
 from anvio.errors import ConfigError
+from anvio.tables.miscdata import TableForLayerAdditionalData, TableForItemAdditionalData
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -245,7 +247,7 @@ class MetaPangenome(object):
         genomes_across_metagenomes_dict = self.get_genomes_across_metagenomes_dict()
 
         self.args.just_do_it = True
-        dbops.TableForLayerAdditionalData(self.args).add(genomes_across_metagenomes_dict, self.sample_names)
+        TableForLayerAdditionalData(self.args).add(genomes_across_metagenomes_dict, self.sample_names)
 
 
     def add_ECG_EAG_ratio_per_gene_cluster_into_pan_database(self):
@@ -279,7 +281,7 @@ class MetaPangenome(object):
 
         # add that bad boy to the database
         self.args.just_do_it = True
-        dbops.TableForItemAdditionalData(self.args).add(items_additional_data_dict, [key])
+        TableForItemAdditionalData(self.args).add(items_additional_data_dict, [key])
 
 
     def process(self):

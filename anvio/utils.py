@@ -1810,6 +1810,140 @@ def get_missing_programs_for_hmm_analysis():
     return missing_programs
 
 
+def get_db_type(db_path):
+    filesnpaths.is_file_exists(db_path)
+
+    try:
+        database = db.DB(db_path, None, ignore_version=True)
+    except:
+        raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
+                            it is not at all..' % db_path)
+
+    tables = database.get_table_names()
+    if 'self' not in tables:
+        database.disconnect()
+        raise ConfigError("'%s' does not seem to be a anvi'o database..." % db_path)
+
+    db_type = database.get_meta_value('db_type')
+    database.disconnect()
+
+    return db_type
+
+
+def get_required_version_for_db(db_path):
+    db_type = get_db_type(db_path)
+
+    if db_type not in t.versions_for_db_types:
+        raise ConfigError("Anvi'o was trying to get the version of the -alleged- anvi'o database '%s', but it failed\
+                            because it turns out it doesn't know anything about this '%s' type." % (db_path, db_type))
+
+    return t.versions_for_db_types[db_type]
+
+
+def get_all_sample_names_from_the_database(db_path):
+    """Returns all 'sample' names from a given database. At least it tries."""
+
+    db_type = get_db_type(db_path)
+    database = db.DB(db_path, get_required_version_for_db(db_path))
+
+    if db_type == 'profile':
+        samples = []
+        try:
+            samples = [s.strip() for s in database.get_meta_value('samples').split(',')]
+        except:
+            pass
+
+        return set(samples)
+
+    elif db_type == 'pan':
+        internal_genome_names, external_genome_names = [], []
+        try:
+            internal_genome_names = [g.strip() for g in database.get_meta_value('internal_genome_names').split(',')]
+        except:
+            pass
+
+        try:
+            external_genome_names = [g.strip() for g in database.get_meta_value('external_genome_names').split(',')]
+        except:
+            pass
+
+        return set([s for s in internal_genome_names + external_genome_names if s])
+
+    else:
+        raise ConfigError("`get_all_sample_names_from_the_database` function does not know how to deal\
+                            with %s databases." % db_type)
+
+
+def get_all_item_names_from_the_database(db_path, run=run):
+    """Return all split names or gene cluster names in a given database"""
+
+    all_items = set([])
+
+    database = db.DB(db_path, get_required_version_for_db(db_path))
+    db_type = database.get_meta_value('db_type')
+
+    if db_type == 'profile':
+        if int(database.get_meta_value('blank')):
+            run.warning("Someone asked for the split names in a blank profile database. Sadly, anvi'o does not keep track\
+                         of split names in blank profile databases. This function will return an empty set as split names\
+                         to not kill your mojo, but whatever you were trying to do will not work :(")
+            return set([])
+        elif int(database.get_meta_value('merged')):
+            all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'contig'))
+        else:
+            all_items = set(database.get_single_column_from_table('atomic_data_splits', 'contig'))
+    elif db_type == 'pan':
+        all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
+    elif db_type == 'contigs':
+        all_items = set(database.get_single_column_from_table(t.splits_info_table_name, 'split'))
+    else:
+        database.disconnect()
+        raise ConfigError("You wanted to get all items in the database %s, but no one here knows aobut its type. Seriously,\
+                            what is '%s'?" % (db_path, db_type))
+
+    if not len(all_items):
+        database.disconnect()
+        raise ConfigError("utils::get_all_item_names_from_the_database speaking. Something that should never happen happened :/\
+                           There seems to be nothing in this %s database. Anvi'o is as confused as you are. Please get in touch\
+                           with a developer. They will love this story." % db_path)
+
+    database.disconnect()
+
+    return all_items
+
+
+def is_contigs_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'contigs':
+        raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
+
+
+def is_pan_or_profile_db(db_path):
+    if get_db_type(db_path) not in ['pan', 'profile']:
+        raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble." % db_path)
+
+
+def is_profile_db(db_path):
+    if get_db_type(db_path) != 'profile':
+        raise ConfigError("'%s' is not an anvi'o profile database." % db_path)
+
+
+def is_blank_profile(db_path):
+    if get_db_type(db_path) != 'profile':
+        return False
+
+    database = db.DB(db_path, None, ignore_version=True)
+    blank = database.get_meta_value('blank')
+    database.disconnect()
+
+    return blank
+
+
+def is_pan_db(db_path):
+    if get_db_type(db_path) != 'pan':
+        raise ConfigError("'%s' is not an anvi'o pan database." % db_path)
+
+
 def download_file(url, output_file_path, progress=progress, run=run):
     """Downloads file.
 
