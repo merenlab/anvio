@@ -1692,6 +1692,15 @@ class ProfileSuperclass(object):
         populate_nt_level_coverage = A('populate_nt_level_coverage')
         outliers_threshold = A('outliers_threshold')
 
+        # early on let's check some ground truth
+        if not self.profile_db_path:
+            self.run.warning("ProfileSuper is called with args without member profile_db. Anvi'o will assume\
+                              you are a programmer, and will not raise an error. But the init function is returning\
+                              prematurely. Just so you know.")
+            return
+
+        utils.is_profile_db(self.profile_db_path)
+
         # Should we initialize the profile super for a specific list of splits? This is where we take care of that.
         # the user can initialize the profile super two ways: by providing split names of interest explicitly, or
         # by providing collection name and bin names in args.
@@ -1713,21 +1722,13 @@ class ProfileSuperclass(object):
         if self.split_names_of_interest:
             self.run.warning("ProfileSuperClass is inherited with a set of split names of interest, which means it will be\
                               initialized using only the %d split names specified" % (len(self.split_names_of_interest)))
-        elif self.collection_name:
+        elif self.collection_name and not utils.is_blank_profile(self.profile_db_path):
             self.run.warning("ProfileSuperClass found a collection focus, which means it will be initialized using only\
                               the splits in the profile database that are affiliated with the collection %s and\
                               %s it describes." % (self.collection_name, \
                                                    'bins "%s" ' % ', '.join(self.bin_names) if self.bin_names else 'all bins'))
             self.split_names_of_interest = ccolections.GetSplitNamesInBins(self.args).get_split_names_only()
 
-
-        if not self.profile_db_path:
-            self.run.warning("ProfileSuper is called with args without member profile_db. Anvi'o will assume\
-                              you are a programmer, and will not raise an error. But the init function is returning\
-                              prematurely. Just so you know.")
-            return
-
-        utils.is_profile_db(self.profile_db_path)
 
         # we have a contigs db? let's see if it's for real.
         if self.contigs_db_path:
