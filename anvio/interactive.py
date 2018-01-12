@@ -22,7 +22,7 @@ import anvio.ccollections as ccollections
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
 from anvio.dbops import is_profile_db_and_contigs_db_compatible, get_description_in_db
-from anvio.dbops import get_default_item_order_name, get_split_names_in_profile_db
+from anvio.dbops import get_default_item_order_name
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError
 
@@ -639,7 +639,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # we are about to request a collections dict that contains only split names that appear in the
         # profile database along with other info:
-        self.collection, bins_info_dict, split_names_in_db_but_missing_in_collection = self.collections.get_trimmed_dicts(self.collection_name, get_split_names_in_profile_db(self.profile_db_path))
+        self.collection, bins_info_dict, split_names_in_db_but_missing_in_collection = \
+                                        self.collections.get_trimmed_dicts(self.collection_name,
+                                                                           utils.get_all_item_names_from_the_database(self.profile_db_path))
 
         # we will do something quite tricky here. first, we will load the full mode to get the self.views
         # data structure fully initialized based on the profile database. Then, we using information about
