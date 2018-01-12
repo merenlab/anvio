@@ -15,7 +15,6 @@ import datetime
 import textwrap
 
 from io import StringIO
-from itertools import chain
 from collections import Counter
 
 import numpy
@@ -31,10 +30,11 @@ import anvio.constants as constants
 import anvio.contigops as contigops
 import anvio.filesnpaths as filesnpaths
 import anvio.genecalling as genecalling
-import anvio.auxiliarydataops as auxiliarydataops
+import anvio.ccollections as ccolections
 import anvio.genomestorage as genomestorage
+import anvio.auxiliarydataops as auxiliarydataops
 
-from anvio.tableops import Table
+from anvio.tables.tableops import Table
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
@@ -65,7 +65,7 @@ class DBClassFactory:
                            'pan': PanDatabase}
 
     def get_db_class(self, db_path):
-        db_type = get_db_type(db_path)
+        db_type = utils.get_db_type(db_path)
 
         if db_type not in self.DB_CLASSES:
             raise ConfigError("DBClassFactory speaking. I do not know a class for database type\
@@ -1634,14 +1634,23 @@ class ProfileSuperclass(object):
        Alternatively, you can include a contigs database path (contigs_db) in args so you have access
        to some functions that would require that.
 
-       Alternatively, you can define a set of split names of interest:
+       Alternatively, you can define a set of split names of interest to gain performance when it is
+       needed. There are two ways to do that, which are mutually exclusive (so you have to grow up and
+       pick one). One way is to explicitly mention which splits are of interest (for control freaks):
 
             >>> args.split_names_of_interest = set([split_names])
             >>> p = ProfileSuperclass(args)
 
-       in which case some functions will initialize data only for those splits. This is one way to minimize
-       the resources necessary to initialize gene_coverages if only a subset of bins in a collection is
-       requested.
+        The second way to initialize ProfileSuper with a subset of splits a profile database contains
+        is to use the collections framework (the elegant way of doing this). For which, you need to
+        set collection name:
+
+            >>> args.collection_name = 'collcetion_name'
+            >>> args.bin_ids = 'bin_1,bin_2,bin_3' # if no bin_ids is provided, all bins will be used
+            >>> p = ProfileSuperClass(args)
+
+
+        The best practice is to set anvi'o programs to put together `args` objectd with these variables.
        """
 
     def __init__(self, args, r=run, p=progress):
@@ -1679,14 +1688,38 @@ class ProfileSuperclass(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
-        self.split_names_of_interest = A('split_names_of_interest')
         init_gene_coverages = A('init_gene_coverages')
         populate_nt_level_coverage = A('populate_nt_level_coverage')
         outliers_threshold = A('outliers_threshold')
 
+        # Should we initialize the profile super for a specific list of splits? This is where we take care of that.
+        # the user can initialize the profile super two ways: by providing split names of interest explicitly, or
+        # by providing collection name and bin names in args.
+        self.split_names_of_interest = A('split_names_of_interest')
+        self.collection_name = A('collection_name')
+        self.bin_names = [A('bin_id')] if A('bin_id') else [b.strip() for b in A('bin_names_list').spit(',')]
+
         if self.split_names_of_interest and not isinstance(self.split_names_of_interest, type(set([]))):
             raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set().\
                                Someone screwed up somewhere :/")
+        elif self.split_names_of_interest and self.collection_name:
+            raise ConfigError("ProfileSuper is initializef with args that contain both `split_names_of_interest`,\
+                               and `collection_name`. You can initialize the ProfileSuper with either of those. As\
+                               a programmer if you have no control over incoming `args` and just passing things\
+                               aroung, you might need to implement a workaround to set either of those params to None\
+                               and then reset them back to their original in `args` once you are done with\
+                               ProfileSuper.")
+
+        if self.split_names_of_interest:
+            self.run.warning("ProfileSuperClass is inherited with a set of split names of interest, which means it will be\
+                              initialized using only the %d split names specified" % (len(self.split_names_of_interest)))
+        elif self.collection_name:
+            self.run.warning("ProfileSuperClass found a collection focus, which means it will be initialized using only\
+                              the splits in the profile database that are affiliated with the collection %s and\
+                              %s it describes." % (self.collection_name, \
+                                                   'bins "%s" ' % ', '.join(self.bin_names) if self.bin_names else 'all bins'))
+            self.split_names_of_interest = ccolections.GetSplitNamesInBins(self.args).get_split_names_only()
+
 
         if not self.profile_db_path:
             self.run.warning("ProfileSuper is called with args without member profile_db. Anvi'o will assume\
@@ -1712,9 +1745,8 @@ class ProfileSuperclass(object):
         split_names_missing = (self.split_names_of_interest - self.split_names) if self.split_names_of_interest else None
         if self.split_names_of_interest and len(split_names_missing):
             self.progress.end()
-            raise ConfigError("You called ProfileSuper with a `split_names_of_interest` argument, yet it contained\
-                               %d split names that does not occur in the profile database. Here is an example: '%s'." % \
-                                                                (len(split_names_missing), split_names_missing.pop()))
+            raise ConfigError("%d of the %d split names of interest does not occur in the profile database. Here is\
+                               an example: '%s'." % (len(split_names_missing), len(self.split_names_of_interest), split_names_missing.pop()))
 
         self.progress.update('Creating an instance of the profile database')
         profile_db = ProfileDatabase(self.profile_db_path)
@@ -1785,8 +1817,8 @@ class ProfileSuperclass(object):
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__auxiliary_data_version__))
 
         if self.split_names_of_interest:
-            self.run.info('Profile Super', 'Initialized with %d of %d splits: %s (v. %s)' % (len(self.split_names),
-                                                                                             len(self.split_names_of_interest),
+            self.run.info('Profile Super', 'Initialized with %d of %d splits: %s (v. %s)' % (len(self.split_names_of_interest),
+                                                                                             len(self.split_names),
                                                                                              self.profile_db_path,
                                                                                              anvio.__profile__version__))
         else:
@@ -2763,8 +2795,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                                be working with.")
 
         is_pan_or_profile_db(self.db_path)
-        self.db_type = get_db_type(self.db_path)
-        self.db_version = get_required_version_for_db(self.db_path)
+        self.db_type = utils.get_db_type(self.db_path)
+        self.db_version = utils.get_required_version_for_db(self.db_path)
 
         database = db.DB(self.db_path, self.db_version)
         self.additional_data_keys = database.get_single_column_from_table(self.table_name, 'data_key')
@@ -2777,7 +2809,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         if skip_check_names is None and is_blank_profile(self.db_path):
             # FIXME: this BS is here because blank abvi'o profiles do not know what items they have,
-            #        hence the get_all_item_names_from_the_database function eventually explodes if we
+            #        hence the utils.get_all_item_names_from_the_database function eventually explodes if we
             #        don't skip check names.
             skip_check_names = True
 
@@ -2805,7 +2837,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                                yourself before you wreck yourself. In other words, can you please\
                                make sure the keys you send is of type `list` thankyouverymuch?")
 
-        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
@@ -2864,7 +2896,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
 
     def list_data_keys(self):
-        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
         if not len(additional_data_keys):
@@ -2948,7 +2980,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         self.progress.new('Recovering layer order data')
         self.progress.update('...')
-        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         order_data = database.get_table_as_dict(self.table_name)
         database.disconnect()
         self.progress.end()
@@ -3060,7 +3092,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                      data_dict[item_name]['data_type'],
                                      data_dict[item_name]['data_value']]))
 
-        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
 
@@ -3101,7 +3133,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         self.progress.new('Recovering additional keys and data for %s' % self.target)
         self.progress.update('...')
-        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         additional_data = database.get_table_as_dict(self.table_name)
         additional_data_keys = database.get_single_column_from_table(self.table_name, 'data_key', unique=True)
         additional_data_item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True)
@@ -3217,7 +3249,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                          data_dict[item_name][key],
                                          key_types[key]]))
 
-        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
 
@@ -3244,7 +3276,7 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
     def check_names(self, data_dict):
         """Compares item names found in the data dict to the ones in the db"""
 
-        items_in_db = get_all_item_names_from_the_database(self.db_path)
+        items_in_db = utils.get_all_item_names_from_the_database(self.db_path)
         items_in_data = set(data_dict.keys())
 
         items_in_data_but_not_in_db = items_in_data.difference(items_in_db)
@@ -3291,7 +3323,7 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
     def check_names(self, data_dict):
         """Compares layer names found in the data dict to the ones in the db"""
 
-        layers_in_db = get_all_sample_names_from_the_database(self.db_path)
+        layers_in_db = utils.get_all_sample_names_from_the_database(self.db_path)
         layers_in_data = set(data_dict.keys())
 
         layers_in_data_but_not_in_db = layers_in_data.difference(layers_in_db)
@@ -3333,7 +3365,7 @@ class TableForLayerOrders(OrderDataBaseClass):
     def check_names(self, data_dict):
         """Compares layer names found in the data dict to the ones in the db"""
 
-        layers_in_db = sorted(get_all_sample_names_from_the_database(self.db_path))
+        layers_in_db = sorted(utils.get_all_sample_names_from_the_database(self.db_path))
         layers_in_data = self.get_layer_names(data_dict)
 
         for data_key in data_dict:
@@ -3380,7 +3412,7 @@ class TablesForViews(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
 
-        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
+        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run, progress)
 
 
     def create_new_view(self, data_dict, table_name, table_structure, table_types, view_name=None, append_mode=False):
@@ -3443,7 +3475,7 @@ class TableForVariability(Table):
         self.run = run
         self.progress = progress
 
-        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run=self.run, progress=self.progress)
+        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
         self.num_entries = 0
         self.db_entries = []
@@ -3596,7 +3628,7 @@ class TableForAAFrequencies(Table):
         self.run = run
         self.progress = progress
 
-        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run=self.run, progress=self.progress)
+        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
         self.num_entries = 0
         self.db_entries = []
@@ -4220,138 +4252,12 @@ class TablesForHMMHits(Table):
         return db_entries_for_splits
 
 
-class TablesForCollections(Table):
-    """Populates the collections_* tables, where collections of bins of contigs and splits are kept"""
-    def __init__(self, db_path, run=run, progress=progress):
-        self.db_path = db_path
-
-        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
-
-        # set these dudes so we have access to unique IDs:
-        self.set_next_available_id(t.collections_bins_info_table_name)
-        self.set_next_available_id(t.collections_contigs_table_name)
-        self.set_next_available_id(t.collections_splits_table_name)
-
-
-    def delete(self, collection_name):
-        utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
-
-        # remove any pre-existing information for 'collection_name'
-        self.delete_entries_for_key('collection_name', collection_name, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_bins_info_table_name])
-
-
-    def append(self, collection_name, collection_dict, bins_info_dict={}):
-        utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
-
-        for bin_name in collection_dict:
-            utils.is_this_name_OK_for_database('bin name', bin_name, stringent=False)
-
-        if bins_info_dict:
-            if set(collection_dict.keys()) - set(bins_info_dict.keys()):
-                raise ConfigError('Bins in the collection dict do not match to the ones in the bins info dict.\
-                                    They do not have to be identical, but for each bin id, there must be a unique\
-                                    entry in the bins informaiton dict. There is something wrong with your input :/')
-
-        # remove any pre-existing information for 'collection_name'
-        self.delete(collection_name)
-
-        num_splits_in_collection_dict = sum([len(splits) for splits in list(collection_dict.values())])
-        splits_in_collection_dict = set(list(chain.from_iterable(list(collection_dict.values()))))
-        if len(splits_in_collection_dict) != num_splits_in_collection_dict:
-            raise ConfigError("TablesForCollections::append: %d of the split or contig IDs appear more than once in\
-                                your collections input. It is unclear to anvi'o how did you manage to do this, but we\
-                                cannot go anywhere with this :/" % (num_splits_in_collection_dict - len(splits_in_collection_dict)))
-
-        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
-
-        # how many clusters are defined in 'collection_dict'?
-        bin_names = list(collection_dict.keys())
-
-        # push information about this search result into serach_info table.
-        db_entries = tuple([collection_name, num_splits_in_collection_dict, len(bin_names), ','.join(bin_names)])
-        database._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_info_table_name, db_entries)
-
-        if not bins_info_dict:
-            colors = utils.get_random_colors_dict(bin_names)
-            for bin_name in bin_names:
-                bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': 'UNKNOWN'}
-
-        # populate bins info table.
-        db_entries = [(self.next_id(t.collections_bins_info_table_name), collection_name, b, bins_info_dict[b]['source'], bins_info_dict[b]['html_color']) for b in bin_names]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.collections_bins_info_table_name, db_entries)
-
-        # populate splits table
-        db_entries = []
-        for bin_name in collection_dict:
-            for split_name in collection_dict[bin_name]:
-                db_entries.append(tuple([self.next_id(t.collections_splits_table_name), collection_name, split_name, bin_name]))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_splits_table_name, db_entries)
-        num_splits = len(db_entries)
-
-
-        # FIXME: This function can be called to populate the contigs database (via anvi-populate-collections), or
-        # the profile database. when it is contigs database, the superclass Table has the self.splits_info variable
-        # set when it is initialized. however, the Table instance is missing self.splis when it is initialized with
-        # the profile database. hence some special controls for contigs db (note that collections_contigs_table is
-        # only populated in the contigs database):
-        if self.db_type == 'contigs':
-            splits_only_in_collection_dict = [c for c in splits_in_collection_dict if c not in self.splits_info]
-            splits_only_in_db = [c for c in self.splits_info if c not in splits_in_collection_dict]
-
-            if len(splits_only_in_collection_dict):
-                self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
-                                          but you must be the judge of it. If this is somewhat surprising, please use caution\
-                                          and make sure all is fine before going forward with you analysis.'\
-                                                % (len(splits_only_in_collection_dict), len(splits_in_collection_dict), collection_name))
-
-            if len(splits_only_in_db):
-                self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
-                                          does not make any sense, please make sure you know why before going any further.'\
-                                                % (len(splits_only_in_db), len(self.splits_info), collection_name))
-
-            # then populate contigs table.
-            db_entries = self.process_contigs(collection_name, collection_dict)
-            database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_contigs_table_name, db_entries)
-
-        database.disconnect()
-
-        self.run.info('Collections', 'The collection "%s" that describes %s splits has been successfully added to the database at "%s".'\
-                                        % (collection_name, pp(num_splits), self.db_path), mc='green')
-
-
-    def process_contigs(self, collection_name, collection_dict):
-        db_entries_for_contigs = []
-
-        split_to_bin_name = {}
-        for bin_name in collection_dict:
-            for split_name in collection_dict[bin_name]:
-                split_to_bin_name[split_name] = bin_name
-
-        contigs_processed = set([])
-        for split_name in split_to_bin_name:
-            if split_name not in self.splits_info:
-                # which means this split only appears in the input file, but not in the database.
-                continue
-
-            contig_name = self.splits_info[split_name]['parent']
-
-            if contig_name in contigs_processed:
-                continue
-            else:
-                contigs_processed.add(contig_name)
-
-            db_entry = tuple([self.next_id(t.collections_contigs_table_name), collection_name, contig_name, split_to_bin_name[split_name]])
-            db_entries_for_contigs.append(db_entry)
-
-        return db_entries_for_contigs
-
-
 class TablesForStates(Table):
     def __init__(self, db_path):
         self.db_path = db_path
         self.states = {}
 
-        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
+        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run, progress)
 
         self.init()
 
@@ -4765,22 +4671,22 @@ class GenesInSplits:
 
 def is_contigs_db(db_path):
     filesnpaths.is_file_exists(db_path)
-    if get_db_type(db_path) != 'contigs':
+    if utils.get_db_type(db_path) != 'contigs':
         raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
 
 
 def is_pan_or_profile_db(db_path):
-    if get_db_type(db_path) not in ['pan', 'profile']:
+    if utils.get_db_type(db_path) not in ['pan', 'profile']:
         raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble." % db_path)
 
 
 def is_profile_db(db_path):
-    if get_db_type(db_path) != 'profile':
+    if utils.get_db_type(db_path) != 'profile':
         raise ConfigError("'%s' is not an anvi'o profile database." % db_path)
 
 
 def is_pan_db(db_path):
-    if get_db_type(db_path) != 'pan':
+    if utils.get_db_type(db_path) != 'pan':
         raise ConfigError("'%s' is not an anvi'o pan database." % db_path)
 
 
@@ -4795,18 +4701,8 @@ def is_db_ok_to_create(db_path, db_type):
                             humbled by your cooperation." % db_type)
 
 
-def get_required_version_for_db(db_path):
-    db_type = get_db_type(db_path)
-
-    if db_type not in t.versions_for_db_types:
-        raise ConfigError("Anvi'o was trying to get the version of the -alleged- anvi'o database '%s', but it failed\
-                            because it turns out it doesn't know anything about this '%s' type." % (db_path, db_type))
-
-    return t.versions_for_db_types[db_type]
-
-
 def is_blank_profile(db_path):
-    if get_db_type(db_path) != 'profile':
+    if utils.get_db_type(db_path) != 'profile':
         return False
 
     database = db.DB(db_path, None, ignore_version=True)
@@ -4814,26 +4710,6 @@ def is_blank_profile(db_path):
     database.disconnect()
 
     return blank
-
-
-def get_db_type(db_path):
-    filesnpaths.is_file_exists(db_path)
-
-    try:
-        database = db.DB(db_path, None, ignore_version=True)
-    except:
-        raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
-                            it is not at all..' % db_path)
-
-    tables = database.get_table_names()
-    if 'self' not in tables:
-        database.disconnect()
-        raise ConfigError("'%s' does not seem to be a anvi'o database..." % db_path)
-
-    db_type = database.get_meta_value('db_type')
-    database.disconnect()
-
-    return db_type
 
 
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
@@ -4911,7 +4787,7 @@ def update_description_in_db(anvio_db_path, description, run=run):
     if not isinstance(description, str):
         raise ConfigError("Description parameter must be of type `string`.")
 
-    db_type = get_db_type(anvio_db_path)
+    db_type = utils.get_db_type(anvio_db_path)
 
     anvio_db = db.DB(anvio_db_path, None, ignore_version=True)
     anvio_db.remove_meta_key_value_pair('description')
@@ -4979,7 +4855,7 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
                            clustering dendrogram. But your function call suggests you are not.")
 
     # let's learn who we are dealing with:
-    db_type = get_db_type(anvio_db_path)
+    db_type = utils.get_db_type(anvio_db_path)
 
     # replace clustering id with a text that contains distance and linkage information
     if order_data_type_newick:
@@ -5082,69 +4958,3 @@ def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path, gene_
                                                    item_names=gene_caller_ids)
 
     return output_file_path
-
-
-def get_all_sample_names_from_the_database(db_path):
-    """Returns all 'sample' names from a given database. At least it tries."""
-
-    db_type = get_db_type(db_path)
-    database = db.DB(db_path, get_required_version_for_db(db_path))
-
-    if db_type == 'profile':
-        samples = []
-        try:
-            samples = [s.strip() for s in database.get_meta_value('samples').split(',')]
-        except:
-            pass
-
-        return set(samples)
-
-    elif db_type == 'pan':
-        internal_genome_names, external_genome_names = [], []
-        try:
-            internal_genome_names = [g.strip() for g in database.get_meta_value('internal_genome_names').split(',')]
-        except:
-            pass
-
-        try:
-            external_genome_names = [g.strip() for g in database.get_meta_value('external_genome_names').split(',')]
-        except:
-            pass
-
-        return set([s for s in internal_genome_names + external_genome_names if s])
-
-    else:
-        raise ConfigError("`get_all_item_names_from_the_database` function does not know how to deal\
-                            with %s databases." % db_type)
-
-
-def get_all_item_names_from_the_database(db_path):
-    """Return all split names or gene cluster names in a given database"""
-
-    all_items = set([])
-
-    database = db.DB(db_path, get_required_version_for_db(db_path))
-    db_type = database.get_meta_value('db_type')
-
-    class Args: pass
-    args = Args()
-
-    if db_type == 'profile':
-        args.profile_db = db_path
-        all_items = set(ProfileSuperclass(args).split_names)
-    elif db_type == 'pan':
-        args.pan_db = db_path
-        all_items = set(PanSuperclass(args).gene_cluster_names)
-    elif db_type == 'contigs':
-        args.contigs_db = db_path
-        all_items = set(ContigsSuperclass(args).splits_basic_info.keys())
-    else:
-        raise ConfigError("You wanted to get all items in the database %s, but no one here knows aobut its type. Seriously,\
-                            what is '%s'?" % (db_path, db_type))
-
-    if not len(all_items):
-        raise ConfigError("dbops::get_all_item_names_from_the_database speaking. Something that should never happen happened :/\
-                            There seems to be nothing in this %s database. Anvi'o is as confused as you are. Please get in touch\
-                            with a developer. They will love this story." % db_path)
-
-    return all_items
