@@ -17,12 +17,12 @@ import copy
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -37,6 +37,7 @@ __status__ = "Development"
 
 run = terminal.Run()
 progress = terminal.Progress()
+pp = terminal.pretty_print
 
 
 class Collections:
@@ -53,7 +54,7 @@ class Collections:
         filesnpaths.is_file_exists(db_path)
         self.db_path = db_path
 
-        database = db.DB(db_path, dbops.get_required_version_for_db(db_path))
+        database = db.DB(db_path, utils.get_required_version_for_db(db_path))
         self.db_type = database.get_meta_value('db_type')
         collections_info_table = database.get_table_as_dict(t.collections_info_table_name)
         database.disconnect()
@@ -72,7 +73,7 @@ class Collections:
             self.collections_dict[collection_name] = collections_info_table[collection_name]
             self.collections_dict[collection_name]['read_only'] = read_only
             self.collections_dict[collection_name]['source_db_path'] = db_path
-            self.collections_dict[collection_name]['source_db_version'] = dbops.get_required_version_for_db(db_path)
+            self.collections_dict[collection_name]['source_db_version'] = utils.get_required_version_for_db(db_path)
 
 
     def sanity_check(self, collection_name):
@@ -243,7 +244,7 @@ class Collections:
         bins_info_dict[new_bin_name] = info_for_new_bin
         collection_dict[new_bin_name] = items_in_new_bin
 
-        tables_for_collections = dbops.TablesForCollections(self.db_path, run=terminal.Run(verbose=False))
+        tables_for_collections = TablesForCollections(self.db_path, run=terminal.Run(verbose=False))
         tables_for_collections.append(collection_name, collection_dict, bins_info_dict)
 
         self.run.info_single("You did it. Your bins are now merged.. Onward!", nl_before=1, nl_after=1)
@@ -285,7 +286,7 @@ class Collections:
                 binned_items.add(item_name)
 
         if include_unbinned:
-            all_items = dbops.get_all_item_names_from_the_database(self.db_path)
+            all_items = utils.get_all_item_names_from_the_database(self.db_path)
 
             unbinned_items = all_items.difference(binned_items)
 
@@ -410,4 +411,3 @@ class GetSequentialBlocksOfSplits:
         self.finalize_block()
 
         return self.blocks
-

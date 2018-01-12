@@ -124,7 +124,7 @@ def sanity_check(args):
     if args.contigs_db:
         dbops.is_contigs_db(args.contigs_db)
 
-    if args.pan_or_profile_db and dbops.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db: 
+    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db:
         raise ConfigError("There is no need to provide a contigs database when you are working with an anvi'o pan\
                             database")
 
@@ -133,7 +133,7 @@ def sanity_check(args):
                             not declared an anvi'o contigs database")
 
     # if there is a profile database, check whether there is a contigs database associated with the profile
-    if args.pan_or_profile_db and dbops.get_db_type(args.pan_or_profile_db) == 'profile':
+    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'profile':
         pan_or_profile_db = dbops.ProfileDatabase(args.pan_or_profile_db)
 
         if pan_or_profile_db.meta['contigs_db_hash'] and not args.contigs_db:
