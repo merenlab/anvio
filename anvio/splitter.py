@@ -22,6 +22,8 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
+from anvio.tables.kmers import KMerTablesForContigsAndSplits
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -176,7 +178,7 @@ class BinSplitter(summarizer.Bin):
         # touch does not create the k-mers tables, so the resulting contigs db is missing them. we
         # will add them to the db here.
         bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
-        k = dbops.KMerTablesForContigsAndSplits(None, k=bin_contigs_db.meta['kmer_size'])
+        k = KMerTablesForContigsAndSplits(None, k=bin_contigs_db.meta['kmer_size'])
         for table_name in ['kmer_contigs', 'kmer_splits']:
             bin_contigs_db.db.create_table(table_name, k.kmers_table_structure, k.kmers_table_types)
         bin_contigs_db.disconnect()
@@ -303,7 +305,7 @@ class BinSplitter(summarizer.Bin):
         # add a collection
         collection_dict = {'ALL_SPLITS': self.split_names}
         bins_info_dict = {'ALL_SPLITS': {'html_color': '#FF0000', 'source': 'anvi-split'}}
-        collections = dbops.TablesForCollections(self.bin_profile_db_path)
+        collections = TablesForCollections(self.bin_profile_db_path)
         collections.append('DEFAULT', collection_dict, bins_info_dict=bins_info_dict)
 
 
