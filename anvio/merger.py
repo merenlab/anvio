@@ -19,6 +19,11 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.tables.variability import TableForVariability
+from anvio.tables.aafrequencies import TableForAAFrequencies
+from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalData
+from anvio.tables.views import TablesForViews
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -93,7 +98,7 @@ class MultipleRuns:
         improper = []
 
         for p in self.input_profile_db_paths:
-            dbops.is_profile_db(p)
+            utils.is_profile_db(p)
 
             profile_db = dbops.ProfileDatabase(p)
 
@@ -165,7 +170,7 @@ class MultipleRuns:
                                     run with identical flags and parameters :/" % p)
 
         # get split names from one of the profile databases. split names must be identical across all
-        self.split_names = sorted(list(dbops.get_split_names_in_profile_db(list(self.profile_dbs_info_dict.keys())[0])))
+        self.split_names = sorted(list(utils.get_all_item_names_from_the_database(list(self.profile_dbs_info_dict.keys())[0])))
 
         # make sure all runs were profiled using the same contigs database (if one used):
         hashes_for_profile_dbs = set([r['contigs_db_hash'] for r in self.profile_dbs_info_dict.values()])
@@ -206,7 +211,7 @@ class MultipleRuns:
 
 
     def merge_variable_nts_tables(self):
-        variable_nts_table = dbops.TableForVariability(self.merged_profile_db_path, progress=self.progress)
+        variable_nts_table = TableForVariability(self.merged_profile_db_path, progress=self.progress)
 
         for input_profile_db_path in self.profile_dbs_info_dict:
             sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
@@ -221,7 +226,7 @@ class MultipleRuns:
 
 
     def merge_variable_aas_tables(self):
-        variable_aas_table = dbops.TableForAAFrequencies(self.merged_profile_db_path, progress=self.progress)
+        variable_aas_table = TableForAAFrequencies(self.merged_profile_db_path, progress=self.progress)
 
         for input_profile_db_path in self.profile_dbs_info_dict:
             sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
@@ -473,8 +478,8 @@ class MultipleRuns:
 
         self.progress.end()
 
-        dbops.TableForLayerOrders(args).add(layer_orders_data_dict)
-        dbops.TableForLayerAdditionalData(args).add(layer_additional_data_dict, ['num_mapped_reads'])
+        TableForLayerOrders(args).add(layer_orders_data_dict)
+        TableForLayerAdditionalData(args).add(layer_additional_data_dict, ['num_mapped_reads'])
 
 
     def gen_view_data_tables_from_atomic_data(self):
@@ -521,7 +526,7 @@ class MultipleRuns:
 
                 # time to store the data for this view in the profile database
                 table_name = '_'.join([essential_field, target])
-                dbops.TablesForViews(self.merged_profile_db_path).create_new_view(
+                TablesForViews(self.merged_profile_db_path).create_new_view(
                                                 data_dict=data_dict,
                                                 table_name=table_name,
                                                 table_structure=view_table_structure,
@@ -530,7 +535,7 @@ class MultipleRuns:
 
         # if SNVs were not profiled, remove all entries from variability tables:
         if not self.SNVs_profiled:
-            dbops.TablesForViews(self.merged_profile_db_path).remove(view_name='variability', table_names_to_blank=['variability_splits', 'variability_contigs'])
+            TablesForViews(self.merged_profile_db_path).remove(view_name='variability', table_names_to_blank=['variability_splits', 'variability_contigs'])
 
         self.progress.end()
 
@@ -587,7 +592,7 @@ class MultipleRuns:
             target_table = 'atomic_data_%s' % target
 
             for input_profile_db_path in self.profile_dbs_info_dict:
-                db = anvio.db.DB(input_profile_db_path, dbops.get_required_version_for_db(input_profile_db_path))
+                db = anvio.db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path))
                 atomic_data_table_for_each_run[target][input_profile_db_path] = db.get_table_as_dict(target_table)
 
         atomic_data_table_fields = db.get_table_structure('atomic_data_splits')

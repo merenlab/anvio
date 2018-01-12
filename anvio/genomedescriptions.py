@@ -274,7 +274,7 @@ class GenomeDescriptions(object):
 
 
     def get_genome_hash_for_external_genome(self, entry):
-        dbops.is_contigs_db(entry['contigs_db_path'])
+        utils.is_contigs_db(entry['contigs_db_path'])
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
         genome_hash = contigs_db.meta['contigs_db_hash']
         contigs_db.disconnect()
@@ -283,7 +283,7 @@ class GenomeDescriptions(object):
 
 
     def get_genome_hash_for_internal_genome(self, entry):
-        dbops.is_contigs_db(entry['contigs_db_path'])
+        utils.is_contigs_db(entry['contigs_db_path'])
         split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(entry)
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
         genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']]).encode('utf-8')).hexdigest()[0:12]
@@ -356,7 +356,7 @@ class GenomeDescriptions(object):
 
 
     def get_split_names_of_interest_for_internal_genome(self, entry):
-        dbops.is_profile_db(entry['profile_db_path'])
+        utils.is_profile_db(entry['profile_db_path'])
         # get splits of interest:
         class Args: pass
         args = Args()

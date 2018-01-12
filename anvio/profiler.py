@@ -20,7 +20,12 @@ import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
+
 from anvio.errors import ConfigError
+from anvio.tables.views import TablesForViews
+from anvio.tables.aafrequencies import TableForAAFrequencies
+from anvio.tables.variability import TableForVariability
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -219,8 +224,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             # creating a null view_data_splits dict:
             view_data_splits = dict(list(zip(self.split_names, [dict(list(zip(t.atomic_data_table_structure[1:], [None] * len(t.atomic_data_table_structure[1:]))))] * len(self.split_names))))
-            dbops.TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
-            dbops.TablesForViews(self.profile_db_path).create_new_view(
+            TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
+            TablesForViews(self.profile_db_path).create_new_view(
                                            data_dict=view_data_splits,
                                            table_name='atomic_data_splits',
                                            table_structure=t.atomic_data_table_structure,
@@ -245,7 +250,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling or not self.profile_AA_frequencies:
             return
 
-        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, progress=self.progress)
+        variable_aas_table = TableForAAFrequencies(self.profile_db_path, progress=self.progress)
 
         aa_frequencies = bamops.AAFrequencies()
 
@@ -288,7 +293,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling:
             return
 
-        variable_nts_table = dbops.TableForVariability(self.profile_db_path, progress=self.progress)
+        variable_nts_table = TableForVariability(self.profile_db_path, progress=self.progress)
 
         for contig in self.contigs:
             for split in contig.splits:
@@ -707,7 +712,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # function create_new_view defined in the class TablesForViews.
         view_data_splits, view_data_contigs = contigops.get_atomic_data_dicts(self.sample_id, self.contigs)
 
-        dbops.TablesForViews(self.profile_db_path).create_new_view(
+        TablesForViews(self.profile_db_path).create_new_view(
                                         data_dict=view_data_splits,
                                         table_name='atomic_data_splits',
                                         table_structure=t.atomic_data_table_structure,
@@ -715,7 +720,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                         view_name='single',
                                         append_mode=True)
 
-        dbops.TablesForViews(self.profile_db_path).create_new_view(
+        TablesForViews(self.profile_db_path).create_new_view(
                                         data_dict=view_data_contigs,
                                         table_name='atomic_data_contigs',
                                         table_structure=t.atomic_data_table_structure,
