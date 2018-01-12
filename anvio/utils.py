@@ -1904,6 +1904,29 @@ def get_all_item_names_from_the_database(db_path):
                             with a developer. They will love this story." % db_path)
 
     return all_items
+
+
+def is_contigs_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'contigs':
+        raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
+
+
+def is_pan_or_profile_db(db_path):
+    if get_db_type(db_path) not in ['pan', 'profile']:
+        raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble." % db_path)
+
+
+def is_profile_db(db_path):
+    if get_db_type(db_path) != 'profile':
+        raise ConfigError("'%s' is not an anvi'o profile database." % db_path)
+
+
+def is_pan_db(db_path):
+    if get_db_type(db_path) != 'pan':
+        raise ConfigError("'%s' is not an anvi'o pan database." % db_path)
+
+
 def download_file(url, output_file_path, progress=progress, run=run):
     """Downloads file.
 
