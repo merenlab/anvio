@@ -18,7 +18,7 @@ import anvio.drivers.MODELLER as MODELLER
 from anvio.errors import ConfigError
 
 class StructureDatabase(object):
-    def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+    def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
         self.db_type = 'structure'
         self.db_hash = str(db_hash)
         self.version = anvio.__auxiliary_data_version__
@@ -167,100 +167,6 @@ class Structure(object):
             self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
 
 
-    def download_structures(self):
-        """
-        Downloads structure files for self.top_seq_seq_matches using Biopython
-        If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
-        """
-        self.progress.new("Downloading homologs from PDB")
-
-        # define directory path name to store the template PDBs (it can already exist)
-        self.template_pdbs = os.path.join(self.modeller.directory, "{}_TEMPLATE_PDBS".format(self.modeller.gene_id))
-
-        downloaded = utils.download_protein_structures([code[0] for code in self.top_seq_matches], self.template_pdbs)
-
-        # redefine self.top_seq_matches in case not all were downloaded
-        self.top_seq_matches = [(code, chain_code) for code, chain_code in self.top_seq_matches if code in downloaded]
-
-        if not len(self.top_seq_matches):
-            self.run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something \
-                         is wrong. Maybe you are not connected to the internet. Stopping here.")
-            raise self.EndModeller
-
-        self.progress.end()
-        self.run.info("structures downloaded for", ", ".join([code[0] for code in self.top_seq_matches]))
-
-
-    def parse_search_results(self):
-        """
-        Parses search results and filters for best homologs to use as structure templates.
-
-        parameters used :: self.min_proper_pident, self.max_matches
-        """
-        if not self.min_proper_pident or not self.max_matches:
-            raise ConfigError("parse_search_results::You initiated this class without providing values for min_proper_pident \
-                               and max_matches, which is required for this function.")
-
-        self.progress.new("PARSE AND FILTER HOMOLOGS")
-        self.progress.update("Finding those with percent identicalness > {}%".format(self.min_proper_pident))
-
-        # put names to the columns
-        column_names = (      "idx"      ,  "code_and_chain"  ,       "type"     ,  "iteration_num"  ,
-                            "seq_len"    , "start_pos_target" , "end_pos_target" , "start_pos_dbseq" ,
-                        "send_pos_dbseq" ,   "align_length"   ,   "seq_identity" ,      "evalue"      )
-
-        # load the table as a dataframe
-        search_df = pd.read_csv(self.modeller.search_results_path, sep="\s+", comment="#", names=column_names, index_col=False)
-
-        # matches found (-1 because target is included)
-        matches_found = len(search_df) - 1
-
-        if not matches_found:
-            self.progress.end()
-            self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".\
-                        format(self.modeller.gene_id))
-            raise self.modeller.EndModeller
-
-        # add some useful columns
-        search_df["proper_pident"] = search_df["seq_identity"] * search_df["align_length"] / \
-                                     search_df.iloc[0, search_df.columns.get_loc("seq_len")]
-        search_df["code"] = search_df["code_and_chain"].str[:-1]
-        search_df["chain"] = search_df["code_and_chain"].str[-1]
-
-        # filter results by self.min_proper_pident.
-        max_pident_found = search_df["proper_pident"].max()
-        search_df = search_df[search_df["proper_pident"] >= self.min_proper_pident]
-
-        # Order them and take the first self.modeller.max_matches.
-        matches_after_filter = len(search_df)
-        if not matches_after_filter:
-            self.progress.end()
-            self.run.warning("Gene {} did not have a search result with percent identicalness above or equal \
-                         to {}. The max found was {}%. No structure will be modelled.".\
-                         format(self.modeller.gene_id, self.min_proper_pident, max_pident_found))
-            raise self.modeller.EndModeller
-
-        self.progress.update("Keeping top {} matches as the template homologs".format(self.max_matches))
-
-        # of those filtered, get up to self.modeller.max_matches of those with the highest proper_ident scores.
-        search_df = search_df.sort_values("proper_pident", ascending=False)
-        search_df = search_df.iloc[:min([len(search_df), self.max_matches])]
-
-        # Get their chain and 4-letter ids
-        self.top_seq_matches = list(zip(search_df["code"], search_df["chain"]))
-
-        self.progress.end()
-        self.run.info("Max number of templates allowed", self.max_matches)
-        self.run.info("Number of candidate templates", matches_found)
-        self.run.info("After >{}% identical filter".format(self.min_proper_pident), matches_after_filter)
-        self.run.info("Number accepted as templates", len(self.top_seq_matches))
-        for i in range(len(self.top_seq_matches)):
-            self.run.info("Template {}".format(i+1), 
-                     "Protein ID: {}, Chain {} ({:.1f}% identical)".format(self.top_seq_matches[i][0],
-                                                                           self.top_seq_matches[i][1],
-                                                                           search_df["proper_pident"].iloc[i]))
-
-
     def process(self):
         """
         This is the workflow for a standard protein search for homologous templates and then
@@ -283,9 +189,10 @@ class Structure(object):
             dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([gene]))
 
             self.run_modeller()
-            self.move_results_to_output_dir()
+            #self.move_results_to_output_dir()
 
-
+    # This is now deprecated since we are going to use a structured database. But it may be useful for
+    # an Nvio program that will be for exporting the structure db into a folder structure
     def move_results_to_output_dir(self):
         """
         if --black-no-sugar, all files from MODELLERs directory are recursively moved into
@@ -315,36 +222,34 @@ class Structure(object):
     def run_modeller(self):
 
         self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
+        self.modeller.process()
 
-        self.run.warning("Working directory: {}".format(self.modeller.directory),
-                     header='MODELLING STRUCTURE FOR GENE ID {}'.format(self.modeller.gene_id),
-                     lc="cyan")
-
-        try:
-            self.modeller.run_fasta_to_pir()
-
-            self.modeller.check_database()
-
-            self.modeller.run_search()
-
-            self.parse_search_results()
-
-            self.download_structures()
-
-            self.modeller.run_align_to_templates(self.top_seq_matches)
-
-            self.modeller.run_get_model(self.num_models, self.deviation, self.very_fast)
-
-            self.modeller.tidyup()
-
-            if not self.full_output:
-                self.best_structure_filepath = self.modeller.pick_best_model()
-
-            self.modeller.rewrite_model_info()
-
-        except self.modeller.EndModeller as e:
-            print(e)
-            self.modeller.abort()
-
-
-
+#        self.run.warning("Working directory: {}".format(self.modeller.directory),
+#                     header='MODELLING STRUCTURE FOR GENE ID {}'.format(self.modeller.gene_id),
+#                     lc="cyan")
+#
+#        try:
+#            self.modeller.run_fasta_to_pir()
+#
+#            self.modeller.check_database()
+#
+#            self.modeller.run_search()
+#
+#            self.parse_search_results()
+#
+#            self.download_structures()
+#
+#            self.modeller.run_align_to_templates(self.top_seq_matches)
+#
+#            self.modeller.run_get_model(self.num_models, self.deviation, self.very_fast)
+#
+#            self.modeller.tidyup()
+#
+#            if not self.full_output:
+#                self.best_structure_filepath = self.modeller.pick_best_model()
+#
+#            self.modeller.rewrite_model_info()
+#
+#        except self.modeller.EndModeller as e:
+#            print(e)
+#            self.modeller.abort()
