@@ -1932,6 +1932,7 @@ class ProfileSuperclass(object):
                                                                                           'detection': detection,
                                                                                           'non_outlier_mean_coverage': non_outlier_mean_coverage,
                                                                                           'non_outlier_coverage_std':  non_outlier_coverage_std}
+                    # FIXME: these shouldn't be under gene_level_coverage_stats_dict see issue #688
                     if populate_nt_level_coverage == True:
                         self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = gene_coverage_values_per_nt
                         self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['non_outlier_positions'] = non_outlier_positions
