@@ -587,7 +587,7 @@ class MultipleRuns:
             target_table = 'atomic_data_%s' % target
 
             for input_profile_db_path in self.profile_dbs_info_dict:
-                db = anvio.db.DB(input_profile_db_path, dbops.get_required_version_for_db(input_profile_db_path))
+                db = anvio.db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path))
                 atomic_data_table_for_each_run[target][input_profile_db_path] = db.get_table_as_dict(target_table)
 
         atomic_data_table_fields = db.get_table_structure('atomic_data_splits')

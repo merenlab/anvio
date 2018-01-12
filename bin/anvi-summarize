@@ -3,7 +3,7 @@
 """Summarizer for anvi'o pan or profile db's.
 
    Essentially, this program takes a collection id along with either,
-   
+
    - a profile database and a contigs database
    - or a pan database and a genomes storage
 
@@ -13,6 +13,7 @@
 import sys
 
 import anvio
+import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -34,7 +35,7 @@ progress = terminal.Progress()
 
 
 def main(args):
-    db_type = dbops.get_db_type(args.pan_or_profile_db)
+    db_type = utils.get_db_type(args.pan_or_profile_db)
 
     if db_type == 'pan':
         args.pan_db = args.pan_or_profile_db
