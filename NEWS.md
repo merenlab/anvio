@@ -1,3 +1,7 @@
+# An anvi'o workshop at UC Irvine (10.01.2018) #
+We are are happy to announce a free 2-day anvi'o workshop at the University of California, Irvine. [Click here](http://merenlab.org/2017/12/25/anvio-workshop-at-uc-irvine/) for more information.
+***
+
 # v3, "Eden" is out!" (05.10.2017) #
 Welcome, Eden! See the release notes [here](https://github.com/merenlab/anvio/releases/tag/v3), and keep your installation up-to-date!
 ***

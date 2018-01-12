@@ -438,7 +438,7 @@ class SAAVsAndProteinStructuresSummary:
             raise ConfigError("The input and the output directories can't be the same.")
 
         if self.contigs_db_path:
-            dbops.is_contigs_db(self.contigs_db_path)
+            utils.is_contigs_db(self.contigs_db_path)
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory)
         filesnpaths.gen_output_directory(self.output_directory)
@@ -1159,31 +1159,25 @@ class Bin:
         self.num_splits = len(self.split_names)
 
         # make these dicts avilable:
-        self.gene_coverages = {}
-        self.gene_detection = {}
-        self.gene_non_outlier_coverages = {}
-        self.gene_non_outlier_coverage_stds = {}
+        self.gene_level_coverage_stats_dict = {}
         self.split_coverage_values_per_nt_dict = {}
-        self.gene_coverage_values_per_nt = {}
-        self.gene_non_outlier_positions = {}
 
         A = lambda x: self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name][x]
 
-        # populate gene coverage and detection dictionaries
+        # populate gene coverage and detection dictionaries by subsetting them from the parent summary object
         if self.summary.gene_level_coverage_stats_dict:
             for gene_callers_id in self.gene_caller_ids:
-                self.gene_coverages[gene_callers_id], self.gene_detection[gene_callers_id] = {}, {}
-                self.gene_non_outlier_coverages[gene_callers_id], self.gene_non_outlier_coverage_stds[gene_callers_id] = {}, {}
-                self.gene_coverage_values_per_nt[gene_callers_id], self.gene_non_outlier_positions[gene_callers_id] = {}, {}
+                self.gene_level_coverage_stats_dict[gene_callers_id] = {}
 
                 for sample_name in self.summary.p_meta['samples']:
-                    self.gene_coverages[gene_callers_id][sample_name] = A('mean_coverage')
-                    self.gene_detection[gene_callers_id][sample_name] = A('detection')
-                    self.gene_non_outlier_coverages[gene_callers_id][sample_name] = A('non_outlier_mean_coverage')
-                    self.gene_non_outlier_coverage_stds[gene_callers_id][sample_name] = A('non_outlier_coverage_std')
-                    if 'gene_coverage_values_per_nt' in self.summary.gene_level_coverage_stats_dict:
-                        self.gene_coverage_values_per_nt[gene_callers_id][sample_name] = A('gene_coverage_values_per_nt')
-                        self.gene_non_outlier_positions[gene_callers_id][sample_name] = A('non_outlier_positions')
+                    self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': A('mean_coverage'),
+                                                                                         'detection': A('detection'),
+                                                                                         'non_outlier_mean_coverage': A('non_outlier_mean_coverage'),
+                                                                                         'non_outlier_coverage_std': A('non_outlier_coverage_std')}
+
+                    if 'gene_coverage_values_per_nt' in self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name]:
+                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = A('gene_coverage_values_per_nt')
+                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['non_outlier_positions'] = A('non_outlier_positions')
 
         # populate coverage values per nucleutide for the bin.
         if self.summary.split_coverage_values_per_nt_dict:
@@ -1353,10 +1347,20 @@ class Bin:
 
         headers = ['gene_callers_id'] + self.summary.p_meta['samples']
 
-        utils.store_dict_as_TAB_delimited_file(self.gene_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_coverages.txt'))
-        utils.store_dict_as_TAB_delimited_file(self.gene_detection, None, headers=headers, file_obj=self.get_output_file_handle('gene_detection.txt'))
-        utils.store_dict_as_TAB_delimited_file(self.gene_non_outlier_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_non_outlier_coverages.txt'))
-        utils.store_dict_as_TAB_delimited_file(self.gene_non_outlier_coverage_stds, None, headers=headers, file_obj=self.get_output_file_handle('gene_non_outlier_coverage_stds.txt'))
+        for key, file_name in [('mean_coverage', 'gene_coverages.txt'),
+                               ('detection', 'gene_detection.txt'),
+                               ('non_outlier_mean_coverage', 'gene_non_outlier_coverages.txt'),
+                               ('non_outlier_coverage_std', 'gene_non_outlier_coverage_stds.txt')]:
+            # we will create a new dictionary here by subestting values of `key` from self.gene_level_coverage_stats_dict,
+            # so we can store that information into `file_name`. magical stuff .. by us .. level 3000 wizards who can summon
+            # inefficiency at most random places. SHUT UP.
+            d = {}
+            for gene_callers_id in self.gene_level_coverage_stats_dict:
+                d[gene_callers_id] = {}
+                for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
+                    d[gene_callers_id][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][key]
+
+            utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=self.get_output_file_handle(file_name))
 
 
     def store_genes_basic_info(self):
@@ -1731,6 +1735,7 @@ class AdHocRunGenerator:
 
 
     def gen_samples_db(self):
+        # FIXME: THIS WILL NOT WORK.
         if not self.samples_order_file_path:
             self.samples_order_file_path = self.gen_samples_order_file(self.view_data_path)
 
