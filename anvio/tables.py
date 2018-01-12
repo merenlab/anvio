@@ -237,7 +237,7 @@ genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_c
 #
 ####################################################################################################
 
-structures_table_name       = 'structures'
-structures_table_structure  = [ 'gene_id', 'pdb_content']
-structures_table_types      = [ 'numeric',    'blob'    ]
+structure_table_name       = 'structures'
+structure_table_structure  = [ 'gene_id', 'pdb_content']
+structure_table_types      = [ 'numeric',    'blob'    ]
 
