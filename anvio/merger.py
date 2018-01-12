@@ -170,7 +170,7 @@ class MultipleRuns:
                                     run with identical flags and parameters :/" % p)
 
         # get split names from one of the profile databases. split names must be identical across all
-        self.split_names = sorted(list(dbops.get_split_names_in_profile_db(list(self.profile_dbs_info_dict.keys())[0])))
+        self.split_names = sorted(list(utils.get_all_item_names_from_the_database(list(self.profile_dbs_info_dict.keys())[0])))
 
         # make sure all runs were profiled using the same contigs database (if one used):
         hashes_for_profile_dbs = set([r['contigs_db_hash'] for r in self.profile_dbs_info_dict.values()])
