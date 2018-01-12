@@ -186,7 +186,7 @@ class Structure(object):
                               header='MODELLING STRUCTURE FOR GENE ID {}'.format(gene),
                               lc="cyan")
 
-            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([gene]))
+            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([gene]), quiet=True)
 
             self.run_modeller()
             #self.move_results_to_output_dir()

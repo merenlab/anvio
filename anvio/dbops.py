@@ -4500,15 +4500,15 @@ def get_default_item_order_name(default_item_order_requested, item_orders_dict, 
         return default_item_order
 
 
-def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path, gene_caller_ids=set([])):
+def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path, gene_caller_ids=set([]), quiet=False):
     filesnpaths.is_file_exists(contigs_db_path)
     filesnpaths.is_output_file_writable(output_file_path)
 
     class T(Table):
-        def __init__(self, db_path, version, run=run, progress=progress):
-            Table.__init__(self, db_path, version, run, progress)
+        def __init__(self, db_path, version, run=run, progress=progress, quiet=False):
+            Table.__init__(self, db_path, version, run, progress, quiet=quiet)
 
-    h = T(contigs_db_path, anvio.__contigs__version__)
+    h = T(contigs_db_path, anvio.__contigs__version__, quiet=quiet)
     h.export_sequences_table_in_db_into_FASTA_file(t.gene_amino_acid_sequences_table_name,
                                                    output_file_path=output_file_path,
                                                    item_names=gene_caller_ids)
