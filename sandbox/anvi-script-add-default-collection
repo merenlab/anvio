@@ -6,10 +6,12 @@ import sys
 import argparse
 
 import anvio
+import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -27,11 +29,11 @@ progress = terminal.Progress()
 
 
 def main(args):
-    dbops.is_profile_db(args.profile_db)
+    utils.is_profile_db(args.profile_db)
 
     profile_db = dbops.ProfileSuperclass(argparse.Namespace(profile_db=args.profile_db))
 
-    collections_table = dbops.TablesForCollections(args.profile_db)
+    collections_table = TablesForCollections(args.profile_db)
     collections_table.append('DEFAULT', {'EVERYTHING': profile_db.split_names})
 
 if __name__ == '__main__':

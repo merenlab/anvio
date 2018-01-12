@@ -19,6 +19,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.blast import BLAST
 from anvio.errors import ConfigError
+from anvio.tables.genefunctions import TableForGeneFunctions
 
 # just to make sure things don't break too far when they do:
 COG_DATA_VERSION='2'
@@ -180,7 +181,7 @@ class COGs:
             add_entry(gene_callers_id, 'COG_CATEGORY', '!!!'.join(categories), '!!!'.join(categories), 0.0)
 
         # store hits in contigs db.
-        gene_function_calls_table = dbops.TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
         gene_function_calls_table.create(functions_dict)
 
         if len(missing_cogs_found):
