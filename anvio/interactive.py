@@ -26,6 +26,9 @@ from anvio.dbops import get_default_item_order_name, get_split_names_in_profile_
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError
 
+from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders
+from anvio.tables.collections import TablesForCollections
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -98,9 +101,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # get additional data for items and layers, and get layer orders data.
         a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
-        self.items_additional_data_keys, self.items_additional_data_dict = dbops.TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_additional_data_keys, self.layers_additional_data_dict = dbops.TableForLayerAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_order_data_dict = dbops.TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict) if a_db_is_found else {}
+        self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get() if a_db_is_found else ([], {})
+        self.layers_order_data_dict = TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict) if a_db_is_found else {}
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
@@ -1080,7 +1083,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             run.info('resulting bins info', bins_info_dict)
             run.info_single('')
 
-        collections = dbops.TablesForCollections(self.profile_db_path)
+        collections = TablesForCollections(self.profile_db_path)
         collections.append(self.collection_name, collection_dict, bins_info_dict)
 
         run.info_single('"%s" collection is updated!' % self.collection_name)
