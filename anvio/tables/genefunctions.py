@@ -50,7 +50,7 @@ class TableForGeneFunctions(Table):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         # are there any previous annotations in the db:
-        gene_function_sources_in_db = set(database.meta['gene_function_sources'] or [])
+        gene_function_sources_in_db = set(database.get_meta_value('gene_function_sources') or [])
 
         # difference between sources in the db, and incoming sources:
         gene_function_sources_both_in_db_and_incoming_dict = gene_function_sources.intersection(gene_function_sources_in_db)

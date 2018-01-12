@@ -438,7 +438,7 @@ class SAAVsAndProteinStructuresSummary:
             raise ConfigError("The input and the output directories can't be the same.")
 
         if self.contigs_db_path:
-            dbops.is_contigs_db(self.contigs_db_path)
+            utils.is_contigs_db(self.contigs_db_path)
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory)
         filesnpaths.gen_output_directory(self.output_directory)
@@ -1735,6 +1735,7 @@ class AdHocRunGenerator:
 
 
     def gen_samples_db(self):
+        # FIXME: THIS WILL NOT WORK.
         if not self.samples_order_file_path:
             self.samples_order_file_path = self.gen_samples_order_file(self.view_data_path)
 

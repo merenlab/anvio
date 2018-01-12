@@ -1697,7 +1697,7 @@ class ProfileSuperclass(object):
         # by providing collection name and bin names in args.
         self.split_names_of_interest = A('split_names_of_interest')
         self.collection_name = A('collection_name')
-        self.bin_names = [A('bin_id')] if A('bin_id') else [b.strip() for b in A('bin_names_list').spit(',')]
+        self.bin_names = [A('bin_id')] if A('bin_id') else [b.strip() for b in A('bin_names_list').split(',')] if A('bin_names_list') else None
 
         if self.split_names_of_interest and not isinstance(self.split_names_of_interest, type(set([]))):
             raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set().\
@@ -2843,17 +2843,6 @@ def is_db_ok_to_create(db_path, db_type):
         raise ConfigError("Please make sure the file name for your new %s db has a '.db' extension. Anvi'o developers\
                             apologize for imposing their views on how anvi'o databases should be named, and are\
                             humbled by your cooperation." % db_type)
-
-
-def is_blank_profile(db_path):
-    if utils.get_db_type(db_path) != 'profile':
-        return False
-
-    database = db.DB(db_path, None, ignore_version=True)
-    blank = database.get_meta_value('blank')
-    database.disconnect()
-
-    return blank
 
 
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
