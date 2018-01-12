@@ -1922,6 +1922,17 @@ def is_profile_db(db_path):
         raise ConfigError("'%s' is not an anvi'o profile database." % db_path)
 
 
+def is_blank_profile(db_path):
+    if get_db_type(db_path) != 'profile':
+        return False
+
+    database = db.DB(db_path, None, ignore_version=True)
+    blank = database.get_meta_value('blank')
+    database.disconnect()
+
+    return blank
+
+
 def is_pan_db(db_path):
     if get_db_type(db_path) != 'pan':
         raise ConfigError("'%s' is not an anvi'o pan database." % db_path)

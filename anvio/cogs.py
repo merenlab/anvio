@@ -90,7 +90,7 @@ class COGs:
             raise ConfigError("You can't provide both an AA sequences file and a contigs database. Choose one!")
 
         if self.contigs_db_path:
-            dbops.is_contigs_db(self.contigs_db_path)
+            utils.is_contigs_db(self.contigs_db_path)
 
         if not self.temp_dir_path:
             self.temp_dir_path = filesnpaths.get_temp_directory_path()

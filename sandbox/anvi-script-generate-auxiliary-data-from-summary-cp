@@ -5,6 +5,7 @@ import os
 import sys
 
 import anvio
+import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.dictio as d
@@ -30,7 +31,7 @@ def create_HDF5_summary_from_summary_cp(args):
     summary_cp_path = args.summary_cp
     profile_db_path = args.profile_db
 
-    dbops.is_profile_db(profile_db_path)
+    utils.is_profile_db(profile_db_path)
 
     profile_db = dbops.ProfileDatabase(profile_db_path)
     profile_db_hash = profile_db.db.get_meta_value('contigs_db_hash')
