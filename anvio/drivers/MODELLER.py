@@ -56,7 +56,11 @@ class MODELLER:
         self.executable = A('executable', str) or "mod9.19"
         self.num_models = A('num_models', int)
         self.target_fasta_path = A('target_fasta_path', str)
+        self.full_output = A('black_no_sugar', bool)
         self.database_name = A('database_name', str) or "pdb_95"
+        self.max_matches = A('max_number_templates', null)
+        self.min_proper_pident = A('percent_identical_cutoff', null)
+        self.deviation = A('deviation', null)
 
         self.alignment_pap_path = None
         self.alignment_pir_path = None
@@ -86,6 +90,131 @@ class MODELLER:
         # store the original directory so we can cd back and forth between
         # self.directory and self.start_dir
         self.start_dir = os.getcwd()
+
+    def process(self):
+        
+        self.run.warning("Working directory: {}".format(self.directory),
+                         header='Modelling structure for gene id {}'.format(self.gene_id),
+                         lc="cyan")
+
+        try:
+            self.run_fasta_to_pir()
+
+            self.check_database()
+
+            self.run_search()
+
+            self.parse_search_results()
+
+            self.download_structures()
+
+            self.run_align_to_templates(self.top_seq_matches)
+
+            self.run_get_model(self.num_models, self.deviation, self.very_fast)
+
+            self.tidyup()
+
+            if not self.full_output:
+                self.best_structure_filepath = self.pick_best_model()
+
+            self.rewrite_model_info()
+
+        except self.EndModeller as e:
+            print(e)
+            self.abort()
+
+
+    def download_structures(self):
+        """
+        Downloads structure files for self.top_seq_seq_matches using Biopython
+        If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
+        """
+        self.progress.new("Downloading homologs from PDB")
+
+        # define directory path name to store the template PDBs (it can already exist)
+        self.template_pdbs = os.path.join(self.directory, "{}_TEMPLATE_PDBS".format(self.gene_id))
+
+        downloaded = utils.download_protein_structures([code[0] for code in self.top_seq_matches], self.template_pdbs)
+
+        # redefine self.top_seq_matches in case not all were downloaded
+        self.top_seq_matches = [(code, chain_code) for code, chain_code in self.top_seq_matches if code in downloaded]
+
+        if not len(self.top_seq_matches):
+            self.run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something \
+                         is wrong. Maybe you are not connected to the internet. Stopping here.")
+            raise self.EndModeller
+
+        self.progress.end()
+        self.run.info("structures downloaded for", ", ".join([code[0] for code in self.top_seq_matches]))
+
+
+    def parse_search_results(self):
+        """
+        Parses search results and filters for best homologs to use as structure templates.
+
+        parameters used :: self.min_proper_pident, self.max_matches
+        """
+        if not self.min_proper_pident or not self.max_matches:
+            raise ConfigError("parse_search_results::You initiated this class without providing values for min_proper_pident \
+                               and max_matches, which is required for this function.")
+
+        self.progress.new("PARSE AND FILTER HOMOLOGS")
+        self.progress.update("Finding those with percent identicalness > {}%".format(self.min_proper_pident))
+
+        # put names to the columns
+        column_names = (      "idx"      ,  "code_and_chain"  ,       "type"     ,  "iteration_num"  ,
+                            "seq_len"    , "start_pos_target" , "end_pos_target" , "start_pos_dbseq" ,
+                        "send_pos_dbseq" ,   "align_length"   ,   "seq_identity" ,      "evalue"      )
+
+        # load the table as a dataframe
+        search_df = pd.read_csv(self.search_results_path, sep="\s+", comment="#", names=column_names, index_col=False)
+
+        # matches found (-1 because target is included)
+        matches_found = len(search_df) - 1
+
+        if not matches_found:
+            self.progress.end()
+            self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".format(self.gene_id))
+            raise self.EndModeller
+
+        # add some useful columns
+        search_df["proper_pident"] = search_df["seq_identity"] * search_df["align_length"] / \
+                                     search_df.iloc[0, search_df.columns.get_loc("seq_len")]
+        search_df["code"] = search_df["code_and_chain"].str[:-1]
+        search_df["chain"] = search_df["code_and_chain"].str[-1]
+
+        # filter results by self.min_proper_pident.
+        max_pident_found = search_df["proper_pident"].max()
+        search_df = search_df[search_df["proper_pident"] >= self.min_proper_pident]
+
+        # Order them and take the first self.modeller.max_matches.
+        matches_after_filter = len(search_df)
+        if not matches_after_filter:
+            self.progress.end()
+            self.run.warning("Gene {} did not have a search result with percent identicalness above or equal \
+                         to {}. The max found was {}%. No structure will be modelled.".\
+                         format(self.gene_id, self.min_proper_pident, max_pident_found))
+            raise self.EndModeller
+
+        self.progress.update("Keeping top {} matches as the template homologs".format(self.max_matches))
+
+        # of those filtered, get up to self.modeller.max_matches of those with the highest proper_ident scores.
+        search_df = search_df.sort_values("proper_pident", ascending=False)
+        search_df = search_df.iloc[:min([len(search_df), self.max_matches])]
+
+        # Get their chain and 4-letter ids
+        self.top_seq_matches = list(zip(search_df["code"], search_df["chain"]))
+
+        self.progress.end()
+        self.run.info("Max number of templates allowed", self.max_matches)
+        self.run.info("Number of candidate templates", matches_found)
+        self.run.info("After >{}% identical filter".format(self.min_proper_pident), matches_after_filter)
+        self.run.info("Number accepted as templates", len(self.top_seq_matches))
+        for i in range(len(self.top_seq_matches)):
+            self.run.info("Template {}".format(i+1), 
+                     "Protein ID: {}, Chain {} ({:.1f}% identical)".format(self.top_seq_matches[i][0],
+                                                                           self.top_seq_matches[i][1],
+                                                                           search_df["proper_pident"].iloc[i]))
 
 
     def sanity_check(self):
@@ -207,8 +336,8 @@ class MODELLER:
     def tidyup(self): 
         """
         get_model.py has been ran. Some of the files in here are unnecessary, some of the names are
-        disgusting. rename from "2.B99990001.pdb" to "gene_2_Model001.pdb" if normal model. Rename from
-        "cluster.ini" to "average_raw.pdb" and "cluster.opt" to "average.pdb"
+        disgusting. rename from "2.B99990001.pdb" to "gene_2_Model001.pdb" if normal model. Rename
+        from "cluster.opt" to "gene_2_ModelAvg.pdb"
         """
         if not "get_model.py" in self.scripts.keys():
             raise ConfigError("You are out of line calling tidyup without running get_model.py")
@@ -241,7 +370,7 @@ class MODELLER:
         """
         This is the magic of MODELLER. Based on the template alignment file, the structures of the
         templates, and satisfaction of physical constraints, the target protein structure is
-        modelled.
+        modelled without further user input.
         """
         script_name = "get_model.py"
 
