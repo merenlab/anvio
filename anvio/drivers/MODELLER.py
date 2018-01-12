@@ -91,11 +91,13 @@ class MODELLER:
         # self.directory and self.start_dir
         self.start_dir = os.getcwd()
 
-    def process(self):
+    def get_best_model(self):
         
         self.run.warning("Working directory: {}".format(self.directory),
                          header='Modelling structure for gene id {}'.format(self.gene_id),
                          lc="cyan")
+
+        best_model_path = None
 
         try:
             self.run_fasta_to_pir()
@@ -114,14 +116,16 @@ class MODELLER:
 
             self.tidyup()
 
-            if not self.full_output:
-                self.best_structure_filepath = self.pick_best_model()
+            best_model_path = self.pick_best_model()
 
-            self.rewrite_model_info()
+            self.model_info.to_csv(self.model_info_path, sep="\t", index=False, na_rep="N/A")
 
         except self.EndModeller as e:
             print(e)
+        finally:
             self.abort()
+
+        return best_model_path
 
 
     def download_structures(self):
@@ -295,9 +299,6 @@ class MODELLER:
         new_best_file_path = J(self.directory, "gene_{}.pdb".format(self.gene_id))
         os.rename(J(self.directory, best_basename), new_best_file_path)
 
-        # add new column to self.model_info
-        self.model_info.loc
-
         return new_best_file_path
 
 
@@ -308,29 +309,6 @@ class MODELLER:
         """
         os.chdir(self.start_dir)
 
-        stuff_to_remove = [self.template_pdbs,
-                           self.scripts.get("align_to_templates.py"),
-                           self.scripts.get("binarize_database.py"),
-                           self.scripts.get("search.py"),
-                           self.scripts.get("fasta_to_pir.py"),
-                           self.scripts.get("get_model.py")]
-
-        for thing in stuff_to_remove:
-            try:
-                if os.path.isfile(thing):
-                    os.remove(thing)
-                if os.path.isdir(thing):
-                    shutil.rmtree(thing)
-            except TypeError:
-                continue
-
-
-    def rewrite_model_info(self):
-        """
-        If changes rename changes or additional columns have been added to self.info_model, those
-        changes can be reflected in model_info.txt if this function is ran.
-        """
-        self.model_info.to_csv(self.model_info_path, sep="\t", index=False, na_rep="N/A")
 
 
     def tidyup(self): 
@@ -651,25 +629,4 @@ class MODELLER:
 
     class EndModeller(Exception): 
         pass
-
-
-class HiddenPrints():
-    """
-    Has your pesky external library hardcoded print statements that you want to supress? Are you
-    sick and tired of seeing messages you aren't in control of? Do your friends laugh at you behind
-    your back? Does Meren's terminal.SuppressAllOutput lead to a traceback? Then you need the
-    HiddenPrints class! Billy Mays here, introducing a class that executes chunks of code while
-    suppressing all print statements. Simply call your code like:
-
-    with HiddenPrints():
-        <your code here!>
-    """
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        sys.stdout = open(os.devnull, 'w')
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout = self._original_stdout
-
-
 

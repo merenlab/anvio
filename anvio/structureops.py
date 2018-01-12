@@ -4,13 +4,15 @@
 """Classes to make sense of genes and variability within the context of protein structure"""
 
 import os
+import time
 import shutil
 
-import pandas as pd
+import anvio
 import anvio.db as db
-import anvio.dbops as dbops
+import anvio.tables as t
 import anvio.fastalib as u
 import anvio.utils as utils
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.drivers.MODELLER as MODELLER
@@ -173,7 +175,9 @@ class Structure(object):
         modelling the structure of the target protein using the homologous protein structures.
         """
 
-        for gene in self.genes_of_interest:
+        structure_db = StructureDatabase("STRUCTURE.db", "DUMMYHASH", create_new=True)
+
+        for gene_id in self.genes_of_interest:
 
             # MODELLER outputs a lot of stuff into its working directory. A temporary directory is made
             # for each instance of MODELLER (i.e. each protein), and files are moved into
@@ -182,17 +186,17 @@ class Structure(object):
             self.args.directory = filesnpaths.get_temp_directory_path()
             self.args.target_fasta_path = filesnpaths.get_temp_file_path()
 
-            self.run.warning("Working directory: {}".format(self.args.directory),
-                              header='MODELLING STRUCTURE FOR GENE ID {}'.format(gene),
-                              lc="cyan")
+            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([gene_id]), quiet=True)
 
-            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([gene]), quiet=True)
+            model_path = self.run_modeller()
+            structure_db.append(gene_id, model_path)
 
-            self.run_modeller()
+        structure_db.store()
+        structure_db.close()
             #self.move_results_to_output_dir()
 
     # This is now deprecated since we are going to use a structured database. But it may be useful for
-    # an Nvio program that will be for exporting the structure db into a folder structure
+    # an anvio program that will be for exporting the structure db into a folder structure
     def move_results_to_output_dir(self):
         """
         if --black-no-sugar, all files from MODELLERs directory are recursively moved into
@@ -220,36 +224,6 @@ class Structure(object):
 
 
     def run_modeller(self):
-
         self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
-        self.modeller.process()
-
-#        self.run.warning("Working directory: {}".format(self.modeller.directory),
-#                     header='MODELLING STRUCTURE FOR GENE ID {}'.format(self.modeller.gene_id),
-#                     lc="cyan")
-#
-#        try:
-#            self.modeller.run_fasta_to_pir()
-#
-#            self.modeller.check_database()
-#
-#            self.modeller.run_search()
-#
-#            self.parse_search_results()
-#
-#            self.download_structures()
-#
-#            self.modeller.run_align_to_templates(self.top_seq_matches)
-#
-#            self.modeller.run_get_model(self.num_models, self.deviation, self.very_fast)
-#
-#            self.modeller.tidyup()
-#
-#            if not self.full_output:
-#                self.best_structure_filepath = self.modeller.pick_best_model()
-#
-#            self.modeller.rewrite_model_info()
-#
-#        except self.modeller.EndModeller as e:
-#            print(e)
-#            self.modeller.abort()
+        
+        return self.modeller.get_best_model()

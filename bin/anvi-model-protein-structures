@@ -77,6 +77,8 @@ if __name__ == '__main__':
                         your own database it must have either the extension .bin or .pir. If you
                         don't have a database, don't worry, we will take care of you.""")
 
+    #TO DO: it is better if --best is something like --score-method.
+    # rewrite the message
     groupM.add_argument("--best", "-b", type=str, default="DOPE_score", help = \
                         """How should the best model be decided? The options are any of GA341_score,
                         DOPE_score, molpdf, and average. GA341 is an absolute measure, where a good
