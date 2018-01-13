@@ -8,14 +8,13 @@ import os
 import sys
 import time
 import copy
+import numpy
 import random
 import argparse
 import textwrap
 
 from io import StringIO
 from collections import Counter
-
-import numpy
 
 import anvio
 import anvio.db as db
@@ -30,15 +29,16 @@ import anvio.ccollections as ccolections
 import anvio.genomestorage as genomestorage
 import anvio.auxiliarydataops as auxiliarydataops
 
-from anvio.tables.tableops import Table
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
 from anvio.sequence import get_list_of_outliers
+
+from anvio.tables.tableops import Table
 from anvio.tables.states import TablesForStates
-from anvio.tables.miscdata import TableForItemAdditionalData
 from anvio.tables.genecalls import TablesForGeneCalls
-from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.ntpositions import TableForNtPositions
+from anvio.tables.miscdata import TableForItemAdditionalData
+from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
 
@@ -1151,6 +1151,7 @@ class PanSuperclass(object):
 
         self.progress.end()
 
+
     def get_all_genome_names_in_gene_clusters_dict(self, gene_clusters_dict):
         """Returns all genome names found in a `gene_clusters_dict`"""
 
@@ -1237,6 +1238,7 @@ class PanSuperclass(object):
            The `min_num_genomes_gene_cluster_occurs` parameter defines what is the minimum number of genomes you want a gene to
            be present. It removes all the gene_clusters that do not fit into that criterion. In contrast, `max_num_genomes_gene_cluster_occurs`
            parameter will remove any gene cluster that occurs in more genomes than what the paramter asks for."""
+
 
         def check(param, param_pretty):
             if param is None:
@@ -1807,7 +1809,7 @@ class ProfileSuperclass(object):
         else:
             self.auxiliary_profile_data_available = True
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
-                                                                                           self.p_meta['contigs_db_hash'])
+                                                                                         self.p_meta['contigs_db_hash'])
 
         self.progress.end()
 
@@ -1962,9 +1964,9 @@ class ProfileSuperclass(object):
                         non_outlier_coverage_std = numpy.std(non_outliers)
 
                     self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': mean_coverage,
-                                                                                          'detection': detection,
-                                                                                          'non_outlier_mean_coverage': non_outlier_mean_coverage,
-                                                                                          'non_outlier_coverage_std':  non_outlier_coverage_std}
+                                                                                         'detection': detection,
+                                                                                         'non_outlier_mean_coverage': non_outlier_mean_coverage,
+                                                                                         'non_outlier_coverage_std':  non_outlier_coverage_std}
                     # FIXME: these shouldn't be under gene_level_coverage_stats_dict see issue #688
                     if populate_nt_level_coverage == True:
                         self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = gene_coverage_values_per_nt
@@ -2043,7 +2045,6 @@ class ProfileSuperclass(object):
 
         self.progress.new('Initializing the collection profile for "%s" ...' % collection_name)
         for table_name in table_names:
-
             # if SNVs are not profiled, skip the `variability` table
             if table_name == 'variability' and not self.p_meta['SNVs_profiled']:
                 continue
