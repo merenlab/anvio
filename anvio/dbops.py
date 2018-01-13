@@ -2891,7 +2891,7 @@ def update_description_in_db(anvio_db_path, description, run=run):
 def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split_names=[], database_paths={}, input_directory=None, default_clustering_config=None, \
                                 distance=constants.distance_metric_default, linkage=constants.linkage_method_default, run=run, progress=progress):
     """This is just an orphan function that computes hierarchical clustering w results
-       and calls the `add_hierarchical_clustering_to_db` function with correct input.
+       and calls the `add_items_order_to_db` function with correct input.
 
        Ugly but useful --yet another one of those moments in which we sacrifice
        important principles for simple conveniences."""
@@ -2913,28 +2913,21 @@ def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split
 
         _, distance, linkage = clustering_name.split(':')
 
-        add_hierarchical_clustering_to_db(anvio_db_path, config_name, newick, distance=distance, linkage=linkage, make_default=config_name == default_clustering_config, run=run)
-
-
-
-def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run):
-    """Backwards compatibility function.
-
-       We can fix all instances of `add_hierarchical_clustering_to_db` everywhere in the code to work
-       with `add_items_order_to_db` function directly, and end this tyranny."""
-
-    add_items_order_to_db(anvio_db_path,
-                          clustering_name,
-                          order_data=clustering_newick,
-                          order_data_type_newick=True,
-                          distance=distance,
-                          linkage=linkage,
-                          make_default=False,
-                          run=run)
+        add_items_order_to_db(anvio_db_path=anvio_db_path,
+                              order_name=config_name,
+                              order_data=newick,
+                              distance=distance,
+                              linkage=linkage,
+                              make_default=config_name == default_clustering_config,
+                              run=run)
 
 
 def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None, linkage=None, make_default=False, run=run):
-    """Adds a new clustering into an anvi'o db"""
+    """Adds a new clustering into an anvi'o db
+
+       Here is a FIXME for future, smarter generations. This function should go away,
+       and its function should be handled by a new items_order class in tables/miscdata.
+    """
 
     if order_data_type_newick and (not distance or not linkage):
         raise ConfigError("You are trying to add a newick-formatted clustering dendrogram to the database without providing\
