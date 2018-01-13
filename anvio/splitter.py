@@ -67,7 +67,7 @@ class ProfileSplitter:
         if not self.profile_db_path:
             raise ConfigError("No profile db no cookie. Bye.")
 
-        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         if profile_db.meta['blank']:

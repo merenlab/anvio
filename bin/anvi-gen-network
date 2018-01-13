@@ -5,6 +5,7 @@ import os
 import sys
 
 import anvio
+import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 
@@ -61,7 +62,7 @@ class NetworkDescriptonSamples:
 
 
     def init(self):
-        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.profile_db = dbops.ProfileSuperclass(self.args)
         self.contigs_db = dbops.ContigsSuperclass(self.args)

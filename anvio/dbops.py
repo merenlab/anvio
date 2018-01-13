@@ -1732,7 +1732,7 @@ class ProfileSuperclass(object):
 
         # we have a contigs db? let's see if it's for real.
         if self.contigs_db_path:
-            is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.progress.new('Initializing the profile database superclass')
 
@@ -2131,7 +2131,7 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         filesnpaths.is_file_exists(args.contigs_db)
         filesnpaths.is_file_exists(args.profile_db)
 
-        is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+        utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
         ContigsSuperclass.__init__(self, self.args, self.run, self.progress)
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
@@ -2844,30 +2844,6 @@ def is_db_ok_to_create(db_path, db_type):
         raise ConfigError("Please make sure the file name for your new %s db has a '.db' extension. Anvi'o developers\
                             apologize for imposing their views on how anvi'o databases should be named, and are\
                             humbled by your cooperation." % db_type)
-
-
-def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
-    utils.is_contigs_db(contigs_db_path)
-    utils.is_profile_db(profile_db_path)
-
-    contigs_db = ContigsDatabase(contigs_db_path)
-    profile_db = ProfileDatabase(profile_db_path)
-
-    a_hash = contigs_db.meta['contigs_db_hash']
-    p_hash = profile_db.meta['contigs_db_hash']
-    merged = profile_db.meta['merged']
-
-    contigs_db.disconnect()
-    profile_db.disconnect()
-
-    if a_hash != p_hash:
-        raise ConfigError('The contigs database and the profile database does not\
-                           seem to be compatible. More specifically, this contigs\
-                           database is not the one that was used when %s generated\
-                           this profile database (%s != %s).'\
-                               % ('anvi-merge' if merged else 'anvi-profile', a_hash, p_hash))
-
-    return True
 
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):
