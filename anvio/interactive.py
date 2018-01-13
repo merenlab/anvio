@@ -21,7 +21,7 @@ import anvio.ccollections as ccollections
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
-from anvio.dbops import is_profile_db_and_contigs_db_compatible, get_description_in_db
+from anvio.dbops import get_description_in_db
 from anvio.dbops import get_default_item_order_name
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError
@@ -133,7 +133,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # make sure we are not dealing with apples and oranges here.
         if self.contigs_db_path and self.profile_db_path:
-            is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()

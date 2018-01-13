@@ -166,7 +166,7 @@ class VariabilitySuper(object):
             raise ConfigError('You need to provide a contigs database.')
 
         self.progress.update('Making sure our databases are compatible ..')
-        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         if self.min_coverage_in_each_sample and not self.quince_mode:
             self.progress.end()
