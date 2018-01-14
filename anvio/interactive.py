@@ -897,8 +897,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         for view in all_views:
             self.views[view] = {
-                'table_name': 'genes', 
-                'header': profile_db.p_meta['samples'], 
+                'table_name': 'genes',
+                'header': profile_db.p_meta['samples'],
                 'dict': {}
                 }
 
@@ -918,7 +918,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     self.views[view]['dict'][str(gene_callers_id)] = {}
                     for sample_name in profile_db.gene_level_coverage_stats_dict[gene_callers_id]:
                         self.views[view]['dict'][str(gene_callers_id)][sample_name] = profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
-                        
 
         self.states_table = TablesForStates(self.profile_db_path)
 
@@ -931,14 +930,21 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         for view in all_views:
             item_order_name = view
             newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], linkage=self.linkage, distance=self.distance, transpose=True)
-            
+
             self.p_meta['available_item_orders'].append(item_order_name)
             self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
 
         self.p_meta['item_orders']['synteny'] = {'type': 'basic', 'data': list(map(str, sorted(all_gene_callers_ids)))}
 
         self.title = "Genes in '%s'" % self.bin_id
-        
+
+        # FIXME: When we are in gene-view mode, our item names are no longer split names, hence the
+        # following dictionaries are useless. Until we find a better way to fill them up with
+        # potentially useful information, we can nullify them
+        self.splits_basic_info = {}
+        self.splits_taxonomy_dict = {}
+        self.p_meta['description'] = 'None'
+
         # for view in all_views:
         #     self.views[view] =
         #     for gene_callers_id in self.gene_level_coverage_stats_dict():
@@ -949,7 +955,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             #                     'header': pan_db.db.get_table_structure(table_name)[1:],
             #                     'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
 
-        
 
     def add_user_tree(self):
         if self.tree:
