@@ -637,7 +637,7 @@ class ContigsSuperclass(object):
         return corresponding_gene_calls
 
 
-    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True):
+    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True, include_aa_sequences=False):
         if not isinstance(gene_caller_ids_list, list):
             raise ConfigError("Gene caller's ids must be of type 'list'")
 
@@ -679,6 +679,13 @@ class ContigsSuperclass(object):
                                                'direction': direction,
                                                'rev_compd': rev_compd,
                                                'length': stop - start}
+
+            if include_aa_sequences:
+                aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+                if gene_callers_id in aa_sequences_dict:
+                    sequences_dict[gene_callers_id]['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
+                else:
+                    sequences_dict[gene_callers_id]['aa_sequence'] = None
 
         self.progress.end()
 
