@@ -67,7 +67,7 @@ class ProfileSplitter:
         if not self.profile_db_path:
             raise ConfigError("No profile db no cookie. Bye.")
 
-        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         if profile_db.meta['blank']:
@@ -385,7 +385,13 @@ class BinSplitter(summarizer.Bin):
 
                 _, distance, linkage = clustering_id.split(':')
 
-                dbops.add_hierarchical_clustering_to_db(self.merged_profile_db_path, config_name, newick, distance=distance, linkage=linkage, make_default=config_name == constants.merged_default, run=self.run)
+                dbops.add_items_order_to_db(anvio_db_path=self.profile_db_path,
+                                            order_name=config_name,
+                                            order_data=newick,
+                                            distance=distance,
+                                            linkage=linkage,
+                                            make_default=config_name == constants.merged_default,
+                                            run=self.run)
 
 
     def is_hierarchical_clustering_for_bin_OK(self):

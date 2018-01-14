@@ -54,7 +54,7 @@ def main(args):
     if not use_SCG_averages and not use_highest_completion_score:
         raise ConfigError("You must choose one: `--use-SCG-averages`, or`--use-highest-completion-score`")
 
-    dbops.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
+    utils.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
 
     collections = ccollections.Collections()
     collections.populate_collections_dict(profile_db_path)
