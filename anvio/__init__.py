@@ -1333,6 +1333,12 @@ D = {
              'default': None,
              'help': "Optional output file with a fuller description of findings."}
                 ),
+    'include-sequences': (
+            ['--include-sequences'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Include sequences in the report."}
+                ),
     'show-states': (
             ['--show-states'],
             {'default': False,
