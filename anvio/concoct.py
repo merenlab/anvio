@@ -61,7 +61,7 @@ class CONCOCT:
         self.contigs_db_path = A('contigs_db')
         self.num_clusters_requested = A('num_clusters_requested') or 80
 
-        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.clusters = {}
 

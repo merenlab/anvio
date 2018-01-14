@@ -8,14 +8,13 @@ import os
 import sys
 import time
 import copy
+import numpy
 import random
 import argparse
 import textwrap
 
 from io import StringIO
 from collections import Counter
-
-import numpy
 
 import anvio
 import anvio.db as db
@@ -30,15 +29,16 @@ import anvio.ccollections as ccolections
 import anvio.genomestorage as genomestorage
 import anvio.auxiliarydataops as auxiliarydataops
 
-from anvio.tables.tableops import Table
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
 from anvio.sequence import get_list_of_outliers
+
+from anvio.tables.tableops import Table
 from anvio.tables.states import TablesForStates
-from anvio.tables.miscdata import TableForItemAdditionalData
 from anvio.tables.genecalls import TablesForGeneCalls
-from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.ntpositions import TableForNtPositions
+from anvio.tables.miscdata import TableForItemAdditionalData
+from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
 
@@ -1151,6 +1151,7 @@ class PanSuperclass(object):
 
         self.progress.end()
 
+
     def get_all_genome_names_in_gene_clusters_dict(self, gene_clusters_dict):
         """Returns all genome names found in a `gene_clusters_dict`"""
 
@@ -1237,6 +1238,7 @@ class PanSuperclass(object):
            The `min_num_genomes_gene_cluster_occurs` parameter defines what is the minimum number of genomes you want a gene to
            be present. It removes all the gene_clusters that do not fit into that criterion. In contrast, `max_num_genomes_gene_cluster_occurs`
            parameter will remove any gene cluster that occurs in more genomes than what the paramter asks for."""
+
 
         def check(param, param_pretty):
             if param is None:
@@ -1732,7 +1734,7 @@ class ProfileSuperclass(object):
 
         # we have a contigs db? let's see if it's for real.
         if self.contigs_db_path:
-            is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.progress.new('Initializing the profile database superclass')
 
@@ -1807,7 +1809,7 @@ class ProfileSuperclass(object):
         else:
             self.auxiliary_profile_data_available = True
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
-                                                                                           self.p_meta['contigs_db_hash'])
+                                                                                         self.p_meta['contigs_db_hash'])
 
         self.progress.end()
 
@@ -1962,9 +1964,9 @@ class ProfileSuperclass(object):
                         non_outlier_coverage_std = numpy.std(non_outliers)
 
                     self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': mean_coverage,
-                                                                                          'detection': detection,
-                                                                                          'non_outlier_mean_coverage': non_outlier_mean_coverage,
-                                                                                          'non_outlier_coverage_std':  non_outlier_coverage_std}
+                                                                                         'detection': detection,
+                                                                                         'non_outlier_mean_coverage': non_outlier_mean_coverage,
+                                                                                         'non_outlier_coverage_std':  non_outlier_coverage_std}
                     # FIXME: these shouldn't be under gene_level_coverage_stats_dict see issue #688
                     if populate_nt_level_coverage == True:
                         self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = gene_coverage_values_per_nt
@@ -2043,7 +2045,6 @@ class ProfileSuperclass(object):
 
         self.progress.new('Initializing the collection profile for "%s" ...' % collection_name)
         for table_name in table_names:
-
             # if SNVs are not profiled, skip the `variability` table
             if table_name == 'variability' and not self.p_meta['SNVs_profiled']:
                 continue
@@ -2131,7 +2132,7 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         filesnpaths.is_file_exists(args.contigs_db)
         filesnpaths.is_file_exists(args.profile_db)
 
-        is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+        utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
         ContigsSuperclass.__init__(self, self.args, self.run, self.progress)
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
@@ -2846,30 +2847,6 @@ def is_db_ok_to_create(db_path, db_type):
                             humbled by your cooperation." % db_type)
 
 
-def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
-    utils.is_contigs_db(contigs_db_path)
-    utils.is_profile_db(profile_db_path)
-
-    contigs_db = ContigsDatabase(contigs_db_path)
-    profile_db = ProfileDatabase(profile_db_path)
-
-    a_hash = contigs_db.meta['contigs_db_hash']
-    p_hash = profile_db.meta['contigs_db_hash']
-    merged = profile_db.meta['merged']
-
-    contigs_db.disconnect()
-    profile_db.disconnect()
-
-    if a_hash != p_hash:
-        raise ConfigError('The contigs database and the profile database does not\
-                           seem to be compatible. More specifically, this contigs\
-                           database is not the one that was used when %s generated\
-                           this profile database (%s != %s).'\
-                               % ('anvi-merge' if merged else 'anvi-profile', a_hash, p_hash))
-
-    return True
-
-
 def get_auxiliary_data_path_for_profile_db(profile_db_path):
     return  os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
 
@@ -2915,7 +2892,7 @@ def update_description_in_db(anvio_db_path, description, run=run):
 def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split_names=[], database_paths={}, input_directory=None, default_clustering_config=None, \
                                 distance=constants.distance_metric_default, linkage=constants.linkage_method_default, run=run, progress=progress):
     """This is just an orphan function that computes hierarchical clustering w results
-       and calls the `add_hierarchical_clustering_to_db` function with correct input.
+       and calls the `add_items_order_to_db` function with correct input.
 
        Ugly but useful --yet another one of those moments in which we sacrifice
        important principles for simple conveniences."""
@@ -2937,28 +2914,21 @@ def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split
 
         _, distance, linkage = clustering_name.split(':')
 
-        add_hierarchical_clustering_to_db(anvio_db_path, config_name, newick, distance=distance, linkage=linkage, make_default=config_name == default_clustering_config, run=run)
-
-
-
-def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run):
-    """Backwards compatibility function.
-
-       We can fix all instances of `add_hierarchical_clustering_to_db` everywhere in the code to work
-       with `add_items_order_to_db` function directly, and end this tyranny."""
-
-    add_items_order_to_db(anvio_db_path,
-                          clustering_name,
-                          order_data=clustering_newick,
-                          order_data_type_newick=True,
-                          distance=distance,
-                          linkage=linkage,
-                          make_default=False,
-                          run=run)
+        add_items_order_to_db(anvio_db_path=anvio_db_path,
+                              order_name=config_name,
+                              order_data=newick,
+                              distance=distance,
+                              linkage=linkage,
+                              make_default=config_name == default_clustering_config,
+                              run=run)
 
 
 def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None, linkage=None, make_default=False, run=run):
-    """Adds a new clustering into an anvi'o db"""
+    """Adds a new clustering into an anvi'o db
+
+       Here is a FIXME for future, smarter generations. This function should go away,
+       and its function should be handled by a new items_order class in tables/miscdata.
+    """
 
     if order_data_type_newick and (not distance or not linkage):
         raise ConfigError("You are trying to add a newick-formatted clustering dendrogram to the database without providing\

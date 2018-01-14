@@ -19,6 +19,7 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
+import anvio.tables.miscdata as miscdata
 
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
@@ -27,7 +28,6 @@ from anvio.drivers import Aligners
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
-from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerOrders, TableForLayerAdditionalData
 from anvio.tables.geneclusters import TableForGeneClusters
 from anvio.tables.views import TablesForViews
 
@@ -470,7 +470,7 @@ class Pangenome(object):
                                         table_types=table_types,
                                         view_name = 'gene_cluster_presence_absence')
 
-        item_additional_data_table = TableForItemAdditionalData(self.args)
+        item_additional_data_table = miscdata.TableForItemAdditionalData(self.args)
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
         item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
         #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
@@ -614,8 +614,8 @@ class Pangenome(object):
 
         self.progress.end()
 
-        TableForLayerOrders(self.args).add(layer_orders_data_dict)
-        TableForLayerAdditionalData(self.args).add(layers_additional_data_dict, layers_additional_data_keys)
+        miscdata.TableForLayerOrders(self.args).add(layer_orders_data_dict)
+        miscdata.TableForLayerAdditionalData(self.args).add(layers_additional_data_dict, layers_additional_data_keys)
 
 
     def sanity_check(self):

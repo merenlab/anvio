@@ -336,7 +336,7 @@ class GenomeDescriptions(object):
                 c = self.genomes[genome_name]
                 c['external_genome'] = False
 
-                dbops.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
+                utils.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
 
                 split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(c)
 
