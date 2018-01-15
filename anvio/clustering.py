@@ -88,12 +88,12 @@ def is_distance_metric_OK(distance):
 def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_method_default, distance=constants.distance_metric_default, norm='l1'):
     is_distance_and_linkage_compatible(distance, linkage)
 
-    vectors = pd.DataFrame(d)
-
-    if transpose:
-        vectors = vectors.transpose()
+    vectors = pd.DataFrame.from_dict(d, orient='index')
 
     id_to_sample_dict = dict([(i, vectors.index[i]) for i in range(len(vectors.index))])
+
+    if transpose:
+        id_to_sample_dict = dict([(i, vectors.columns[i]) for i in range(len(vectors.columns))])
 
     newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose=transpose)
 
