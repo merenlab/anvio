@@ -24,6 +24,7 @@ $(document).ready(function() {
         $('#collection_mode_right_click_menu').hide();
         $('#pan_mode_right_click_menu').hide();
         $('#branch_right_click_menu').hide();
+        $('#gene_mode_right_click_menu').hide();
     }, false);
 });
 
@@ -130,6 +131,9 @@ function lineContextMenuHandler(event) {
         } else if (mode == "pan"){
             $('#pan_mode_right_click_menu').show();
             $('#pan_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
+        } else if (mode == "gene"){
+            $('#gene_mode_right_click_menu').show();
+            $('#gene_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
         } else {
             $('#default_right_click_menu').show();
             $('#default_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
@@ -145,6 +149,8 @@ function lineContextMenuHandler(event) {
             $('#collection_mode_right_click_menu #select_layer').show();
             $('#pan_mode_right_click_menu #unselect_layer').show();
             $('#pan_mode_right_click_menu #select_layer').show();
+            $('#gene_mode_right_click_menu #unselect_layer').show();
+            $('#gene_mode_right_click_menu #select_layer').show();
         } else {
             $('#default_right_click_menu #select_layer').show();
             $('#default_right_click_menu #unselect_layer').hide();
@@ -152,6 +158,8 @@ function lineContextMenuHandler(event) {
             $('#collection_mode_right_click_menu #unselect_layer').show();
             $('#pan_mode_right_click_menu #select_layer').show();
             $('#pan_mode_right_click_menu #unselect_layer').show();
+            $('#gene_mode_right_click_menu #select_layer').show();
+            $('#gene_mode_right_click_menu #unselect_layer').show();
         }
 
         if (bin_id > 0) {
