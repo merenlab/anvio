@@ -92,16 +92,21 @@ def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_
 
     if transpose:
         vectors = vectors.transpose()
+        id_to_sample_dict = dict([(i, vectors.column[i]) for i in range(len(vectors.column))])
 
-    id_to_sample_dict = dict([(i, vectors.index[i]) for i in range(len(vectors.index))])
+    else:
+        id_to_sample_dict = dict([(i, vectors.index[i]) for i in range(len(vectors.index))])
 
-    newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict)
+    newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose=transpose)
 
     return newick
 
 
-def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict):
+def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose):
     is_distance_and_linkage_compatible(distance, linkage)
+
+    if transpose:
+        vectors = vectors.transpose()
 
     # normalize vectors:
     vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
