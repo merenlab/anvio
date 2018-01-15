@@ -102,7 +102,7 @@ def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_
     return newick
 
 
-def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose):
+def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose=False):
     is_distance_and_linkage_compatible(distance, linkage)
 
     if transpose:
