@@ -6,6 +6,8 @@
 import numpy
 import collections
 
+from itertools import permutations
+
 import anvio
 import anvio.constants as constants
 
@@ -22,6 +24,29 @@ __status__ = "Development"
 class Codon:
     def __init__(self):
         pass
+
+    def get_codon_to_codon_sequence_trajectory(self, start_codon, end_codon):
+        '''
+        this returns a list of all possible sequence trajectories to get from one codon to another
+        assuming the least amount of mutations necessary
+        '''
+        indices_of_variation = []
+        for i in range(3):
+            if start_codon[i] != end_codon[i]:
+                indices_of_variation.append(i)
+        index_trajectories = list(permutations(indices_of_variation))
+
+        all_trajectories = []
+        for index_trajectory in index_trajectories:
+            sequence_trajectory = []
+            mutate = list(start_codon)
+            for index in index_trajectory:
+                mutate[index] = end_codon[index]
+                sequence_trajectory.append(''.join(mutate))
+            all_trajectories.append(sequence_trajectory)
+
+        return all_trajectories
+
 
     def get_codon_to_codon_dist_dictionary(self):
         """
