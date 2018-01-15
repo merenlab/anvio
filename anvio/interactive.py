@@ -885,20 +885,21 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def load_gene_mode(self):
-        profile_db = ProfileSuperclass(self.args)
+        #profile_db = ProfileSuperclass(self.args)
+        ProfileSuperclass.__init__(self, self.args)
 
         # init item additional data
         #profile_db.init_items_additional_data()
         self.genes_in_splits_summary_dict = {}
 
-        profile_db.init_gene_level_coverage_stats_dicts()
+        self.init_gene_level_coverage_stats_dicts()
 
-        all_views = next(iter(next(iter(profile_db.gene_level_coverage_stats_dict.values())).values())).keys()
+        all_views = next(iter(next(iter(self.gene_level_coverage_stats_dict.values())).values())).keys()
 
         for view in all_views:
             self.views[view] = {
                 'table_name': 'genes',
-                'header': profile_db.p_meta['samples'],
+                'header': self.p_meta['samples'],
                 'dict': {}
                 }
 
@@ -916,8 +917,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
                 for view in all_views:
                     self.views[view]['dict'][str(gene_callers_id)] = {}
-                    for sample_name in profile_db.gene_level_coverage_stats_dict[gene_callers_id]:
-                        self.views[view]['dict'][str(gene_callers_id)][sample_name] = profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
+                    for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
+                        self.views[view]['dict'][str(gene_callers_id)][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
 
         self.states_table = TablesForStates(self.profile_db_path)
 
@@ -945,15 +946,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.splits_taxonomy_dict = {}
         self.p_meta['description'] = 'None'
 
-        # for view in all_views:
-        #     self.views[view] =
-        #     for gene_callers_id in self.gene_level_coverage_stats_dict():
-        #         for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
-
-            # table_name = views_table[view]['target_table']
-            # self.views[view] = {'table_name': table_name,
-            #                     'header': pan_db.db.get_table_structure(table_name)[1:],
-            #                     'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
+        self.items_additional_data_keys, self.items_additional_data_dict = [], {}
+        self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
+        self.layers_order_data_dict = {}
 
 
     def add_user_tree(self):

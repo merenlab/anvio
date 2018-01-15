@@ -103,7 +103,7 @@ class BottleApplication(Bottle):
         self.route('/state/all',                               callback=self.state_all)
         self.route('/state/get/<state_name>',                  callback=self.get_state)
         self.route('/state/save/<state_name>',                 callback=self.save_state, method='POST')
-        self.route('/data/charts/<split_name>',                callback=self.charts)
+        self.route('/data/charts/<order_name>/<item_name>',    callback=self.charts)
         self.route('/data/completeness',                       callback=self.completeness, method='POST')
         self.route('/data/collections',                        callback=self.get_collections)
         self.route('/data/collection/<collection_name>',       callback=self.get_collection_dict)
@@ -325,8 +325,14 @@ class BottleApplication(Bottle):
         return json.dumps("")
 
 
-    def charts(self, split_name):
+    def charts(self, order_name, item_name):
+        if self.interactive.mode == 'gene':
+            split_name = self.interactive.gene_callers_id_to_split_name_dict[int(item_name)]
+        else:
+            split_name = item_name
+
         data = {'layers': [],
+                 'title': split_name,
                  'index': None,
                  'total': None,
                  'coverage': [],
@@ -343,7 +349,7 @@ class BottleApplication(Bottle):
         if not self.interactive.auxiliary_profile_data_available:
             return data
 
-        data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(split_name)
+        data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, item_name)
 
         layers = sorted(self.interactive.p_meta['samples'])
 
@@ -409,20 +415,28 @@ class BottleApplication(Bottle):
         return json.dumps(data)
 
 
-    def get_index_total_previous_and_next_items(self, item_name):
+    def get_index_total_previous_and_next_items(self, order_name, item_name):
         previous_item_name = None
         next_item_name = None
         index = None
         total = None
 
-        index_of_item = self.interactive.displayed_item_names_ordered.index(item_name)
+        # FIXME: improve performance here
+        items_order_entry = self.interactive.p_meta['item_orders'][order_name]
+        items_order = None
+        if items_order_entry['type'] == 'newick':
+            items_order = utils.get_names_order_from_newick_tree(items_order_entry['data'])
+        else:
+            items_order = items_order_entry['data']
+
+        index_of_item = items_order.index(item_name)
         if index_of_item:
-            previous_item_name = self.interactive.displayed_item_names_ordered[index_of_item - 1]
-        if (index_of_item + 1) < len(self.interactive.displayed_item_names_ordered):
-            next_item_name = self.interactive.displayed_item_names_ordered[index_of_item + 1]
+            previous_item_name = items_order[index_of_item - 1]
+        if (index_of_item + 1) < len(items_order):
+            next_item_name = items_order[index_of_item + 1]
 
         index = index_of_item + 1
-        total = len(self.interactive.displayed_item_names_ordered)
+        total = len(items_order)
 
         return index, total, previous_item_name, next_item_name
 
