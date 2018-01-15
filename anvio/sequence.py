@@ -50,10 +50,8 @@ class Codon:
             # each codon is converted to an amino acid. if two adjacent codons are the same amino
             # acid then only one is kept
             for i, trajectory in enumerate(all_trajectories):
-                print(trajectory)
                 for j, node in enumerate(trajectory):
                     trajectory[j] = constants.codon_to_AA[node]
-                print(trajectory)
 
                 # gets rid of duplicates
                 all_trajectories[i] = list(dict.fromkeys(trajectory))
