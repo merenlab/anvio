@@ -14,6 +14,7 @@ import sys
 import time
 import json
 import random
+import nglview
 import argparse
 import requests
 import datetime
@@ -123,6 +124,8 @@ class BottleApplication(Bottle):
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
         self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
+        self.route('/data/get_available_structures',           callback=self.get_available_structures)
+        self.route('/data/get_structure/<gene_callers_id>',    callback=self.get_structure)
 
 
     def run_application(self, ip, port):
@@ -164,6 +167,8 @@ class BottleApplication(Bottle):
         homepage = 'index.html' 
         if self.interactive.mode == 'contigs':
             homepage = 'contigs.html'
+        elif self.interactive.mode == 'structure':
+            homepage = 'structure.html'
 
         redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
@@ -850,3 +855,20 @@ class BottleApplication(Bottle):
 
     def get_contigs_stats(self):
         return json.dumps({'stats': self.interactive.contigs_stats, 'tables': self.interactive.tables})
+
+
+    def get_available_structures(self):
+        return json.dumps({'available_structures': self.interactive.get_available_structures() })
+
+
+    def get_structure(self, gene_callers_id):
+        view = nglview.show_pdbid("3pqr")
+        temp_path = filesnpaths.get_temp_directory_path()
+        html_path = os.path.join(temp_path, "output.html")
+        print(html_path)
+        nglview.widget.write_html(os.path.join(temp_path, "output.html"), [view])
+
+        ret = static_file(os.path.join(temp_path, "output.html"), root=temp_path)
+        return ret
+
+        #return json.dumps({'output_html': self.interactive.get_structure(gene_callers_id) })

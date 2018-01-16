@@ -1,0 +1,48 @@
+<html>
+
+<head>
+    <title>Contigs DB Stats</title>
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+    <script type='text/javascript' src='js/utils.js'></script>
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+    <div class="container-fluid parent-container">
+        <div class="row">
+            <div class="col-md-9">
+                <iframe src="/data/get_structure/3" width="100%" height="100%"></iframe>
+            </div>
+            <div class="col-md-3 available-structures">
+            </div>
+        </div>
+    </div>
+    <script>
+        function load_structure_html(gene_callers_id) {
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/get_structure/' + gene_callers_id + '?timestamp=' + new Date().getTime(),
+                success: function(data) {
+                    //
+                }
+            });
+        }
+
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/get_available_structures?timestamp=' + new Date().getTime(),
+            success: function(data) {
+                var available_structures = data['available_structures'];
+
+                available_structures.forEach(function(gene_callers_id) {
+                    $('.available-structures').append('<a href="#" onclick="load_structure_html(' + gene_callers_id + ');"><h4>Gene callers id ' + gene_callers_id + '<h4></a>');
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

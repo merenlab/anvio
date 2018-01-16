@@ -72,6 +72,12 @@ D = {
              'required': False,
              'help': "Anvi'o genomes storage file"}
                 ),
+    'structure-db': (
+            ['-s', '--structure-db'],
+            {'metavar': "STRUCTURE_DB",
+             'required': True,
+             'help': "Anvi'o structure database"}
+                ),
     'genomes-names': (
             ['-G', '--genome-names'],
             {'metavar': "GENOME_NAMES",
