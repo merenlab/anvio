@@ -885,18 +885,18 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def load_gene_mode(self):
-        #profile_db = ProfileSuperclass(self.args)
         ProfileSuperclass.__init__(self, self.args)
 
-        # init item additional data
-        #profile_db.init_items_additional_data()
         self.genes_in_splits_summary_dict = {}
 
         self.init_gene_level_coverage_stats_dicts()
 
-        all_views = next(iter(next(iter(self.gene_level_coverage_stats_dict.values())).values())).keys()
+        # the gene_level_coverage_stats_dict contains a mixture of data, some of which are not relevant to
+        # our purpose of generating views for the interactive interface. here we explicitly list keys that
+        # correspond to views we wish to generate:
+        views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
 
-        for view in all_views:
+        for view in views_of_interest:
             self.views[view] = {
                 'table_name': 'genes',
                 'header': self.p_meta['samples'],
@@ -915,7 +915,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 gene_callers_id = e['gene_callers_id']
                 all_gene_callers_ids.append(gene_callers_id)
 
-                for view in all_views:
+                for view in views_of_interest:
                     self.views[view]['dict'][str(gene_callers_id)] = {}
                     for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
                         self.views[view]['dict'][str(gene_callers_id)][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
@@ -928,7 +928,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['available_item_orders'] = []
         self.p_meta['item_orders'] = {}
 
-        for view in all_views:
+        for view in views_of_interest:
             item_order_name = view
             newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], linkage=self.linkage, distance=self.distance)
 
