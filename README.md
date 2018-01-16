@@ -8,4 +8,4 @@ Read our [user testimonials](http://merenlab.org/2017/07/12/testimonials/).
 
 ### Join the conversation
 
-<img src="https://slackin-ezbpfhwsmh.now.sh/badge.svg">
+[<img src="https://slackin-ezbpfhwsmh.now.sh/badge.svg">](https://slackin-ezbpfhwsmh.now.sh/)
