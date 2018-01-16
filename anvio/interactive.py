@@ -5,6 +5,7 @@
 import os
 import sys
 import numpy
+import nglview
 import textwrap
 from ete3 import Tree
 
@@ -18,6 +19,7 @@ import anvio.summarizer as summarizer
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
+import anvio.structureops as structureops
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
@@ -1106,6 +1108,26 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def end(self):
         # FIXME: remove temp files and stuff
+        pass
+
+
+class StructureInteractive():
+    def __init__(self, args, run=run, progress=progress):
+        self.mode = 'structure'
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
+        self.structure_db_path = A('structure_db')
+
+
+    def get_available_structures(self):
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+        available_structure_names = structure_db.db.get_single_column_from_table('structures', 'gene_id')
+        structure_db.close()
+
+        return available_structure_names
+
+
+    def get_structure(self, gene_callers_id):
         pass
 
 
