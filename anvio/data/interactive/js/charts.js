@@ -131,7 +131,6 @@ function loadAll() {
 function showSetMaxValuesDialog() {
     var table = '<table class="table borderless"><thead class="thead-light"><tr><th>Sample</th><th>Max Coverage</th><th>Limit Max Coverage</th></tr></thead><tbody>';
 
-    var _state = JSON.parse(state);
     var max_coverage_values;
     var has_max_coverage_values = (typeof sessionStorage.max_coverage !== 'undefined');
     if (has_max_coverage_values) {
@@ -143,7 +142,7 @@ function showSetMaxValuesDialog() {
         var layer_name = layers_ordered[i];
         var layer_index = layers.indexOf(layer_name);
 
-        if (parseFloat(_state['layers'][layer_name]['height']) > 0) {
+        if (parseFloat(state['layers'][layer_name]['height']) > 0) {
             var max_val
             var actual_max_val = Math.max.apply(null, coverage[layer_index]);;
             if (has_max_coverage_values) {
@@ -187,13 +186,13 @@ function applyMaxValues() {
     });
 
     sessionStorage.max_coverage = JSON.stringify(max_values);
-    createCharts(JSON.parse(state));
+    createCharts(state);
 }
 
 
 function resetMaxValues() {
     delete sessionStorage.max_coverage;
-    createCharts(JSON.parse(state));
+    createCharts(state);
 }
 
 
