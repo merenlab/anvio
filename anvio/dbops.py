@@ -351,11 +351,11 @@ class ContigsSuperclass(object):
 
         See `init_nt_position_info_dict` for more info."""
 
+        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info):
+            return (0, 0, 0)
+
         if not self.nt_positions_info:
             raise ConfigError("get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!")
-
-        if not contig_name in self.nt_positions_info:
-            return (0, 0, 0)
 
         position_info = self.nt_positions_info[contig_name][pos_in_contig]
 
