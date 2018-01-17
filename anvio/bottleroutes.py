@@ -865,10 +865,11 @@ class BottleApplication(Bottle):
         view = nglview.show_pdbid("3pqr")
         temp_path = filesnpaths.get_temp_directory_path()
         html_path = os.path.join(temp_path, "output.html")
-        print(html_path)
-        nglview.widget.write_html(os.path.join(temp_path, "output.html"), [view])
+        nglview.widget.write_html(html_path, [view])
 
-        ret = static_file(os.path.join(temp_path, "output.html"), root=temp_path)
-        return ret
+        html_file = open(html_path, 'r')
+        html_content = html_file.read()
+        html_file.close()
 
-        #return json.dumps({'output_html': self.interactive.get_structure(gene_callers_id) })
+        response.content_type = 'text/html; charset=utf-8'
+        return html_content
