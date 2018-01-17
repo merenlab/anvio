@@ -1239,6 +1239,13 @@ function buildLayersTable(order, settings)
             $('#tbody_layers').append(template);
         }
 
+        $('#tbody_layers .input-height:last').change(function (ev) {
+            // setting height 0 changes samples order to custom
+            if (ev.target.value == 0) {
+                $('#samples_order').val('custom').trigger('change');
+            }
+        });
+
         if($('#custom_layer_margin').is(':checked'))
         {
             $('.column-margin').show();
