@@ -109,7 +109,7 @@ class GenomeStorage(object):
                                  are. Not going anywhere until you fix this. For instance this is one of the missing\
                                  genome names: '%s', and this is one random genome name from the database: '%s'" % \
                                          (len(genome_names_to_focus_missing_from_db), len(self.genome_names_to_focus),\
-                                         genome_names_to_focus_missing_from_db[0], list(self.genomes.keys())[0]))
+                                         genome_names_to_focus_missing_from_db[0], ', '.join(self.genome_names_in_db)))
 
             self.genome_names = self.genome_names_to_focus
         else:
