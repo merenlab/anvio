@@ -127,6 +127,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # be stored in t.variable_nts_table_name
         self.variable_nts_table_entries = []
 
+        # if genes are not called, yet the user is asking for AA frequencies to be profiled, we give
+        # a warning and force-turn that flag off.
+        if (not self.a_meta['genes_are_called']) and self.profile_AA_frequencies:
+            self.run.warning("You asked the amino acid frequencies to be profiled, but genes were not called\
+                              for your contigs database. Anvi'o is assigning `False` to the profile-AA-frequncies\
+                              flag, overruling your request like a boss.")
+            self.profile_AA_frequencies = False
+
         # following variable will be populated while the variable positions table is computed
         self.codons_in_genes_to_profile_AA_frequencies = set([])
 
