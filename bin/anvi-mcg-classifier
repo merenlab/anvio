@@ -27,8 +27,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="A program to classify genes according to coverage across multiple metagenomes")
-    group0 = parser.add_argument_group('ESSENTIAL INPUTS', "You must supply either a merged profile db (along with a contigs db) or a TAB-delimited data-file, containing a table of gene coverages in \
-                                                    samples.")
+    group0 = parser.add_argument_group('ESSENTIAL INPUTS', "You must supply a merged profile db (along with a matching contigs db)")
     group0.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     group0.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     group1 = parser.add_argument_group('ESSENTIAL OUTPUTS', 'The outputs of the algorithm are: an anvio additional layers format file with the classification \
@@ -36,20 +35,13 @@ if __name__ == '__main__':
                                                             In addition, when a profile database is given then a gene-coverages, and gene-detection tables \
                                                             would also be saved. All files are created with the prefix that is provided by the user.')
     group1.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': False}))
     groupB = parser.add_argument_group('ADDITIONAL STUFF',"Parameters to provide pre-existing additional layers, samples-information files, so that the \
                                                             outputs would be added to these files")
-    groupB.add_argument('-A', '--additional-layers', metavar='FILE', dest='additional_layers_to_append', default=None,
-                        help='An additional layer file to append to the one created by the algorithm')
-    groupB.add_argument('-S', '--samples-information', metavar='FILE', dest='samples_information_to_append',
-                        default=None, help='A samples information file to append to the one created by the algorithm')
-    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': False}))
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id', {'required': False}))
     groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file', {'required': False}))
     groupB.add_argument('--exclude-samples', metavar='FILE', default=None, help='List of samples to exclude for the analysis.')
     groupB.add_argument('--include-samples', metavar='FILE', default=None, help='List of samples to include for the analysis.')
-    groupB.add_argument('--store-gene-detection-and-coverage-tables', action='store_true', default=False, help='If declared, then the gene mean coverages, the gene non outlier mean coverages, \
-                        and gene detections tables would be saved. \
-                        This is only relevant when working with a profile database')
     groupB.add_argument(*anvio.A('gen-figures'), **anvio.K('gen-figures'))
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
     groupC.add_argument('--alpha', '--genome-detection-uncertainty', metavar='NUM', type=float, default=0.25,

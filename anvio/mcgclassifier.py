@@ -51,19 +51,15 @@ class MetagenomeCentricGeneClassifier:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.gene_coverages_data_file_path = A('data_file')
-        self.gene_detections_data_file_path = A('gene_detection_data_file')
         self.profile_db_path = A('profile_db')
+        self.contigs_db_path = A('contigs_db')
         self.output_file_prefix = A('output_file_prefix')
         self.alpha = A('alpha')
-        self.additional_layers_to_append = A('additional_layers_to_append')
-        self.samples_information_to_append = A('samples_information_to_append')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
         self.exclude_samples = A('exclude_samples')
         self.include_samples = A('include_samples')
-        self.store_gene_detection_and_coverage_tables = A('store_gene_detection_and_coverage_tables')
         self.outliers_threshold = A('outliers_threshold')
         self.gen_figures = A('gen_figures')
         self.profile_db = {}
@@ -185,12 +181,8 @@ class MetagenomeCentricGeneClassifier:
     def sanity_check(self):
         """Basic sanity check for class inputs"""
 
-        if self.profile_db_path is None and self.gene_coverages_data_file_path is None:
-            raise ConfigError("You must provide either a profile.db or a gene coverage self.gene_coverages_filtered data file")
-
-        if self.profile_db_path and self.gene_coverages_data_file_path:
-            raise ConfigError("You provided both a profile database and a gene coverage self.gene_coverages_filtered data file, you \
-            must provide only one or the other (hint: if you have a profile database, the use that")
+        if self.profile_db_path is None or self.contigs_db_path is None:
+            raise ConfigError("You must provide a profile database AND a contigs database")
 
         # checking output file
         filesnpaths.is_output_file_writable(self.output_file_prefix + '-additional-layers.txt', ok_if_exists=False)
@@ -201,11 +193,6 @@ class MetagenomeCentricGeneClassifier:
         # alpha must be a min of 0 and smaller than 0.5
         if self.alpha < 0 or self.alpha >= 0.5:
             raise ConfigError("alpha must be a minimum of 0 and smaller than 0.5")
-
-        if self.collection_name:
-            if not self.profile_db_path:
-                raise ConfigError("You specified a collection name %s, but you provided a gene coverage self.gene_coverages_filtered data file \
-                 collections are only available when working with a profile database." % self.collection_name)
 
         if self.exclude_samples and self.include_samples:
             raise ConfigError("You cannot use both --include-samples and --exclude-samples! Please choose one.")
@@ -639,17 +626,8 @@ class MetagenomeCentricGeneClassifier:
         self.gene_non_outlier_positions = _bin.gene_non_outlier_positions
 
     def save_gene_class_information_in_additional_layers(self, additional_description=''):
-        if not self.additional_layers_to_append:
-            additional_column_titles = []
-            additional_layers_df = self.gene_class_df
-        else:
-            additional_layers_df = pd.read_table(self.additional_layers_to_append)
-            try:
-                # concatinating the gene_class_information with the user provided additional layers
-                additional_layers_df.join(self.gene_class_df, how='outer')
-            except ValueError as e:
-                raise ConfigError("Something went wrong. This is what we know: %s. This could be happening because \
-                you have columns in your --additional-layers file with the following title: %s" % (e, self.gene_class_df.columns.tolist()))
+        additional_column_titles = []
+        additional_layers_df = self.gene_class_df
         output_file_path = self.output_file_prefix + '-additional-layers.txt'
         additional_layers_df.to_csv(output_file_path, sep='\t', index_label='gene_callers_id')
 
@@ -657,39 +635,13 @@ class MetagenomeCentricGeneClassifier:
     def save_samples_information(self, additional_description=''):
         # TODO: there used to be this here:
         #self.run.warning(self.samples_information)
-        if not self.samples_information_to_append:
-            samples_information_df = self.samples_information
-        else:
-            samples_information_df = pd.read_table(self.samples_information_to_append)
-            try:
-                # concatinating the samples_information with the user provided samples_information file 
-                samples_information_df.join(self.samples_information, how='outer')
-            except ValueError as e:
-                raise ConfigError("Something went wrong. This is what we know: %s. This could be happening because \
-                you have columns in your --additional-layers file with the following title: %s" % (e, self.samples_information.columns.tolist()))
+        samples_information_df = self.samples_information
 
         if additional_description:
             additional_description = '-' + additional_description
 
         samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
         samples_information_df.to_csv(samples_information_file_name, sep='\t', index_label='samples')
-
-    def save_gene_detection_and_coverage(self, additional_description=''):
-        if additional_description:
-            prefix = self.output_file_prefix + '-' + additional_description
-        else:
-            prefix = self.output_file_prefix
-
-        gene_coverages_file_name = prefix + '-gene-coverages.txt'
-        gene_detections_file_name = prefix + '-gene-detections.txt'
-        gene_non_outlier_coverages_file_name = prefix + '-gene-non-outlier-coverages.txt'
-        gene_non_outlier_coverages_file_name = prefix + '-gene-non-outlier-coverage-stds.txt'
-
-        self.gene_coverages.to_csv(gene_coverages_file_name, sep='\t', index_label='gene_callers_id')
-        self.gene_non_outlier_coverages.to_csv(gene_non_outlier_coverages_file_name, sep='\t', index_label='gene_callers_id')
-        self.gene_detections.to_csv(gene_detections_file_name, sep='\t', index_label='gene_callers_id')
-        self.gene_non_outlier_coverage_stds.to_csv(gene_detections_file_name, sep='\t', index_label='gene_callers_id')
-
 
     def classify(self):
         if self.collection_name:
@@ -716,16 +668,12 @@ class MetagenomeCentricGeneClassifier:
                 self.get_coverage_and_detection_dict(bin_id)
                 self.additional_description = bin_id
                 self.get_gene_classes()
-                if self.store_gene_detection_and_coverage_tables:
-                    self.save_gene_detection_and_coverage(bin_id)
                 #self.save_gene_class_information_in_additional_layers(bin_id)
                 #self.save_samples_information(bin_id)
 
         else:
             # No collection provided so running on the entire detection table
             self.get_gene_classes()
-            if self.store_gene_detection_and_coverage_tables:
-                self.save_gene_detection_and_coverage()
             self.save_gene_class_information_in_additional_layers()
             self.store_samples_coverage_stats_dict()
 
