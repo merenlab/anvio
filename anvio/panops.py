@@ -331,7 +331,8 @@ class Pangenome(object):
 
             # divide the DNA length of the gene by three to get the AA length, and multiply that by two to get an approximate
             # bit score that would have recovered from a perfect match
-            self_bit_scores[id_without_self_search] = (self.genomes[genome_name]['gene_lengths'][int(gene_caller_id)] / 3.0) * 2
+            gene_amino_acid_sequence_length = len(self.genomes_storage.get_gene_sequence(genome_name, int(gene_caller_id), report_DNA_sequences=False))
+            self_bit_scores[id_without_self_search] = gene_amino_acid_sequence_length * 2
 
             # add this SOB into additional_mcl_input_lines dict.
             additional_mcl_input_lines[id_without_self_search] = '%s\t%s\t1.0\n' % (id_without_self_search, id_without_self_search)
