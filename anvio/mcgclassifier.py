@@ -87,6 +87,8 @@ class MetagenomeCentricGeneClassifier:
         self.non_outlier_indices = {}
         self.gene_coverage_consistency_dict = {}
         self.gene_coverage_consistency_dict_initiated = False
+        self.samples_to_exclude = set([])
+        self.samples_to_include = set([])
 
         if self.exclude_samples:
             # check that there is a file like this
@@ -97,8 +99,6 @@ class MetagenomeCentricGeneClassifier:
                 raise ConfigError("You asked to exclude samples, but provided an empty list.")
 
             run.info('Excluding Samples', 'The following samples will be excluded: %s' % self.samples_to_exclude,)
-        else:
-            self.samples_to_exclude = set([])
 
         if self.include_samples:
             # check that there is a file like this
@@ -109,8 +109,6 @@ class MetagenomeCentricGeneClassifier:
                 raise ConfigError("You provided an empty list of samples to include.")
 
             run.info('Including Samples', 'The following samples will be included: %s' % self.samples_to_include,)
-        else:
-            self.samples_to_include = set([])
 
         # run sanity check on all input arguments
         self.sanity_check()
