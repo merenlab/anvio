@@ -128,6 +128,9 @@ function createDisplay(){
         {
             var layer = state['layer-order'][layer_id];
 
+            if (state['layers'][layer]['height'] == 0)
+                continue;
+
             if (gene_cluster_data.genomes.indexOf(layer) === -1)
                 continue;
             
