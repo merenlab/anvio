@@ -51,8 +51,6 @@ class MetagenomeCentricGeneClassifier:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.profile_db_path = A('profile_db')
-        self.contigs_db_path = A('contigs_db')
         self.output_file_prefix = A('output_file_prefix')
         self.alpha = A('alpha')
         self.collection_name = A('collection_name')
@@ -159,9 +157,6 @@ class MetagenomeCentricGeneClassifier:
 
     def sanity_check(self):
         """Basic sanity check for class inputs"""
-
-        if self.profile_db_path is None or self.contigs_db_path is None:
-            raise ConfigError("You must provide a profile database AND a contigs database")
 
         if self.output_file_prefix:
             # checking output file
