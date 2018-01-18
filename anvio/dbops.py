@@ -1721,7 +1721,7 @@ class ProfileSuperclass(object):
             raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set().\
                                Someone screwed up somewhere :/")
         elif self.split_names_of_interest and self.collection_name:
-            raise ConfigError("ProfileSuper is initializef with args that contain both `split_names_of_interest`,\
+            raise ConfigError("ProfileSuper is initialized with args that contain both `split_names_of_interest`,\
                                and `collection_name`. You can initialize the ProfileSuper with either of those. As\
                                a programmer if you have no control over incoming `args` and just passing things\
                                aroung, you might need to implement a workaround to set either of those params to None\
