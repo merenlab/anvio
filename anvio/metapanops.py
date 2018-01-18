@@ -142,8 +142,25 @@ class MetaPangenome(object):
 
         # let's focus only on the split names in the collection, and the bin names specified
         collections_dict = ccollections.GetSplitNamesInBins(ARGS).get_dict()
+
+        # poor-man's whatever
+        BIN_NAMES = lambda: self.unique_profile_db_path_to_internal_genome_name[profile_db_path]
+
+        # let's first make sure the collection mentioned in this profile database in fact has
+        # all the bin names in it:
+        missing_bin_names_in_collection = [b for b in BIN_NAMES() if not b in collections_dict]
+        if len(missing_bin_names_in_collection):
+            self.progress.end()
+            raise ConfigError("Hi. Yes. The collection '%s' seems to be missing one or more of your bins in the\
+                               profile database '%s'. This is the list of bins that are missing in your collection:\
+                               '%s'. And these are the bin names that collection knows about: '%s'. This is all\
+                               on you. *Walks away whistling*. This is all on youuu." % (collection_name,
+                                                                                         profile_db_path,
+                                                                                         ', '.join(missing_bin_names_in_collection),
+                                                                                         ', '.join(list(collections_dict.keys()))))
+
         ARGS.split_names_of_interest=set([])
-        for bin_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
+        for bin_name in BIN_NAMES():
             ARGS.split_names_of_interest.update(collections_dict[bin_name])
 
         summary = summarizer.ProfileSummarizer(ARGS)
