@@ -218,7 +218,7 @@ class MetaPangenome(object):
                 split_names_of_interest = self.descriptions.get_split_names_of_interest_for_internal_genome(self.descriptions.genomes[internal_genome_name])
 
                 genome_bin_summary = summarizer.Bin(summary, genome_name, split_names_of_interest)
-                gene_coverages_across_samples = genome_bin_summary.gene_coverages
+                gene_coverages_across_samples = genome_bin_summary.get_values_of_gene_level_coverage_stats_as_dict("mean_coverage")
 
                 # at this point we have all the genes in the genome bin. what we need is to characterize their detection. first,
                 # summarize the coverage of each gene in all samples:
@@ -269,12 +269,15 @@ class MetaPangenome(object):
             gene_cluster_name = gene_cluster_names[i]
 
             status = {'EAG': 0, 'ECG': 0, 'NA': 0}
-            for genome_name in self.pan_summary.gene_clusters[gene_cluster_name]:
-                for gene_caller_id in self.pan_summary.gene_clusters[gene_cluster_name][genome_name]:
+            for internal_genome_name in self.pan_summary.gene_clusters[gene_cluster_name]:
+                genome_name = self.descriptions.genomes[internal_genome_name]['bin_id']
+
+                for gene_caller_id in self.pan_summary.gene_clusters[gene_cluster_name][internal_genome_name]:
                     if genome_name not in gene_presence_in_the_environment_dict:
                         self.progress.end()
                         raise ConfigError("Something is wrong... It seems you generated a pangenome with an internal genomes file\
                                            that is not identical to the internal genomes file you are using to run this program.")
+
                     status[gene_presence_in_the_environment_dict[genome_name][gene_caller_id]] += 1
             gene_status_frequencies_in_gene_cluster[gene_cluster_name] = status
 
