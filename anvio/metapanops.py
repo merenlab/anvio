@@ -271,7 +271,7 @@ class MetaPangenome(object):
             status = {'EAG': 0, 'ECG': 0, 'NA': 0}
             for genome_name in self.pan_summary.gene_clusters[gene_cluster_name]:
                 for gene_caller_id in self.pan_summary.gene_clusters[gene_cluster_name][genome_name]:
-                    if genome_name not in gene_presence_in_the_environment_dict:
+                    if self.descriptions.genomes[genome_name]['bin_id'] not in gene_presence_in_the_environment_dict:
                         self.progress.end()
                         raise ConfigError("Something is wrong... It seems you generated a pangenome with an internal genomes file\
                                            that is not identical to the internal genomes file you are using to run this program.")
