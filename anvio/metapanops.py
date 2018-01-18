@@ -275,7 +275,7 @@ class MetaPangenome(object):
                         self.progress.end()
                         raise ConfigError("Something is wrong... It seems you generated a pangenome with an internal genomes file\
                                            that is not identical to the internal genomes file you are using to run this program.")
-                    status[gene_presence_in_the_environment_dict[genome_name][gene_caller_id]] += 1
+                    status[gene_presence_in_the_environment_dict[self.descriptions.genomes[genome_name]['bin_id']][gene_caller_id]] += 1
             gene_status_frequencies_in_gene_cluster[gene_cluster_name] = status
 
         self.progress.update('Setting up the items data dictionary ..') 
