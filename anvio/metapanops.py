@@ -205,19 +205,19 @@ class MetaPangenome(object):
             summary = self.get_summary_object_for_profile_db(profile_db_path)
 
             for internal_genome_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
-                genome_name = self.descriptions.genomes[internal_genome_name]['bin_id']
+                bin_id = self.descriptions.genomes[internal_genome_name]['bin_id']
 
                 self.progress.update('Working on genome %s in profile db %s ...' % (internal_genome_name, profile_db_path))
 
                 # for each genome, first we will see whether it is detected in at least one metagenome
-                detection_across_metagenomes = summary.collection_profile[genome_name]['detection']
+                detection_across_metagenomes = summary.collection_profile[bin_id]['detection']
                 num_metagenomes_above_min_detection = [m for m in detection_across_metagenomes if detection_across_metagenomes[m] > self.min_detection]
                 not_enough_detection = False if len(num_metagenomes_above_min_detection) else True
 
-                gene_presence_in_the_environment_dict[genome_name] = {}
+                gene_presence_in_the_environment_dict[bin_id] = {}
                 split_names_of_interest = self.descriptions.get_split_names_of_interest_for_internal_genome(self.descriptions.genomes[internal_genome_name])
 
-                genome_bin_summary = summarizer.Bin(summary, genome_name, split_names_of_interest)
+                genome_bin_summary = summarizer.Bin(summary, bin_id, split_names_of_interest)
                 gene_coverages_across_samples = genome_bin_summary.get_values_of_gene_level_coverage_stats_as_dict("mean_coverage")
 
                 # at this point we have all the genes in the genome bin. what we need is to characterize their detection. first,
@@ -237,7 +237,7 @@ class MetaPangenome(object):
                     else:
                         _class = 'ECG'
 
-                    gene_presence_in_the_environment_dict[genome_name][gene_caller_id] = _class
+                    gene_presence_in_the_environment_dict[bin_id][gene_caller_id] = _class
 
         self.progress.end()
 
