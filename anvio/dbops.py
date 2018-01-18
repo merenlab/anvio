@@ -1715,7 +1715,23 @@ class ProfileSuperclass(object):
         # by providing collection name and bin names in args.
         self.split_names_of_interest = A('split_names_of_interest')
         self.collection_name = A('collection_name')
-        self.bin_names = [A('bin_id')] if A('bin_id') else [b.strip() for b in A('bin_names_list').split(',')] if A('bin_names_list') else None
+
+        # figure out bin names, if there is one to figure out
+        if A('bin_id') and A('bin_names_list'):
+            raise ConfigError("ProfileSuper says you can't use both `bin_id` and `bin_names_list` as argument. Pick\
+                               one, and stick with it. ProfileSuper is grumpy.")
+        if A('bin_id'):
+            self.bin_names = [A('bin_id')]
+        elif A('bin_names_list'):
+            if isinstance(A('bin_names_list'), list):
+                self.bin_names = A('bin_names_list')
+            elif isinstance(A('bin_names_list'), str):
+                self.bin_names = A('bin_names_list').split(',')
+            else:
+                raise ConfigError("ProfileSuper says `bin_names_list` can either be a string of comma-separated bin\
+                                   names, or a proper Python `list` of bin names. But not %s." % (type(A('bin_names_list'))))
+        else:
+            self.bin_names = None
 
         if self.split_names_of_interest and not isinstance(self.split_names_of_interest, type(set([]))):
             raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set().\
