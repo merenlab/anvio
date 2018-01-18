@@ -111,7 +111,19 @@ function show_gene_popup(event) {
         cache: false,
         url: '/data/pan_gene_popup/' + gene_callers_id + '/' + genome_name,
         success: function(data) {
+            data.gene_info['genome_name'] = genome_name;
+            data.gene_info['gene_callers_id'] = gene_callers_id;
             console.log(data);
+
+            $('.popover').remove();
+
+            $(event.target).popover({
+                trigger: "manual",
+                placement: "bottom",
+                container: 'body',
+                html : true,
+                content : get_gene_functions_table_html_for_pan(data.gene_info),
+            }).popover('show');
         }
     });
 }
