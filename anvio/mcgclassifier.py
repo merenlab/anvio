@@ -182,8 +182,9 @@ class MetagenomeCentricGeneClassifier:
         if self.profile_db_path is None or self.contigs_db_path is None:
             raise ConfigError("You must provide a profile database AND a contigs database")
 
-        # checking output file
-        filesnpaths.is_output_file_writable(self.output_file_prefix + '-additional-layers.txt', ok_if_exists=False)
+        if self.output_file_prefix:
+            # checking output file
+            filesnpaths.is_output_file_writable(self.output_file_prefix + '-additional-layers.txt', ok_if_exists=False)
 
         # checking alpha
         if not isinstance(self.alpha, float):
