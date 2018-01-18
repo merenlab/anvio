@@ -257,10 +257,17 @@ class MetaPangenome(object):
 
         gene_presence_in_the_environment_dict = self.get_gene_presence_in_the_environment_dict()
 
-        self.progress.update('Computing ratio of genes present/absent per gene cluster data ...')
+        self.progress.new('Working on ECG/EAG ratio per gene cluster')
+        self.progress.update('...')
 
         gene_status_frequencies_in_gene_cluster = {}
-        for gene_cluster_name in self.pan_summary.gene_clusters:
+
+        gene_cluster_names = list(self.pan_summary.gene_clusters.keys())
+        num_gene_clusters = len(gene_cluster_names)
+        for i in range(0, num_gene_clusters):
+            self.progress.update('%.2f' % ((i + 1) * 100 / num_gene_clusters))
+            gene_cluster_name = gene_cluster_names[i]
+
             status = {'EAG': 0, 'ECG': 0, 'NA': 0}
             for genome_name in self.pan_summary.gene_clusters[gene_cluster_name]:
                 for gene_caller_id in self.pan_summary.gene_clusters[gene_cluster_name][genome_name]:
@@ -271,14 +278,14 @@ class MetaPangenome(object):
                     status[gene_presence_in_the_environment_dict[genome_name][gene_caller_id]] += 1
             gene_status_frequencies_in_gene_cluster[gene_cluster_name] = status
 
-        self.progress.end()
-
-        # setting up the items data dictionary
+        self.progress.update('Setting up the items data dictionary ..') 
         items_additional_data_dict = {}
         key = 'ECG_EAG_Ratio!EAG;ECG;NA'
         for gene_cluster_name in gene_status_frequencies_in_gene_cluster:
             r = gene_status_frequencies_in_gene_cluster[gene_cluster_name]
             items_additional_data_dict[gene_cluster_name] = {key: '%d;%d;%d' % (r['EAG'], r['ECG'], r['NA'])}
+
+        self.progress.end()
 
         # add that bad boy to the database
         self.args.just_do_it = True
