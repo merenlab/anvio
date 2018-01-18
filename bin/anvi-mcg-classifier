@@ -60,14 +60,14 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="A program to classify genes according to coverage across multiple metagenomes")
     group0 = parser.add_argument_group('ESSENTIAL INPUTS', "You must supply a merged profile db (along with a matching contigs db)")
-    group0.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-    group0.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    group0.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    group0.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     group1 = parser.add_argument_group('ESSENTIAL OUTPUTS', 'The outputs of the algorithm are: an anvio additional layers format file with the classification \
                                                             information for genes. An anvio samples information file with detectino information per sample. \
                                                             In addition, when a profile database is given then a gene-coverages, and gene-detection tables \
                                                             would also be saved. All files are created with the prefix that is provided by the user.')
     group1.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
-    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': False}))
+    group1.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupB = parser.add_argument_group('ADDITIONAL STUFF',"Parameters to provide pre-existing additional layers, samples-information files, so that the \
                                                             outputs would be added to these files")
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id', {'required': False}))
