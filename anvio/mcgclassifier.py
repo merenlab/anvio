@@ -175,13 +175,16 @@ class MetagenomeCentricGeneClassifier:
 
     def init_samples(self, samples_list):
         """ Create the set of samples according to user input and store it in self.samples"""
+        # remove the samples that should be excluded
         samples = set(samples_list) - self.samples_to_exclude
+
         if self.include_samples:
             samples_to_include_that_are_not_there = self.samples_to_include - samples
             if samples_to_include_that_are_not_there:
                 raise ConfigError("You requested to include some samples that are not in the profile database. Here are the samples in the profile database: %s. \
                                 And here are the samples you requested, and that are not there: %s" % (samples, samples_to_include_that_are_not_there))
             samples = self.samples_to_include
+
         self.samples = samples
 
 
