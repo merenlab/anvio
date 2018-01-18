@@ -12,7 +12,6 @@ import anvio
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
-import anvio.ccollections as ccollections
 import anvio.genomedescriptions as genomedescriptions
 
 from anvio.errors import ConfigError
@@ -133,23 +132,16 @@ class MetaPangenome(object):
         profile_db_path = self.descriptions.genomes[self.unique_profile_db_path_to_internal_genome_name[profile_db_path][0]]['profile_db_path']
         contigs_db_path = self.descriptions.genomes[self.unique_profile_db_path_to_internal_genome_name[profile_db_path][0]]['contigs_db_path']
 
+        # poor-man's whatever
+        bin_names_list = [self.descriptions.genomes[g]['bin_id'] for g in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]]
+
         ARGS = summarizer.ArgsTemplateForSummarizerClass()
         ARGS.profile_db = profile_db_path
         ARGS.contigs_db = contigs_db_path
         ARGS.skip_init_functions = True
         ARGS.init_gene_coverages = init_gene_coverages
         ARGS.collection_name = collection_name
-
-        # let's focus only on the split names in the collection, and the bin names specified
-        collections_dict = ccollections.GetSplitNamesInBins(ARGS).get_dict()
-
-        # poor-man's whatever
-        INTERNAL_GENOME_NAMES = lambda: self.unique_profile_db_path_to_internal_genome_name[profile_db_path]
-
-        ARGS.split_names_of_interest=set([])
-        for internal_genome_name in INTERNAL_GENOME_NAMES():
-            bin_name  = self.descriptions.genomes[internal_genome_name]['bin_id']
-            ARGS.split_names_of_interest.update(collections_dict[bin_name])
+        ARGS.bin_names_list = bin_names_list
 
         summary = summarizer.ProfileSummarizer(ARGS)
         summary.init()
