@@ -818,7 +818,7 @@ D = {
                 ),
     'num-threads': (
             ['-T', '--num-threads'],
-            {'metavar': 'NUM_CPUS',
+            {'metavar': 'NUM_THREADS',
              'default': 1,
              'type': int,
              'help': "Maximum number of threads to use for multithreading whenever possible. Very conservatively, the default\
