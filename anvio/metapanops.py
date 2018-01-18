@@ -155,19 +155,21 @@ class MetaPangenome(object):
         self.progress.update('...')
 
         genomes_across_metagenomes = {}
-        for genome_name in self.descriptions.internal_genome_names:
-            genomes_across_metagenomes[genome_name] = {}
+        for internal_genome_name in self.descriptions.internal_genome_names:
+            genome_name = self.descriptions.genomes[internal_genome_name]['bin_id']
+            genomes_across_metagenomes[internal_genome_name] = {}
             for sample_name in self.sample_names:
-                genomes_across_metagenomes[genome_name][sample_name] = 0.0
+                genomes_across_metagenomes[internal_genome_name][sample_name] = 0.0
 
         D = lambda: summary.collection_profile[genome_name][data_key]
         for profile_db_path in self.unique_profile_db_path_to_internal_genome_name:
             self.progress.update('"%s" from profile db at %s ...' % (data_key, profile_db_path))
             summary = self.get_summary_object_for_profile_db(profile_db_path, init_gene_coverages=False)
 
-            for genome_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
+            for internal_genome_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
+                genome_name = self.descriptions.genomes[internal_genome_name]['bin_id']
                 for sample_name in D():
-                    genomes_across_metagenomes[genome_name][sample_name] = D()[sample_name]
+                    genomes_across_metagenomes[internal_genome_name][sample_name] = D()[sample_name]
 
         self.progress.end()
 
