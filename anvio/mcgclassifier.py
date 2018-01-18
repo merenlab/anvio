@@ -62,6 +62,8 @@ class MetagenomeCentricGeneClassifier:
         self.include_samples = A('include_samples')
         self.outliers_threshold = A('outliers_threshold')
         self.gen_figures = A('gen_figures')
+        self.split_coverage_values_per_nt_dict = {}
+        self.gene_level_coverage_stats_dict = {}
         self.profile_db = {}
         self.coverage_values_per_nt = {}
         self.gene_coverages = {}
@@ -113,33 +115,12 @@ class MetagenomeCentricGeneClassifier:
         # run sanity check on all input arguments
         self.sanity_check()
 
-        if self.profile_db_path is None:
-            # TODO: this will probably be removed because we don't save the coverage information in nucleotide level.
-            pass
-        else:
-            # load sample list and gene_coverage_dict from the merged profile db
 
-            # assiginig these values to args should guarantee that 
-            # the gene coverage stats would be initiated
-            args.init_gene_coverages = True
-            args.populate_nt_level_coverage = True
-            if self.collection_name:
-                self.summary = summarizer.ProfileSummarizer(args)
-                self.summary.init()
-                self.init_samples(self.summary.p_meta['samples'])
-            else:
-                self.profile_db = ProfileSuperclass(args)
-                self.init_samples(self.profile_db.p_meta['samples'])
-                self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.profile_db.split_coverage_values_per_nt_dict, self.samples)
-
-                # comply with the new design and get gene_coverages and gene_detection dicsts from
-                # gene_level_coverage_stats_dict.
-                gene_coverages, gene_detection, gene_non_outlier_mean_coverage, gene_non_outlier_coverage_stds = self.get_gene_coverages_and_gene_detection_dicts()
-
-                self.init_coverage_and_detection_dataframes(gene_coverages, gene_detection, gene_non_outlier_mean_coverage, gene_non_outlier_coverage_stds)
-
-                # getting the total length of all contigs
-                self.total_length = self.profile_db.p_meta['total_length']
+    def init(self, gene_level_coverage_stats_dict=None, split_coverage_values_per_nt_dict=None, additional_description=None):
+        """ setting the dictionaries for gene coverage stats and for split coverage per nucleotide"""
+        self.gene_level_coverage_stats_dict = gene_level_coverage_stats_dict
+        self.split_coverage_values_per_nt_dict = split_coverage_values_per_nt_dict
+        self.additional_description = additional_description
 
 
     def get_gene_coverages_and_gene_detection_dicts(self):
@@ -643,38 +624,15 @@ class MetagenomeCentricGeneClassifier:
         samples_information_df.to_csv(samples_information_file_name, sep='\t', index_label='samples')
 
     def classify(self):
-        if self.collection_name:
-            bin_names_in_collection = self.summary.bin_ids
-            if self.bin_ids_file_path:
-                filesnpaths.is_file_exists(self.bin_ids_file_path)
-                bin_names_of_interest = [line.strip() for line in open(self.bin_ids_file_path).readlines()]
+        
+        # FIXME:this is for debugging and should be removed
+        print(self.gene_level_coverage_stats_dict)
+        print(self.split_coverage_values_per_nt_dict)
 
-                missing_bins = [b for b in bin_names_of_interest if b not in bin_names_in_collection]
-                if len(missing_bins):
-                    raise ConfigError("Some bin names you declared do not appear to be in the collection %s. \
-                                        These are the bins that are missing: %s, these are the bins that are \
-                                        actually in your collection: %s" % (self.collection_name,missing_bins,bin_names_in_collection))
-            elif self.bin_id:
-                if self.bin_id not in bin_names_in_collection:
-                    raise ConfigError("The bin you declared, %s, does not appear to be in the collection %s." \
-                                      % (self.bin_id, self.collection_name))
-                bin_names_of_interest = [self.bin_id]
-            else:
-                bin_names_of_interest = bin_names_in_collection
-
-            for bin_id in bin_names_of_interest:
-                self.run.info_single('Classifying genes in bin: %s' % bin_id)
-                self.get_coverage_and_detection_dict(bin_id)
-                self.additional_description = bin_id
-                self.get_gene_classes()
-                #self.save_gene_class_information_in_additional_layers(bin_id)
-                #self.save_samples_information(bin_id)
-
-        else:
-            # No collection provided so running on the entire detection table
-            self.get_gene_classes()
-            self.save_gene_class_information_in_additional_layers()
-            self.store_samples_coverage_stats_dict()
+        return
+        self.get_gene_classes()
+        #self.save_gene_class_information_in_additional_layers(bin_id)
+        #self.save_samples_information(bin_id)
 
 
 def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):

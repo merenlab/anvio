@@ -5,6 +5,7 @@
 import sys
 
 import anvio
+import anvio.summarizer as summarizer
 from anvio.mcgclassifier import MetagenomeCentricGeneClassifier
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -21,7 +22,38 @@ __email__ = "alon.shaiber@gmail.com"
 
 def main(args):
     mcg = MetagenomeCentricGeneClassifier(args)
-    mcg.classify()
+
+    args.init_gene_coverages = True
+    args.populate_nt_level_coverage = True
+    summary = summarizer.ProfileSummarizer(args)
+    summary.init()
+    bin_names_in_collection = summary.bin_ids
+    if args.bin_ids_file:
+        filesnpaths.is_file_exists(args.bin_ids_file)
+        bin_names_of_interest = [line.strip() for line in open(args.bin_ids_file).readlines()]
+
+        missing_bins = [b for b in bin_names_of_interest if b not in bin_names_in_collection]
+        if len(missing_bins):
+            raise ConfigError("Some bin names you declared do not appear to be in the collection %s. \
+                                These are the bins that are missing: %s, these are the bins that are \
+                                actually in your collection: %s" % (collection_name,missing_bins,bin_names_in_collection))
+    elif args.bin_id:
+        if args.bin_id not in bin_names_in_collection:
+            raise ConfigError("The bin you declared, %s, does not appear to be in the collection %s." \
+                              % (args.bin_id, collection_name))
+        bin_names_of_interest = [args.bin_id]
+    else:
+        bin_names_of_interest = bin_names_in_collection
+
+    # FIXME: this is how I set the sample right now
+    # maybe Meren will change this in the future
+    mcg.init_samples(summary.p_meta['samples'])
+    for bin_name in bin_names_of_interest:
+        # This is where things are happening
+        _bin = summarizer.Bin(summary, bin_name)
+        mcg.init(_bin.gene_level_coverage_stats_dict, _bin.split_coverage_values_per_nt_dict)
+        mcg.classify()
+
 
 
 if __name__ == '__main__':
