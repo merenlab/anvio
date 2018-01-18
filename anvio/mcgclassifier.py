@@ -373,10 +373,9 @@ class MetagenomeCentricGeneClassifier:
 
     def init_gene_presence_absence_in_samples(self):
         """ Determining presence and absence of genes in samples according to gene detection values."""
-        if self.gene_detections is None:
-            # making sure that a gene detections table exists
-            raise ConfigError("gene presence/absence in samples cannot be determined without a gene detections table,\
-                                but it seems that you don't have a gene detections table.")
+        if not self.gene_level_coverage_stats_dict:
+            raise ConfigError("gene presence/absence in samples cannot be determined without a gene_level_coverage_stats_dict,\
+                                but it seems that you don't have one. maybe you should run init()?")
 
         gene_callers_id = self.gene_detections.index
         self.gene_presence_absence_in_samples = pd.DataFrame(index=gene_callers_id, columns=self.samples)
