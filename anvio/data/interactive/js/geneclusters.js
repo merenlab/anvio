@@ -102,6 +102,20 @@ function loadAll() {
 
 }
 
+function show_gene_popup(event) {
+    var genome_name = event.target.getAttribute('genome-name');
+    var gene_callers_id = event.target.getAttribute('gene-callers-id');
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/pan_gene_popup/' + gene_callers_id + '/' + genome_name,
+        success: function(data) {
+            console.log(data);
+        }
+    });
+}
+
 
 function createDisplay(){
     var sequence_wrap_val = parseInt($('#wrap_length').val());
@@ -150,9 +164,9 @@ function createDisplay(){
             text.setAttribute('y', parseFloat(rect.getAttribute('y')) + parseFloat(rect.getAttribute('height')) / 2);
             text.setAttribute('font-size', "24px");
             text.setAttribute('font-family', "Lato, Arial");
-            text.setAttribute('font-weight', '300')
+            text.setAttribute('font-weight', '300');
             text.setAttribute('style', 'alignment-baseline:central');
-            text.setAttribute('class', 'genomeTitle')
+            text.setAttribute('class', 'genomeTitle');
             text.appendChild(document.createTextNode(layer));
             fragment.appendChild(text);
 
@@ -167,8 +181,12 @@ function createDisplay(){
                 text.setAttribute('font-size', sequence_font_size);
                 text.setAttribute('font-family', "Lato, Arial");
                 text.setAttribute('font-weight', '300');
-                text.setAttribute('style', 'alignment-baseline:text-before-edge');
-                text.setAttribute('class', 'callerTitle')
+                text.setAttribute('style', 'alignment-baseline:text-before-edge; cursor: pointer;');
+                text.setAttribute('class', 'callerTitle');
+                text.setAttribute('gene-callers-id', caller_id);
+                text.setAttribute('genome-name', layer);
+                text.addEventListener('click', show_gene_popup);
+
                 text.appendChild(document.createTextNode(caller_id));
                 fragment.appendChild(text);
 

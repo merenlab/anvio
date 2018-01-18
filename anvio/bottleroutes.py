@@ -117,6 +117,7 @@ class BottleApplication(Bottle):
         self.route('/data/hmm/<bin_name>/<gene_name>',         callback=self.get_hmm_hit_from_bin)
         self.route('/data/geneclusterssummary',             callback=self.get_gene_clusters_summary, method='POST')
         self.route('/data/get_AA_sequences_for_gene_cluster/<gene_cluster_name>',  callback=self.get_AA_sequences_for_gene_cluster)
+        self.route('/data/pan_gene_popup/<gene_callers_id>/<genome_name>',         callback=self.get_gene_popup_for_pan)
         self.route('/data/geneclusters/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
         self.route('/data/phylogeny/aligners',                 callback=self.get_available_aligners)
@@ -618,6 +619,10 @@ class BottleApplication(Bottle):
         header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
         return json.dumps({'sequence': sequence, 'header': header})
+
+
+    def get_gene_popup_for_pan(self, gene_callers_id, genome_name):
+        return json.dumps(self.interactive.get_gene_popup_for_pan(int(gene_callers_id), genome_name))
 
 
     def get_hmm_hit_from_bin(self, bin_name, gene_name):
