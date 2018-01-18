@@ -218,7 +218,7 @@ class MetaPangenome(object):
                 split_names_of_interest = self.descriptions.get_split_names_of_interest_for_internal_genome(self.descriptions.genomes[internal_genome_name])
 
                 genome_bin_summary = summarizer.Bin(summary, genome_name, split_names_of_interest)
-                gene_coverages_across_samples = genome_bin_summary.gene_coverages
+                gene_coverages_across_samples = genome_bin_summary.get_values_of_gene_level_coverage_stats_as_dict("mean_coverage")
 
                 # at this point we have all the genes in the genome bin. what we need is to characterize their detection. first,
                 # summarize the coverage of each gene in all samples:
