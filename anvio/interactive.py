@@ -18,6 +18,7 @@ import anvio.summarizer as summarizer
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
+import anvio.genomestorage as genomestorage
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
@@ -1031,6 +1032,28 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_object.append(json_entry)
 
             self.views[view] = json_object
+
+
+    def get_gene_popup_for_pan(self, gene_callers_id, genome_name):
+        if not self.genomes_storage_is_available:
+            return {'status': '1'}
+        else:
+            genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
+                                                           self.p_meta['genomes_storage_hash'],
+                                                           genome_names_to_focus=self.p_meta['genome_names'],
+                                                           run=self.run,
+                                                           progress=self.progress)
+
+            if genome_name not in genomes_storage.gene_info:
+                return {'status': '1'}
+            if gene_callers_id not in genomes_storage.gene_info[genome_name]:
+                return {'status': '1'}
+
+            data = {
+                'status': '0',
+                'gene_info': genomes_storage.gene_info[genome_name][gene_callers_id]
+            }
+            return data
 
 
     def store_refined_bins(self, refined_bin_data, refined_bins_info_dict):

@@ -794,7 +794,7 @@ class PanSuperclass(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.pan_db_path = A('pan_db')
-        self.genomes_storage = A('genomes_storage')
+        self.genomes_storage_path = A('genomes_storage')
 
         self.genome_names = []
         self.gene_clusters = {}
@@ -872,8 +872,8 @@ class PanSuperclass(object):
 
         self.progress.end()
 
-        if self.genomes_storage:
-            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage,
+        if self.genomes_storage_path:
+            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
                                                                self.p_meta['genomes_storage_hash'],
                                                                genome_names_to_focus=self.p_meta['genome_names'],
                                                                run=self.run,
