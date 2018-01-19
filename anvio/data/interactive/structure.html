@@ -6,43 +6,88 @@
     <script type='text/javascript' src='js/utils.js'></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="https://cdn.rawgit.com/arose/ngl/v0.10.4/dist/ngl.js"></script>
+    <style type="text/css">
+        body {
+            background-color: black;
+        }
+    </style>
+
+    <script type="text/javascript">
+        var stage;
+
+        window.addEventListener( "resize", function( event ){
+            stage.handleResize();
+        }, false );
+
+        var SAAVs_array = [5, 43, 22, 30];
+        var SAAVs_string = SAAVs_array.join(", ");
+
+        var schemeId = NGL.ColormakerRegistry.addScheme(function (params) {
+          this.atomColor = function (atom) {
+            if (atom.resno == SAAVs_array[0]) {
+              return 0x0000FF  // blue
+            } else if (atom.resno == SAAVs_array[1]) {
+              return 0xFF0000  // red
+            } else {
+              return 0x00FF00  // green
+            }
+          }
+        })
+
+        function defaultStructureRepresentation( component ){
+            // bail out if the component does not contain a structure
+            if( component.type !== "structure" ) return;
+            // add three representations
+            component.addRepresentation( "cartoon", {
+                aspectRatio: 3.0,
+                scale: 1.5
+            } );
+            component.addRepresentation( "spacefill", {
+                sele: "(" + SAAVs_string + ") and .CA",
+                scale: 0.5,
+                color: schemeId
+            } );
+
+            stage.autoView();
+        }
+
+        function load_protein(gene_callers_id) {
+            stage.removeAllComponents();
+            stage.loadFile( window.location.origin + "/data/get_structure/" + gene_callers_id + ".pdb" ).then( defaultStructureRepresentation ).then();
+        }
+
+        $( document ).ready(function() {
+            stage = new NGL.Stage( "viewport" );
+
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/get_available_structures?timestamp=' + new Date().getTime(),
+                success: function(data) {
+                    var available_structures = data['available_structures'];
+
+                    available_structures.forEach(function(gene_callers_id) {
+                        $('.available-structures').append('<a href="#" onclick="load_protein(' + gene_callers_id + ');">Gene callers id ' + gene_callers_id + '</a><br/>');
+                    });
+
+                    $('.available-structures>a:first').trigger('click');
+                }
+            });
+        });
+    </script>
 </head>
 
 <body>
     <div class="container-fluid parent-container">
         <div class="row">
             <div class="col-md-9">
-                <iframe src="/data/get_structure/3" width="100%" height="100%"></iframe>
+                <div id="viewport" style="width:100%; height:100%;"></div>
             </div>
             <div class="col-md-3 available-structures">
             </div>
         </div>
     </div>
-    <script>
-        function load_structure_html(gene_callers_id) {
-            $.ajax({
-                type: 'GET',
-                cache: false,
-                url: '/data/get_structure/' + gene_callers_id + '?timestamp=' + new Date().getTime(),
-                success: function(data) {
-                    //
-                }
-            });
-        }
-
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/get_available_structures?timestamp=' + new Date().getTime(),
-            success: function(data) {
-                var available_structures = data['available_structures'];
-
-                available_structures.forEach(function(gene_callers_id) {
-                    $('.available-structures').append('<a href="#" onclick="load_structure_html(' + gene_callers_id + ');"><h4>Gene callers id ' + gene_callers_id + '<h4></a>');
-                });
-            }
-        });
-    </script>
 </body>
 
 </html>

@@ -31,6 +31,7 @@ import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
+import anvio.structureops as structureops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
@@ -125,7 +126,7 @@ class BottleApplication(Bottle):
         self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
         self.route('/data/get_available_structures',           callback=self.get_available_structures)
-        self.route('/data/get_structure/<gene_callers_id>',    callback=self.get_structure)
+        self.route('/data/get_structure/<requested_path>',     callback=self.get_structure)
 
 
     def run_application(self, ip, port):
@@ -861,15 +862,9 @@ class BottleApplication(Bottle):
         return json.dumps({'available_structures': self.interactive.get_available_structures() })
 
 
-    def get_structure(self, gene_callers_id):
-        view = nglview.show_pdbid("3pqr")
-        temp_path = filesnpaths.get_temp_directory_path()
-        html_path = os.path.join(temp_path, "output.html")
-        nglview.widget.write_html(html_path, [view])
+    def get_structure(self, requested_path):
+        structure_db = structureops.StructureDatabase('STRUCTURE.db', '', ignore_hash=True)
+        tbl = structure_db.db.get_table_as_dict('structures')
 
-        html_file = open(html_path, 'r')
-        html_content = html_file.read()
-        html_file.close()
-
-        response.content_type = 'text/html; charset=utf-8'
-        return html_content
+        response.content_type = 'application/x-pilot;charset=utf-8'
+        return tbl[int(requested_path[:-4])]['pdb_content']
