@@ -1356,28 +1356,9 @@ class Bin:
             # so we can store that information into `file_name`. magical stuff .. by us .. level 3000 wizards who can summon
             # inefficiency at most random places. SHUT UP.
 
-            d = self.get_values_of_gene_level_coverage_stats_as_dict(key)
+            d = utils.get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key)
 
             utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=self.get_output_file_handle(file_name))
-
-
-    def get_values_of_gene_level_coverage_stats_as_dict(self, key, as_pandas=False):
-        legal_keys = {'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std'}
-        if key not in legal_keys:
-            raise ConfigError("%s is not a valid key for creating a dict of values of gene_level_coverage_stats_dict.\
-                                Here is a list of the valid keys: %s" % (key, list(legal_keys)))
-
-        d = {}
-
-        for gene_callers_id in self.gene_level_coverage_stats_dict:
-            d[gene_callers_id] = {}
-            for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
-                d[gene_callers_id][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][key]
-        
-        if as_pandas:
-            return pd.DataFrame(d)
-        else:
-            return d
 
 
     def store_genes_basic_info(self):
