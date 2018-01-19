@@ -626,7 +626,7 @@ class TableForLayerOrders(OrderDataBaseClass):
                                    your layer order data, '%s' (a %s order), tells a different story. It has layer names '%s' while\
                                    the db has the layers '%s' :/" % (self.db_type,
                                                                      data_key,
-                                                                     data_dict[data_key]['order_type'],
+                                                                     data_dict[data_key]['data_type'],
                                                                      ', '.join(sorted(layers_in_data[data_key])),
                                                                      ', '.join(layers_in_db)))
 
