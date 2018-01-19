@@ -622,7 +622,18 @@ class BottleApplication(Bottle):
 
 
     def get_gene_popup_for_pan(self, gene_callers_id, genome_name):
-        return json.dumps(self.interactive.get_gene_popup_for_pan(int(gene_callers_id), genome_name))
+        if not self.interactive.genomes_storage_is_available:
+            return json.dumps({'error': 'Genome storage does not seem to be available :/ So that button will not work..'})
+
+        gene_callers_id = int(gene_callers_id)
+
+        if genome_name not in self.interactive.genomes_storage.gene_info:
+            return json.dumps({'error': "Your request contains a genome name anvi'o genomes storage does not know about. What are you doing?"})
+
+        if gene_callers_id not in self.interactive.genomes_storage.gene_info[genome_name]:
+            return json.dumps({'error': "Your gene caller id does not work for anvi'o :("})
+
+        return json.dumps({'status': 0, 'gene_info': self.interactive.genomes_storage.gene_info[genome_name][gene_callers_id]})
 
 
     def get_hmm_hit_from_bin(self, bin_name, gene_name):
