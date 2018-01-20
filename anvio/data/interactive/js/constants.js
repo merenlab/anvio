@@ -225,9 +225,15 @@ var named_layers = {
         'norm': 'none',
         'pretty_name': 'Detection',
     },
-    'ECG_EAG_Ratio!ECG;EAG;NA': {
+    'ECGs_and_EAGs!EAG;ECG;NA': {
         'height': 400,
-        'pretty_name': 'ECG/EAG Ratio',
+        'pretty_name': 'ECGs and EAGs',
+    },
+    'EAG_ECG_ratio': {
+        'height': 400,
+        'pretty_name': 'EAG Ratio',
+        'color': '#940000',
+        'norm': 'none',
     },
     'abundance': {
         'height': 0,
@@ -294,16 +300,16 @@ var named_layers = {
 };
 
 named_category_colors = {
-    'KNOWN': '#00AA00',
-    'UNKNOWN': '#F0F0F0',
-    'ECG': '#00AA00',
-    'EAG': '#AA0000',
-    'NA': '#F0F0F0',
-    'TSC': '#e38181',
-    'TSA': '#0000AA',
-    'TNC': '#00AA00',
-    'TNA': '#00d1ca',
-    'NaN': '#73727a'
+    'KNOWN'    : '#00AA00',
+    'UNKNOWN'  : '#F0F0F0',
+    'ECG'      : '#00AA00',
+    'EAG'      : '#AA0000',
+    'NA'       : '#F0F0F0',
+    'TSC'      : '#e38181',
+    'TSA'      : '#0000AA',
+    'TNC'      : '#00AA00',
+    'TNA'      : '#00d1ca',
+    'NaN'      : '#73727a'
 };
 
 function getNamedCategoryColor(name)
