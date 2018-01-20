@@ -1,0 +1,36 @@
+contigs	type	Özcan's_column
+204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00001	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00002	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00003	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00004	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00005	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00006	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00007	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00008	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_1720_split_00009	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_6515_split_00001	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_6515_split_00002	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_6515_split_00003	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_6515_split_00004	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_6515_split_00005	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_6515_split_00006	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_6515_split_00007	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_6515_split_00008	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00001	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00002	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00003	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00004	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00005	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00006	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00007	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00008	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00009	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00010	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00011	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00012	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00013	ODD	boop
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00014	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00015	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00016	EVEN	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00017	ODD	
+204_10M_MERGED.PERFECT.gz.keep_contig_878_split_00018	EVEN	

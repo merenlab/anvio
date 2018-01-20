@@ -279,6 +279,29 @@ anvi-import-misc-data $files/samples-order.txt \
                       -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                       --target-data-table layer_orders
 
+INFO "Import items additional data from file"
+anvi-import-misc-data $files/items_additional_data.txt \
+                      -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                      --target-data-table items
+
+INFO "Show available misc data keys"
+anvi-show-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db
+
+INFO "Export items additional data"
+anvi-export-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                      --target-data-table items \
+                      -o $output_dir/exported_items_additional_data.txt
+
+INFO "Remove a single data key from items additional data"
+anvi-delete-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                      --target-data-table items \
+                      --keys "Özcan's_column"
+
+INFO "Remove all data in items additional data"
+anvi-delete-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                      --target-data-table items \
+                      --just-do-it
+
 INFO "Get linkmers from all BAM files for some distant positions"
 anvi-report-linkmers --contigs-and-positions $files/distant_positions_for_linkmers.txt -i $output_dir/*.bam -o $output_dir/distant_linkmers.txt
 
