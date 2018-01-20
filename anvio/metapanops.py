@@ -281,18 +281,20 @@ class MetaPangenome(object):
                     status[gene_presence_in_the_environment_dict[genome_name][gene_caller_id]] += 1
             gene_status_frequencies_in_gene_cluster[gene_cluster_name] = status
 
-        self.progress.update('Setting up the items data dictionary ..') 
+        self.progress.update('Setting up the items data dictionary ..')
         items_additional_data_dict = {}
-        key = 'ECG_EAG_Ratio!EAG;ECG;NA'
+        key_ECGs_and_EAGs = 'ECGs_and_EAGs!EAG;ECG;NA'
+        key_EAG_ratio = 'EAG_ECG_ratio'
         for gene_cluster_name in gene_status_frequencies_in_gene_cluster:
             r = gene_status_frequencies_in_gene_cluster[gene_cluster_name]
-            items_additional_data_dict[gene_cluster_name] = {key: '%d;%d;%d' % (r['EAG'], r['ECG'], r['NA'])}
+            items_additional_data_dict[gene_cluster_name] = {key_ECGs_and_EAGs: '%d;%d;%d' % (r['EAG'], r['ECG'], r['NA']),
+                                                             key_EAG_ratio: (r['EAG'] / (r['EAG'] + r['ECG']) if (r['EAG'] + r['ECG']) else 0)}
 
         self.progress.end()
 
         # add that bad boy to the database
         self.args.just_do_it = True
-        TableForItemAdditionalData(self.args).add(items_additional_data_dict, [key])
+        TableForItemAdditionalData(self.args).add(items_additional_data_dict, [key_ECGs_and_EAGs, key_EAG_ratio])
 
 
     def process(self):
