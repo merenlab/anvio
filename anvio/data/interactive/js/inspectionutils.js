@@ -123,7 +123,7 @@ function get_gene_functions_table_html_for_pan(gene){
                           + '</td><td>' + ((gene.partial == '1') ? 'True' : 'False')
                           + '</td></tr></tbody></table>';
     functions_table_html += '<textarea id="aa_sequence_fasta" style="display: none;">' + aa_sequence_fasta + '</textarea>';
-    functions_table_html += '<textarea id="dna_sequence_fasta" style="display: none;">' + aa_sequence_fasta + '</textarea>';
+    functions_table_html += '<textarea id="dna_sequence_fasta" style="display: none;">' + dna_sequence_fasta + '</textarea>';
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'AA Sequence\', $(\'#aa_sequence_fasta\').val());">Get AA sequence</button> ';
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'DNA Sequence\', $(\'#dna_sequence_fasta\').val());">Get DNA sequence</button> ';
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
@@ -167,7 +167,7 @@ function show_sequence_modal(title, content) {
   $('.modal-sequence').modal('hide');
   $('.modal-sequence').remove();
 
-  $('body').append('<div class="modal modal-sequence"> \
+  $('body').append('<div class="modal modal-sequence" style="z-index: 10000;"> \
       <div class="modal-dialog"> \
           <div class="modal-content"> \
               <div class="modal-header"> \
@@ -176,7 +176,7 @@ function show_sequence_modal(title, content) {
               </div> \
               <div class="modal-body"> \
                   <div class="col-md-12"> \
-                      <textarea class="form-control" rows="16" onclick="$(this).select();" readonly>&gt;' + content + '</textarea> \
+                      <textarea class="form-control" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
                   </div> \
               </div> \
               <div class="modal-footer"> \
