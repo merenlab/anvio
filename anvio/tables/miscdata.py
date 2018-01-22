@@ -272,7 +272,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 # we don't order stacked bar charts
                 continue
 
-            layer_name_layer_data_tuples = [(additional_data_dict[layer][data_key], layer) for layer in additional_data_dict]
+            layer_name_layer_data_tuples = [(additional_data_dict[layer][data_key], layer) if additional_data_dict[layer][data_key] != None else ("", layer) for layer in additional_data_dict]
             order_data_dict['>> ' + data_key] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples)])}
             order_data_dict['>> ' + data_key + ' (reverse)'] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples, reverse=True)])}
 
