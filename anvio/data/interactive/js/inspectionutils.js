@@ -51,6 +51,15 @@ function getUrlVars() {
     return map;
 }
 
+$(document).ready(function() {
+  $(window).on('click', function (e) {
+    //did not click a popover toggle or popover
+    if ($(e.target).data('toggle') !== 'popover'
+        && $(e.target).parents('.popover.in').length === 0) { 
+        $('[data-toggle="popover"]').popover('hide');
+    }
+  });
+});
 
 
 function get_gene_functions_table_html(gene){
@@ -106,8 +115,21 @@ function get_gene_functions_table_html(gene){
 }
 
 
+function get_gene_functions_table_html_for_pan(gene_callers_id, genome_name){
+    var gene;
 
-function get_gene_functions_table_html_for_pan(gene){
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        async: false,
+        url: '/data/pan_gene_popup/' + gene_callers_id + '/' + genome_name,
+        success: function(data) {
+            data.gene_info['genome_name'] = genome_name;
+            data.gene_info['gene_callers_id'] = gene_callers_id;
+            
+            gene = data.gene_info;
+        }
+    });
 
     var aa_sequence_fasta = '>' + gene.gene_callers_id + '_' + gene.genome_name + '\n' + gene.aa_sequence;
     var dna_sequence_fasta = '>' + gene.gene_callers_id + '_' + gene.genome_name + '\n' + gene.dna_sequence;
@@ -185,8 +207,8 @@ function show_sequence_modal(title, content) {
           </div> \
       </div> \
   </div>');
-  $('[data-toggle="popover"]').popover('hide');
   $('.modal-sequence').modal('show');
+  $('.modal-sequence textarea').trigger('click');
 }
 
 
