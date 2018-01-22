@@ -198,6 +198,10 @@ function get_sequence_and_blast(item_name, program, database, target) {
     $.ajax({
         type: 'GET',
         cache: false,
+        // async: false is important here. DO NOT REMOVE.
+        // If direct call chain between event handler and the code that opens new window is broken
+        // chrome popup blocker will not allow opening new window.
+        // async: false does not use asynchronus callbacks so protects direct call chain.
         async: false,
         url: '/data/' + target + '/' + item_name + '?timestamp=' + new Date().getTime(),
         success: function(data) {
