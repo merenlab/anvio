@@ -584,10 +584,10 @@ function menu_callback(action, param) {
             });
             break;
 
-        case 'blastn_nr': fire_up_ncbi_blast(item_name, 'blastn', 'nr', 'contig'); break;
-        case 'blastx_nr': fire_up_ncbi_blast(item_name, 'blastx', 'nr', 'contig'); break;
-        case 'blastn_refseq_genomic': fire_up_ncbi_blast(item_name, 'blastn', 'refseq_genomic', 'contig'); break;
-        case 'blastx_refseq_protein': fire_up_ncbi_blast(item_name, 'blastx', 'refseq_genomic', 'contig'); break;
+        case 'blastn_nr': get_sequence_and_blast(item_name, 'blastn', 'nr', 'contig'); break;
+        case 'blastx_nr': get_sequence_and_blast(item_name, 'blastx', 'nr', 'contig'); break;
+        case 'blastn_refseq_genomic': get_sequence_and_blast(item_name, 'blastn', 'refseq_genomic', 'contig'); break;
+        case 'blastx_refseq_protein': get_sequence_and_blast(item_name, 'blastx', 'refseq_genomic', 'contig'); break;
 
         // collection mode-specific:
         case 'refine_bin': toastr.error('Refine function from the interface is not currently implemented :/ ' +
