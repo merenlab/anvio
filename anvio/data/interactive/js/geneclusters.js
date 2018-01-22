@@ -102,33 +102,6 @@ function loadAll() {
 
 }
 
-function show_gene_popup(event) {
-    var genome_name = event.target.getAttribute('genome-name');
-    var gene_callers_id = event.target.getAttribute('gene-callers-id');
-
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/pan_gene_popup/' + gene_callers_id + '/' + genome_name,
-        success: function(data) {
-            data.gene_info['genome_name'] = genome_name;
-            data.gene_info['gene_callers_id'] = gene_callers_id;
-            console.log(data);
-
-            $('.popover').remove();
-
-            $(event.target).popover({
-                trigger: "manual",
-                placement: "bottom",
-                container: 'body',
-                html : true,
-                content : get_gene_functions_table_html_for_pan(data.gene_info),
-            }).popover('show');
-        }
-    });
-}
-
-
 function createDisplay(){
     var sequence_wrap_val = parseInt($('#wrap_length').val());
     var sequence_font_size_val = parseInt($('#font_size').val());
@@ -197,7 +170,8 @@ function createDisplay(){
                 text.setAttribute('class', 'callerTitle');
                 text.setAttribute('gene-callers-id', caller_id);
                 text.setAttribute('genome-name', layer);
-                text.addEventListener('click', show_gene_popup);
+                text.setAttribute('data-content', get_gene_functions_table_html_for_pan(caller_id, layer) + '')
+                text.setAttribute('data-toggle', 'popover');
 
                 text.appendChild(document.createTextNode(caller_id));
                 fragment.appendChild(text);
@@ -233,6 +207,26 @@ function createDisplay(){
     }
 
     calculateLayout();
+
+    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
+
+    // workaround for known popover bug
+    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
+    $('body').on('hidden.bs.popover', function (e) {
+      $(e.target).data("bs.popover").inState.click = false;
+    });
+
+    $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
+      var popover = $(e.target).data("bs.popover").$tip;
+      
+      if ($(popover).css('top').charAt(0) === '-') {
+        $(popover).css('top', '0px');
+      }
+
+      if ($(popover).css('left').charAt(0) === '-') {
+        $(popover).css('left', '0px');
+      }
+    });
 }
 
 function calculateLayout() {
