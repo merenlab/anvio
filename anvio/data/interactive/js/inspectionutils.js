@@ -123,7 +123,7 @@ function get_gene_functions_table_html_for_pan(gene){
                           + '</td><td>' + ((gene.partial == '1') ? 'True' : 'False')
                           + '</td></tr></tbody></table>';
     functions_table_html += '<textarea id="aa_sequence_fasta" style="display: none;">' + aa_sequence_fasta + '</textarea>';
-    functions_table_html += '<textarea id="dna_sequence_fasta" style="display: none;">' + aa_sequence_fasta + '</textarea>';
+    functions_table_html += '<textarea id="dna_sequence_fasta" style="display: none;">' + dna_sequence_fasta + '</textarea>';
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'AA Sequence\', $(\'#aa_sequence_fasta\').val());">Get AA sequence</button> ';
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'DNA Sequence\', $(\'#dna_sequence_fasta\').val());">Get DNA sequence</button> ';
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
