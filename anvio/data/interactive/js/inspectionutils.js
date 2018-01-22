@@ -198,6 +198,7 @@ function get_sequence_and_blast(item_name, program, database, target) {
     $.ajax({
         type: 'GET',
         cache: false,
+        async: false,
         url: '/data/' + target + '/' + item_name + '?timestamp=' + new Date().getTime(),
         success: function(data) {
             if ('error' in data){
