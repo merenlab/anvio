@@ -167,7 +167,7 @@ function show_sequence_modal(title, content) {
   $('.modal-sequence').modal('hide');
   $('.modal-sequence').remove();
 
-  $('body').append('<div class="modal modal-sequence"> \
+  $('body').append('<div class="modal modal-sequence" style="z-index: 10000;"> \
       <div class="modal-dialog"> \
           <div class="modal-content"> \
               <div class="modal-header"> \
@@ -176,7 +176,7 @@ function show_sequence_modal(title, content) {
               </div> \
               <div class="modal-body"> \
                   <div class="col-md-12"> \
-                      <textarea class="form-control" rows="16" onclick="$(this).select();" readonly>&gt;' + content + '</textarea> \
+                      <textarea class="form-control" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
                   </div> \
               </div> \
               <div class="modal-footer"> \
