@@ -197,9 +197,7 @@ function show_sequence_modal(title, content) {
                   <h4 class="modal-title">' + title + '</h4> \
               </div> \
               <div class="modal-body"> \
-                  <div class="col-md-12"> \
-                      <textarea class="form-control" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
-                  </div> \
+                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
               </div> \
               <div class="modal-footer"> \
                   <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
