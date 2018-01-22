@@ -418,7 +418,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             value = entry['data_value']
 
             if entry['data_type'] in ['int', 'float']:
-                d[additional_data_item_name][key] = eval(entry['data_type'])(value)
+                d[additional_data_item_name][key] = eval(entry['data_type'])(value or self.nulls_per_type[entry['data_type']])
             else:
                 d[additional_data_item_name][key] = value
 
