@@ -84,7 +84,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.linkage = A('linkage') or constants.linkage_method_default
         self.skip_init_functions = A('skip_init_functions')
         self.skip_auto_ordering = A('skip_auto_ordering')
-        self.debug = A('debug')
         self.bin_ids_file_path = A('bin_ids_file')
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
@@ -1065,7 +1064,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # zero it out
         self.ids_for_already_refined_bins = set([])
 
-        if self.debug:
+        if anvio.DEBUG:
             run.info('collection from db', collection_dict)
             run.info('bins info from db', bins_info_dict)
             run.info_single('')
@@ -1080,7 +1079,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.ids_for_already_refined_bins.add(bin_id)
 
 
-        if self.debug:
+        if anvio.DEBUG:
             run.info('resulting collection', collection_dict)
             run.info('resulting bins info', bins_info_dict)
             run.info_single('')
