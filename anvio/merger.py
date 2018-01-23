@@ -109,7 +109,7 @@ class MultipleRuns:
 
         proper = [p for p in self.input_profile_db_paths if p not in improper]
 
-        if len(improper) == len(proper):
+        if len(improper) == len(self.input_profile_db_paths):
             raise ConfigError("None of the databases you asked anvi'o to merge were single, non-blank anvi'o profiles. If you\
                                are not testing anvi'o and yet found yourself here, it is safe to assume that something somewhere\
                                in your workflow is quite wrong :/")
