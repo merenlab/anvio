@@ -161,6 +161,10 @@ class TablesForHMMHits(Table):
 
             self.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
+        # FIXME: I have no clue why importing the anvio module is necessary at this point,
+        #        but without this, mini test fails becasue "`anvio.DEBUG` is being used
+        #        before initialization". nonsense.
+        import anvio
         if not anvio.DEBUG:
             commander.clean_tmp_dirs()
             for v in list(target_files_dict.values()):
