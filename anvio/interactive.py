@@ -946,8 +946,17 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['description'] = 'None'
 
         self.items_additional_data_keys, self.items_additional_data_dict = [], {}
-        self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
-        self.layers_order_data_dict = {}
+
+        for view in views_of_interest:
+            data_value = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'],
+                                                                  distance=self.distance,
+                                                                  linkage=self.linkage,
+                                                                  transpose=True)
+
+            # additional layers orders are added with the prefix "genes_"
+            # this is because there are similar orders available from the contigs data
+            #(for example contigs detections vs. genes detections)
+            self.layers_order_data_dict['genes_' + view] = {'newick': data_value, 'basic': None}
 
 
     def add_user_tree(self):
