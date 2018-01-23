@@ -41,8 +41,6 @@ class TablesForHMMHits(Table):
 
         utils.is_contigs_db(self.db_path)
 
-        self.debug = False
-
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
 
         if not self.genes_are_called:
@@ -163,7 +161,7 @@ class TablesForHMMHits(Table):
 
             self.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
-        if not self.debug:
+        if not anvio.DEBUG:
             commander.clean_tmp_dirs()
             for v in list(target_files_dict.values()):
                 os.remove(v)

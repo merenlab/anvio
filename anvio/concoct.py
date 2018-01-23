@@ -69,7 +69,7 @@ class CONCOCT:
         self.kmers = {}
         self.coverages = {}
 
-        self.debug = args.debug
+        self.debug = anvio.DEBUG
 
         self.progress.new('Init')
 

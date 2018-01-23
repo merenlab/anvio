@@ -1025,14 +1025,6 @@ D = {
              'action': 'store_true',
              'help': "Be verbose, print more messages whenever possible."}
                 ),
-    'debug': (
-            ['--debug'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Turn on debug messages whenever possible, and skip removing temporary files (this may\
-                      cause lots and lots of output, so you may want to not use it if your intention is not\
-                      debugging)."}
-                ),
     'just-do-it': (
             ['--just-do-it'],
             {'default': False,
