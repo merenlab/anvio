@@ -59,7 +59,6 @@ groupD.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'
 groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
 groupD.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
 groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
-groupE.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
 groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
 groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
