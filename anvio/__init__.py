@@ -9,6 +9,8 @@ import copy
 import pkg_resources
 
 
+DEBUG = '--debug' in sys.argv
+
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
 # on systems working with multiple Python installations that are managed through modules):
 try:
@@ -1529,5 +1531,3 @@ __genomes_storage_version__  = set_version()
 if '-v' in sys.argv or '--version' in sys.argv:
     print_version()
     sys.exit()
-
-DEBUG = '--debug' in sys.argv
