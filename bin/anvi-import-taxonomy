@@ -74,8 +74,6 @@ if __name__ == '__main__':
                         help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
                                 process that you generate before running anvio. Please see the documentation for details.')
 
-    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
-
     args = anvio.get_args(parser)
 
     try:

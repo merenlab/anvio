@@ -127,6 +127,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # be stored in t.variable_nts_table_name
         self.variable_nts_table_entries = []
 
+        # if genes are not called, yet the user is asking for AA frequencies to be profiled, we give
+        # a warning and force-turn that flag off.
+        if (not self.a_meta['genes_are_called']) and self.profile_AA_frequencies:
+            self.run.warning("You asked the amino acid frequencies to be profiled, but genes were not called\
+                              for your contigs database. Anvi'o is assigning `False` to the profile-AA-frequncies\
+                              flag, overruling your request like a boss.")
+            self.profile_AA_frequencies = False
+
         # following variable will be populated while the variable positions table is computed
         self.codons_in_genes_to_profile_AA_frequencies = set([])
 
@@ -175,6 +183,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
                        'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)
+
+        self.progress.update('Creating a new auxiliary database with contigs hash "%s" ...' % self.a_meta['contigs_db_hash'])
+        self.auxiliary_db_path = self.generate_output_destination('AUXILIARY-DATA.db')
+        self.auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_db_path, self.a_meta['contigs_db_hash'], create_new=True)
 
         self.progress.end()
 
@@ -336,18 +348,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def store_split_coverages(self):
-        output_file = self.generate_output_destination('AUXILIARY-DATA.db')
-        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True)
-
-        contigs_counter = 1
         for contig in self.contigs:
             for split in contig.splits:
-                split_coverage_values.append(split.name, self.sample_id, split.coverage.c)
+                self.auxiliary_db.append(split.name, self.sample_id, split.coverage.c)
 
-            contigs_counter += 1
-
-        split_coverage_values.store()    
-        split_coverage_values.close()
+        self.auxiliary_db.store()
 
 
     def set_sample_id(self):
@@ -673,6 +678,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             proc.terminate()
 
         self.store_contigs_buffer()
+        self.auxiliary_db.close()
         self.progress.end()
 
         # FIXME: this needs to be checked:

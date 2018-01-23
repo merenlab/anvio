@@ -34,6 +34,7 @@ import hashlib
 import mistune
 import argparse
 import textwrap
+import pandas as pd
 
 from collections import Counter
 
@@ -1354,11 +1355,8 @@ class Bin:
             # we will create a new dictionary here by subestting values of `key` from self.gene_level_coverage_stats_dict,
             # so we can store that information into `file_name`. magical stuff .. by us .. level 3000 wizards who can summon
             # inefficiency at most random places. SHUT UP.
-            d = {}
-            for gene_callers_id in self.gene_level_coverage_stats_dict:
-                d[gene_callers_id] = {}
-                for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
-                    d[gene_callers_id][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][key]
+
+            d = utils.get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key)
 
             utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=self.get_output_file_handle(file_name))
 

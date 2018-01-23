@@ -10,9 +10,9 @@ import numpy as numpy
 
 import anvio
 import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
-import anvio.ccollections as ccollections
 import anvio.genomedescriptions as genomedescriptions
 
 from anvio.errors import ConfigError
@@ -133,18 +133,16 @@ class MetaPangenome(object):
         profile_db_path = self.descriptions.genomes[self.unique_profile_db_path_to_internal_genome_name[profile_db_path][0]]['profile_db_path']
         contigs_db_path = self.descriptions.genomes[self.unique_profile_db_path_to_internal_genome_name[profile_db_path][0]]['contigs_db_path']
 
+        # poor-man's whatever
+        bin_names_list = [self.descriptions.genomes[g]['bin_id'] for g in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]]
+
         ARGS = summarizer.ArgsTemplateForSummarizerClass()
         ARGS.profile_db = profile_db_path
         ARGS.contigs_db = contigs_db_path
         ARGS.skip_init_functions = True
         ARGS.init_gene_coverages = init_gene_coverages
         ARGS.collection_name = collection_name
-
-        # let's focus only on the split names in the collection, and the bin names specified
-        collections_dict = ccollections.GetSplitNamesInBins(ARGS).get_dict()
-        ARGS.split_names_of_interest=set([])
-        for bin_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
-            ARGS.split_names_of_interest.update(collections_dict[bin_name])
+        ARGS.bin_names_list = bin_names_list
 
         summary = summarizer.ProfileSummarizer(ARGS)
         summary.init()
@@ -158,19 +156,21 @@ class MetaPangenome(object):
         self.progress.update('...')
 
         genomes_across_metagenomes = {}
-        for genome_name in self.descriptions.internal_genome_names:
-            genomes_across_metagenomes[genome_name] = {}
+        for internal_genome_name in self.descriptions.internal_genome_names:
+            genome_name = self.descriptions.genomes[internal_genome_name]['bin_id']
+            genomes_across_metagenomes[internal_genome_name] = {}
             for sample_name in self.sample_names:
-                genomes_across_metagenomes[genome_name][sample_name] = 0.0
+                genomes_across_metagenomes[internal_genome_name][sample_name] = 0.0
 
         D = lambda: summary.collection_profile[genome_name][data_key]
         for profile_db_path in self.unique_profile_db_path_to_internal_genome_name:
             self.progress.update('"%s" from profile db at %s ...' % (data_key, profile_db_path))
             summary = self.get_summary_object_for_profile_db(profile_db_path, init_gene_coverages=False)
 
-            for genome_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
+            for internal_genome_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
+                genome_name = self.descriptions.genomes[internal_genome_name]['bin_id']
                 for sample_name in D():
-                    genomes_across_metagenomes[genome_name][sample_name] = D()[sample_name]
+                    genomes_across_metagenomes[internal_genome_name][sample_name] = D()[sample_name]
 
         self.progress.end()
 
@@ -205,8 +205,10 @@ class MetaPangenome(object):
             self.progress.update('Collection info from profile db at %s ...' % (profile_db_path))
             summary = self.get_summary_object_for_profile_db(profile_db_path)
 
-            for genome_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
-                self.progress.update('Working on genome %s in profile db %s ...' % (genome_name, profile_db_path))
+            for internal_genome_name in self.unique_profile_db_path_to_internal_genome_name[profile_db_path]:
+                genome_name = self.descriptions.genomes[internal_genome_name]['bin_id']
+
+                self.progress.update('Working on genome %s in profile db %s ...' % (internal_genome_name, profile_db_path))
 
                 # for each genome, first we will see whether it is detected in at least one metagenome
                 detection_across_metagenomes = summary.collection_profile[genome_name]['detection']
@@ -214,10 +216,10 @@ class MetaPangenome(object):
                 not_enough_detection = False if len(num_metagenomes_above_min_detection) else True
 
                 gene_presence_in_the_environment_dict[genome_name] = {}
-                split_names_of_interest = self.descriptions.get_split_names_of_interest_for_internal_genome(self.descriptions.genomes[genome_name])
+                split_names_of_interest = self.descriptions.get_split_names_of_interest_for_internal_genome(self.descriptions.genomes[internal_genome_name])
 
                 genome_bin_summary = summarizer.Bin(summary, genome_name, split_names_of_interest)
-                gene_coverages_across_samples = genome_bin_summary.gene_coverages
+                gene_coverages_across_samples = utils.get_values_of_gene_level_coverage_stats_as_dict(genome_bin_summary.gene_level_coverage_stats_dict, "mean_coverage")
 
                 # at this point we have all the genes in the genome bin. what we need is to characterize their detection. first,
                 # summarize the coverage of each gene in all samples:
@@ -256,32 +258,44 @@ class MetaPangenome(object):
 
         gene_presence_in_the_environment_dict = self.get_gene_presence_in_the_environment_dict()
 
-        self.progress.update('Computing ratio of genes present/absent per gene cluster data ...')
+        self.progress.new('Working on ECG/EAG ratio per gene cluster')
+        self.progress.update('...')
 
         gene_status_frequencies_in_gene_cluster = {}
-        for gene_cluster_name in self.pan_summary.gene_clusters:
+
+        gene_cluster_names = list(self.pan_summary.gene_clusters.keys())
+        num_gene_clusters = len(gene_cluster_names)
+        for i in range(0, num_gene_clusters):
+            self.progress.update('%.2f' % ((i + 1) * 100 / num_gene_clusters))
+            gene_cluster_name = gene_cluster_names[i]
+
             status = {'EAG': 0, 'ECG': 0, 'NA': 0}
-            for genome_name in self.pan_summary.gene_clusters[gene_cluster_name]:
-                for gene_caller_id in self.pan_summary.gene_clusters[gene_cluster_name][genome_name]:
+            for internal_genome_name in self.pan_summary.gene_clusters[gene_cluster_name]:
+                genome_name = self.descriptions.genomes[internal_genome_name]['bin_id']
+
+                for gene_caller_id in self.pan_summary.gene_clusters[gene_cluster_name][internal_genome_name]:
                     if genome_name not in gene_presence_in_the_environment_dict:
                         self.progress.end()
                         raise ConfigError("Something is wrong... It seems you generated a pangenome with an internal genomes file\
                                            that is not identical to the internal genomes file you are using to run this program.")
+
                     status[gene_presence_in_the_environment_dict[genome_name][gene_caller_id]] += 1
             gene_status_frequencies_in_gene_cluster[gene_cluster_name] = status
 
-        self.progress.end()
-
-        # setting up the items data dictionary
+        self.progress.update('Setting up the items data dictionary ..')
         items_additional_data_dict = {}
-        key = 'ECG_EAG_Ratio!EAG;ECG;NA'
+        key_ECGs_and_EAGs = 'ECGs_and_EAGs!EAG;ECG;NA'
+        key_EAG_ratio = 'EAG_ECG_ratio'
         for gene_cluster_name in gene_status_frequencies_in_gene_cluster:
             r = gene_status_frequencies_in_gene_cluster[gene_cluster_name]
-            items_additional_data_dict[gene_cluster_name] = {key: '%d;%d;%d' % (r['EAG'], r['ECG'], r['NA'])}
+            items_additional_data_dict[gene_cluster_name] = {key_ECGs_and_EAGs: '%d;%d;%d' % (r['EAG'], r['ECG'], r['NA']),
+                                                             key_EAG_ratio: (r['EAG'] / (r['EAG'] + r['ECG']) if (r['EAG'] + r['ECG']) else 0)}
+
+        self.progress.end()
 
         # add that bad boy to the database
         self.args.just_do_it = True
-        TableForItemAdditionalData(self.args).add(items_additional_data_dict, [key])
+        TableForItemAdditionalData(self.args).add(items_additional_data_dict, [key_ECGs_and_EAGs, key_EAG_ratio])
 
 
     def process(self):

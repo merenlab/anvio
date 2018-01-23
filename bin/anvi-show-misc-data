@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Export misc data from target tables into TAB-delimited files"""
+"""List misc data keys in pan or profile databases"""
 
 import sys
 import argparse
@@ -24,16 +24,16 @@ run = terminal.Run()
 
 
 def main(args):
-    table_for_additional_data = MiscDataTableFactory(args)
-    table_for_additional_data.export(output_file_path=args.output_file)
+    for table_name in ['items', 'layers', 'layer_orders']:
+        args.target_data_table = table_name
+        table_for_additional_data = MiscDataTableFactory(args)
+        table_for_additional_data.list_data_keys()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export additional data or order tables in pan or profile databases for items or layers.")
+    parser = argparse.ArgumentParser(description="Show all misc data keys in all misc data tables")
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
-    parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = anvio.get_args(parser)
 

@@ -238,16 +238,26 @@ def get_tree_object_in_newick(tree, id_to_sample_dict=None):
 
 def order_contigs_simple(config, distance=None, linkage=None, progress=progress, run=run, debug=False):
     """An anvi'o clustering config comes in, a (clustering_id, newick) tuple goes out.
-    
+
        By default the `linkage` and `distance` is set to the system defaults, constants.linkage_method_default
        and constants.distance_metric_default. If the `config` has either of them defined, the system defaults
        are overwritten with the preference in the config file. If the function gets `linkage` or `distance` as
        parameter, they overwrite both system defaults and config preferences.
     """
+
     if not config.matrices_dict[config.matrices[0]]['ratio']:
         config = set_null_ratios_for_matrices(config)
 
-    if debug:
+    distance = distance if distance else (config.distance or constants.distance_metric_default)
+    linkage = linkage if linkage else (config.linkage or constants.linkage_method_default)
+    clustering_id = ':'.join([config.name, distance, linkage])
+
+    if len(config.master_rows) == 1:
+        # there is a single item to cluster. which means there is nothing to cluster really.
+        # return that single item in a newick format:
+        return (clustering_id, '(%s);' % config.master_rows[0])
+
+    if debug or anvio.DEBUG:
         run.info_single('Peak at the first 5 items in the first 5 rows in matrices:', mc='green', nl_before=2)
 
     for matrix in config.matrices:
@@ -261,7 +271,7 @@ def order_contigs_simple(config, distance=None, linkage=None, progress=progress,
         if m['log']:
             m['scaled_vectors'] = np.log10(m['scaled_vectors'] + 1)
 
-        if debug:
+        if debug or anvio.DEBUG:
             summary = '\n'.join(['%s (...)' % m['scaled_vectors'][i][0:5] for i in range(0, 5)])
             run.warning(summary, 'Vectors for "%s" (%d by %d)' % (matrix, len(m['scaled_vectors']), len(m['scaled_vectors'][0])), lc='crimson', raw=True)
 
@@ -278,9 +288,6 @@ def order_contigs_simple(config, distance=None, linkage=None, progress=progress,
 
     progress.update('Clustering ...')
 
-    distance = distance if distance else (config.distance or constants.distance_metric_default)
-    linkage = linkage if linkage else (config.linkage or constants.linkage_method_default)
-
     tree = get_clustering_as_tree(config.combined_vectors, linkage, distance, progress=progress)
     newick = get_tree_object_in_newick(tree, config.combined_id_to_sample)
 
@@ -288,8 +295,6 @@ def order_contigs_simple(config, distance=None, linkage=None, progress=progress,
 
     if config.output_file_path:
         open(config.output_file_path, 'w').write(newick + '\n')
-
-    clustering_id = ':'.join([config.name, distance, linkage])
 
     return (clustering_id, newick)
 

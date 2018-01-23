@@ -51,21 +51,17 @@ class MetagenomeCentricGeneClassifier:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.gene_coverages_data_file_path = A('data_file')
-        self.gene_detections_data_file_path = A('gene_detection_data_file')
-        self.profile_db_path = A('profile_db')
         self.output_file_prefix = A('output_file_prefix')
         self.alpha = A('alpha')
-        self.additional_layers_to_append = A('additional_layers_to_append')
-        self.samples_information_to_append = A('samples_information_to_append')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
         self.exclude_samples = A('exclude_samples')
         self.include_samples = A('include_samples')
-        self.store_gene_detection_and_coverage_tables = A('store_gene_detection_and_coverage_tables')
         self.outliers_threshold = A('outliers_threshold')
         self.gen_figures = A('gen_figures')
+        self.split_coverage_values_per_nt_dict = {}
+        self.gene_level_coverage_stats_dict = {}
         self.profile_db = {}
         self.coverage_values_per_nt = {}
         self.gene_coverages = {}
@@ -91,6 +87,8 @@ class MetagenomeCentricGeneClassifier:
         self.non_outlier_indices = {}
         self.gene_coverage_consistency_dict = {}
         self.gene_coverage_consistency_dict_initiated = False
+        self.samples_to_exclude = set([])
+        self.samples_to_include = set([])
 
         if self.exclude_samples:
             # check that there is a file like this
@@ -101,8 +99,6 @@ class MetagenomeCentricGeneClassifier:
                 raise ConfigError("You asked to exclude samples, but provided an empty list.")
 
             run.info('Excluding Samples', 'The following samples will be excluded: %s' % self.samples_to_exclude,)
-        else:
-            self.samples_to_exclude = set([])
 
         if self.include_samples:
             # check that there is a file like this
@@ -113,39 +109,16 @@ class MetagenomeCentricGeneClassifier:
                 raise ConfigError("You provided an empty list of samples to include.")
 
             run.info('Including Samples', 'The following samples will be included: %s' % self.samples_to_include,)
-        else:
-            self.samples_to_include = set([])
 
         # run sanity check on all input arguments
         self.sanity_check()
 
-        if self.profile_db_path is None:
-            # TODO: this will probably be removed because we don't save the coverage information in nucleotide level.
-            pass
-        else:
-            # load sample list and gene_coverage_dict from the merged profile db
 
-            # assiginig these values to args should guarantee that 
-            # the gene coverage stats would be initiated
-            args.init_gene_coverages = True
-            args.populate_nt_level_coverage = True
-            if self.collection_name:
-                self.summary = summarizer.ProfileSummarizer(args)
-                self.summary.init()
-                self.init_samples(self.summary.p_meta['samples'])
-            else:
-                self.profile_db = ProfileSuperclass(args)
-                self.init_samples(self.profile_db.p_meta['samples'])
-                self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.profile_db.split_coverage_values_per_nt_dict, self.samples)
-
-                # comply with the new design and get gene_coverages and gene_detection dicsts from
-                # gene_level_coverage_stats_dict.
-                gene_coverages, gene_detection, gene_non_outlier_mean_coverage, gene_non_outlier_coverage_stds = self.get_gene_coverages_and_gene_detection_dicts()
-
-                self.init_coverage_and_detection_dataframes(gene_coverages, gene_detection, gene_non_outlier_mean_coverage, gene_non_outlier_coverage_stds)
-
-                # getting the total length of all contigs
-                self.total_length = self.profile_db.p_meta['total_length']
+    def init(self, gene_level_coverage_stats_dict=None, split_coverage_values_per_nt_dict=None, additional_description=None):
+        """ setting the dictionaries for gene coverage stats and for split coverage per nucleotide"""
+        self.gene_level_coverage_stats_dict = gene_level_coverage_stats_dict
+        self.split_coverage_values_per_nt_dict = split_coverage_values_per_nt_dict
+        self.additional_description = additional_description
 
 
     def get_gene_coverages_and_gene_detection_dicts(self):
@@ -185,15 +158,9 @@ class MetagenomeCentricGeneClassifier:
     def sanity_check(self):
         """Basic sanity check for class inputs"""
 
-        if self.profile_db_path is None and self.gene_coverages_data_file_path is None:
-            raise ConfigError("You must provide either a profile.db or a gene coverage self.gene_coverages_filtered data file")
-
-        if self.profile_db_path and self.gene_coverages_data_file_path:
-            raise ConfigError("You provided both a profile database and a gene coverage self.gene_coverages_filtered data file, you \
-            must provide only one or the other (hint: if you have a profile database, the use that")
-
-        # checking output file
-        filesnpaths.is_output_file_writable(self.output_file_prefix + '-additional-layers.txt', ok_if_exists=False)
+        if self.output_file_prefix:
+            # checking output file
+            filesnpaths.is_output_file_writable(self.output_file_prefix + '-additional-layers.txt', ok_if_exists=False)
 
         # checking alpha
         if not isinstance(self.alpha, float):
@@ -202,24 +169,22 @@ class MetagenomeCentricGeneClassifier:
         if self.alpha < 0 or self.alpha >= 0.5:
             raise ConfigError("alpha must be a minimum of 0 and smaller than 0.5")
 
-        if self.collection_name:
-            if not self.profile_db_path:
-                raise ConfigError("You specified a collection name %s, but you provided a gene coverage self.gene_coverages_filtered data file \
-                 collections are only available when working with a profile database." % self.collection_name)
-
         if self.exclude_samples and self.include_samples:
             raise ConfigError("You cannot use both --include-samples and --exclude-samples! Please choose one.")
 
 
     def init_samples(self, samples_list):
         """ Create the set of samples according to user input and store it in self.samples"""
+        # remove the samples that should be excluded
         samples = set(samples_list) - self.samples_to_exclude
+
         if self.include_samples:
             samples_to_include_that_are_not_there = self.samples_to_include - samples
             if samples_to_include_that_are_not_there:
                 raise ConfigError("You requested to include some samples that are not in the profile database. Here are the samples in the profile database: %s. \
                                 And here are the samples you requested, and that are not there: %s" % (samples, samples_to_include_that_are_not_there))
             samples = self.samples_to_include
+
         self.samples = samples
 
 
@@ -408,10 +373,9 @@ class MetagenomeCentricGeneClassifier:
 
     def init_gene_presence_absence_in_samples(self):
         """ Determining presence and absence of genes in samples according to gene detection values."""
-        if self.gene_detections is None:
-            # making sure that a gene detections table exists
-            raise ConfigError("gene presence/absence in samples cannot be determined without a gene detections table,\
-                                but it seems that you don't have a gene detections table.")
+        if not self.gene_level_coverage_stats_dict:
+            raise ConfigError("gene presence/absence in samples cannot be determined without a gene_level_coverage_stats_dict,\
+                                but it seems that you don't have one. maybe you should run init()?")
 
         gene_callers_id = self.gene_detections.index
         self.gene_presence_absence_in_samples = pd.DataFrame(index=gene_callers_id, columns=self.samples)
@@ -639,17 +603,8 @@ class MetagenomeCentricGeneClassifier:
         self.gene_non_outlier_positions = _bin.gene_non_outlier_positions
 
     def save_gene_class_information_in_additional_layers(self, additional_description=''):
-        if not self.additional_layers_to_append:
-            additional_column_titles = []
-            additional_layers_df = self.gene_class_df
-        else:
-            additional_layers_df = pd.read_table(self.additional_layers_to_append)
-            try:
-                # concatinating the gene_class_information with the user provided additional layers
-                additional_layers_df.join(self.gene_class_df, how='outer')
-            except ValueError as e:
-                raise ConfigError("Something went wrong. This is what we know: %s. This could be happening because \
-                you have columns in your --additional-layers file with the following title: %s" % (e, self.gene_class_df.columns.tolist()))
+        additional_column_titles = []
+        additional_layers_df = self.gene_class_df
         output_file_path = self.output_file_prefix + '-additional-layers.txt'
         additional_layers_df.to_csv(output_file_path, sep='\t', index_label='gene_callers_id')
 
@@ -657,16 +612,7 @@ class MetagenomeCentricGeneClassifier:
     def save_samples_information(self, additional_description=''):
         # TODO: there used to be this here:
         #self.run.warning(self.samples_information)
-        if not self.samples_information_to_append:
-            samples_information_df = self.samples_information
-        else:
-            samples_information_df = pd.read_table(self.samples_information_to_append)
-            try:
-                # concatinating the samples_information with the user provided samples_information file 
-                samples_information_df.join(self.samples_information, how='outer')
-            except ValueError as e:
-                raise ConfigError("Something went wrong. This is what we know: %s. This could be happening because \
-                you have columns in your --additional-layers file with the following title: %s" % (e, self.samples_information.columns.tolist()))
+        samples_information_df = self.samples_information
 
         if additional_description:
             additional_description = '-' + additional_description
@@ -674,60 +620,16 @@ class MetagenomeCentricGeneClassifier:
         samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
         samples_information_df.to_csv(samples_information_file_name, sep='\t', index_label='samples')
 
-    def save_gene_detection_and_coverage(self, additional_description=''):
-        if additional_description:
-            prefix = self.output_file_prefix + '-' + additional_description
-        else:
-            prefix = self.output_file_prefix
-
-        gene_coverages_file_name = prefix + '-gene-coverages.txt'
-        gene_detections_file_name = prefix + '-gene-detections.txt'
-        gene_non_outlier_coverages_file_name = prefix + '-gene-non-outlier-coverages.txt'
-        gene_non_outlier_coverages_file_name = prefix + '-gene-non-outlier-coverage-stds.txt'
-
-        self.gene_coverages.to_csv(gene_coverages_file_name, sep='\t', index_label='gene_callers_id')
-        self.gene_non_outlier_coverages.to_csv(gene_non_outlier_coverages_file_name, sep='\t', index_label='gene_callers_id')
-        self.gene_detections.to_csv(gene_detections_file_name, sep='\t', index_label='gene_callers_id')
-        self.gene_non_outlier_coverage_stds.to_csv(gene_detections_file_name, sep='\t', index_label='gene_callers_id')
-
-
     def classify(self):
-        if self.collection_name:
-            bin_names_in_collection = self.summary.bin_ids
-            if self.bin_ids_file_path:
-                filesnpaths.is_file_exists(self.bin_ids_file_path)
-                bin_names_of_interest = [line.strip() for line in open(self.bin_ids_file_path).readlines()]
+        
+        # FIXME:this is for debugging and should be removed
+        print(self.gene_level_coverage_stats_dict)
+        print(self.split_coverage_values_per_nt_dict)
 
-                missing_bins = [b for b in bin_names_of_interest if b not in bin_names_in_collection]
-                if len(missing_bins):
-                    raise ConfigError("Some bin names you declared do not appear to be in the collection %s. \
-                                        These are the bins that are missing: %s, these are the bins that are \
-                                        actually in your collection: %s" % (self.collection_name,missing_bins,bin_names_in_collection))
-            elif self.bin_id:
-                if self.bin_id not in bin_names_in_collection:
-                    raise ConfigError("The bin you declared, %s, does not appear to be in the collection %s." \
-                                      % (self.bin_id, self.collection_name))
-                bin_names_of_interest = [self.bin_id]
-            else:
-                bin_names_of_interest = bin_names_in_collection
-
-            for bin_id in bin_names_of_interest:
-                self.run.info_single('Classifying genes in bin: %s' % bin_id)
-                self.get_coverage_and_detection_dict(bin_id)
-                self.additional_description = bin_id
-                self.get_gene_classes()
-                if self.store_gene_detection_and_coverage_tables:
-                    self.save_gene_detection_and_coverage(bin_id)
-                #self.save_gene_class_information_in_additional_layers(bin_id)
-                #self.save_samples_information(bin_id)
-
-        else:
-            # No collection provided so running on the entire detection table
-            self.get_gene_classes()
-            if self.store_gene_detection_and_coverage_tables:
-                self.save_gene_detection_and_coverage()
-            self.save_gene_class_information_in_additional_layers()
-            self.store_samples_coverage_stats_dict()
+        return
+        self.get_gene_classes()
+        #self.save_gene_class_information_in_additional_layers(bin_id)
+        #self.save_samples_information(bin_id)
 
 
 def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):

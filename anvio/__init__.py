@@ -9,6 +9,8 @@ import copy
 import pkg_resources
 
 
+DEBUG = '--debug' in sys.argv
+
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
 # on systems working with multiple Python installations that are managed through modules):
 try:
@@ -824,7 +826,7 @@ D = {
                 ),
     'num-threads': (
             ['-T', '--num-threads'],
-            {'metavar': 'NUM_CPUS',
+            {'metavar': 'NUM_THREADS',
              'default': 1,
              'type': int,
              'help': "Maximum number of threads to use for multithreading whenever possible. Very conservatively, the default\
@@ -1030,14 +1032,6 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Be verbose, print more messages whenever possible."}
-                ),
-    'debug': (
-            ['--debug'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Turn on debug messages whenever possible, and skip removing temporary files (this may\
-                      cause lots and lots of output, so you may want to not use it if your intention is not\
-                      debugging)."}
                 ),
     'just-do-it': (
             ['--just-do-it'],
@@ -1339,6 +1333,12 @@ D = {
              'default': None,
              'help': "Optional output file with a fuller description of findings."}
                 ),
+    'include-sequences': (
+            ['--include-sequences'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Include sequences in the report."}
+                ),
     'show-states': (
             ['--show-states'],
             {'default': False,
@@ -1537,5 +1537,3 @@ __genomes_storage_version__  = set_version()
 if '-v' in sys.argv or '--version' in sys.argv:
     print_version()
     sys.exit()
-
-DEBUG = '--debug' in sys.argv
