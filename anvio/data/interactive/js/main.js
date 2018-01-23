@@ -1239,6 +1239,31 @@ function buildLayersTable(order, settings)
             $('#tbody_layers').append(template);
         }
 
+        $('#tbody_layers .input-height:last').change(function (ev) {
+            // setting height 0 changes samples order to custom, only if layer is in samples order
+            if (ev.target.value == 0) {
+                var layer_name = $(ev.target).parent().parent().find('td:nth(1)').attr('title');
+                var layer_names_in_samples = null;
+
+                if (samples_order_dict.hasOwnProperty($('#samples_order').val())) {
+                    var samples_organization = samples_order_dict[$('#samples_order').val()];
+
+                    if (samples_organization['basic'] != null && samples_organization['basic'] != "")
+                    {
+                        layer_names_in_samples = samples_organization['basic'].split(',');
+                    }
+                    else
+                    {
+                        layer_names_in_samples = get_newick_leaf_order(samples_organization['newick']);
+                    }
+
+                    if (layer_names_in_samples.indexOf(layer_name) > -1) {
+                        $('#samples_order').val('custom').trigger('change');
+                    }
+                }
+            }
+        });
+
         if($('#custom_layer_margin').is(':checked'))
         {
             $('.column-margin').show();

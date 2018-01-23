@@ -351,11 +351,11 @@ class ContigsSuperclass(object):
 
         See `init_nt_position_info_dict` for more info."""
 
+        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
+            return (0, 0, 0)
+
         if not self.nt_positions_info:
             raise ConfigError("get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!")
-
-        if not contig_name in self.nt_positions_info:
-            return (0, 0, 0)
 
         position_info = self.nt_positions_info[contig_name][pos_in_contig]
 
@@ -637,7 +637,7 @@ class ContigsSuperclass(object):
         return corresponding_gene_calls
 
 
-    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True):
+    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True, include_aa_sequences=False):
         if not isinstance(gene_caller_ids_list, list):
             raise ConfigError("Gene caller's ids must be of type 'list'")
 
@@ -679,6 +679,13 @@ class ContigsSuperclass(object):
                                                'direction': direction,
                                                'rev_compd': rev_compd,
                                                'length': stop - start}
+
+            if include_aa_sequences:
+                aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+                if gene_callers_id in aa_sequences_dict:
+                    sequences_dict[gene_callers_id]['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
+                else:
+                    sequences_dict[gene_callers_id]['aa_sequence'] = None
 
         self.progress.end()
 
@@ -787,7 +794,7 @@ class PanSuperclass(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.pan_db_path = A('pan_db')
-        self.genomes_storage = A('genomes_storage')
+        self.genomes_storage_path = A('genomes_storage')
 
         self.genome_names = []
         self.gene_clusters = {}
@@ -865,8 +872,8 @@ class PanSuperclass(object):
 
         self.progress.end()
 
-        if self.genomes_storage:
-            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage,
+        if self.genomes_storage_path:
+            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
                                                                self.p_meta['genomes_storage_hash'],
                                                                genome_names_to_focus=self.p_meta['genome_names'],
                                                                run=self.run,
@@ -1708,13 +1715,29 @@ class ProfileSuperclass(object):
         # by providing collection name and bin names in args.
         self.split_names_of_interest = A('split_names_of_interest')
         self.collection_name = A('collection_name')
-        self.bin_names = [A('bin_id')] if A('bin_id') else [b.strip() for b in A('bin_names_list').split(',')] if A('bin_names_list') else None
+
+        # figure out bin names, if there is one to figure out
+        if A('bin_id') and A('bin_names_list'):
+            raise ConfigError("ProfileSuper says you can't use both `bin_id` and `bin_names_list` as argument. Pick\
+                               one, and stick with it. ProfileSuper is grumpy.")
+        if A('bin_id'):
+            self.bin_names = [A('bin_id')]
+        elif A('bin_names_list'):
+            if isinstance(A('bin_names_list'), list):
+                self.bin_names = A('bin_names_list')
+            elif isinstance(A('bin_names_list'), str):
+                self.bin_names = A('bin_names_list').split(',')
+            else:
+                raise ConfigError("ProfileSuper says `bin_names_list` can either be a string of comma-separated bin\
+                                   names, or a proper Python `list` of bin names. But not %s." % (type(A('bin_names_list'))))
+        else:
+            self.bin_names = None
 
         if self.split_names_of_interest and not isinstance(self.split_names_of_interest, type(set([]))):
             raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set().\
                                Someone screwed up somewhere :/")
         elif self.split_names_of_interest and self.collection_name:
-            raise ConfigError("ProfileSuper is initializef with args that contain both `split_names_of_interest`,\
+            raise ConfigError("ProfileSuper is initialized with args that contain both `split_names_of_interest`,\
                                and `collection_name`. You can initialize the ProfileSuper with either of those. As\
                                a programmer if you have no control over incoming `args` and just passing things\
                                aroung, you might need to implement a workaround to set either of those params to None\
@@ -2404,7 +2427,6 @@ class ContigsDatabase:
         external_gene_calls = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
-        debug = A('debug')
 
         if external_gene_calls:
             filesnpaths.is_file_exists(external_gene_calls)
@@ -2528,7 +2550,7 @@ class ContigsDatabase:
             # temporarily disconnect to perform gene calls
             self.db.disconnect()
 
-            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug=debug)
+            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug=anvio.DEBUG)
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
             if external_gene_calls:

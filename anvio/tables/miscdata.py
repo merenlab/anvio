@@ -56,6 +56,12 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         Table.__init__(self, self.db_path, self.db_version, self.run, self.progress)
 
+        self.nulls_per_type = {'str': '',
+                               'int': 0,
+                               'float': 0,
+                               'stackedbar': None,
+                               'unknown': None}
+
 
     def populate_from_file(self, additional_data_file_path, skip_check_names=None):
 
@@ -272,7 +278,14 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 # we don't order stacked bar charts
                 continue
 
-            layer_name_layer_data_tuples = [(additional_data_dict[layer][data_key], layer) for layer in additional_data_dict]
+            # predict the type for proper assignment of 'null' values
+            if '!' in data_key:
+                predicted_key_type = "stackedbar"
+            else:
+                type_class = utils.get_predicted_type_of_items_in_a_dict(additional_data_dict, data_key)
+                predicted_key_type = type_class.__name__ if type_class else 'unknown'
+
+            layer_name_layer_data_tuples = [(additional_data_dict[layer][data_key] if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
             order_data_dict['>> ' + data_key] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples)])}
             order_data_dict['>> ' + data_key + ' (reverse)'] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples, reverse=True)])}
 
@@ -405,7 +418,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             value = entry['data_value']
 
             if entry['data_type'] in ['int', 'float']:
-                d[additional_data_item_name][key] = eval(entry['data_type'])(value)
+                d[additional_data_item_name][key] = eval(entry['data_type'])(value or self.nulls_per_type[entry['data_type']])
             else:
                 d[additional_data_item_name][key] = value
 
@@ -626,7 +639,7 @@ class TableForLayerOrders(OrderDataBaseClass):
                                    your layer order data, '%s' (a %s order), tells a different story. It has layer names '%s' while\
                                    the db has the layers '%s' :/" % (self.db_type,
                                                                      data_key,
-                                                                     data_dict[data_key]['order_type'],
+                                                                     data_dict[data_key]['data_type'],
                                                                      ', '.join(sorted(layers_in_data[data_key])),
                                                                      ', '.join(layers_in_db)))
 

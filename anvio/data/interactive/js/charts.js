@@ -142,7 +142,7 @@ function showSetMaxValuesDialog() {
         var layer_name = layers_ordered[i];
         var layer_index = layers.indexOf(layer_name);
 
-        if (parseFloat(state['layers'][layer_name]['height']) > 0) {
+        if (!(_state['layers'].hasOwnProperty(layer_name) && parseFloat(_state['layers'][layer_name]['height']) == 0)) {
             var max_val
             var actual_max_val = Math.max.apply(null, coverage[layer_index]);;
             if (has_max_coverage_values) {

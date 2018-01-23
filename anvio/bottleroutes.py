@@ -117,6 +117,7 @@ class BottleApplication(Bottle):
         self.route('/data/hmm/<bin_name>/<gene_name>',         callback=self.get_hmm_hit_from_bin)
         self.route('/data/geneclusterssummary',             callback=self.get_gene_clusters_summary, method='POST')
         self.route('/data/get_AA_sequences_for_gene_cluster/<gene_cluster_name>',  callback=self.get_AA_sequences_for_gene_cluster)
+        self.route('/data/pan_gene_popup/<gene_callers_id>/<genome_name>',         callback=self.get_gene_popup_for_pan)
         self.route('/data/geneclusters/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
         self.route('/data/phylogeny/aligners',                 callback=self.get_available_aligners)
@@ -632,6 +633,21 @@ class BottleApplication(Bottle):
         header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
         return json.dumps({'sequence': sequence, 'header': header})
+
+
+    def get_gene_popup_for_pan(self, gene_callers_id, genome_name):
+        if not self.interactive.genomes_storage_is_available:
+            return json.dumps({'error': 'Genome storage does not seem to be available :/ So that button will not work..'})
+
+        gene_callers_id = int(gene_callers_id)
+
+        if genome_name not in self.interactive.genomes_storage.gene_info:
+            return json.dumps({'error': "Your request contains a genome name anvi'o genomes storage does not know about. What are you doing?"})
+
+        if gene_callers_id not in self.interactive.genomes_storage.gene_info[genome_name]:
+            return json.dumps({'error': "Your gene caller id does not work for anvi'o :("})
+
+        return json.dumps({'status': 0, 'gene_info': self.interactive.genomes_storage.gene_info[genome_name][gene_callers_id]})
 
 
     def get_hmm_hit_from_bin(self, bin_name, gene_name):

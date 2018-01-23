@@ -88,7 +88,6 @@ if __name__ == '__main__':
                                 will depend on which parser you selected (if you did select any).')
 
     parser.add_argument(*anvio.A('drop-previous-annotations'), **anvio.K('drop-previous-annotations'))
-    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = anvio.get_args(parser)
 

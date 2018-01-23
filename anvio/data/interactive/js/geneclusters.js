@@ -102,7 +102,6 @@ function loadAll() {
 
 }
 
-
 function createDisplay(){
     var sequence_wrap_val = parseInt($('#wrap_length').val());
     var sequence_font_size_val = parseInt($('#font_size').val());
@@ -128,6 +127,9 @@ function createDisplay(){
         {
             var layer = state['layer-order'][layer_id];
 
+            if (state['layers'][layer]['height'] == 0)
+                continue;
+
             if (gene_cluster_data.genomes.indexOf(layer) === -1)
                 continue;
             
@@ -147,9 +149,9 @@ function createDisplay(){
             text.setAttribute('y', parseFloat(rect.getAttribute('y')) + parseFloat(rect.getAttribute('height')) / 2);
             text.setAttribute('font-size', "24px");
             text.setAttribute('font-family', "Lato, Arial");
-            text.setAttribute('font-weight', '300')
+            text.setAttribute('font-weight', '300');
             text.setAttribute('style', 'alignment-baseline:central');
-            text.setAttribute('class', 'genomeTitle')
+            text.setAttribute('class', 'genomeTitle');
             text.appendChild(document.createTextNode(layer));
             fragment.appendChild(text);
 
@@ -164,8 +166,13 @@ function createDisplay(){
                 text.setAttribute('font-size', sequence_font_size);
                 text.setAttribute('font-family', "Lato, Arial");
                 text.setAttribute('font-weight', '300');
-                text.setAttribute('style', 'alignment-baseline:text-before-edge');
-                text.setAttribute('class', 'callerTitle')
+                text.setAttribute('style', 'alignment-baseline:text-before-edge; cursor: pointer;');
+                text.setAttribute('class', 'callerTitle');
+                text.setAttribute('gene-callers-id', caller_id);
+                text.setAttribute('genome-name', layer);
+                text.setAttribute('data-content', get_gene_functions_table_html_for_pan(caller_id, layer) + '')
+                text.setAttribute('data-toggle', 'popover');
+
                 text.appendChild(document.createTextNode(caller_id));
                 fragment.appendChild(text);
 
@@ -200,6 +207,26 @@ function createDisplay(){
     }
 
     calculateLayout();
+
+    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
+
+    // workaround for known popover bug
+    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
+    $('body').on('hidden.bs.popover', function (e) {
+      $(e.target).data("bs.popover").inState.click = false;
+    });
+
+    $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
+      var popover = $(e.target).data("bs.popover").$tip;
+      
+      if ($(popover).css('top').charAt(0) === '-') {
+        $(popover).css('top', '0px');
+      }
+
+      if ($(popover).css('left').charAt(0) === '-') {
+        $(popover).css('left', '0px');
+      }
+    });
 }
 
 function calculateLayout() {

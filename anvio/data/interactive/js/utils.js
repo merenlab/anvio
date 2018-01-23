@@ -28,7 +28,29 @@ function is_large_angle(a, b) {
     return (Math.abs(b - a) > Math.PI) ? 1 : 0;
 }
 
-function fire_up_ncbi_blast(item_name, program, database, target)
+
+function get_sequence_and_blast(item_name, program, database, target) {
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        // async: false is important here. DO NOT REMOVE.
+        // If direct call chain between event handler and the code that opens new window is broken
+        // chrome popup blocker will not allow opening new window.
+        // async: false does not use asynchronus callbacks so protects direct call chain.
+        async: false,
+        url: '/data/' + target + '/' + item_name + '?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            if ('error' in data){
+                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+            } else {
+              var sequence = '>' + data['header'] + '\n' + data['sequence'];
+              fire_up_ncbi_blast(sequence, program, database, target)
+            }
+        }
+    });
+}
+
+function fire_up_ncbi_blast(sequence, program, database, target)
 {
     if (["gene", "contig"].indexOf(target) < 0){
         console.log("fire_up_ncbi_blast: Unrecognized target. Target must be either 'gene', or 'contig'.");
@@ -59,7 +81,8 @@ function fire_up_ncbi_blast(item_name, program, database, target)
         "NUM_DIFFS": "0",
         "NUM_OPTS_DIFFS": "0",
         "PAGE_TYPE": "BlastSearch",
-        "USER_DEFAULT_PROG_TYPE": "megaBlast"
+        "USER_DEFAULT_PROG_TYPE": "megaBlast",
+        "QUERY": sequence,
     }
 
     if (typeof program !== 'undefined')
@@ -69,32 +92,18 @@ function fire_up_ncbi_blast(item_name, program, database, target)
         post_variables['DATABASE'] = database;
 
     var blast_window = window.open('about:blank', '_blank');
+    var form = document.createElement('form');
+    
+    form.action = 'https://blast.ncbi.nlm.nih.gov/Blast.cgi';
+    form.method = 'POST';
 
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/' + target + '/' + item_name + '?timestamp=' + new Date().getTime(),
-        success: function(data) {
-            if ('error' in data){
-                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-            } else {
-                post_variables['QUERY'] = '>' + data['header'] + '\n' + data['sequence'];
+    for (name in post_variables)
+    {
+        $(form).append('<input type="hidden" name="' + name + '" value="' + post_variables[name] + '" />');
+    }
 
-                var form = document.createElement('form');
-                
-                form.action = 'https://blast.ncbi.nlm.nih.gov/Blast.cgi';
-                form.method = 'GET';
-
-                for (name in post_variables)
-                {
-                    $(form).append('<input type="hidden" name="' + name + '" value="' + post_variables[name] + '" />');
-                }
-
-                blast_window.document.body.appendChild(form);
-                form.submit();
-            }
-        }
-    });
+    blast_window.document.body.appendChild(form);
+    form.submit();
 }
 //--------------------------------------------------------------------------------------------------
 
