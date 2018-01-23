@@ -351,7 +351,7 @@ class ContigsSuperclass(object):
 
         See `init_nt_position_info_dict` for more info."""
 
-        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info):
+        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
             return (0, 0, 0)
 
         if not self.nt_positions_info:
