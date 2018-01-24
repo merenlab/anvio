@@ -700,32 +700,35 @@ class Pangenome(object):
             self.run.warning('Skipping gene alignments.')
             return gene_clusters_dict
 
-        # we select aligner first but does not use this one in workers
-        # because it needs to print citation information
-        aligner = aligners.select(self.align_with)
+        # we run "select aligner" to print the citation information (the actual selection is
+        # done in the `alignment_worker` down below)
+        aligners.select(self.align_with)
 
         self.progress.new('Aligning amino acid sequences for genes in gene clusters')
         self.progress.update('...')
         gene_cluster_names = list(gene_clusters_dict.keys())
-        num_gene_clusters = len(gene_cluster_names)
+
+        # we only need to align gene clusters with more than one sequence
+        non_singleton_gene_cluster_names = [g for g in gene_cluster_names if len(gene_clusters_dict[g]) > 1]
+        num_non_singleton_gene_clusters = len(non_singleton_gene_cluster_names)
 
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
 
-        for gene_cluster_name in gene_cluster_names:
+        for gene_cluster_name in non_singleton_gene_cluster_names:
             input_queue.put(gene_cluster_name)
 
         workers = []
         for i in range(0, self.num_threads):
-            worker = multiprocessing.Process(target=Pangenome.alignment_worker, 
+            worker = multiprocessing.Process(target=Pangenome.alignment_worker,
                 args=(input_queue, output_queue, gene_clusters_dict, self.genomes_storage, self.align_with))
 
             workers.append(worker)
             worker.start()
 
         received_gene_clusters = 0
-        while received_gene_clusters < num_gene_clusters:
+        while received_gene_clusters < num_non_singleton_gene_clusters:
             try:
                 gene_clusters_item = output_queue.get()
 
@@ -738,8 +741,8 @@ class Pangenome(object):
                     print(json.dumps(gene_clusters_item, indent=2))
 
                 received_gene_clusters += 1
-                self.progress.update("Processed %d of %s using %d processes." % 
-                    (received_gene_clusters, num_gene_clusters, self.num_threads))
+                self.progress.update("Processed %d of %d non-singleton GCs in %d threads." %
+                    (received_gene_clusters, num_non_singleton_gene_clusters, self.num_threads))
 
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes...")
@@ -759,7 +762,7 @@ class Pangenome(object):
         # or genome_storage, changes will not be reflected to main process or other processes.
 
         aligner = aligners.select(align_with, quiet=True)
-        
+
         r = terminal.Run()
         r.verbose = False
 
