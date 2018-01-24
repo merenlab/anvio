@@ -700,8 +700,8 @@ class Pangenome(object):
             self.run.warning('Skipping gene alignments.')
             return gene_clusters_dict
 
-        # we select aligner first does not ise this one
-        # so it can print citation information before progress starts
+        # we select aligner first but does not use this one in workers
+        # because it needs to print citation information
         aligner = aligners.select(self.align_with)
 
         self.progress.new('Aligning amino acid sequences for genes in gene clusters')
