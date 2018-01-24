@@ -9,6 +9,8 @@
 import os
 import json
 import math
+import copy
+import multiprocessing
 import pandas as pd
 from itertools import chain
 
@@ -213,9 +215,6 @@ class Pangenome(object):
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
-
-        if not self.skip_alignments:
-            self.aligner = aligners.select(self.align_with)
 
         self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 
@@ -701,41 +700,91 @@ class Pangenome(object):
             self.run.warning('Skipping gene alignments.')
             return gene_clusters_dict
 
-        r = terminal.Run()
-        r.verbose = False
+        # we select aligner first does not ise this one
+        # so it can print citation information before progress starts
+        aligner = aligners.select(self.align_with)
 
         self.progress.new('Aligning amino acid sequences for genes in gene clusters')
         self.progress.update('...')
         gene_cluster_names = list(gene_clusters_dict.keys())
         num_gene_clusters = len(gene_cluster_names)
-        # FIXME: This should be parallelized. We know the number of threads the user allocated for this job via
-        #        self.num_threads.
-        for i in range(0, num_gene_clusters):
-            self.progress.update('%d of %d' % (i, num_gene_clusters)) if i % 10 == 0 else None
-            gene_cluster_name = gene_cluster_names[i]
 
-            if len(gene_clusters_dict[gene_cluster_name]) == 1:
-                # this sequence is a singleton and does not need alignment
-                continue
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
 
-            gene_sequences_in_gene_cluster = []
-            for gene_entry in gene_clusters_dict[gene_cluster_name]:
-                sequence = self.genomes_storage.get_gene_sequence(gene_entry['genome_name'], gene_entry['gene_caller_id'])
-                gene_sequences_in_gene_cluster.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
+        for gene_cluster_name in gene_cluster_names:
+            input_queue.put(gene_cluster_name)
 
-            # alignment
-            if self.debug:
-                self.run.info_single('Aligning sequences in Gene Cluster %s' % gene_cluster_name, nl_before=2, nl_after=1)
-                print(json.dumps(gene_sequences_in_gene_cluster, indent=2))
+        workers = []
+        for i in range(0, self.num_threads):
+            worker = multiprocessing.Process(target=Pangenome.alignment_worker, 
+                args=(input_queue, output_queue, gene_clusters_dict, self.genomes_storage, self.align_with))
 
-            alignments = self.aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
+            workers.append(worker)
+            worker.start()
 
-            for gene_entry in gene_clusters_dict[gene_cluster_name]:
-                gene_entry['alignment_summary'] = utils.summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])
+        received_gene_clusters = 0
+        while received_gene_clusters < num_gene_clusters:
+            try:
+                gene_clusters_item = output_queue.get()
+
+                if gene_clusters_item:
+                    # worker returns None if there is nothing to align
+                    # we do not need to owerwrite it to gene_clusters_dict
+                    gene_clusters_dict[gene_clusters_item['name']] = gene_clusters_item['entry']
+
+                if self.debug:
+                    print(json.dumps(gene_clusters_item, indent=2))
+
+                received_gene_clusters += 1
+                self.progress.update("Processed %d of %s using %d processes." % 
+                    (received_gene_clusters, num_gene_clusters, self.num_threads))
+
+            except KeyboardInterrupt:
+                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
+                break
+
+        for worker in workers:
+            worker.terminate()
 
         self.progress.end()
 
         return gene_clusters_dict
+
+
+    @staticmethod
+    def alignment_worker(input_queue, output_queue, gene_clusters_dict, genomes_storage, align_with):
+        # Note for future changes, this worker should not write anything to gene_clusters_dict
+        # or genome_storage, changes will not be reflected to main process or other processes.
+
+        aligner = aligners.select(align_with, quiet=True)
+        
+        r = terminal.Run()
+        r.verbose = False
+
+        # Main process needs to kill this worker after it receives all tasks because of this infinite loop
+        while True:
+            gene_cluster_name = input_queue.get(True)
+
+            if len(gene_clusters_dict[gene_cluster_name]) == 1:
+                # this sequence is a singleton and does not need alignment
+                output_queue.put(None)
+                continue
+
+            gene_sequences_in_gene_cluster = []
+
+            for gene_entry in gene_clusters_dict[gene_cluster_name]:
+                sequence = genomes_storage.get_gene_sequence(gene_entry['genome_name'], gene_entry['gene_caller_id'])
+                gene_sequences_in_gene_cluster.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
+
+            alignments = aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
+
+            output = {'name': gene_cluster_name, 'entry': copy.deepcopy(gene_clusters_dict[gene_cluster_name])}
+            for gene_entry in output['entry']:
+                gene_entry['alignment_summary'] = utils.summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])
+
+            output_queue.put(output)
 
 
     def process(self):
