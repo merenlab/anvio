@@ -42,7 +42,7 @@ class Aligners:
             raise ConfigError("Sorry, anvi'o knows nothing of the aligner '%s'. Nice try though :/" % aligner)
 
 
-    def select(self, aligner=None):
+    def select(self, aligner=None, quiet=False):
         if not aligner:
             aligner = self.default
 
@@ -50,9 +50,10 @@ class Aligners:
 
         _aligner = self.aligners[aligner]
 
-        self.run.warning("Anvi'o will use '%s' by %s (%s) to align your sequences. If you publish your findings, \
-                          please do not forget to properly credit their work." % (aligner, _aligner().citation, _aligner().web),
-                          lc='green', header="CITATION")
+        if not quiet:
+          self.run.warning("Anvi'o will use '%s' by %s (%s) to align your sequences. If you publish your findings, \
+                            please do not forget to properly credit their work." % (aligner, _aligner().citation, _aligner().web),
+                            lc='green', header="CITATION")
 
         return self.aligners[aligner]
 
