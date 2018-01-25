@@ -21,6 +21,8 @@
         }, false );
 
         var SAAVs_array = [5, 43, 22, 30];
+        var atomPair = [[ "22.CA", "5.CA" ], [ "22.CA", "43.CA" ],  [ "22.CA", "30.CA" ]];
+
         var SAAVs_string = SAAVs_array.join(", ");
 
         var schemeId = NGL.ColormakerRegistry.addScheme(function (params) {
@@ -48,13 +50,61 @@
                 scale: 0.5,
                 color: schemeId
             } );
+            component.addRepresentation("distance", {
+                atomPair: atomPair,
+                color: "skyblue",
+                labelUnit: "nm"
+            } );
+
+            // add annotation to a protein chain
+            var chainText = {
+            "A": "how do i put gene_caller_id here?",
+            }
+            var ap = component.structure.getAtomProxy()
+            component.structure.eachChain(function (cp) {
+                // annotation is anchored to the residue index equal to half the total number of residues
+                ap.index = cp.atomOffset + Math.floor(cp.atomCount / 2)
+                component.addAnnotation(ap.positionToVector3(), chainText[ cp.chainname ])
+            }, new NGL.Selection("polymer"))
 
             stage.autoView();
         }
 
         function load_protein(gene_callers_id) {
+
+            // create tooltip element and add to document body
+            var tooltip = document.createElement("div")
+            Object.assign(tooltip.style, {
+                display: "none",
+                position: "fixed",
+                zIndex: 10,
+                pointerEvents: "none",
+                backgroundColor: "rgba( 0, 0, 0, 0.6 )",
+                color: "lightgrey",
+                padding: "8px",
+                fontFamily: "sans-serif"
+            })
+            document.body.appendChild(tooltip)
+
             stage.removeAllComponents();
             stage.loadFile( window.location.origin + "/data/get_structure/" + gene_callers_id + ".pdb" ).then( defaultStructureRepresentation ).then();
+
+            // remove default hoverPick mouse action
+            stage.mouseControls.remove("hoverPick")
+            // listen to `hovered` signal to move tooltip around and change its text
+            stage.signals.hovered.add(function (pickingProxy) {
+                if (pickingProxy && (pickingProxy.atom || pickingProxy.bond)) {
+                    var atom = pickingProxy.atom || pickingProxy.closestBondAtom
+                    var mp = pickingProxy.mouse.position
+                    tooltip.innerText = "SAAV: \n" + atom.qualifiedName() + "\nAla:\t19" + "\nIle:\t5"
+                    tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px"
+                    tooltip.style.left = mp.x + 3 + "px"
+                    tooltip.style.display = "block"
+                } else {
+                tooltip.style.display = "none"
+              }
+            })
+
         }
 
         $( document ).ready(function() {
