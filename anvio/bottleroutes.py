@@ -11,6 +11,7 @@ import os
 import re
 import io
 import sys
+import copy
 import time
 import json
 import random
@@ -125,6 +126,7 @@ class BottleApplication(Bottle):
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
         self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
+        self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
 
 
     def run_application(self, ip, port):
@@ -867,3 +869,16 @@ class BottleApplication(Bottle):
         return json.dumps({'stats': self.interactive.contigs_stats,
                            'tables': self.interactive.tables,
                            'human_readable_keys': self.interactive.human_readable_keys})
+
+
+    def filter_gene_clusters(self):
+        try:
+            parameters = {}
+            for key in request.forms:
+                parameters[key] = int(request.forms.get(key))
+
+            gene_clusters_dict, _ = self.interactive.filter_gene_clusters_from_gene_clusters_dict(copy.deepcopy(self.interactive.gene_clusters), **parameters)
+            return json.dumps({'status': 0, 'gene_clusters_list': list(gene_clusters_dict.keys())})
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
