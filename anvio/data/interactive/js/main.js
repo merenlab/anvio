@@ -329,6 +329,9 @@ function initData() {
                 $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
                 $('#splits_title').hide();
                 $('#len_title').hide();
+
+                $('.gene-filters-not-available-message').hide();
+                $('.pan-filters button,input:checkbox').removeAttr('disabled')
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/collection-bg.png)');
