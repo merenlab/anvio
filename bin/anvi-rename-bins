@@ -98,10 +98,9 @@ def main(args):
                      recovered from the single-copy core gene collection that provides the highest\
                      completion estimate.')
 
-    if not 'Campbell_et_al' in completeness.sources:
-        raise ConfigError("In most cases anvi'o relies on single-copy gene collection by Campbell\
-                            et al., and it seems the contigs database does not contain HMM hits for\
-                            that resource :/ Bad news.")
+    if not len(completeness.sources):
+        raise ConfigError("It seems the contigs database does not contain HMM hits for\
+                            any of the single copy core gene collections :/ Bad news.")
 
 
     contigs_db = dbops.ContigsSuperclass(args, r = run, p = progress)
