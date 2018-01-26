@@ -93,6 +93,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
                                 you send to this class. What are you doing?")
 
+        if self.gene_view:
+            if self.collection_name is None or self.bin_id is None:
+                raise ConfigError("Gene view requires a collection and a bin to be specified. If you want to \
+                                    view all the genes in your profile database then you can use \
+                                    anvi-script-add-default-collection to create a default collection \
+                                    with all contigs.")
+
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
