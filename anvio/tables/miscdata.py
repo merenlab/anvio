@@ -592,14 +592,24 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
         layers_in_data = set(data_dict.keys())
 
         layers_in_data_but_not_in_db = layers_in_data.difference(layers_in_db)
-        if len(layers_in_data_but_not_in_db):
+        if len(layers_in_data_but_not_in_db) and not self.just_do_it:
             raise ConfigError("Grande problemo. %d of %d layers in your additional data are *only* in your data (which\
                                means they are not in the %s database you are working with). Since there is no reason to\
                                add additional data for layers that do not exist in your database, anvi'o refuses to\
                                continue, and hopes that you will try again. In case you want to see a random layer name\
-                               that is only in your data, here is one: %s. Stuff in your db looks like this: %s." \
+                               that is only in your data, here is one: %s. In comparison, here is a random layer name\
+                               from your database: %s. If you don't want to deal with this, you could use the flag\
+                               `--just-do-it`, and anvi'o would do something." \
                                     % (len(layers_in_data_but_not_in_db), len(layers_in_data), self.db_type, \
                                        layers_in_data_but_not_in_db.pop(), layers_in_db.pop()))
+        elif len(layers_in_data_but_not_in_db) and self.just_do_it:
+            self.run.warning("Listen up! %d of %d layers in your additional data were *only* in your data (which\
+                              means they are not in the %s database you are working with). But since you asked anvi'o to\
+                              keep its mouth shut, it removed the ones that were not in your database from your input\
+                              data, hoping that the rest of your probably very dubious operation will go just fine :/" \
+                                   % (len(layers_in_data_but_not_in_db), len(layers_in_data), self.db_type))
+            for layer_name in layers_in_data_but_not_in_db:
+                data_dict.pop(layer_name)
 
         layers_in_db_but_not_in_data = layers_in_db.difference(layers_in_data)
         if len(layers_in_db_but_not_in_data):
