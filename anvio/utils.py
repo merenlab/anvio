@@ -739,6 +739,7 @@ def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_di
     
     if as_pandas:
         # This option is used by the mcg-classifier.
+        import pandas as pd
         return pd.DataFrame(d)
     else:
         return d
