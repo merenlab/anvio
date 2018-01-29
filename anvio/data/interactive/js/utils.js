@@ -173,6 +173,25 @@ function renderMarkdown(content) {
         return '<a target="_blank" href="' + href + '" title="' + title + '">' + text + '</a>';
     }
 
+    renderer.html = function ( html ) {
+        
+        if (html.startsWith('<item>') && html.endsWith('</item>')) {
+            var item_name = $(html).text();
+            html = '<item>' + item_name + '<span class="tooltiptext"> \
+                <a href="#" onclick="highlighted_splits = [\'' + item_name + '\']; redrawBins();">HIGHLIGHT</a>'
+
+            if (mode == 'full' | mode == 'pan') {
+                var target = (mode == 'pan') ? 'inspect_gene_cluster' : 'inspect_contig';
+                html += ' | <a href="#" onclick="context_menu_target_id = label_to_node_map[\'' + item_name + '\'].id; \
+                                                 menu_callback(\'' + target + '\');">INSPECT</a>';
+            }
+
+            html += '</span></item>'
+        }
+
+        return html;
+    }
+
     return marked(content, { renderer:renderer });
 }
 
