@@ -125,34 +125,6 @@ class MetagenomeCentricGeneClassifier:
         self.additional_description = additional_description
 
 
-    def get_gene_coverages_and_gene_detection_dicts(self):
-        gene_coverages = {}
-        gene_detection = {}
-        gene_non_outlier_mean_coverage = {}
-        gene_non_outlier_coverage_stds = {}
-
-        A = lambda x: self.profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name][x]
-
-        gene_caller_ids = list(self.profile_db.gene_level_coverage_stats_dict.keys())
-
-        # populate gene coverage and detection dictionaries
-        if self.profile_db.gene_level_coverage_stats_dict:
-            for gene_callers_id in gene_caller_ids:
-                gene_coverages[gene_callers_id], gene_non_outlier_coverage_stds[gene_callers_id], gene_non_outlier_mean_coverage[gene_callers_id], gene_detection[gene_callers_id] = {}, {}, {}, {}
-                self.gene_coverage_values_per_nt[gene_callers_id], self.gene_non_outlier_positions[gene_callers_id] = {}, {}
-
-                for sample_name in self.profile_db.p_meta['samples']:
-                    gene_coverages[gene_callers_id][sample_name] = A('mean_coverage')
-                    gene_detection[gene_callers_id][sample_name] = A('detection')
-                    gene_non_outlier_mean_coverage[gene_callers_id][sample_name] = A('non_outlier_mean_coverage')
-                    gene_non_outlier_coverage_stds[gene_callers_id][sample_name] = A('non_outlier_coverage_std')
-                    self.gene_coverage_values_per_nt[gene_callers_id][sample_name] = A('gene_coverage_values_per_nt')
-                    self.gene_non_outlier_positions[gene_callers_id][sample_name] = A('non_outlier_positions')
-                    
-
-        return gene_coverages, gene_detection, gene_non_outlier_mean_coverage, gene_non_outlier_coverage_stds
-
-
     def check_if_valid_portion_value(self, arg_name,arg_value):
         """ Helper function to verify that an argument has a valid value for a non-zero portion (i.e. greater than zero and a max of 1)"""
         if arg_value <= 0 or arg_value > 1:
