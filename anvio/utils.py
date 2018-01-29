@@ -726,8 +726,8 @@ def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_di
         There is also an option to as to get the data back as a pandas dataframe.
     """
     legal_keys = {'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std'}
-    if key not in legal_keys:
-        raise ConfigError("%s is not a valid key for creating a dict of values of gene_level_coverage_stats_dict.\
+    if key not in legal_keys and as_pandas:
+        raise ConfigError("%s is not a valid key for creating a pandas dataframe of values of gene_level_coverage_stats_dict.\
                             Here is a list of the valid keys: %s" % (key, list(legal_keys)))
 
     d = {}
