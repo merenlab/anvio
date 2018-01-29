@@ -591,6 +591,10 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
     """ Helper function that accepts a split_coverage_values_per_nt_dict and returns a dictionary with
     samples as keys and the concatenated coverage values for all splits as one array
     """
+
+    if not split_coverage_values_per_nt_dict:
+        raise ConfigError("You did not provide a split_coverage_values_per_nt_dict, and we need it...")
+
     progress.new('Merging coverage values accross splits')
     progress.update('...')
 
