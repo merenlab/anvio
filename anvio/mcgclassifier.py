@@ -588,20 +588,6 @@ class MetagenomeCentricGeneClassifier:
         progress.end()
 
 
-    def get_coverage_and_detection_dict(self,bin_id):
-        _bin = summarizer.Bin(self.summary, bin_id)
-        self.coverage_values_per_nt = get_coverage_values_per_nucleotide(_bin.split_coverage_values_per_nt_dict, self.samples)
-
-
-        # getting the total length of all contigs
-        self.total_length = _bin.total_length
-
-        self.init_coverage_and_detection_dataframes(_bin.gene_coverages, _bin.gene_detection, _bin.gene_non_outlier_coverages, _bin.gene_non_outlier_coverage_stds)
-
-        # populate gene per-position information
-        self.gene_coverage_values_per_nt = _bin.gene_coverage_values_per_nt
-        self.gene_non_outlier_positions = _bin.gene_non_outlier_positions
-
     def save_gene_class_information_in_additional_layers(self, additional_description=''):
         additional_column_titles = []
         additional_layers_df = self.gene_class_df
