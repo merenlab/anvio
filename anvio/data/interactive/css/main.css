@@ -692,3 +692,12 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     max-height: calc(100vh - 200px);
     overflow-y: auto;
 }
+
+.table-borderless > tbody > tr > td,
+.table-borderless > tbody > tr > th,
+.table-borderless > tfoot > tr > td,
+.table-borderless > tfoot > tr > th,
+.table-borderless > thead > tr > td,
+.table-borderless > thead > tr > th {
+    border: none;
+}

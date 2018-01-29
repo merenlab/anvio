@@ -200,7 +200,6 @@ anvi-rename-bins -c $output_dir/CONTIGS.db \
                  --prefix 'PSAMPLES' \
                  --collection-to-read "cmdline_concoct" \
                  --collection-to-write "cmdline_concoct_RENAMED" \
-                 --use-SCG-averages \
                  --report-file $output_dir/renaming-report.txt
 
 echo
