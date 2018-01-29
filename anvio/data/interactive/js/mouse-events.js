@@ -580,12 +580,26 @@ function menu_callback(action, param) {
             $('#tbody_layers tr:nth-child(' + context_menu_layer_id + ') input:checkbox').prop('checked', false);
             break;
 
+        case 'get_gene_sequence':
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/gene/' + item_name + '?timestamp=' + new Date().getTime(),
+                success: function(data) {
+                    $('#modSplitSequence .modal-title').html('Gene Sequence');
+                    $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
+                    $('#modSplitSequence').modal('show');
+                }
+            });
+            break;
+
         case 'get_split_sequence':
             $.ajax({
                 type: 'GET',
                 cache: false,
                 url: '/data/contig/' + item_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
+                    $('#modSplitSequence .modal-title').html('Split Sequence');
                     $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
                     $('#modSplitSequence').modal('show');
                 }

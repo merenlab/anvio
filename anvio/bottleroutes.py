@@ -271,7 +271,7 @@ class BottleApplication(Bottle):
                                  "collectionAutoload":                 self.interactive.collection_autoload,
                                  "noPing":                             False,
                                  "inspectionAvailable":                self.interactive.auxiliary_profile_data_available,
-                                 "sequencesAvailable":                 True if self.interactive.split_sequences else False,
+                                 "sequencesAvailable":                 True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
                                  "functions_initialized":              self.interactive.gene_function_calls_initiated })
 
         elif name == "session_id":
