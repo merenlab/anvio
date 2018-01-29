@@ -73,7 +73,7 @@ class MetagenomeCentricGeneClassifier:
         self.gene_coverage_values_per_nt = {}
         self.gene_non_outlier_coverage_std = None
         self.gene_non_outlier_positions = {}
-        self.samples = {}
+        self.samples = None
         self.sample_detection_information_was_initiated = False
         self.positive_samples = []
         self.number_of_positive_samples = None
@@ -228,7 +228,6 @@ class MetagenomeCentricGeneClassifier:
         num_samples, counter = len(self.samples), 1
         detection = {}
         for sample in self.samples:
-            # TODO: if coverage_values_per_nt is not available then use gene_detections to estimate the detection value of a sample
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
             print("total length for %s is %s" % (sample, self.total_length))
@@ -624,7 +623,7 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
 
     d = {}
     if samples is None:
-        samples = split_coverage_values_per_nt_dict[next(iter(split_coverage_values_per_nt_dict.keys()))].keys()
+        samples = next(iter(split_coverage_values_per_nt_dict.values())).keys()
 
     number_of_samples = len(samples)
     number_of_finished = 0
