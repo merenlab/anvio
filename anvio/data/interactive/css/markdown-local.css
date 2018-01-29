@@ -48,14 +48,14 @@
     font-size: inherit;
 }
 
-item {
+.item-link {
     color: #337ab7;
     position: relative;
     display: inline-block;
     border-bottom: 1px dotted black;
 }
 
-item .tooltiptext {
+.item-link .tooltiptext {
     visibility: hidden;
     width: 120px;
     background-color: #555;
@@ -72,7 +72,7 @@ item .tooltiptext {
     opacity 0.9s;
 }
 
-item .tooltiptext::after {
+.item-link .tooltiptext::after {
     content: "";
     position: absolute;
     top: 100%;
@@ -83,16 +83,16 @@ item .tooltiptext::after {
     border-color: #555 transparent transparent transparent;
 }
 
-item:hover .tooltiptext {
+.item-link:hover .tooltiptext {
     visibility: visible;
     opacity: 1;
 }
 
-item .tooltiptext a {
+.item-link .tooltiptext>span {
     color: white;
     font-size: 10px;
 }
 
-item .tooltiptext a:hover {
+.item-link .tooltiptext>span:hover {
     text-decoration: underline;
 }
