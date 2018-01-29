@@ -172,7 +172,7 @@ function renderMarkdown(content) {
     renderer.link = function( href, title, text ) {
         if (href.startsWith('item://')) {
             var item_name = href.split('//')[1];
-            console.log(item_name);
+
             var html = '<a href="#" class="item-link">' + text + '<span class="tooltiptext"> \
                 <span href="#" onclick="highlighted_splits = [\'' + item_name + '\']; redrawBins();">HIGHLIGHT</span>';
 
