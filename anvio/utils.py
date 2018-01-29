@@ -714,7 +714,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     return id_to_sample_dict, sample_to_id_dict, columns, vectors
 
 
-def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, as_pandas=False):
+def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):
     """
         This function takes the gene_level_coverage_stats_dict and return one of the values
         as a matrix-like dict of dicts.
@@ -730,11 +730,28 @@ def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_di
         raise ConfigError("%s is not a valid key for creating a pandas dataframe of values of gene_level_coverage_stats_dict.\
                             Here is a list of the valid keys: %s" % (key, list(legal_keys)))
 
+    gene_callers_ids = set(gene_level_coverage_stats_dict.keys())
+    samples = set(next(iter(gene_level_coverage_stats_dict.values())).keys())
+
+    if genes_of_interest is not None:
+        missing_genes = [g for g in genes_of_interest if g not in gene_callers_ids]
+        if len(missing_genes):
+            raise ConfigError("The following genes are not in the gene_level_coverage_stats_dict, and yet you are asking for them: %s" % missing_genes)
+    else:
+        genes_of_interest = gene_callers_ids
+
+    if samples_of_interest is not None:
+        missing_samples = [s for s in samples_of_interest if s not in samples]
+        if len(missing_samples):
+            raise ConfigError("The following samples are not in the gene_level_coverage_stats_dict, and yet you are asking for them: %s" % missing_samples)
+    else:
+        samples_of_interest = samples
+
     d = {}
 
-    for gene_callers_id in gene_level_coverage_stats_dict:
+    for gene_callers_id in genes_of_interest:
         d[gene_callers_id] = {}
-        for sample_name in gene_level_coverage_stats_dict[gene_callers_id]:
+        for sample_name in samples_of_interest:
             d[gene_callers_id][sample_name] = gene_level_coverage_stats_dict[gene_callers_id][sample_name][key]
     
     if as_pandas:
