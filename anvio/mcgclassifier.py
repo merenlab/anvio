@@ -176,6 +176,7 @@ class MetagenomeCentricGeneClassifier:
             gene_stat = utils.get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key, as_pandas=False, samples_of_interest=self.samples)
             self.gene_level_coverage_stats_dict_of_dataframes[key] = gene_stat
 
+
     def init_sample_detection_information(self):
         """ Determine  positive, negative, and ambiguous samples with the genome detection information
         (--alpha, --genome-detection-uncertainty)
