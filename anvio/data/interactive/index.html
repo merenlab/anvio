@@ -548,7 +548,7 @@
                             </div>
                             <span>Search functions</span>
                             <div class="form-horizontal">
-                                <div class="alert alert-danger functions-not-available-message" style="display: none; margin-bottom: 20px;">Functions are not initialized or not available for this mode.</div>
+                                <div class="alert alert-danger functions-not-available-message" style="margin-bottom: 20px;">Functions are not initialized or not available for this mode.</div>
                                 <table style="width: 100%;">
                                     <tr>
                                         <td>Search terms:</td>
@@ -565,6 +565,60 @@
                                 </table>
                                 <div class="alert alert-danger search-message" style="display: none; margin-top: 20px;">
                                 </div>
+                            </div>
+                            <span>Search gene clusters using filters</span>
+                            <div class="form-horizontal">
+                                <div class="alert alert-danger gene-filters-not-available-message" style="margin-bottom: 20px;">This feature is only available for 'pangenomics' mode.</div>
+                                <table class="table table-borderless">
+                                    <thead>
+                                        <tr>
+                                            <th>Active</th>
+                                            <th>Rule</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="pan-filters">
+                                        <tr>
+                                            <td><input class="form-control" type="checkbox" disabled /></td>
+                                            <td>Min number of genomes gene cluster occurs</td>
+                                            <td><input class="form-control input-xs" size="6" parameter="min_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
+                                        </tr>
+                                        <tr>
+                                            <td><input class="form-control" type="checkbox" disabled /></td>
+                                            <td>Max number of genomes gene cluster occurs</td>
+                                            <td><input class="form-control input-xs" size="6" parameter="max_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
+                                        </tr>
+                                        <tr>
+                                            <td><input class="form-control" type="checkbox" disabled /></td>
+                                            <td>Min number of genes from each genome</td>
+                                            <td><input class="form-control input-xs" size="6" parameter="min_num_genes_from_each_genome" type="text" value="0" disabled /></td>
+                                        </tr>
+                                        <tr>
+                                            <td><input class="form-control" type="checkbox" disabled /></td>
+                                            <td>Max number of genes from each genome</td>
+                                            <td><input class="form-control input-xs" size="6" parameter="max_num_genes_from_each_genome" type="text" value="0" disabled /></td>
+                                        </tr>
+                                        <tr>
+                                            <td></td>
+                                            <td><button type="button" class="btn btn-default btn-sm" onclick="filterGeneClusters();" disabled><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button></td>
+                                            <td></td>
+                                        </tr>
+                                        <tr>
+                                            <td></td>
+                                            <td><div id="search_result_message_pan_filter"></div></td>
+                                            <td></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div class="alert alert-danger pan-filter-error" style="display: none; margin-top: 20px;"">
+                                </div>
+                                <script type="text/javascript">
+                                    $(document).ready(function() {
+                                        $('.pan-filters input:checkbox').on('change', function(event) {
+                                            $(event.target).closest('tr').find('input:text').prop('disabled', !$(event.target).prop('checked'));
+                                        });
+                                    });
+                                </script>
                             </div>
                         </div>
                         <div class="form-horizontal" style="margin-top: 20px;">
