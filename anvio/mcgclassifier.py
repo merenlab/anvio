@@ -186,6 +186,9 @@ class MetagenomeCentricGeneClassifier:
             or absence of the genome in each sample.
         """
 
+        if self.coverage_values_per_nt is None:
+            self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.split_coverage_values_per_nt_dict, samples=self.samples)
+
         # FIXME: some of the following variables are never used.
         MCG_samples_information_table_name      = 'MCG_classifier_samples_information'
         MCG_samples_information_table_structure = ['samples', 'presence', 'detection', 'number_of_taxon_specific_core_detected']
