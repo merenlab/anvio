@@ -377,6 +377,7 @@ class MultipleRuns:
 
         if self.SNVs_profiled:
             self.progress.new('Merging variable positions tables')
+            self.progress.update('...')
             self.merge_variable_nts_tables()
             self.progress.end()
         else:
@@ -384,6 +385,7 @@ class MultipleRuns:
 
         if self.AA_frequencies_profiled:
             self.progress.new('Merging variable AAs tables')
+            self.progress.update('...')
             self.merge_variable_aas_tables()
             self.progress.end()
         else:
