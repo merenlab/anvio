@@ -15,6 +15,7 @@ import matplotlib
 # TODO: according to the warning, this call to set the back-hand is meaningless
 # I need to experiment to see what happens if I delete it.
 matplotlib.use('pdf')
+import anvio.utils as utils
 import matplotlib.pyplot as plt
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -60,8 +61,11 @@ class MetagenomeCentricGeneClassifier:
         self.include_samples = A('include_samples')
         self.outliers_threshold = A('outliers_threshold')
         self.gen_figures = A('gen_figures')
-        self.split_coverage_values_per_nt_dict = {}
-        self.gene_level_coverage_stats_dict = {}
+        self.split_coverage_values_per_nt_dict = None
+        self.gene_level_coverage_stats_dict = None
+        self.gene_level_coverage_stats_dict_of_dataframes = None
+
+
         self.profile_db = {}
         self.coverage_values_per_nt = {}
         self.gene_coverages = {}
@@ -78,7 +82,7 @@ class MetagenomeCentricGeneClassifier:
         self.gene_class_df = {}
         self.samples_detection_information = {}
         self.gene_presence_absence_in_samples_initiated = False
-        self.gene_presence_absence_in_samples = {}
+        self.gene_presence_absence_in_samples = None
         self.gene_coverages_filtered = {}
         self.additional_description = ''
         self.total_length = None
@@ -188,25 +192,17 @@ class MetagenomeCentricGeneClassifier:
         self.samples = samples
 
 
-    def init_coverage_and_detection_dataframes(self, gene_coverages_dict, gene_detection_dict, gene_non_outlier_coverages_dict, gene_non_outlier_coverage_stds_dict):
-        """ Populate the following: self.gene_coverages, self.Ng, self.gene_detections.
-
-            Notice that this function could get as input either an object of ProfileSuperclass or of summarizer.Bin
-        """
-        self.gene_coverages = pd.DataFrame.from_dict(gene_coverages_dict, orient='index', dtype=float)
-        self.Ng = len(self.gene_coverages.index)
-        self.gene_detections = pd.DataFrame.from_dict(gene_detection_dict, orient='index', dtype=float)
-        self.gene_non_outlier_coverages = pd.DataFrame.from_dict(gene_non_outlier_coverages_dict, orient='index', dtype=float)
-        self.gene_non_outlier_coverage_stds = pd.DataFrame.from_dict(gene_non_outlier_coverage_stds_dict, orient='index', dtype=float)
-
-
-        if self.include_samples or self.exclude_samples:
+    def init_gene_level_coverage_stats_dict_of_dataframes(self):
+        """ converts the dictionaries of gene_level_coverage_stats_dict to dataframes"""
+        self.gene_level_coverage_stats_dict_of_dataframes = {}
+        for key in ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']:
             # Only include samples that the user want
-            self.gene_coverages = self.gene_coverages[list(self.samples)]
-            self.gene_detections = self.gene_detections[list(self.samples)]
-            self.gene_non_outlier_coverages = self.gene_non_outlier_coverages[list(self.samples)]
-            self.gene_non_outlier_coverage_stds = self.gene_non_outlier_coverage_stds[list(self.samples)]
+            gene_stat = utils.get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key, as_pandas=True, samples_of_interest=self.samples)
+            self.gene_level_coverage_stats_dict_of_dataframes[key] = gene_stat
 
+        for key in ['gene_coverage_values_per_nt', 'non_outlier_positions']:
+            gene_stat = utils.get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key, as_pandas=False, samples_of_interest=self.samples)
+            self.gene_level_coverage_stats_dict_of_dataframes[key] = gene_stat
 
     def init_sample_detection_information(self):
         """ Determine  positive, negative, and ambiguous samples with the genome detection information
@@ -377,7 +373,10 @@ class MetagenomeCentricGeneClassifier:
             raise ConfigError("gene presence/absence in samples cannot be determined without a gene_level_coverage_stats_dict,\
                                 but it seems that you don't have one. maybe you should run init()?")
 
-        gene_callers_id = self.gene_detections.index
+        if self.gene_level_coverage_stats_dict_of_dataframes is None:
+            self.init_gene_level_coverage_stats_dict_of_dataframes()
+
+        gene_callers_id = self.gene_level_coverage_stats_dict_of_dataframes['detection'].index
         self.gene_presence_absence_in_samples = pd.DataFrame(index=gene_callers_id, columns=self.samples)
 
         num_samples, counter = len(self.samples), 1
@@ -387,7 +386,7 @@ class MetagenomeCentricGeneClassifier:
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
             for gene_id in gene_callers_id:
-                self.gene_presence_absence_in_samples.loc[gene_id, sample] = get_presence_absence_information(self.gene_detections.loc[gene_id, sample], self.alpha)
+                self.gene_presence_absence_in_samples.loc[gene_id, sample] = get_presence_absence_information(self.gene_level_coverage_stats_dict_of_dataframes['detection'].loc[gene_id, sample], self.alpha)
         self.gene_presence_absence_in_samples_initiated = True
         self.progress.end()
 
@@ -608,10 +607,8 @@ class MetagenomeCentricGeneClassifier:
 
     def classify(self):
         
-        # FIXME:this is for debugging and should be removed
-        print(self.gene_level_coverage_stats_dict)
-        print(self.split_coverage_values_per_nt_dict)
-
+        self.init_gene_presence_absence_in_samples()
+        print(self.gene_presence_absence_in_samples)
         return
         self.get_gene_classes()
         #self.save_gene_class_information_in_additional_layers(bin_id)
