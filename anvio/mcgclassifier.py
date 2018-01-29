@@ -628,10 +628,21 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
     number_of_samples = len(samples)
     number_of_finished = 0
 
+    # find the combined legnth of all contigs first
+    total_length = 0
+    for split in split_coverage_values_per_nt_dict:
+        total_length += len(split_coverage_values_per_nt_dict[split][samples[0]])
+
     for sample in samples:
-        d[sample] = np.empty([1,0])
+        # create an array of zero with the total length
+        # this is much faster than appending the vectors of splits
+        d[sample] = np.zeros(total_length)
+        pos = 0
         for split in split_coverage_values_per_nt_dict:
-            d[sample] = np.append(d[sample],split_coverage_values_per_nt_dict[split][sample])
+            split_values = split_coverage_values_per_nt_dict[split][sample]
+            split_len = len(split_values)
+            d[sample][pos:pos+split_len] = split_values
+            pos += split_len
         #d[sample] = np.array(d[sample])
         number_of_finished += 1
         progress.update("Finished sample %d of %d" % (number_of_finished,number_of_samples))
