@@ -67,7 +67,7 @@ class MetagenomeCentricGeneClassifier:
 
 
         self.profile_db = {}
-        self.coverage_values_per_nt = {}
+        self.coverage_values_per_nt = None
         self.gene_coverages = {}
         self.gene_detections = None
         self.gene_coverage_values_per_nt = {}
