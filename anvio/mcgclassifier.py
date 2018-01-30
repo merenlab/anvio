@@ -612,7 +612,7 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
     # find the combined legnth of all contigs first
     total_length = 0
     for split in split_coverage_values_per_nt_dict:
-        total_length += len(split_coverage_values_per_nt_dict[split][samples[0]])
+        total_length += len(split_coverage_values_per_nt_dict[split][next(iter(samples))])
 
     for sample in samples:
         # create an array of zero with the total length
