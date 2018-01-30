@@ -189,6 +189,7 @@ class MetagenomeCentricGeneClassifier:
         if self.coverage_values_per_nt is None:
             self.coverage_values_per_nt = get_coverage_values_per_nucleotide(self.split_coverage_values_per_nt_dict, samples=self.samples)
 
+        total_length = len(next(iter(self.coverage_values_per_nt.values())))
         # FIXME: some of the following variables are never used.
         MCG_samples_information_table_name      = 'MCG_classifier_samples_information'
         MCG_samples_information_table_structure = ['samples', 'presence', 'detection', 'number_of_taxon_specific_core_detected']
@@ -206,10 +207,10 @@ class MetagenomeCentricGeneClassifier:
         for sample in self.samples:
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
-            print("total length for %s is %s" % (sample, self.total_length))
+            print("total length for %s is %s" % (sample, total_length))
             print("the length of the vector: %s" % len(self.coverage_values_per_nt[sample])) # FIXME: after testing this module, delete this line. it is only here to make sure that anvio is not lying to us.
             print("number of nucleotide positions with non zero coverage in %s is %s " % (sample, np.count_nonzero(self.coverage_values_per_nt[sample])))
-            detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / self.total_length
+            detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / total_length
             samples_information['presence'][sample] = get_presence_absence_information(detection[sample], self.alpha)
             if samples_information['presence'][sample]:
                 positive_samples.append(sample)
@@ -256,7 +257,7 @@ class MetagenomeCentricGeneClassifier:
 
             self.run.info_single('The mean and std of non-outliers in sample %s are: %s, %s respectively' % (sample, self.samples_coverage_stats_dicts['non_outlier_mean_coverage'][sample], self.samples_coverage_stats_dicts['non_outlier_coverage_std'][sample]))
             number_of_non_outliers = len(self.non_outlier_indices[sample])
-            self.run.info_single('The number of non-outliers is %s of %s (%.2f%%)' % (number_of_non_outliers, self.total_length, 100.0 * number_of_non_outliers / self.total_length))
+            self.run.info_single('The number of non-outliers is %s of %s (%.2f%%)' % (number_of_non_outliers, total_length, 100.0 * number_of_non_outliers / total_length))
         self.samples_coverage_stats_dicts_was_initiated = True
         self.progress.end()
 
