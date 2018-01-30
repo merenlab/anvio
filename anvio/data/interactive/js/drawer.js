@@ -1298,7 +1298,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                         q.angle + q.size / 2,
                         this.layer_boundaries[layer.order][0], 
                         this.layer_boundaries[layer.order][1],
-                        0,
+                        (Math.abs(q.size) > Math.PI) ? 1 : 0,
                         getGradientColor(
                             layer.get_visual_attribute('color-start'), 
                             layer.get_visual_attribute('color'),  
