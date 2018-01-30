@@ -546,6 +546,7 @@ function mouseMoveHandler(event) {
 
 function menu_callback(action, param) {
     var item_name = id_to_node_map[context_menu_target_id].label;
+    var target = (mode == 'gene') ? 'gene' : 'contig';
 
     switch (action) {
         case 'collapse':
@@ -606,10 +607,10 @@ function menu_callback(action, param) {
             });
             break;
 
-        case 'blastn_nr': get_sequence_and_blast(item_name, 'blastn', 'nr', 'contig'); break;
-        case 'blastx_nr': get_sequence_and_blast(item_name, 'blastx', 'nr', 'contig'); break;
-        case 'blastn_refseq_genomic': get_sequence_and_blast(item_name, 'blastn', 'refseq_genomic', 'contig'); break;
-        case 'blastx_refseq_protein': get_sequence_and_blast(item_name, 'blastx', 'refseq_genomic', 'contig'); break;
+        case 'blastn_nr': get_sequence_and_blast(item_name, 'blastn', 'nr', target); break;
+        case 'blastx_nr': get_sequence_and_blast(item_name, 'blastx', 'nr', target); break;
+        case 'blastn_refseq_genomic': get_sequence_and_blast(item_name, 'blastn', 'refseq_genomic', target); break;
+        case 'blastx_refseq_protein': get_sequence_and_blast(item_name, 'blastx', 'refseq_genomic', target); break;
 
         // collection mode-specific:
         case 'refine_bin': toastr.error('Refine function from the interface is not currently implemented :/ ' +
