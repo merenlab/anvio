@@ -240,6 +240,8 @@ class MetagenomeCentricGeneClassifier:
         if not self.sample_detection_information_was_initiated:
             self.init_sample_detection_information()
 
+        total_length = len(next(iter(self.coverage_values_per_nt.values())))
+
         self.samples_coverage_stats_dicts = pd.DataFrame(index=self.samples, columns=columns_for_samples_coverage_stats_dict)
 
         num_samples, counter = len(self.samples), 1
