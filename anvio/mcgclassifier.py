@@ -285,7 +285,7 @@ class MetagenomeCentricGeneClassifier:
         progress.update('...')
         number_of_fininshed = 0
         for sample in self.positive_samples:
-            coverages_pdf_output = plot_dir + sample + additional_description + '-coverages.pdf'
+            coverages_pdf_output = plot_dir + sample + self.additional_description + '-coverages.pdf'
             pdf_output_file = PdfPages(coverages_pdf_output)
             v = self.coverage_values_per_nt[sample]
             # Using argsort so we can use the non_oulier indices
@@ -533,10 +533,11 @@ class MetagenomeCentricGeneClassifier:
         if not self.gene_coverage_consistency_dict_initiated:
             self.init_gene_coverage_consistency_information()
 
-        num_genes, counter = len(self.gene_coverages.index), 1
+        gene_ids = self.gene_level_coverage_stats_dict_of_dataframes['mean_coverage'].index
+        num_genes, counter = len(gene_ids), 1
         progress.new('Plotting gene consistency information')
         progress.update('...')
-        for gene_id in self.gene_coverages.index:
+        for gene_id in gene_ids:
             if num_genes > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d genes...' % (counter, num_genes))
             p = MCGPlots(self, gene_id, run=run, progress=progress)
