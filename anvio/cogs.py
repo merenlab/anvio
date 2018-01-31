@@ -127,7 +127,8 @@ class COGs:
 
     def store_hits_into_contigs_db(self):
         if not self.hits:
-            raise ConfigError("COGs class has no hits to process. Did you forget to call search?")
+            self.run.warning("COGs class has no hits to process. Returning empty handed.")
+            return
 
         cogs_data = COGsData(self.args)
         cogs_data.init_p_id_to_cog_id_dict()
@@ -138,10 +139,10 @@ class COGs:
 
         def add_entry(gene_callers_id, source, accession, function, e_value):
             functions_dict[self.__entry_id] = {'gene_callers_id': int(gene_callers_id),
-                                        'source': source,
-                                        'accession': accession,
-                                        'function': function,
-                                        'e_value': float(e_value)}
+                                               'source': source,
+                                               'accession': accession,
+                                               'function': function,
+                                               'e_value': float(e_value)}
             self.__entry_id += 1
 
         # let's keep track of hits that match to missing COGs

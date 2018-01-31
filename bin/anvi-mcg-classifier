@@ -23,6 +23,9 @@ __email__ = "alon.shaiber@gmail.com"
 def main(args):
     mcg = MetagenomeCentricGeneClassifier(args)
 
+    if args.output_file_prefix:
+        mcg.write_output_to_files = True
+
     args.init_gene_coverages = True
     args.populate_nt_level_coverage = True
     summary = summarizer.ProfileSummarizer(args)
@@ -45,13 +48,12 @@ def main(args):
     else:
         bin_names_of_interest = bin_names_in_collection
 
-    # FIXME: this is how I set the sample right now
-    # maybe Meren will change this in the future
-    mcg.init_samples(summary.p_meta['samples'])
     for bin_name in bin_names_of_interest:
         # This is where things are happening
         _bin = summarizer.Bin(summary, bin_name)
-        mcg.init(_bin.gene_level_coverage_stats_dict, _bin.split_coverage_values_per_nt_dict)
+        mcg.init(gene_level_coverage_stats_dict = _bin.gene_level_coverage_stats_dict, \
+                    split_coverage_values_per_nt_dict = _bin.split_coverage_values_per_nt_dict, \
+                    additional_description = bin_name)
         mcg.classify()
 
 
@@ -75,6 +77,7 @@ if __name__ == '__main__':
     groupB.add_argument('--exclude-samples', metavar='FILE', default=None, help='List of samples to exclude for the analysis.')
     groupB.add_argument('--include-samples', metavar='FILE', default=None, help='List of samples to include for the analysis.')
     groupB.add_argument(*anvio.A('gen-figures'), **anvio.K('gen-figures'))
+    groupB.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
     groupC.add_argument('--alpha', '--genome-detection-uncertainty', metavar='NUM', type=float, default=0.25,
                         help='Determines the range of sample detection values that are considered negative, ambiguous or positive. \

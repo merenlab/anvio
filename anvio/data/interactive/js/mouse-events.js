@@ -474,12 +474,7 @@ function mouseMoveHandler(event) {
             }
         }
 
-        $('#tooltip_content').html(message);
-        if ($('#tooltip_content').height() + 300 > $(window).height()) {
-            $('#mouse_hover_scroll').css('top', ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_pos).position()['top']);
-        } else {
-            $('#mouse_hover_scroll').css('top', 0);
-        }
+        write_mouse_table(message, "Layers", layer_pos);
         return;
     }
 
@@ -507,7 +502,7 @@ function mouseMoveHandler(event) {
     var message = "";
     for (var i=0; i < tooltip_arr.length; i++)
     {
-        if (i == layer_id)
+        if (i == layer_id - 1)
         {
             message += '<tr style="background-color: rgb(232, 202, 207);">' + tooltip_arr[i] + '</tr>';
         }
@@ -535,13 +530,20 @@ function mouseMoveHandler(event) {
 
     var tr_bin = '<tr><td class="tk">bin</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + bin_color + '"></div>' + belongs + '</td></tr>'
 
-    $('#tooltip_content').html(message + tr_bin);
+    write_mouse_table(message+tr_bin, target_node.label, layer_id);
+}
+
+
+function write_mouse_table(content, item_name, layer_id) {
+    $('#cell_item_name').html(item_name);
+    $('#tooltip_content').html(content);
+
     if ($('#tooltip_content').height() + 300 > $(window).height()) {
-        $('#mouse_hover_scroll').css('top', ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_id).position()['top']);
+        $('#mouse_hover_scroll').css('top', Math.min(0, ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_id).position()['top']));
     } else {
         $('#mouse_hover_scroll').css('top', 0);
-    }
-}
+    } 
+} 
 
 
 function menu_callback(action, param) {
