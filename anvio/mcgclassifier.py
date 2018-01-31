@@ -128,19 +128,14 @@ class MetagenomeCentricGeneClassifier:
 
         self.gene_level_coverage_stats_dict = gene_level_coverage_stats_dict
         self.split_coverage_values_per_nt_dict = split_coverage_values_per_nt_dict
-        self.additional_description = additional_description
+        if self.additional_description:
+            self.additional_description = '-' + additional_description
 
         try:
             samples = next(iter(self.gene_level_coverage_stats_dict.values())).keys()
         except:
             samples = next(iter(self.split_coverage_values_per_nt_dict.values())).keys()
         self.init_samples(samples)
-
-
-    def check_if_valid_portion_value(self, arg_name,arg_value):
-        """ Helper function to verify that an argument has a valid value for a non-zero portion (i.e. greater than zero and a max of 1)"""
-        if arg_value <= 0 or arg_value > 1:
-            raise ConfigError("%s value must be greater than zero and a max of 1, the value you supplied %s" % (arg_name,arg_value))
 
 
     def sanity_check(self):
@@ -276,16 +271,6 @@ class MetagenomeCentricGeneClassifier:
         self.progress.end()
 
 
-    def store_samples_coverage_stats_dict(self):
-        """ sotre samples_coverage_stats_dict into TAB-delimited file"""
-
-        if not self.samples_coverage_stats_dicts_was_initiated:
-            raise ConfigError("can't dtore samples_coverage_stats_dict, because it wasn't initiated")
-
-        output_file_path = self.output_file_prefix + '-samples-coverage-stats.txt'
-        self.samples_coverage_stats_dicts.to_csv(output_file_path, sep='\t', index_label='sample')
-
-
     def plot_nucleotide_coverage_distribution(self):
         """ Creates a pdf file with the following plots for each sample the sorted nucleotide coverages \
         (with the outliers in red and non-outliers in blue), and a histogram of coverages for the non-outliers"""
@@ -293,10 +278,6 @@ class MetagenomeCentricGeneClassifier:
 
         if not self.samples_coverage_stats_dicts_was_initiated:
             self.init_samples_coverage_stats_dict()
-
-        additional_description = ''
-        if self.additional_description:
-            additional_description = '-' + self.additional_description
 
         plot_dir = self.output_file_prefix + '-nucleotide-coverage-distribution-plots' + '/'
         os.makedirs(plot_dir, exist_ok=True)
@@ -536,6 +517,16 @@ class MetagenomeCentricGeneClassifier:
             self.gene_class_df.loc[gene_id, 'MCG_class'] = get_class_string(gene_specificity, gene_coverage_consistency, gene_is_core) 
 
 
+    def update_samples_information_from_gene_class_df(self):
+        # after running classification we sum up some information regarding 
+        # the results of the classifier per sample
+
+        for sample in self.samples_detection_information:
+            TSC = [g for g in self.gene_class_df.index if (self.gene_class_df.loc[g,'coverage_consistency'] and \
+                                                            self.gene_class_df.loc[g,'core'])]
+            self.samples_detection_information['number_of_taxon_specific_core_detected'] = len(TSC)
+
+
     def gen_gene_consistency_plots(self):
         """ generate and save the gene consistency plots for each gene."""
 
@@ -554,27 +545,22 @@ class MetagenomeCentricGeneClassifier:
         progress.end()
 
 
-    def save_gene_class_information_in_additional_layers(self, additional_description=''):
+    def save_gene_class_information_in_additional_layers(self):
         additional_column_titles = []
-        additional_layers_df = self.gene_class_df
-        output_file_path = self.output_file_prefix + '-additional-layers.txt'
-        additional_layers_df.to_csv(output_file_path, sep='\t', index_label='gene_callers_id')
+        output_file_path = self.output_file_prefix + self.additional_description + '-additional-layers.txt'
+        self.gene_class_df.to_csv(output_file_path, sep='\t', index_label='gene_callers_id')
 
 
-    def save_samples_information(self, additional_description=''):
-        # TODO: there used to be this here:
-        #self.run.warning(self.samples_information)
-        samples_information_df = self.samples_information
-
-        if additional_description:
-            additional_description = '-' + additional_description
-
-        samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
-        samples_information_df.to_csv(samples_information_file_name, sep='\t', index_label='samples')
+    def save_samples_information(self):
+        samples_information_file_name = self.output_file_prefix + self.additional_description + '-samples-information.txt'
+        samples_information = pd.concat([self.samples_detection_information, self.samples_coverage_stats_dicts], axis=1)
+        samples_information.to_csv(samples_information_file_name, sep='\t', index_label='samples')
 
 
     def classify(self):
         self.init_gene_class_df()
+
+        self.update_samples_information_from_gene_class_df()
         
         if self.gen_figures:
             # Create the plots for nucleotide-level coverage data per sample.
@@ -583,8 +569,8 @@ class MetagenomeCentricGeneClassifier:
             self.gen_gene_consistency_plots() 
 
         if self.write_output_to_files:
-            self.save_gene_class_information_in_additional_layers(bin_id)
-            self.save_samples_information(bin_id)
+            self.save_gene_class_information_in_additional_layers()
+            self.save_samples_information()
 
 
 def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):
