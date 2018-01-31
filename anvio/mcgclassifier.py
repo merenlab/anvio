@@ -61,6 +61,7 @@ class MetagenomeCentricGeneClassifier:
         self.include_samples = A('include_samples')
         self.outliers_threshold = A('outliers_threshold')
         self.gen_figures = A('gen_figures')
+        self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.split_coverage_values_per_nt_dict = None
         self.gene_level_coverage_stats_dict = None
         self.gene_level_coverage_stats_dict_of_dataframes = None
@@ -143,7 +144,7 @@ class MetagenomeCentricGeneClassifier:
 
         if self.output_file_prefix:
             # checking output file
-            filesnpaths.is_output_file_writable(self.output_file_prefix + '-additional-layers.txt', ok_if_exists=False)
+            filesnpaths.is_output_file_writable(self.output_file_prefix + '-additional-layers.txt', ok_if_exists=self.overwrite_output_destinations)
 
         # checking alpha
         if not isinstance(self.alpha, float):
