@@ -115,6 +115,7 @@ class HMMer:
         utils.run_command(cmd_line, log_file_path)
 
         if not os.path.exists(self.hmm_scan_hits_shitty):
+            self.progress.end()
             raise ConfigError("Something went wrong with hmmscan, and it failed to generate the\
                                 expected output :/ Fortunately, this log file should tell you what\
                                 might be the problem: '%s'. Please do not forget to include this\
