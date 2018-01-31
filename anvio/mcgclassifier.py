@@ -353,14 +353,11 @@ class MetagenomeCentricGeneClassifier:
         gene_callers_id = self.gene_level_coverage_stats_dict_of_dataframes['detection'].index
         self.gene_presence_absence_in_samples = pd.DataFrame(index=gene_callers_id, columns=self.samples)
 
+        T = lambda x: get_presence_absence_information(x, self.alpha)
         num_samples, counter = len(self.samples), 1
         self.progress.new('Computing gene presence/absence in samples')
         progress.update('...')
-        for sample in self.samples:
-            if num_samples > 100 and counter % 100 == 0:
-                self.progress.update('%d of %d samples...' % (counter, num_samples))
-            for gene_id in gene_callers_id:
-                self.gene_presence_absence_in_samples.loc[gene_id, sample] = get_presence_absence_information(self.gene_level_coverage_stats_dict_of_dataframes['detection'].loc[gene_id, sample], self.alpha)
+        self.gene_presence_absence_in_samples = self.gene_level_coverage_stats_dict_of_dataframes['detection'].applymap(T)
         self.gene_presence_absence_in_samples_initiated = True
         self.progress.end()
 
