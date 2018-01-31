@@ -51,7 +51,9 @@ def main(args):
     for bin_name in bin_names_of_interest:
         # This is where things are happening
         _bin = summarizer.Bin(summary, bin_name)
-        mcg.init(_bin.gene_level_coverage_stats_dict, _bin.split_coverage_values_per_nt_dict)
+        mcg.init(gene_level_coverage_stats_dict = _bin.gene_level_coverage_stats_dict, \
+                    split_coverage_values_per_nt_dict = _bin.split_coverage_values_per_nt_dict, \
+                    additional_description = bin_name)
         mcg.classify()
 
 
