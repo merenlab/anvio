@@ -129,6 +129,12 @@ class MetagenomeCentricGeneClassifier:
         self.split_coverage_values_per_nt_dict = split_coverage_values_per_nt_dict
         self.additional_description = additional_description
 
+        try:
+            samples = next(iter(self.gene_level_coverage_stats_dict.values())).keys()
+        except:
+            samples = next(iter(self.split_coverage_values_per_nt_dict.values())).keys()
+        self.init_samples(samples)
+
 
     def check_if_valid_portion_value(self, arg_name,arg_value):
         """ Helper function to verify that an argument has a valid value for a non-zero portion (i.e. greater than zero and a max of 1)"""
