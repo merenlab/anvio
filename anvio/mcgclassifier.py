@@ -120,6 +120,11 @@ class MetagenomeCentricGeneClassifier:
 
     def init(self, gene_level_coverage_stats_dict=None, split_coverage_values_per_nt_dict=None, additional_description=None):
         """ setting the dictionaries for gene coverage stats and for split coverage per nucleotide"""
+
+        if gene_level_coverage_stats_dict is None and split_coverage_values_per_nt_dict is None:
+            raise ConfigError("MCGC needs at least one of the following in order to work: \
+                                gene_level_coverage_stats_dict or/and split_coverage_values_per_nt_dict")
+
         self.gene_level_coverage_stats_dict = gene_level_coverage_stats_dict
         self.split_coverage_values_per_nt_dict = split_coverage_values_per_nt_dict
         self.additional_description = additional_description
