@@ -535,27 +535,6 @@ class MetagenomeCentricGeneClassifier:
             self.gene_class_df.loc[gene_id, 'MCG_class'] = get_class_string(gene_specificity, gene_coverage_consistency, gene_is_core) 
 
 
-    def get_gene_classes(self):
-        """ The main process of this class - computes the class information for each gene"""
-        # copmute coverage stats values
-        self.init_samples_coverage_stats_dict()
-
-        # find occurence of genes in the samples
-        self.init_gene_presence_absence_in_samples()
-
-        # compute gene consistency information
-        self.init_gene_coverage_consistency_information()
-
-        if self.gen_figures:
-            # Create the plots for nucleotide-level coverage data per sample.
-            self.plot_nucleotide_coverage_distribution()
-            # generate plots for coverage consistency information for each gene.
-            self.gen_gene_consistency_plots() 
-
-        # create the gene_class_df
-        self.init_gene_class_df()
-
-
     def gen_gene_consistency_plots(self):
         """ generate and save the gene consistency plots for each gene."""
 
@@ -592,14 +571,16 @@ class MetagenomeCentricGeneClassifier:
         samples_information_file_name = self.output_file_prefix + additional_description + '-samples-information.txt'
         samples_information_df.to_csv(samples_information_file_name, sep='\t', index_label='samples')
 
+
     def classify(self):
+        self.init_gene_class_df()
         
-        self.init_gene_presence_absence_in_samples()
-        print(self.gene_presence_absence_in_samples)
-        return
-        self.get_gene_classes()
-        #self.save_gene_class_information_in_additional_layers(bin_id)
-        #self.save_samples_information(bin_id)
+        if self.gen_figures:
+            # Create the plots for nucleotide-level coverage data per sample.
+            self.plot_nucleotide_coverage_distribution()
+            # generate plots for coverage consistency information for each gene.
+            self.gen_gene_consistency_plots() 
+
 
 
 def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):
