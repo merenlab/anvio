@@ -44,7 +44,7 @@ class HMMer:
         self.tmp_dirs = []
 
 
-    def run_hmmscan(self, source, alphabet, context, kind, domain, genes_in_model, hmm, ref, cut_off_flag="--cut_ga"):
+    def run_hmmscan(self, source, alphabet, context, kind, domain, genes_in_model, hmm, ref, noise_cutoff_terms):
         target = ':'.join([alphabet, context])
 
         if target not in self.target_files_dict:
@@ -64,6 +64,7 @@ class HMMer:
         self.run.info('Domain', domain if domain else 'N\\A')
         self.run.info('HMM model path', hmm)
         self.run.info('Number of genes', len(genes_in_model))
+        self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
 
         tmp_dir = filesnpaths.get_temp_directory_path()
@@ -106,7 +107,7 @@ class HMMer:
         self.progress.update('Performing HMM scan ...')
 
         cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
-                    '-o', self.hmm_scan_output, cut_off_flag,
+                    '-o', self.hmm_scan_output, noise_cutoff_terms,
                     '--cpu', self.num_threads_to_use,
                     '--tblout', self.hmm_scan_hits_shitty,
                     hmm_file_path, self.target_files_dict[target]]
