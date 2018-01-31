@@ -143,8 +143,12 @@ class MetagenomeCentricGeneClassifier:
         """Basic sanity check for class inputs"""
 
         if self.output_file_prefix:
-            # checking output file
             filesnpaths.is_output_file_writable(self.output_file_prefix + '-additional-layers.txt', ok_if_exists=self.overwrite_output_destinations)
+
+        if self.gen_figures:
+            plot_dir = self.output_file_prefix + '-nucleotide-coverage-distribution-plots'
+            filesnpaths.is_output_dir_writable(self.output_file_prefix + '-nucleotide-coverage-distribution-plots')
+            os.makedirs(plot_dir, exist_ok=self.overwrite_output_destinations)
 
         # checking alpha
         if not isinstance(self.alpha, float):
@@ -281,7 +285,6 @@ class MetagenomeCentricGeneClassifier:
             self.init_samples_coverage_stats_dict()
 
         plot_dir = self.output_file_prefix + '-nucleotide-coverage-distribution-plots' + '/'
-        os.makedirs(plot_dir, exist_ok=True)
         self.progress.new('Saving figures of taxon specific distributions to pdf')
         progress.update('...')
         number_of_fininshed = 0
