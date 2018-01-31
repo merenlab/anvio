@@ -503,8 +503,9 @@ class MetagenomeCentricGeneClassifier:
         # XXX: only negative and positive samples are used here
         # ambiguous samples are ignored as if they were never
         # there. This is not ideal, but is easy to do.
-        self.gene_class_df = pd.DataFrame(index=list(self.gene_coverages.index))
-        for gene_id in self.gene_coverages.index:
+        gene_ids = self.gene_level_coverage_stats_dict_of_dataframes['mean_coverage'].index
+        self.gene_class_df = pd.DataFrame(index=gene_ids)
+        for gene_id in gene_ids:
             # determine the number of occurences in positive samples
             self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] = np.sum(self.gene_presence_absence_in_samples.loc[gene_id, self.positive_samples])
             # determine the number of occurences in negative samples
