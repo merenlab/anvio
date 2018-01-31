@@ -677,18 +677,22 @@
     </div>
 
     <div id="mouse_hover_panel">
-        <div id="mouse_hover_scroll_parent" style="height: 100%">
-            <div id="mouse_hover_scroll" style="position: absolute;">
-                <p style="color: #AAAAAA; padding: 10px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
-                <div id="mouse_hover" class="form-horizontal">
-                    <table class="table table-striped sortable" id="tooltips-table">
-                        <thead id="thead_search_results">
-                            <tr>
-                                <th width="30%">Key</th>
-                                <th width="70%">Value</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tooltip_content" class="search-results-display">
+        <p style="color: #AAAAAA; padding: 5px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
+        <div id="mouse_hover">
+            <table class="table table-striped" style="margin-bottom: 0px; background-color: rgba(100,100,100,0.2); font-weight: bold; word-break: break-all;">
+                <thead>
+                    <tr>
+                        <td width="40%">Item Name</th>
+                        <td width="60%" id="cell_item_name">#</th>
+                    </tr>
+                </thead>
+            </table>
+            <div id="mouse_hover_scroll_parent" style="height: 100%; overflow: hidden;">
+                <div id="mouse_hover_scroll" style="width: 100%; position: relative;">
+                    <table class="table table-striped" id="tooltips-table">
+                        <col width="40%">
+                        <col width="60%">
+                        <tbody id="tooltip_content">
                             <!-- JS FILLS HERE -->
                         </tbody>
                     </table>
