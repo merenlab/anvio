@@ -117,7 +117,7 @@ class VariabilitySuper(object):
             raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids\
                                as a file at the same time, obviously.")
 
-        if self.gene_caller_id:
+        if self.gene_caller_id is not None:
             try:
                 self.gene_caller_id = int(self.gene_caller_id)
             except:
