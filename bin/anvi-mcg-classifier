@@ -23,6 +23,9 @@ __email__ = "alon.shaiber@gmail.com"
 def main(args):
     mcg = MetagenomeCentricGeneClassifier(args)
 
+    if args.output_file_prefix:
+        mcg.write_output_to_files = True
+
     args.init_gene_coverages = True
     args.populate_nt_level_coverage = True
     summary = summarizer.ProfileSummarizer(args)

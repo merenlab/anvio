@@ -93,6 +93,7 @@ class MetagenomeCentricGeneClassifier:
         self.gene_coverage_consistency_dict_initiated = False
         self.samples_to_exclude = set([])
         self.samples_to_include = set([])
+        self.write_output_to_files = None
 
         if self.exclude_samples:
             # check that there is a file like this
@@ -581,6 +582,9 @@ class MetagenomeCentricGeneClassifier:
             # generate plots for coverage consistency information for each gene.
             self.gen_gene_consistency_plots() 
 
+        if self.write_output_to_files:
+            self.save_gene_class_information_in_additional_layers(bin_id)
+            self.save_samples_information(bin_id)
 
 
 def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):
