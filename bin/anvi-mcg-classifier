@@ -45,9 +45,6 @@ def main(args):
     else:
         bin_names_of_interest = bin_names_in_collection
 
-    # FIXME: this is how I set the sample right now
-    # maybe Meren will change this in the future
-    mcg.init_samples(summary.p_meta['samples'])
     for bin_name in bin_names_of_interest:
         # This is where things are happening
         _bin = summarizer.Bin(summary, bin_name)
