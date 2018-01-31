@@ -388,29 +388,26 @@ class MetagenomeCentricGeneClassifier:
 
         self.progress.new("Computing coverage consistency for all genes.")
         progress.update('...')
-        num_genes, counter = len(self.gene_coverages.index), 1
-        for gene_id in self.gene_coverages.index:
+        gene_ids = self.gene_level_coverage_stats_dict_of_dataframes['mean_coverage'].index
+        num_genes, counter = len(gene_ids), 1
+        for gene_id in gene_ids:
             if num_genes > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d genes...' % (counter, num_genes))
 
             # samples in which the gene is present
             _samples = self.gene_presence_absence_in_samples.loc[gene_id,self.gene_presence_absence_in_samples.loc[gene_id,]==True].index
             # mean and std of non-outlier nt in each sample
-            x = self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_mean_coverage']
+            x = list(self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_mean_coverage'].values)
             if "non_outlier_coverage_std" in self.samples_coverage_stats_dicts:
                 # we only expect to have the sample coverage std in "full" mode
-                std_x = self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_coverage_std'].values
+                std_x = list(self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_coverage_std'].values)
             else:
                 std_x = None
 
             if len(_samples) > 1:
                 # mean and std of non-outlier nt in the gene (in each sample)
-                y = self.gene_non_outlier_coverages.loc[gene_id, _samples].values
-                if self.gene_non_outlier_coverage_stds is None:
-                    # checking if 
-                    std_y = None
-                else:
-                    std_y = self.gene_non_outlier_coverage_stds.loc[gene_id, _samples].values
+                y = self.gene_level_coverage_stats_dict_of_dataframes['non_outlier_mean_coverage'].loc[gene_id, _samples].values
+                std_y = self.gene_level_coverage_stats_dict_of_dataframes['non_outlier_coverage_std'].loc[gene_id, _samples].values
 
                 # performing the regression using ODR
                 _data = odr.RealData(x, y, std_x, std_y)
