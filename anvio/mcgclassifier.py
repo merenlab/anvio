@@ -460,7 +460,7 @@ class MetagenomeCentricGeneClassifier:
                 # FIXME: this is where we use an arbitrary threshold again :-(
                 # if the slope precision is smaller than the threshold then the regression
                 # fit is considered accurate enough and the gene coverage is considered consistent.
-            return self.gene_coverage_consistency_dict[gene_id]['slope_precision'] > 0.5
+            return self.gene_coverage_consistency_dict[gene_id]['slope_precision'] < 0.5
         else:
             # The regression didn't converege so the coverage is probably not consistent.
             return False
