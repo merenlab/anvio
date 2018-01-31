@@ -77,6 +77,7 @@ if __name__ == '__main__':
     groupB.add_argument('--exclude-samples', metavar='FILE', default=None, help='List of samples to exclude for the analysis.')
     groupB.add_argument('--include-samples', metavar='FILE', default=None, help='List of samples to include for the analysis.')
     groupB.add_argument(*anvio.A('gen-figures'), **anvio.K('gen-figures'))
+    groupB.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
     groupC.add_argument('--alpha', '--genome-detection-uncertainty', metavar='NUM', type=float, default=0.25,
                         help='Determines the range of sample detection values that are considered negative, ambiguous or positive. \
