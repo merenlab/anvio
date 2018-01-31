@@ -147,7 +147,6 @@ class MetagenomeCentricGeneClassifier:
 
         if self.gen_figures:
             plot_dir = self.output_file_prefix + '-nucleotide-coverage-distribution-plots'
-            filesnpaths.is_output_dir_writable(self.output_file_prefix + '-nucleotide-coverage-distribution-plots')
             os.makedirs(plot_dir, exist_ok=self.overwrite_output_destinations)
 
         # checking alpha
