@@ -1782,6 +1782,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                    later.
        - reference.txt: Where is it coming from?
        - target.txt: the target term. see `anvio_hmm_target_term_to_alphabet_and_context` for details. 
+       - noise_cutoff_terms.txt: how the noisy hits should be dealt with? see this for details: https://github.com/merenlab/anvio/issues/498
 
        For an example HMM source directory, take a look at an example in the codebase:
 
@@ -1797,6 +1798,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                        and len(w) >= 3 \
                        and w[0] not in '_0123456789'
 
+    R = lambda f: open(os.path.join(source, f), 'rU').readlines()[0].strip()
     for source in source_dirs:
         if source.endswith('/'):
             source = source[:-1]
@@ -1807,16 +1809,19 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                 and must not contain any characters but ASCII letters, digits and\
                                 underscore" % os.path.basename(source))
 
-        for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt']:
+        for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']:
             if not os.path.exists(os.path.join(source, f)):
-                raise ConfigError("Each search database directory must contain following files:\
-                                    'kind.txt', 'reference.txt', 'genes.txt', 'target.txt', and\
-                                    'genes.hmm.gz'. %s does not seem to be a proper source." % \
+                raise ConfigError("Each search database directory must contain following files: 'kind.txt', \
+                                   'reference.txt', 'genes.txt', 'target.txt', 'genes.hmm.gz', and\
+                                   'noise_cutoff_terms.txt'. %s does not seem to be a proper source. See\
+                                   this blog post to make sure you are doing it the way it should be done:\
+                                   http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
                                                 os.path.basename(source))
 
-        ref = open(os.path.join(source, 'reference.txt'), 'rU').readlines()[0].strip()
-        kind = open(os.path.join(source, 'kind.txt'), 'rU').readlines()[0].strip()
-        target = open(os.path.join(source, 'target.txt'), 'rU').readlines()[0].strip()
+        ref = R('reference.txt')
+        kind = R('kind.txt')
+        target = R('target.txt')
+        noise_cutoff_terms = R('noise_cutoff_terms.txt')
         anvio_hmm_target_term_to_alphabet_and_context(target)
 
         domain = None
@@ -1843,6 +1848,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                              'domain': domain,
                                              'genes': list(genes.keys()),
                                              'target': target,
+                                             'noise_cutoff_terms': noise_cutoff_terms,
                                              'model': os.path.join(source, 'genes.hmm.gz')}
 
     return sources
