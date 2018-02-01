@@ -126,15 +126,20 @@ def main(args):
         gene_2 = gene_id + num_genes_list[1] * direction_dict[gene_dict['direction']]
         first_gene_of_the_block = min(gene_1, gene_2)
         last_gene_of_the_block = max(gene_1, gene_2)
+        # getting the ids for the first and last genes in the contig
+        contig_of_gene = contigs_db.genes_in_contigs_dict[gene_id]['contig']
+        genes_in_contig_sorted = sorted(list(contigs_db.contig_name_to_genes[contig_of_gene]))
+        last_gene_in_contig = genes_in_contig_sorted[-1][0]
+        first_gene_in_contig = genes_in_contig_sorted[0][0]
 
-        if last_gene_of_the_block > list(contigs_db.genes_in_contigs_dict.keys())[-1]:
+        if last_gene_of_the_block > last_gene_in_contig:
             # The requested block exceeds the contig length, then just take
             # FIXME: there must be a better way to do this. Also need to check with Meren if gene id's are always consecutive.
-            last_gene_of_the_block = list(utils.get_filtered_dict(contigs_db.genes_in_contigs_dict, 'contig', {gene_dict['contig']}).keys())[-1]
+            last_gene_of_the_block = last_gene_in_contig
             premature = True
-        if first_gene_of_the_block < 0:
+        if first_gene_of_the_block < first_gene_in_contig:
             # take the first gene of the contig. FIXME: also might be a better way to do this
-            first_gene_of_the_block = list(utils.get_filtered_dict(contigs_db.genes_in_contigs_dict, 'contig', {gene_dict['contig']}).keys())[0]
+            first_gene_of_the_block = first_gene_in_contig
             premature = True
 
         start = contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
