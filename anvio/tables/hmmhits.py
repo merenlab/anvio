@@ -113,6 +113,7 @@ class TablesForHMMHits(Table):
             all_genes_searched_against = sources[source]['genes']
             hmm_model = sources[source]['model']
             reference = sources[source]['ref']
+            noise_cutoff_terms = sources[source]['noise_cutoff_terms']
 
             hmm_scan_hits_txt = commander.run_hmmscan(source,
                                                       alphabet,
@@ -121,7 +122,8 @@ class TablesForHMMHits(Table):
                                                       domain,
                                                       all_genes_searched_against,
                                                       hmm_model,
-                                                      reference)
+                                                      reference,
+                                                      noise_cutoff_terms)
 
             if not hmm_scan_hits_txt:
                 search_results_dict = {}
