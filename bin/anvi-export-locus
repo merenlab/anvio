@@ -57,6 +57,14 @@ progress = terminal.Progress()
 
 
 def main(args):
+
+    # sanity check for output file
+    if not args.separate_fasta:
+        output_file_path = args.output_file_prefix + '.fa'
+    else:
+        output_file_path = args.output_file_prefix + '_0.fa'
+    filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
+
     contigs_db = dbops.ContigsSuperclass(args)
     contigs_db.init_contig_sequences()
     targets = []
@@ -113,8 +121,6 @@ def main(args):
 
     if not args.separate_fasta:
         # print all matches into one fasta file
-        output_file_path = args.output_file_prefix + '.fa'
-        filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
         f = open(output_file_path, 'w')
 
     entry_id = 0
