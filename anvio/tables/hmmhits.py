@@ -230,6 +230,10 @@ class TablesForHMMHits(Table):
         return search_results_dict
 
 
+    def remove_source(self, source):
+        self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_table_name, t.hmm_hits_splits_table_name])
+
+
     def append(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
         # we want to define unique identifiers for each gene first. this information will be used to track genes that will
         # break into multiple pieces due to arbitrary split boundaries. while doing that, we will add the 'source' info
@@ -243,7 +247,7 @@ class TablesForHMMHits(Table):
             hit['gene_unique_identifier'] = hashlib.sha224('_'.join([gene_call['contig'], hit['gene_name'], str(gene_call['start']), str(gene_call['stop'])]).encode('utf-8')).hexdigest()
             hit['source'] = source
 
-        self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_table_name, t.hmm_hits_splits_table_name])
+        self.remove_source(source)
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
