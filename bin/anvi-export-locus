@@ -63,7 +63,7 @@ def main(args):
         output_file_path = args.output_file_prefix + '.fa'
     else:
         output_file_path = args.output_file_prefix + '_0.fa'
-    filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
+    filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=args.overwrite_output_destinations)
 
     contigs_db = dbops.ContigsSuperclass(args)
     contigs_db.init_contig_sequences()
@@ -208,6 +208,7 @@ if __name__ == '__main__':
                             If you choose this option, you must also say which HMM source to use.')
     groupC.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
     groupC.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
+    groupC.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
 
     args = anvio.get_args(parser)
 
