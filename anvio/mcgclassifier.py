@@ -218,9 +218,6 @@ class MetagenomeCentricGeneClassifier:
         for sample in self.samples:
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
-            print("total length for %s is %s" % (sample, total_length))
-            print("the length of the vector: %s" % len(self.coverage_values_per_nt[sample])) # FIXME: after testing this module, delete this line. it is only here to make sure that anvio is not lying to us.
-            print("number of nucleotide positions with non zero coverage in %s is %s " % (sample, np.count_nonzero(self.coverage_values_per_nt[sample])))
             detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / total_length
             samples_information['presence'][sample] = get_presence_absence_information(detection[sample], self.alpha)
             if samples_information['presence'][sample]:
@@ -353,14 +350,11 @@ class MetagenomeCentricGeneClassifier:
         gene_callers_id = self.gene_level_coverage_stats_dict_of_dataframes['detection'].index
         self.gene_presence_absence_in_samples = pd.DataFrame(index=gene_callers_id, columns=self.samples)
 
+        T = lambda x: get_presence_absence_information(x, self.alpha)
         num_samples, counter = len(self.samples), 1
         self.progress.new('Computing gene presence/absence in samples')
         progress.update('...')
-        for sample in self.samples:
-            if num_samples > 100 and counter % 100 == 0:
-                self.progress.update('%d of %d samples...' % (counter, num_samples))
-            for gene_id in gene_callers_id:
-                self.gene_presence_absence_in_samples.loc[gene_id, sample] = get_presence_absence_information(self.gene_level_coverage_stats_dict_of_dataframes['detection'].loc[gene_id, sample], self.alpha)
+        self.gene_presence_absence_in_samples = self.gene_level_coverage_stats_dict_of_dataframes['detection'].applymap(T)
         self.gene_presence_absence_in_samples_initiated = True
         self.progress.end()
 
