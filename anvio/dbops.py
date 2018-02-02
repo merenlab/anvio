@@ -503,7 +503,6 @@ class ContigsSuperclass(object):
             matching_gene_caller_ids[search_term] = set([m[0] for m in response])
             matching_accession_calls[search_term] = list(set([m[2] for m in response]))
             matching_function_calls[search_term] = list(set([m[3] for m in response]))
-            print(type(split_names[search_term]))
             split_names[search_term] = [self.gene_callers_id_to_split_name_dict[gene_callers_id] for gene_callers_id in matching_gene_caller_ids[search_term]]
 
             self.progress.end()
