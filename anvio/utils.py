@@ -1810,13 +1810,20 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                 underscore" % os.path.basename(source))
 
         for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']:
-            if not os.path.exists(os.path.join(source, f)):
+            f_path = os.path.join(source, f)
+            if not os.path.exists(f_path):
                 raise ConfigError("Each search database directory must contain following files: 'kind.txt', \
                                    'reference.txt', 'genes.txt', 'target.txt', 'genes.hmm.gz', and\
                                    'noise_cutoff_terms.txt'. %s does not seem to be a proper source. See\
                                    this blog post to make sure you are doing it the way it should be done:\
                                    http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
                                                 os.path.basename(source))
+            if os.stat(f_path).st_size == 0:
+                raise ConfigError("The file '%s' in the HMM source '%s' seems to be empty. Which creates lots of\
+                                   counfusion around these parts of the code. Anvi'o could set some defualts for you,\
+                                   but it would be much better if you set your own defaults explicitly. You're not\
+                                   sure what would make a good default in this context for the %s? Reach out to\
+                                   a developer, and they will help you!" % (f, os.path.basename(source), f))
 
         ref = R('reference.txt')
         kind = R('kind.txt')
