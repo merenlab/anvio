@@ -196,6 +196,7 @@ class GenomeStorage(object):
     def store_genomes(self, genome_descriptions):
         self.functions_are_available = genome_descriptions.functions_are_available
         self.db.set_meta_value('functions_are_available', self.functions_are_available)
+        self.db.set_meta_value('gene_function_sources', ','.join(genome_descriptions.function_annotation_sources))
 
         num_gene_calls_added_total = 0
         num_partial_gene_calls_total = 0
