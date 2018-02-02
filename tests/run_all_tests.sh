@@ -47,6 +47,9 @@ anvi-export-contigs -c $output_dir/CONTIGS.db -o $output_dir/exported_split_seqe
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
 anvi-import-taxonomy -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/centrifuge_report.tsv $files/example_files_for_centrifuge_taxonomy/centrifuge_hits.tsv
 
+INFO "Trying to remove HMM sources from the contigs database (when there are none in it)"
+anvi-delete-hmms -c $output_dir/CONTIGS.db --just-do-it
+
 INFO "Populating HMM hits tables in the latest contigs database using default HMM profiles"
 anvi-run-hmms -c $output_dir/CONTIGS.db --num-threads 2
 
@@ -56,8 +59,14 @@ anvi-run-hmms -c $output_dir/CONTIGS.db -H $files/external_hmm_profile
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db -I Ribosomal_RNAs
 
+INFO "Listing all available HMM sources in the contigs database"
+anvi-delete-hmms -c $output_dir/CONTIGS.db --list
+
+INFO "Removing HMM hits for Rinke_et_al from the contigs database"
+anvi-delete-hmms -c $output_dir/CONTIGS.db --hmm-source Rinke_et_al
+
 INFO "Export genomic locus using HMM"
-anvi-export-locus -c $output_dir/CONTIGS.db -O $output_dir/exported_locus_from_hmm -n 200,2 -s S-AdoMet_synt_C --use-hmm --hmm-sources Campbell_et_al
+anvi-export-locus -c $output_dir/CONTIGS.db -O $output_dir/exported_locus_from_hmm -n 22,22 -s S-AdoMet_synt_C --use-hmm --hmm-sources Campbell_et_al
 
 INFO "Recovering completeness esimates for the contigs db"
 anvi-compute-completeness -c $output_dir/CONTIGS.db
@@ -80,7 +89,7 @@ echo
 head $output_dir/exported_functions_from_all_sources.txt | tr ' ' @@ | column -t | tr @@ ' '
 
 INFO "Export genomic locus using functional annotation search"
-anvi-export-locus -c $output_dir/CONTIGS.db -O $output_dir/exported_locus_from_functions -n 2,200 -s NusB
+anvi-export-locus -c $output_dir/CONTIGS.db -O $output_dir/exported_locus_from_functions -n 22,22 -s NusB
 
 INFO "Export only Pfam annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db -o $output_dir/exported_functions_from_source_Pfam.txt --annotation-sources Pfam
