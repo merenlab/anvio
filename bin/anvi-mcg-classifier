@@ -87,7 +87,7 @@ if __name__ == '__main__':
                         detection above 0.75 would be considered positive (i.e. contain the genome).')
     groupC.add_argument('--outliers_threshold', metavar='NUM', type=float, default=2.5,
                             help='Threshold to use for the outlier detection. \
-                            The default value is 2.5 \
+                            The default value is 2.5.\
                             Absolute deviation around the median is used. \
                             To read more about the method please refer to: \
                             Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and \
