@@ -218,9 +218,6 @@ class MetagenomeCentricGeneClassifier:
         for sample in self.samples:
             if num_samples > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d samples...' % (counter, num_samples))
-            print("total length for %s is %s" % (sample, total_length))
-            print("the length of the vector: %s" % len(self.coverage_values_per_nt[sample])) # FIXME: after testing this module, delete this line. it is only here to make sure that anvio is not lying to us.
-            print("number of nucleotide positions with non zero coverage in %s is %s " % (sample, np.count_nonzero(self.coverage_values_per_nt[sample])))
             detection[sample] = np.count_nonzero(self.coverage_values_per_nt[sample]) / total_length
             samples_information['presence'][sample] = get_presence_absence_information(detection[sample], self.alpha)
             if samples_information['presence'][sample]:
