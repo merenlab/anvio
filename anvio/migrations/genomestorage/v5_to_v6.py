@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
 import sys
-import time
 import argparse
 import anvio.db as db
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
