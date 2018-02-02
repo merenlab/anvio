@@ -53,7 +53,7 @@ def main(args):
                            to generate a full-report.")
 
     # do the search
-    matching_split_names_dict, verbose_output = contigs_db.search_splits_for_gene_functions(search_terms, requested_sources=annotation_sources, verbose = args.verbose)
+    matching_split_names_dict, verbose_output = contigs_db.search_for_gene_functions(search_terms, requested_sources=annotation_sources, verbose = args.verbose)
 
     all_split_names = set([])
 

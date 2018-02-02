@@ -289,9 +289,9 @@ function initData() {
             $('.menuItemSequence').addClass('menu-disabled');
         }
 
-        if (!response['functions_initialized']) {
-            $('#search_functions_button').attr('disabled', true);
-            $('.functions-not-available-message').show();
+        if (server_mode == false && (mode == 'pan' || response['functions_initialized'])) {
+            $('#search_functions_button').attr('disabled', false);
+            $('.functions-not-available-message').hide();
         }
 
         if (! response.noPing) {
