@@ -503,6 +503,7 @@ class ContigsSuperclass(object):
             matching_gene_caller_ids[search_term] = set([m[0] for m in response])
             matching_accession_calls[search_term] = list(set([m[2] for m in response]))
             matching_function_calls[search_term] = list(set([m[3] for m in response]))
+            print(type(split_names[search_term]))
             split_names[search_term] = [self.gene_callers_id_to_split_name_dict[gene_callers_id] for gene_callers_id in matching_gene_caller_ids[search_term]]
 
             self.progress.end()
@@ -1651,7 +1652,7 @@ class PanSuperclass(object):
                 raise ConfigError("A search term cannot be less than three characters")
 
         self.run.info('Search terms', '%d found' % (len(search_terms)))
-        gene_calls = dict([(search_term, {}) for search_term in search_terms])
+        gene_clusters = {}
         full_report = []
 
         genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
@@ -1672,19 +1673,20 @@ class PanSuperclass(object):
                 query += ';'
 
             results = genomes_storage.db._exec(query).fetchall()
+            gene_clusters[search_term] = []
 
             for result in results:
                 gene_caller_id, source, accession, function, genome_name = result
                 gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
 
                 full_report.extend([(gene_caller_id, source, function, search_term, gene_cluster_id)])
-                #gene_calls[search_term] =(gene_cluster_id)
+                gene_clusters[search_term].append(gene_cluster_id)
 
             self.progress.end()
         genomes_storage.close()
         self.progress.end()
 
-        return gene_calls, full_report
+        return gene_clusters, full_report
 
 
 class ProfileSuperclass(object):
