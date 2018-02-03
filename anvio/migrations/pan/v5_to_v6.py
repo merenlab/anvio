@@ -47,7 +47,10 @@ def migrate(db_path):
         pan_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, tuple([clustering, 'newick', newick]))
 
     # update keys
-    for old_key, new_key in [('available_clusterings', 'available_item_orders'),
+    for old_key, new_key in [('pc_min_occurrence', 'gene_cluster_min_occurrence'),
+                             ('num_protein_clusters', 'num_gene_clusters'),
+                             ('num_genes_in_protein_clusters', 'num_genes_in_gene_clusters'),
+                             ('available_clusterings', 'available_item_orders'),
                              ('PCs_clustered', 'PCs_ordered'),
                              ('default_clustering', 'default_item_order')]:
         try:
@@ -61,6 +64,9 @@ def migrate(db_path):
         pan_db.remove_meta_key_value_pair('available_clusterings')
         pan_db.remove_meta_key_value_pair('PCs_clustered')
         pan_db.remove_meta_key_value_pair('default_clustering')
+        pan_db.remove_meta_key_value_pair('num_protein_clusters')
+        pan_db.remove_meta_key_value_pair('num_genes_in_protein_clusters')
+        pan_db.remove_meta_key_value_pair('pc_min_occurrence')
     except:
         pass
 
