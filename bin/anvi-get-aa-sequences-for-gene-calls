@@ -8,6 +8,7 @@ import argparse
 
 import anvio
 import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -27,19 +28,7 @@ progress = terminal.Progress()
 
 
 def main(args):
-    gene_caller_ids = set([])
-    if args.gene_caller_ids:
-        if os.path.exists(args.gene_caller_ids):
-            gene_caller_ids = set([g.strip() for g in open(args.gene_caller_ids, 'rU').readlines()])
-        else:
-            gene_caller_ids = set([g.strip() for g in args.gene_caller_ids.split(args.delimiter)])
-
-    try:
-        gene_caller_ids = set([int(g) for g in gene_caller_ids])
-    except:
-        g = gene_caller_ids.pop()
-        raise ConfigError("The gene calls you provided do not look like gene callers anvi'o is used to working with :/ Here is\
-                           one of them: '%s' (%s)." % (g, type(g)))
+    gene_caller_ids = utils.get_gene_caller_ids_from_args(args.gene_caller_ids, args.delimiter)
 
     dbops.export_aa_sequences_from_contigs_db(args.contigs_db, args.output_file, gene_caller_ids=gene_caller_ids)
 
