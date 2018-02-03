@@ -762,6 +762,23 @@ def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_di
         return d
 
 
+def get_gene_caller_ids_from_args(gene_caller_ids, delimiter):
+    gene_caller_ids_set = set([])
+    if gene_caller_ids:
+        if os.path.exists(gene_caller_ids):
+            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'rU').readlines()])
+        else:
+            gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
+
+    try:
+        gene_caller_ids_set = set([int(g) for g in gene_caller_ids_set])
+    except:
+        g = gene_caller_ids_set.pop()
+        raise ConfigError("The gene calls you provided do not look like gene callers anvi'o is used to working with :/ Here is\
+                           one of them: '%s' (%s)." % (g, type(g)))
+    return gene_caller_ids_set
+
+
 def get_all_ids_from_fasta(input_file):
     fasta = u.SequenceSource(input_file)
     ids = []
