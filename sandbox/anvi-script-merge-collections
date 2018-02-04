@@ -16,8 +16,8 @@ from anvio.errors import ConfigError
 run = terminal.Run()
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output-file', metavar = 'OUTPUT_FILE', default = None, required = True,
                         help = 'Output file name.')
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

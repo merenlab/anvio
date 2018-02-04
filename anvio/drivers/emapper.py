@@ -14,10 +14,11 @@ import anvio.filesnpaths as filesnpaths
 import anvio.cogs as cogs
 
 from anvio.errors import ConfigError
+from anvio.tables.genefunctions import TableForGeneFunctions
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -31,7 +32,7 @@ pp = terminal.pretty_print
 
 class EggNOGMapper:
     """An interface class between eggnog-mapper and anvi'o.
-    
+
        The default client of this class is `anvi-script-run-eggnog-mapper`. It may have changed already, but
        if it didn't, you should be able to run it this way to run eggnog-mapper on stuff in a contigs database,
        and store results in it:
@@ -81,7 +82,7 @@ class EggNOGMapper:
             self.database = database
 
         if self.contigs_db_path:
-            dbops.is_contigs_db(self.contigs_db_path)
+            utils.is_contigs_db(self.contigs_db_path)
 
         self.parser = None
         self.entry_id = 0
@@ -202,7 +203,7 @@ class EggNOGMapper:
         if not len(self.annotations_dict):
             raise ConfigError('Annotations dictionary is empty :/ There is nothing to add to the database.')
 
-        gene_functions_table = dbops.TableForGeneFunctions(self.contigs_db_path)
+        gene_functions_table = TableForGeneFunctions(self.contigs_db_path)
         gene_functions_table.create(self.annotations_dict, drop_previous_annotations_first=drop_previous_annotations)
 
 
@@ -226,7 +227,7 @@ class EggNOGMapper:
 
     def process(self, output_dir, drop_previous_annotations=False):
         """Takes an anvi'o contigs database, and does its magic.
-        
+
         Which involves exporting amino acid sequences for gene calls, running emapper.py on them,\
         parsing the output, and storing the results in the contigs database.
         """
@@ -243,7 +244,7 @@ class EggNOGMapper:
                                 total no-no since we will need them to get amino acid seqeunces for functional\
                                 annotationd :/" % self.contigs_db_path)
 
-        aa_sequences_list = contigs_db.db.get_table_as_list_of_tuples(t.gene_protein_sequences_table_name)
+        aa_sequences_list = contigs_db.db.get_table_as_list_of_tuples(t.gene_amino_acid_sequences_table_name)
         num_aa_sequences = len(aa_sequences_list)
         contigs_db.disconnect()
 

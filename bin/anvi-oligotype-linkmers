@@ -15,8 +15,8 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -86,7 +86,7 @@ if __name__ == '__main__':
                         help = 'Output file of `anvi-report-linkmers`.')
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

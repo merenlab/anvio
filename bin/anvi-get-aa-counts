@@ -11,8 +11,8 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import AA_counts
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('OPTIONAL PARAMS FOR GENE CALLS')
     groupC.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

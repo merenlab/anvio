@@ -20,15 +20,18 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, SamplesInformationDatabase, TablesForStates, ProfileDatabase
-from anvio.dbops import is_profile_db_and_contigs_db_compatible, is_profile_db_and_samples_db_compatible, get_description_in_db
-from anvio.dbops import get_default_item_order_name, get_split_names_in_profile_db
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
+from anvio.dbops import get_description_in_db
+from anvio.dbops import get_default_item_order_name
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError
 
+from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders
+from anvio.tables.collections import TablesForCollections
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -63,7 +66,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.additional_layers_path = A('additional_layers')
         self.additional_view_path = A('additional_view')
-        self.samples_information_db_path = A('samples_information_db')
         self.view = A('view')
         self.fasta_file = A('fasta_file')
         self.view_data_path = A('view_data')
@@ -82,7 +84,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.linkage = A('linkage') or constants.linkage_method_default
         self.skip_init_functions = A('skip_init_functions')
         self.skip_auto_ordering = A('skip_auto_ordering')
-        self.debug = A('debug')
         self.bin_ids_file_path = A('bin_ids_file')
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
@@ -97,12 +98,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.displayed_item_names_ordered = None
         self.auxiliary_profile_data_available = False
 
-        self.samples_information_dict = {}
-        self.samples_order_dict = {}
-        self.samples_information_default_layer_order = {}
-
-        self.additional_layers_dict = {}
-        self.additional_layers_headers = []
+        # get additional data for items and layers, and get layer orders data.
+        a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
+        self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get() if a_db_is_found else ([], {})
+        self.layers_order_data_dict = TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict) if a_db_is_found else {}
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
@@ -124,12 +124,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         ContigsSuperclass.__init__(self, self.args)
         self.init_splits_taxonomy(self.taxonomic_level)
 
-        if self.samples_information_db_path:
-            samples_information_db = SamplesInformationDatabase(self.samples_information_db_path)
-            self.samples_information_dict, self.samples_order_dict = samples_information_db.get_samples_information_and_order_dicts()
-            self.samples_information_default_layer_order = samples_information_db.get_samples_information_default_layer_order()
-            samples_information_db.disconnect()
-
         if self.contigs_db_path:
             self.completeness = Completeness(self.contigs_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path)
@@ -138,7 +132,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # make sure we are not dealing with apples and oranges here.
         if self.contigs_db_path and self.profile_db_path:
-            is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
@@ -160,12 +154,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         else:
             raise ConfigError("The interactive class is called with a mode that no one knows anything \
                                about. '%s'... What kind of a mode is that anyway :/" % self.mode)
-
-        # make sure the samples information database, if there is one, is in fact compatible with the profile database
-        # the reason we are doing this here is because when we are in 'self.manual_mode', the self.p_meta['samples'] is
-        # being filled within the self.load_manual_mode function based on the headers of the view data.
-        if self.profile_db_path and self.samples_information_db_path:
-            is_profile_db_and_samples_db_compatible(self.profile_db_path, self.samples_information_db_path, manual_mode_exception=self.manual_mode)
 
         if self.external_clustering:
             self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']
@@ -217,8 +205,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
 
-            self.additional_layers_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=self.additional_layers_dict, assign_none_for_missing=True)
-            self.additional_layers_headers = self.additional_layers_headers + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
+            self.items_additional_data_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=self.items_additional_data_dict, assign_none_for_missing=True)
+            self.items_additional_data_keys = self.items_additional_data_keys + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         self.check_names_consistency()
         self.gen_orders_for_items_based_on_additional_layers_data()
@@ -264,10 +252,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.p_meta['item_orders'] or not len([o for o in self.p_meta['item_orders'].values() if o['type'] == 'newick']):
             if self.p_meta['db_type'] == 'pan':
                 raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
-                                   clustering of protein clusters (PCs) in it. Maybe you skipped the clustering step, maybe\
-                                   anvi'o skipped it on your behalf because you had too many PCs or something. Regardless of\
+                                   clustering of protein gene clusters in it. Maybe you skipped the clustering step, maybe\
+                                   anvi'o skipped it on your behalf because you had too many gene clusters or something. Regardless of\
                                    who did what, you don't get to display your pangenome at this particular instance. In some\
-                                   cases using a parameter like `--min-occurrence 2`, which would reduce the number of PCs by\
+                                   cases using a parameter like `--min-occurrence 2`, which would reduce the number of gene clusters by\
                                    removing singletons that appear in only one genome can help solve this issue. Sorry :/" \
                                                             % (self.p_meta['project_name']))
             else:
@@ -298,9 +286,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
         skipped_additional_data_layers = []
         # go through additional layers that are not of type `bar`.
-        for layer in [additional_layer for additional_layer in self.additional_layers_headers if '!' not in additional_layer]:
+        for layer in [additional_layer for additional_layer in self.items_additional_data_keys if '!' not in additional_layer]:
             self.progress.update('for "%s" ...' % layer)
-            layer_type = utils.get_predicted_type_of_items_in_a_dict(self.additional_layers_dict, layer)
+            layer_type = utils.get_predicted_type_of_items_in_a_dict(self.items_additional_data_dict, layer)
 
             if layer_type == None:
                 skipped_additional_data_layers.append(layer)
@@ -308,14 +296,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             item_layer_data_tuple = []
             for item in self.displayed_item_names_ordered:
-                if item not in self.additional_layers_dict:
+                if item not in self.items_additional_data_dict:
                     if layer_type != str:
                         raise ConfigError("'%s' is looks like numerical layer but value for '%s' is missing or empty. \
                                           We do not support empty values for numerical layers yet." % (layer, item))
                     else:
                         item_layer_data_tuple.append(('', item))
                 else:
-                    item_layer_data_tuple.append((layer_type(self.additional_layers_dict[item][layer]), item))
+                    item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
 
             self.p_meta['available_item_orders'].append('>> %s:none:none' % layer)
             self.p_meta['item_orders']['>> %s' % layer] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple)]}
@@ -521,7 +509,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
             profile_db = ProfileDatabase(self.profile_db_path)
-            profile_db.create({'db_type': 'profile', 'merged': True, 'contigs_db_hash': None, 'samples': ','.join(self.p_meta['samples'])})
+            profile_db.create({'db_type': 'profile',
+                               'blank': True,
+                               'merged': True,
+                               'contigs_db_hash': None,
+                               'contigs_ordered': False,
+                               'samples': ','.join(self.p_meta['samples'])})
 
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path)
@@ -645,7 +638,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # we are about to request a collections dict that contains only split names that appear in the
         # profile database along with other info:
-        self.collection, bins_info_dict, split_names_in_db_but_missing_in_collection = self.collections.get_trimmed_dicts(self.collection_name, get_split_names_in_profile_db(self.profile_db_path))
+        self.collection, bins_info_dict, split_names_in_db_but_missing_in_collection = \
+                                        self.collections.get_trimmed_dicts(self.collection_name,
+                                                                           utils.get_all_item_names_from_the_database(self.profile_db_path))
 
         # we will do something quite tricky here. first, we will load the full mode to get the self.views
         # data structure fully initialized based on the profile database. Then, we using information about
@@ -745,12 +740,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         PanSuperclass.__init__(self, self.args)
 
-        self.init_protein_clusters()
+        self.init_gene_clusters()
 
         if not self.skip_init_functions:
-            self.init_protein_clusters_functions()
+            self.init_gene_clusters_functions()
 
-        self.init_additional_layer_data()
+        PanSuperclass.init_items_additional_data(self)
 
         self.p_meta['item_orders'] = self.item_orders
 
@@ -764,6 +759,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.title = self.title
         else:
             self.title = self.p_meta['project_name'].replace('-', ' ').replace('_', ' ')
+
+        # add user tree if there is one
+        self.add_user_tree()
 
 
     def load_full_mode(self):
@@ -779,6 +777,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.init_functions()
 
         ProfileSuperclass.__init__(self, self.args)
+
+        # init item additional data
+        ProfileSuperclass.init_items_additional_data(self)
 
         # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
         # all the split sequences since only now we know the mun_contig_length that was used to profile
@@ -986,8 +987,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             json_header.extend(view_headers)
 
             # (6) then add 'additional' headers as the outer ring:
-            if self.additional_layers_headers:
-                json_header.extend(self.additional_layers_headers)
+            if self.items_additional_data_keys:
+                json_header.extend(self.items_additional_data_keys)
 
             # (7) finally add hmm search results
             if self.hmm_searches_dict:
@@ -1019,7 +1020,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
                 # (6) adding additional layers
-                json_entry.extend([self.additional_layers_dict[split_name][header] if split_name in self.additional_layers_dict else None for header in self.additional_layers_headers])
+                json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
 
                 # (7) adding hmm stuff
                 if self.hmm_searches_dict:
@@ -1066,7 +1067,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # zero it out
         self.ids_for_already_refined_bins = set([])
 
-        if self.debug:
+        if anvio.DEBUG:
             run.info('collection from db', collection_dict)
             run.info('bins info from db', bins_info_dict)
             run.info_single('')
@@ -1081,12 +1082,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.ids_for_already_refined_bins.add(bin_id)
 
 
-        if self.debug:
+        if anvio.DEBUG:
             run.info('resulting collection', collection_dict)
             run.info('resulting bins info', bins_info_dict)
             run.info_single('')
 
-        collections = dbops.TablesForCollections(self.profile_db_path)
+        collections = TablesForCollections(self.profile_db_path)
         collections.append(self.collection_name, collection_dict, bins_info_dict)
 
         run.info_single('"%s" collection is updated!' % self.collection_name)
@@ -1112,31 +1113,49 @@ class ContigsInteractive():
         self.generate_tables()
 
     def generate_tables(self):
+        # let's keep track of all keys we will need to access later from the interface. if
+        # we don't do this, non-standard keys (such as 'Gene caller (prodigal)' becomes very
+        # inaccessable when we need to access to it the way we access to 'N50' or 'Contig
+        # Lengths'):
+        self.human_readable_keys = []
+
         self.tables['header'] = [c['project_name'] for c in self.contigs_stats.values()]
 
         ##
         ##  Table for basic stats
         ##
-
+        self.progress.new('Generating stats tables')
+        self.progress.update('Basic stats ...')
         basic_stats = []
         basic_stats.append(['Total Length'] + [c['total_length'] for c in self.contigs_stats.values()])
         basic_stats.append(['Num Contigs'] + [c['num_contigs'] for c in self.contigs_stats.values()])
         basic_stats.append(['Num Genes (' + constants.default_gene_caller + ')'] + [c['num_genes'] for c in self.contigs_stats.values()])
-        basic_stats.append(['Longest Contig'] + [c['total_length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['Shortest Contig'] + [c['total_length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['N50'] + [c['n_values'][49]['num_contigs'] for c in self.contigs_stats.values()])
-        basic_stats.append(['N75'] + [c['n_values'][74]['num_contigs'] for c in self.contigs_stats.values()])
-        basic_stats.append(['N90'] + [c['n_values'][89]['num_contigs'] for c in self.contigs_stats.values()])
-        basic_stats.append(['L50'] + [c['n_values'][49]['length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['L75'] + [c['n_values'][74]['length'] for c in self.contigs_stats.values()])
-        basic_stats.append(['L90'] + [c['n_values'][89]['length'] for c in self.contigs_stats.values()])
+
+        self.progress.update('Contig lengths ...')
+        contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
+        MAX_L = lambda: [max(lengths) for lengths in contig_lengths_for_all]
+        MIN_L = lambda: [min(lengths) for lengths in contig_lengths_for_all]
+        basic_stats.append(['Longest Contig'] + MAX_L())
+        basic_stats.append(['Shortest Contig'] + MIN_L())
+
+        self.progress.update('N/L values ...')
+        n_values = [c['n_values'] for c in self.contigs_stats.values()]
+        N = lambda n: [n_value[n]['num_contigs'] for n_value in n_values]
+        L = lambda n: [n_value[n]['length'] for n_value in n_values]
+        basic_stats.append(['N50'] + N(49))
+        basic_stats.append(['N75'] + N(74))
+        basic_stats.append(['N90'] + N(89))
+        basic_stats.append(['L50'] + L(49))
+        basic_stats.append(['L75'] + L(74))
+        basic_stats.append(['L90'] + L(89))
 
         self.tables['basic_stats'] = basic_stats
+        self.human_readable_keys.extend([e[0] for e in basic_stats])
 
         ##
         ##  Table for hmm hits
         ##
-
+        self.progress.update('HMMs summary ...')
         all_hmm_sources = set()
         for c in self.contigs_stats.values():
             for source in c['gene_hit_counts_per_hmm_source'].keys():
@@ -1151,6 +1170,7 @@ class ContigsInteractive():
                 else:
                     line.append('n/a')
 
+            self.human_readable_keys.append(line[0])
             hmm_table.append(line)
 
         self.tables['hmm'] = hmm_table
@@ -1158,7 +1178,7 @@ class ContigsInteractive():
         ##
         ##  Table for SCG genome prediction
         ##
-
+        self.progress.update('Num genome prediction ...')
         source_to_domain = {}
         all_scg_sources = set()
         for c in self.contigs_stats.values():
@@ -1177,6 +1197,9 @@ class ContigsInteractive():
                 else:
                     line.append('n/a')
 
+            self.human_readable_keys.append(line[0])
             scg_table.append(line)
 
         self.tables['scg'] = scg_table
+
+        self.progress.end()

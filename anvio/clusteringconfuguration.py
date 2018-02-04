@@ -3,6 +3,7 @@
 """To make sense of config files for mixed clustering"""
 
 import os
+import argparse
 import configparser
 
 import anvio
@@ -12,15 +13,17 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.utils import check_sample_id
 from anvio.utils import store_array_as_TAB_delimited_file as store_array
+from anvio.utils import store_dict_as_TAB_delimited_file
 from anvio.utils import is_all_columns_present_in_TAB_delim_file as cols_present
 from anvio.utils import get_vectors_from_TAB_delim_matrix as get_vectors
 from anvio.errors import ConfigError
+from anvio.tables.miscdata import TableForItemAdditionalData
 
 run = terminal.Run()
 progress = terminal.Progress()
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -40,6 +43,7 @@ config_template = {
                 'seed': {'mandatory': False, 'test': lambda x: RepresentsInt(x), 'required': 'an integer'}
     },
     'matrix': {
+                'table_form': {'mandatory': False, 'test': lambda x: x in ['dataframe', 'matrix'], 'required': 'matrix or dataframe'},
                 'columns_to_use': {'mandatory': False, 'test': lambda x: len(x.strip().replace(' ', '').split(',')) > 0,
                             'required': 'one or more comma-separated column names'},
                 'ratio': {'mandatory': False, 'test': lambda x: RepresentsInt(x) and int(x) > 0 and int(x) <= 256,
@@ -123,8 +127,10 @@ class ClusteringConfiguration:
 
             m = {}
             columns_to_use = self.get_option(config, section, 'columns_to_use', str)
+            table_form = self.get_option(config, section, 'table_form', str)
             m['alias'] = alias
             m['matrix'] = matrix
+            m['table_form'] = table_form
             m['columns_to_use'] = [c.strip() for c in columns_to_use.split(',')] if columns_to_use else None
             m['ratio'] = self.get_option(config, section, 'ratio', int)
             m['path'] = self.matrix_paths[alias]
@@ -279,9 +285,22 @@ class ClusteringConfiguration:
                 if not table in dbc.get_table_names():
                     raise ConfigError('The table you requested (%s) does not seem to be in %s :/' % (table, database))
 
+                # here we know we are working with a database table that we have access to. however, in anvi'o database
+                # tables in two forms: dataframe form, and matrix form. in dataframe form, we have key/value pairs rather
+                # than MxN matrices where each N is a column for an attribute. while the latter is easier to export as a
+                # matrix the clustering module can work with, the former requires extra attention. so here we need to first
+                # figure out whether which form the table is in. why this even became necessary? taking a look at this issue
+                # may help: https://github.com/merenlab/anvio/issues/662
+                table_form = None
+                if config.has_option(section, 'table_form'):
+                    table_form = config.get(section, 'table_form')
+
                 table_rows = dbc.get_all_rows_from_table(table)
 
                 if self.row_ids_of_interest:
+                    if table_form == 'dataframe':
+                        raise ConfigError("Oops .. anvi'o does not know how to deal with specific row ids of interest when a table\
+                                           refernced from a clustering recipe is in dataframe form :(")
                     table_rows = [r for r in table_rows if r[0] in self.row_ids_of_interest]
 
                 if not len(table_rows):
@@ -290,9 +309,18 @@ class ClusteringConfiguration:
                                                                 % (table, section))
 
                 tmp_file_path = filesnpaths.get_temp_file_path()
-                table_structure = dbc.get_table_structure(table)
-                columns_to_exclude = [c for c in ['entry_id', 'sample_id'] if c in table_structure]
-                store_array(table_rows, tmp_file_path, table_structure, exclude_columns=columns_to_exclude)
+
+                # time to differentially store table contents.
+                if table_form == 'dataframe':
+                    args = argparse.Namespace(pan_or_profile_db=database_path, table_name=table)
+                    table = TableForItemAdditionalData(args)
+                    table_keys_list, table_data_dict = table.get()
+                    store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
+                else:
+                    table_structure = dbc.get_table_structure(table)
+                    columns_to_exclude = [c for c in ['entry_id', 'sample_id'] if c in table_structure]
+                    store_array(table_rows, tmp_file_path, table_structure, exclude_columns=columns_to_exclude)
+
                 self.matrix_paths[alias] = tmp_file_path
 
 

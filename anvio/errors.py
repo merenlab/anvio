@@ -3,12 +3,15 @@
 
 """Exceptions"""
 
+import sys
 import textwrap
+import traceback
 
+import anvio
 from anvio.ttycolors import color_text
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
@@ -39,7 +42,18 @@ class AnvioError(Exception, object):
         for error_line in error_lines[1:]:
             error_message.append('%s%s' % (' ' * (len(self.error_type) + 2), error_line))
 
+        if anvio.DEBUG:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+
+            sep = color_text('=' * 80, 'red')
+
+            print(color_text('\nTraceback for debugging', 'red'))
+            print(sep)
+            traceback.print_tb(exc_traceback, limit=100, file=sys.stdout)
+            print(sep)
+
         return '\n\n' + '\n'.join(error_message) + '\n\n'
+
 
     def clear_text(self):
         return '%s: %s' % (self.error_type, self.e)
@@ -72,17 +86,11 @@ class FilesNPathsError(AnvioError):
         self.error_type = 'File/Path Error'
         AnvioError.__init__(self)
 
+
 class DictIOError(AnvioError):
     def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'Dict IO Error'
-        AnvioError.__init__(self)
-
-
-class SamplesError(AnvioError):
-    def __init__(self, e=None):
-        self.e = remove_spaces(e)
-        self.error_type = 'Samples Info Error'
         AnvioError.__init__(self)
 
 
@@ -91,6 +99,13 @@ class HDF5Error(AnvioError):
         self.e = remove_spaces(e)
         self.error_type = 'HDF5 Error'
         AnvioError.__init__(self)
+
+class AuxiliaryDataError(AnvioError):
+    def __init__(self, e=None):
+        self.e = remove_spaces(e)
+        self.error_type = 'Auxiliary Data Error'
+        AnvioError.__init__(self)
+
 
 class AnviServerError(AnvioError):
     def __init__(self, e=None):

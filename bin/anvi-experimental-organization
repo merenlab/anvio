@@ -5,7 +5,7 @@ import sys
 import argparse
 
 import anvio
-import anvio.utils as u
+import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -15,8 +15,8 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.clusteringconfuguration import ClusteringConfiguration
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -35,8 +35,8 @@ def experimental_organization(args):
                             profile database to be explicit about where to store the resulting tree.")
 
     if args.profile_db:
-        dbops.is_profile_db(args.profile_db)
-    dbops.is_contigs_db(args.contigs_db)
+        utils.is_profile_db(args.profile_db)
+    utils.is_contigs_db(args.contigs_db)
 
     if not args.skip_store_in_db and not args.name:
         raise ConfigError("Since you have not used the --skip-store-in-db flag, this program will attempt\
@@ -44,7 +44,7 @@ def experimental_organization(args):
                             this tree. Please use the --name flag to provide one.")
 
     if args.name:
-        u.is_this_name_OK_for_database('--name parameter', args.name)
+        utils.is_this_name_OK_for_database('--name parameter', args.name)
 
     if args.profile_db:
         profile_db = dbops.ProfileDatabase(args.profile_db)
@@ -58,23 +58,29 @@ def experimental_organization(args):
     config = ClusteringConfiguration(args.config_file, args.input_directory, db_paths = db_paths, row_ids_of_interest = split_names)
 
     config.print_summary(run)
-    
+
     if args.dry_run:
         sys.exit()
-    
+
     clustering_id, newick = clustering.order_contigs_simple(config, distance=args.distance, linkage=args.linkage, progress=terminal.Progress(), debug=True)
 
     _, distance, linkage = clustering_id.split(':')
 
     run.info('Distance metric used', distance, mc='green')
     run.info('Linkage method used', linkage, mc='green')
-    
+
     if args.output_file:
         open(args.output_file, 'w').write(newick + '\n')
         run.info('Output', args.output_file, mc='green')
 
     if args.profile_db and not args.skip_store_in_db:
-        dbops.add_hierarchical_clustering_to_db(args.profile_db, args.name, newick, distance=distance, linkage=linkage, run = run)
+        dbops.add_items_order_to_db(anvio_db_path=args.profile_db,
+                                    order_name=args.name,
+                                    order_data=newick,
+                                    distance=distance,
+                                    linkage=linkage,
+                                    make_default=False,
+                                    run=run)
 
 
 if __name__ == '__main__':
@@ -97,8 +103,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parser.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
-    
-    args = parser.parse_args()
+
+    args = anvio.get_args(parser)
 
     try:
         experimental_organization(args)

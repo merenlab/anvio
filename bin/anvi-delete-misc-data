@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Remove stuff from misc data tables"""
+
+import sys
+import argparse
+
+import anvio
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.miscdata import MiscDataTableFactory
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+
+
+def main(args):
+    table_for_additional_data = MiscDataTableFactory(args)
+
+    if args.list_available_keys:
+        table_for_additional_data.list_data_keys()
+        sys.exit(0)
+
+    keys_to_remove = [k.strip() for k in args.keys_to_remove.split(',')] if args.keys_to_remove else []
+
+    table_for_additional_data.remove(data_keys_list = keys_to_remove)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Remove stuff from additional data or order tables in pan or profile databases for items or layers")
+
+    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
+    parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
+    parser.add_argument('--keys-to-remove', help="A comma-separated list of data keys to remove from the database. If you\
+                                                  do not use this parameter, anvi'o will simply remove everything from the\
+                                                  target data table immediately.")
+    parser.add_argument('--list-available-keys', action='store_true', help="Using this flag will list available data keys in\
+                                                  the target data table and quit without doing anything else.")
+    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

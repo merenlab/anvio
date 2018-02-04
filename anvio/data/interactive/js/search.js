@@ -89,10 +89,52 @@ function searchFunctions() {
     });
 }
 
+function filterGeneClusters() {
+    var parameters = {};
+
+    $('.pan-filters input:text').each(function (index, input){
+        if (!$(input).prop('disabled')) {
+            parameters[$(input).attr('parameter')] = $(input).val();
+        }
+    });
+
+    if (Object.keys(parameters).length == 0) {
+        $('.pan-filter-error').show();
+        $('.pan-filter-error').html("You need to select at least one filter.");
+        $('#search_result_message_pan_filter').html('');
+        return;
+    }
+
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/data/filter_gene_clusters?timestamp=' + new Date().getTime(),
+        data: parameters,
+        success: function(data) {
+            if (data['status'] == 0) {
+                $('.pan-filter-error').hide();
+                $('.pan-filter-error').html('');
+
+                search_results = [];
+                search_column = '';
+
+                for (var i=0; i < data['gene_clusters_list'].length; i++) {
+                    search_results.push({'split': data['gene_clusters_list'][i], 'value': ''});
+                }
+                $('#search_result_message_pan_filter').html(data['gene_clusters_list'].length + " gene clusters passed the filter.");
+            } else {
+                $('.pan-filter-error').show();
+                $('.pan-filter-error').html(data['message']);
+                $('#search_result_message_pan_filter').html('');
+            };
+        }
+    });
+}
+
 function showSearchResult() {
     var clear_link = '<a href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">(clear)</a>';
     $("#search-results-table-header").html('<h4>Search results ' + clear_link + '</h4>');
-    $("#search-results-table-search-name").html('Split name');
+    $("#search-results-table-search-name").html('Item Name');
     $("#search-results-table-search-item").html(search_column);
 
     var rows = "";

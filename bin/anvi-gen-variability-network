@@ -11,8 +11,8 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.variabilityops import VariabilityNetwork
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -31,8 +31,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('max-num-unique-positions'), **anvio.K('max-num-unique-positions'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'network.gexf'}))
 
-    args = parser.parse_args()
-    
+    args = anvio.get_args(parser)
+
     try:
         variable_nt_positions = VariabilityNetwork(args)
         variable_nt_positions.generate()

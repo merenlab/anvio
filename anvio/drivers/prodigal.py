@@ -11,8 +11,8 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -97,42 +97,42 @@ class Prodigal:
     def process(self, fasta_file_path, output_dir):
         """Take the fasta file, run prodigal on it, and make sense of the output
 
-           Returns a gene calls dict, and protein sequences dict.
+           Returns a gene calls dict, and amino acid sequences dict.
         """
         gene_calls_dict = {} # each entry must contain {'contig', 'start', stop, 'direction', 'partial'} items.
-        protein_sequences_dict = {}
+        amino_acid_sequences_dict = {}
 
         self.genes_in_contigs = os.path.join(output_dir, 'contigs.genes')
-        self.proteins_in_contigs = os.path.join(output_dir, 'contigs.proteins')
+        self.amino_acid_sequences_in_contigs = os.path.join(output_dir, 'contigs.amino_acid_sequences')
 
         log_file_path = os.path.join(output_dir, '00_log.txt')
 
         self.run.warning('', header='Finding ORFs in contigs', lc='green')
         self.run.info('Genes', self.genes_in_contigs)
-        self.run.info('Proteins', self.proteins_in_contigs)
+        self.run.info('Amino acid sequences', self.amino_acid_sequences_in_contigs)
         self.run.info('Log file', log_file_path)
 
         self.progress.new('Processing')
         self.progress.update('Identifying ORFs in contigs ...')
 
-        cmd_line = ['prodigal', '-i', fasta_file_path, '-o', self.genes_in_contigs, '-a', self.proteins_in_contigs, '-p', 'meta']
+        cmd_line = ['prodigal', '-i', fasta_file_path, '-o', self.genes_in_contigs, '-a', self.amino_acid_sequences_in_contigs, '-p', 'meta']
         utils.run_command(cmd_line, log_file_path)
 
-        if not os.path.exists(self.proteins_in_contigs):
+        if not os.path.exists(self.amino_acid_sequences_in_contigs):
             self.progress.end()
             raise ConfigError("Something went wrong with prodigal, and it failed to generate the\
-                                expected output :/ Fortunately, this log file should tell you what\
-                                might be the problem: '%s'. Please do not forget to include this\
-                                file if you were to ask for help." % log_file_path)
+                               expected output :/ Fortunately, this log file should tell you what\
+                               might be the problem: '%s'. Please do not forget to include this\
+                               file if you were to ask for help." % log_file_path)
 
         self.progress.update('Processing gene calls ...')
 
-        fasta = fastalib.SequenceSource(self.proteins_in_contigs)
+        fasta = fastalib.SequenceSource(self.amino_acid_sequences_in_contigs)
 
         hit_id = 0
         while next(fasta):
             gene_calls_dict[hit_id] = self.parser(fasta.id)
-            protein_sequences_dict[hit_id] = fasta.seq.replace('*', '')
+            amino_acid_sequences_dict[hit_id] = fasta.seq.replace('*', '')
             hit_id += 1
 
         fasta.close()
@@ -141,4 +141,4 @@ class Prodigal:
 
         self.run.info('Result', 'Prodigal (%s) has identified %d genes.' % (self.installed_version, len(gene_calls_dict)), nl_after=1)
 
-        return gene_calls_dict, protein_sequences_dict
+        return gene_calls_dict, amino_acid_sequences_dict
