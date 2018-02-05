@@ -10,7 +10,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.dbops import ContigsSuperclass
+from anvio.dbops import ContigsSuperclass, PanSuperclass
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -24,6 +24,59 @@ __email__ = "a.murat.eren@gmail.com"
 
 run = terminal.Run()
 progress = terminal.Progress()
+
+class SearchResultReporter(object):
+    def __init__(self, args):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.annotation_sources = A('annotation_sources')
+        self.list_annotation_sources = A('list_annotation_sources')
+        self.basic_report_path = A('output_file') or 'search_results.txt'
+        self.full_report_path = A('full_report')
+        self.include_sequences = A('include_sequences')
+        self.verbose = A('verbose')
+        self.search_mode = None
+
+        self.contigs_db = A('contigs_db')
+        self.genomes_storage = A('genomes_storage')
+        self.pan_db = A('pan_db')
+
+        # straighten things out
+        self.search_terms = [s.strip() for s in A('search_terms').split(A('delimiter'))]
+        self.annotation_sources = [a.strip() for a in A('annotation_sources').split(A('delimiter'))] if A('annotation_sources') else None
+
+        self.db = self.get_database()
+        
+        if self.list_annotation_sources:
+            self.db.list_annotation_sources()
+            sys.exit()
+
+
+    def run(self):
+
+
+
+    def get_database(self):
+        if self.contigs_db and (self.genomes_storage or self.pan_db):
+            raise ConfigError("You can not provide both contigs database and genomes storage")
+
+        if self.contigs_db:
+            self.search_mode = 'contigs'
+            run.info("Searching in Contigs Database", self.contigs_db)
+            return ContigsSuperclass(self.args)
+
+        elif self.genomes_storage and self.pan_db:
+            self.search_mode = 'genomes'
+            run.info("Searching in Genomes Storage", self.genomes_storage)
+            return PanSuperclass(self.args)
+
+        else:
+            raise ConfigError("You did not provide enough arguments to initialize contigs database or pan database. \
+                               To initialize pan database you need to provide both genome storage and pan database.")
+
+
+    def get_search_results(self):
+        pass
+
 
 
 def main(args):
@@ -101,16 +154,18 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Search functions in an anvi'o contigs database. Basically, this program searches for one or more search terms\
-                                                  you define in functional annotations of genes in an anvi'o contigs database, and generates multiple reports.\
-                                                  The simpler report (which also is the default one) simply tells you which contigs contain genes with functions\
-                                                  matching to serach terms you used. This file is only useful to quickly highlight matching contigs in the interface\
-                                                  by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also request a much more\
-                                                  comprehensive report, which gives you anything you might need to know, including the matching gene caller id,\
-                                                  functional annotation source, and full function name for each hit and serach term.")
+    parser = argparse.ArgumentParser(description="Search functions in an anvi'o contigs database or genomes storage. Basically, this program searches for one \
+                                                  or more search terms you define in functional annotations of genes in an anvi'o contigs database, and generates \
+                                                  multiple reports. The simpler report (which also is the default one) simply tells you which contigs contain genes \
+                                                  with functions matching to serach terms you used. This file is only useful to quickly highlight matching contigs \
+                                                  in the interface by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also \
+                                                  request a much more comprehensive report, which gives you anything you might need to know, including the matching\
+                                                  gene caller id, functional annotation source, and full function name for each hit and serach term.")
 
     groupA = parser.add_argument_group('SEARCH IN', 'Relevant source databases')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
 
     groupB = parser.add_argument_group('SEARCH FOR', 'Relevant terms')
     groupB.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))
