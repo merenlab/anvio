@@ -774,6 +774,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         else:
             self.title = self.p_meta['project_name'].replace('-', ' ').replace('_', ' ')
 
+        # add user tree if there is one
+        self.add_user_tree()
+
 
     def load_full_mode(self):
         if not self.contigs_db_path:
