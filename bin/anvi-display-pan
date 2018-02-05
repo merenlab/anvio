@@ -87,5 +87,9 @@ except HDF5Error as e:
     print(e)
     sys.exit(-4)
 
+if args.dry_run:
+    run.info_single('Dry run? Kthxbai.', nl_after=1, nl_before=1)
+    sys.exit()
+
 app = BottleApplication(d, args)
 app.run_application(args.ip_address, args.port_number)

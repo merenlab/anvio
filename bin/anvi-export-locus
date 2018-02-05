@@ -57,13 +57,17 @@ progress = terminal.Progress()
 
 
 def main(args):
-
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     # sanity check for output file
     if not args.separate_fasta:
         output_file_path = args.output_file_prefix + '.fa'
     else:
         output_file_path = args.output_file_prefix + '_0.fa'
     filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=args.overwrite_output_destinations)
+
+    search_method = [x for x in [A("gene_caller_ids"), A("search_term")] if x is not None]
+    if len(search_method) != 1:
+        raise ConfigError("You must specify exacly one of the following: --gene-caller-ids or --search-term")
 
     contigs_db = dbops.ContigsSuperclass(args)
     contigs_db.init_contig_sequences()
@@ -88,7 +92,10 @@ def main(args):
     if len(num_genes_list) == 1:
         num_genes_list = [0, num_genes_list[0]]
 
-    if args.use_hmm:
+    if args.gene_caller_ids:
+        matching_genes = list(utils.get_gene_caller_ids_from_args(args.gene_caller_ids, args.delimiter))
+
+    elif args.use_hmm:
         # use HMM hits instead of functional annotation
         hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
 
@@ -185,9 +192,8 @@ if __name__ == '__main__':
                                                     get the sequence starting with the match and including \
                                                     a block of genes the follow the match.")
 
-    groupA = parser.add_argument_group('INPUT')
+    groupA = parser.add_argument_group('Essential INPUT')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    groupA.add_argument('-s', '--search-term', help='Search term.')
     groupA.add_argument('-n', '--num-genes',type=str, help='For each match (to the function, or HMM that was searched) a sequence which includes \
                             a block of genes will be saved. The block could include either genes only in the forward direction of the gene (defined \
                             according to the direction of transcription of the gene) or reverse or both. \
@@ -197,18 +203,23 @@ if __name__ == '__main__':
                             To get only genes preceeding the match use \"-n 5,0\". \
                             If the number of genes requested exceeds the length of the contig, then the output \
                             will include the the sequence until the end of the contig.')
+    groupB =  parser.add_argument_group('Additional essential INPUT - OPTION 1', "Search according to either HMM or functional annotations")
+    groupB.add_argument('-s', '--search-term', help='Search term.')
+    groupC =  parser.add_argument_group('Additional essential INPUT - OPTION 2', "Search specific gene id's")
+    groupC.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    groupC.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
 
-    groupB = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be one FASTA file with all matches \
+    groupD = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be one FASTA file with all matches \
                                        or one FASTA per match (see --separate-fasta)") 
-    groupB.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    groupD.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
-    groupC = parser.add_argument_group('ADDITIONAL STUFF', "Flags and parameters you can set according to your need")
-    groupC.add_argument('--separate-fasta', default = False, action='store_true', help='Split each match to a separate FASTA file.')
-    groupC.add_argument('--use-hmm', default = False, action='store_true', help='Use HMM hits instead of functional annotations. \
+    groupE = parser.add_argument_group('ADDITIONAL STUFF', "Flags and parameters you can set according to your need")
+    groupE.add_argument('--separate-fasta', default = False, action='store_true', help='Split each match to a separate FASTA file.')
+    groupE.add_argument('--use-hmm', default = False, action='store_true', help='Use HMM hits instead of functional annotations. \
                             If you choose this option, you must also say which HMM source to use.')
-    groupC.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
-    groupC.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-    groupC.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+    groupE.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
+    groupE.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
+    groupE.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
 
     args = anvio.get_args(parser)
 

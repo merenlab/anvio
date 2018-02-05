@@ -762,6 +762,23 @@ def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_di
         return d
 
 
+def get_gene_caller_ids_from_args(gene_caller_ids, delimiter):
+    gene_caller_ids_set = set([])
+    if gene_caller_ids:
+        if os.path.exists(gene_caller_ids):
+            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'rU').readlines()])
+        else:
+            gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
+
+    try:
+        gene_caller_ids_set = set([int(g) for g in gene_caller_ids_set])
+    except:
+        g = gene_caller_ids_set.pop()
+        raise ConfigError("The gene calls you provided do not look like gene callers anvi'o is used to working with :/ Here is\
+                           one of them: '%s' (%s)." % (g, type(g)))
+    return gene_caller_ids_set
+
+
 def get_all_ids_from_fasta(input_file):
     fasta = u.SequenceSource(input_file)
     ids = []
@@ -1810,13 +1827,20 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                 underscore" % os.path.basename(source))
 
         for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']:
-            if not os.path.exists(os.path.join(source, f)):
+            f_path = os.path.join(source, f)
+            if not os.path.exists(f_path):
                 raise ConfigError("Each search database directory must contain following files: 'kind.txt', \
                                    'reference.txt', 'genes.txt', 'target.txt', 'genes.hmm.gz', and\
                                    'noise_cutoff_terms.txt'. %s does not seem to be a proper source. See\
                                    this blog post to make sure you are doing it the way it should be done:\
                                    http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
                                                 os.path.basename(source))
+            if os.stat(f_path).st_size == 0:
+                raise ConfigError("The file '%s' in the HMM source '%s' seems to be empty. Which creates lots of\
+                                   counfusion around these parts of the code. Anvi'o could set some defualts for you,\
+                                   but it would be much better if you set your own defaults explicitly. You're not\
+                                   sure what would make a good default in this context for the %s? Reach out to\
+                                   a developer, and they will help you!" % (f, os.path.basename(source), f))
 
         ref = R('reference.txt')
         kind = R('kind.txt')
