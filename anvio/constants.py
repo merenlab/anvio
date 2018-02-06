@@ -22,7 +22,7 @@ __status__ = "Development"
 clustering_configs_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/clusterconfigs')
 clustering_configs = {}
 
-default_port_number = 8080
+default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
 blank_default = "tnf-splits"
 single_default = "tnf"
