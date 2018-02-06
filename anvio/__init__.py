@@ -113,23 +113,34 @@ D = {
             {'metavar': 'FASTA',
              'help': "A FASTA-formatted input file"}
                 ),
-    'samples-information': (
-            ['-D', '--samples-information'],
-            {'metavar': 'SAMPLES-INFO',
+    'samples-information-file': (
+            ['-D', '--samples-information-file'],
+            {'metavar': 'FILE',
              'help': "A TAB-delimited file with information about samples in your dataset. Each row in this\
                       file must correspond to a sample name. Each column must contain a unique attribute.\
                       Please refer to the documentation to learn more about the structure and purpose of\
                       this file."}
                 ),
-    'samples-order': (
-            ['-R', '--samples-order'],
-            {'metavar': 'SAMPLES-ORDER',
+    'samples-order-file': (
+            ['-R', '--samples-order-file'],
+            {'metavar': 'FILE',
              'help': "A TAB-delimited file with three columns: 'attribute', 'basic', 'newick'. For each attribute,\
                       the order of samples must be defined either in the 'basic' form or via a 'newick'-formatted\
                       tree structurei that describes the organization of each sample. Anvi'o will look for a\
                       comma-separated list of sample names for the 'basic' form. Please refer to the online docs\
                       for more info. Also you shouldn't hesitate to try to find the right file format until you get\
                       it working. There are stringent checks on this file, and you will not break anything while trying!."}
+                ),
+    'single-order-file': (
+            ['-r', '--single-order-file'],
+            {'metavar': 'FILE',
+             'help': "A file with a single samples order. It could be a newick formatted tree, or it could be an array.\
+                      But when you use this parameter, you must also use the parameter `--order-name` to give it a name."}
+                ),
+    'order-name': (
+            ['-n', '--order-name'],
+            {'metavar': 'NAME',
+             'help': "A name for your single order. It better be a simple name without fancy characters or space."}
                 ),
     'split-length': (
             ['-L', '--split-length'],
@@ -173,6 +184,29 @@ D = {
                       calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e.,\
                       v2.6.7 or v1.0). An example file can be found via the URL https://goo.gl/TqCWT2"}
                 ),
+    'external-genomes': (
+            ['-e', '--external-genomes'],
+            {'metavar': 'FILE_PATH',
+             'help': "A two-column TAB-delimited flat text file that lists anvi'o contigs databases. The first item\
+                      in the header line should read 'name', and the second should read 'contigs_db_path'. Each line in the\
+                      file should describe a single entry, where the first column is the name of the genome (or MAG), and\
+                      the second column is the anvi'o contigs database generated for this genome."}
+                ),
+    'internal-genomes': (
+            ['-i', '--internal-genomes'],
+            {'metavar': 'FILE_PATH',
+             'help': "A four-column TAB-delimited flat text file. The header line must contain thse columns: 'name', 'bin_id',\
+                      'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name'\
+                      can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection."}
+                ),
+    'gene-caller': (
+            ['--gene-caller'],
+            {'metavar': 'GENE-CALLER',
+             'help': "The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one)\
+                      requires an explicit mentioning of which one to use. The default is '%s', but it will not be enough if you\
+                      if you were a rebel adn have used `--external-gene-callers` or something." % constants.default_gene_caller}
+                ),
+
     'ignore-internal-stop-codons': (
             ['--ignore-internal-stop-codons'],
             {'default': False,
@@ -192,6 +226,14 @@ D = {
              'help': "By default, anvi'o characterizes single-nucleotide variation in each sample. The use of this flag\
                       will instruct profiler to skip that step. Please remember that parameters and flags must be\
                       identical between different profiles using the same contigs database for them to merge properly."}
+                ),
+    'return-codon-frequencies-instead': (
+            ['--return-codon-frequencies-instead'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o will return amino acid frequencies here, however, you can ask for codon frequencies\
+                      instead, simply because you always need more data and more stuff. You're lucky this time, but is there\
+                      an end to this? Will you ever be satisfied with what you have? Anvi'o needs answers."}
                 ),
     'profile-AA-frequencies': (
             ['--profile-AA-frequencies'],
@@ -242,6 +284,14 @@ D = {
             ['-t', '--tree'],
             {'metavar': 'NEWICK',
              'help': "NEWICK formatted tree structure"}
+                ),
+    'items-order': (
+            ['--items-order'],
+            {'metavar': 'FLAT_FILE',
+             'help': "A flat file that contains the order of items you wish the display using the interactive interface. You\
+                      may want to use this if you have a specific order of items in your mind, and do not want to display a\
+                      tree in the middle (or simply you don't have one). The file format is simple: each line should have an\
+                      item name, and there should be no header."}
                 ),
     'additional-layers': (
             ['-A', '--additional-layers'],
@@ -382,6 +432,29 @@ D = {
                       the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good\
                       for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'max-num-genes-missing-from-bin': (
+            ['--max-num-genes-missing-from-bin'],
+            {'default': None,
+             'metavar': 'INTEGER',
+             'help': "This filter removes bins (or genomes) from your analysis. If you have a list of gene names, you can\
+                      use this parameter to omit any bin (or external genome) that is missing more than a number of genes\
+                      you desire. For instance, if you have 100 genome bins, and you are interested in working with 5\
+                      ribosomal proteins, you can use '--max-num-genes-missing-from-bin 4' to remove remove the bins that\
+                      are missing more than 4 of those 5 genes. This is especially useful for phylogenomic analyses.\
+                      Parameter 0 will remove any bin that is missing any of the genes."}
+                ),
+    'min-num-bins-gene-occurs': (
+            ['--min-num-bins-gene-occurs'],
+            {'default': None,
+             'metavar': 'INTEGER',
+             'help': "This filter removes genes from your analysis. Let's assume you have 100 bins to get sequences for HMM\
+                      hits. If you want to work only with genes among all the hits that occur in at least X number of bins,\
+                      and discard the rest of them, you can use this flag. If you say '--min-num-bins-gene-occurs 90', each\
+                      gene in the analysis will be required at least to appear in 90 genomes. If a gene occurs in less than\
+                      that number of genomes, it simply will not be reported. This is especially useful for phylogenomic\
+                      analyses, where you may want to only focus on genes that are prevalent across the set of genomes\
+                      you wish to analyze."}
+                ),
     'concatenate-genes': (
             ['--concatenate-genes'],
             {'default': False,
@@ -392,9 +465,17 @@ D = {
     'separator': (
             ['--separator'],
             {'metavar': 'STRING',
-             'default': 'XXX',
+             'default': None,
              'type': str,
              'help': "Characters to separate things (the default is whatever is most suitable)."}
+                ),
+    'align-with': (
+            ['--align-with'],
+            {'metavar': 'ALIGNER',
+             'default': None,
+             'type': str,
+             'help': "The multiple sequnce alignment program to use when multiple seqeunce alignment is necessary. To see\
+                      all available optons, use the flag `--list-aligners`."}
                 ),
     'concatenate-pcs': (
             ['--concatenate-pcs'],
@@ -402,6 +483,13 @@ D = {
              'action': 'store_true',
              'help': "Concatenate output PCs in the same order to create a multi-gene alignment output that is suitable\
                       for phylogenomic analyses."}
+                ),
+    'report-DNA-sequences': (
+            ['--report-DNA-sequences'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, this program reports amino acid sequences. You can change that behavior and as for DNA\
+                      sequences instead using this flag."}
                 ),
     'skip-multiple-gene-calls': (
             ['--skip-multiple-gene-calls'],
@@ -781,6 +869,12 @@ D = {
                       the scipy.cluster module. Up tp you really. But then you can't use %(default)s\
                       anymore, and you would have to leave anvi'o right now."}
                 ),
+    'input-dir': (
+            ['-i', '--input-dir'],
+            {'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "Directory path for input files"}
+                ),
     'output-dir': (
             ['-o', '--output-dir'],
             {'metavar': 'DIR_PATH',
@@ -855,12 +949,23 @@ D = {
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should\
                       work just fine for most."}
                 ),
-    'hostname': (
-            ['--hostname'],
-            {'metavar': 'HOST_NAME',
+   'browser-path': (
+            ['--browser-path'],
+            {'metavar': 'PATH',
              'type': str,
              'default': None,
-             'help': "Host name for an anvi'server."}
+             'help': "By default, anvi'o will use your default browser to launch the interactive interface. If you\
+                      would like to use something else than your system default, you can provide a full path for an\
+                      alternative browser using this parameter, and hope for the best. For instance we are using\
+                      this parameter to call Google's experimental browser, Canary, which performs better with\
+                      demanding visualizations."}
+                ),
+   'api-url': (
+            ['--api-url'],
+            {'metavar': 'API_URL',
+             'type': str,
+             'default': 'https://anvi-server.org',
+             'help': "Anvi'server url"}
                 ),
     'port-number': (
             ['-P', '--port-number'],
@@ -927,6 +1032,13 @@ D = {
                       becuse we should also think about people who may end up having to work with what we put\
                       together later."}
                 ),
+    'bins': (
+            ['--bins'],
+            {'metavar': 'BINS_DATA',
+             'help': "Tab-delimited file, first column contains tree leaves (protein clusters, splits, contigs etc.) \
+                      and second column contains which Bin they belong."
+            }
+      ),
     'contigs-mode': (
             ['--contigs-mode'],
             {'default': False,
@@ -943,7 +1055,7 @@ D = {
                       although, you should never let the software to decide these things)."}
                 ),
     'project-name': (
-            ['-J', '--project-name'],
+            ['-n', '--project-name'],
             {'metavar': 'PROJECT_NAME',
              'help': "Name of the project. Please choose a short but descriptive name (so anvi'o can use\
                       it whenever she needs to name an output file, or add a new table in a database, or name\
@@ -954,8 +1066,9 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "If you are not planning to use the interactive interface (or if you have other\
-                      means to add a tree of contigs in the database) you may skip the clustering step\
-                      and simply just merge multiple runs."}
+                      means to add a tree of contigs in the database) you may skip the step where\
+                      hierarchical clustering of your items are preformed based on default clustering\
+                      recipes matching to your database type."}
                 ),
     'enforce-hierarchical-clustering': (
             ['--enforce-hierarchical-clustering'],
@@ -1047,14 +1160,16 @@ D = {
                       the profile database you provide does not exist, anvi'o will create an empty one for\
                       you."}
                 ),
-
     'hmm-profile-dir': (
             ['-H', '--hmm-profile-dir'],
-            {'metavar': 'PATH',
-             'help': "If this is empty, anvi'o will perform the HMM search against the default collections that\
-                      are on the system. If it is not, this parameter should be used to point to a directory\
-                      that contains 4 files: (1) genes.hmm.gz, (2) genes.txt, (3) kind.txt, and (4)\
-                      reference.txt. Please see the documentation for specifics of these files."}
+            {'metavar': 'HMM PROFILE PATH',
+             'help': "You can use this parameter you can specify a directory path that contain an HMM profile.\
+                      This way you can run HMM profiles that are not included in anvi'o. See the online\
+                      to find out about the specifics of this directory structure ."}
+                ),
+    'installed-hmm-profile': (
+            ['-I', '--installed-hmm-profile'],
+            {'metavar': 'HMM PROFILE NAME'}
                 ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
@@ -1102,6 +1217,11 @@ D = {
             {'metavar': 'NAME',
              'help': "Automatically load previous saved state and draw tree. To see a list of available states,\
                       use --show-states flag."}
+                ),
+    'state': (
+            ['-s', '--state'],
+            {'metavar': 'STATE',
+             'help': "State file, you can export states from database using anvi-export-state program"}
                 ),
     'collection-autoload': (
             ['--collection-autoload'],
@@ -1207,15 +1327,42 @@ D = {
                       contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure\
                       the memory use never exceeds the size of the physical memory."}
                 ),
+    'export-gff3': (
+        ['--export-gff3'],
+        {
+            'default': False,
+            'action': 'store_true',
+            'help': "If this is true, the output file will be in GFF3 format."
+        }
+    ),
     'export-svg': (
             ['--export-svg'],
-            {'default': False,
-            'type': str,
+            {'type': str,
              'metavar': 'FILE_PATH',
              'required': False,
-             'help': "export svg help"}
+             'help': "The SVG output file path."}
                 ),
-
+    'tab-delimited': (
+            ['--tab-delimited'],
+            {'default': False,
+             'required': False,
+             'action': 'store_true',
+             'help': "Use the TAB-delimited format for the output file."}
+                ),
+    'splits-mode': (
+            ['--splits-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Specify this flag if you would like to output coverages of individual 'splits', rather than their 'parent'\
+                      contig coverages."}
+                ),
+    'report-as-text': (
+            ['--report-as-text'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you give this flag, Anvi'o will not open new browser to show Contigs database statistics and write all stats \
+                      to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
+                ),
 }
 
 # two functions that works with the dictionary above.
@@ -1260,9 +1407,8 @@ def set_version():
            t.pan_db_version, \
            t.profile_db_version, \
            t.samples_info_db_version, \
-           t.auxiliary_hdf5_db_version, \
-           t.genomes_storage_hdf5_db_vesion, \
-           t.users_db_version
+           t.auxiliary_data_version, \
+           t.genomes_storage_vesion
 
 
 def print_version():
@@ -1271,9 +1417,8 @@ def print_version():
     run.info("Contigs DB version", __contigs__version__)
     run.info("Pan DB version", __pan__version__)
     run.info("Samples information DB version", __samples__version__)
-    run.info("Genome data storage version", __hdf5__version__)
-    run.info("Auxiliary data storage version", __genomes_storage_version__)
-    run.info("Anvi'server users data storage version", __users_db_version__)
+    run.info("Genome data storage version", __genomes_storage_version__)
+    run.info("Auxiliary data storage version", __auxiliary_data_version__)
 
 
 __version__, \
@@ -1281,9 +1426,8 @@ __contigs__version__, \
 __pan__version__, \
 __profile__version__, \
 __samples__version__, \
-__hdf5__version__, \
-__genomes_storage_version__, \
-__users_db_version__ = set_version()
+__auxiliary_data_version__, \
+__genomes_storage_version__  = set_version()
 
 
 if '-v' in sys.argv or '--version' in sys.argv:

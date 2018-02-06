@@ -37,7 +37,7 @@ def main(args):
     contigs_db.disconnect()
     progress.end()
 
-    if not len(annotation_sources):
+    if not annotation_sources:
         raise ConfigError("This contigs database does not have any functional annotations :/")
 
     if args.list_annotation_sources:

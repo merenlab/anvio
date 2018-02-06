@@ -264,6 +264,7 @@ class GetSplitNamesInBins:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.bin_ids_file_path = A('bin_ids_file')
+        self.bin_ids_list = A('bin_ids_list')
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
         self.contigs_db_path = A('contigs_db')

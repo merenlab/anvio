@@ -464,7 +464,7 @@ function drawSamplesLayers(settings) {
                 if (value > max) {
                     ratio = 1;
                 }
-                else if (value < min) {
+                else if (value < min || (max - min) == 0)  {
                     ratio = 0;
                 }
                 else {
@@ -640,7 +640,6 @@ function drawSamplesTree(settings, sample_xy)
     var t = new Tree();
     t.Parse(newick, settings['samples-edge-length-normalization']);
     t.ComputeDepths();
-    t.ComputeWeights(t.root);
 
     var use_edge_lengths = t.has_edge_lengths;
     if (settings['samples-ignore-branch-length'])

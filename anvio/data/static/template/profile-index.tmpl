@@ -176,7 +176,7 @@
 
                 <div id="collapse-bins" class="panel-collapse collapse">
                     <div class="panel-body">
-                        <p style="color: #AAAAAA; padding: 20px;">Summary of of each bin. You can download the information below also as a <a href="{{ files|lookup:'general_bins_summary' }}">TAB-delimited file</a>. Here is another TAB-delimited file that reports <a href="{{ files|lookup:'samples_summary' }}">the number of reads mapped for each profile database</a>.</p>
+                        <p style="color: #AAAAAA; padding: 20px;">Summary of of each bin. You can download the information below also as a <a href="{{ files|lookup:'bins_summary' }}">TAB-delimited file</a>. Here is another TAB-delimited file that reports <a href="{{ files|lookup:'samples_summary' }}">the number of reads mapped for each profile database</a>.</p>
 
                         <div class="panel panel-default">
                             <div class="panel-body">
@@ -220,7 +220,7 @@
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"N50" }}">{{ collection|lookup:bin|lookup:"N50"|pretty }}</td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"GC_content" }}">{{ collection|lookup:bin|lookup:"GC_content"|humanize_n }}%</td>
                                             {% if meta|lookup:"completeness_data_available" %}
-                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_complete" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_complete"|humanize_n }}%</button></td>
+                                            <td class="text-center" data-value="{{ collection|lookup:bin|lookup:"percent_completion" }}"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modCompleteness_{{bin}}">{{ collection|lookup:bin|lookup:"percent_completion"|humanize_n }}%</button></td>
                                             <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_n }}">{{ collection|lookup:bin|lookup:"percent_redundancy"|humanize_n }}%</td>
                                             <td class="text-center"  style="vertical-align: middle; font-style: italic;">{{ collection|lookup:bin|lookup:"scg_domain" }}</td>
                                             {% else %}
@@ -333,7 +333,7 @@
                   <tr>
                     <th>Source</th>
                     <th>SCG domain</th>
-                    <th class="text-center">Percent completeness</th>
+                    <th class="text-center">Percent completion</th>
                     <th class="text-center">Percent redundancy</th>
                   </tr>
                 </thead>
@@ -343,7 +343,7 @@
                       <tr>
                         <td>{{ source|humanize }}</td>
                         <td>{{ domain|humanize }}</td>
-                        <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:domain|lookup:source|lookup:"percent_complete"|humanize_f }}%</td>
+                        <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:domain|lookup:source|lookup:"percent_completion"|humanize_f }}%</td>
                         <td class="text-center">{{ collection|lookup:bin|lookup:"completeness"|lookup:domain|lookup:source|lookup:"percent_redundancy"|humanize_f }}%</td>
                       </tr>
                       {% endfor %}
@@ -523,8 +523,11 @@
                                         <td class="text-center" style="vertical-align: middle;" data-value="{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|humanize_n }}">{{ collection|lookup:bin|lookup:"genes"|lookup:"num_genes_found"|pretty }}</td>
                                         <td class="text-center" style="vertical-align: middle;">🔗  
                                                 <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_calls" }}">genes</a> |
-                                                    {% if meta|lookup:"gene_coverages_data_available" %}
-                                                        <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_coverages" }}">gene_coverages</a> | <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_detection" }}">detection</a>
+                                                    {% if meta|lookup:"gene_level_coverage_stats_available" %}
+                                                        <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_coverages" }}">gene_coverages</a> |
+                                                        <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_detection" }}">detection</a> |
+                                                        <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_non_outlier_coverages" }}">non_outlier_covs</a> |
+                                                        <a href="{{ collection|lookup:bin|lookup:"files"|lookup:"gene_non_outlier_coverage_stds" }}">non_outlier-cov_stds</a>
                                                     {% else %}
                                                         <span title="You want to see these? Summarize w/ --init-gene-coverages flag.">gene_coverages | detection</span>
                                                     {% endif %}

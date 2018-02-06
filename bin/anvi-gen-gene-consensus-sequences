@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Collapses variation for a given list of gene caller ids"""
+
+import sys
+import argparse
+
+import anvio
+import anvio.variabilityops as variabilityops
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Collapse variability for a set of genes across samples')
+
+    groupD = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first.")
+    groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+
+    groupS = parser.add_argument_group('FOCUS', 'What do we want? A consensus sequence for a gene, or a list of\
+                                                 genes. From where do we want it? All samples, by default. When\
+                                                 do we want it? Whenever it is convenient.')
+    groupS.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id'))
+    groupS.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
+    groupS.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
+
+    groupO = parser.add_argument_group('OUTPUT', 'Output file and output style')
+    groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'genes.fa', 'help': 'The output\
+                                                  file name. The boring default is "%(default)s". You can change\
+                                                  the output file format to a TAB-delimited file using teh flag \
+                                                  `--tab-delimited`, in which case please do not forget to change the\
+                                                  file name, too.'}))
+    groupO.add_argument(*anvio.A('tab-delimited'), **anvio.K('tab-delimited'))
+
+
+    groupE = parser.add_argument_group('EXTRAS', 'Parameters that will help you to do a very precise analysis.\
+                                                  If you declare nothing from this bunch, you will get "everything"\
+                                                  to play with, which is not necessarily a good thing...')
+    groupE.add_argument(*anvio.A('engine'), **anvio.K('engine'))
+
+
+    args = parser.parse_args()
+    
+    try:
+        c = variabilityops.ConsensusSequences(args)
+        c.process()
+        c.report()
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(2)

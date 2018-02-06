@@ -100,7 +100,7 @@ def main(args):
 
         p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(collection[bin_id]))
         c = results_dict['bacteria']['Campbell_et_al']
-        percent_completion = c['percent_complete']
+        percent_completion = c['percent_completion']
         percent_redundancy = c['percent_redundancy']
         total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
 

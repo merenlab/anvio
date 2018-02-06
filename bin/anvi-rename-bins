@@ -136,10 +136,10 @@ def main(args):
             l = []
             for domain in d:
                 for scg_collection_name in d[domain]:
-                    l.append((d[domain][scg_collection_name]['percent_complete'], domain, scg_collection_name),)
+                    l.append((d[domain][scg_collection_name]['percent_completion'], domain, scg_collection_name),)
             _, domain, scg_collection_name = sorted(l, reverse=True)[0]
 
-            p_completion = d[domain][scg_collection_name]['percent_complete']
+            p_completion = d[domain][scg_collection_name]['percent_completion']
             p_redundancy = d[domain][scg_collection_name]['percent_redundancy']
         else:
             raise ConfigError("WTF :( Something that shuold never happened just happened,")

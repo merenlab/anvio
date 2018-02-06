@@ -3,6 +3,9 @@
 """Creates an HTML output to act as a front-end for the static summary directory."""
 
 import os
+import json
+import zlib
+import base64
 import shutil
 
 import anvio
@@ -74,7 +77,7 @@ class SummaryHTMLOutput:
 
         self.summary_type = self.summary_dict['meta']['summary_type']
 
-        if self.summary_type not in ['profile', 'pan']:
+        if self.summary_type not in ['profile', 'pan', 'saav']:
             raise ConfigError("Unknown summary type '%s'" % self.summary_type)
 
 
@@ -85,7 +88,7 @@ class SummaryHTMLOutput:
         self.progress.new('Rendering')
         index_html = self.render(quick)
 
-        self.run.info('HTML Output', index_html)
+        self.run.info('HTML Output', index_html, nl_before=1, nl_after=1, mc='green')
 
         return index_html
 
@@ -99,7 +102,9 @@ class SummaryHTMLOutput:
     def render(self, quick=False):
         self.progress.update("Processing the template for type '%s' ..." % self.summary_type)
 
-        if self.summary_type == 'pan':
+        if self.summary_type == 'saav':
+                rendered = render_to_string('saavs-index.tmpl', self.summary_dict)
+        elif self.summary_type == 'pan':
             rendered = render_to_string('pan-index.tmpl', self.summary_dict)
         elif self.summary_type == 'profile':
             if quick:
@@ -157,3 +162,16 @@ def pretty(n):
         return pp(int(n))
     except ValueError:
         return n
+
+@register.filter(name='convert_to_json')
+def convert_to_json(obj):
+    return json.dumps(obj)
+
+@register.filter(name='base64_encode')
+def base64_encode(data):
+    return base64.b64encode(data)
+
+@register.filter(name='zlib_encode')
+def zlib_encode(data):
+    return zlib.compress(data.encode("utf-8"))
+

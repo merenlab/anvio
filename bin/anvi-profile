@@ -30,7 +30,9 @@ if __name__ == '__main__':
 
     groupM = parser.add_argument_group('EXTRAS', 'Things that are not mandatory, but can be useful if/when declared.')
     groupX = parser.add_argument_group('HIERARCHICAL CLUSTERING', "Do you want your splits to be clustered? Yes? No?\
-                                        Maybe?")
+                                        Maybe? Remember: By default, anvi-profile will not perform hierarchical clustering\
+                                        on your splits; but if you use `--blank` flag, it will try. You can skip that by\
+                                        using the `--skip-hierarchical-clustering` flag.")
     groupQ = parser.add_argument_group('NUMBERS', 'Defaults of these\
                                         parameters will impact your analysis. You can always come back to them\
                                         and update your profiles, but it is important to make sure defaults are\
@@ -49,6 +51,7 @@ if __name__ == '__main__':
     groupM.add_argument(*anvio.A('profile-AA-frequencies'), **anvio.K('profile-AA-frequencies'))
     groupM.add_argument(*anvio.A('description'), **anvio.K('description'))
     groupX.add_argument(*anvio.A('cluster-contigs'), **anvio.K('cluster-contigs'))
+    groupX.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))
     groupX.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
                             'The distance metric for the hierarchical clustering. Only relevant if you are\
                              using `--cluster-contigs` flag. The default is "%(default)s".'}))

@@ -2,9 +2,16 @@ import os
 import sys
 import glob
 
-anvio_version='2.3.2-master'
+anvio_version='3-master'
 
 requirements = [req.strip() for req in open('requirements.txt', 'rU').readlines() if not req.startswith('#')]
+
+try:
+    if sys.version_info.major != 3:
+        sys.stderr.write("Your active Python major version ('%d') is not compatible with what anvi'o expects :/ We recently switched to Python 3.\n" % sys.version_info.major)
+        sys.exit(-1)
+except Exception:
+    sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
 try:
     import numpy
@@ -63,7 +70,7 @@ setup(
         'Natural Language :: English',
         'Operating System :: MacOS',
         'Operating System :: POSIX',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: JavaScript',
         'Programming Language :: C',
         'Topic :: Scientific/Engineering',

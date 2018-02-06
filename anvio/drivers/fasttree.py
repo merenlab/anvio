@@ -28,7 +28,7 @@ pp = terminal.pretty_print
 
 
 class FastTree:
-    def __init__(self):
+    def __init__(self, run=run):
         self.run = run
         self.progress = progress
         self.command = ['FastTree']
@@ -54,6 +54,8 @@ class FastTree:
                     run.warning(warning)
                     warning = ""
             elif line.startswith("      "):
+                pass
+            elif 'seconds' in line:
                 pass
             else:
                 line = line.split(":")

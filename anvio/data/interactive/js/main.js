@@ -21,39 +21,32 @@
 //--------------------------------------------------------------------------------------------------
 //  Globals
 //--------------------------------------------------------------------------------------------------
+
 var VERSION = '0.2.1';
-
-var VIEWER_WIDTH;
-var VIEWER_HEIGHT;
-var dragging = false;
-
-var zoomBox = {};
-var drawing_zoom = false;
-
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
+var VIEWER_WIDTH;
+var VIEWER_HEIGHT;
+
 
 var scale = 0;
 
 var id_to_node_map = new Array();
 var label_to_node_map = {};
-var order_to_node_map = {};
+var order_to_node_map = new Array();
 var leaf_count;
 var samples_id_to_node_map;
 var unnamed_node_counter;
 
 var angle_per_leaf;
 var height_per_leaf;
-var tree_type;
 var margin;
 var order_counter;
 
 var total_radius = 0;
-var layer_boundaries;
 
 var SELECTED = new Array();
 var clusteringData;
-var hasTree;
 
 var layerdata;
 var contig_lengths;
@@ -102,21 +95,21 @@ var ping_timer;
 var autoload_state;
 var autoload_collection;
 var mode;
+var server_mode = false;
 var samples_tree_hover = false;
 var bbox;
 
-var mouse_event_origin_x = 0;
-var mouse_event_origin_y = 0;
-
 var request_prefix = getParameterByName('request_prefix');
+var collapsedNodes = []; 
+var rotateNode = null;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
 
 $(window).resize(function() {
      // get current client size
-    VIEWER_WIDTH = document.getElementById('svg').clientWidth;
-    VIEWER_HEIGHT = document.getElementById('svg').clientHeight;
+    VIEWER_WIDTH = document.getElementById('svg').clientWidth || document.getElementById('svg').width.baseVal.value;
+    VIEWER_HEIGHT = document.getElementById('svg').clientHeight || document.getElementById('svg').height.baseVal.value;
 });
 
 $(document).ready(function() {
@@ -234,7 +227,7 @@ function checkNews() {
                 }
                 $('#news-panel-inner').append('<div class="news-item"> \
                                               <h1>' + ((hash_found) ? '' : '<span class="blue-dot">') + '</span>'+news_item['title']+'</h1> \
-                                              <span class="news-date">'+news_item['date']+'</span>'+marked(news_item['content'])+'</div>')
+                                              <span class="news-date">'+news_item['date']+'</span>'+renderMarkdown(news_item['content'])+'</div>')
             }
             createCookie('news_checked', 'yes', 1); // expiration is 1 days
 
@@ -265,7 +258,7 @@ function initData() {
     function (response)
         {
         var titleResponse = [ response.title ];
-        var clusteringsResponse = [ response.clusterings ];
+        var itemOrdersResponse = [ response.item_orders ];
         var viewsResponse = [ response.views ];
         var contigLengthsResponse = [ response.contigLengths ];
         var defaultViewResponse = [ response.defaultView ];
@@ -284,6 +277,7 @@ function initData() {
         var project = response.project;
             unique_session_id = sessionIdResponse[0];
             mode = modeResponse[0];
+            server_mode = response.server_mode;
 
         if(!inspectionAvailable){
             toastr.info("Inspection of data items is not going to be available for this project.");
@@ -293,6 +287,11 @@ function initData() {
         if(!sequencesAvailable && mode != "collection" && mode != "pan"){
             toastr.info("No sequence data is available. Some menu items will be disabled.");
             $('.menuItemSequence').addClass('menu-disabled');
+        }
+
+        if (!response['functions_initialized']) {
+            $('#search_functions_button').attr('disabled', true);
+            $('.functions-not-available-message').show();
         }
 
         if (! response.noPing) {
@@ -319,14 +318,6 @@ function initData() {
             {
                 $('.refine-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/refine-bg.png)');
-            } else if (mode == 'server') {
-                $('.server-mode').show();
-                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
-                $('#multiUser').show();
-                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
-                $('#multiUser > img').attr('src', project.user_avatar);
-                $('#multiUser > .download-button').attr('href', project.download_zip_url);
-                $('#sidebar').css('margin-top', '81px')
             } else if (mode == 'full') {
                 $('.full-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
@@ -338,13 +329,23 @@ function initData() {
                 $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
                 $('#splits_title').hide();
                 $('#len_title').hide();
-
             } else if (mode == 'collection') {
                 $('.collection-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/collection-bg.png)');
             } else if (mode == 'manual') {
                 $('.manual-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/manual-bg.png)');
+            }
+
+            if (server_mode) {
+                $('.server-mode').show();
+                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
+                $('#multiUser').show();
+                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
+                $('#multiUser > img').attr('src', project.user_avatar);
+                $('#multiUser > .download-button').attr('href', project.download_zip_url);
+                $('#sidebar').css('margin-top', '81px');
+                $('.upload-button').hide();
             }
 
             if (readOnlyResponse[0] == true)
@@ -364,6 +365,9 @@ function initData() {
                     $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
                 },
                 'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
+                'parser': function(content) {
+                    return renderMarkdown(content);
+                },
                 'additionalButtons': [
                   [{
                     data: [{
@@ -391,6 +395,10 @@ function initData() {
                 'fullscreen': {'enable': false},
             });
 
+            if (description.length > 100) {
+                toggleRightPanel('#description-panel');
+            }
+
             contig_lengths = eval(contigLengthsResponse[0]);
 
             // if --state parameter given, autoload given state.
@@ -402,8 +410,8 @@ function initData() {
             /* 
             //  Clusterings
             */
-            var default_tree = clusteringsResponse[0][0];
-            var available_trees = clusteringsResponse[0][1];
+            var default_tree = itemOrdersResponse[0][0];
+            var available_trees = itemOrdersResponse[0][1];
             var available_trees_combo = getComboBoxContent(default_tree, available_trees);
 
             $('#trees_container').append(available_trees_combo);
@@ -736,6 +744,10 @@ function buildLegendTables() {
                                 </tr>
                                 <tr>
                                     <td class="col-md-2"></td>
+                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2"></td>
                                     <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
                                 </tr>
                             </table>
@@ -750,7 +762,7 @@ function buildLegendTables() {
         createLegendColorPanel(i); // this fills legend_content_X
     }
 
-    $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
+    $('#legend_settings, #search_tab_content').accordion({heightStyle: "content", collapsible: true});
 
     $('.colorpicker').colpick({
         layout: 'hex',
@@ -766,10 +778,15 @@ function buildLegendTables() {
 function batchColor(legend_id) {
     var rule = $('[name=batch_rule_'+legend_id+']:checked').val()
     var color = $('#batch_colorpicker_' + legend_id).attr('color');
+    var randomize_color = $('#batch_randomcolor_' + legend_id).is(':checked');
     var legend = legends[legend_id];
 
     for (var i=0; i < legend['item_keys'].length; i++)
     {
+        if (randomize_color) {
+            color = randomColor();
+        }
+
         if (rule == 'all') {
             window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
         }
@@ -1147,7 +1164,7 @@ function buildLayersTable(order, settings)
             }
             else
             {
-                var norm   = getNamedLayerDefaults(layer_name, 'norm', (mode == 'full') ? 'log' : 'none');
+                var norm   = getNamedLayerDefaults(layer_name, 'norm', (mode == 'full' || mode == 'refine') ? 'log' : 'none');
                 var min    = getNamedLayerDefaults(layer_name, 'min', 0);
                 var max    = getNamedLayerDefaults(layer_name, 'max', 0);
                 var min_disabled = getNamedLayerDefaults(layer_name, 'min_disabled', true);
@@ -1184,6 +1201,7 @@ function buildLayersTable(order, settings)
                 '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
                 '        <option value="bar"{option-type-bar}>Bar</option>' +
                 '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
+                '        <option value="line"{option-type-line}>Line</option>' +
                 '    </select>' +
                 '</td>' +
                 '<td>' +
@@ -1296,7 +1314,9 @@ function serializeSettings(use_layer_names) {
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
-
+    state['max-font-size-label'] = $('#max_font_size_label').val();
+    state['draw-guide-lines'] = $('#draw_guide_lines').val();
+    
     // sync views object and layers table
     syncViews();
 
@@ -1397,11 +1417,11 @@ function drawTree() {
         {
             dialogSize: 'sm',
             onShow: function() {
-                draw_tree(settings); // call treelib.js where the magic happens
+                var drawer = new Drawer(settings);
+                drawer.draw();
 
                 // last_settings used in export svg for layer information,
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
-                // running serializeSettings() twice costs extra time but we can ignore it to keep code simple.
                 last_settings = serializeSettings();
 
                 redrawBins();
@@ -1416,14 +1436,10 @@ function drawTree() {
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
 
-                if (autoload_collection !== null)
+                if (autoload_collection !== null && mode !== 'refine')
                 {
                     loadCollection(autoload_collection);
                     autoload_collection = null;
-                }
-
-                if ($('#panel-left').is(':visible')) {
-                    setTimeout(toggleLeftPanel, 500);
                 }
             },
         });
@@ -1542,31 +1558,59 @@ function newBin(id, binState) {
     });
 }
 
-function deleteBin(id) {
-    if (confirm('Are you sure?')) {
-
-        $('#bin_row_' + id).remove();
-        $('#tbody_bins input[type=radio]').last().prop('checked', true);
-        bin_count--;
-
-        for (var i = 0; i < SELECTED[id].length; i++) {
-            var node_id = label_to_node_map[SELECTED[id][i]].id;
-            $("#line" + node_id).css('stroke-width', '1');
-            $("#arc" + node_id).css('stroke-width', '1');
-            $("#line" + node_id).css('stroke', LINE_COLOR);
-            $("#arc" + node_id).css('stroke', LINE_COLOR);
-        }
-
-        SELECTED[id] = [];
-        delete completeness_dict[id];
-
-        if (bin_count==0)
-        {
-            newBin();
-        }
-
-        redrawBins();
+function deleteBin(id, show_confirm) {
+    if (typeof show_confirm === 'undefined') {
+        show_confirm = true;
     }
+
+    if (show_confirm && !confirm('Are you sure?')) {
+        return;
+    }
+
+    $('#bin_row_' + id).remove();
+    $('#tbody_bins input[type=radio]').last().prop('checked', true);
+    bin_count--;
+
+    for (var i = 0; i < SELECTED[id].length; i++) {
+        var node = label_to_node_map[SELECTED[id][i]];
+
+        if (typeof node === 'undefined' || !node.hasOwnProperty('id')) {
+            continue;
+        }
+
+        var node_id = node.id;
+        $("#line" + node_id).css('stroke-width', '1');
+        $("#arc" + node_id).css('stroke-width', '1');
+        $("#line" + node_id).css('stroke', LINE_COLOR);
+        $("#arc" + node_id).css('stroke', LINE_COLOR);
+    }
+
+    SELECTED[id] = [];
+    delete completeness_dict[id];
+
+    if (bin_count==0)
+    {
+        newBin();
+    }
+
+    redrawBins();
+}
+
+function deleteAllBins() {
+    if (!confirm('Are you sure you want to remove all bins?')) {
+        return;
+    }
+    var bin_ids_to_delete = [];
+
+    $('#tbody_bins tr').each(
+        function(index, bin) {
+            bin_ids_to_delete.push($(bin).attr('bin-id'));
+        }
+    );
+
+    bin_ids_to_delete.map(function(bin_id) { 
+        deleteBin(bin_id, false);
+    });
 }
 
 function showGenSummaryWindow() {
@@ -1684,11 +1728,13 @@ function updateComplateness(bin_id) {
 
             completeness_dict[bin_id] = completeness_info_dict;
 
-            average_completeness = averages['percent_completion']
-            average_redundancy = averages['percent_redundancy']
+            average_completeness = averages['percent_completion'];
+            average_redundancy = averages['percent_redundancy'];
 
-            $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%').parent().attr('data-value', average_completeness);
-            $('#redundancy_' + bin_id).val(average_redundancy.toFixed(1) + '%').parent().attr('data-value', average_redundancy);
+            if (average_completeness != null && average_redundancy != null) {
+                $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%').parent().attr('data-value', average_completeness);
+                $('#redundancy_' + bin_id).val(average_redundancy.toFixed(1) + '%').parent().attr('data-value', average_redundancy);
+            }
 
             $('#completeness_' + bin_id).attr("disabled", false);
             $('#redundancy_' + bin_id).attr("disabled", false);
@@ -1716,7 +1762,7 @@ function showCompleteness(bin_id, updateOnly) {
         return;
 
     var msg = '<table class="table table-striped sortable">' +
-        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent complenetess</th></tr></thead><tbody>';
+        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent complenetion</th></tr></thead><tbody>';
 
     for (var source in stats){
         if(stats[source]['domain'] != averages['domain'])
@@ -1724,7 +1770,7 @@ function showCompleteness(bin_id, updateOnly) {
             // don't show it in the interface
             continue;
 
-        msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td><td data-value='" + stats[source]['percent_complete'] + "'>" + stats[source]['percent_complete'].toFixed(2) + "%</td></tr>";
+        msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td><td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td></tr>";
     }
 
     msg = msg + '</tbody></table>';
@@ -1759,6 +1805,7 @@ function showRedundants(bin_id, updateOnly) {
         tabletext += '<h5>' + source + ' (' + Object.keys(stats[source]['redundants']).length + ')</h5></td></tr>';
 
         var redundants_html = '';
+        var split_array_all = '';
 
         for (var redundant in stats[source]['redundants']) {
             var title = '';
@@ -1772,6 +1819,8 @@ function showRedundants(bin_id, updateOnly) {
                     title += contig[j] + '\n';
                     split_array += '\'' + contig[j] + '\', ';
                 }
+
+                split_array_all += split_array;
             }
 
             redundants_html += '<span style="cursor:pointer;" \
@@ -1781,7 +1830,9 @@ function showRedundants(bin_id, updateOnly) {
                                   </span><br />';
         }
 
-        tabletext += '<tr><td valign="top">' + redundants_html + '</tr></td></table></div>';
+        tabletext += '<tr><td valign="top">' + redundants_html + '<br /><br /><span style="cursor:pointer;" \
+                                    onclick="highlighted_splits = [' + split_array_all + ']; redrawBins();">(Highlight All)\
+                                  </span></tr></td></table></div>';
         output += tabletext;
 
         if (oddeven%2==0)
@@ -1928,6 +1979,7 @@ function storeRefinedBins() {
     });
 }
 
+
 function storeCollection() {
     var collection_name = $('#storeCollection_name').val();
 
@@ -1938,32 +1990,13 @@ function storeCollection() {
         $('#storeCollection_name').focus();
         return;
     }
-         
-    data = {};
-    colors = {};
 
-    $('#tbody_bins tr').each(
-        function(index, bin) {
-            var bin_id = $(bin).attr('bin-id');
-            var bin_name = $('#bin_name_' + bin_id).val();
-
-            colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
-            data[bin_name] = new Array();
-
-            for (var i=0; i < SELECTED[bin_id].length; i++)
-            {
-                if (label_to_node_map[SELECTED[bin_id][i]].IsLeaf())
-                {
-                    data[bin_name].push(SELECTED[bin_id][i]);
-                }
-            }
-        }
-    );
+    var collection_info = serializeCollection();
 
     $.post("/store_collection", {
         source: collection_name,
-        data: JSON.stringify(data, null, 4),
-        colors: JSON.stringify(colors, null, 4),
+        data: JSON.stringify(collection_info['data'], null, 4),
+        colors: JSON.stringify(collection_info['colors'], null, 4),
     },
     function(server_response, status){
         toastr.info(server_response, "Server");
@@ -1971,6 +2004,40 @@ function storeCollection() {
 
     $('#modStoreCollection').modal('hide');    
 }
+
+
+function serializeCollection() {
+    var data = {};
+    var colors = {};
+
+    $('#tbody_bins tr').each(
+        function(index, bin) {
+            var bin_id = $(bin).attr('bin-id');
+            var bin_name = $('#bin_name_' + bin_id).val();
+
+            var items = new Array();
+            
+            for (var i=0; i < SELECTED[bin_id].length; i++)
+            {
+                var node_label = SELECTED[bin_id][i];
+                var node = label_to_node_map[node_label];
+
+                if (node.IsLeaf() && !node.collapsed)
+                {
+                    items.push(node_label);
+                }
+            }
+
+            if (items.length > 0) {
+                colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
+                data[bin_name] = items;
+            }
+        }
+    );
+
+    return {'data': data, 'colors': colors};
+}
+
 
 function generateSummary() {
     var collection = $('#summaryCollection_list').val();
@@ -2190,6 +2257,101 @@ function showSaveStateWindow()
     });
 }
 
+function showGeneratePhylogeneticTreeWindow() {
+    $('#phylogeny_pc').empty();
+    $('#phylogeny_programs').empty();
+    $('#modPhylogeneticTree :input').attr("disabled", false);
+    $('.generating-tree').hide();
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/phylogeny/programs?timestamp=' + new Date().getTime(),
+        success: function(available_programs) {
+              $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/phylogeny/aligners?timestamp=' + new Date().getTime(),
+                success: function(available_aligners) {
+                    $('#phylogeny_programs').empty();
+                    for (var i=0; i < available_programs.length; i++) {
+                        if (available_programs[i] == 'default')
+                            continue;
+
+                        $('#phylogeny_programs').append(new Option(available_programs[i]))
+                    }
+
+                    $('#phylogeny_aligners').empty();
+                    for (var i=0; i < available_aligners.length; i++) {
+                        if (available_aligners[i] == 'default')
+                            continue;
+
+                        $('#phylogeny_aligners').append(new Option(available_aligners[i]))
+                    }
+
+                    $('#tbody_bins tr').each(
+                        function(index, bin) {
+                            var bin_id = $(bin).attr('bin-id');
+                            var bin_name = $('#bin_name_' + bin_id).val();
+
+                            $('#phylogeny_pc').append('<option value="' + bin_id + '">' + bin_name + '</option>');
+                        }
+                    );
+                    $('#modPhylogeneticTree').modal('show');
+                }});
+        }});
+}
+
+function generatePhylogeneticTree() {
+    new_phylogeny_name = $('#phylogeny_name').val();
+    pc_list = [];
+    pcs_id = $('#phylogeny_pc').val();
+    for (var i=0; i < SELECTED[pcs_id].length; i++) {
+        if (label_to_node_map[SELECTED[pcs_id][i]].IsLeaf()) {
+            pc_list.push(SELECTED[pcs_id][i]);
+        } 
+    }
+
+    if (pc_list.length == 0) {
+        alert("The Bin you selected does not contain any PCs.");
+        return;
+    }
+
+    if (samples_order_dict.hasOwnProperty(new_phylogeny_name)) {
+        alert("The name '" + new_phylogeny_name + "' already exists, please give another name. ");
+        return;
+    }
+
+    $('#modPhylogeneticTree :input').attr("disabled", true);
+    $('.generating-tree').show();
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/data/phylogeny/generate_tree?timestamp=' + new Date().getTime(),
+        data: {
+            'name': $('#phylogeny_name').val(),
+            'skip_multiple_genes': $('#phylogeny_skip_multiple_gene_calls').is(':checked'),
+            'program': $('#phylogeny_programs').val(),
+            'aligner': $('#phylogeny_aligners').val(),
+            'pcs': pc_list,
+            'store_tree': $('#phylogeny_store_generated_tree').is(':checked'),
+        },
+        success: function(response) {
+            if (response['status'] != 0) {
+                alert(response['message']);
+                showGeneratePhylogeneticTreeWindow();
+                return;
+            } else {
+                samples_order_dict[$('#phylogeny_name').val()] = {'basic': '', 'newick': response['tree']};
+                $('#samples_order').append('<option value="'+ new_phylogeny_name + '">' + new_phylogeny_name + '</option>');
+                $('#samples_order').val(new_phylogeny_name);
+                $('#samples_order').trigger('change');
+                $('#modPhylogeneticTree').modal('hide');
+                drawTree();
+            }
+        }
+    });
+}
+
 function saveState() 
 {
     var name = $('#saveState_name').val();
@@ -2237,8 +2399,81 @@ function saveState()
                 $('#modSaveState').modal('hide');
 
                 current_state_name = name;
-                $('#current_state').html('[current state: ' + current_state_name + ']');
                 toastr.success("State '" + current_state_name + "' successfully saved.");
+            }
+        }
+    });
+}
+
+function showUploadProject() {
+    $('#upload_state').empty();
+    $('#upload_collection').empty();
+    $('#upload_view').empty();
+    $('#upload_ordering').empty();
+
+    $('#trees_container option').each(function(index, option) {
+        $(option).clone().appendTo('#upload_ordering');
+    });
+
+    $('#views_container option').each(function(index, option) {
+        $(option).clone().appendTo('#upload_view');
+    });
+
+    $('#upload_state').append('<option selected>Select State</option>');
+    $('#upload_collection').append('<option>Select Collection</option>');
+
+    $('#upload_project_name').val($('#title-panel-first-line').text());
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all?timestamp=' + new Date().getTime(),
+        success: function(state_list) {
+            for (state_name in state_list) {
+                $('#upload_state').append('<option>' + state_name + '</option>');
+            }
+
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/collections?timestamp=' + new Date().getTime(),
+                success: function(collection_list) {
+                    for (collection_name in collection_list) {
+                        $('#upload_collection').append('<option>' + collection_name + '</option>');
+                    }
+                }
+            });
+        }
+    });
+    $('#modUpload').modal('show');
+}
+
+function uploadProject() {
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/upload_project?timestamp=' + new Date().getTime(),
+        data: {
+            username: $('#username').val(),
+            password: $('#password').val(),
+            project_name: $('#upload_project_name').val(),
+            ordering: $('#upload_ordering').val(),
+            view: $('#upload_view').val(),
+            state: $('#upload_state').val(),
+            collection: $('#upload_collection').val(),
+            delete_if_exists: $('#upload_delete_if_exists').is(':checked'),
+            include_samples: $('#upload_include_samples').is(':checked'),
+            include_description: $('#upload_include_description').is(':checked')
+        },
+        success: function(data) {
+            if (data['status'] == 1) {
+                $('.upload-message').removeClass('alert-success').addClass('alert-danger');
+                $('.upload-message').show();
+                $('.upload-message').html(data['message']);
+            } else {
+                $('.upload-message').removeClass('alert-danger').addClass('alert-success');
+                $('.upload-message').show();
+                $('.upload-message').html("Project successfully uploaded, to view your projects click <a href='https://anvi-server.org/projects' target='_blank'>here.</a>");
             }
         }
     });
@@ -2272,6 +2507,10 @@ function loadState()
     {
         state_name = autoload_state;
         autoload_state = null // to prevent load again.
+
+        if ($('#panel-left').is(':visible')) {
+            setTimeout(toggleLeftPanel, 500);
+        }
     }
     else
     {
@@ -2411,6 +2650,9 @@ function loadState()
                             if (state.hasOwnProperty('max-font-size')) {
                                 $('#max_font_size').val(state['max-font-size']);
                             }
+                            if (state.hasOwnProperty('max-font-size-label')) {
+                                $('#max_font_size_label').val(state['max-font-size-label']);
+                            }
                             if (state.hasOwnProperty('layer-margin'))
                                 $('#layer-margin').val(state['layer-margin']);
                             if (state.hasOwnProperty('outer-ring-height'))
@@ -2458,6 +2700,9 @@ function loadState()
                             if (state.hasOwnProperty('background-opacity')) {
                                 $('#background_opacity').val(state['background-opacity']);
                             }
+                            if (state.hasOwnProperty('draw-guide-lines')) {
+                                $('#draw_guide_lines').val(state['draw-guide-lines'])
+                            }
 
                             // reload layers
                             var current_view = $('#views_container').val();
@@ -2485,9 +2730,7 @@ function loadState()
                             buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
                             buildLegendTables();
 
-
                             current_state_name = state_name;
-                            $('#current_state').html('[current state: ' + current_state_name + ']');
 
                             toastr.success("State '" + current_state_name + "' successfully loaded.");
                             waitingDialog.hide();

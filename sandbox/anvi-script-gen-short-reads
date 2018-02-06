@@ -30,7 +30,6 @@ bases = ['A', 'T', 'C', 'G']
 
 class Configuration:
     def __init__(self, config):
-        self.output_file = config.get('general', 'output_file')
         self.short_read_length = int(config.get('general', 'short_read_length'))
         self.coverage = int(config.get('general', 'coverage'))
         self.contig = str(config.get('general', 'contig'))
@@ -53,6 +52,9 @@ class Configuration:
 
 
 def main(config):
+    if not args.output_file_path:
+        raise ConfigError("You must define an output file path.")
+
     run = terminal.Run(width = 15)
     progress = terminal.Progress()
 
@@ -65,7 +67,7 @@ def main(config):
 
     L = len(config.contig)
 
-    av_num_short_reads_needed = L / x * c
+    av_num_short_reads_needed = int(L / x * c)
 
     for i in range(0, av_num_short_reads_needed):
         if (i + 1) % 100 == 0:
@@ -100,22 +102,27 @@ def main(config):
             sequences[entry_id]['sequence'] = sequences[entry_id]['sequence'][:position_in_sequence_to_replace] + new_base + sequences[entry_id]['sequence'][position_in_sequence_to_replace + 1:]
             sequences[entry_id]['num_SNVs'] += 1
 
-    output = open(config.output_file, 'w')
+    output = open(args.output_file_path, 'w')
     for entry_id in sequences:
         s = sequences[entry_id]
         output.write('>%s\n' % '|'.join(['%d' % entry_id, 'start:%d' % s['start'], 'stop:%d' % s['stop'], 'num_SNVs:%d' % s['num_SNVs']]))
         output.write('%s\n' % s['sequence'])
+    output.close()
 
     progress.end()
 
 
-    run.info('Fasta output', config.output_file) 
+    run.info('Fasta output', args.output_file_path) 
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate short reads from contigs')
     parser.add_argument('configuration', metavar = 'CONFIG_FILE', 
                                         help = 'Configuration file')
+    parser.add_argument('--output-file-path', metavar = 'FILE_PATH', 
+                                        help = 'Output FASTA file path')
+
+
 
     args = parser.parse_args()
     user_config = configparser.ConfigParser()

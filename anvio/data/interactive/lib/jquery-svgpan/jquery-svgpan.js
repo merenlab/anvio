@@ -122,7 +122,7 @@
     var NONE = 0,
         PAN = 1,
         DRAG = 2,
-        init = function (root, svgRoot, enablePan, enableZoom, enableDrag, zoomScale) {
+        init = function (root, svgRoot, enablePan, enableZoom, enableDrag, zoomScale, onlyPanOnMouseUp) {
 
             var state = NONE,
                 stateTarget,
@@ -225,9 +225,12 @@
 
                     if (state === PAN && enablePan) {
                         // Pan mode
-                        p = getEventPoint(evt).matrixTransform(stateTf);
+                        document.body.style.cursor = 'move';
 
-                        setCTM(g, stateTf.inverse().translate(p.x - stateOrigin.x, p.y - stateOrigin.y));
+                        if (!onlyPanOnMouseUp) {
+                            p = getEventPoint(evt).matrixTransform(stateTf);
+                            setCTM(g, stateTf.inverse().translate(p.x - stateOrigin.x, p.y - stateOrigin.y));
+                        }
                     } else if (state === DRAG && enableDrag) {
                         // Drag mode
                         p = getEventPoint(evt).matrixTransform(g.getCTM().inverse());
@@ -236,32 +239,6 @@
 
                         stateOrigin = p;
                     }
-                },
-
-                /**
-                 * Handle mouseenter event.  This has been added to stop ignoring
-                 * inputs when the mouse is over the element.
-                 **/
-                handleMouseEnter = function (evt) {
-                    // bind our mousemove listener only when we have mouse in view
-                    if (!isMouseOverElem) {
-                        recentOffset = $root.offset();
-                        $root.bind('mousemove', handleMouseMove);
-                        isMouseOverElem = true;
-                    }
-                },
-
-                /**
-                 * Handle mouseleave event.  This has been added to ignore
-                 * inputs when the mouse is not over the element.
-                 **/
-                handleMouseLeave = function (evt) {
-                    // unbind our mousemove listener only when we no longer have mouse in view
-                    if (isMouseOverElem) {
-                        $root.unbind('mousemove', handleMouseMove);
-                        isMouseOverElem = false;
-                    }
-                    state = NONE;
                 },
 
                 /**
@@ -286,7 +263,6 @@
                     if (evt.target.tagName === "svg" || !enableDrag) {
                         // Pan mode
                         state = PAN;
-
                         stateTf = g.getCTM().inverse();
 
                         stateOrigin = getEventPoint(evt).matrixTransform(stateTf);
@@ -313,11 +289,45 @@
                     evt.returnValue = false;
 
                     //var svgDoc = evt.target.ownerDocument;
+                    if (state == PAN && onlyPanOnMouseUp) {
+                        var g = svgRoot;
+                        p = getEventPoint(evt).matrixTransform(stateTf);
+                        setCTM(g, stateTf.inverse().translate(p.x - stateOrigin.x, p.y - stateOrigin.y));
+                    }
 
                     if (state === PAN || state === DRAG) {
                         // Quit pan mode
                         state = NONE;
+                        document.body.style.cursor = '';
                     }
+                },
+
+                /**
+                 * Handle mouseenter event.  This has been added to stop ignoring
+                 * inputs when the mouse is over the element.
+                 **/
+                handleMouseEnter = function (evt) {
+                    // bind our mousemove listener only when we have mouse in view
+                    if (!isMouseOverElem) {
+                        recentOffset = $root.offset();
+                        $root.bind('mousemove', handleMouseMove);
+                        isMouseOverElem = true;
+                    }
+                },
+
+                /**
+                 * Handle mouseleave event.  This has been added to ignore
+                 * inputs when the mouse is not over the element.
+                 **/
+                handleMouseLeave = function (evt) {
+                    // unbind our mousemove listener only when we no longer have mouse in view
+                    handleMouseUp(evt);
+
+                    if (isMouseOverElem) {
+                        $root.unbind('mousemove', handleMouseMove);
+                        isMouseOverElem = false;
+                    }
+                    state = NONE;
                 };
 
             /**
@@ -346,11 +356,14 @@
        @param enableDrag Boolean enable or disable dragging (default disabled)
        @param zoomScale Float zoom sensitivity, defaults to .2
     **/
-    $.fn.svgPan = function (viewportId, enablePan, enableZoom, enableDrag, zoomScale) {
-        enablePan = typeof enablePan !== 'undefined' ? enablePan : true;
-        enableZoom = typeof enableZoom !== 'undefined' ? enableZoom : true;
-        enableDrag = typeof enableDrag !== 'undefined' ? enableDrag : false;
-        zoomScale = typeof zoomScale !== 'undefined' ? zoomScale : 0.2;
+    $.fn.svgPan = function (options) {
+        var params = $.extend({},{
+            'enablePan': true,
+            'enableZoom': true,
+            'enableDrag': false,
+            'zoomScale': 0.2,
+            'onlyPanOnMouseUp': false,
+        }, options);
 
         return $.each(this, function (i, el) {
             var $el = $(el),
@@ -358,11 +371,11 @@
                 viewport;
             // only call upon elements that are SVGs and haven't already been initialized.
             if ($el.is('svg') && $el.data('SVGPan') !== true) {
-                viewport = $el.find('#' + viewportId)[0];
+                viewport = $el.find('#' + params.viewportId)[0];
                 if (viewport) {
-                    init($el[0], viewport, enablePan, enableZoom, enableDrag, zoomScale);
+                    init($el[0], viewport, params.enablePan, params.enableZoom, params.enableDrag, params.zoomScale, params.onlyPanOnMouseUp);
                 } else {
-                    throw "Could not find viewport with id #" + viewportId;
+                    throw "Could not find viewport with id #" + params.viewportId;
                 }
             }
         });

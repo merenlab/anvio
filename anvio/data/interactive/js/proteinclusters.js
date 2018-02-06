@@ -304,6 +304,8 @@ function color(positions, aa){
  ********************************************************************/
 
 
+var request_prefix = getParameterByName('request_prefix');
+>>>>>>> master
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
 var genomes;
@@ -320,6 +322,17 @@ var pc_data;
 
 
 function loadAll() {
+    $.ajaxPrefilter(function(options) {
+        if (request_prefix) {
+            options.url = request_prefix + options.url;
+            if (options.type.toLowerCase() == 'post')
+            {
+                options.data += '&csrfmiddlewaretoken=' + getCookie('csrftoken');
+            }
+        }
+        return options;
+    });
+
     pc_name = getUrlVars()["id"];
     document.title = pc_name + " detailed";
 
@@ -346,11 +359,18 @@ function loadAll() {
             prev_str = "&lt;&lt;&lt; prev | ";
             position = index + " of " + total;
 
+            // anvi-server uses iframes for prettier urls, links need to be open _top
+            var target_str = '';
+
+            if (self != top) {
+                target_str = 'target="_top"';
+            }
+
             if(next_pc_name)
-                next_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="proteinclusters.html?id=' + next_pc_name + '"> | next &gt;&gt;&gt;</a>';
+                next_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="' + generate_inspect_link('proteinclusters', next_pc_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
             if(previous_pc_name)
-                prev_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="proteinclusters.html?id=' + previous_pc_name + '">&lt;&lt;&lt; prev | </a>';
+                prev_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="' + generate_inspect_link('proteinclusters', previous_pc_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
             document.getElementById("header").innerHTML = "<strong>" + pc_name + "</strong> with " + gene_caller_ids.length + " genes detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 
@@ -364,6 +384,7 @@ function loadAll() {
                 state = JSON.parse(sessionStorage.state);
                 initializeCheckBoxes();
                 createDisplay();
+                $('.loading-screen').hide();
             }
         }
     });
