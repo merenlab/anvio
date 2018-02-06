@@ -536,6 +536,10 @@ function drawSamplesLayers(settings) {
                     value == 'None';
                 }
 
+                if (typeof samples_categorical_colors[samples_layer_name] === 'undefined') {
+                    samples_categorical_colors[samples_layer_name] = {};
+                }
+
                 if (typeof samples_categorical_colors[samples_layer_name][value] === 'undefined')
                 {
                     samples_categorical_colors[samples_layer_name][value] = randomColor({luminosity: 'dark'});
@@ -696,9 +700,9 @@ function drawSamplesTree(settings, sample_xy)
         {
             if (!sample_xy.hasOwnProperty(q.label))
             {
-                var _message = "Error: Sample order '" + samples_order + "' has leaf named '" + q.label + "' but it is not a valid layer name.";
+                var _message = "Error: Sample order '" + samples_order + "' has leaf named '" + q.label + "' but it is not a valid layer name. Falling back to custom order.";
                 console.log(_message);
-                toastr.error(_message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                $('#samples_order').val('custom').trigger('change');
                 return;
             }
 

@@ -7,12 +7,13 @@ import sys
 import anvio
 import anvio.terminal as terminal
 import anvio.genomestorage as genomestorage
+import anvio.genomedescriptions as genomedescriptions
 
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -40,16 +41,20 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group("PRO STUFF", "Things you may not have to change. But you never know (unless you read the help).")
     groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
 
-    groupD = parser.add_argument_group("OUTPUT", "Give it a nice name. Must end with '-GENOMES.h5'. This is primarily due to the fact\
-                                                  that there are other .h5 files used throughout anvi'o and it would be better to\
+    groupD = parser.add_argument_group("OUTPUT", "Give it a nice name. Must end with '-GENOMES.db'. This is primarily due to the fact\
+                                                  that there are other .db files used throughout anvi'o and it would be better to\
                                                   distinguish this very special file from them.")
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
-        pan = genomestorage.GenomeStorage(args, run, progress)
-        pan.create_genomes_data_storage()
+        genome_descriptions = genomedescriptions.GenomeDescriptions(args)
+        genome_descriptions.load_genomes_descriptions()
+
+        genome_storage = genomestorage.GenomeStorage(args.output_file, create_new=True)
+        genome_storage.store_genomes(genome_descriptions)
+
     except ConfigError as e:
         print(e)
         sys.exit(-1)

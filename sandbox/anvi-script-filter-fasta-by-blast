@@ -12,8 +12,8 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -145,7 +145,7 @@ if __name__ == '__main__':
                                 identity at matched regions has a `pident` of 100 but a `proper_pident` of 50. The\
                                 default is %(default).1f%%.")
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         filter_FASTA_by_blast_results(args)

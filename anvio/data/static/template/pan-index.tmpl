@@ -55,9 +55,9 @@
                 <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
-                The <b>{{ meta|lookup:"num_bins"|pretty }}</b> protein cluster 'bins' that were sotred in the anvi'o pan database for '<b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b>'
-                under the collection name "<b>{{ meta|lookup:"collection_name"|humanize }}</b>", describe <b>{{ meta|lookup:"pan"|lookup:"num_protein_clusters"|pretty }}</b>
-                protein clusters with <b>{{ meta|lookup:"pan"|lookup:"num_genes_in_protein_clusters"|pretty }}</b> genes that were identified in <b>{{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }}</b> genomes.
+                The <b>{{ meta|lookup:"num_bins"|pretty }}</b> gene cluster 'bins' that were sotred in the anvi'o pan database for '<b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b>'
+                under the collection name "<b>{{ meta|lookup:"collection_name"|humanize }}</b>", describe <b>{{ meta|lookup:"pan"|lookup:"num_gene_clusters"|pretty }}</b>
+                gene clusters with <b>{{ meta|lookup:"pan"|lookup:"num_genes_in_gene_clusters"|pretty }}</b> genes that were identified in <b>{{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }}</b> genomes.
             </div>
         </div>
     </header>
@@ -142,18 +142,18 @@
         <div class="container">
             <div class="panel panel-info" id="bins_panel">
                 <div class="panel-heading">
-                    <h1 class="panel-title">Summary files for protein clusters</h1>
+                    <h1 class="panel-title">Summary files for gene clusters</h1>
                 </div>
 
                 <div id="collapse-bins" class="panel">
                     <div class="panel-body">
                         {% if meta|lookup:"quick" %}
-                        <p style="color: #AAAAAA; padding-top: 20px; padding-left:20px;">This was a quick summary, hence the protein clusters summary file in this output is somewhat succint.</p>
+                        <p style="color: #AAAAAA; padding-top: 20px; padding-left:20px;">This was a quick summary, hence the gene clusters summary file in this output is somewhat succint.</p>
                         {% else %}
-                        <p style="color: #AAAAAA; padding-top: 20px; padding-left:20px;">This was a full summary (i.e., the `--quick` flag has not been used), hence the protein clusters summary file is not succint by any means.</p>
+                        <p style="color: #AAAAAA; padding-top: 20px; padding-left:20px;">This was a full summary (i.e., the `--quick` flag has not been used), hence the gene clusters summary file is not succint by any means.</p>
                         {% endif %}
 
-                        <p style="color: #777777; padding-top: 20px; padding-left:20px;">The summary file: <a href="{{ files|lookup:'protein_clusters_summary' }}">{{ files|lookup:'protein_clusters_summary' }}</a></p>
+                        <p style="color: #777777; padding-top: 20px; padding-left:20px;">The summary file: <a href="{{ files|lookup:'gene_clusters_summary' }}">{{ files|lookup:'gene_clusters_summary' }}</a></p>
                         </div>
                     </div>
                 </div>

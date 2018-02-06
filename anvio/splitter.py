@@ -22,10 +22,12 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
+from anvio.tables.kmers import KMerTablesForContigsAndSplits
+from anvio.tables.collections import TablesForCollections
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2017, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -65,7 +67,7 @@ class ProfileSplitter:
         if not self.profile_db_path:
             raise ConfigError("No profile db no cookie. Bye.")
 
-        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         if profile_db.meta['blank']:
@@ -102,9 +104,6 @@ class ProfileSplitter:
             b = BinSplitter(bin_name, self.summary, self.args, run=self.run, progress=self.progress)
             b.do_contigs_db()
             b.do_profile_db()
-
-            if self.summary.auxiliary_contigs_data_available:
-                b.do_auxiliary_contigs_data()
 
             if self.summary.auxiliary_profile_data_available:
                 b.do_auxiliary_profile_data()
@@ -179,7 +178,7 @@ class BinSplitter(summarizer.Bin):
         # touch does not create the k-mers tables, so the resulting contigs db is missing them. we
         # will add them to the db here.
         bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
-        k = dbops.KMerTablesForContigsAndSplits(None, k=bin_contigs_db.meta['kmer_size'])
+        k = KMerTablesForContigsAndSplits(None, k=bin_contigs_db.meta['kmer_size'])
         for table_name in ['kmer_contigs', 'kmer_splits']:
             bin_contigs_db.db.create_table(table_name, k.kmers_table_structure, k.kmers_table_types)
         bin_contigs_db.disconnect()
@@ -189,7 +188,7 @@ class BinSplitter(summarizer.Bin):
                     t.contig_sequences_table_name: ('contig', self.contig_names),
                     t.contigs_info_table_name: ('contig', self.contig_names),
                     t.gene_function_calls_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    t.gene_protein_sequences_table_name: ('gene_callers_id', self.gene_caller_ids),
+                    t.gene_amino_acid_sequences_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.genes_in_contigs_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.genes_in_splits_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.genes_in_splits_summary_table_name: ('split', self.split_names),
@@ -198,6 +197,7 @@ class BinSplitter(summarizer.Bin):
                     t.hmm_hits_splits_table_name: ('split', self.split_names),
                     t.splits_info_table_name: ('split', self.split_names),
                     t.splits_taxonomy_table_name: ('split', self.split_names),
+                    t.nt_position_info_table_name: ('contig_name', self.contig_names),
                     'kmer_contigs': ('contig', self.split_names),
                     'kmer_splits': ('contig', self.split_names),
                 }
@@ -226,35 +226,13 @@ class BinSplitter(summarizer.Bin):
             for sample_name in sample_coverages:
                 bin_profile_auxiliary.append(split_name, sample_name, sample_coverages[sample_name])
 
+        bin_profile_auxiliary.store()
         bin_profile_auxiliary.close()
         parent_profile_auxiliary.close()
 
         if self.compress_auxiliary_data:
             self.progress.update('Compressing the profile db auxiliary data file ...')
             utils.gzip_compress_file(new_auxiliary_profile_data_path)
-
-        self.progress.end()
-
-
-    def do_auxiliary_contigs_data(self):
-        self.progress.new('Splitting "%s"' % self.bin_id)
-        self.progress.update('Subsetting the auxiliary data (for contigs db)')
-
-        new_auxiliary_contigs_data_path = dbops.get_auxiliary_data_path_for_contigs_db(self.bin_contigs_db_path)
-        parent_auxiliary_contigs_data_path = self.summary.auxiliary_contigs_data_path
-
-        bin_contigs_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(new_auxiliary_contigs_data_path,
-                                                                                self.contigs_db_hash,
-                                                                                create_new=True)
-
-        parent_contigs_auxiliary = auxiliarydataops.AuxiliaryDataForNtPositions(parent_auxiliary_contigs_data_path,
-                                                                                self.summary.a_meta['contigs_db_hash'])
-
-        for contig_name in self.contig_names:
-            bin_contigs_auxiliary.append(contig_name, parent_contigs_auxiliary.get(contig_name))
-
-        bin_contigs_auxiliary.close()
-        parent_contigs_auxiliary.close()
 
         self.progress.end()
 
@@ -327,7 +305,7 @@ class BinSplitter(summarizer.Bin):
         # add a collection
         collection_dict = {'ALL_SPLITS': self.split_names}
         bins_info_dict = {'ALL_SPLITS': {'html_color': '#FF0000', 'source': 'anvi-split'}}
-        collections = dbops.TablesForCollections(self.bin_profile_db_path)
+        collections = TablesForCollections(self.bin_profile_db_path)
         collections.append('DEFAULT', collection_dict, bins_info_dict=bins_info_dict)
 
 
@@ -407,7 +385,13 @@ class BinSplitter(summarizer.Bin):
 
                 _, distance, linkage = clustering_id.split(':')
 
-                dbops.add_hierarchical_clustering_to_db(self.merged_profile_db_path, config_name, newick, distance=distance, linkage=linkage, make_default=config_name == constants.merged_default, run=self.run)
+                dbops.add_items_order_to_db(anvio_db_path=self.profile_db_path,
+                                            order_name=config_name,
+                                            order_data=newick,
+                                            distance=distance,
+                                            linkage=linkage,
+                                            make_default=config_name == constants.merged_default,
+                                            run=self.run)
 
 
     def is_hierarchical_clustering_for_bin_OK(self):

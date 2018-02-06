@@ -10,8 +10,8 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     groupA = parser.add_argument_group('MANDATORY INPUTS', 'Things you really need to provide to be in business.')
     groupA.add_argument(*anvio.A('contigs-fasta'), **anvio.K('contigs-fasta'))
-    groupA.add_argument(*anvio.A('project-name'), **anvio.K('project-name', {'required': True}))
+    groupA.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
 
     groupB = parser.add_argument_group('OPTIONAL INPUTS', 'Things you may want to tweak.')
     groupB.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path', {'default': 'CONTIGS.db'}))
@@ -43,10 +43,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('ignore-internal-stop-codons'), **anvio.K('ignore-internal-stop-codons'))
     groupB.add_argument(*anvio.A('skip-mindful-splitting'), **anvio.K('skip-mindful-splitting'))
 
-    groupD = parser.add_argument_group('MISC', 'Categoryless flags and parameters.')
-    groupD.add_argument(*anvio.A('debug'), **anvio.K('debug'))
-
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         a = dbops.ContigsDatabase(args.output_db_path, run, progress, quiet=False, skip_init = True)

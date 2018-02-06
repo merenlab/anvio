@@ -1,0 +1,142 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Searches contigs database for a given function"""
+
+import sys
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbops import ContigsSuperclass
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    annotation_sources = A('annotation_sources')
+    delimiter = A('delimiter')
+    search_terms = A('search_terms')
+    basic_report_path = A('output_file') or 'search_results.txt'
+    full_report_path = A('full_report')
+    include_sequences = A('include_sequences')
+
+    # straighten things out
+    search_terms = [s.strip() for s in search_terms.split(delimiter)]
+    annotation_sources = [a.strip() for a in annotation_sources.split(delimiter)] if annotation_sources else None
+
+    contigs_db = ContigsSuperclass(args)
+    if A('list_annotation_sources'):
+        contigs_db.list_function_sources()
+        sys.exit()
+
+    # basic tests
+    filesnpaths.is_output_file_writable(basic_report_path)
+    filesnpaths.is_output_file_writable(full_report_path) if full_report_path else None
+
+    if include_sequences and not full_report_path:
+        raise ConfigError("Umm. Well. The flag --include-sequences is only relevant to use if you are asking anvi'o\
+                           to generate a full-report.")
+
+    # do the search
+    matching_split_names_dict, verbose_output = contigs_db.search_splits_for_gene_functions(search_terms, requested_sources=annotation_sources, verbose = args.verbose)
+
+    all_split_names = set([])
+
+    for split_names in list(matching_split_names_dict.values()):
+        all_split_names.update(split_names)
+
+    results_dict = {}
+
+    for split_name in all_split_names:
+        results_dict[split_name] = dict([(s + '_hits', '') for s in search_terms])
+
+        for search_term in search_terms:
+            if split_name in matching_split_names_dict[search_term]:
+                results_dict[split_name][search_term + '_hits'] = search_term
+
+    utils.store_dict_as_TAB_delimited_file(results_dict, basic_report_path, headers = ['contigs'] + [s + '_hits' for s in search_terms])
+
+    if full_report_path:
+        header = ['gene_callers_id', 'source', 'accession', 'function', 'search_term', 'split_name']
+
+        if include_sequences:
+            gene_caller_ids = list(set([e[0] for e in verbose_output]))
+            _, gene_sequences_dict = contigs_db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
+            header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
+
+        # generate the file
+        report = open(full_report_path, 'w')
+        report.write('\t'.join(header) + '\n')
+        for entry in verbose_output:
+            content = [str(item) for item in entry]
+            if include_sequences:
+                g = gene_sequences_dict[entry[0]]
+                content.extend([g['direction'],
+                                g['rev_compd'],
+                                g['sequence'],
+                                g['aa_sequence'],])
+            report.write('\t'.join(content) + '\n')
+        report.close()
+
+        run.info('Full report', full_report_path)
+
+    run.info('Items additional data compatible output', basic_report_path)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Search functions in an anvi'o contigs database. Basically, this program searches for one or more search terms\
+                                                  you define in functional annotations of genes in an anvi'o contigs database, and generates multiple reports.\
+                                                  The simpler report (which also is the default one) simply tells you which contigs contain genes with functions\
+                                                  matching to serach terms you used. This file is only useful to quickly highlight matching contigs in the interface\
+                                                  by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also request a much more\
+                                                  comprehensive report, which gives you anything you might need to know, including the matching gene caller id,\
+                                                  functional annotation source, and full function name for each hit and serach term.")
+
+    groupA = parser.add_argument_group('SEARCH IN', 'Relevant source databases')
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+
+    groupB = parser.add_argument_group('SEARCH FOR', 'Relevant terms')
+    groupB.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))
+    groupB.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
+    groupB.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
+    groupB.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+
+    groupC = parser.add_argument_group('REPORT', "Anvi'o can report the hits in multiple ways. The output file will be a very simple 2-column\
+                                                  TAB-delimited output that is compatible with anvi'o additional data format (so you can give\
+                                                  it to the `anvi-interactive` to see which splits contained genes that were matching to your\
+                                                  search terms). You can also ask anvi'o to generate a full-report, that contains much more and\
+                                                  much helpful information about each hit. Optionally you can even ask the gene seqeunces to\
+                                                  appear in this report.")
+    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupC.add_argument(*anvio.A('full-report'), **anvio.K('full-report'))
+    groupC.add_argument(*anvio.A('include-sequences'), **anvio.K('include-sequences'))
+    groupC.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

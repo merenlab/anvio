@@ -14,8 +14,8 @@ import anvio.dictio as dictio
 import anvio.terminal as terminal
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -45,7 +45,7 @@ states_dict = {'AA': 'a',
                'GT': 'k',
                'TG': 'k'}
 
-valid_chars = set(states_dict.values()) 
+valid_chars = set(states_dict.values())
 reverse_states = dict([(states_dict[v], ''.join(set(v))) for v in set([''.join(sorted(k)) for k in list(states_dict.keys())])])
 
 
@@ -54,7 +54,7 @@ def entropy(l):
     for char in valid_chars:
         P_C = (l.count(char) * 1.0 / len(l)) + 0.0000000000000000001
         E_Cs.append(P_C * log(P_C))
-   
+
     # return un-weighted entropy
     return -(sum(E_Cs))
 
@@ -172,11 +172,11 @@ class VariabilityWrapper:
         summary_index = dictio.read_serialized_object(args.summary_dict)
         num_positions_from_each_split = args.num_positions_from_each_split
         min_scatter = args.min_scatter
-        
+
         splits = [c.strip() for c in open(args.splits_of_interest).readlines()]
         num_splits = len(splits)
         run.info('Splits', '%d splits found' % (num_splits))
-        
+
         contigs_db = dbops.ContigsDatabase(args.contigs_db)
         splits_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
         contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
@@ -273,8 +273,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('min-ratio-of-competings-nts'), **anvio.K('min-ratio-of-competings-nts'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt'}))
 
-    args = parser.parse_args()
-    
-    
+    args = anvio.get_args(parser)
+
     w = VariabilityWrapper(args)
     w.analyze()
