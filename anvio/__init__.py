@@ -165,6 +165,15 @@ D = {
                       frames in contigs by running a bacterial gene caller. Declaring this flag will by-pass that\
                       process. If you prefer, you can later import your own gene calling results into the database."}
                 ),
+    'remove-partial-hits': (
+            ['--remove-partial-hits'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default anvi'o will return hits even if they are partial. Declaring this flag will make\
+                      anvi'o filter all hits that are partial. Partial hits are hits in which you asked for n1\
+                      genes before and n2 genes after the hits but the search hits the end of the contig before\
+                      finding the number of genes that you asked."}
+            ),
     'external-gene-calls': (
             ['--external-gene-calls'],
             {'metavar': 'GENE-CALLS',

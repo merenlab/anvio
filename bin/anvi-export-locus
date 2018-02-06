@@ -73,7 +73,7 @@ def main(args):
     contigs_db.init_contig_sequences()
     targets = []
     sources = []
-    premature = False
+    filtered_partial_hits = 0
 
     if args.list_hmm_sources:
         info_table = hmmops.SequencesForHMMHits(args.contigs_db).hmm_hits_info
@@ -133,7 +133,8 @@ def main(args):
     entry_id = 0
     direction_dict = {'f': 1, 'r': -1}
     for gene_id in matching_genes:
-        # for each gene hit take the sequence that follows for 25 genes in the direction of transcription
+        premature = False
+        # for each gene hit take the sequence that follows in the direction of transcription
         gene_dict = contigs_db.genes_in_contigs_dict[gene_id]
         gene_1 = gene_id - num_genes_list[0] * direction_dict[gene_dict['direction']]
         gene_2 = gene_id + num_genes_list[1] * direction_dict[gene_dict['direction']]
@@ -159,28 +160,34 @@ def main(args):
         stop = contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
         block_sequence = contigs_db.contig_sequences[gene_dict['contig']]['sequence'][start:stop]
 
-        if args.separate_fasta:
-            # create a separate fasta per match
-            output_file_path = args.output_file_prefix + '_' + str(entry_id) + '.fa'
-            f = open(output_file_path, 'w')
-        
-        block_header = contigs_db.a_meta['project_name'] + ' ' +\
-                       '|'.join([
-                                 'target:%s' % ', '.join(targets),
-                                 'sources:%s' % ', '.join(sources),
-                                 'query:%s' % args.search_term,
-                                 'hit_contig:%s' % gene_dict['contig'],
-                                 'hit_gene_callers_id:%s' % str(gene_id),
-                                 'locus:%s,%s' % (str(first_gene_of_the_block), str(last_gene_of_the_block)),
-                                 'nt_positions_in_contig:%s:%s' % (str(start), str(stop)),
-                                 'premature:%s' % str(premature)])
-        f.write('>%s\n' % block_header)
-        f.write('%s\n' % block_sequence)
-        if args.separate_fasta:
-        # if separate fasta files are created then need to close it now
-            f.close()
+        if not (args.remove_partial_hits and premature):
+            # don't save if it's a premature result AND the user asked to remove partial hits
+            if args.separate_fasta:
+                # create a separate fasta per match
+                output_file_path = args.output_file_prefix + '_' + str(entry_id) + '.fa'
+                f = open(output_file_path, 'w')
+            
+            block_header = contigs_db.a_meta['project_name'] + ' ' +\
+                           '|'.join([
+                                     'target:%s' % ', '.join(targets),
+                                     'sources:%s' % ', '.join(sources),
+                                     'query:%s' % args.search_term,
+                                     'hit_contig:%s' % gene_dict['contig'],
+                                     'hit_gene_callers_id:%s' % str(gene_id),
+                                     'locus:%s,%s' % (str(first_gene_of_the_block), str(last_gene_of_the_block)),
+                                     'nt_positions_in_contig:%s:%s' % (str(start), str(stop)),
+                                     'premature:%s' % str(premature)])
+            f.write('>%s\n' % block_header)
+            f.write('%s\n' % block_sequence)
+            if args.separate_fasta:
+            # if separate fasta files are created then need to close it now
+                f.close()
+        else:
+            filtered_partial_hits += 1
 
-        entry_id += 1
+            entry_id += 1
+    if filtered_partial_hits and args.remove_partial_hits:
+        run.info_single("%s hits were filtered because they were partial." % filtered_partial_hits)
 
     if not args.separate_fasta:
         # if the matches are combined into one fasta then we only close it now
@@ -220,6 +227,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
     groupE.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
     groupE.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+    groupE.add_argument(*anvio.A('remove-partial-hits'), **anvio.K('remove-partial-hits'))
 
     args = anvio.get_args(parser)
 
