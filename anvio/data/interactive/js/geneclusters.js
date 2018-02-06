@@ -77,7 +77,11 @@ function checked(letter){
     if (letter == undefined || letter == null){
         return false;
     }
-    return document.getElementById(letter).checked;
+    box =  document.getElementById(letter)
+    if (box == null){
+        return false;
+    }
+    return box.checked;
 }
 
 
