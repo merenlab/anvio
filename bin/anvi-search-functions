@@ -34,6 +34,7 @@ class SearchResultReporter(object):
         self.full_report_path = A('full_report')
         self.include_sequences = A('include_sequences')
         self.verbose = A('verbose')
+        self.args = args
         self.search_mode = None
 
         self.contigs_db = A('contigs_db')
@@ -51,8 +52,53 @@ class SearchResultReporter(object):
             sys.exit()
 
 
-    def run(self):
+    def write_report(self):
+        matching_item_names_dict, verbose_output = self.db.search_for_gene_functions(self.search_terms, requested_sources=self.annotation_sources, verbose = self.verbose)
 
+        all_item_names = set([])
+
+        for item_names in list(matching_item_names_dict.values()):
+            all_item_names.update(item_names)
+
+        results_dict = {}
+
+        for item_name in all_item_names:
+            results_dict[item_name] = dict([(s + '_hits', '') for s in self.search_terms])
+
+        for search_term in self.search_terms:
+            if item_name in matching_item_names_dict[search_term]:
+                results_dict[item_name][search_term + '_hits'] = search_term
+
+        utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = [self.search_mode] + [s + '_hits' for s in self.search_terms])
+        run.info('Items additional data compatible output', self.basic_report_path)
+
+
+    def write_full_report(self):
+        # if full_report_path:
+        #     header = ['gene_callers_id', 'source', 'accession', 'function', 'search_term', 'split_name']
+
+        # if include_sequences:
+        #     gene_caller_ids = list(set([e[0] for e in verbose_output]))
+        #     _, gene_sequences_dict = contigs_db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
+        #     header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
+
+        # # generate the file
+        # report = open(full_report_path, 'w')
+        # report.write('\t'.join(header) + '\n')
+        # for entry in verbose_output:
+        #     content = [str(item) for item in entry]
+        #     if include_sequences:
+        #         g = gene_sequences_dict[entry[0]]
+        #         content.extend([g['direction'],
+        #                         g['rev_compd'],
+        #                         g['sequence'],
+        #                         g['aa_sequence'],])
+        #     report.write('\t'.join(content) + '\n')
+        # report.close()
+
+        # run.info('Full report', full_report_path)
+
+        
 
 
     def get_database(self):
@@ -65,9 +111,11 @@ class SearchResultReporter(object):
             return ContigsSuperclass(self.args)
 
         elif self.genomes_storage and self.pan_db:
-            self.search_mode = 'genomes'
+            self.search_mode = 'gene_clusters'
             run.info("Searching in Genomes Storage", self.genomes_storage)
-            return PanSuperclass(self.args)
+            pan_database = PanSuperclass(self.args)
+            pan_database.init_gene_clusters()
+            return pan_database
 
         else:
             raise ConfigError("You did not provide enough arguments to initialize contigs database or pan database. \
@@ -163,9 +211,9 @@ if __name__ == '__main__':
                                                   gene caller id, functional annotation source, and full function name for each hit and serach term.")
 
     groupA = parser.add_argument_group('SEARCH IN', 'Relevant source databases')
-    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
-    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
     groupB = parser.add_argument_group('SEARCH FOR', 'Relevant terms')
     groupB.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))
@@ -188,7 +236,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        main(args)
+        SearchResultReporter(args).write_report()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
