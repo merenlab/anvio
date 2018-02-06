@@ -20,7 +20,7 @@
 
 
 /****************************************************************************
- * The following code is from "colorcode.js"
+ * Algorithm for determining color coding
  * Coded by: Mahmoud Yousef
  ****************************************************************************/
 
@@ -300,12 +300,11 @@ function color(positions, aa){
 }
 
 /********************************************************************
- * END COLORCODE.JS
+ * End color coding algorithm
  ********************************************************************/
 
 
 var request_prefix = getParameterByName('request_prefix');
->>>>>>> master
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
 var genomes;
