@@ -74,6 +74,7 @@ class SearchResultReporter(object):
 
 
     def write_full_report(self):
+        pass
         # if full_report_path:
         #     header = ['gene_callers_id', 'source', 'accession', 'function', 'search_term', 'split_name']
 
