@@ -110,7 +110,8 @@ class SearchResultReporter(object):
 
 
     def write_full_report(self):
-        header = ['gene_callers_id', 'source', 'accession', 'function', 'search_term', 'split_name']
+        header = ['gene_callers_id', 'source', 'accession', 'function', 'search_term']
+        header.append(self.search_mode) # we append either "contigs" or "gene_clusters"
 
         if self.include_sequences:
             gene_caller_ids = list(set([e[0] for e in self.verbose_output]))
