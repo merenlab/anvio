@@ -422,7 +422,6 @@ function initializeCheckBoxes(){
         container.appendChild(label);   
         box.checked = true 
     }
-    document.getElementById('A').setAttribute('align', 'center')
 
     var all = document.createElement("button")
     all.innerHTML = "check all"
