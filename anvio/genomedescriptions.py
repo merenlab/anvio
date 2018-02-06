@@ -12,8 +12,10 @@ import os
 import sys
 import copy
 import hashlib
+import argparse
 
 import anvio
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -23,8 +25,8 @@ import anvio.ccollections as ccollections
 from anvio.errors import ConfigError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2017, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -37,7 +39,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class GenomeDescriptions:
+class GenomeDescriptions(object):
     def __init__(self, args=None, run=run, progress=progress):
         self.args = args
         self.run = run
@@ -48,6 +50,9 @@ class GenomeDescriptions:
         self.external_genomes_dict = None
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.functions_are_available = False
+        self.function_annotation_sources = set([])
+
         self.input_file_for_internal_genomes = A('internal_genomes')
         self.input_file_for_external_genomes = A('external_genomes')
         self.list_hmm_sources = A('list_hmm_sources')          # <<< these two are look out of place, but if the args requests
@@ -165,8 +170,33 @@ class GenomeDescriptions:
             self.init_internal_genomes()
             self.init_external_genomes()
 
+
         # make sure it is OK to go with self.genomes
         self.sanity_check()
+
+
+    def get_functions_and_sequences_dicts_from_contigs_db(self, genome_name):
+        g = self.genomes[genome_name]
+
+        args = argparse.Namespace(contigs_db=g['contigs_db_path'])
+        contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
+
+        if self.functions_are_available:
+            contigs_super.init_functions(requested_sources=list(self.function_annotation_sources))
+            function_calls_dict = contigs_super.gene_function_calls_dict
+        else:
+            function_calls_dict = {}
+
+        # get dna sequences
+        gene_caller_ids_list, dna_sequences_dict = contigs_super.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(g['gene_caller_ids']))
+
+        # get amino acid sequences.
+        # FIXME: this should be done in the contigs super.
+        contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+        aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+        contigs_db.disconnect()
+
+        return (function_calls_dict, aa_sequences_dict, dna_sequences_dict)
 
 
     def init_functions(self):
@@ -194,7 +224,7 @@ class GenomeDescriptions:
                 self.run.warning("Some of your genomes (%d of the %d, to be precise) seem to have no functional annotation. Since this workflow\
                                   can only use matching functional annotations across all genomes involved, having even one genome without\
                                   any functions means that there will be no matching function across all. Things will continue to work, but\
-                                  you will have no functions at the end for your protein clusters." % \
+                                  you will have no functions at the end for your gene clusters." % \
                                                 (len(genomes_with_no_functional_annotation), len(self.genomes)))
 
             # make sure it is clear.
@@ -244,7 +274,7 @@ class GenomeDescriptions:
 
 
     def get_genome_hash_for_external_genome(self, entry):
-        dbops.is_contigs_db(entry['contigs_db_path'])
+        utils.is_contigs_db(entry['contigs_db_path'])
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
         genome_hash = contigs_db.meta['contigs_db_hash']
         contigs_db.disconnect()
@@ -253,7 +283,7 @@ class GenomeDescriptions:
 
 
     def get_genome_hash_for_internal_genome(self, entry):
-        dbops.is_contigs_db(entry['contigs_db_path'])
+        utils.is_contigs_db(entry['contigs_db_path'])
         split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(entry)
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
         genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']]).encode('utf-8')).hexdigest()[0:12]
@@ -306,7 +336,7 @@ class GenomeDescriptions:
                 c = self.genomes[genome_name]
                 c['external_genome'] = False
 
-                dbops.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
+                utils.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
 
                 split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(c)
 
@@ -326,7 +356,7 @@ class GenomeDescriptions:
 
 
     def get_split_names_of_interest_for_internal_genome(self, entry):
-        dbops.is_profile_db(entry['profile_db_path'])
+        utils.is_profile_db(entry['profile_db_path'])
         # get splits of interest:
         class Args: pass
         args = Args()
@@ -394,12 +424,13 @@ class GenomeDescriptions:
                                          ', '.join(['%d gene calls by "%s"' % (tpl[1], tpl[0]) for \
                                                          tpl in self.genomes[genome_name]['gene_calls_from_other_gene_callers'].items()])))
 
-            self.run.warning("PLEASE READ CAREFULLY. Some of your genomes had gene calls identified by gene callers other than\
-                              the gene caller anvi'o used (which should be 'prodigal' unless you specified another one). As a\
-                              result, the following genomes contained gene calls coming from other gene callers that did not\
-                              get processed. This may be exactly what you expected to happen, but if was not, you may need to\
-                              use the `--gene-caller` flag to make sure anvi'o is using the gene caller it should be using. Here\
-                              is the list: %s." % (', '.join(info)), lc='green')
+            gene_caller = list(self.genomes.values())[0]['gene_caller']
+            self.run.warning("Some of your genomes had gene calls identified by gene callers other than\
+                              the gene caller anvi'o used, which was set to '%s' either by default, or because you asked for it.\
+                              The following genomes contained genes that were not processed (this may be exactly what you expect\
+                              to happen, but if was not, you may need to use the `--gene-caller` flag to make sure anvi'o is using\
+                              the gene caller it should be using): %s." % \
+                                            (gene_caller, ', '.join(info)), header="PLEASE READ CAREFULLY", lc='green')
 
         # check whether every genome has at least one gene call.
         genomes_with_no_gene_calls = [g for g in self.genomes if not self.genomes[g]['num_genes']]

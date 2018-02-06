@@ -466,12 +466,7 @@ function mouseMoveHandler(event) {
             }
         }
 
-        $('#tooltip_content').html(message);
-        if ($('#tooltip_content').height() + 300 > $(window).height()) {
-            $('#mouse_hover_scroll').css('top', ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_pos).position()['top']);
-        } else {
-            $('#mouse_hover_scroll').css('top', 0);
-        }
+        write_mouse_table(message, "Layers", layer_pos);
         return;
     }
 
@@ -499,7 +494,7 @@ function mouseMoveHandler(event) {
     var message = "";
     for (var i=0; i < tooltip_arr.length; i++)
     {
-        if (i == layer_id)
+        if (i == layer_id - 1)
         {
             message += '<tr style="background-color: rgb(232, 202, 207);">' + tooltip_arr[i] + '</tr>';
         }
@@ -527,13 +522,20 @@ function mouseMoveHandler(event) {
 
     var tr_bin = '<tr><td class="tk">bin</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + bin_color + '"></div>' + belongs + '</td></tr>'
 
-    $('#tooltip_content').html(message + tr_bin);
+    write_mouse_table(message+tr_bin, target_node.label, layer_id);
+}
+
+
+function write_mouse_table(content, item_name, layer_id) {
+    $('#cell_item_name').html(item_name);
+    $('#tooltip_content').html(content);
+
     if ($('#tooltip_content').height() + 300 > $(window).height()) {
-        $('#mouse_hover_scroll').css('top', ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_id).position()['top']);
+        $('#mouse_hover_scroll').css('top', Math.min(0, ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_id).position()['top']));
     } else {
         $('#mouse_hover_scroll').css('top', 0);
-    }
-}
+    } 
+} 
 
 
 function menu_callback(action, param) {
@@ -584,10 +586,10 @@ function menu_callback(action, param) {
             });
             break;
 
-        case 'blastn_nr': fire_up_ncbi_blast(item_name, 'blastn', 'nr', 'contig'); break;
-        case 'blastx_nr': fire_up_ncbi_blast(item_name, 'blastx', 'nr', 'contig'); break;
-        case 'blastn_refseq_genomic': fire_up_ncbi_blast(item_name, 'blastn', 'refseq_genomic', 'contig'); break;
-        case 'blastx_refseq_protein': fire_up_ncbi_blast(item_name, 'blastx', 'refseq_genomic', 'contig'); break;
+        case 'blastn_nr': get_sequence_and_blast(item_name, 'blastn', 'nr', 'contig'); break;
+        case 'blastx_nr': get_sequence_and_blast(item_name, 'blastx', 'nr', 'contig'); break;
+        case 'blastn_refseq_genomic': get_sequence_and_blast(item_name, 'blastn', 'refseq_genomic', 'contig'); break;
+        case 'blastx_refseq_protein': get_sequence_and_blast(item_name, 'blastx', 'refseq_genomic', 'contig'); break;
 
         // collection mode-specific:
         case 'refine_bin': toastr.error('Refine function from the interface is not currently implemented :/ ' +
@@ -615,16 +617,16 @@ function menu_callback(action, param) {
             window.open(generate_inspect_link('inspect', item_name), '_blank');
             break;
 
-        case 'inspect_protein_cluster':
+        case 'inspect_gene_cluster':
             sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-            window.open(generate_inspect_link('proteinclusters', item_name), '_blank');
+            window.open(generate_inspect_link('geneclusters', item_name), '_blank');
             break;
 
-        case 'get_AA_sequences_for_PC':
+        case 'get_AA_sequences_for_gene_cluster':
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/get_AA_sequences_for_PC/' + item_name + '?timestamp=' + new Date().getTime(),
+                url: '/data/get_AA_sequences_for_gene_cluster/' + item_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
                     var output = '';
 

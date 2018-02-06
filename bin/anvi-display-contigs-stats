@@ -11,11 +11,11 @@ import anvio.filesnpaths as filesnpaths
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 
-__author__ = "Özcan Esen"
-__copyright__ = "Copyright 2017, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
     groupB.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     try:
@@ -79,6 +79,3 @@ if __name__ == '__main__':
     except DictIOError as e:
         print(e)
         sys.exit(-3)
-    except SamplesError as e:
-        print(e)
-        sys.exit(-4)

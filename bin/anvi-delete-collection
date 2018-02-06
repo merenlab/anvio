@@ -4,15 +4,15 @@
 import sys
 
 import anvio
-import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.collections import TablesForCollections
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -46,7 +46,7 @@ def main(args):
     if collection_name not in collections.collections_dict:
         raise ConfigError("The collection name '%s' is not in this database :/" % collection_name)
 
-    collections_table = dbops.TablesForCollections(profile_db_path)
+    collections_table = TablesForCollections(profile_db_path)
     collections_table.delete(collection_name)
     run.info('Collection delete', 'Done. The collection "%s" is no more.' % (collection_name))
 
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

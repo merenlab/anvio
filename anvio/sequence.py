@@ -6,11 +6,13 @@
 import numpy
 import collections
 
+from itertools import permutations
+
 import anvio
 import anvio.constants as constants
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -22,6 +24,40 @@ __status__ = "Development"
 class Codon:
     def __init__(self):
         pass
+
+    def get_codon_to_codon_sequence_trajectory(self, start_codon, end_codon, as_amino_acids=False):
+        '''
+        this returns a list of all possible sequence trajectories to get from one codon to another
+        assuming the least amount of mutations necessary. if as_amino_acids, the trajectories will
+        be converted into amino acid space
+        '''
+        indices_of_variation = []
+        for i in range(3):
+            if start_codon[i] != end_codon[i]:
+                indices_of_variation.append(i)
+        index_trajectories = list(permutations(indices_of_variation))
+
+        all_trajectories = []
+        for index_trajectory in index_trajectories:
+            sequence_trajectory = [start_codon]
+            mutate = list(start_codon)
+            for index in index_trajectory:
+                mutate[index] = end_codon[index]
+                sequence_trajectory.append(''.join(mutate))
+            all_trajectories.append(sequence_trajectory)
+
+        if as_amino_acids:
+            # each codon is converted to an amino acid. if two adjacent codons are the same amino
+            # acid then only one is kept
+            for i, trajectory in enumerate(all_trajectories):
+                for j, node in enumerate(trajectory):
+                    trajectory[j] = constants.codon_to_AA[node]
+
+                # gets rid of duplicates
+                all_trajectories[i] = list(dict.fromkeys(trajectory))
+
+        return all_trajectories
+
 
     def get_codon_to_codon_dist_dictionary(self):
         """
@@ -157,7 +193,7 @@ def get_indices_for_outlier_values(c):
     return set([p for p in range(0, c.size) if is_outlier[p]])
 
 
-def get_list_of_outliers(values, threshold=1.5):
+def get_list_of_outliers(values, threshold=None):
     """
     Returns a boolean array with True if values are outliers and False
     otherwise.
@@ -184,6 +220,9 @@ def get_list_of_outliers(values, threshold=1.5):
 
         http://www.sciencedirect.com/science/article/pii/S0022103113000668
     """
+
+    if threshold is None:
+        threshold = 1.5
 
     if len(values.shape) == 1:
         values = values[:, None]

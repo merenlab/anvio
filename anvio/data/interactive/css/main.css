@@ -123,7 +123,7 @@ html, body, #wrapper {
     height: 100%;
     background: url('../images/fractal.jpg') center center scroll;
     border-left: 1px solid #D3D3D3;
-    padding: 15px;
+    padding: 8px;
     opacity: 0.9;
     width: 350px;
 }
@@ -515,7 +515,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 #tooltips-table {
-  display: block;
   max-width: 100%;
   overflow: scroll;
 }
@@ -691,4 +690,13 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .modal-body {
     max-height: calc(100vh - 200px);
     overflow-y: auto;
+}
+
+.table-borderless > tbody > tr > td,
+.table-borderless > tbody > tr > th,
+.table-borderless > tfoot > tr > td,
+.table-borderless > tfoot > tr > th,
+.table-borderless > thead > tr > td,
+.table-borderless > thead > tr > th {
+    border: none;
 }

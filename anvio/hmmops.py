@@ -48,7 +48,7 @@ class SequencesForHMMHits:
         self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
         self.hmm_hits_splits = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
         self.contig_sequences = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
-        self.aa_sequences = contigs_db.get_table_as_dict(t.gene_protein_sequences_table_name)
+        self.aa_sequences = contigs_db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
         self.genes_in_contigs = contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
         self.splits_in_contigs = list(contigs_db.get_table_as_dict(t.splits_info_table_name).keys())
         contigs_db.disconnect()

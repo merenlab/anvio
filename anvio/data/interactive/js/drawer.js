@@ -178,7 +178,7 @@ Drawer.prototype.generate_mock_data_for_collapsed_nodes = function() {
 };
 
 Drawer.prototype.generate_tooltips = function() {
-    empty_tooltip = '<tr><td>split_name</td><td>n/a</td></tr>';
+    empty_tooltip = '<tr><td>Item Name</td><td>n/a</td></tr>';
     empty_tooltip += '<tr><td>parent</td><td>n/a</td></tr>';
 
     for (var i = 1; i < this.settings['layer-order'].length; i++)
@@ -199,7 +199,6 @@ Drawer.prototype.generate_tooltips = function() {
         this.layerdata_dict[params[0]] = params.slice(0);
 
         var title = [];
-        title.push('<td>split_name</td><td>' + layerdata[index][0] + '</td>');
         for (var i = 0; i < this.settings['layer-order'].length; i++) 
         {
             var pindex = this.settings['layer-order'][i];
@@ -1298,7 +1297,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                         q.angle + q.size / 2,
                         this.layer_boundaries[layer.order][0], 
                         this.layer_boundaries[layer.order][1],
-                        0,
+                        (Math.abs(q.size) > Math.PI) ? 1 : 0,
                         getGradientColor(
                             layer.get_visual_attribute('color-start'), 
                             layer.get_visual_attribute('color'),  

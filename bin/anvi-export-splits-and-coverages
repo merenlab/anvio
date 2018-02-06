@@ -21,8 +21,8 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2015, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -33,7 +33,7 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 
 def main(args):
-    dbops.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+    utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
     merged_profile_db = dbops.ProfileDatabase(args.profile_db)
 
@@ -99,7 +99,7 @@ if __name__ == '__main__':
                          sequences and their coverages for 'splits'. By using this flag, you can report contig sequences\
                          and coverages instead. For obvious reasons, you can't use this flag with `--splits-mode` flag.")
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         main(args)

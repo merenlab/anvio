@@ -15,8 +15,8 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import FilesNPathsError, ConfigError
 
 
-__author__ = "A. Murat Eren"
-__copyright__ = "Copyright 2016, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -65,7 +65,7 @@ def main(args):
         pass
 
     print()
-    if args.debug:
+    if anvio.DEBUG:
         print("Anvi'o's self-test is done, and the temporary output files are still here: %s\n" % temporary_output_dir)
     else:
         shutil.rmtree(temporary_output_dir)
@@ -81,12 +81,8 @@ if __name__ == '__main__':
                               commands to ensure your installation is ready to run all scenarios anvi'o developers could\
                               think of. Alternatively you can choose a specific test to run. Here is a full list of available\
                               options: %s." % ', '.join(list(tests.keys())))
-    parser.add_argument('--debug', default=False, action='store_true',
-                        help="This program will create a temporary output directory to store all output files, and will\
-                              clean after itself by deleting it. The use of this flag will make sure the temporary output\
-                              files do not go anywhere so you can play with them further..")
 
-    args = parser.parse_args()
+    args = anvio.get_args(parser)
 
     try:
         signal.signal(signal.SIGINT, __catch_sig)
