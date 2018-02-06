@@ -114,21 +114,32 @@ class SearchResultReporter(object):
         header.append(self.search_mode) # we append either "contigs" or "gene_clusters"
 
         if self.include_sequences:
-            gene_caller_ids = list(set([e[0] for e in self.verbose_output]))
-            _, gene_sequences_dict = self.db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
-            header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
+            if self.search_mode == 'contigs':
+                gene_caller_ids = list(set([e[0] for e in self.verbose_output]))
+                _, gene_sequences_dict = self.db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
+                header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
 
-        # generate the file
+
         report = open(self.full_report_path, 'w')
         report.write('\t'.join(header) + '\n')
         for entry in self.verbose_output:
             content = [str(item) for item in entry]
             if self.include_sequences:
-                g = gene_sequences_dict[entry[0]]
-                content.extend([g['direction'],
-                                g['rev_compd'],
-                                g['sequence'],
-                                g['aa_sequence'],])
+                if self.search_mode == 'contigs':
+                    g = gene_sequences_dict[entry[0]]
+                    content.extend([g['direction'],
+                                    g['rev_compd'],
+                                    g['sequence'],
+                                    g['aa_sequence'],])
+                else:
+                    # it already contains dna and aa sequence for pan search
+                    # we are gonna just inject n/a for direction and rev_compd
+                    content = content[:-2] + ['n/a', 'n/a'] + content[-2:]
+            else:
+                # pan search verbose_output directory contains aa, dna sequence
+                # we need to remove those, user does not want it.
+                content = content[:-2]
+
             report.write('\t'.join(content) + '\n')
         report.close()
 
