@@ -117,7 +117,7 @@ def main(args):
         # add functional annotation sources to the list of sources
         sources.extend(contigs_db.gene_function_call_sources)
 
-        foo, search_report = contigs_db.search_splits_for_gene_functions([args.search_term], verbose=True)
+        foo, search_report = contigs_db.search_for_gene_functions([args.search_term], verbose=True)
         # gene id's of genes with the searched function
         matching_genes = [i[0] for i in search_report]
 

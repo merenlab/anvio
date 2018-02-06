@@ -461,7 +461,7 @@ class ContigsSuperclass(object):
                                                  (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
 
 
-    def search_splits_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False):
+    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False):
         if not isinstance(search_terms, list):
             raise ConfigError("Search terms must be of type 'list'")
 
@@ -805,6 +805,7 @@ class PanSuperclass(object):
         self.gene_clusters_gene_alignments_available = False
         self.gene_clusters_function_sources = []
         self.gene_clusters_functions_dict = {}
+        self.gene_callers_id_to_gene_cluster = {}
         self.item_orders = {}
         self.views = {}
         self.collection_profile = {}
@@ -1513,6 +1514,11 @@ class PanSuperclass(object):
             gene_callers_id = entry['gene_caller_id']
             gene_cluster_id = entry['gene_cluster_id']
 
+            if genome_name not in self.gene_callers_id_to_gene_cluster:
+                self.gene_callers_id_to_gene_cluster[genome_name] = {}
+
+            self.gene_callers_id_to_gene_cluster[genome_name][gene_callers_id] = gene_cluster_id
+
             if gene_cluster_ids_to_focus and gene_cluster_id not in gene_cluster_ids_to_focus:
                 continue
 
@@ -1627,6 +1633,63 @@ class PanSuperclass(object):
         pan_db.disconnect()
 
         return collection, bins_info
+
+
+    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False):
+        if not isinstance(search_terms, list):
+            raise ConfigError("Search terms must be of type 'list'")
+
+        #self.check_functional_annotation_sources(requested_sources)
+
+        search_terms = [s.strip() for s in search_terms]
+
+        if len([s.strip().lower() for s in search_terms]) != len(set([s.strip().lower() for s in search_terms])):
+            raise ConfigError("Please do not use the same search term twice :/ Becasue, reasons. You know.")
+
+        for search_term in search_terms:
+            if not len(search_term) >= 3:
+                raise ConfigError("A search term cannot be less than three characters")
+
+        self.run.info('Search terms', '%d found' % (len(search_terms)))
+        gene_clusters = {}
+        full_report = []
+
+        genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
+                                                                       self.p_meta['genomes_storage_hash'],
+                                                                       genome_names_to_focus=self.p_meta['genome_names'],
+                                                                       run=self.run,
+                                                                       progress=self.progress)
+
+        for search_term in search_terms:
+            self.progress.new('Search functions')
+            self.progress.update('Searching for term "%s"' % search_term)
+
+            query = '''select gene_callers_id, source, accession, function, genome_name from ''' + t.genome_gene_function_calls_table_name + ''' where (function LIKE "%%''' \
+                            + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%")'''
+            if requested_sources:
+                query += ''' AND source IN (%s);''' % (', '.join(["'%s'" % s for s in requested_sources]))
+            else:
+                query += ';'
+
+            results = genomes_storage.db._exec(query).fetchall()
+            gene_clusters[search_term] = []
+
+            for result in results:
+                gene_caller_id, source, accession, function, genome_name = result
+                gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
+
+                gene_dict = self.genomes_storage.gene_info[genome_name][gene_caller_id]
+
+                full_report.extend([(gene_caller_id, source, function, search_term, 
+                    gene_cluster_id, gene_dict['dna_sequence'], gene_dict['aa_sequence'])])
+                
+                gene_clusters[search_term].append(gene_cluster_id)
+
+            self.progress.end()
+        genomes_storage.close()
+        self.progress.end()
+
+        return gene_clusters, full_report
 
 
 class ProfileSuperclass(object):
