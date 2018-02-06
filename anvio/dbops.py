@@ -1692,6 +1692,19 @@ class PanSuperclass(object):
         return gene_clusters, full_report
 
 
+    def list_function_sources(self):
+        genome_storage = genomestorage.GenomeStorage(self.genomes_storage_path, run=terminal.Run(verbose=False))
+        gene_function_sources = genome_storage.db.get_meta_value('gene_function_sources').split(',')
+        genome_storage.close()
+
+        if not len(gene_function_sources):
+            self.run.info_single('No functional annotations found in this genomes storage :/', nl_before=1, nl_after=1, mc='red')
+        else:
+            self.run.warning('', 'AVAILABLE FUNCTIONS (%d FOUND)' % (len(gene_function_sources)), lc='yellow')
+            for source in gene_function_sources:
+                self.run.info_single('%s' % (source), nl_after = 1 if source == gene_function_sources[-1] else 0)
+
+
 class ProfileSuperclass(object):
     """Fancy super class to deal with profile db stuff.
 

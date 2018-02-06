@@ -53,7 +53,7 @@ class SearchResultReporter(object):
         self.db = self.get_database()
         
         if self.list_annotation_sources:
-            self.db.list_annotation_sources()
+            self.db.list_function_sources()
             sys.exit()
 
 
