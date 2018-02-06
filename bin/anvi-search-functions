@@ -41,6 +41,11 @@ class SearchResultReporter(object):
         self.genomes_storage = A('genomes_storage')
         self.pan_db = A('pan_db')
 
+        # get search results will fill these
+        self.all_item_names = None
+        self.matching_item_names_dict = None
+        self.verbose_output = None
+
         # straighten things out
         self.search_terms = [s.strip() for s in A('search_terms').split(A('delimiter'))]
         self.annotation_sources = [a.strip() for a in A('annotation_sources').split(A('delimiter'))] if A('annotation_sources') else None
@@ -52,54 +57,12 @@ class SearchResultReporter(object):
             sys.exit()
 
 
-    def write_report(self):
-        matching_item_names_dict, verbose_output = self.db.search_for_gene_functions(self.search_terms, requested_sources=self.annotation_sources, verbose = self.verbose)
+    def process(self):
+        self.get_search_results()
+        self.write_report()
 
-        all_item_names = set([])
-
-        for item_names in list(matching_item_names_dict.values()):
-            all_item_names.update(item_names)
-
-        results_dict = {}
-
-        for item_name in all_item_names:
-            results_dict[item_name] = dict([(s + '_hits', '') for s in self.search_terms])
-
-        for search_term in self.search_terms:
-            if item_name in matching_item_names_dict[search_term]:
-                results_dict[item_name][search_term + '_hits'] = search_term
-
-        utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = [self.search_mode] + [s + '_hits' for s in self.search_terms])
-        run.info('Items additional data compatible output', self.basic_report_path)
-
-
-    def write_full_report(self):
-        pass
-        # if full_report_path:
-        #     header = ['gene_callers_id', 'source', 'accession', 'function', 'search_term', 'split_name']
-
-        # if include_sequences:
-        #     gene_caller_ids = list(set([e[0] for e in verbose_output]))
-        #     _, gene_sequences_dict = contigs_db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
-        #     header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
-
-        # # generate the file
-        # report = open(full_report_path, 'w')
-        # report.write('\t'.join(header) + '\n')
-        # for entry in verbose_output:
-        #     content = [str(item) for item in entry]
-        #     if include_sequences:
-        #         g = gene_sequences_dict[entry[0]]
-        #         content.extend([g['direction'],
-        #                         g['rev_compd'],
-        #                         g['sequence'],
-        #                         g['aa_sequence'],])
-        #     report.write('\t'.join(content) + '\n')
-        # report.close()
-
-        # run.info('Full report', full_report_path)
-
-        
+        if self.full_report_path:
+            self.write_full_report()
 
 
     def get_database(self):
@@ -124,69 +87,42 @@ class SearchResultReporter(object):
 
 
     def get_search_results(self):
-        pass
+        self.matching_item_names_dict, self.verbose_output = self.db.search_for_gene_functions(self.search_terms, requested_sources=self.annotation_sources, verbose = self.verbose)
+
+        self.all_item_names = set([])
+
+        for item_names in list(self.matching_item_names_dict.values()):
+            self.all_item_names.update(item_names)
 
 
+    def write_report(self):
+        results_dict = {}
 
-def main(args):
-    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    annotation_sources = A('annotation_sources')
-    delimiter = A('delimiter')
-    search_terms = A('search_terms')
-    basic_report_path = A('output_file') or 'search_results.txt'
-    full_report_path = A('full_report')
-    include_sequences = A('include_sequences')
+        for item_name in self.all_item_names:
+            results_dict[item_name] = dict([(s + '_hits', '') for s in self.search_terms])
 
-    # straighten things out
-    search_terms = [s.strip() for s in search_terms.split(delimiter)]
-    annotation_sources = [a.strip() for a in annotation_sources.split(delimiter)] if annotation_sources else None
+            for search_term in self.search_terms:
+                if item_name in self.matching_item_names_dict[search_term]:
+                    results_dict[item_name][search_term + '_hits'] = search_term
 
-    contigs_db = ContigsSuperclass(args)
-    if A('list_annotation_sources'):
-        contigs_db.list_function_sources()
-        sys.exit()
+        utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = [self.search_mode] + [s + '_hits' for s in self.search_terms])
+        run.info('Items additional data compatible output', self.basic_report_path)
 
-    # basic tests
-    filesnpaths.is_output_file_writable(basic_report_path)
-    filesnpaths.is_output_file_writable(full_report_path) if full_report_path else None
 
-    if include_sequences and not full_report_path:
-        raise ConfigError("Umm. Well. The flag --include-sequences is only relevant to use if you are asking anvi'o\
-                           to generate a full-report.")
-
-    # do the search
-    matching_split_names_dict, verbose_output = contigs_db.search_for_gene_functions(search_terms, requested_sources=annotation_sources, verbose = args.verbose)
-
-    all_split_names = set([])
-
-    for split_names in list(matching_split_names_dict.values()):
-        all_split_names.update(split_names)
-
-    results_dict = {}
-
-    for split_name in all_split_names:
-        results_dict[split_name] = dict([(s + '_hits', '') for s in search_terms])
-
-        for search_term in search_terms:
-            if split_name in matching_split_names_dict[search_term]:
-                results_dict[split_name][search_term + '_hits'] = search_term
-
-    utils.store_dict_as_TAB_delimited_file(results_dict, basic_report_path, headers = ['contigs'] + [s + '_hits' for s in search_terms])
-
-    if full_report_path:
+    def write_full_report(self):
         header = ['gene_callers_id', 'source', 'accession', 'function', 'search_term', 'split_name']
 
-        if include_sequences:
-            gene_caller_ids = list(set([e[0] for e in verbose_output]))
-            _, gene_sequences_dict = contigs_db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
+        if self.include_sequences:
+            gene_caller_ids = list(set([e[0] for e in self.verbose_output]))
+            _, gene_sequences_dict = self.db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
             header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
 
         # generate the file
-        report = open(full_report_path, 'w')
+        report = open(self.full_report_path, 'w')
         report.write('\t'.join(header) + '\n')
-        for entry in verbose_output:
+        for entry in self.verbose_output:
             content = [str(item) for item in entry]
-            if include_sequences:
+            if self.include_sequences:
                 g = gene_sequences_dict[entry[0]]
                 content.extend([g['direction'],
                                 g['rev_compd'],
@@ -195,9 +131,7 @@ def main(args):
             report.write('\t'.join(content) + '\n')
         report.close()
 
-        run.info('Full report', full_report_path)
-
-    run.info('Items additional data compatible output', basic_report_path)
+        run.info('Full report', self.full_report_path)
 
 
 if __name__ == '__main__':
@@ -237,7 +171,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        SearchResultReporter(args).write_report()
+        SearchResultReporter(args).process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
