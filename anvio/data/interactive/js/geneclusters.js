@@ -472,11 +472,11 @@ function createDisplay(){
     {
         var layer = state['layer-order'][layer_id];
 
-        if (pc_data.genomes.indexOf(layer) === -1)
+        if (gene_cluster_data.genomes.indexOf(layer) === -1)
             continue;
 
-        pc_data.gene_caller_ids_in_genomes[layer].forEach(function(caller_id) {
-            acid_sequences.push(pc_data.aa_sequences_in_pc[layer][caller_id]);
+        gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function(caller_id) {
+            acid_sequences.push(gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id]);
             order[layer] = count;
             count = count + 1;
         });
@@ -531,8 +531,8 @@ function createDisplay(){
             fragment.appendChild(text);
 
             sub_y_cord = y_cord + 5;
-	         pc_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
-                sequence = pc_data.aa_sequences_in_pc[layer][caller_id]; 
+	         gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
+                sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id]; 
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
