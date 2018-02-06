@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+# pylint: disable=line-too-long
+
+import sys
+
+import anvio
+from anvio.mcgclassifier import MetagenomeCentricGeneClassifier
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Alon Shaiber"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Alon Shaiber"
+__email__ = "alon.shaiber@gmail.com"
+
+
+def main(args):
+    mcg = MetagenomeCentricGeneClassifier(args)
+    mcg.classify()
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="A program to classify genes according to coverage across multiple metagenomes")
+    group0 = parser.add_argument_group('ESSENTIAL INPUTS', "You must supply either a merged profile db (along with a contigs db) or a TAB-delimited data-file, containing a table of gene coverages in \
+                                                    samples.")
+    group0.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    group0.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    group1 = parser.add_argument_group('ESSENTIAL OUTPUTS', 'The outputs of the algorithm are: an anvio additional layers format file with the classification \
+                                                            information for genes. An anvio samples information file with detectino information per sample. \
+                                                            In addition, when a profile database is given then a gene-coverages, and gene-detection tables \
+                                                            would also be saved. All files are created with the prefix that is provided by the user.')
+    group1.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    groupB = parser.add_argument_group('ADDITIONAL STUFF',"Parameters to provide pre-existing additional layers, samples-information files, so that the \
+                                                            outputs would be added to these files")
+    groupB.add_argument('-A', '--additional-layers', metavar='FILE', dest='additional_layers_to_append', default=None,
+                        help='An additional layer file to append to the one created by the algorithm')
+    groupB.add_argument('-S', '--samples-information', metavar='FILE', dest='samples_information_to_append',
+                        default=None, help='A samples information file to append to the one created by the algorithm')
+    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': False}))
+    groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id', {'required': False}))
+    groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file', {'required': False}))
+    groupB.add_argument('--exclude-samples', metavar='FILE', default=None, help='List of samples to exclude for the analysis.')
+    groupB.add_argument('--include-samples', metavar='FILE', default=None, help='List of samples to include for the analysis.')
+    groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
+    groupC.add_argument('--alpha', '--genome-detection-uncertainty', metavar='NUM', type=float, default=0.25,
+                        help='Determines the range of sample detection values that are considered negative, ambiguous or positive. \
+                        Min of 0 and smaller than 0.5, default of 0.25. For exmaple for the default samples with detection \
+                        below  0.5-0.25 = 0.25 will be considered negative (i.e. donot contain the genome), samples with detection \
+                        between 0.25 and 0.75 would be ambiguous (and hence would not be used for the classification), and samples with \
+                        detection above 0.75 would be considered positive (i.e. contain the genome).')
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

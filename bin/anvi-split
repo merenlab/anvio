@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Split a merged profile into smaller pieces."""
+"""Split an anvi'o profile into smaller pieces."""
 
 import sys
 import argparse
@@ -22,13 +22,13 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Split a merged profile into smaller profiles. This is usually great when\
-                                                  you want to share a subset of a merged profile. You give this guy a merged\
+    parser = argparse.ArgumentParser(description="Split an anvi'o profile into smaller profiles. This is usually great when\
+                                                  you want to share a subset of an anvi'o profile. You give this guy an anvi'o\
                                                   profile databsae, a contigs database, and a collection id, and it gives\
                                                   you back directories of profiles for each bin that can be treated as\
-                                                  individual merged profiles.')
+                                                  individual anvi'o profiles.")
 
-    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
+    groupD = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first.")
     groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
@@ -41,9 +41,9 @@ if __name__ == '__main__':
     groupO = parser.add_argument_group('OUTPUT', 'Where do we want the resulting split profiles to be stored.')
     groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 
-    groupQ = parser.add_argument_group('EXTRAS', 'Stuff that you rarely need, but you really really need when the time comes.\
-                                                  Following parameters will aply to each of the resulting merged profile that\
-                                                  will be split from the mother merged profile.')
+    groupQ = parser.add_argument_group('EXTRAS', "Stuff that you rarely need, but you really really need when the time comes.\
+                                                  Following parameters will aply to each of the resulting anvi'o profile that\
+                                                  will be split from the mother anvi'o profile.")
     groupQ.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupQ.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))
     groupQ.add_argument(*anvio.A('compress-auxiliary-data'), **anvio.K('compress-auxiliary-data'))
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        splitter.MergedProfileSplitter(args).process()
+        splitter.ProfileSplitter(args).process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)

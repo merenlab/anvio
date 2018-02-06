@@ -7,6 +7,7 @@ import numpy
 import collections
 
 import anvio
+import anvio.constants as constants
 
 __author__ = "A. Murat Eren"
 __copyright__ = "Copyright 2015, The anvio Project"
@@ -16,6 +17,61 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+
+class Codon:
+    def __init__(self):
+        pass
+
+    def get_codon_to_codon_dist_dictionary(self):
+        """
+        Returns a dictionary containing the number the nucleotide difference
+        between two codons, and the number of transitions & transversions required to
+        mutate from one codon to another. 
+
+        USAGE:
+        =====
+        >>> dist['TTC']['AAA']
+        (3, 2, 1)
+
+        Here, 3 is the total number of nucleotide differences, 2 is the number
+        of transitions, and 1 is the number of transversions. Of course, the number of
+        transitions added to the number of transversions is equal to the number of
+        nucleotide differences.
+        """
+
+        codons = list(constants.codon_to_AA.keys())
+        dist = {}
+
+        mutation_type = {"AT": "transition",
+                         "CG": "transition",
+                         "AG": "transversion",
+                         "AC": "transversion",
+                         "CT": "transversion",
+                         "GT": "transversion"}
+
+        for start_codon in codons:
+            dist[start_codon] = {}
+
+            for end_codon in codons:
+
+                # s = number transitions 
+                # v = number transversions
+                s = 0; v = 0
+                for nt_pos in range(3):
+
+                    pair = ''.join(sorted(start_codon[nt_pos] + end_codon[nt_pos]))
+
+                    if pair[0] == pair[1]:
+                        continue
+                    if mutation_type[pair] == "transition":
+                        s += 1
+                    if mutation_type[pair] == "transversion":
+                        v += 1
+
+                dist[start_codon][end_codon] = (s+v, s, v)
+
+        return dist
 
 
 class Composition:
@@ -139,7 +195,13 @@ def get_list_of_outliers(values, threshold=1.5):
     median_absolute_deviation = numpy.median(diff)
 
     if not median_absolute_deviation:
-        return [True] * values.size
+       if values[0] == 0:
+            # A vector of all zeros is considered "all outliers"
+            return numpy.array([True] * values.size)
+       else:
+            # A vector of uniform non-zero values is "all non-outliers"
+            # This could be important for silly cases (like in megahit) in which there is a maximum value for coverage
+            return numpy.array([False] * values.size)
 
     modified_z_score = 0.6745 * diff / median_absolute_deviation
 

@@ -90,7 +90,12 @@ class RF:
 
     def initialize_classifier(self):
         filesnpaths.is_file_exists(self.classifier_object_path)
-        classifier_obj = pickle.load(open(self.classifier_object_path, 'rb'))
+
+        try:
+            classifier_obj = pickle.load(open(self.classifier_object_path, 'rb'))
+        except UnicodeDecodeError:
+            raise ConfigError("Your classifier object is broken. Probably because you generated is using a different verison\
+                               of anvi'o. Please create a new one from scratch, and you will probably be golden.")
 
         try:
             self.features = classifier_obj['features']

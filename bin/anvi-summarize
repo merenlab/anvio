@@ -74,7 +74,6 @@ if __name__ == '__main__':
                                         are summarizing a pan profile).")
     groupD = parser.add_argument_group('COMMONS', "Common parameters for both pan and standard profile summaries.")
 
-
     groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupB.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
@@ -86,6 +85,10 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('cog-data-dir'), **anvio.K('cog-data-dir'))
     groupD.add_argument(*anvio.A('quick-summary'), **anvio.K('quick-summary'))
     groupD.add_argument(*anvio.A('debug'), **anvio.K('debug'))
+
+    groupC.add_argument('--report-aa-seqs-for-gene-calls', default=False, action='store_true', help="You can use this flag if\
+                                  you would like to find translated DNA sequences for your gene calls in the genes output\
+                                  file.")
 
     args = parser.parse_args()
 

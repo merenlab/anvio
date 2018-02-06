@@ -46,7 +46,10 @@ def main(args):
 
     pc_ids = set([])
     if args.collection_name or args.list_collections or args.list_bins:
+        progress.new('Initializing')
+        progress.update('...')
         pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        progress.end()
 
         if not args.bin_id:
             raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you want? Use the flag\
@@ -85,20 +88,27 @@ def main(args):
     run.info('Number of protein clusters to report', len(pc_ids))
 
     if args.concatenate_pcs:
-        pan.write_AA_sequences_for_phylogenomics(pc_names=pc_ids, output_file_path=args.output_file, skip_multiple_gene_calls=args.skip_multiple_gene_calls)
+        pan.write_sequences_in_PCs_for_phylogenomics(pc_names=pc_ids,
+                                                     output_file_path=args.output_file,
+                                                     skip_multiple_gene_calls=args.skip_multiple_gene_calls,
+                                                     report_DNA_sequences=args.report_DNA_sequences,
+                                                     align_with=args.align_with)
     else:
-        pan.write_AA_sequences_to_file(pc_names=pc_ids, output_file_path=args.output_file)
+        pan.write_sequences_in_PCs_to_file(pc_names=pc_ids,
+                                           output_file_path=args.output_file,
+                                           report_DNA_sequences=args.report_DNA_sequences)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export aligned sequences from anvi'o pan genomes")
+    parser = argparse.ArgumentParser(description="Export aligned sequences in protein clusters from anvi'o pan genomes")
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
-    groupB = parser.add_argument_group('OUTPUT FILE', "You get to chose an output file name to report things. The default will be\
+    groupB = parser.add_argument_group('OUTPUT', "You get to chose an output file name to report things. The default will be\
                                        an ugly name. So, be explicit.")
     groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupB.add_argument(*anvio.A('report-DNA-sequences'), **anvio.K('report-DNA-sequences'))
 
     groupC = parser.add_argument_group('SELECTION', "Which protein clusters should be exported. You can ask for a single PC,\
                                        or multiple ones listed in a file, or you can use a collection and bin name to list PCs\
@@ -116,6 +126,7 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('CONCATENATED OUTPUT', "Concatenated output for phylogenomics.")
     groupE.add_argument(*anvio.A('concatenate-pcs'), **anvio.K('concatenate-pcs'))
     groupE.add_argument(*anvio.A('skip-multiple-gene-calls'), **anvio.K('skip-multiple-gene-calls'))
+    groupE.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
 
     args = parser.parse_args()
 

@@ -27,16 +27,14 @@ progress = terminal.Progress()
 def main(args):
     dbops.is_pan_or_profile_db(args.pan_or_profile_db)
 
-    states = dbops.TablesForStates(args.pan_or_profile_db).states
+    states_access = dbops.TablesForStates(args.pan_or_profile_db)
+    states = states_access.states
 
     if not len(states):
         raise ConfigError("But there are no states in this %s database :/" % dbops.get_db_type(args.pan_or_profile_db))
 
     if args.list_states:
-        run.warning('', 'AVAILABLE STATES (%d FOUND)' % (len(states)), lc='yellow')
-        for state_name in states:
-            run.info_single('%s (last modified on %s)' % (state_name, states[state_name]['last_modified']))
-
+        states_access.list_states()
         sys.exit()
 
     if not args.output_file:

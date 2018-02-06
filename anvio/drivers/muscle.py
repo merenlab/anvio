@@ -28,7 +28,7 @@ pp = terminal.pretty_print
 
 class Muscle:
     def __init__(self, progress=progress, run=run, program_name = 'muscle'):
-        """A class to streamline HMM runs."""
+        """A class to take care of muscle alignments."""
         self.progress = progress
         self.run = run
 
@@ -36,13 +36,16 @@ class Muscle:
 
         utils.is_program_exists(self.program_name)
 
+        self.citation = "Edgar, doi:10.1093/nar/gkh340"
+        self.web = "http://www.drive5.com/muscle"
 
-    def run_muscle_stdin(self, sequences_list, debug=False):
+
+    def run_stdin(self, sequences_list, debug=False):
         """Takes a list of tuples for sequences, performs MSA using muscle, returns a dict.
 
             >>> from anvio.drivers.muscle import Muscle
             >>> m = Muscle()
-            >>> m.run_muscle_stdin([('seq1', 'ATCATCATCGA'), ('seq2', 'ATCGAGTCGAT')])
+            >>> m.run_stdin([('seq1', 'ATCATCATCGA'), ('seq2', 'ATCGAGTCGAT')])
             {u'seq1': u'ATCATCATCGA-', u'seq2': u'ATCG-AGTCGAT'}
 
         """

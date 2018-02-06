@@ -17,6 +17,15 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
+$(document).ready(function() {
+    document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
+    document.body.addEventListener('click', function() { 
+        $('#default_right_click_menu').hide();
+        $('#collection_mode_right_click_menu').hide();
+        $('#pan_mode_right_click_menu').hide();
+        $('#branch_right_click_menu').hide();
+    }, false);
+});
 
 function getBinId() {
     var radios = document.getElementsByName('active_bin');
@@ -65,6 +74,9 @@ function lineClickHandler(event) {
     if (p.id == 0)
         return; // skip root
 
+    if (p.collapsed)
+        return;
+
     if ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey)
         newBin();
 
@@ -108,11 +120,10 @@ function lineClickHandler(event) {
 function lineContextMenuHandler(event) {
     if (event.preventDefault) event.preventDefault();
     var bin_id = getBinId();
+    context_menu_target_id = getNodeFromEvent(event).id;
 
-    if (event.target.id.indexOf('path_') > -1)
+    if (event.target.id.indexOf('path_') > -1 && !id_to_node_map[context_menu_target_id].collapsed)
     {
-        context_menu_target_id = getNodeFromEvent(event).id;
-
         if (mode == "collection") {
             $('#collection_mode_right_click_menu').show();
             $('#collection_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
@@ -173,8 +184,32 @@ function lineContextMenuHandler(event) {
         }
 
         return false;
+    } else {
+
+        var is_collapsed = (collapsedNodes.indexOf(id_to_node_map[context_menu_target_id].label) > -1);
+        var is_ctrl_pressed = ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey);
+
+        if (is_collapsed) {
+            $('.menuItemCollapse').hide();
+            $('.menuItemExpand').show();
+        } else {
+            $('.menuItemCollapse').show();
+            $('.menuItemExpand').hide();
+        }
+
+        if (is_collapsed || is_ctrl_pressed) {
+            $('#branch_right_click_menu').show();
+            $('#branch_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
+        } else {
+            var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
+            removeBranchFromBin(fake_event);
+        }
     }
 
+    return false;
+}
+
+function removeBranchFromBin(event) {
     var p = getNodeFromEvent(event);
 
     if (p.id == 0)
@@ -213,6 +248,9 @@ function lineMouseEnterHandler(event) {
     if (typeof p === 'undefined' || p.id == 0)
         return; // skip root
 
+    if (p.collapsed)
+        return;
+
     var bin_id = getBinId();
 
     if (bin_id === 'undefined')
@@ -235,14 +273,14 @@ function lineMouseEnterHandler(event) {
     {
         drawPie('tree_bin',
             'hover',
-            p1.angle - angle_per_leaf / 2,
-            p2.angle + angle_per_leaf / 2,
+            p1.angle - p1.size / 2,
+            p2.angle + p2.size / 2,
             distance(p.backarc, {
                 'x': 0,
                 'y': 0
             }),
             total_radius,
-            (p2.angle - p1.angle + angle_per_leaf > Math.PI) ? 1 : 0,
+            (p2.angle - p1.angle + (p1.size / 2) + (p2.size / 2) > Math.PI) ? 1 : 0,
             bin_color,
             0.3,
             false);
@@ -250,12 +288,15 @@ function lineMouseEnterHandler(event) {
     else
     {  
         var _x = (p.ancestor) ? p.ancestor.xy.x : p.xy.x;
+        var begin = p1.xy.y - p1.size / 2;
+        var end = p2.xy.y + p2.size / 2;
+
         drawPhylogramRectangle('tree_bin',
             'hover',
              _x,
-            (p1.xy.y + p2.xy.y) / 2,
-            p2.xy.y - p1.xy.y + height_per_leaf,
-            total_radius - _x,
+            (begin + end) / 2,
+            end - begin,
+            Math.abs(total_radius - _x),
             bin_color,
             0.3,
             false);
@@ -295,6 +336,9 @@ function lineMouseLeaveHandler(event) {
     }
 
     if (!p)
+        return;
+
+    if (p.collapsed)
         return;
 
     for (var index = 0; index < p.child_nodes.length; index++) {
@@ -443,8 +487,14 @@ function mouseMoveHandler(event) {
     if (!layer_id_exp)
         return;
     var layer_id = layer_id_exp[0];
+    var target_node = id_to_node_map[p.id];
 
-    var tooltip_arr = layerdata_title[id_to_node_map[p.id].label].slice(0);
+    if (target_node.collapsed) {
+        $('#tooltip_content').html("Collapsed branch");
+        return;
+    }
+
+    var tooltip_arr = layerdata_title[target_node.label].slice(0);
     
     var message = "";
     for (var i=0; i < tooltip_arr.length; i++)
@@ -490,6 +540,20 @@ function menu_callback(action, param) {
     var item_name = id_to_node_map[context_menu_target_id].label;
 
     switch (action) {
+        case 'collapse':
+            collapsedNodes.push(item_name);
+            drawTree();
+            break;
+
+        case 'expand':
+            collapsedNodes.splice(collapsedNodes.indexOf(item_name), 1);
+            drawTree();
+            break;
+
+        case 'rotate':
+            rotateNode = item_name;
+            drawTree();
+            break;
 
         case 'select':
             var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
@@ -498,7 +562,7 @@ function menu_callback(action, param) {
 
         case 'remove':
             var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
-            lineContextMenuHandler(fake_event);
+            removeBranchFromBin(fake_event);
             break;
 
         case 'select_layer':
@@ -548,12 +612,12 @@ function menu_callback(action, param) {
 
         case 'inspect_contig':
             sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-            window.open('charts.html?contig=' + item_name, '_blank');
+            window.open(generate_inspect_link('inspect', item_name), '_blank');
             break;
 
         case 'inspect_protein_cluster':
             sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-            window.open('proteinclusters.html?id=' + item_name, '_blank');
+            window.open(generate_inspect_link('proteinclusters', item_name), '_blank');
             break;
 
         case 'get_AA_sequences_for_PC':
@@ -573,22 +637,20 @@ function menu_callback(action, param) {
             });
             break;
     }
-
 }
+
 
 // globals related single background
 var rect_left;
 var rect_width;
+var original_width; // this will be set in Drawer.initialize_screen;
 
 var origin_x;
 var origin_y;
 
 function updateSingleBackgroundGlobals()
 {
-    if (typeof tree_type === 'undefined')
-        return;
-
-    if (tree_type == 'phylogram')
+    if (last_settings['tree-type'] == 'phylogram')
     {
         var path_event = document.getElementById('path_event');
         var rect = path_event.getBoundingClientRect();
@@ -596,7 +658,7 @@ function updateSingleBackgroundGlobals()
         rect_left = rect.left;
         rect_width = rect.width;
     }
-    else // circlephylogram
+    else if (last_settings['tree-type'] == 'circlephylogram')
     {
         var root = document.getElementById('line_origin');
         var rect = root.getBoundingClientRect();
@@ -610,24 +672,31 @@ function getNodeFromEvent(event)
 {
     if (event.target.id == 'path_event')
     {
-        if (tree_type == 'phylogram')
+        if (last_settings['tree-type'] == 'phylogram')
         {
-            return order_to_node_map[leaf_count - parseInt((event.clientX - rect_left) / (rect_width / leaf_count)) - 1];
+            var _x = original_width - ((event.clientX - rect_left) * (window['original_width'] / rect_width));
+            
+            for (var i=0; i < order_to_node_map.length; i++) {
+                var node = order_to_node_map[i];
+                if ((_x > (node.xy['y'] - node.size / 2)) && (_x < (node.xy['y'] + node.size / 2))) {
+                    return node;
+                }
+            }
         }
-        else
+        else if (last_settings['tree-type'] == 'circlephylogram')
         {
             var _y = event.clientY - origin_y;
             var _x = event.clientX - origin_x;
-            var angle = Math.atan2(_y, _x) - angle_per_leaf / 2;
+            var angle = Math.atan2(_y, _x);// - angle_per_leaf / 2;
             if (angle < 0)
                 angle = 2 * Math.PI + angle;
 
-            var order = Math.ceil((angle - Math.toRadians(last_settings['angle-min']) - (angle_per_leaf / 2)) / angle_per_leaf);
-            
-            if (order < 1 || order > leaf_count)
-                order = 0;
-
-            return order_to_node_map[order]
+            for (var i=0; i < order_to_node_map.length; i++) {
+                var node = order_to_node_map[i];
+                if ((angle > (node.angle - node.size / 2)) && (angle < (node.angle + node.size / 2))) {
+                    return node;
+                }
+            }
         }
     }
     else

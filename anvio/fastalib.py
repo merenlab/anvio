@@ -3,6 +3,7 @@
 # v.140713
 """A very lightweight FASTA I/O library"""
 
+import io
 import sys
 import gzip
 import numpy
@@ -96,7 +97,7 @@ class SequenceSource():
         if self.compressed:
             self.file_pointer = gzip.open(self.fasta_file_path)
         else:
-            self.file_pointer = open(self.fasta_file_path, 'rU')
+            self.file_pointer = io.open(self.fasta_file_path, 'rU', newline='')
 
         if not self.file_pointer.read(1) == '>':
             raise FastaLibError("File '%s' does not seem to be a FASTA file." % self.fasta_file_path)

@@ -9,12 +9,12 @@ INFO "Initializing raw BAM files"
 # init raw bam files.
 for f in 01 02 03
 do
-    anvi-init-bam $files/SAMPLE-RAW-$f.bam --output-file $output_dir/SAMPLE-$f.bam
+    anvi-init-bam $files/SAMPLE-$f-RAW.bam --output-file $output_dir/SAMPLE-$f.bam
     echo
 done
 
 INFO "Generating an EMPTY contigs database"
-anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000
+anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000 --project-name "Contigs DB for anvi'o mini self-test"
 
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
 anvi-import-taxonomy -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/centrifuge_report.tsv $files/example_files_for_centrifuge_taxonomy/centrifuge_hits.tsv
@@ -50,6 +50,9 @@ anvi-gen-samples-info-database -D $files/samples-information.txt -R $files/sampl
 
 INFO "Importing a state file into the merged profile"
 anvi-import-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state $files/example_state.json --name default
+
+INFO "Listing collections available"
+anvi-show-collections-and-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db
 
 INFO "Firing up the interactive interface"
 # fire up the browser to show how does the merged samples look like.

@@ -29,6 +29,8 @@ single_default = "tnf"
 merged_default = "tnf-cov"
 pan_default="presence-absence"
 
+default_gene_caller = "prodigal"
+
 max_num_items_for_hierarchical_clustering = 20000
 
 # default methods for hierarchical cluster analyses
@@ -37,7 +39,7 @@ linkage_method_default = 'ward'
 
 # this is to have a common language across multiple modules when genomes (whether they are MAGs,
 # SAGs, or isolate genomes):
-essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_complete', 'percent_redundancy',
+essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_completion', 'percent_redundancy',
                          'genes_are_called', 'avg_gene_length', 'num_genes_per_kb', ]
 
 
@@ -62,12 +64,36 @@ complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHD
 
 nucleotides = 'ATCGN'
 
+AA_to_codons = Counter({'Ala': ['GCA', 'GCC', 'GCG', 'GCT'],
+                        'Arg': ['AGA', 'AGG', 'CGA', 'CGC', 'CGG', 'CGT'],
+                        'Asn': ['AAC', 'AAT'],
+                        'Asp': ['GAC', 'GAT'],
+                        'Cys': ['TGC', 'TGT'],
+                        'Gln': ['CAA', 'CAG'],
+                        'Glu': ['GAA', 'GAG'],
+                        'Gly': ['GGA', 'GGC', 'GGG', 'GGT'],
+                        'His': ['CAC', 'CAT'],
+                        'Ile': ['ATA', 'ATC', 'ATT'],
+                        'Leu': ['CTA', 'CTC', 'CTG', 'CTT', 'TTA', 'TTG'],
+                        'Lys': ['AAA', 'AAG'],
+                        'Met': ['ATG'],
+                        'Phe': ['TTC', 'TTT'],
+                        'Pro': ['CCA', 'CCC', 'CCG', 'CCT'],
+                        'STP': ['TAA', 'TAG', 'TGA'],
+                        'Ser': ['AGC', 'AGT', 'TCA', 'TCC', 'TCG', 'TCT'],
+                        'Thr': ['ACA', 'ACC', 'ACG', 'ACT'],
+                        'Trp': ['TGG'],
+                        'Tyr': ['TAC', 'TAT'],
+                        'Val': ['GTA', 'GTC', 'GTG', 'GTT']})
+
 AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': 'D',
                                     'Cys': 'C', 'Gln': 'Q', 'Glu': 'E', 'Gly': 'G',
                                     'His': 'H', 'Ile': 'I', 'Leu': 'L', 'Lys': 'K',
                                     'Met': 'M', 'Phe': 'F', 'Pro': 'P', 'STP': '*',
                                     'Ser': 'S', 'Thr': 'T', 'Trp': 'W', 'Tyr': 'Y',
                                     'Val': 'V'})
+
+amino_acids = list(AA_to_single_letter_code.keys())
 
 codon_to_AA = Counter({'ATA': 'Ile', 'ATC': 'Ile', 'ATT': 'Ile', 'ATG': 'Met',
                        'ACA': 'Thr', 'ACC': 'Thr', 'ACG': 'Thr', 'ACT': 'Thr',
@@ -102,6 +128,25 @@ codon_to_AA_RC = Counter({'AAA': 'Phe', 'AAC': 'Val', 'AAG': 'Leu', 'AAT': 'Ile'
                           'TCA': 'STP', 'TCC': 'Gly', 'TCG': 'Arg', 'TCT': 'Arg',
                           'TGA': 'Ser', 'TGC': 'Ala', 'TGG': 'Pro', 'TGT': 'Thr',
                           'TTA': 'STP', 'TTC': 'Glu', 'TTG': 'Gln', 'TTT': 'Lys'})
+
+codon_to_codon_RC = Counter({'AAA': 'TTT', 'AAC': 'GTT', 'AAG': 'CTT', 'AAT': 'ATT',
+                             'ACA': 'TGT', 'ACC': 'GGT', 'ACG': 'CGT', 'ACT': 'AGT',
+                             'AGA': 'TCT', 'AGC': 'GCT', 'AGG': 'CCT', 'AGT': 'ACT',
+                             'ATA': 'TAT', 'ATC': 'GAT', 'ATG': 'CAT', 'ATT': 'AAT',
+                             'CAA': 'TTG', 'CAC': 'GTG', 'CAG': 'CTG', 'CAT': 'ATG',
+                             'CCA': 'TGG', 'CCC': 'GGG', 'CCG': 'CGG', 'CCT': 'AGG',
+                             'CGA': 'TCG', 'CGC': 'GCG', 'CGG': 'CCG', 'CGT': 'ACG',
+                             'CTA': 'TAG', 'CTC': 'GAG', 'CTG': 'CAG', 'CTT': 'AAG',
+                             'GAA': 'TTC', 'GAC': 'GTC', 'GAG': 'CTC', 'GAT': 'ATC',
+                             'GCA': 'TGC', 'GCC': 'GGC', 'GCG': 'CGC', 'GCT': 'AGC',
+                             'GGA': 'TCC', 'GGC': 'GCC', 'GGG': 'CCC', 'GGT': 'ACC',
+                             'GTA': 'TAC', 'GTC': 'GAC', 'GTG': 'CAC', 'GTT': 'AAC',
+                             'TAA': 'TTA', 'TAC': 'GTA', 'TAG': 'CTA', 'TAT': 'ATA',
+                             'TCA': 'TGA', 'TCC': 'GGA', 'TCG': 'CGA', 'TCT': 'AGA',
+                             'TGA': 'TCA', 'TGC': 'GCA', 'TGG': 'CCA', 'TGT': 'ACA',
+                             'TTA': 'TAA', 'TTC': 'GAA', 'TTG': 'CAA', 'TTT': 'AAA'})
+
+codons = list(codon_to_AA_RC.keys())
 
 pretty_names = {}
 

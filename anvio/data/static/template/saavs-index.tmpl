@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Anvi'o">
+    <base target="_blank">
+
+    <title>SAAVs and Protein Structures</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href=".html/css/bootstrap.css" rel="stylesheet">
+    <link href=".html/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href=".html/css/anvio.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container">
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li>
+                        <a href="http://merenlab.org/projects/anvio">Anvi'o Project Page</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/meren/anvio">Anvi'o Repository</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/meren/anvio/issues">Report an Issue</a>
+                    </li>
+                    <li>
+                        <a href="http://merenlab.org/people">Contact</a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/meren/anvio/releases">Anvi'o version: {{ meta|lookup:"anvio_version" }}</a>
+                    </li>
+                </ul>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <header class="image-bg-fluid-height">
+        <div class="header-summary-div">
+            <div style="width: 200px;">
+                <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
+            </div>
+            <div class="header-text">
+                Welcome to the anvi'o summary output for the single-amino acid variants and protein structures. This one seems to have {{ data|lookup:"gene_names" | length }} proteins
+                across {{ data|lookup:"samples"|length }} samples with {{ data|lookup:"perspectives"|length }} perspective(s). {% if meta|lookup:"images_soft_linked" %}<b>Warning</b>: The images in this output are soft linked, which means the output directory will only work on this computer.{% endif %}
+            </div>
+        </div>
+    </header>
+
+
+    <div id="content">
+
+    </div>
+
+
+    <div style="margin-bottom:200px"></div>
+
+    <!-- jQuery -->
+    <script src=".html/js/jquery.min.js"></script>
+
+    <!-- Pako lib for ZLib inflation & deflation -->
+    <script src=".html/js/pako.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src=".html/js/bootstrap.min.js"></script>
+
+    <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
+    <script src=".html/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
+
+    <!-- Activate tooltips... -->
+    <script type="text/javascript">
+    // https://stackoverflow.com/questions/4507316/zlib-decompression-client-side
+    // Decode base64 (convert ascii to binary)
+    var strData     = atob('{{ data|convert_to_json|zlib_encode|base64_encode|safe }}');
+
+    // Convert binary string to character-number array
+    var charData    = strData.split('').map(function(x){return x.charCodeAt(0);});
+
+    // Turn number array into byte-array
+    var binData     = new Uint8Array(charData);
+
+    // Pako magic
+    var data        = pako.inflate(binData);
+
+    // convert binary back to string
+    var strData = "";
+    for (var i=0; i < data.length; i++) {
+        strData += String.fromCharCode(data[i]);
+    }
+
+    var saav_data = JSON.parse(strData);
+
+    delete strData;
+    delete data;
+    delete charData;
+    delete binData;
+
+    function generate_panel_content(element, gene) {
+        var parent = $(element).closest('.panel');
+
+        var has_functions = saav_data['genes_info'].hasOwnProperty(gene);
+        var functions = {};
+
+        if (has_functions)
+            functions = saav_data['genes_info'][gene]['functions'];
+
+        if ($(element).attr('has-content') != 'true') {
+            $(element).attr('has-content', 'true');
+            var content = `<div id="collapse-${gene}" class="panel-collapse">
+                           <div class="panel-body">
+                            ${ Object.keys(saav_data["samples_per_view"]).map(function(view) { return `
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#${gene}-${view}_panel" href="#collapse-${gene}-${view}">★  View: '${view}'</a></h1>
+                                </div>
+                                <div id="collapse-${gene}-${view}" class="panel-collapse collapse">
+                                    <div class="panel-body">
+                                        <div class="panel panel-default">
+                                            <div class="panel-body">
+                                                <div role="tabpanel" style="margin: 10px;">
+                                                    <!-- Nav tabs -->
+                                                    <ul class="nav nav-tabs" role="tablist">
+                                                        ${ saav_data["perspectives"].map(function(perspective, index) { return `
+                                                        <li role="presentation" ${ (index==0) ? 'class="active"' : '' }><a href="#${gene}-${view}-${perspective}" aria-controls="${gene}-${view}-${perspective}" role="tab" data-toggle="tab">Perspective: '${perspective}'</a></li>`}).join('')}
+                                                    </ul>
+                                                    <!-- TABS -->
+                                                    <div class="tab-content">
+                                                        ${ saav_data["perspectives"].map(function(perspective, index) { return `
+                                                        <div role="tabpanel" class="tab-pane fade${ (index==0) ? ' in active' : '' }" id="${gene}-${view}-${perspective}">
+                                                            <table class="table table-striped sortable" id="tblGrid_bin">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td style="vertical-align: middle; width: 10px;"><b>Color Legend</b></td>
+                                                                        <td>
+                                                                            ${ Object.keys(saav_data["legends"][gene][perspective]).map(function(legend) { return `
+                                                                                <div class="legend-item">
+                                                                                  <div class="color-box" style="background-color: ${ saav_data["legends"][gene][perspective][legend]['hex'] };">
+                                                                                  </div>
+                                                                                  <span title="${ legend }">${ legend }</span>
+                                                                                </div>
+                                                                            `}).join('')}
+                                                                        </td>
+                                                                    </tr>
+
+                                                                     ${ saav_data["views_and_variables"][view].map(function(variable) { return `
+                                                                    <tr>
+                                                                        <td style="vertical-align: middle; width: 10px;"><b>${variable}</b></td>
+                                                                        <td>
+                                                                            ${ (saav_data["by_view"][gene][view][perspective][variable].hasOwnProperty('__merged__')) ? `
+                                                                              <div class="molecule-image" style="border: 1px #d2d2d2 solid; border-radius: 10px; background: #f3f3f3;">
+                                                                                <a href="${saav_data["by_view"][gene][view][perspective][variable]['__merged__']}" target="_blank"><img src="${saav_data["by_view"][gene][view][perspective][variable]['__merged__']}" width="130px;" /></a><br />MERGED
+                                                                               </div>
+                                                                                ` : `` }
+                                                                            ${ saav_data["samples_per_view"][view][variable].map(function(sample) { return `
+                                                                            <div class="molecule-image">
+                                                                            <a href="${saav_data["by_view"][gene][view][perspective][variable][sample]}" target="_blank"><img src="${saav_data["by_view"][gene][view][perspective][variable][sample]}" width="130px;" /></a><br />
+                                                                                ${ sample }
+                                                                            </div>
+                                                                            `}).join('')}
+                                                                        </td>
+                                                                    </tr>
+                                                                    `}).join('')}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        `}).join('')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`}).join('')}
+
+                            ${ (has_functions) ? `
+                                <hr />
+                                <table class="table table-striped" style="border: 1px solid #ccc; background: #fff5ff;">
+                                   <thead>
+                                      <tr>
+                                         <th>Source</th>
+                                         <th>Accession</th>
+                                         <th>Annotation</th>
+                                      </tr>
+                                   </thead>
+                                   <tbody>
+                                    ${ Object.keys(functions).map(function(source) { return `
+                                        ${ (functions[source]) ? `
+                                          <tr>
+                                             <td><b>${ source }</b></td>
+                                             <td>${ functions[source][0] }</td>
+                                             <td><em>${ functions[source][1] }</em></td>
+                                          </tr>
+                                         ` : ``}
+                                      `}).join('')}
+                                   </tbody>
+                                </table>
+                            ` : `` }
+
+                        </div>
+                        </div>`;
+
+            $(parent).append(content);
+        }
+    }
+
+    $(document).ready(function() {
+        saav_data['gene_names'].forEach(function(gene) {
+
+            var function_links = '';
+            if (saav_data['genes_info'].hasOwnProperty(gene)) {
+                var func = saav_data['genes_info'][gene]['function'];
+                var accession = saav_data['genes_info'][gene]['accession'];
+
+                function_links = `| <a href="https://www.google.com/search?q=${func}" target="_blank">${func}</a> | <a href="http://pfam.xfam.org/family/${accession}" target="_blank">${accession}</a>`;
+            }
+            var content = `<section>
+                            <div class="container-fluid">
+                            <div class="panel panel-info" id="${gene}_panel">
+                                <div class="panel-heading">
+                                    <h1 class="panel-title">
+                                        <a onClick="generate_panel_content(this, ${gene});" target="_self" data-toggle="collapse" data-parent="#${gene}_panel" href="#collapse-${gene}">Gene ID: ${gene}</a> ${function_links}
+                                    </h1>
+                                </div>
+                            </div>
+                            </div>
+                          </section>`;
+
+            $('#content').append(content);
+        });
+
+        $("body").tooltip({ selector: '[data-toggle=tooltip]' });
+    });
+</script>
+</body>
+</html>

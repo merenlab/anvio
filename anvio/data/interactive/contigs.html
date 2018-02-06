@@ -1,0 +1,264 @@
+<html>
+
+<head>
+    <title>Contigs DB Stats</title>
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+    <script type='text/javascript' src='js/utils.js'></script>
+    <script type='text/javascript' src='lib/d3.js/d3.min.js'></script>
+    <script type='text/javascript' src='js/contigs-plot.js'></script>
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/contigs-plot.css" />
+    <script type="text/javascript">
+        var contigs_stats;
+        var contig_db_names;
+    </script>
+</head>
+
+<body>
+    <div class="container-fluid parent-container">
+        <div class="row row-centered row-menu" style="display: none; padding: 5px; margin-top: 10px;">
+            <select id="select-left"></select> vs <select id="select-right"></select>
+        </div>
+        <div class="row row-centered row-plots">
+
+        </div>
+
+        <div class="container">
+            <div style="text-align: right;">
+                <input type="checkbox" id="checkbox_human_readable" name="checkbox_human_readable" checked='checked' onclick="create_table();">
+                <label for="checkbox_human_readable">Human readable bases</label>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" id="checkbox_color_output" name="checkbox_color_output" onclick="create_table();">
+                <label for="checkbox_color_output">Color output</label>
+            </div>
+            <table class="table table-details">
+              <tbody>
+              </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        function create_plots(index, prefix) {
+            var contig_db_name = contig_db_names[index];
+            var stats = contigs_stats[contig_db_name];
+
+            var container = d3.select('.parent-container>.row-plots')
+                                .append('div')
+                                    .attr('class', 'col-sm-6')
+                                    .append('div')
+                                        .attr('class', 'round-corners-and-background')
+                                        .attr('id', 'container' + prefix);
+
+            // Add title
+
+            container.append('div')
+                .append('h3')
+                .style('margin-top', '0px')
+                .text(stats['project_name']);
+
+            var plot_container = container.append('div')
+                                            .attr('id', 'n_values_' + prefix);
+
+            draw_n_values_plot('#n_values_' + prefix, stats);
+
+            // Add single copy core gene plots
+
+            var tabs = container.append('ul')
+                                .attr('class', 'nav nav-tabs');
+
+            var tab_content = container.append('div')
+                                    .attr('class', 'tab-content');
+
+            var max_hmm_hits = 0;
+            var active_index = 0;
+            Object.keys(stats.gene_hit_counts_per_hmm_source).forEach(function(source, gene_chart_index) {
+                var plot_container_id = 'gene_chart_' + prefix + '_' + gene_chart_index;
+
+                var hits_sum = 0;
+
+                Object.keys(stats.gene_hit_counts_per_hmm_source[source]).forEach(function (gene) {
+                    hits_sum += stats.gene_hit_counts_per_hmm_source[source][gene];
+                });
+
+                if (hits_sum > max_hmm_hits) {
+                    max_hmm_hits = hits_sum;
+                    active_index = gene_chart_index;
+                }
+
+                tabs.append('li')
+                        .append('a')
+                            .attr('href', '#' + plot_container_id)
+                            .attr('data-toggle', 'tab')
+                            .text(source.replace(/_/g, ' '));
+
+
+                var plot_container = tab_content.append('div')
+                                        .attr('class', 'tab-pane')
+                                        .attr('role', 'tabpanel')
+                                        .attr('id', plot_container_id);
+
+                draw_gene_counts_chart('#' + plot_container_id, stats.gene_hit_counts_per_hmm_source[source]);
+            });
+
+            $('a[href="#gene_chart_' + prefix + '_' + active_index + '"').tab('show');
+        }
+
+        function getGradientColor(start_color, end_color, percent) {
+           // strip the leading # if it's there
+           start_color = start_color.replace(/^\s*#|\s*$/g, '');
+           end_color = end_color.replace(/^\s*#|\s*$/g, '');
+
+           // convert 3 char codes --> 6, e.g. `E0F` --> `EE00FF`
+           if(start_color.length == 3){
+             start_color = start_color.replace(/(.)/g, '$1$1');
+           }
+
+           if(end_color.length == 3){
+             end_color = end_color.replace(/(.)/g, '$1$1');
+           }
+
+           // get colors
+           var start_red = parseInt(start_color.substr(0, 2), 16),
+               start_green = parseInt(start_color.substr(2, 2), 16),
+               start_blue = parseInt(start_color.substr(4, 2), 16);
+
+           var end_red = parseInt(end_color.substr(0, 2), 16),
+               end_green = parseInt(end_color.substr(2, 2), 16),
+               end_blue = parseInt(end_color.substr(4, 2), 16);
+
+           // calculate new color
+           var diff_red = end_red - start_red;
+           var diff_green = end_green - start_green;
+           var diff_blue = end_blue - start_blue;
+
+           diff_red = Math.abs(( (diff_red * percent) + start_red )).toString(16).split('.')[0];
+           diff_green = Math.abs(( (diff_green * percent) + start_green )).toString(16).split('.')[0];
+           diff_blue = Math.abs(( (diff_blue * percent) + start_blue )).toString(16).split('.')[0];
+
+           // ensure 2 digits by color
+           if( diff_red.length == 1 )
+             diff_red = '0' + diff_red
+
+           if( diff_green.length == 1 )
+             diff_green = '0' + diff_green
+
+           if( diff_blue.length == 1 )
+             diff_blue = '0' + diff_blue
+
+           return '#' + diff_red + diff_green + diff_blue;
+         }
+
+
+        function create_table_header(header_text) {
+            var columns = tables['header'];
+            var table_str = '<tr class="info"><th>' + header_text + '</th>';
+
+            columns.forEach(function(column) {
+                table_str += '<th class="text-center">' + column + '</th>';
+            });
+
+            table_str += '</tr>';
+
+            return table_str;
+        }
+
+
+        function array_to_table(table_array, placeholder_text) {
+            var human_readable_keys = ['L50', 'L75', 'L90', 'Shortest Contig', 'Longest Contig', 'Total Length'];
+
+            var table_str = "";
+            table_array.forEach(function(table_line) {
+                table_str += '<tr>';
+                var human_readable = $('#checkbox_human_readable').is(':checked');
+                var color_numbers = $('#checkbox_color_output').is(':checked');
+
+                if (human_readable_keys.indexOf(table_line[0]) == -1) {
+                    human_readable = false;
+                }
+
+                var layer_extent = d3.extent(table_line.slice(1, table_line.length).map(Number));
+                var layer_range = layer_extent[1] - layer_extent[0];
+
+                table_line.forEach(function(table_item, i) { 
+                    var td_class = (i > 0) ? 'text-center' : '';
+                    var td_color =  '#333';
+                    
+                    if (color_numbers && i > 0 && layer_range > 0) {
+                        td_color = getGradientColor('#B3DDCC', '#101648', (table_item - layer_extent[0]) / layer_range );
+                    } 
+
+                    if (human_readable && i > 0) {
+                        table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + getReadableSeqSizeString(parseInt(table_item)) + '</td>';
+                    } else {
+                        table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + table_item + '</td>';
+                    }
+                });
+
+                table_str += '</tr>';
+            });
+
+            if (table_array.length == 0) {
+                table_str = '<tr><td>' + placeholder_text + '</td></tr>';
+            }
+
+            return table_str;
+        }
+
+        function create_table() {
+            var table_str = "";
+            table_str += create_table_header('Contigs Stats');
+            table_str += array_to_table(tables['basic_stats'], 'No Basic Stats Found');
+            table_str += create_table_header('Raw number of HMM Hits');
+            table_str += array_to_table(tables['hmm'], '<i>HMMs were not run</i>');
+            table_str += create_table_header('Approx. number of genomes <a href="http://merenlab.org/2015/12/07/predicting-number-of-genomes/">[?]</a>');
+            table_str += array_to_table(tables['scg'], '<i>SCG HMMs were not run</i>');
+            $('.table-details>tbody').empty().append(table_str);
+        }
+
+        $('#select-left,#select-right').change(function() {
+            $('.parent-container>.row-plots').empty();
+            create_plots(parseInt($('#select-left').val()), 'left');
+            create_plots(parseInt($('#select-right').val()), 'right'); 
+        });
+
+        d3.json("/data/get_contigs_stats", function(error, response) {
+            contigs_stats = response['stats'];
+            contig_db_names = Object.keys(contigs_stats);
+
+            tables = response['tables']
+
+            contig_db_names.forEach(function(name) {
+                contigs_stats[name]['project_name'] = contigs_stats[name]['project_name'].replace(/_/g, ' ');
+            });
+
+            if (contig_db_names.length == 1) {
+                d3.select('.parent-container>.row-plots')
+                    .append('div')
+                    .attr('class', 'col-sm-3');
+
+                create_plots(0, 'left');
+            } else if (contig_db_names.length == 2) {
+                create_plots(0, 'left');
+                create_plots(1, 'rights');
+            } else {
+                $('.row-menu').show();
+
+                contig_db_names.forEach(function(name, index) {
+                    var option = '<option value="' + index + '">' + contigs_stats[name]['project_name'] +  '</option>';
+                    $('#select-left').append(option);
+                    $('#select-right').append(option);
+
+                    $('#select-left option:nth-child(1)').attr("selected", "selected");
+                    $('#select-right option:nth-child(2)').attr("selected", "selected");
+
+                    $('#select-left').trigger('change');
+                });
+            }
+
+            create_table();
+        });
+    </script>
+</body>
+
+</html>
