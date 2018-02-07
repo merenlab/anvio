@@ -700,3 +700,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .table-borderless > thead > tr > th {
     border: none;
 }
+
+.pan-filters input[type='checkbox'] {
+    width: 15px;
+}
