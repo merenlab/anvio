@@ -289,9 +289,9 @@ function initData() {
             $('.menuItemSequence').addClass('menu-disabled');
         }
 
-        if (!response['functions_initialized']) {
-            $('#search_functions_button').attr('disabled', true);
-            $('.functions-not-available-message').show();
+        if (server_mode == false && (mode == 'pan' || response['functions_initialized'])) {
+            $('#search_functions_button').attr('disabled', false);
+            $('.functions-not-available-message').hide();
         }
 
         if (! response.noPing) {
@@ -519,7 +519,11 @@ function onViewChange() {
                         $('#searchLayerList').empty();
                         for (var i=0; i < parameter_count; i++)
                         {
-                            $('#searchLayerList').append(new Option(layerdata[0][i],i));
+                            if (i == 0) {
+                                $('#searchLayerList').append(new Option("Item Name", i));
+                            } else {
+                                $('#searchLayerList').append(new Option(getPrettyName(layerdata[0][i]),i));
+                            }
                         }
 
                         $('#views_container').attr('disabled', false);
