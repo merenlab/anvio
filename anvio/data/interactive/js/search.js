@@ -44,7 +44,7 @@ function searchContigs()
             _counter++;
         }
     }
-    $('#search_result_message').html(_counter + " splits found.");
+    $('#search_result_message').html(_counter + " result(s) found.");
 }
 
 function searchFunctions() {
@@ -82,7 +82,7 @@ function searchFunctions() {
                                                                                   '</br><b>Accession:</b> ' + _accession +
                                                                                   '</br><b>Annotation:</b> ' + _annotation});
                 }
-                $('#search_result_message_functions').html(data['results'].length + " results found.");
+                $('#search_result_message_functions').html(data['results'].length + " result(s) found.");
             } else {
                 $('.search-message').show();
                 $('.search-message').html(data['message']);
