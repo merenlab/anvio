@@ -164,7 +164,7 @@ def main(args):
             # don't save if it's a premature result AND the user asked to remove partial hits
             if args.separate_fasta:
                 # create a separate fasta per match
-                output_file_path = args.output_file_prefix + '_' + str(entry_id) + '.fa'
+                output_file_path = args.output_file_prefix + '_' + str(entry_id).zfill(4) + '.fa'
                 f = open(output_file_path, 'w')
             
             block_header = contigs_db.a_meta['project_name'] + ' ' +\
