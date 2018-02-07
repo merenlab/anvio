@@ -95,7 +95,7 @@ class GenomeStorage(object):
         if self.storage_hash:
             if self.storage_hash != self.get_storage_hash():
                 raise ConfigError("Requested storage hash ('%s') does not match with the one readed from database ('%s')." %
-                    (self.storage_hash, self.get_sorage_hash))
+                    (self.storage_hash, self.get_storage_hash()))
 
         self.genome_names_in_db = self.get_all_genome_names()
 
@@ -196,6 +196,7 @@ class GenomeStorage(object):
     def store_genomes(self, genome_descriptions):
         self.functions_are_available = genome_descriptions.functions_are_available
         self.db.set_meta_value('functions_are_available', self.functions_are_available)
+        self.db.set_meta_value('gene_function_sources', ','.join(genome_descriptions.function_annotation_sources))
 
         num_gene_calls_added_total = 0
         num_partial_gene_calls_total = 0

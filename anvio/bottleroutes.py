@@ -124,7 +124,7 @@ class BottleApplication(Bottle):
         self.route('/data/phylogeny/aligners',                 callback=self.get_available_aligners)
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
-        self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
+        self.route('/data/search_functions',                   callback=self.search_functions, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
 
@@ -743,10 +743,9 @@ class BottleApplication(Bottle):
         return json.dumps(data)
 
 
-    def search_functions_in_splits(self):
+    def search_functions(self):
         try:
-            search_terms = [s.strip() for s in request.forms.get('terms').split(',')]
-            matching_split_names_dict, full_report = self.interactive.search_splits_for_gene_functions(search_terms, verbose=False)
+            full_report = self.interactive.search_for_functions(request.forms.get('terms'))
             return json.dumps({'status': 0, 'results': full_report})
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
