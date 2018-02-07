@@ -892,6 +892,20 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
 
 
+    def search_for_functions(self, search_terms):
+        search_terms = [s.strip() for s in search_terms.split(',')]
+        matching_split_names_dict, full_report = None, None
+        
+        if self.mode == 'full':
+            matching_split_names_dict, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+        elif self.mode == 'pan':
+            matching_split_names_dict, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+        else:
+            raise ConfigError("Searching functions are not supported for this mode.")
+
+        return full_report
+
+
     def check_names_consistency(self):
         if self.skip_check_names:
             return

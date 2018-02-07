@@ -731,8 +731,7 @@ class BottleApplication(Bottle):
 
     def search_functions(self):
         try:
-            search_terms = [s.strip() for s in request.forms.get('terms').split(',')]
-            matching_split_names_dict, full_report = self.interactive.search_for_gene_functions(search_terms, verbose=False)
+            full_report = self.interactive.search_for_functions(request.forms.get('terms'))
             return json.dumps({'status': 0, 'results': full_report})
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
