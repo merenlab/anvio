@@ -519,7 +519,11 @@ function onViewChange() {
                         $('#searchLayerList').empty();
                         for (var i=0; i < parameter_count; i++)
                         {
-                            $('#searchLayerList').append(new Option(layerdata[0][i],i));
+                            if (i == 0) {
+                                $('#searchLayerList').append(new Option("Item Name", i));
+                            } else {
+                                $('#searchLayerList').append(new Option(getPrettyName(layerdata[0][i]),i));
+                            }
                         }
 
                         $('#views_container').attr('disabled', false);
