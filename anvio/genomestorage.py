@@ -95,7 +95,7 @@ class GenomeStorage(object):
         if self.storage_hash:
             if self.storage_hash != self.get_storage_hash():
                 raise ConfigError("Requested storage hash ('%s') does not match with the one readed from database ('%s')." %
-                    (self.storage_hash, self.get_sorage_hash))
+                    (self.storage_hash, self.get_storage_hash()))
 
         self.genome_names_in_db = self.get_all_genome_names()
 
