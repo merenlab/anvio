@@ -291,6 +291,7 @@ function initData() {
 
         if (server_mode == false && (mode == 'pan' || response['functions_initialized'])) {
             $('#search_functions_button').attr('disabled', false);
+            $('#searchFunctionsValue').attr('disabled', false);
             $('.functions-not-available-message').hide();
         }
 
