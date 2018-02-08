@@ -85,7 +85,7 @@ if __name__ == '__main__':
                         below  0.5-0.25 = 0.25 will be considered negative (i.e. donot contain the genome), samples with detection \
                         between 0.25 and 0.75 would be ambiguous (and hence would not be used for the classification), and samples with \
                         detection above 0.75 would be considered positive (i.e. contain the genome).')
-    groupC.add_argument('--outliers_threshold', metavar='NUM', type=float, default=2.5,
+    groupC.add_argument('--outliers-threshold', metavar='NUM', type=float, default=2.5,
                             help='Threshold to use for the outlier detection. \
                             The default value is 2.5.\
                             Absolute deviation around the median is used. \
@@ -96,7 +96,7 @@ if __name__ == '__main__':
                             Or to: \
                             http://www.sciencedirect.com/science/article/pii/S0022103113000668 \
                             ')
-
+    groupC.add_argument(*anvio.A('zeros-are-outliers'), **anvio.K('zeros-are-outliers'))
     args = anvio.get_args(parser)
 
     try:
