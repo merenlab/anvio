@@ -193,7 +193,7 @@ def get_indices_for_outlier_values(c):
     return set([p for p in range(0, c.size) if is_outlier[p]])
 
 
-def get_list_of_outliers(values, threshold=None):
+def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False):
     """
     Returns a boolean array with True if values are outliers and False
     otherwise.
@@ -243,5 +243,12 @@ def get_list_of_outliers(values, threshold=None):
             return numpy.array([False] * values.size)
 
     modified_z_score = 0.6745 * diff / median_absolute_deviation
+    non_outliers = modified_z_score > threshold
 
-    return modified_z_score > threshold
+    if not zeros_are_outliers:
+        return non_outliers
+    else:
+        zero_positions = [x for x in range(len(values)) if values[x] == 0]
+        for i in zero_positions:
+            non_outliers[i] = True
+        return non_outliers

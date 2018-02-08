@@ -96,7 +96,7 @@ if __name__ == '__main__':
                             Or to: \
                             http://www.sciencedirect.com/science/article/pii/S0022103113000668 \
                             ')
-
+    groupC.add_argument(*anvio.A('zeros-are-outliers'), **anvio.K('zeros-are-outliers'))
     args = anvio.get_args(parser)
 
     try:
