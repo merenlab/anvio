@@ -984,12 +984,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def search_for_functions(self, search_terms):
         search_terms = [s.strip() for s in search_terms.split(',')]
-        matching_split_names_dict, full_report = None, None
-        
-        if self.mode == 'full':
-            matching_split_names_dict, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+        full_report = None
+
+        if self.mode == 'full' or self.mode == 'gene':
+            _, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+
+            if self.mode == 'gene':
+                # otherwise gene mode report functions from other splits are not the bin interactive initialized.
+                full_report = [i for i in full_report if i[5] in self.split_names_of_interest]
         elif self.mode == 'pan':
-            matching_split_names_dict, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+            _, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
         else:
             raise ConfigError("Searching functions are not supported for this mode.")
 
