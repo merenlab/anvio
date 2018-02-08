@@ -174,6 +174,16 @@ D = {
                       genes before and n2 genes after the hits but the search hits the end of the contig before\
                       finding the number of genes that you asked."}
             ),
+    'zeros-are-outliers': (
+            ['zeros_are_outliers'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you want all zero coverage positions to be treated like outliers\
+                      then use this flag. The reason to treat zero coverage as outliers\
+                      is because when mapping reads to a reference we could get many zero\
+                      positions due to accessory genes. These positions then skew the average\
+                      values that we compute."}
+            ),
     'external-gene-calls': (
             ['--external-gene-calls'],
             {'metavar': 'GENE-CALLS',

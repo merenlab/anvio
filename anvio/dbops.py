@@ -1776,6 +1776,7 @@ class ProfileSuperclass(object):
         init_gene_coverages = A('init_gene_coverages')
         populate_nt_level_coverage = A('populate_nt_level_coverage')
         outliers_threshold = A('outliers_threshold')
+        zeros_are_outliers = A('zeros_are_outliers')
 
         # early on let's check some ground truth
         if not self.profile_db_path:
