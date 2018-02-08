@@ -60,6 +60,7 @@ class MetagenomeCentricGeneClassifier:
         self.exclude_samples = A('exclude_samples')
         self.include_samples = A('include_samples')
         self.outliers_threshold = A('outliers_threshold')
+        self.zeros_are_outliers = A('zeros_are_outliers')
         self.gen_figures = A('gen_figures')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.split_coverage_values_per_nt_dict = None
@@ -261,7 +262,7 @@ class MetagenomeCentricGeneClassifier:
 
             # loop through positive samples
             # get the non-outlier information
-            non_outlier_indices, self.samples_coverage_stats_dicts.loc[sample,] = get_non_outliers_information(self.coverage_values_per_nt[sample], MAD_threshold=self.outliers_threshold)
+            non_outlier_indices, self.samples_coverage_stats_dicts.loc[sample,] = get_non_outliers_information(self.coverage_values_per_nt[sample], MAD_threshold=self.outliers_threshold, zeros_are_outliers=self.zeros_are_outliers)
             self.non_outlier_indices[sample] = non_outlier_indices
             # TODO: in manual mode this will either be supplied or it will be calculated from gene coverages
 
@@ -613,11 +614,11 @@ def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, sample
     return d
 
 
-def get_non_outliers_information(v, MAD_threshold=2.5):
+def get_non_outliers_information(v, MAD_threshold=2.5, zeros_are_outliers=False):
     """ returns the non-outliers for the input pandas series using MAD"""
 
     d = pd.Series(index=columns_for_samples_coverage_stats_dict)
-    outliers = get_list_of_outliers(v, threshold=MAD_threshold)
+    outliers = get_list_of_outliers(v, threshold=MAD_threshold, zeros_are_outliers=zeros_are_outliers)
     non_outliers = np.logical_not(outliers)
 
     if not(len(non_outliers)):
