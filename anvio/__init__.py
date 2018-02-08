@@ -175,7 +175,7 @@ D = {
                       finding the number of genes that you asked."}
             ),
     'zeros-are-outliers': (
-            ['zeros_are_outliers'],
+            ['--zeros-are-outliers'],
             {'default': False,
              'action': 'store_true',
              'help': "If you want all zero coverage positions to be treated like outliers\
