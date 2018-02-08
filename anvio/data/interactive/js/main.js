@@ -289,7 +289,7 @@ function initData() {
             $('.menuItemSequence').addClass('menu-disabled');
         }
 
-        if (server_mode == false && (mode == 'pan' || response['functions_initialized'])) {
+        if (server_mode == false && (mode == 'pan' || mode == 'gene' || mode == 'fulll')) {
             $('#search_functions_button').attr('disabled', false);
             $('#searchFunctionsValue').attr('disabled', false);
             $('.functions-not-available-message').hide();
