@@ -306,8 +306,7 @@ rule qc:
     output:
         r1 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R1.fastq",
         r2 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R2.fastq",
-        stats = dirs_dict["QC_DIR"] + "/{sample}-STATS.txt",
-        read_ids = temp(dirs_dict["QC_DIR"] + "/{sample}-READ_IDs.cPickle.z")
+        stats = dirs_dict["QC_DIR"] + "/{sample}-STATS.txt")
     threads: T('qc', 2)
     resources: nodes = T('qc', 2),
     shell: "iu-filter-quality-minoche {input.ini} --ignore-deflines >> {log} 2>&1"
