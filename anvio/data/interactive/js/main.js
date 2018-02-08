@@ -460,7 +460,7 @@ function initData() {
             buildSamplesTable(samples_information_default_layer_order);
 
             // load default data
-            if (autoload_state !== null)
+            if (autoload_state !== null && mode != 'gene')
             {
                 $.when({}).then(onViewChange)
                       .then(loadState)
@@ -1469,7 +1469,7 @@ function drawTree() {
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
 
-                if (autoload_collection !== null && mode !== 'refine')
+                if (autoload_collection !== null && mode !== 'refine' && mode !== 'gene')
                 {
                     loadCollection(autoload_collection);
                     autoload_collection = null;
