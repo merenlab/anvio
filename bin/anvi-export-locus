@@ -162,6 +162,7 @@ def main(args):
 
         if not (args.remove_partial_hits and premature):
             # don't save if it's a premature result AND the user asked to remove partial hits
+            entry_id += 1
             if args.separate_fasta:
                 # create a separate fasta per match
                 output_file_path = args.output_file_prefix + '_' + str(entry_id).zfill(4) + '.fa'
@@ -185,7 +186,6 @@ def main(args):
         else:
             filtered_partial_hits += 1
 
-            entry_id += 1
     if filtered_partial_hits and args.remove_partial_hits:
         run.info_single("%s hits were filtered because they were partial." % filtered_partial_hits)
 
