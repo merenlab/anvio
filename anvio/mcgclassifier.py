@@ -560,16 +560,16 @@ class MetagenomeCentricGeneClassifier:
         self.init_gene_class_df()
 
         self.update_samples_information_from_gene_class_df()
+
+        if self.write_output_to_files:
+            self.save_gene_class_information_in_additional_layers()
+            self.save_samples_information()
         
         if self.gen_figures:
             # Create the plots for nucleotide-level coverage data per sample.
             self.plot_nucleotide_coverage_distribution()
             # generate plots for coverage consistency information for each gene.
             self.gen_gene_consistency_plots() 
-
-        if self.write_output_to_files:
-            self.save_gene_class_information_in_additional_layers()
-            self.save_samples_information()
 
 
 def get_coverage_values_per_nucleotide(split_coverage_values_per_nt_dict, samples=None):
