@@ -126,10 +126,6 @@ def main(args):
 
     run.info('Matching genes', '%d genes matched your search' % len(matching_genes))
 
-    if not args.separate_fasta:
-        # print all matches into one fasta file
-        f = open(output_file_path, 'w')
-
     entry_id = 0
     direction_dict = {'f': 1, 'r': -1}
     for gene_id in matching_genes:
@@ -167,6 +163,8 @@ def main(args):
                 # create a separate fasta per match
                 output_file_path = args.output_file_prefix + '_' + str(entry_id).zfill(4) + '.fa'
                 f = open(output_file_path, 'w')
+            elif entry_id == 1:
+                f = open(output_file_path, 'w')
             
             block_header = contigs_db.a_meta['project_name'] + ' ' +\
                            '|'.join([
@@ -187,11 +185,14 @@ def main(args):
             filtered_partial_hits += 1
 
     if filtered_partial_hits and args.remove_partial_hits:
-        run.info_single("%s hits were filtered because they were partial." % filtered_partial_hits)
+        run.warning("%s hits were filtered because they were partial." % filtered_partial_hits)
 
-    if not args.separate_fasta:
+    if not args.separate_fasta and entry_id > 0:
         # if the matches are combined into one fasta then we only close it now
         f.close()
+
+    if entry_id == 0:
+        run.warning('There were no hits for your search so no output file will be created.')
 
 
 if __name__ == '__main__':
