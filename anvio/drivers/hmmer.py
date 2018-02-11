@@ -107,7 +107,7 @@ class HMMer:
         self.progress.update('Performing HMM scan ...')
 
         cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
-                    '-o', self.hmm_scan_output, noise_cutoff_terms,
+                    '-o', self.hmm_scan_output, *noise_cutoff_terms.split(),
                     '--cpu', self.num_threads_to_use,
                     '--tblout', self.hmm_scan_hits_shitty,
                     hmm_file_path, self.target_files_dict[target]]
