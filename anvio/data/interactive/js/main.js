@@ -460,7 +460,7 @@ function initData() {
             buildSamplesTable(samples_information_default_layer_order);
 
             // load default data
-            if (autoload_state !== null && mode != 'gene')
+            if (autoload_state !== null)
             {
                 $.when({}).then(onViewChange)
                       .then(loadState)
