@@ -77,7 +77,11 @@ function searchFunctions() {
                                    _annotation.slice(_beginning + _search_term.length, _annotation.length)
                                    ].join("");
 
-                    search_results.push({'split': _split_name, 'value': '<b>Gene caller id:</b> ' + _gene_caller_id +
+                    var reported_column = _split_name;
+                    if (mode == 'gene') {
+                        reported_column = _gene_caller_id;
+                    }
+                    search_results.push({'split': reported_column , 'value': '<b>Gene caller id:</b> ' + _gene_caller_id +
                                                                                   '</br><b>Source:</b> ' + _source +
                                                                                   '</br><b>Accession:</b> ' + _accession +
                                                                                   '</br><b>Annotation:</b> ' + _annotation});

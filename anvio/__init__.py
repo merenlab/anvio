@@ -627,6 +627,12 @@ D = {
                       If you declare nothing, you may get everything. Or you may get an error. Really depends on the\
                       situation. Worth a try."}
                 ),
+    'gene-view': (
+            ['--gene-view'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "TO DO."}
+                ),
     'gene-caller-id': (
             ['--gene-caller-id'],
             {'metavar': 'GENE_CALLER_ID',

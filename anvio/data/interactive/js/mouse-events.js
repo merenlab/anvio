@@ -24,6 +24,7 @@ $(document).ready(function() {
         $('#collection_mode_right_click_menu').hide();
         $('#pan_mode_right_click_menu').hide();
         $('#branch_right_click_menu').hide();
+        $('#gene_mode_right_click_menu').hide();
     }, false);
 });
 
@@ -130,6 +131,9 @@ function lineContextMenuHandler(event) {
         } else if (mode == "pan"){
             $('#pan_mode_right_click_menu').show();
             $('#pan_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
+        } else if (mode == "gene"){
+            $('#gene_mode_right_click_menu').show();
+            $('#gene_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
         } else {
             $('#default_right_click_menu').show();
             $('#default_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
@@ -145,6 +149,8 @@ function lineContextMenuHandler(event) {
             $('#collection_mode_right_click_menu #select_layer').show();
             $('#pan_mode_right_click_menu #unselect_layer').show();
             $('#pan_mode_right_click_menu #select_layer').show();
+            $('#gene_mode_right_click_menu #unselect_layer').show();
+            $('#gene_mode_right_click_menu #select_layer').show();
         } else {
             $('#default_right_click_menu #select_layer').show();
             $('#default_right_click_menu #unselect_layer').hide();
@@ -152,6 +158,8 @@ function lineContextMenuHandler(event) {
             $('#collection_mode_right_click_menu #unselect_layer').show();
             $('#pan_mode_right_click_menu #select_layer').show();
             $('#pan_mode_right_click_menu #unselect_layer').show();
+            $('#gene_mode_right_click_menu #select_layer').show();
+            $('#gene_mode_right_click_menu #unselect_layer').show();
         }
 
         if (bin_id > 0) {
@@ -540,6 +548,7 @@ function write_mouse_table(content, item_name, layer_id) {
 
 function menu_callback(action, param) {
     var item_name = id_to_node_map[context_menu_target_id].label;
+    var target = (mode == 'gene') ? 'gene' : 'contig';
 
     switch (action) {
         case 'collapse':
@@ -574,22 +583,36 @@ function menu_callback(action, param) {
             $('#tbody_layers tr:nth-child(' + context_menu_layer_id + ') input:checkbox').prop('checked', false);
             break;
 
-        case 'get_split_sequence':
+        case 'get_gene_sequence':
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/contig/' + item_name + '?timestamp=' + new Date().getTime(),
+                url: '/data/gene/' + item_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
+                    $('#modSplitSequence .modal-title').html('Gene Sequence');
                     $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
                     $('#modSplitSequence').modal('show');
                 }
             });
             break;
 
-        case 'blastn_nr': get_sequence_and_blast(item_name, 'blastn', 'nr', 'contig'); break;
-        case 'blastx_nr': get_sequence_and_blast(item_name, 'blastx', 'nr', 'contig'); break;
-        case 'blastn_refseq_genomic': get_sequence_and_blast(item_name, 'blastn', 'refseq_genomic', 'contig'); break;
-        case 'blastx_refseq_protein': get_sequence_and_blast(item_name, 'blastx', 'refseq_genomic', 'contig'); break;
+        case 'get_split_sequence':
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/contig/' + item_name + '?timestamp=' + new Date().getTime(),
+                success: function(data) {
+                    $('#modSplitSequence .modal-title').html('Split Sequence');
+                    $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
+                    $('#modSplitSequence').modal('show');
+                }
+            });
+            break;
+
+        case 'blastn_nr': get_sequence_and_blast(item_name, 'blastn', 'nr', target); break;
+        case 'blastx_nr': get_sequence_and_blast(item_name, 'blastx', 'nr', target); break;
+        case 'blastn_refseq_genomic': get_sequence_and_blast(item_name, 'blastn', 'refseq_genomic', target); break;
+        case 'blastx_refseq_protein': get_sequence_and_blast(item_name, 'blastx', 'refseq_genomic', target); break;
 
         // collection mode-specific:
         case 'refine_bin': toastr.error('Refine function from the interface is not currently implemented :/ ' +
