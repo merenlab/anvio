@@ -29,7 +29,7 @@ def main(args):
 
     run.info('Input matrix file', args.input_matrix)
     progress.new('Analyzing input file')
-    clustering.get_newick_tree_data(args.input_matrix, args.output_file, linkage = args.linkage,
+    clustering.create_newick_file_from_matrix_file(args.input_matrix, args.output_file, linkage = args.linkage,
                                     distance = args.distance, transpose = args.transpose, progress = progress)
     progress.end()
     run.info('Output newick', args.output_file)

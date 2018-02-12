@@ -87,10 +87,18 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.bin_ids_file_path = A('bin_ids_file')
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
+        self.gene_view = A('gene_view')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
                                 you send to this class. What are you doing?")
+
+        if self.gene_view:
+            if self.collection_name is None or self.bin_id is None:
+                raise ConfigError("Gene view requires a collection and a bin to be specified. If you want to \
+                                    view all the genes in your profile database then you can use \
+                                    anvi-script-add-default-collection to create a default collection \
+                                    with all contigs.")
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
@@ -116,6 +124,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.mode:
             if self.manual_mode:
                 self.mode = 'manual'
+            elif self.gene_view:
+                # collection mode and gene view mode both uses collection_name
+                # so gene_view needs to be placed before collection view
+                self.mode = 'gene'
             elif self.collection_name or self.list_collections:
                 self.mode = 'collection'
             else:
@@ -142,6 +154,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Interactive mode', self.mode, mc='green')
         if self.mode == 'manual':
             self.load_manual_mode()
+        elif self.mode == 'gene':
+            self.load_gene_mode()
         elif self.mode == 'refine':
             self.load_full_mode()
             self.load_refine_mode()
@@ -879,6 +893,82 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                           available states by running this program with --show-states flag." % self.state_autoload)
 
 
+    def load_gene_mode(self):
+        ProfileSuperclass.__init__(self, self.args)
+
+        self.genes_in_splits_summary_dict = {}
+
+        self.init_gene_level_coverage_stats_dicts()
+
+        # the gene_level_coverage_stats_dict contains a mixture of data, some of which are not relevant to
+        # our purpose of generating views for the interactive interface. here we explicitly list keys that
+        # correspond to views we wish to generate:
+        views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
+
+        for view in views_of_interest:
+            self.views[view] = {
+                'table_name': 'genes',
+                'header': self.p_meta['samples'],
+                'dict': {}
+                }
+
+        self.collections.populate_collections_dict(self.profile_db_path)
+        splits_of_interest = self.collections.get_collection_dict(self.collection_name)[self.bin_id]
+        all_gene_callers_ids = []
+
+        for split_name in splits_of_interest:
+            genes_in_splits_entries = self.split_name_to_genes_in_splits_entry_ids[split_name]
+
+            for genes_in_splits_entry in genes_in_splits_entries:
+                e = self.genes_in_splits[genes_in_splits_entry]
+                gene_callers_id = e['gene_callers_id']
+                all_gene_callers_ids.append(gene_callers_id)
+
+                for view in views_of_interest:
+                    self.views[view]['dict'][str(gene_callers_id)] = {}
+                    for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
+                        self.views[view]['dict'][str(gene_callers_id)][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
+
+        self.states_table = TablesForStates(self.profile_db_path)
+
+        self.p_meta['default_item_order'] = 'mean_coverage'
+        self.default_view = 'mean_coverage'
+
+        self.p_meta['available_item_orders'] = []
+        self.p_meta['item_orders'] = {}
+
+        for view in views_of_interest:
+            item_order_name = view
+            newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], linkage=self.linkage, distance=self.distance)
+
+            self.p_meta['available_item_orders'].append(item_order_name)
+            self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
+
+        self.p_meta['item_orders']['synteny'] = {'type': 'basic', 'data': list(map(str, sorted(all_gene_callers_ids)))}
+
+        self.title = "Genes in '%s'" % self.bin_id
+
+        # FIXME: When we are in gene-view mode, our item names are no longer split names, hence the
+        # following dictionaries are useless. Until we find a better way to fill them up with
+        # potentially useful information, we can nullify them
+        self.splits_basic_info = {}
+        self.splits_taxonomy_dict = {}
+        self.p_meta['description'] = 'None'
+
+        self.items_additional_data_keys, self.items_additional_data_dict = [], {}
+
+        for view in views_of_interest:
+            data_value = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'],
+                                                                  distance=self.distance,
+                                                                  linkage=self.linkage,
+                                                                  transpose=True)
+
+            # additional layers orders are added with the prefix "genes_"
+            # this is because there are similar orders available from the contigs data
+            #(for example contigs detections vs. genes detections)
+            self.layers_order_data_dict['genes_' + view] = {'newick': data_value, 'basic': None}
+
+
     def add_user_tree(self):
         if self.tree:
             clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
@@ -894,12 +984,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def search_for_functions(self, search_terms):
         search_terms = [s.strip() for s in search_terms.split(',')]
-        matching_split_names_dict, full_report = None, None
-        
-        if self.mode == 'full':
-            matching_split_names_dict, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+        full_report = None
+
+        if self.mode == 'full' or self.mode == 'gene':
+            _, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+
+            if self.mode == 'gene':
+                # otherwise gene mode report functions from other splits are not the bin interactive initialized.
+                full_report = [i for i in full_report if i[5] in self.split_names_of_interest]
         elif self.mode == 'pan':
-            matching_split_names_dict, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+            _, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
         else:
             raise ConfigError("Searching functions are not supported for this mode.")
 
