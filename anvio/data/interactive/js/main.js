@@ -460,9 +460,11 @@ function initData() {
             });
             buildSamplesTable(samples_information_default_layer_order);
             $('.loading-screen').hide();
+
             // load default data
             if (autoload_state !== null)
             {
+                $('#btn_draw_tree').removeClass('glowing-button');
                 $.when({}).then(onViewChange)
                       .then(loadState)
                       .then(onViewChange)
@@ -1436,6 +1438,7 @@ function drawTree() {
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 
+    $('#btn_draw_tree').removeClass('glowing-button');
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
     $('#bin_settings_tab').removeClass("disabled"); // enable bins tab
