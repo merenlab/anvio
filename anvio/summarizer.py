@@ -1672,7 +1672,6 @@ class AdHocRunGenerator:
 
     def get_output_file_path(self, file_name):
         return os.path.join(self.output_directory, file_name)
-#
 
     def check_output_directory(self):
         if os.path.exists(self.output_directory) and not self.delete_output_directory_if_exists:
@@ -1728,7 +1727,6 @@ class AdHocRunGenerator:
         self.run.info("Anvi'o samples order", samples_order_file_path)
 
         return samples_order_file_path
-
 
 
     def gen_samples_db(self):
