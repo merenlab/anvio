@@ -257,6 +257,7 @@ function initData() {
     .then(
     function (response)
         {
+        
         var titleResponse = [ response.title ];
         var itemOrdersResponse = [ response.item_orders ];
         var viewsResponse = [ response.views ];
@@ -458,7 +459,7 @@ function initData() {
                 $('#samples_order').append(new Option(order_name, order));
             });
             buildSamplesTable(samples_information_default_layer_order);
-
+            $('.loading-screen').hide();
             // load default data
             if (autoload_state !== null)
             {
