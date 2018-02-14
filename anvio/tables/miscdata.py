@@ -124,7 +124,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             if not self.just_do_it:
                 raise ConfigError("You did not provide a list of data keys to remove, which means you are about to delete everything in the\
                                    %s additional data table. Just to be on the safe side, anvi'o is looking for a confirmation. If you\
-                                   try again with the --just-do-it flag flag, anvi'o will put on its business socks, and burn this table\
+                                   try again with the --just-do-it flag, anvi'o will put on its business socks, and burn this table\
                                    and everything in it to the ground." % self.target)
 
             database._exec('''DELETE from %s''' % (self.table_name))
