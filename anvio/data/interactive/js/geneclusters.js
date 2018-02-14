@@ -17,6 +17,7 @@
  *
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
+
 var request_prefix = getParameterByName('request_prefix');
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
@@ -94,6 +95,7 @@ function loadAll() {
             {
                 // backup the state, if user changes the page (prev, next) we are going to overwrite it.
                 state = JSON.parse(sessionStorage.state);
+                initializeCheckBoxes();
                 createDisplay();
                 $('.loading-screen').hide();
             }
@@ -115,9 +117,38 @@ function createDisplay(){
     while (svg.firstChild) {
         svg.removeChild(svg.firstChild);
     }
-
+    
     var y_cord = 0;
     var offset = 0;
+
+    var acid_sequences = [];
+    var order = {};
+    var count = 0;
+    for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
+    {
+        var layer = state['layer-order'][layer_id];
+
+        if (gene_cluster_data.genomes.indexOf(layer) === -1)
+            continue;
+
+        gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function(caller_id) {
+            acid_sequences.push(gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id]);
+            order[layer] = count;
+            count = count + 1;
+        });
+    }
+
+    var max_length = maxLength(acid_sequences);
+    var all_positions = [];
+
+    for (var i=0; i < max_length; i++) {
+        var new_item = [];
+        for (var j=0; j < acid_sequences.length; j++) {
+            new_item.push(acid_sequences[j][i]);
+        }
+        all_positions.push(new_item);
+    }
+    var coded_positions = determineColor(all_positions);
 
     while (true)
     {
@@ -156,10 +187,8 @@ function createDisplay(){
             fragment.appendChild(text);
 
             sub_y_cord = y_cord + 5;
-
-            gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
-                sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id];
-
+	         gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
+                sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id]; 
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
@@ -184,7 +213,21 @@ function createDisplay(){
                 text.setAttribute('font-weight', '100');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
                 text.setAttribute('class', 'sequence');
-                text.appendChild(document.createTextNode(sequence.substr(offset, sequence_wrap)));
+
+                _sequence = sequence.substr(offset, sequence_wrap);
+                for (var _letter_index=0; _letter_index < _sequence.length; _letter_index++) {
+                    var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                    var index = _letter_index+offset;
+                    var num = order[layer];
+                    var acid = _sequence[_letter_index];
+                    var dict = coded_positions[index][num];
+                    tspan.setAttribute('fill', dict[acid]);
+                    tspan.style.fontWeight = 'bold';
+                    tspan.appendChild(document.createTextNode(acid));
+		            tspan.setAttribute('style', 'alignment-baseline:text-before-edge');
+                    text.appendChild(tspan);
+                } 
+
                 fragment.appendChild(text);
 
                 sub_y_cord = sub_y_cord + sequence_font_size * 1.5;
