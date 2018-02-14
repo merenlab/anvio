@@ -93,6 +93,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
                                 you send to this class. What are you doing?")
 
+        if self.additional_layers_path:
+            filesnpaths.is_file_tab_delimited(self.additional_layers_path)
+
         if self.gene_view:
             if self.collection_name is None or self.bin_id is None:
                 raise ConfigError("Gene view requires a collection and a bin to be specified. If you want to \
@@ -217,8 +220,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # take care of additional layers, and update ordering information for items
         if self.additional_layers_path:
-            filesnpaths.is_file_tab_delimited(self.additional_layers_path)
-
             self.items_additional_data_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=self.items_additional_data_dict, assign_none_for_missing=True)
             self.items_additional_data_keys = self.items_additional_data_keys + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
