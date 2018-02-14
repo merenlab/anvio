@@ -19,6 +19,7 @@
         <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
         <script type="text/javascript" src="lib/d3.js/d3.min.js"></script>
         <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="js/color-coding.js"></script>
         <script type="text/javascript" src="js/geneclusters.js"></script>
         <script type="text/javascript" src="js/inspectionutils.js"></script>
         <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
@@ -45,7 +46,11 @@
                     Font Size: <input type="text" id="font_size" value="12" size="5" onchange="createDisplay(); "/>
                           <input type="button" value="-" onclick="increaseVal('font_size', -1); createDisplay();" />
                           <input type="button" value="+" onclick="increaseVal('font_size', 1); createDisplay();" />
+                          <input type="button" value="Color Settings" style="margin-left: 30px;" onclick="$('#display-conservation-controls').toggle(); " />
                 </div>
+
+		<div id="display-conservation-controls" style="display: none; padding: 12px; margin-left:auto; margin-right:auto;" align="center">
+		</div>
                 <div id="display-container">
                     <svg id="svg">
                     </svg>
