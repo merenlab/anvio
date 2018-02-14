@@ -119,7 +119,7 @@ class BottleApplication(Bottle):
         self.route('/data/geneclusterssummary',             callback=self.get_gene_clusters_summary, method='POST')
         self.route('/data/get_AA_sequences_for_gene_cluster/<gene_cluster_name>',  callback=self.get_AA_sequences_for_gene_cluster)
         self.route('/data/pan_gene_popup/<gene_callers_id>/<genome_name>',         callback=self.get_gene_popup_for_pan)
-        self.route('/data/geneclusters/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
+        self.route('/data/geneclusters/<order_name>/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
         self.route('/data/phylogeny/aligners',                 callback=self.get_available_aligners)
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
@@ -703,7 +703,7 @@ class BottleApplication(Bottle):
         return json.dumps(data)
 
 
-    def inspect_gene_cluster(self, gene_cluster_name):
+    def inspect_gene_cluster(self, order_name, gene_cluster_name):
         data = {'gene_cluster_name': gene_cluster_name,
                 'genomes': [],
                 'index': None,
@@ -738,7 +738,7 @@ class BottleApplication(Bottle):
         data['genomes'] = sorted(data['gene_caller_ids_in_genomes'].keys())
 
         # get some contextual stuff
-        data['index'], data['total'], data['previous_gene_cluster_name'], data['next_gene_cluster_name'] = self.get_index_total_previous_and_next_items(gene_cluster_name)
+        data['index'], data['total'], data['previous_gene_cluster_name'], data['next_gene_cluster_name'] = self.get_index_total_previous_and_next_items(order_name, gene_cluster_name)
 
         return json.dumps(data)
 

@@ -48,11 +48,12 @@ function loadAll() {
 
     gene_cluster_name = getUrlVars()["id"];
     document.title = gene_cluster_name + " detailed";
+    state = JSON.parse(sessionStorage.state);
 
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/geneclusters/' + gene_cluster_name,
+        url: '/data/geneclusters/' + state['order-by'] + '/' + gene_cluster_name,
         success: function(_gene_cluster_data) {
             gene_cluster_data = _gene_cluster_data;
             genomes = gene_cluster_data.genomes;
@@ -80,10 +81,10 @@ function loadAll() {
             }
 
             if(next_gene_cluster_name)
-                next_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="' + generate_inspect_link('geneclusters', next_gene_cluster_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                next_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link('geneclusters', next_gene_cluster_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
             if(previous_gene_cluster_name)
-                prev_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="' + generate_inspect_link('geneclusters', previous_gene_cluster_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                prev_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link('geneclusters', previous_gene_cluster_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
             document.getElementById("header").innerHTML = "<strong>" + gene_cluster_name + "</strong> with " + gene_caller_ids.length + " genes detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 
@@ -93,8 +94,6 @@ function loadAll() {
             }
             else
             {
-                // backup the state, if user changes the page (prev, next) we are going to overwrite it.
-                state = JSON.parse(sessionStorage.state);
                 initializeCheckBoxes();
                 createDisplay();
                 $('.loading-screen').hide();
