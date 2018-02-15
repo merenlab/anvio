@@ -560,7 +560,7 @@
                                 <table style="width: 100%;">
                                     <tr>
                                         <td>Search terms:</td>
-                                        <td><input id="searchFunctionsValue" class="form-control" value="" data-help="search-value" style="width: 100%;" disabled>
+                                        <td><input id="searchFunctionsValue" class="form-control" value="" onkeypress="var key = event.which || event.charCode || event.keyCode; if (key == 13) { $('#search_functions_button').trigger('click'); }" data-help="search-value" style="width: 100%;" disabled>
                                             <small>You can separate multiple search terms with ","</small></td>
                                     </tr>
                                     <tr>
