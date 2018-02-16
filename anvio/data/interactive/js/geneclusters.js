@@ -132,7 +132,7 @@ function createDisplay(){
 
         gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function(caller_id) {
             acid_sequences.push(gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id]);
-            order[layer] = count;
+            order[caller_id] = count;
             count = count + 1;
         });
     }
@@ -217,7 +217,7 @@ function createDisplay(){
                 for (var _letter_index=0; _letter_index < _sequence.length; _letter_index++) {
                     var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                     var index = _letter_index+offset;
-                    var num = order[layer];
+                    var num = order[caller_id];
                     var acid = _sequence[_letter_index];
                     var dict = coded_positions[index][num];
                     tspan.setAttribute('fill', dict[acid]);
