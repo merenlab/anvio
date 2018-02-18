@@ -207,7 +207,7 @@ class ContigsSuperclass(object):
         self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
 
-    def init_splits_taxonomy(self, t_level = 't_genus'):
+    def init_splits_taxonomy(self, t_level='t_genus'):
         if not self.contigs_db_path:
             return
 
