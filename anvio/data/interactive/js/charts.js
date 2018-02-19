@@ -59,7 +59,7 @@ function loadAll() {
         $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/charts/' + state['order-by'] + '/' + contig_id,
+                url: '/data/charts_for_single_gene/' + state['order-by'] + '/' + contig_id,
                 success: function(contig_data) {
                     page_header = contig_data.title;
                     layers = contig_data.layers;
