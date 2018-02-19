@@ -120,6 +120,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_AA_sequences_for_gene_cluster/<gene_cluster_name>',  callback=self.get_AA_sequences_for_gene_cluster)
         self.route('/data/pan_gene_popup/<gene_callers_id>/<genome_name>',         callback=self.get_gene_popup_for_pan)
         self.route('/data/geneclusters/<order_name>/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
+        self.route('/data/charts_for_single_gene/<order_name>/<item_name>',        callback=self.charts_for_single_gene)
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
         self.route('/data/phylogeny/aligners',                 callback=self.get_available_aligners)
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
@@ -386,6 +387,105 @@ class BottleApplication(Bottle):
             #  'prot'               : u'prot2_03215',
             #  'split'              : u'D23-1contig18_split_00036'}
             #
+            # we will add a bit more attributes:
+            p['source'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['source']
+            p['direction'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['direction']
+            p['start_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['start']
+            p['stop_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['stop']
+            p['complete_gene_call'] = 'No' if  self.interactive.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
+            p['length'] = p['stop_in_contig'] - p['start_in_contig']
+            p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
+
+            for level in levels_occupied:
+                level_ok = True
+                for gene_tuple in levels_occupied[level]:
+                    if (p['start_in_split'] >= gene_tuple[0] - 100 and p['start_in_split'] <= gene_tuple[1] + 100) or\
+                                (p['stop_in_split'] >= gene_tuple[0] - 100 and p['stop_in_split'] <= gene_tuple[1] + 100) or \
+                                (p['start_in_split'] <= gene_tuple[0] - 100 and p['stop_in_split'] >= gene_tuple[1] + 100):
+                        level_ok = False
+                        break
+                if level_ok:
+                    levels_occupied[level].append((p['start_in_split'], p['stop_in_split']), )
+                    p['level'] = level
+                    break
+            if not level_ok:
+                levels_occupied[level + 1] = [(p['start_in_split'], p['stop_in_split']), ]
+                p['level'] = level + 1
+
+            data['genes'].append(p)
+
+        progress.end()
+
+        return json.dumps(data)
+
+
+    def charts_for_single_gene(self, order_name, item_name):
+        gene_callers_id = int(item_name)
+        split_name = self.interactive.gene_callers_id_to_split_name_dict[gene_callers_id]
+        gene_info = self.interactive.genes_in_splits[gene_callers_id]
+
+        focus_region_start, focus_region_end = gene_info['start_in_split'] - 100, gene_info['stop_in_split'] + 100
+
+        data = {'layers': [],
+                 'title': "%d in '%s'" % (gene_callers_id, split_name),
+                 'index': None,
+                 'total': None,
+                 'coverage': [],
+                 'variability': [],
+                 'competing_nucleotides': [],
+                 'previous_contig_name': None,
+                 'next_contig_name': None,
+                 'genes': [],
+                 'outlier_SNVs_shown': not self.args.hide_outlier_SNVs}
+
+        data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, str(gene_callers_id))
+
+        layers = sorted(self.interactive.p_meta['samples'])
+
+        auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
+                                                                                 self.interactive.p_meta['contigs_db_hash'])
+        coverages = auxiliary_coverages_db.get(split_name)
+        auxiliary_coverages_db.close()
+
+        data['coverage'] = []
+        for layer in layers:
+            coverage_list = coverages[layer].tolist()
+            # gene -+ 100 gap if possible
+            data['coverage'].append(coverage_list[focus_region_start:focus_region_end])
+
+        ## get the variability information dict for split:
+        progress.new('Variability')
+        progress.update('Collecting info for "%s"' % split_name)
+        split_variability_info_dict = self.interactive.get_variability_information_for_split(split_name, skip_outlier_SNVs=self.args.hide_outlier_SNVs)
+
+        for layer in layers:
+            progress.update('Formatting variability data: "%s"' % layer)
+            data['layers'].append(layer)
+            data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
+            data['variability'].append(split_variability_info_dict[layer]['variability'])
+
+        levels_occupied = {1: []}
+        for entry_id in  self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+            gene_callers_id =  self.interactive.genes_in_splits[entry_id]['gene_callers_id']
+            p =  self.interactive.genes_in_splits[entry_id]
+            # p looks like this at this point:
+            #
+            # {'percentage_in_split': 100,
+            #  'start_in_split'     : 16049,
+            #  'stop_in_split'      : 16633}
+            #  'prot'               : u'prot2_03215',
+            #  'split'              : u'D23-1contig18_split_00036'}
+            #
+            
+            if p['start_in_split'] <= focus_region_start and p['stop_in_split'] <= focus_region_start:
+                continue
+            if p['start_in_split'] >= focus_region_end and p['stop_in_split'] >= focus_region_end:
+                continue
+
+            # add offset
+            p['start_in_split'] -= focus_region_start
+            p['stop_in_split'] -= focus_region_start
+
             # we will add a bit more attributes:
             p['source'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['source']
             p['direction'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['direction']
@@ -851,10 +951,10 @@ class BottleApplication(Bottle):
 
             if request.forms.get('include_samples') == "true":
                 # FIXME: this will break
-                if len(self.interactive.samples_order_dict):
-                    samples_order_path = filesnpaths.get_temp_file_path()
-                    utils.store_dict_as_TAB_delimited_file(self.interactive.samples_order_dict, samples_order_path, headers=['attributes', 'basic', 'newick'])
-                    args.samples_order_file = samples_order_path
+                if len(self.interactive.layers_order_data_dict):
+                    layers_order_data_path = filesnpaths.get_temp_file_path()
+                    utils.store_dict_as_TAB_delimited_file(self.interactive.layers_order_data_dict, layers_order_data_path, headers=['attributes', 'basic', 'newick'])
+                    args.layers_order_data_path = layers_order_data_path
 
                 if len(self.interactive.layers_additional_data_dict):
                     layers_additional_data_path = filesnpaths.get_temp_file_path()
