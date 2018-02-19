@@ -1381,10 +1381,10 @@ Drawer.prototype.draw_numerical_layers = function() {
             path.setAttribute('pointer-events', 'none');
 
             if (layer.get_visual_attribute('type') == 'line') {
-                path.setAttribute('stroke', layer.get_visual_attribute('color'));
+                path.setAttribute('stroke', layer.get_visual_attribute('color-start'));
                 path.setAttribute('stroke-width', '1px');  
                 path.setAttribute('vector-effect', 'non-scaling-stroke');
-                path.setAttribute('fill', layer.get_visual_attribute('color-start'));     
+                path.setAttribute('fill', layer.get_visual_attribute('color'));
             }
             else {
                 path.setAttribute('fill', layer.get_visual_attribute('color'));
