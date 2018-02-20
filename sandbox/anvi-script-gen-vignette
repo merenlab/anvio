@@ -118,9 +118,18 @@ def gen_vignette(args):
     if not len(main_programs) or not len(scripts):
         raise ConfigError("Somethings fishy is happening. This script is unable to find things that want to be found :(")
 
-    #all_programs = ['/Users/meren/github/anvio/bin/anvi-get-aa-counts']
     run.info("Main anvi'o programs found", len(main_programs))
     run.info("Anvi'o ad hoc scripts found", len(scripts))
+
+    if args.program_names_to_focus:
+        program_names_to_focus = [p.strip() for p in args.program_names_to_focus.split(',')]
+        run.info("Program names to focus", len(program_names_to_focus))
+
+        all_programs = [p for p in all_programs if os.path.basename(p) in program_names_to_focus]
+
+        if not len(all_programs):
+            raise ConfigError("No anvi'o programs left to analyze after changing the focus to your list of program names.\
+                               Probably there is a typo or something :/")
 
     d = {}
 
@@ -168,6 +177,9 @@ def gen_vignette(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="Generate a vignette for anvi'o programs")
+
+    parser.add_argument('-p', '--program-names-to-focus', default=None, help="Comma-spearated list of program names to focus\
+                         Mostly for debugging purposes.")
 
     args = anvio.get_args(parser)
 
