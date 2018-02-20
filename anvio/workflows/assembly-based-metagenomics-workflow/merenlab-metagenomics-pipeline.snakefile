@@ -665,13 +665,8 @@ if run_taxonomy_with_centrifuge:
 if run_anvi_run_hmms:
     rule anvi_run_hmms:
         """ Run anvi-run-hmms"""
-        # TODO: add rule for running hmms for ribosomal genes and import
-        # their new gene calls.
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_hmms.log"
-        # if the user requested to run taxonomy using centrifuge, then this
-        # will be ran only after centrifuge finished. Otherwise, this rule
-        # will run after anvi-gen-contigs-database
         # marking the input as ancient in order to ignore timestamps.
         input: ancient(rules.gen_contigs_db.output.db)
         # using a snakemake flag file as an output since no file is generated
