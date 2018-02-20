@@ -256,13 +256,13 @@ def is_program_exists(program, dont_raise=False):
 
     if fpath:
         if IsExe(program):
-            return True
+            return program
     else:
         for path in os.environ["PATH"].split(os.pathsep):
             path = os.path.expanduser(path).strip('"')
             exe_file = os.path.join(path, program)
             if IsExe(exe_file):
-                return True
+                return exe_file
 
     if dont_raise:
         return False
