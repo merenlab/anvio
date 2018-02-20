@@ -51,8 +51,13 @@ def get_param_set(output):
         _params = J([p for p in get_until_blank(output) if not p.startswith('  -h, --help')])
     else:
         section = output.pop(0)
-        desc = get_until_blank(output)
-        output.pop(0)
+        if output[0].startswith('  -'):
+            # no description, goes into params immediately (someone did a crappy job)
+            desc = ''
+        else:
+            desc = get_until_blank(output)
+            output.pop(0)
+
         _params = J(get_until_blank(output))
 
     return section, desc, _params
@@ -96,9 +101,9 @@ def gen_output(d, output_file_path='vingette.md'):
                          'date': utils.get_date()}}
 
     if anvio.DEBUG:
+        run.warning(None, 'THE OUTPUT DICT')
         import json
         print(json.dumps(d, indent=2))
-        sys.exit()
 
     open(output_file_path, 'w').write(SummaryHTMLOutput(vignette, r=run, p=progress).render())
 
@@ -133,17 +138,10 @@ def gen_vignette(args):
 
     d = {}
 
-    counter = 0
     log_file = filesnpaths.get_temp_file_path()
     num_all_programs = len(all_programs)
     for i in range(0, num_all_programs):
         program_path = all_programs[i]
-
-        if anvio.DEBUG:
-            if counter == 10:
-                break
-            else:
-                counter += 1
 
         program_name = os.path.basename(program_path)
 
@@ -155,13 +153,16 @@ def gen_vignette(args):
 
         output = utils.run_command_STDIN('%s --help' % (program_path), log_file, '').split('\n')
 
-        try:
-            usage, description, params, output = parse_help_output(output)
-        except Exception as e:
-            progress.end()
-            run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next.\
-                         For the curious, this was the error message: '%s'" % (program_name, e))
-            continue
+        if anvio.DEBUG:
+                usage, description, params, output = parse_help_output(output)
+        else:
+            try:
+                usage, description, params, output = parse_help_output(output)
+            except Exception as e:
+                progress.end()
+                run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next.\
+                             For the curious, this was the error message: '%s'" % (program_name, e))
+                continue
 
         d[program_name] = {'usage': usage,
                            'description': description,
