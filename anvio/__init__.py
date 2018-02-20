@@ -82,13 +82,6 @@ D = {
                       You can provide these names as a commma-separated list of names, or you can put them in a file,\
                       where you have a single genome name in each line, and provide the file path."}
                 ),
-    'serialized-profile': (
-            ['-d', '--serialized-profile'],
-            {'metavar': "PROFILE",
-             'help': "Serialized profile (PROFILE.cp). You can use anvi'o serialized profile files to re-do the\
-                      profiling much more quickly. This file is generated only if it is requested during the\
-                      initial profiling of the BAM file. See '--gen-serialized-profile' flag for details."}
-                ),
     'blank-profile': (
             ['--blank-profile'],
             {'default': False,
