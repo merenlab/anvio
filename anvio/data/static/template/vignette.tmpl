@@ -20,6 +20,8 @@ Please let us know if there is something unclear in this output.
 {% for program_name in program_names %}
 ## {{ program_name }}
 
+{% for tag in vingette|lookup:program_name|lookup:"tags" %}`{{ tag }}` {% endfor %}
+
 ```
 {% autoescape off %}{{ vingette|lookup:program_name|lookup:"usage" }}{% endautoescape %}
 ```
