@@ -68,7 +68,7 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-include: "gen_contigs_db.snake"
+include: "generate_and_annotate_contigs_db.snake"
 # The config file contains many essential configurations for the workflow
 configfile: "config.json"
 localrules: all, annotate_contigs_database
