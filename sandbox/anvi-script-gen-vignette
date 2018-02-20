@@ -1,0 +1,181 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+import glob
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.summaryhtml import SummaryHTMLOutput
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = ['Xabier Vázquez-Campos']
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+G = lambda d: [p for p in glob.glob(os.path.join(d, 'anvi-*')) if utils.is_program_exists(p, dont_raise=True)]
+M = lambda m: [x for x in G(os.path.dirname(utils.is_program_exists(m)))]
+S = lambda s: [x for x in G(os.path.dirname(utils.is_program_exists(s)))]
+J = lambda x: '\n'.join(x) if x else ''
+
+PROGRAMS_TO_SKIP = ['anvi-script-gen-vignette']
+
+def get_until_blank(output):
+    section = []
+    while 1:
+        if output[0] == '':
+            break
+        else:
+            section.append(output.pop(0))
+
+    return section
+
+
+def get_param_set(output):
+    if output[0] in ['optional arguments:', 'positional arguments:']:
+        section = output.pop(0)
+        desc = ''
+        _params = J([p for p in get_until_blank(output) if not p.startswith('  -h, --help')])
+    else:
+        section = output.pop(0)
+        desc = get_until_blank(output)
+        output.pop(0)
+        _params = J(get_until_blank(output))
+
+    return section, desc, _params
+
+
+def parse_help_output(output):
+    if not output[0].startswith('usage:'):
+        raise ConfigError("This output does not seem to have the proper usage statement.")
+
+    usage = J([l[7:] for l in get_until_blank(output)])
+
+    if output.pop(0) != '':
+        raise ConfigError("This output is missing the description start marker.")
+
+    description = J(get_until_blank(output))
+
+    params = {}
+    while 1:
+        if output.pop(0) != '':
+            raise ConfigError("The params section does not seem to be where this script expects to find it.")
+
+        if not len(output):
+            break
+
+        section, desc, _params = get_param_set(output)
+        if _params == '':
+            pass
+        else:
+            params[section] = {'description': J(desc),
+                               'params': _params}
+
+    return usage, description, params, output
+
+
+def gen_output(d, output_file_path='vingette.md'):
+    vignette = {'vingette': d,
+                'program_names': sorted([p for p in d if not p.startswith('anvi-script-')]),
+                'script_names': sorted([p for p in d if p.startswith('anvi-script-')]),
+                'meta': {'summary_type': 'vignette',
+                         'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
+                         'date': utils.get_date()}}
+
+    if anvio.DEBUG:
+        import json
+        print(json.dumps(d, indent=2))
+        sys.exit()
+
+    open(output_file_path, 'w').write(SummaryHTMLOutput(vignette, r=run, p=progress).render())
+
+    run.info('Output file', os.path.abspath(output_file_path))
+
+
+def gen_vignette(args):
+    try:
+        main_programs = M('anvi-interactive')
+        scripts = S('anvi-script-gen-vignette')
+
+        all_programs = sorted(list(set(main_programs + scripts)))
+    except:
+        raise ConfigError("Something is wrong. Either your installation or anvi'o setup on this computer is missing some of\
+                           the fundamental programs, or your configuration is broken :/")
+
+    if not len(main_programs) or not len(scripts):
+        raise ConfigError("Somethings fishy is happening. This script is unable to find things that want to be found :(")
+
+    #all_programs = ['/Users/meren/github/anvio/bin/anvi-get-aa-counts']
+    run.info("Main anvi'o programs found", len(main_programs))
+    run.info("Anvi'o ad hoc scripts found", len(scripts))
+
+    d = {}
+
+    counter = 0
+    log_file = filesnpaths.get_temp_file_path()
+    num_all_programs = len(all_programs)
+    for i in range(0, num_all_programs):
+        program_path = all_programs[i]
+
+        if anvio.DEBUG:
+            if counter == 10:
+                break
+            else:
+                counter += 1
+
+        program_name = os.path.basename(program_path)
+
+        if program_name in PROGRAMS_TO_SKIP:
+            run.warning("Someone doesn't want %s to be in the output :/ Fine. Skipping." % (program_name))
+
+        progress.new('Bleep bloop')
+        progress.update('%s (%d of %d)' % (program_name, i+1, num_all_programs))
+
+        output = utils.run_command_STDIN('%s --help' % (program_path), log_file, '').split('\n')
+
+        try:
+            usage, description, params, output = parse_help_output(output)
+        except Exception as e:
+            progress.end()
+            run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next.\
+                         For the curious, this was the error message: '%s'" % (program_name, e))
+            continue
+
+        d[program_name] = {'usage': usage,
+                           'description': description,
+                           'params': params}
+
+        progress.end()
+
+    os.remove(log_file)
+
+    gen_output(d)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate a vignette for anvi'o programs")
+
+    args = anvio.get_args(parser)
+
+    try:
+        gen_vignette(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
