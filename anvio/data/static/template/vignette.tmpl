@@ -1,0 +1,40 @@
+Here you will find the current anvi'o programs in the latest stable version of the platform, and their help menu.
+For anvi'o releases, please visit the URL [https://github.com/merenlab/anvio/releases](https://github.com/merenlab/anvio/releases)
+
+The contents of this file was last updated on {{ meta|lookup:"date" }}, and then anvi'o looked like this:
+
+|Key|Value|
+|:--|:--:|
+{{ meta|lookup:"version" }}
+
+We divided anvi'o programs into two main categories:
+
+* Main anvi'o programs ({{ program_names|length }}): {% for p in program_names %}[{{p}}](#{{p}}){% if forloop.last %}.{% else %}, {% endif %}{% endfor %}
+
+* Ad hoc anvi'o scripts ({{ script_names|length }}): {% for p in script_names %}[{{p}}](#{{p}}){% if forloop.last %}.{% else %}, {% endif %}{% endfor %}
+
+# Anvi'o world
+
+Please let us know if there is something unclear in this output.
+
+{% for program_name in program_names %}
+## {{ program_name }}
+
+```
+{% autoescape off %}{{ vingette|lookup:program_name|lookup:"usage" }}{% endautoescape %}
+```
+
+{% autoescape on %}{{ vingette|lookup:program_name|lookup:"description" }}{% endautoescape %}
+
+{% for section in vingette|lookup:program_name|lookup:"params" %}
+
+**{{ section }}** {% autoescape on %}{{ vingette|lookup:program_name|lookup:"params"|lookup:section|lookup:"description" }}{% endautoescape %}
+
+```
+{% autoescape off %}{{ vingette|lookup:program_name|lookup:"params"|lookup:section|lookup:"params" }}{% endautoescape %}
+```
+
+{% endfor %}
+
+
+{% endfor %}
