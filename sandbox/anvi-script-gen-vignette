@@ -44,6 +44,15 @@ def get_until_blank(output):
     return section
 
 
+def get_tags(file_path):
+    tags_line = [l for l in open(file_path, 'rU').readlines() if l.startswith('__tags__')]
+
+    if tags_line:
+        return eval(tags_line[0].split('=')[1].strip())
+    else:
+        return []
+
+
 def get_param_set(output):
     if output[0] in ['optional arguments:', 'positional arguments:']:
         section = output.pop(0)
@@ -182,7 +191,8 @@ def gen_vignette(args):
 
         d[program_name] = {'usage': usage,
                            'description': description,
-                           'params': params}
+                           'params': params,
+                           'tags': get_tags(program_path)}
 
         progress.end()
 
