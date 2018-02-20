@@ -37,7 +37,9 @@ dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,\
              "CONTIGS_DIR"  : "03_CONTIGS"      ,\
              "MAPPING_DIR"  : "04_MAPPING"      ,\
              "PROFILE_DIR"  : "05_ANVIO_PROFILE",\
-             "MERGE_DIR"    : "06_MERGED"        \
+             "MERGE_DIR"    : "06_MERGED"       ,\
+             "FASTA_DIR"    : "01_FASTA"        ,\
+             "LOCI_DIR"    : "04_LOCI_FASTAS"    \
 }
 
 # create log dir if it doesn't exist
@@ -69,9 +71,9 @@ def A(_list, d, default_value = ""):
     return d
 
 
-def B(config, _rule, _param, _default=''):
+def B(config, _rule, _param, default=''):
     # helper function for params
-    val = A([_rule, _param], config, _default)
+    val = A([_rule, _param], config, default)
     if val:
         if isinstance(val, bool):
             # the param is a flag so no need for a value
@@ -88,13 +90,14 @@ def get_dir_names(config):
     ########################################
     # Reading some definitions from config files (also some sanity checks)
     ########################################
+    DICT = dirs_dict
     for d in A("output_dirs", config):
         # renaming folders according to the config file, if the user specified.
-        if d not in dir_list:
+        if d not in DICT:
             # making sure the user is asking to rename an existing folder.
             raise ConfigError("You define a name for the directory '%s' in your "\
                               "config file, but the only available folders are: "\
-                              "%s" % (d, dir_list))
+                              "%s" % (d, DICT))
 
-        dirs_dict[d] = A(d,config["output_dirs"])
-    return dirs_dict
+        DICT[d] = A(d,config["output_dirs"])
+    return DICT
