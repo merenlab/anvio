@@ -63,7 +63,23 @@ def get_param_set(output):
     return section, desc, _params
 
 
+def skip_until_usage(output):
+    while 1:
+        if not len(output):
+            return
+
+        if output[0].startswith('usage:'):
+            return
+
+        output.pop(0)
+
+
 def parse_help_output(output):
+    skip_until_usage(output)
+
+    if not len(output):
+        raise ConfigError("This is not the help menu output we are looking for.")
+
     if not output[0].startswith('usage:'):
         raise ConfigError("This output does not seem to have the proper usage statement.")
 
@@ -161,7 +177,7 @@ def gen_vignette(args):
             except Exception as e:
                 progress.end()
                 run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next.\
-                             For the curious, this was the error message: '%s'" % (program_name, e))
+                             For the curious, this was the error message: '%s'" % (program_name, str(e).strip()))
                 continue
 
         d[program_name] = {'usage': usage,
