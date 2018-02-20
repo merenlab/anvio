@@ -46,10 +46,30 @@ def get_until_blank(output):
 
 
 def get_meta_information_from_file(file_path, meta_tag):
-    tags_line = [l for l in open(file_path, 'rU').readlines() if l.startswith(meta_tag)]
+    all_lines = [l.strip() for l in open(file_path, 'rU').readlines()]
 
-    if tags_line:
-        return eval(tags_line[0].split('=')[1].strip())
+    meta_tag_content = ''
+
+    while 1:
+        if not len(all_lines):
+            return []
+
+        if not all_lines[0].startswith(meta_tag):
+            all_lines.pop(0)
+        else:
+            break
+
+    meta_tag_content = all_lines.pop(0)
+
+    while 1:
+        line = all_lines.pop(0)
+        if line == '' or line.startswith('__'):
+            break
+        else:
+            meta_tag_content += line
+
+    if meta_tag_content:
+        return eval(meta_tag_content.split('=')[1].strip())
     else:
         return []
 
