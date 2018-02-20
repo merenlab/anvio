@@ -15,6 +15,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
 
 
 if __name__ == '__main__':
