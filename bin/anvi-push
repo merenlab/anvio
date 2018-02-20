@@ -36,7 +36,6 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('items-order'), **anvio.K('items-order'))
     groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
     groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
-    groupB.add_argument(*anvio.A('samples-order-file'), **anvio.K('samples-order-file'))
     groupB.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
     groupB.add_argument(*anvio.A('state'), **anvio.K('state'))
     groupB.add_argument(*anvio.A('description'), **anvio.K('description'))
