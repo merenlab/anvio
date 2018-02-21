@@ -38,8 +38,9 @@ dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,\
              "MAPPING_DIR"  : "04_MAPPING"      ,\
              "PROFILE_DIR"  : "05_ANVIO_PROFILE",\
              "MERGE_DIR"    : "06_MERGED"       ,\
+             "PAN_DIR"      : "07_PAN"          ,\
              "FASTA_DIR"    : "01_FASTA"        ,\
-             "LOCI_DIR"    : "04_LOCI_FASTAS"    \
+             "LOCI_DIR"     : "04_LOCI_FASTAS"   \
 }
 
 # create log dir if it doesn't exist
