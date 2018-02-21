@@ -102,3 +102,8 @@ def get_dir_names(config):
 
         DICT[d] = A(d,config["output_dirs"])
     return DICT
+
+def get_path_to_workflows_dir():
+    # this returns a path
+    base_path = os.path.dirname(__file__)
+    return base_path
