@@ -71,7 +71,6 @@ progress = terminal.Progress()
 
 # in order to generate the contigs databases we include the snakefile for the generation of contigs databases
 include: w.get_path_to_workflows_dir() + "/generate_and_annotate_contigs_db.snake"
-# The config file contains many essential configurations for the workflow
 localrules: all, annotate_contigs_database
 # Setting the names of all directories
 dirs_dict = w.get_dir_names(config)
@@ -79,66 +78,13 @@ dirs_dict = w.get_dir_names(config)
 # create log dir if it doesn't exist
 os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
 
-########################################
-# Helper functions
-########################################
-
-def A(_list, d, default_value = ""):
-    '''
-        A helper function to make sense of config details.
-        string_list is a list of strings (or a single string)
-        d is a dictionary
-
-        this function checks if the strings in x are nested values in y.
-        For example if x = ['a','b','c'] then this function checkes if the
-        value y['a']['b']['c'] exists, if it does then it is returned
-    '''
-    if type(_list) is not list:
-        # converting to list for the cases of only one item
-        _list = [_list]
-    while _list:
-        a = _list.pop(0)
-        if a in d:
-            d = d[a]
-        else:
-            return default_value
-    return d
-
-
-def B(_rule, _param, _default=''):
-    # helper function for params
-    val = A([_rule, _param], config, _default)
-    if val:
-        if isinstance(val, bool):
-            # the param is a flag so no need for a value
-            val = ''
-        return '--' + _param.replace('_','-') + ' ' + val
-    else:
-        return ''
-
-# a helper function to get the user defined number of threads for a rule
-def T(rule_name, N=1): return A([rule_name,'threads'], config, default_value=N)
-
-########################################
-# Reading some definitions from config files (also some sanity checks)
-########################################
-for d in A("output_dirs", config):
-    # renaming folders according to the config file, if the user specified.
-    if d not in dir_list:
-        # making sure the user is asking to rename an existing folder.
-        raise ConfigError("You define a name for the directory '%s' in your "\
-                          "config file, but the only available folders are: "\
-                          "%s" % (d, dir_list))
-
-    dirs_dict[d] = A(d,config["output_dirs"])
-
 # sanity check for requested assembly
 # make sure that the user is not requesting multiple assemblers
 available_assemblers = ['megahit', 'idba_ud']
 number_of_assemblers_in_config_file = 0
 assembly_software_in_config = list()
 for a in available_assemblers:
-    if A([a, 'run'], config):
+    if w.A([a, 'run'], config):
         number_of_assemblers_in_config_file += 1
         assembly_software_in_config.append(a)
 if number_of_assemblers_in_config_file > 1:
@@ -148,7 +94,7 @@ if number_of_assemblers_in_config_file > 1:
 
 # loading the samples.txt file
 # The default samples file is samples.txt
-samples_txt_file = A("samples_txt", config, default_value="samples.txt")
+samples_txt_file = w.A("samples_txt", config, default_value="samples.txt")
 # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
 samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
 # get a list of the sample names
@@ -166,7 +112,7 @@ if 'references_txt' in config:
     group_names = list(references_information.keys())
     # in reference mode, unless specified by the user, then the name of 
     # the directory with the formatted reference fasta will be 02_REFERENCE_FASTA
-    dirs_dict['ASSEMBLY_DIR'] = A(['output_dirs', 'ASSEMBLY_DIR'], config, default_value="02_REFERENCE_FASTA")
+    dirs_dict['ASSEMBLY_DIR'] = w.A(['output_dirs', 'ASSEMBLY_DIR'], config, default_value="02_REFERENCE_FASTA")
 
 # Collecting information regarding groups.
 if "group" in samples_information.columns:
@@ -198,13 +144,13 @@ else:
         group_names = list(sample_names)
         group_sizes = dict.fromkeys(group_names,1)
 
-if A('all_against_all', config) :
+if w.A('all_against_all', config) :
     # in all_against_all, the size of each group is as big as the number
     # of samples.
     group_sizes = dict.fromkeys(group_names,len(sample_names))
 
 
-if not A('references_txt', config) and not A(['reformat_fasta','run'], config, True):
+if not w.A('references_txt', config) and not w.A(['reformat_fasta','run'], config, True):
     # in assembly mode (i.e. not in references mode) we always have
     # to run reformat_fasta. The only reason for this is that
     # the megahit output is temporary, and if we dont run
@@ -237,8 +183,8 @@ rule gen_configs:
     input: ancient(samples_txt_file)
     output: temp(expand("{DIR}/{sample}.ini", DIR=dirs_dict["QC_DIR"], sample=sample_names))
     params: dir=dirs_dict["QC_DIR"]
-    threads: T('gen_configs')
-    resources: nodes = T('gen_configs'),
+    threads: w.T(config, 'gen_configs')
+    resources: nodes = w.T(config, 'gen_configs'),
     shell: "iu-gen-configs {input} -o {params.dir} >> {log} 2>&1"
 
 
@@ -260,7 +206,7 @@ def get_fastq(wildcards):
         config file.
     '''
     d = {}
-    if A(['qc', 'run'], config, True):
+    if w.A(['qc', 'run'], config, True):
         # by default, use the output of the qc
         d['r1'] = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
         d['r2'] = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
@@ -291,8 +237,8 @@ rule qc:
         r1 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R1.fastq",
         r2 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R2.fastq",
         stats = dirs_dict["QC_DIR"] + "/{sample}-STATS.txt"
-    threads: T('qc', 2)
-    resources: nodes = T('qc', 2),
+    threads: w.T(config, 'qc', 2)
+    resources: nodes = w.T(config, 'qc', 2),
     shell: "iu-filter-quality-minoche {input.ini} --ignore-deflines >> {log} 2>&1"
 
 
@@ -302,8 +248,8 @@ rule gen_qc_report:
     input: expand(dirs_dict["QC_DIR"] + "/{sample}-STATS.txt", sample=sample_names)
     output: dirs_dict["QC_DIR"] + "/qc-report.txt"
     params:
-    threads: T('gen_qc_report', 1)
-    resources: nodes = T('gen_qc_report', 1)
+    threads: w.T(config, 'gen_qc_report', 1)
+    resources: nodes = w.T(config, 'gen_qc_report', 1)
     run: 
         report_dict = {}
         report_column_headers = ['number of pairs analyzed',
@@ -355,8 +301,8 @@ rule gzip_fastqs:
     log: dirs_dict["LOGS_DIR"] + "/{sample}-{R}-gzip.log"
     input: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq"
     output: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq.gz"
-    threads: T('gzip_fastqs')
-    resources: nodes = T('gzip_fastqs'),
+    threads: w.T(config, 'gzip_fastqs')
+    resources: nodes = w.T(config, 'gzip_fastqs'),
     shell: "gzip {input} >> {log} 2>&1"
 
 
@@ -369,7 +315,7 @@ def input_for_fq2fa(wildcards):
         because fq2fa expects uncompressed files.
     '''
     d = {}
-    if A(['qc', 'run'], config, True):
+    if w.A(['qc', 'run'], config, True):
         # by default, use the output of the qc
         d['r1'] = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
         d['r2'] = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
@@ -387,8 +333,8 @@ rule fq2fa:
     log: dirs_dict["LOGS_DIR"] + "/{sample}-fq2fa.log"
     input: unpack(input_for_fq2fa)
     output: temp(dirs_dict["QC_DIR"] + "/{sample}-merged-reads.fa")
-    threads: T('fq2fa', 1)
-    resources: nodes = T('fq2fa', 1)
+    threads: w.T(config, 'fq2fa', 1)
+    resources: nodes = w.T(config, 'fq2fa', 1)
     shell: "fq2fa --merge {input} {output} >> {log} 2>&1"
 
 
@@ -397,12 +343,12 @@ rule merge_fastas_for_co_assembly:
     log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log"
     input: lambda wildcards: expand("{DIR}/{sample}-merged-reads.fa", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
     output: temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa")
-    threads: T('merge_fastas_for_co_assembly', 1)
-    resources: nodes = T('merge_fastas_for_co_assembly', 1)
+    threads: w.T(config, 'merge_fastas_for_co_assembly', 1)
+    resources: nodes = w.T(config, 'merge_fastas_for_co_assembly', 1)
     shell: "cat {input} > {output}"
 
 
-if A(['idba_ud', 'run'], config):
+if w.A(['idba_ud', 'run'], config):
     rule idba_ud:
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-idba_ud.log"
@@ -413,9 +359,9 @@ if A(['idba_ud', 'run'], config):
             contigs = temp(dirs_dict["ASSEMBLY_DIR"] + "/{group}/final.contigs.fa")
         params:
             # the minimum length for contigs (smaller contigs will be discarded)
-            min_contig = int(A(["idba_ud", "min_contig"], config, default_value="1000")),
-        threads: T('idba_ud', 11)
-        resources: nodes = T('idba_ud', 11)
+            min_contig = int(w.A(["idba_ud", "min_contig"], config, default_value="1000")),
+        threads: w.T(config, 'idba_ud', 11)
+        resources: nodes = w.T(config, 'idba_ud', 11)
         run:
             cmd = "idba_ud -o {output.temp_dir} --read {input.fasta}" + \ 
                     " --min_contig {params.min_contig}" + \ 
@@ -426,7 +372,7 @@ if A(['idba_ud', 'run'], config):
 
 def input_for_megahit(wildcards):
     ''' Creating a dictionary containing the path to input fastq file. '''
-    if A(['qc', 'run'], config, True):
+    if w.A(['qc', 'run'], config, True):
         # by default, use the output of the qc
         r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
         r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
@@ -438,7 +384,7 @@ def input_for_megahit(wildcards):
     return {'r1': r1, 'r2': r2}
 
 
-if A(['megahit', 'run'], config):
+if w.A(['megahit', 'run'], config):
     rule megahit:
         '''
             Assembling fastq files using megahit.
@@ -451,9 +397,9 @@ if A(['megahit', 'run'], config):
         input: unpack(input_for_megahit)
         params:
             # the minimum length for contigs (smaller contigs will be discarded)
-            min_contig_len = int(A(["megahit", "min_contig_len"], config, default_value="1000")),
+            min_contig_len = int(w.A(["megahit", "min_contig_len"], config, default_value="1000")),
             # portion of total memory to use by megahit
-            memory = float(A(["megahit", "memory"], config, default_value=0.4))
+            memory = float(w.A(["megahit", "memory"], config, default_value=0.4))
         # Notice that megahit requires a directory to be specified as
         # output. If the directory already exists then megahit will not
         # run. To avoid this, the for megahit is a temporary directory,
@@ -462,8 +408,8 @@ if A(['megahit', 'run'], config):
         output:
             temp_dir = temp(dirs_dict["ASSEMBLY_DIR"] + "/{group}_TEMP"),
             contigs = temp(dirs_dict["ASSEMBLY_DIR"] + "/{group}/final.contigs.fa")
-        threads: T('megahit', 11)
-        resources: nodes = T('megahit', 11),
+        threads: w.T(config, 'megahit', 11)
+        resources: nodes = w.T(config, 'megahit', 11),
         # Making this rule a shadow rule so all extra files created by megahit
         # are not retaineded (it is not enough to define the directory as temporary
         # because when failing in the middle of a run, snakemake doesn't delete directories)
@@ -495,8 +441,8 @@ rule bowtie_build:
         o2 = expand(dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + '.rev.{i}.bt2', i=[1,2], group="{group}")
     params:
         prefix = dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs"
-    threads: T('bowtie_build', 4)
-    resources: nodes = T('bowtie_build', 4),
+    threads: w.T(config, 'bowtie_build', 4)
+    resources: nodes = w.T(config, 'bowtie_build', 4),
     shell: "bowtie2-build {input} {params.prefix} >> {log} 2>&1"
 
 
@@ -518,9 +464,9 @@ rule bowtie:
     params:
         dir = dirs_dict["MAPPING_DIR"] + "/{sample}",
         bowtie_build_prefix = rules.bowtie_build.params.prefix,
-        additional_params = A(["bowtie", "additional_params"], config, default_value="--no-unal")
-    threads: T('bowtie', 10)
-    resources: nodes = T('bowtie', 10),
+        additional_params = w.A(["bowtie", "additional_params"], config, default_value="--no-unal")
+    threads: w.T(config, 'bowtie', 10)
+    resources: nodes = w.T(config, 'bowtie', 10),
     shell: "bowtie2 --threads {threads} -x {params.bowtie_build_prefix} -1 {input.r1} -2 {input.r2} {params.additional_params} -S {output} >> {log} 2>&1"
 
 
@@ -529,11 +475,11 @@ rule samtools_view:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-samtools_view.log"
     input: rules.bowtie.output
-    params: additional_params = A(["samtools_view", "additional_params"], config, default_value="-F 4")
+    params: additional_params = w.A(["samtools_view", "additional_params"], config, default_value="-F 4")
     # output as temp. we only keep the final bam file
     output: temp(dirs_dict["MAPPING_DIR"] + "/{group}/{sample}-RAW.bam")
-    threads: T('samtools_view', 4)
-    resources: nodes = T('samtools_view', 4),
+    threads: w.T(config, 'samtools_view', 4)
+    resources: nodes = w.T(config, 'samtools_view', 4),
     shell: "samtools view {params.additional_params} -bS {input} -o {output} >> {log} 2>&1"
 
 
@@ -545,8 +491,8 @@ rule anvi_init_bam:
     output:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam",
         bai = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam.bai"
-    threads: T('anvi_init_bam', 4)
-    resources: nodes = T('anvi_init_bam', 4),
+    threads: w.T(config, 'anvi_init_bam', 4)
+    resources: nodes = w.T(config, 'anvi_init_bam', 4),
     shell: "anvi-init-bam {input} -o {output.bam} >> {log} 2>&1"
 
 
@@ -566,16 +512,16 @@ rule anvi_profile:
     params:
         # minimal length of contigs to include in the profiling
         # if not specified in the config file then default is 2,500.
-        min_contig_length = A(["anvi_profile", "min_contig_length"], config, default_value=2500),
+        min_contig_length = w.A(["anvi_profile", "min_contig_length"], config, default_value=2500),
         # if profiling to individual assembly then clustering contigs
         # see --cluster-contigs in the help manu of anvi-profile
         cluster_contigs = lambda wildcards: '--cluster-contigs' if group_sizes[wildcards.group] == 1 else '',
         name = "{sample}",
-        profile_AA = "--profile-AA-frequencies" if A(["anvi_profile", "profile_AA"], config)  else "",
-        report_variability_full = "--report-variability-full" if A(["anvi_profile", "report_variability_full"], config)  else "",
+        profile_AA = "--profile-AA-frequencies" if w.A(["anvi_profile", "profile_AA"], config)  else "",
+        report_variability_full = "--report-variability-full" if w.A(["anvi_profile", "report_variability_full"], config)  else "",
         output_dir = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}"
-    threads: T('anvi_profile', 5)
-    resources: nodes = T('anvi_profile', 5),
+    threads: w.T(config, 'anvi_profile', 5)
+    resources: nodes = w.T(config, 'anvi_profile', 5),
     shell: "anvi-profile -i {input.bam} -c {input.contigs} -o {params.output_dir} -M {params.min_contig_length} -S {params.name} -T {threads} --overwrite-output-destinations {params.cluster_contigs} {params.profile_AA} {params.report_variability_full} >> {log} 2>&1"
 
 
@@ -588,7 +534,7 @@ def input_for_anvi_merge(wildcards):
         between these modes.
     '''
 
-    if A('all_against_all', config):
+    if w.A('all_against_all', config):
         # If the user specified 'all against all' in the configs file
         # the end product would be a merge of all samples per group
         profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(samples_information['sample']), group=wildcards.group)
@@ -657,17 +603,17 @@ rule anvi_merge:
         contigs_annotated = rules.annotate_contigs_database.output,
         profiles = input_for_anvi_merge,
         # this is here just so snakemake would run the gen_qc_report before running this rule
-        qc_report = rules.gen_qc_report.output if A(['qc', 'run'], config, True) else ancient(rules.gen_contigs_db.output.db)
+        qc_report = rules.gen_qc_report.output if w.A(['qc', 'run'], config, True) else ancient(rules.gen_contigs_db.output.db)
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
         runlog = dirs_dict["MERGE_DIR"] + "/{group}/RUNLOG.txt"
-    threads: T('anvi_merge')
-    resources: nodes = T('anvi_merge'),
+    threads: w.T(config, 'anvi_merge')
+    resources: nodes = w.T(config, 'anvi_merge'),
     params:
         output_dir = dirs_dict["MERGE_DIR"] + "/{group}",
         name = "{group}",
         profile_dir = dirs_dict["PROFILE_DIR"] + "/{group}",
-        skip_concoct_binning = "--skip-concoct-binning" if A(["anvi_merge", "skip_concoct_binning"], config)  else ""
+        skip_concoct_binning = "--skip-concoct-binning" if w.A(["anvi_merge", "skip_concoct_binning"], config)  else ""
     run:
         # using run instead of shell so we can choose the appropriate shell command.
         # In accordance with: https://bitbucket.org/snakemake/snakemake/issues/37/add-complex-conditional-file-dependency#comment-29348196
