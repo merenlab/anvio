@@ -70,7 +70,6 @@ progress = terminal.Progress()
 
 include: "generate_and_annotate_contigs_db.snake"
 # The config file contains many essential configurations for the workflow
-configfile: "config.json"
 localrules: all, annotate_contigs_database
 # Setting the names of all directories
 dir_list = ["LOGS_DIR", "QC_DIR", "ASSEMBLY_DIR", "CONTIGS_DIR", "MAPPING_DIR", "PROFILE_DIR", "MERGE_DIR"]
