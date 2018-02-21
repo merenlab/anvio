@@ -69,7 +69,8 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-include: "generate_and_annotate_contigs_db.snake"
+# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
+include: w.get_path_to_workflows_dir() + "/generate_and_annotate_contigs_db.snake"
 # The config file contains many essential configurations for the workflow
 localrules: all, annotate_contigs_database
 # Setting the names of all directories
