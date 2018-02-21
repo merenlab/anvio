@@ -162,7 +162,6 @@ if 'references_txt' in config:
     # if the user supplied a reference.txt file, then there is no need to
     # create an assembly (see documentation for 'reference-mode')
     references_txt_file = config["references_txt"]
-    # make sure this file exists
     filesnpaths.is_file_exists(references_txt_file)
     references_information = pd.read_csv(references_txt_file, sep='\t', index_col=0).to_dict(orient='index')
     group_names = list(references_information.keys())
