@@ -51,6 +51,7 @@ import os
 import anvio
 import pandas as pd
 import anvio.utils as u
+import anvio.workflows as w
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -72,9 +73,7 @@ include: "generate_and_annotate_contigs_db.snake"
 # The config file contains many essential configurations for the workflow
 localrules: all, annotate_contigs_database
 # Setting the names of all directories
-dir_list = ["LOGS_DIR", "QC_DIR", "ASSEMBLY_DIR", "CONTIGS_DIR", "MAPPING_DIR", "PROFILE_DIR", "MERGE_DIR"]
-dir_names = ["00_LOGS", "01_QC", "02_ASSEMBLY", "03_CONTIGS", "04_MAPPING", "05_ANVIO_PROFILE", "06_MERGED"]
-dirs_dict = dict(zip(dir_list, dir_names))
+dirs_dict = w.get_dir_names(config)
 
 # create log dir if it doesn't exist
 os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
