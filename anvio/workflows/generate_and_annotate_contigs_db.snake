@@ -1,4 +1,5 @@
 import anvio
+import pandas as pd
 import anvio.workflows as w
 
 dirs_dict = w.get_dir_names(config)
@@ -29,6 +30,9 @@ def get_raw_fasta(wildcards):
     '''
     if 'references_txt' in config:
         # in 'reference mode' the input is the reference fasta
+        references_txt_file = config["references_txt"]
+        filesnpaths.is_file_exists(references_txt_file)
+        references_information = pd.read_csv(references_txt_file, sep='\t', index_col=0).to_dict(orient='index')
         contigs = references_information[wildcards.group]['path']
     else:
         # by default the input fasta is the assembly output
