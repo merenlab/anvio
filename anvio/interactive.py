@@ -952,6 +952,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # FIXME: When we are in gene-view mode, our item names are no longer split names, hence the
         # following dictionaries are useless. Until we find a better way to fill them up with
         # potentially useful information, we can nullify them
+        self.split_lengths_info = dict([(split_name, self.splits_basic_info[split_name]['length']) for split_name in self.splits_basic_info])
         self.splits_basic_info = {}
         self.splits_taxonomy_dict = {}
         self.p_meta['description'] = 'None'
