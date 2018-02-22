@@ -26,7 +26,6 @@ if (not internal_genomes_file) and (not external_genomes_file):
                        or both.")
 
 # in order to generate the contigs databases we include the snakefile for the generation of contigs databases
-include: w.get_path_to_workflows_dir() + "/generate_and_annotate_contigs_db.snake"
 
 # run pangenome
 rule anvi_pan_genome:
