@@ -282,8 +282,8 @@ function drawArrows(_start, _stop) {
            .attr('width', stop + offset * 2)
            .attr('y', y - offset)
            .attr('height', 2 * offset)
-           .attr('fill', '#EED369')
-           .attr('fill-opacity', 0.5)
+           .attr('fill', 'yellow')
+           .attr('fill-opacity', 1)
            .attr('stroke-width', 0);
       }
 
