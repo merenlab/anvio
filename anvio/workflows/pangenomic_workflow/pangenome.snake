@@ -10,9 +10,9 @@ from anvio.workflows.workflowsops import PangenomicsWorkflow
 # the default names are defined in anvio/workflows/__init__.py
 # the directories in use for this workflow are "LOGS_DIR", "CONTIGS_DIR", "PROFILE_DIR", "PAN_DIR"
 
-workflow = PangenomicsWorkflow(config)
-workflow.init()
-dirs_dict = workflow.dirs_dict
+M = PangenomicsWorkflow(config)
+M.init()
+dirs_dict = M.dirs_dict
 
 project_name = config["project_name"]
 pan_project_name = w.A(["anvi_pan_genome", "--project-name"], config, project_name)
@@ -31,6 +31,7 @@ if (not internal_genomes_file) and (not external_genomes_file):
                        or both.")
 
 # in order to generate the contigs databases we include the snakefile for the generation of contigs databases
+include: w.get_path_to_workflows_dir() + "/generate_and_annotate_contigs_db.snake"
 
 # run pangenome
 rule anvi_pan_genome:
@@ -71,7 +72,6 @@ rule anvi_pan_genome:
         """
 
 
-include: w.get_path_to_workflows_dir() + "/generate_and_annotate_contigs_db.snake"
 
 # generate external genomes storage 
 rule gen_external_genome_file:
