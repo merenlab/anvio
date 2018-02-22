@@ -640,6 +640,11 @@ function menu_callback(action, param) {
             window.open(generate_inspect_link('inspect', item_name), '_blank');
             break;
 
+        case 'inspect_gene':
+            sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+            window.open(generate_inspect_link('inspect_gene', item_name), '_blank');
+            break;
+
         case 'inspect_gene_cluster':
             sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
             window.open(generate_inspect_link('geneclusters', item_name), '_blank');
