@@ -1,4 +1,5 @@
 import os
+import anvio
 import pandas as pd
 import anvio.workflows as w
 from anvio.errors import ConfigError
