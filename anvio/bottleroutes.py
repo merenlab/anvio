@@ -424,7 +424,7 @@ class BottleApplication(Bottle):
         split_name = self.interactive.gene_callers_id_to_split_name_dict[gene_callers_id]
         gene_info = self.interactive.genes_in_splits[gene_callers_id]
 
-        focus_region_start, focus_region_end = gene_info['start_in_split'] - 100, gene_info['stop_in_split'] + 100
+        focus_region_start, focus_region_end = max(0, gene_info['start_in_split'] - 100), min(self.interactive.split_lengths_info[split_name], gene_info['stop_in_split'] + 100)
 
         data = {'layers': [],
                  'title': "%d in '%s'" % (gene_callers_id, split_name),
