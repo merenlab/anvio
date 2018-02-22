@@ -61,9 +61,10 @@ function loadAll() {
         state = JSON.parse(sessionStorage.state);
         var endpoint = (gene_view ? 'charts_for_single_gene' : 'charts');
         $.ajax({
-                type: 'GET',
+                type: 'POST',
                 cache: false,
                 url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
+                data: {'state': JSON.stringify(state)},
                 success: function(contig_data) {
                     page_header = contig_data.title;
                     layers = contig_data.layers;
