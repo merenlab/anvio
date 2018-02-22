@@ -117,7 +117,6 @@ function loadAll() {
                     else if (highlight_gene) {
                         inspect_mode = 'inspect_context';
                     }
-                    console.log(inspect_mode);
 
                     if(next_contig_name)
                         next_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link(inspect_mode, next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
