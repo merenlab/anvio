@@ -23,8 +23,8 @@ filesnpaths.is_file_exists(samples_txt)
 samples_information = pd.read_csv(samples_txt, sep='\t', index_col=0).to_dict(orient='index')
 ALL_SAMPLES = list(samples_information.keys())
 
-internal_genomes_file = w.A("internal_genomes_file", config)
-external_genomes_file = w.A("external_genomes_file", config)
+internal_genomes_file = w.A(["anvi_gen_genomes_storage", "--internal-genomes"], config)
+external_genomes_file = w.A(["anvi_gen_genomes_storage", "--external-genomes"], config)
 
 if (not internal_genomes_file) and (not external_genomes_file):
     raise ConfigError("You must provide a path to either internal_genomes_file or external_genomes_file\
