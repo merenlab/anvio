@@ -115,7 +115,10 @@ function generate_inspect_link(type, item_name) {
         if (url.endsWith('index.html')) {
             // on index page
             if (type == 'inspect') {
-                return 'charts.html?id=' + item_name;
+                return 'charts.html?id=' + item_name + (mode == 'gene' ? '&highlight_gene=true' : '');
+            }
+            else if (type == 'inspect_gene') {
+                return 'charts.html?id=' + item_name + '&highlight_gene=true&gene_view=true';
             } 
             else if (type == 'geneclusters') {
                 return 'geneclusters.html?id=' + item_name;

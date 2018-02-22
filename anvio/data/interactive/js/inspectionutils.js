@@ -274,6 +274,19 @@ function drawArrows(_start, _stop) {
         color = 'green';
       }
 
+      if (highlight_gene && gene.gene_callers_id == contig_id)
+      {
+        var offset = 6;
+        paths.append('svg:rect')
+           .attr('x', start - offset)
+           .attr('width', stop + offset * 2)
+           .attr('y', y - offset)
+           .attr('height', 2 * offset)
+           .attr('fill', '#EED369')
+           .attr('fill-opacity', 0.5)
+           .attr('stroke-width', 0);
+      }
+
       // M10 15 l20 0
       path = paths.append('svg:path')
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
