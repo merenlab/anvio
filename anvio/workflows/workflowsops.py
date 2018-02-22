@@ -83,7 +83,7 @@ class WorkflowSuperClass:
                 if wrong_params:
                     raise ConfigError("some of the parameters in your config file for rule %s are not familiar to us. \
                                 Here is a list of the wrong parameters: %s. The only acceptable \
-                                parameters for this rule are %s." % (rule, wrong_params, self.rule_acceptable_params_dict))
+                                parameters for this rule are %s." % (rule, wrong_params, self.rule_acceptable_params_dict[rule]))
 
 
     def save_empty_config_in_json_format(self, filename='empty_config.json'):
