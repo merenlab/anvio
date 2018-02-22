@@ -54,9 +54,10 @@ class WorkflowSuperClass:
             if rule not in self.rule_acceptable_params_dict:
                 self.rule_acceptable_params_dict[rule] = []
 
-            if 'threads' not in self.rule_acceptable_params_dict[rule]:
-                # this should be acceptable for any rule
-                self.rule_acceptable_params_dict[rule].append('threads')
+            params_that_all_rules_must_accept = ['threads']
+            for param in params_that_all_rules_must_accept:
+                if param not in self.rule_acceptable_params_dict[rule]:
+                    self.rule_acceptable_params_dict[rule].append(param)
 
         self.dirs_dict = w.get_dir_names(self.config)
 
