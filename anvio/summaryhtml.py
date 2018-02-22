@@ -89,7 +89,7 @@ class SummaryHTMLOutput:
         self.progress.update('Rendering')
         rendered = self.render(quick)
 
-        self.progress('Writing')
+        self.progress.update('Writing')
         index_html = os.path.join(self.summary_dict['meta']['output_directory'], 'index.html')
         open(index_html, 'wb').write(rendered.encode('utf-8'))
 
