@@ -143,6 +143,11 @@ class GenomeDescriptions(object):
                     if db_path_var not in self.genomes[genome_name]:
                         continue
                     path = self.genomes[genome_name][db_path_var]
+
+                    if not path:
+                        raise ConfigError("Bad news: anvi'o was loading genome desriptions, and it run into an empty path for\
+                                           the genome %s. How did this happen? HOW? :(" % genome_name)
+
                     if not path.startswith('/'):
                         self.genomes[genome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(input_file), path))
 
