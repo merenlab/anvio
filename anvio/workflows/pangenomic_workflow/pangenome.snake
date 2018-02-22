@@ -4,11 +4,15 @@ import pandas as pd
 import anvio.workflows as w
 from anvio.errors import ConfigError
 import anvio.filesnpaths as filesnpaths
+from anvio.workflows.workflowsops import PangenomicsWorkflow
 
 # Get all the folder names from the config file
 # the default names are defined in anvio/workflows/__init__.py
 # the directories in use for this workflow are "LOGS_DIR", "CONTIGS_DIR", "PROFILE_DIR", "PAN_DIR"
-dirs_dict = w.get_dir_names(config)
+
+workflow = PangenomicsWorkflow(config)
+workflow.init()
+dirs_dict = workflow.dirs_dict
 
 project_name = config["project_name"]
 pan_project_name = w.A(["anvi_pan_genome", "--project-name"], config, project_name)
