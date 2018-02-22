@@ -30,6 +30,9 @@ var contextSvg;
 var state;
 var layers_ordered;
 var visible_layers;
+var contig_id;
+var highlight_gene;
+var gene_view;
 
 
 function loadAll() {
@@ -45,7 +48,8 @@ function loadAll() {
     });
 
     contig_id = getParameterByName('id');
-
+    highlight_gene = getParameterByName('highlight_gene') == 'true';
+    gene_view = getParameterByName('gene_view') == 'true';
 
     if (typeof sessionStorage.state === 'undefined')
     {
@@ -55,11 +59,11 @@ function loadAll() {
     {
         // backup the state, if user changes the page (prev, next) we are going to overwrite it.
         state = JSON.parse(sessionStorage.state);
-
+        var endpoint = (gene_view ? 'charts_for_single_gene' : 'charts');
         $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/charts_for_single_gene/' + state['order-by'] + '/' + contig_id,
+                url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
                 success: function(contig_data) {
                     page_header = contig_data.title;
                     layers = contig_data.layers;
