@@ -67,8 +67,8 @@ class WorkflowSuperClass:
     def check_config(self):
         
         acceptable_params = set(self.rules + self.general_params)
-        bad_params = [p for p in self.config if p not in acceptable_params]
-        if bad_params:
+        wrong_params = [p for p in self.config if p not in acceptable_params]
+        if wrong_params:
             ConfigError("some of the parameters in your config file are not familiar to us. \
                         Here is a list of the wrong parameters: %s. The only acceptable \
                         parameters for this workflow are %s." % (wrong_params, rule_acceptable_params_dict))
