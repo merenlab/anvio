@@ -107,3 +107,16 @@ def get_path_to_workflows_dir():
     # this returns a path
     base_path = os.path.dirname(__file__)
     return base_path
+
+def warning_for_param(config, rule, param, wildcard, our_default=None):
+    value = A([rule, param], config)
+    if value:
+        warning_message = 'You chose to define %s for the rule %s in the config file as %s.\
+                           while this is allowed, know that you are doing so at your own risk.\
+                           The reason this is risky is because this rule uses a wildcard/wildcards\
+                           and hence is probably running more than once, and this might be cause a problem.\
+                           In case you wanted to know, these are the wildcards used by this rule: %s' % (param, rule, value, wildcard)
+        if our_default:
+            warning_message = warning_message + ' Just so you are aware, if you dont provide a value\
+                                                 in the config file, the default value is %s' % wildcard
+        run.warning(warning_message)
