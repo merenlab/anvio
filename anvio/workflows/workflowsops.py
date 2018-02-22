@@ -69,9 +69,10 @@ class WorkflowSuperClass:
         acceptable_params = set(self.rules + self.general_params)
         wrong_params = [p for p in self.config if p not in acceptable_params]
         if wrong_params:
-                        Here is a list of the wrong parameters: %s. The only acceptable \
-                        parameters for this workflow are %s." % (wrong_params, self.rule_acceptable_params_dict))
             raise ConfigError("some of the parameters in your config file are not familiar to us. \
+                        Here is a list of the wrong parameters: %s. This workflow only accepts \
+                        the following general parameters: %s. And these are the rules in this \
+                        workflow: %s." % (wrong_params, self.general_params, self.rules))
         
         self.check_rule_params()
 
