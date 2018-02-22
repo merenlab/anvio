@@ -62,11 +62,11 @@ rule anvi_pan_genome:
     output: dirs_dict["PAN_DIR"] + "/" + pan_project_name + "-PAN.db"
     shell:
         """
-            anvi-pan-genome -g {input} --num-threads {threads} -o {params.output_dir} {params.genome_names}\
+            anvi-pan-genome -g {input} --num-threads {threads} -o {params.output_dir} --project-name {params.project_name} {params.genome_names}\
             {params.skip_alignments} {params.align_with} {params.exclude_partial_gene_calls}\
             {params.use_ncbi_blast} {params.minbit} {params.mcl_inflation}\
             {params.min_occurrence} {params.min_percent_identity} {params.sensitive}\
-            {params.project_name} {params.description} {params.overwrite_output_destinations}\
+            {params.description} {params.overwrite_output_destinations}\
             {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering}\
             {params.distance} {params.linkage}
         """
