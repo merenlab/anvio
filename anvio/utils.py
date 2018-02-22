@@ -1601,6 +1601,10 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
 
         line_fields = [f if f else None for f in line.strip('\n').split(separator)]
 
+        if line_fields and line_fields[0] == None:
+            raise ConfigError("The line number %d in '%s' has no data in its first column, and this doesn't\
+                               seem right at all :/" % (line_counter + 1, file_path))
+
         if column_mapping:
             updated_line_fields = []
             for i in range(0, len(line_fields)):
