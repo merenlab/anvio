@@ -116,6 +116,12 @@ function generate_inspect_link(type, item_name) {
             // on index page
             if (type == 'inspect') {
                 return 'charts.html?id=' + item_name;
+            }
+            else if (type == 'inspect_context') {
+                return 'charts.html?id=' + item_name + '&highlight_gene=true';
+            }
+            else if (type == 'inspect_gene') {
+                return 'charts.html?id=' + item_name + '&highlight_gene=true&gene_view=true';
             } 
             else if (type == 'geneclusters') {
                 return 'geneclusters.html?id=' + item_name;
@@ -124,7 +130,18 @@ function generate_inspect_link(type, item_name) {
         else
         {
             // on charts or gene cluster page, so changing the ?id= part enough
-            return url + '?id=' + item_name;
+            var new_url = "";
+            new_url =  url + '?id=' + item_name;
+
+            if (type == 'inspect_context') {
+                return new_url + '&highlight_gene=true';
+            }
+            else if (type == 'inspect_gene') {
+                return new_url + '&highlight_gene=true&gene_view=true';
+            }
+            else {
+                return new_url;
+            }
         }
     }
     else
