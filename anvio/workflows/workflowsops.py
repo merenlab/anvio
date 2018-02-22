@@ -59,6 +59,12 @@ class WorkflowSuperClass:
                 if param not in self.rule_acceptable_params_dict[rule]:
                     self.rule_acceptable_params_dict[rule].append(param)
 
+            general_params_that_all_workflows_must_accept = ['output_dirs']
+            for param in general_params_that_all_workflows_must_accept:
+                if param not in self.general_params:
+                    self.general_params.append(param)
+
+
         self.dirs_dict = w.get_dir_names(self.config)
 
         # make sure that config file doesn't have garbage
