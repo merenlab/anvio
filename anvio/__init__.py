@@ -642,7 +642,28 @@ D = {
             ['--gene-view'],
             {'default': False,
              'action': 'store_true',
-             'help': "TO DO."}
+             'help': "Initiate the interactive interface in \"gene view\". In this view, the items are genes (instead of\
+                      splits of contigs). The following views are avilable: detection - the detection value of each gene\
+                      in each sample. The mean_coverage - the mean coverage of genes. non_outlier_mean_coverage\
+                       - the mean coverage of the non-outlier nucleotide positions of each gene in each sample (median absolute\
+                       deviation is used to remove outliers per gene per sample). Non_outlier_coverage_std - standrad deviation\
+                       of the coverage of non-outlier positions of genes in samples. You can also choose to order items\
+                       and layers according to each one of the aforementioned view datas. In addition, all layer ordering\
+                       that are avialable in the regular view (i.e. the splits view) are also available in \"gene view\",\
+                       so that for example, you can choose to order the layers according to \"detection\", and that\
+                       would be the order according to the detection values of splits, whereas if you choose \"genes_detections\"\
+                       then the order of layers would be according to the detection values of genes. Inspection and sequence\
+                       functionality are available (through the right-click menu), except now sequences are of the specific gene.\
+                       Inspection has two modes available: \"Inspect Context\" - this brings you to the inspection page of the split\
+                       to which the gene belongs (the inspected gene will be highlighted in yellow in the bottom), \"Inspect Gene\" -\
+                       opens inspection view, but with only 100 nucleotides around each side of the gene (the purpose of this mode\
+                       is to make inspection page load faster if you only want to look at the nucleotide coverage of a specific gene).\
+                       NOTICE: You can't save a state, nor store collections while in \"gene view\". You can make selections, and\
+                       create bins for viewing purposes only. Search options are available, and you can even search for functions\
+                       if you have them in your contigs database. ANOTHER NOTICE: loading this mode might take a while if your bin\
+                       has many genes, and your profile database has many samples, this is beacause the gene coverages stats are\
+                       computed in an ad-hoc manner when you load this mode, if you complain a lot, then maybe we will address this\
+                       and make it go faster."}
                 ),
     'gene-caller-id': (
             ['--gene-caller-id'],
