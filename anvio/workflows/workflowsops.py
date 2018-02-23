@@ -83,6 +83,7 @@ class WorkflowSuperClass:
         
         self.check_rule_params()
 
+
     def check_rule_params(self):
         for rule in self.rules:
             if rule in self.config:
@@ -94,14 +95,12 @@ class WorkflowSuperClass:
 
 
     def save_empty_config_in_json_format(self, filename='empty_config.json'):
-
         filesnpaths.is_output_file_writable(filename)
 
         empty_config = self.get_empty_config()
 
         import json
-        with open(filename, 'w') as fp:
-            json.dump(empty_config, fp)
+        open(filename, 'w').write(json.dumps(empty_config, indent=4))
 
 
     def get_empty_config(self):
