@@ -367,7 +367,7 @@ class BottleApplication(Bottle):
         data['coverage'] = [coverages[layer].tolist() for layer in layers]
 
         ## get the variability information dict for split:
-        progress.new('Variability')
+        progress.new('Variability', discard_previous_if_exists=True)
         progress.update('Collecting info for "%s"' % split_name)
         split_variability_info_dict = self.interactive.get_variability_information_for_split(split_name, skip_outlier_SNVs=self.args.hide_outlier_SNVs)
 
