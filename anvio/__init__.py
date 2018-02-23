@@ -1486,6 +1486,19 @@ D = {
              'help': "If you give this flag, Anvi'o will not open new browser to show Contigs database statistics and write all stats \
                       to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
                 ),
+    'workflow': (
+            ['--workflow'],
+            {'required': False,
+             'help': "\
+                      "}
+                ),
+    'list-workflows': (
+            ['--list-workflows'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "\
+                      "}
+                ),
 }
 
 # two functions that works with the dictionary above.
