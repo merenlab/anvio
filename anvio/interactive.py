@@ -957,6 +957,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.splits_taxonomy_dict = {}
         self.p_meta['description'] = 'None'
 
+        # FIX ME: storing collection and states is not available for gene mode atm.
+        self.args.read_only = True
+
         self.items_additional_data_keys, self.items_additional_data_dict = [], {}
 
         for view in views_of_interest:
