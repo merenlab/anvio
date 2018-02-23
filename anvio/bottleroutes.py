@@ -104,7 +104,7 @@ class BottleApplication(Bottle):
         self.route('/state/all',                               callback=self.state_all)
         self.route('/state/get/<state_name>',                  callback=self.get_state)
         self.route('/state/save/<state_name>',                 callback=self.save_state, method='POST')
-        self.route('/data/charts/<order_name>/<item_name>',    callback=self.charts)
+        self.route('/data/charts/<order_name>/<item_name>',    callback=self.charts, method='POST')
         self.route('/data/completeness',                       callback=self.completeness, method='POST')
         self.route('/data/collections',                        callback=self.get_collections)
         self.route('/data/collection/<collection_name>',       callback=self.get_collection_dict)
@@ -120,7 +120,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_AA_sequences_for_gene_cluster/<gene_cluster_name>',  callback=self.get_AA_sequences_for_gene_cluster)
         self.route('/data/pan_gene_popup/<gene_callers_id>/<genome_name>',         callback=self.get_gene_popup_for_pan)
         self.route('/data/geneclusters/<order_name>/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
-        self.route('/data/charts_for_single_gene/<order_name>/<item_name>',        callback=self.charts_for_single_gene)
+        self.route('/data/charts_for_single_gene/<order_name>/<item_name>',        callback=self.charts_for_single_gene, method='POST')
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
         self.route('/data/phylogeny/aligners',                 callback=self.get_available_aligners)
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
@@ -335,6 +335,8 @@ class BottleApplication(Bottle):
         else:
             split_name = item_name
 
+        state = json.loads(request.forms.get('state'))
+
         data = {'layers': [],
                  'title': split_name,
                  'index': None,
@@ -355,7 +357,7 @@ class BottleApplication(Bottle):
 
         data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, item_name)
 
-        layers = sorted(self.interactive.p_meta['samples'])
+        layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if float(state['layers'][layer]['height']) > 0]
 
         auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
                                                                                  self.interactive.p_meta['contigs_db_hash'])
@@ -426,6 +428,7 @@ class BottleApplication(Bottle):
 
         focus_region_start, focus_region_end = max(0, gene_info['start_in_split'] - 100), min(self.interactive.split_lengths_info[split_name], gene_info['stop_in_split'] + 100)
 
+        state = json.loads(request.forms.get('state'))
         data = {'layers': [],
                  'title': "%d in '%s'" % (gene_callers_id, split_name),
                  'index': None,
@@ -440,7 +443,7 @@ class BottleApplication(Bottle):
 
         data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, str(gene_callers_id))
 
-        layers = sorted(self.interactive.p_meta['samples'])
+        layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if float(state['layers'][layer]['height']) > 0]
 
         auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
                                                                                  self.interactive.p_meta['contigs_db_hash'])
