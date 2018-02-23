@@ -126,6 +126,24 @@ D = {
             {'metavar': 'FASTA',
              'help': "A FASTA-formatted input file"}
                 ),
+    'layers-information-file': (
+            ['-D', '--layers-information-file'],
+            {'metavar': 'FILE',
+             'help': "A TAB-delimited file with information about layers in your dataset. Each row in this\
+                      file must correspond to a sample name. Each column must contain a unique attribute.\
+                      Please refer to the documentation to learn more about the structure and purpose of\
+                      this file."}
+                ),
+    'layers-order-file': (
+            ['-R', '--layers-order-file'],
+            {'metavar': 'FILE',
+             'help': "A TAB-delimited file with three columns: 'attribute', 'basic', 'newick'. For each attribute,\
+                      the order of samples must be defined either in the 'basic' form or via a 'newick'-formatted\
+                      tree structurei that describes the organization of each sample. Anvi'o will look for a\
+                      comma-separated list of sample names for the 'basic' form. Please refer to the online docs\
+                      for more info. Also you shouldn't hesitate to try to find the right file format until you get\
+                      it working. There are stringent checks on this file, and you will not break anything while trying!."}
+                ),
     'split-length': (
             ['-L', '--split-length'],
             {'metavar': 'INT',
