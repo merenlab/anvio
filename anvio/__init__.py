@@ -82,13 +82,6 @@ D = {
                       You can provide these names as a commma-separated list of names, or you can put them in a file,\
                       where you have a single genome name in each line, and provide the file path."}
                 ),
-    'serialized-profile': (
-            ['-d', '--serialized-profile'],
-            {'metavar': "PROFILE",
-             'help': "Serialized profile (PROFILE.cp). You can use anvi'o serialized profile files to re-do the\
-                      profiling much more quickly. This file is generated only if it is requested during the\
-                      initial profiling of the BAM file. See '--gen-serialized-profile' flag for details."}
-                ),
     'blank-profile': (
             ['--blank-profile'],
             {'default': False,
@@ -132,6 +125,24 @@ D = {
             ['-f', '--fasta-file'],
             {'metavar': 'FASTA',
              'help': "A FASTA-formatted input file"}
+                ),
+    'layers-information-file': (
+            ['-D', '--layers-information-file'],
+            {'metavar': 'FILE',
+             'help': "A TAB-delimited file with information about layers in your dataset. Each row in this\
+                      file must correspond to a sample name. Each column must contain a unique attribute.\
+                      Please refer to the documentation to learn more about the structure and purpose of\
+                      this file."}
+                ),
+    'layers-order-file': (
+            ['-R', '--layers-order-file'],
+            {'metavar': 'FILE',
+             'help': "A TAB-delimited file with three columns: 'attribute', 'basic', 'newick'. For each attribute,\
+                      the order of samples must be defined either in the 'basic' form or via a 'newick'-formatted\
+                      tree structurei that describes the organization of each sample. Anvi'o will look for a\
+                      comma-separated list of sample names for the 'basic' form. Please refer to the online docs\
+                      for more info. Also you shouldn't hesitate to try to find the right file format until you get\
+                      it working. There are stringent checks on this file, and you will not break anything while trying!."}
                 ),
     'split-length': (
             ['-L', '--split-length'],
@@ -631,7 +642,28 @@ D = {
             ['--gene-view'],
             {'default': False,
              'action': 'store_true',
-             'help': "TO DO."}
+             'help': "Initiate the interactive interface in \"gene view\". In this view, the items are genes (instead of\
+                      splits of contigs). The following views are avilable: detection - the detection value of each gene\
+                      in each sample. The mean_coverage - the mean coverage of genes. non_outlier_mean_coverage\
+                       - the mean coverage of the non-outlier nucleotide positions of each gene in each sample (median absolute\
+                       deviation is used to remove outliers per gene per sample). Non_outlier_coverage_std - standrad deviation\
+                       of the coverage of non-outlier positions of genes in samples. You can also choose to order items\
+                       and layers according to each one of the aforementioned view datas. In addition, all layer ordering\
+                       that are avialable in the regular view (i.e. the splits view) are also available in \"gene view\",\
+                       so that for example, you can choose to order the layers according to \"detection\", and that\
+                       would be the order according to the detection values of splits, whereas if you choose \"genes_detections\"\
+                       then the order of layers would be according to the detection values of genes. Inspection and sequence\
+                       functionality are available (through the right-click menu), except now sequences are of the specific gene.\
+                       Inspection has two modes available: \"Inspect Context\" - this brings you to the inspection page of the split\
+                       to which the gene belongs (the inspected gene will be highlighted in yellow in the bottom), \"Inspect Gene\" -\
+                       opens inspection view, but with only 100 nucleotides around each side of the gene (the purpose of this mode\
+                       is to make inspection page load faster if you only want to look at the nucleotide coverage of a specific gene).\
+                       NOTICE: You can't save a state, nor store collections while in \"gene view\". You can make selections, and\
+                       create bins for viewing purposes only. Search options are available, and you can even search for functions\
+                       if you have them in your contigs database. ANOTHER NOTICE: loading this mode might take a while if your bin\
+                       has many genes, and your profile database has many samples, this is beacause the gene coverages stats are\
+                       computed in an ad-hoc manner when you load this mode, if you complain a lot, then maybe we will address this\
+                       and make it go faster."}
                 ),
     'gene-caller-id': (
             ['--gene-caller-id'],
@@ -1547,6 +1579,14 @@ def set_version():
            t.profile_db_version, \
            t.auxiliary_data_version, \
            t.genomes_storage_vesion
+
+def get_version_tuples():
+    return [("Anvi'o version", __version__),
+            ("Profile DB version", __profile__version__),
+            ("Contigs DB version", __contigs__version__),
+            ("Pan DB version", __pan__version__),
+            ("Genome data storage version", __genomes_storage_version__),
+            ("Auxiliary data storage version", __auxiliary_data_version__)]
 
 
 def print_version():

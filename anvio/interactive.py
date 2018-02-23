@@ -895,6 +895,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def load_gene_mode(self):
+        if not self.skip_init_functions:
+            self.init_functions()
+
         ProfileSuperclass.__init__(self, self.args)
 
         self.genes_in_splits_summary_dict = {}
@@ -952,9 +955,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # FIXME: When we are in gene-view mode, our item names are no longer split names, hence the
         # following dictionaries are useless. Until we find a better way to fill them up with
         # potentially useful information, we can nullify them
+        self.split_lengths_info = dict([(split_name, self.splits_basic_info[split_name]['length']) for split_name in self.splits_basic_info])
         self.splits_basic_info = {}
         self.splits_taxonomy_dict = {}
         self.p_meta['description'] = 'None'
+
+        # FIX ME: storing collection and states is not available for gene mode atm.
+        self.args.read_only = True
 
         self.items_additional_data_keys, self.items_additional_data_dict = [], {}
 
