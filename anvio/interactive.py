@@ -895,6 +895,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def load_gene_mode(self):
+        if not self.skip_init_functions:
+            self.init_functions()
+
         ProfileSuperclass.__init__(self, self.args)
 
         self.genes_in_splits_summary_dict = {}
