@@ -424,7 +424,7 @@ class BottleApplication(Bottle):
     def charts_for_single_gene(self, order_name, item_name):
         gene_callers_id = int(item_name)
         split_name = self.interactive.gene_callers_id_to_split_name_dict[gene_callers_id]
-        gene_info = self.interactive.genes_in_splits[gene_callers_id]
+        gene_info = [e for e in self.interactive.genes_in_splits.values() if e['gene_callers_id'] == gene_callers_id][0]
 
         focus_region_start, focus_region_end = max(0, gene_info['start_in_split'] - 100), min(self.interactive.split_lengths_info[split_name], gene_info['stop_in_split'] + 100)
 
@@ -468,8 +468,8 @@ class BottleApplication(Bottle):
             data['variability'].append(split_variability_info_dict[layer]['variability'])
 
         levels_occupied = {1: []}
-        for entry_id in  self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
-            gene_callers_id =  self.interactive.genes_in_splits[entry_id]['gene_callers_id']
+        for entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+            gene_callers_id = self.interactive.genes_in_splits[entry_id]['gene_callers_id']
             p =  self.interactive.genes_in_splits[entry_id]
             # p looks like this at this point:
             #
@@ -479,11 +479,15 @@ class BottleApplication(Bottle):
             #  'prot'               : u'prot2_03215',
             #  'split'              : u'D23-1contig18_split_00036'}
             #
-            
+
             if p['start_in_split'] <= focus_region_start and p['stop_in_split'] <= focus_region_start:
                 continue
             if p['start_in_split'] >= focus_region_end and p['stop_in_split'] >= focus_region_end:
                 continue
+
+            # because Python. when we don't do this, the organization of genes in the interface split pages
+            # gets all screwed up in gene view due the permanence of the changes in the dictionary.
+            p = copy.deepcopy(p)
 
             # add offset
             p['start_in_split'] -= focus_region_start
