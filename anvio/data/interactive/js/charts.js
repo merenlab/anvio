@@ -61,9 +61,10 @@ function loadAll() {
         state = JSON.parse(sessionStorage.state);
         var endpoint = (gene_view ? 'charts_for_single_gene' : 'charts');
         $.ajax({
-                type: 'GET',
+                type: 'POST',
                 cache: false,
                 url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
+                data: {'state': JSON.stringify(state)},
                 success: function(contig_data) {
                     page_header = contig_data.title;
                     layers = contig_data.layers;
@@ -117,13 +118,12 @@ function loadAll() {
                     else if (highlight_gene) {
                         inspect_mode = 'inspect_context';
                     }
-                    console.log(inspect_mode);
 
                     if(next_contig_name)
-                        next_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link(inspect_mode, next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                        next_str = '<a onclick="sessionStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
                     if(previous_contig_name)
-                        prev_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link(inspect_mode, previous_contig_name) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                        prev_str = '<a onclick="sessionStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, previous_contig_name) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
                     $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
 
@@ -156,7 +156,7 @@ function showSetMaxValuesDialog() {
         var layer_name = layers_ordered[i];
         var layer_index = layers.indexOf(layer_name);
 
-        if (!(_state['layers'].hasOwnProperty(layer_name) && parseFloat(_state['layers'][layer_name]['height']) == 0)) {
+        if (!(state['layers'].hasOwnProperty(layer_name) && parseFloat(state['layers'][layer_name]['height']) == 0)) {
             var max_val
             var actual_max_val = Math.max.apply(null, coverage[layer_index]);;
             if (has_max_coverage_values) {

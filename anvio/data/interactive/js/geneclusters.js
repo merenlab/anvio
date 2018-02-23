@@ -81,10 +81,10 @@ function loadAll() {
             }
 
             if(next_gene_cluster_name)
-                next_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link('geneclusters', next_gene_cluster_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                next_str = '<a onclick="sessionStorage.state = JSON.stringify(state);" href="' + generate_inspect_link('geneclusters', next_gene_cluster_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
             if(previous_gene_cluster_name)
-                prev_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link('geneclusters', previous_gene_cluster_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                prev_str = '<a onclick="sessionStorage.state = JSON.stringify(state);" href="' + generate_inspect_link('geneclusters', previous_gene_cluster_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
             document.getElementById("header").innerHTML = "<strong>" + gene_cluster_name + "</strong> with " + gene_caller_ids.length + " genes detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 

@@ -38,8 +38,8 @@ class MCGPlots:
         self.plot_err = A('plot_error', True)
         self.plot_fit = A('plot_fit', False)
         self.plot_confidence_intervals = A('plot_confidence_intervals', True)
-        self.plot_gene_nuc_coverage = A('plot_gene_nuc_coverage', True)
-        self.plot_sample_nuc_coverage = A('plot_sample_nuc_coverage', True)
+        self.plot_gene_nuc_coverage = A('plot_gene_nuc_coverage', False)
+        self.plot_sample_nuc_coverage = A('plot_sample_nuc_coverage', False)
         self.save = A('save', True)
         self.fit = {}
         self.gene_nuc_coverage_dict = {}
