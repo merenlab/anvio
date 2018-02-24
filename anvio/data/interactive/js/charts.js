@@ -51,14 +51,14 @@ function loadAll() {
     highlight_gene = getParameterByName('highlight_gene') == 'true';
     gene_view = getParameterByName('gene_view') == 'true';
 
-    if (typeof sessionStorage.state === 'undefined')
+    if (typeof localStorage.state === 'undefined')
     {
-        alert("Something went wrong, couldn't access to sessionStorage");
+        alert("Something went wrong, couldn't access to localStorage");
     }
     else
     {
         // backup the state, if user changes the page (prev, next) we are going to overwrite it.
-        state = JSON.parse(sessionStorage.state);
+        state = JSON.parse(localStorage.state);
         var endpoint = (gene_view ? 'charts_for_single_gene' : 'charts');
         $.ajax({
                 type: 'POST',
@@ -120,10 +120,10 @@ function loadAll() {
                     }
 
                     if(next_contig_name)
-                        next_str = '<a onclick="sessionStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                        next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
                     if(previous_contig_name)
-                        prev_str = '<a onclick="sessionStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, previous_contig_name) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                        prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, previous_contig_name) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
                     $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
 
@@ -146,9 +146,9 @@ function showSetMaxValuesDialog() {
     var table = '<table class="table borderless"><thead class="thead-light"><tr><th>Sample</th><th>Max Coverage</th><th>Limit Max Coverage</th></tr></thead><tbody>';
 
     var max_coverage_values;
-    var has_max_coverage_values = (typeof sessionStorage.max_coverage !== 'undefined');
+    var has_max_coverage_values = (typeof localStorage.max_coverage !== 'undefined');
     if (has_max_coverage_values) {
-        max_coverage_values = JSON.parse(sessionStorage.max_coverage);
+        max_coverage_values = JSON.parse(localStorage.max_coverage);
     }
 
     var j=0;
@@ -199,13 +199,13 @@ function applyMaxValues() {
         max_values.push(parseInt($(row).find('td:last input').val()));
     });
 
-    sessionStorage.max_coverage = JSON.stringify(max_values);
+    localStorage.max_coverage = JSON.stringify(max_values);
     createCharts(state);
 }
 
 
 function resetMaxValues() {
-    delete sessionStorage.max_coverage;
+    delete localStorage.max_coverage;
     createCharts(state);
 }
 
@@ -264,9 +264,9 @@ function createCharts(state){
     });
 
     var max_coverage_values;
-    var has_max_coverage_values = (typeof sessionStorage.max_coverage !== 'undefined');
+    var has_max_coverage_values = (typeof localStorage.max_coverage !== 'undefined');
     if (has_max_coverage_values) {
-        max_coverage_values = JSON.parse(sessionStorage.max_coverage);
+        max_coverage_values = JSON.parse(localStorage.max_coverage);
     }
 
     var j=0;
