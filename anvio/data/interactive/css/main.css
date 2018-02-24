@@ -565,11 +565,12 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .modal-dialog.modal-sm h3::before {
     display: block;
-    width: 160px;
-    height: 160px;
+    width: 220px;
+    height: 220px;
     margin-right: auto;
     margin-left: auto;
-    margin-bottom: 25px;
+    margin-bottom: 8px;
+    margin-top: 8px;
     content: "";
     background: url("../images/logo.png") no-repeat 0 0;
     background-size: 100%;
