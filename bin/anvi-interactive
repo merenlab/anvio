@@ -39,7 +39,7 @@ groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface 
 groupB = parser.add_argument_group('MANUAL INPUTS', "Mandatory input parameters to start the interactive interface\
                                                      without anvi'o databases.")
 groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
-groupD = parser.add_argument_group('GENE VIEW', "Gene view related parameters.")
+groupD = parser.add_argument_group('GENE MODE', "Gene mode related parameters.")
 groupE = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
                                                        the interface.")
 groupF = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
