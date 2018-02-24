@@ -638,8 +638,8 @@ D = {
                       If you declare nothing, you may get everything. Or you may get an error. Really depends on the\
                       situation. Worth a try."}
                 ),
-    'gene-view': (
-            ['--gene-view'],
+    'gene-mode': (
+            ['--gene-mode'],
             {'default': False,
              'action': 'store_true',
              'help': "Initiate the interactive interface in \"gene view\". In this view, the items are genes (instead of\

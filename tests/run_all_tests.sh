@@ -404,4 +404,4 @@ INFO "Firing up the interactive interface to refine a bin"
 anvi-refine -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1
 
 INFO "Firing up the interactive interface in 'gene' mode"
-anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1 --gene-view
+anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1 --gene-mode
