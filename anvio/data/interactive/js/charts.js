@@ -32,7 +32,7 @@ var layers_ordered;
 var visible_layers;
 var contig_id;
 var highlight_gene;
-var gene_view;
+var gene_mode;
 
 
 function loadAll() {
@@ -49,7 +49,7 @@ function loadAll() {
 
     contig_id = getParameterByName('id');
     highlight_gene = getParameterByName('highlight_gene') == 'true';
-    gene_view = getParameterByName('gene_view') == 'true';
+    gene_mode = getParameterByName('gene_mode') == 'true';
 
     if (typeof localStorage.state === 'undefined')
     {
@@ -59,7 +59,7 @@ function loadAll() {
     {
         // backup the state, if user changes the page (prev, next) we are going to overwrite it.
         state = JSON.parse(localStorage.state);
-        var endpoint = (gene_view ? 'charts_for_single_gene' : 'charts');
+        var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
         $.ajax({
                 type: 'POST',
                 cache: false,
@@ -112,7 +112,7 @@ function loadAll() {
 
                     var inspect_mode = 'inspect';
 
-                    if (gene_view) {
+                    if (gene_mode) {
                         inspect_mode = 'inspect_gene';
                     }
                     else if (highlight_gene) {
