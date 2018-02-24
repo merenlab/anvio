@@ -146,9 +146,9 @@ function showSetMaxValuesDialog() {
     var table = '<table class="table borderless"><thead class="thead-light"><tr><th>Sample</th><th>Max Coverage</th><th>Limit Max Coverage</th></tr></thead><tbody>';
 
     var max_coverage_values;
-    var has_max_coverage_values = (typeof localStorage.max_coverage !== 'undefined');
+    var has_max_coverage_values = (typeof sessionStorage.max_coverage !== 'undefined');
     if (has_max_coverage_values) {
-        max_coverage_values = JSON.parse(localStorage.max_coverage);
+        max_coverage_values = JSON.parse(sessionStorage.max_coverage);
     }
 
     var j=0;
@@ -199,13 +199,13 @@ function applyMaxValues() {
         max_values.push(parseInt($(row).find('td:last input').val()));
     });
 
-    localStorage.max_coverage = JSON.stringify(max_values);
+    sessionStorage.max_coverage = JSON.stringify(max_values);
     createCharts(state);
 }
 
 
 function resetMaxValues() {
-    delete localStorage.max_coverage;
+    delete sessionStorage.max_coverage;
     createCharts(state);
 }
 
@@ -264,9 +264,9 @@ function createCharts(state){
     });
 
     var max_coverage_values;
-    var has_max_coverage_values = (typeof localStorage.max_coverage !== 'undefined');
+    var has_max_coverage_values = (typeof sessionStorage.max_coverage !== 'undefined');
     if (has_max_coverage_values) {
-        max_coverage_values = JSON.parse(localStorage.max_coverage);
+        max_coverage_values = JSON.parse(sessionStorage.max_coverage);
     }
 
     var j=0;
