@@ -340,6 +340,8 @@ function initData() {
             } else if (mode == 'manual') {
                 $('.manual-mode').show();
                 $('.nav-tabs').css('background-image', 'url(images/manual-bg.png)');
+            } else if (mode == 'gene') {
+                $('.nav-tabs').css('background-image', 'url(images/gene-bg.png)');
             }
 
             if (server_mode) {
