@@ -330,15 +330,18 @@ class BottleApplication(Bottle):
 
 
     def charts(self, order_name, item_name):
+        title = None
         if self.interactive.mode == 'gene':
             split_name = self.interactive.gene_callers_id_to_split_name_dict[int(item_name)]
+            title = "Gene '%d' in split '%s'" % (int(item_name), split_name)
         else:
             split_name = item_name
+            title = split_name
 
         state = json.loads(request.forms.get('state'))
 
         data = {'layers': [],
-                 'title': split_name,
+                 'title': title,
                  'index': None,
                  'total': None,
                  'coverage': [],
@@ -430,7 +433,7 @@ class BottleApplication(Bottle):
 
         state = json.loads(request.forms.get('state'))
         data = {'layers': [],
-                 'title': "%d in '%s'" % (gene_callers_id, split_name),
+                 'title': "Gene '%d' in split '%s'" % (gene_callers_id, split_name),
                  'index': None,
                  'total': None,
                  'coverage': [],
