@@ -3,7 +3,6 @@
 """Helper functions for the anvi'o snakemake workflows"""
 
 import os
-import sys
 
 import anvio
 
@@ -87,6 +86,7 @@ def B(config, _rule, _param, default=''):
 # a helper function to get the user defined number of threads for a rule
 def T(config, rule_name, N=1): return A([rule_name,'threads'], config, default_value=N)
 
+
 def get_dir_names(config):
     ########################################
     # Reading some definitions from config files (also some sanity checks)
@@ -107,6 +107,7 @@ def get_path_to_workflows_dir():
     # this returns a path
     base_path = os.path.dirname(__file__)
     return base_path
+
 
 def warning_for_param(config, rule, param, wildcard, our_default=None):
     value = A([rule, param], config)
