@@ -1,6 +1,31 @@
+# -*- coding: utf-8
+# pylint: disable=line-too-long
+"""
+    Classes to define and work with anvi'o workflows.
+"""
+
+import json
+
+import anvio
 import anvio.workflows as w
-from anvio.errors import ConfigError
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Alon Shaiber"
+__email__ = "alon.shaiber@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
 
 class MetagenomicsWorkflow:
     def __init__(self):
@@ -42,14 +67,14 @@ class MetagenomicsWorkflow:
 
 class WorkflowSuperClass:
     def __init__(self, config):
-            self.config = config
-            self.rules = []
-            self.rule_acceptable_params_dict = {}
-            self.dirs_dict = {}
-            self.general_params = []
+        self.config = config
+        self.rules = []
+        self.rule_acceptable_params_dict = {}
+        self.dirs_dict = {}
+        self.general_params = []
+
 
     def init(self):
-
         for rule in self.rules:
             if rule not in self.rule_acceptable_params_dict:
                 self.rule_acceptable_params_dict[rule] = []
@@ -72,7 +97,6 @@ class WorkflowSuperClass:
 
 
     def check_config(self):
-        
         acceptable_params = set(self.rules + self.general_params)
         wrong_params = [p for p in self.config if p not in acceptable_params]
         if wrong_params:
@@ -80,7 +104,7 @@ class WorkflowSuperClass:
                         Here is a list of the wrong parameters: %s. This workflow only accepts \
                         the following general parameters: %s. And these are the rules in this \
                         workflow: %s." % (wrong_params, self.general_params, self.rules))
-        
+
         self.check_rule_params()
 
 
@@ -99,7 +123,6 @@ class WorkflowSuperClass:
 
         empty_config = self.get_empty_config()
 
-        import json
         open(filename, 'w').write(json.dumps(empty_config, indent=4))
 
 
@@ -147,17 +170,20 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                               '--description', '--split-length', '--kmer-size',\
                               '--skip-mindful-splitting', '--skip-gene-calling', '--external-gene-calls',\
                               '--ignore-internal-stop-codons']
+
         self.rule_acceptable_params_dict['anvi_gen_contigs_database'] = gen_contigs_params
+
 
 class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, config):
         ContigsDBWorkflow.__init__(self, config)
 
-        self.rules.extend(['gen_external_genome_file', 'anvi_gen_genomes_storage',\
-                      'anvi_pan_genome'])
+        self.rules.extend(['gen_external_genome_file',
+                           'anvi_gen_genomes_storage',
+                           'anvi_pan_genome'])
 
         self.general_params.extend(["project_name", "samples_txt"])
-        
+
         pan_params = ["--project-name", "--output-dir", "--genome-names", "--skip-alignments",\
                      "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
                      "--minbit", "--mcl-inflation", "--min-occurrence",\
