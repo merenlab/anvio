@@ -87,7 +87,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.bin_ids_file_path = A('bin_ids_file')
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
-        self.gene_view = A('gene_view')
+        self.gene_mode = A('gene_mode')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
@@ -96,7 +96,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
 
-        if self.gene_view:
+        if self.gene_mode:
             if self.collection_name is None or self.bin_id is None:
                 raise ConfigError("Gene view requires a collection and a bin to be specified. If you want to \
                                     view all the genes in your profile database then you can use \
@@ -127,9 +127,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.mode:
             if self.manual_mode:
                 self.mode = 'manual'
-            elif self.gene_view:
+            elif self.gene_mode:
                 # collection mode and gene view mode both uses collection_name
-                # so gene_view needs to be placed before collection view
+                # so gene_mode needs to be placed before collection view
                 self.mode = 'gene'
             elif self.collection_name or self.list_collections:
                 self.mode = 'collection'
@@ -952,7 +952,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.title = "Genes in '%s'" % self.bin_id
 
-        # FIXME: When we are in gene-view mode, our item names are no longer split names, hence the
+        # FIXME: When we are in gene-mode mode, our item names are no longer split names, hence the
         # following dictionaries are useless. Until we find a better way to fill them up with
         # potentially useful information, we can nullify them
         self.split_lengths_info = dict([(split_name, self.splits_basic_info[split_name]['length']) for split_name in self.splits_basic_info])

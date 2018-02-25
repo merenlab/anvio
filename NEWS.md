@@ -1,3 +1,9 @@
+# v4, "rosalind" is out! (24.02.2018) #
+This version adds about 15,000 new lines of code since the previous, while removing about 7,500, streamlining the anvi'o codebase while making available a plethora of improvements and new toys!
+
+Please see the release notes [here](https://github.com/merenlab/anvio/releases/tag/v4), and keep your installation up-to-date!
+***
+
 # Slack for anvi'o (15.01.2018) #
 We now have a public Slack workspace for anvi'o. [Come join us](https://slackin-ezbpfhwsmh.now.sh/) to ask questions about anvi'o, follow its development, or participate conversations on how to survive and make sense of 'omics data.
 ***
