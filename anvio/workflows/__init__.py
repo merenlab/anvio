@@ -5,6 +5,7 @@
 import os
 
 import anvio
+import anvio.filesnpaths as filesnpaths
 
 from anvio.terminal import Run, Progress
 from anvio.errors import ConfigError
@@ -28,6 +29,87 @@ run = Run()
 run.verbose = False
 
 
+class WorkflowSuperClass:
+    def __init__(self, config):
+        self.config = config
+        self.rules = []
+        self.rule_acceptable_params_dict = {}
+        self.dirs_dict = {}
+        self.general_params = []
+
+
+    def init(self):
+        for rule in self.rules:
+            if rule not in self.rule_acceptable_params_dict:
+                self.rule_acceptable_params_dict[rule] = []
+
+            params_that_all_rules_must_accept = ['threads']
+            for param in params_that_all_rules_must_accept:
+                if param not in self.rule_acceptable_params_dict[rule]:
+                    self.rule_acceptable_params_dict[rule].append(param)
+
+            general_params_that_all_workflows_must_accept = ['output_dirs']
+            for param in general_params_that_all_workflows_must_accept:
+                if param not in self.general_params:
+                    self.general_params.append(param)
+
+
+        self.dirs_dict = w.get_dir_names(self.config)
+
+        # make sure that config file doesn't have garbage
+        self.check_config()
+
+        # create log dir if it doesn't exist
+        os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
+
+
+    def check_config(self):
+        acceptable_params = set(self.rules + self.general_params)
+        wrong_params = [p for p in self.config if p not in acceptable_params]
+        if wrong_params:
+            raise ConfigError("some of the parameters in your config file are not familiar to us. \
+                        Here is a list of the wrong parameters: %s. This workflow only accepts \
+                        the following general parameters: %s. And these are the rules in this \
+                        workflow: %s." % (wrong_params, self.general_params, self.rules))
+
+        self.check_rule_params()
+
+
+    def check_rule_params(self):
+        for rule in self.rules:
+            if rule in self.config:
+                wrong_params = [p for p in self.config[rule] if p not in self.rule_acceptable_params_dict[rule]]
+                if wrong_params:
+                    raise ConfigError("some of the parameters in your config file for rule %s are not familiar to us. \
+                                Here is a list of the wrong parameters: %s. The only acceptable \
+                                parameters for this rule are %s." % (rule, wrong_params, self.rule_acceptable_params_dict[rule]))
+
+
+    def save_empty_config_in_json_format(self, filename='empty_config.json'):
+        import json
+        filesnpaths.is_output_file_writable(filename)
+
+        empty_config = self.get_empty_config()
+
+        open(filename, 'w').write(json.dumps(empty_config, indent=4))
+
+
+    def get_empty_config(self):
+        ''' This returns a dictionary with all the possible configurables for a workflow'''
+
+        empty_config = {}
+
+        for rule in self.rules:
+            empty_config[rule] = {}
+            for param in self.rule_acceptable_params_dict[rule]:
+                empty_config[rule][param] = ''
+
+        for param in self.general_params:
+            empty_config[param] = ''
+
+        return empty_config
+
+
 # The config file contains many essential configurations for the workflow
 # Setting the names of all directories
 dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,\
@@ -42,8 +124,6 @@ dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,\
              "LOCI_DIR"     : "04_LOCI_FASTAS"   \
 }
 
-# create log dir if it doesn't exist
-os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
 
 ########################################
 # Helper functions
