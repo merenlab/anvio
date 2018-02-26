@@ -90,11 +90,11 @@ class GenomeStorage(object):
 
     def init(self):
         if self.db_type != self.db.get_meta_value('db_type'):
-            raise ConfigError('It seems, this database ("%s") is not a genome storage.' % self.storage_path)
+            raise ConfigError('The database "%s" does not look like a genome storage :/' % self.storage_path)
 
         if self.storage_hash:
             if self.storage_hash != self.get_storage_hash():
-                raise ConfigError("Requested storage hash ('%s') does not match with the one readed from database ('%s')." %
+                raise ConfigError("The requested genome storage hash ('%s') does not match with the one read from the database ('%s')." %
                     (self.storage_hash, self.get_storage_hash()))
 
         self.genome_names_in_db = self.get_all_genome_names()
