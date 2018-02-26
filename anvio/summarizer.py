@@ -1703,7 +1703,7 @@ class AdHocRunGenerator:
 
         data_file_path = self.matrix_data_for_clustering if self.matrix_data_for_clustering else self.view_data_path
 
-        clustering.get_newick_tree_data(data_file_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
+        clustering.create_newick_file_from_matrix_file(data_file_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
 
         self.progress.end()
 
