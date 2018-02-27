@@ -60,7 +60,7 @@ class ProfileSplitter:
 
 
     def sanity_check(self):
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=False)
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
 
         if not self.contigs_db_path:
             raise ConfigError("You must provide a contigs database for this operation.")
@@ -78,6 +78,11 @@ class ProfileSplitter:
             raise ConfigError("Anvi'o was trying to split this profile, but it just realized that it is not a profile\
                                database. There is something wrong here.")
         profile_db.disconnect()
+
+        # if this is not set false, the summarizer class attemts to remove the main output directory
+        # upon initialization. not doing that is useful in this context since this allows multiple
+        # anvi-split runs to work on bins in the same collection in parallel:
+        self.args.delete_output_directory_if_exists = False
 
         self.summary = summarizer.ProfileSummarizer(self.args)
         self.summary.init()
