@@ -5,7 +5,7 @@ import anvio.workflows as w
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.workflows.pangenome import PangenomicsWorkflow 
+from anvio.workflows.pangenomics import PangenomicsWorkflow
 # Get all the folder names from the config file
 # the default names are defined in anvio/workflows/__init__.py
 # the directories in use for this workflow are "LOGS_DIR", "CONTIGS_DIR", "PROFILE_DIR", "PAN_DIR"
