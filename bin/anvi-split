@@ -46,6 +46,7 @@ if __name__ == '__main__':
                                                   will be split from the mother anvi'o profile.")
     groupQ.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupQ.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))
+    groupQ.add_argument(*anvio.A('skip-variability-tables'), **anvio.K('skip-variability-tables'))
     groupQ.add_argument(*anvio.A('compress-auxiliary-data'), **anvio.K('compress-auxiliary-data'))
     groupQ.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering'))
     groupQ.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
