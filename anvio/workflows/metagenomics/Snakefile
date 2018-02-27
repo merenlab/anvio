@@ -57,6 +57,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.workflows.metagenomics import MetagenomicsWorkflow
 
 __author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
@@ -69,14 +70,14 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
-include: w.get_path_to_workflows_dir() + "/generate_and_annotate_contigs_db.snake"
-localrules: all, annotate_contigs_database
-# Setting the names of all directories
-dirs_dict = w.get_dir_names(config)
+M = MetagenomicsWorkflow(config)
+M.init()
+dirs_dict = M.dirs_dict
 
-# create log dir if it doesn't exist
-os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
+# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
+include: w.get_path_to_workflows_dir() + "/contigs/Snakefile"
+localrules: all, annotate_contigs_database
+
 
 # sanity check for requested assembly
 # make sure that the user is not requesting multiple assemblers
@@ -170,22 +171,25 @@ rule all:
     input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=group_names)
 
 
-rule gen_configs:
+rule iu_gen_configs:
     '''
         Generating a config file for each sample.
 
         Notice that this step is ran only once and generates the config files for all samples
     '''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/gen_configs.log"
+    log: dirs_dict["LOGS_DIR"] + "/iu_gen_configs.log"
     # the input file is marked as 'ancient' so snakemake wouldn't run it
     # just because a new path-to-raw-fastq-files.txt file was created.
     input: ancient(samples_txt_file)
     output: temp(expand("{DIR}/{sample}.ini", DIR=dirs_dict["QC_DIR"], sample=sample_names))
-    params: dir=dirs_dict["QC_DIR"]
-    threads: w.T(config, 'gen_configs')
-    resources: nodes = w.T(config, 'gen_configs'),
-    shell: "iu-gen-configs {input} -o {params.dir} >> {log} 2>&1"
+    params:
+        dir=dirs_dict["QC_DIR"],
+        r1_prefix = w.B(config, "iu_gen_configs", "--r1-prefix"),
+        r2_prefix = w.B(config, "iu_gen_configs", "--r2-prefix")
+    threads: w.T(config, 'iu_gen_configs')
+    resources: nodes = w.T(config, 'iu_gen_configs'),
+    shell: "iu-gen-configs {input} -o {params.dir} {r2_prefix} {r1_prefix} >> {log} 2>&1"
 
 
 def get_raw_fastq(wildcards):
