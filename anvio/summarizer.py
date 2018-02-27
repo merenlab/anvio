@@ -141,12 +141,13 @@ class SummarizerSuperClass(object):
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
+        self.delete_output_directory_if_exists = True if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
 
         self.sanity_check()
 
         if self.output_directory:
             self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
-            filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=True)
+            filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
 
 
     def sanity_check(self):
