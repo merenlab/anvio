@@ -337,10 +337,8 @@ def input_for_fq2fa(wildcards):
         # by default, use the output of the qc
         d['r1'] = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
         d['r2'] = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
-        
     else:
         # if no qc is requested, use raw input
-        # FIXME: it seems to me like the next two lines could have been replaced by: 
         d = get_raw_fastq(wildcards)
     return d
 
