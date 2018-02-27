@@ -34,13 +34,13 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                            'anvi_pan_genome'])
 
         self.general_params.extend(["project_name", "samples_txt"])
-
-        pan_params = ["--project-name", "--output-dir", "--genome-names", "--skip-alignments",\
-                     "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
-                     "--minbit", "--mcl-inflation", "--min-occurrence",\
-                     "--min-percent-identity", "--sensitive", "--description",\
-                     "--overwrite-output-destinations", "--skip-hierarchical-clustering",\
-                     "--enforce-hierarchical-clustering", "--distance", "--linkage"]
+        pan_params = ["--project-name", "--internal-genomes", "--external-genomes",\
+                      "--output-dir", "--genome-names", "--skip-alignments",\
+                      "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
+                      "--minbit", "--mcl-inflation", "--min-occurrence",\
+                      "--min-percent-identity", "--sensitive", "--description",\
+                      "--overwrite-output-destinations", "--skip-hierarchical-clustering",\
+                      "--enforce-hierarchical-clustering", "--distance", "--linkage"]
         self.rule_acceptable_params_dict['anvi_pan_genome'] = pan_params
 
         storage_params = ["--internal-genomes", "--external-genomes", "--gene-caller"]
