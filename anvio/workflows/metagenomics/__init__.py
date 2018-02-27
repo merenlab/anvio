@@ -25,9 +25,10 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-class MetagenomicsWorkflow:
+class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self):
-        # This dictionary defines the parameters that could be changed for each rule
+        ContigsDBWorkflow.__init__(self, config)
+
         self.rules = ['gen_configs', 'qc', 'gen_qc_report', 'gzip_fastqs',\
                      'fq2fa', 'merge_fastas_for_co_assembly', 'megahit', 'anvi_script_anvi_script_reformat_fasta',\
                      'anvi_gen_contigs_database', 'export_gene_calls', 'centrifuge',\
