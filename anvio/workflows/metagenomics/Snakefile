@@ -342,7 +342,6 @@ def input_for_fq2fa(wildcards):
         # if no qc is requested, use raw input
         # FIXME: it seems to me like the next two lines could have been replaced by: 
         d = get_raw_fastq(wildcards)
-        d['r2'] = list(samples_information[samples_information["sample"] == wildcards.sample]['r2'])
     return d
 
 
