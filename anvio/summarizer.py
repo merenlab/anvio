@@ -342,7 +342,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
                     # populate the entry with item aditional data
                     for items_additional_data_key in self.items_additional_data_keys:
-                        entry.append(self.items_additional_data_dict[gene_cluster_name][items_additional_data_key])
+                        if gene_cluster_name in self.items_additional_data_dict:
+                            entry.append(self.items_additional_data_dict[gene_cluster_name][items_additional_data_key])
+                        else:
+                            entry.append('')
 
                     # populate the entry with functions.
                     for function_source in self.gene_clusters_function_sources:
