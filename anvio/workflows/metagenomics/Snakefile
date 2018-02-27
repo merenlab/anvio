@@ -246,10 +246,15 @@ rule iu_filter_quality_minoche:
         visualize_quality_curves = w.B(config, "iu_filter_quality_minoche", "--visualize-quality-curves"),
         limit_num_pairs = w.B(config, "iu_filter_quality_minoche", "--limit-num-pairs"),
         print_qual_scores = w.B(config, "iu_filter_quality_minoche", "--print-qual-scores"),
-        store_read_fate = w.B(config, "iu_filter_quality_minoche", "--store-read-fate"),
+        store_read_fate = w.B(config, "iu_filter_quality_minoche", "--store-read-fate")
     threads: w.T(config, 'iu_filter_quality_minoche', 2)
     resources: nodes = w.T(config, 'iu_filter_quality_minoche', 2),
-    shell: "iu-filter-quality-minoche {input.ini} {params.store_read_fate} {params.print_qual_scores} {params.limit_num_pairs} {params.visualize_quality_curves} {params.ignore_deflines} >> {log} 2>&1"
+    shell:
+        """
+            iu-filter-quality-minoche {input.ini} {params.store_read_fate}\
+                                      {params.print_qual_scores} {params.limit_num_pairs}\
+                                      {params.visualize_quality_curves} {params.ignore_deflines} >> {log} 2>&1"
+        """
 
 
 rule gen_qc_report:
