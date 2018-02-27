@@ -189,7 +189,7 @@ rule iu_gen_configs:
         r2_prefix = w.B(config, "iu_gen_configs", "--r2-prefix")
     threads: w.T(config, 'iu_gen_configs')
     resources: nodes = w.T(config, 'iu_gen_configs'),
-    shell: "iu-gen-configs {input} -o {params.dir} {r2_prefix} {r1_prefix} >> {log} 2>&1"
+    shell: "iu-gen-configs {input} -o {params.dir} {params.r2_prefix} {params.r1_prefix} >> {log} 2>&1"
 
 
 def get_raw_fastq(wildcards):
@@ -230,20 +230,26 @@ def input_for_qc(wildcards):
     return d
 
 
-rule qc:
+rule iu_filter_quality_minoche:
     ''' Run QC using iu-filter-quality-minoche '''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{sample}-qc.log"
+    log: dirs_dict["LOGS_DIR"] + "/{sample}-iu_filter_quality_minoche.log"
     # making the config file as "ancient" so QC wouldn't run just because
     # a new config file was produced.
-    input: unpack(input_for_qc)
+    input: unpack(input_for_iu_filter_quality_minoche)
     output:
         r1 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R1.fastq",
         r2 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R2.fastq",
         stats = dirs_dict["QC_DIR"] + "/{sample}-STATS.txt"
-    threads: w.T(config, 'qc', 2)
-    resources: nodes = w.T(config, 'qc', 2),
-    shell: "iu-filter-quality-minoche {input.ini} --ignore-deflines >> {log} 2>&1"
+    params:
+        ignore_deflines = w.B(config, "iu_filter_quality_minoche", "--ignore-deflines", True),
+        visualize_quality_curves = w.B(config, "iu_filter_quality_minoche", "--visualize-quality-curves"),
+        limit_num_pairs = w.B(config, "iu_filter_quality_minoche", "--limit-num-pairs"),
+        print_qual_scores = w.B(config, "iu_filter_quality_minoche", "--print-qual-scores"),
+        store_read_fate = w.B(config, "iu_filter_quality_minoche", "--store-read-fate"),
+    threads: w.T(config, 'iu_filter_quality_minoche', 2)
+    resources: nodes = w.T(config, 'iu_filter_quality_minoche', 2),
+    shell: "iu-filter-quality-minoche {input.ini} {params.store_read_fate} {params.print_qual_scores} {params.limit_num_pairs} {params.visualize_quality_curves} {params.ignore_deflines} >> {log} 2>&1"
 
 
 rule gen_qc_report:
