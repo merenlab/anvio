@@ -200,7 +200,7 @@ if run_taxonomy_with_centrifuge:
         params: db=config["centrifuge"]['db']
         threads: w.T(config, 'centrifuge', 5)
         resources: nodes = w.T(config, 'centrifuge', 5),
-        shell: "centrifuge -f -x {params.db} {input} -S {output.hits} --report-file {output.report} --threads {params.threads} >> {log} 2>&1"
+        shell: "centrifuge -f -x {params.db} {input} -S {output.hits} --report-file {output.report} --threads {threads} >> {log} 2>&1"
 
 
     rule anvi_import_taxonomy:
@@ -237,7 +237,7 @@ if run_anvi_run_hmms:
             hmm_profile_dir = w.B(config, "anvi_gen_contigs_database", "--hmm-profile-dir"),
         threads: w.T(config, 'anvi_run_hmms', 20)
         resources: nodes = w.T(config, 'anvi_run_hmms', 20),
-        shell: "anvi-run-hmms -c {input} -T {params.threads} {params.hmm_profile_dir} {params.installed_hmm_profile} >> {log} 2>&1"
+        shell: "anvi-run-hmms -c {input} -T {threads} {params.hmm_profile_dir} {params.installed_hmm_profile} >> {log} 2>&1"
 
 w.warning_for_param(config, 'anvi_run_ncbi_cogs', '--temporary-dir-path', '{group}')
 rule anvi_run_ncbi_cogs:
@@ -255,7 +255,7 @@ rule anvi_run_ncbi_cogs:
     resources: nodes = w.T(config, 'anvi_run_ncbi_cogs', 5),
     shell:
         """
-            anvi-run-ncbi-cogs -c {input} -T {params.threads}\
+            anvi-run-ncbi-cogs -c {input} -T {threads}\
                                {params.cogs_data_dir} {params.sensitive} {params.temporary_dir_path}\
                                {params.search_with} >> {log} 2>&1"
         """
