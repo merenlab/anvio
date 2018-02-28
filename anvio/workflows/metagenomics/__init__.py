@@ -42,8 +42,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['iu_gen_configs'] = ["--r1-prefix", "--r2-prefix"]
         rule_acceptable_params_dict['iu_filter_quality_minoche'] = ['visualize_quality_curves', 'ignore_deflines', 'limit_num_pairs', 'print_qual_scores', 'store_read_fate']
         rule_acceptable_params_dict['gzip_fastqs'] = ["run"]
-        rule_acceptable_params_dict['fq2fa'] = []
-        rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
         rule_acceptable_params_dict['megahit'] = []
         rule_acceptable_params_dict['anvi_script_reformat_fasta'] = []
         rule_acceptable_params_dict['anvi_gen_contigs_database'] = []
