@@ -161,7 +161,7 @@ if not w.A('references_txt', config) and not w.A(['reformat_fasta','run'], confi
                         "please change your config.json file")
 
 # by default fastq files will be zipped after qc is done
-run_gzip_fastqs = w.A(['gzip_fastqs', 'run', config, True])
+run_gzip_fastqs = w.A(['gzip_fastqs', 'run'], config, True)
 
 
 rule all:
