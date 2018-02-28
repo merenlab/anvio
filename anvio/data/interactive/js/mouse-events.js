@@ -310,8 +310,16 @@ function lineMouseEnterHandler(event) {
             false);
     }
 
-    if (p.IsLeaf())
+
+    if (p.IsLeaf()) {
+        var arcs = document.querySelectorAll("path[arc-source='"+p.id+"'], path[arc-destination='"+p.id+"']");
+        
+        for (var i = 0, len = arcs.length; i < len; i++) {
+            arcs[i].style['stroke'] = '#FF0000';
+            arcs[i].style['stroke-opacity'] = '1';
+        }
         return;
+    }
 
     for (var index = 0; index < p.child_nodes.length; index++) {
         var _line = document.getElementById('line' + p.child_nodes[index]);
@@ -348,6 +356,13 @@ function lineMouseLeaveHandler(event) {
 
     if (p.collapsed)
         return;
+
+    var arcs = document.querySelectorAll(".neighborhood-arc");
+    
+    for (var i = 0, len = arcs.length; i < len; i++) {
+        arcs[i].style['stroke'] = LINE_COLOR;
+        arcs[i].style['stroke-opacity'] = '0.2';
+    }
 
     for (var index = 0; index < p.child_nodes.length; index++) {
         var _line = document.getElementById('line' + p.child_nodes[index]);
@@ -495,6 +510,21 @@ function mouseMoveHandler(event) {
     if (target_node.collapsed) {
         $('#tooltip_content').html("Collapsed branch");
         return;
+    }
+
+    if (p.IsLeaf()) {
+        var arcs = document.querySelectorAll(".neighborhood-arc");
+        
+        for (var i = 0, len = arcs.length; i < len; i++) {
+            arcs[i].style['stroke'] = LINE_COLOR;
+            arcs[i].style['stroke-opacity'] = '0.2';
+
+            if (arcs[i].getAttribute('arc-source') == p.id || arcs[i].getAttribute('arc-destination') == p.id)
+            {
+                arcs[i].style['stroke'] = '#FF0000';
+                arcs[i].style['stroke-opacity'] = '1';
+            }
+        }
     }
 
     var tooltip_arr = layerdata_title[target_node.label].slice(0);

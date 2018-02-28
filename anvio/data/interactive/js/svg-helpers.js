@@ -541,6 +541,27 @@ function drawCircleArc(svg_id, p, p0, p1, radius, large_arc_flag) {
     svg.appendChild(arc);
 }
 
+
+var id_to_neighborhood_arc = {};
+
+function drawArc(svg_id, p0, p1) {
+    var arc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    //arc.setAttribute('id', 'arc' + p.id);
+
+    arc.setAttribute('class', 'neighborhood-arc');
+    arc.setAttribute('vector-effect', 'non-scaling-stroke');
+    arc.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width: 1; stroke-opacity: 0.2;');
+    arc.setAttribute('fill', 'none');
+    arc.setAttribute('arc-source', p0.id);
+    arc.setAttribute('arc-destination', p1.id);
+
+    arc.setAttribute('d', ["M", p0.xy.x, p0.xy.y, "Q 0 0", p1.xy.x, p1.xy.y].join(" "));
+
+    var svg = document.getElementById(svg_id);
+    svg.appendChild(arc);
+}
+
+
 //--------------------------------------------------------------------------------------------------
 function drawPath(svg_id, pathString) {
     var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');

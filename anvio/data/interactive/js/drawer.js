@@ -27,8 +27,12 @@ var Drawer = function(settings) {
     this.root_length = 0.1;
     
     this.has_tree = (clusteringData.constructor !== Array);
-    
-    //
+
+    if (this.has_tree) {
+        clusteringData = get_newick_leaf_order(clusteringData);
+        this.has_tree = false;
+    }
+
     this.layerdata_dict = new Array();
     this.layer_fonts = new Array();
 };
@@ -100,6 +104,7 @@ Drawer.prototype.draw = function() {
 
     this.calculate_tree_coordinates();
     this.draw_tree();
+    this.draw_neighborhoods();
     this.calculate_layer_boundaries();
 
     total_radius = this.layer_boundaries[this.layer_boundaries.length - 1][1];
@@ -485,6 +490,24 @@ Drawer.prototype.collapse_nodes = function() {
         cnode.child = null;
         cnode.collapsed = true;
     }
+};
+
+
+Drawer.prototype.draw_neighborhoods = function() {
+    leaf_to_neighborhood_arc = {};
+    
+    for (var i=0; i < 20; i++) {
+        var p0 = order_to_node_map[Math.floor(Math.random() * order_to_node_map.length)];
+        var p1 = order_to_node_map[Math.floor(Math.random() * order_to_node_map.length)];
+
+        if (p0.order == p1.order) {
+            i--;
+            continue;
+        }
+
+        drawArc(this.tree_svg_id, p0, p1);
+    }
+
 };
 
 Drawer.prototype.bind_tree_events = function() {
