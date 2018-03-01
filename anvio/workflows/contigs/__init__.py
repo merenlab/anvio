@@ -34,6 +34,23 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.general_params.extend(["references_txt"])
 
+        self.dirs_dict.update(
+                {
+
+                }
+                             )
+
+        self.default_config.update(
+                {
+                    "references_txt": "references.txt",
+                    "anvi_gen_contigs_database": {"--project-name": "{group}", "threads": 5},
+                    "centrifuge": {"threads": 5},
+                    "anvi_run_hmms": {"run": True, "threads": 20},
+                    "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
+                    "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True},
+                }
+                                  )
+
         self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cogs-data-dir', '--sensitive', '--temporary-dir-path', '--search-with']
 
         self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir']

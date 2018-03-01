@@ -113,7 +113,7 @@ if 'references_txt' in config:
     group_names = list(references_information.keys())
     # in reference mode, unless specified by the user, then the name of 
     # the directory with the formatted reference fasta will be 02_REFERENCE_FASTA
-    dirs_dict['ASSEMBLY_DIR'] = w.A(['output_dirs', 'ASSEMBLY_DIR'], config, default_value="02_REFERENCE_FASTA")
+    dirs_dict['FASTA_DIR'] = w.A(['output_dirs', 'FASTA_DIR'], config, default_value="02_REFERENCE_FASTA")
 
 # Collecting information regarding groups.
 if "group" in samples_information.columns:
@@ -370,8 +370,8 @@ if w.A(['idba_ud', 'run'], config):
         input:
             fasta = dirs_dict["QC_DIR"] + "/{group}-merged.fa"
         output:
-            temp_dir = temp(dirs_dict["ASSEMBLY_DIR"] + "/{group}_TEMP"),
-            contigs = temp(dirs_dict["ASSEMBLY_DIR"] + "/{group}/final.contigs.fa")
+            temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
+            contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa")
         params:
             # the minimum length for contigs (smaller contigs will be discarded)
             min_contig = int(w.A(["idba_ud", "min_contig"], config, default_value="1000")),
@@ -407,8 +407,8 @@ if w.A(['megahit', 'run'], config):
         # once megahit is done running then the contigs database is moved
         # to the final location.
         output:
-            temp_dir = temp(dirs_dict["ASSEMBLY_DIR"] + "/{group}_TEMP"),
-            contigs = temp(dirs_dict["ASSEMBLY_DIR"] + "/{group}/final.contigs.fa")
+            temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
+            contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa")
         threads: w.T(config, 'megahit', 11)
         resources: nodes = w.T(config, 'megahit', 11),
         # Making this rule a shadow rule so all extra files created by megahit
