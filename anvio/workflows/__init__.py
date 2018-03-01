@@ -54,7 +54,7 @@ class WorkflowSuperClass:
                     self.general_params.append(param)
 
 
-        self.dirs_dict = w.get_dir_names(self.config)
+        self.dirs_dict = get_dir_names(self.config)
 
         # make sure that config file doesn't have garbage
         self.check_config()
