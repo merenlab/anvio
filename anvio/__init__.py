@@ -1220,6 +1220,13 @@ D = {
                       hierarchical clustering of your items are preformed based on default clustering\
                       recipes matching to your database type."}
                 ),
+    'skip-variability-tables': (
+            ['--skip-variability-tables'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Processing variability tables in profile databse might take a very very long time. With\
+                      this flag you will be asking anvi'o to skip them."}
+                ),
     'enforce-hierarchical-clustering': (
             ['--enforce-hierarchical-clustering'],
             {'default': False,

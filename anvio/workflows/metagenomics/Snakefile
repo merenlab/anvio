@@ -160,6 +160,9 @@ if not w.A('references_txt', config) and not w.A(['reformat_fasta','run'], confi
     raise ConfigError("You can't skip reformat_fasta in assembly mode "\
                         "please change your config.json file")
 
+# by default fastq files will be zipped after qc is done
+run_gzip_fastqs = w.A(['gzip_fastqs', 'run'], config, True)
+
 
 rule all:
     '''
@@ -194,8 +197,8 @@ rule iu_gen_configs:
 
 def get_raw_fastq(wildcards):
     ''' return a dict with the path to the raw fastq files'''
-    r1 = samples_information[samples_information["sample"] == wildcards.sample]['r1']
-    r2 = samples_information[samples_information["sample"] == wildcards.sample]['r2']
+    r1 = list(samples_information[samples_information["sample"] == wildcards.sample]['r1'])
+    r2 = list(samples_information[samples_information["sample"] == wildcards.sample]['r2'])
     return {'r1': r1, 'r2': r2}
 
 
@@ -209,17 +212,18 @@ def get_fastq(wildcards):
         This helper function returns the appropriate paths according to the
         config file.
     '''
-    d = {}
     if w.A(['qc', 'run'], config, True):
         # by default, use the output of the qc
-        d['r1'] = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
-        d['r2'] = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
-        
+        if run_gzip_fastqs:
+            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
+            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
+        else:
+            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
+            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
+        d = {'r1': r1, 'r2': r2}
     else:
         # if no qc is requested, use raw input
-        # FIXME: it seems to me like the next two lines could have been replaced by: d = get_raw_fastq(wildcards)
-        d['r1'] = list(samples_information[samples_information["sample"] == wildcards.sample]['r1'])
-        d['r2'] = list(samples_information[samples_information["sample"] == wildcards.sample]['r2'])
+        d = get_raw_fastq(wildcards)
     return d
 
 
@@ -262,7 +266,6 @@ rule gen_qc_report:
     log: dirs_dict["LOGS_DIR"] + "/gen_qc_report.log"
     input: expand(dirs_dict["QC_DIR"] + "/{sample}-STATS.txt", sample=sample_names)
     output: dirs_dict["QC_DIR"] + "/qc-report.txt"
-    params:
     threads: w.T(config, 'gen_qc_report', 1)
     resources: nodes = w.T(config, 'gen_qc_report', 1)
     run: 
@@ -334,12 +337,9 @@ def input_for_fq2fa(wildcards):
         # by default, use the output of the qc
         d['r1'] = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
         d['r2'] = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
-        
     else:
         # if no qc is requested, use raw input
-        # FIXME: it seems to me like the next two lines could have been replaced by: d = get_raw_fastq(wildcards)
-        d['r1'] = samples_information[samples_information["sample"] == wildcards.sample]['r1']
-        d['r2'] = list(samples_information[samples_information["sample"] == wildcards.sample]['r2'])
+        d = get_raw_fastq(wildcards)
     return d
 
 
@@ -385,20 +385,6 @@ if w.A(['idba_ud', 'run'], config):
             shell("mv {output.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
 
 
-def input_for_megahit(wildcards):
-    ''' Creating a dictionary containing the path to input fastq file. '''
-    if w.A(['qc', 'run'], config, True):
-        # by default, use the output of the qc
-        r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
-        r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
-        
-    else:
-        # if no qc is requested, use raw input
-        r1 = list(samples_information[samples_information["group"] == wildcards.group]['r1'])
-        r2 = list(samples_information[samples_information["group"] == wildcards.group]['r2'])
-    return {'r1': r1, 'r2': r2}
-
-
 if w.A(['megahit', 'run'], config):
     rule megahit:
         '''
@@ -409,7 +395,7 @@ if w.A(['megahit', 'run'], config):
         '''
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-megahit.log"
-        input: unpack(input_for_megahit)
+        input: unpack(get_fastq)
         params:
             # the minimum length for contigs (smaller contigs will be discarded)
             min_contig_len = int(w.A(["megahit", "min_contig_len"], config, default_value="1000")),

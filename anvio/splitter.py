@@ -53,13 +53,14 @@ class ProfileSplitter:
         self.collection_name = A('collection_name')
         self.bin_name = A('bin_id')
         self.output_directory = A('output_dir')
+        self.skip_variability_tables = A('skip_variability_tables')
 
         self.collections = ccollections.Collections()
         self.summary = None
 
 
     def sanity_check(self):
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=False)
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
 
         if not self.contigs_db_path:
             raise ConfigError("You must provide a contigs database for this operation.")
@@ -77,6 +78,11 @@ class ProfileSplitter:
             raise ConfigError("Anvi'o was trying to split this profile, but it just realized that it is not a profile\
                                database. There is something wrong here.")
         profile_db.disconnect()
+
+        # if this is not set false, the summarizer class attemts to remove the main output directory
+        # upon initialization. not doing that is useful in this context since this allows multiple
+        # anvi-split runs to work on bins in the same collection in parallel:
+        self.args.delete_output_directory_if_exists = False
 
         self.summary = summarizer.ProfileSummarizer(self.args)
         self.summary.init()
@@ -99,6 +105,9 @@ class ProfileSplitter:
                           is quite a tricky operation, and even if it finishes successfully, you must double check everyting\
                           in the resulting profiles to make sure things worked as expected. Although we are doing our best to\
                           test all these, variation between projects make it impossible to be 100% sure.")
+
+        if self.skip_variability_tables:
+            self.run.warning("Since you asked so nicely, anvi'o will not migrate variability table data into split profiles.")
 
         for bin_name in self.bin_names_of_interest:
             b = BinSplitter(bin_name, self.summary, self.args, run=self.run, progress=self.progress)
@@ -124,6 +133,7 @@ class BinSplitter(summarizer.Bin):
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         self.output_directory = A('output_dir')
+        self.skip_variability_tables = A('skip_variability_tables')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.distance = A('distance') or constants.distance_metric_default
@@ -286,9 +296,15 @@ class BinSplitter(summarizer.Bin):
                 tables[table_name] = ('contig', self.split_names)
 
 
-        # we need to migrate these guys, too.
-        tables[t.variable_nts_table_name] = ('split_name', self.split_names)
-        tables[t.variable_aas_table_name] = ('corresponding_gene_call', self.gene_caller_ids)
+        # we need to migrate these guys, too. unless we don't need to... if we are migrating,
+        # the values in the self table are already accurate. if we are skipping, regardless
+        # of what the values were, we will set the absolut correct ones.
+        if self.skip_variability_tables:
+            bin_profile_db.db.update_meta_value('SNVs_profiled', False)
+            bin_profile_db.db.update_meta_value('AA_frequencies_profiled', False)
+        else:
+            tables[t.variable_nts_table_name] = ('split_name', self.split_names)
+            tables[t.variable_aas_table_name] = ('corresponding_gene_call', self.gene_caller_ids)
 
         bin_profile_db.disconnect()
 

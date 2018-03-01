@@ -310,15 +310,38 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 continue
 
             item_layer_data_tuple = []
+            items_for_which_we_put_zeros_for_missing_values = set([])
             for item in self.displayed_item_names_ordered:
                 if item not in self.items_additional_data_dict:
                     if layer_type != str:
-                        raise ConfigError("'%s' is looks like numerical layer but value for '%s' is missing or empty. \
-                                          We do not support empty values for numerical layers yet." % (layer, item))
+                        item_layer_data_tuple.append((0.0, item))
+                        items_for_which_we_put_zeros_for_missing_values.add(item)
                     else:
                         item_layer_data_tuple.append(('', item))
                 else:
-                    item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
+                    if self.items_additional_data_dict[item][layer] == None:
+                        if layer_type != str:
+                            items_for_which_we_put_zeros_for_missing_values.add(item)
+                            item_layer_data_tuple.append((0.0, item))
+                        else:
+                            item_layer_data_tuple.append(('', item))
+                    else:
+                        item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
+
+            if len(items_for_which_we_put_zeros_for_missing_values):
+                self.progress.end()
+                self.run.warning("OK. While working on the layer '%s', which actually looked like a numerical layer, anvi'o realized\
+                                  that %d of your items (for instance '%s' was one of them) did not have a value for this layer. To\
+                                  make sure things will continue working in the interface, anvi'o took the liberty of adding zeros\
+                                  as values for these items. Which is not the smartest thing to do, but we unfortunately do not\
+                                  support empty values for numerical layers yet. In MetalBeard's voice: things shall continue to\
+                                  work, but ye here be warned. Back to anvi'o regular voice: Please keep this in mind while you\
+                                  are studying the interactive interface be extra careful how to interpret your analysis when\
+                                  you see zero values in the layer '%s'." % (layer,
+                                                                             len(items_for_which_we_put_zeros_for_missing_values),
+                                                                             items_for_which_we_put_zeros_for_missing_values.pop(),
+                                                                             layer))
+                self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
 
             self.p_meta['available_item_orders'].append('>> %s:none:none' % layer)
             self.p_meta['item_orders']['>> %s' % layer] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple)]}
