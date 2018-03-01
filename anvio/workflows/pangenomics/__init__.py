@@ -35,6 +35,14 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         self.general_params.extend(["project_name", "samples_txt"])
 
+        self.default_config.update(
+                                    {
+                                     "samples_txt": "samples.txt",
+                                     "anvi_pan_genome": {"threads": 20}
+                                    }
+                                  )
+        
+
         pan_params = ["--project-name", "--output-dir", "--genome-names", "--skip-alignments",\
                      "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
                      "--minbit", "--mcl-inflation", "--min-occurrence",\
