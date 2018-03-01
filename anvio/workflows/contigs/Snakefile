@@ -78,7 +78,7 @@ rule anvi_script_reformat_fasta:
         """
             anvi-script-reformat-fasta {input} -o {output.contigs}\
             -r {output.report} --prefix {params.prefix}\
-            {params.min_len} {params.exclude_ids} {params.keep_ids} {params.simplify_names} >> {log} 2>&1"
+            {params.min_len} {params.exclude_ids} {params.keep_ids} {params.simplify_names} >> {log} 2>&1
         """
 
 
@@ -257,7 +257,7 @@ rule anvi_run_ncbi_cogs:
         """
             anvi-run-ncbi-cogs -c {input} -T {threads}\
                                {params.cogs_data_dir} {params.sensitive} {params.temporary_dir_path}\
-                               {params.search_with} >> {log} 2>&1"
+                               {params.search_with} >> {log} 2>&1
         """
 
 
