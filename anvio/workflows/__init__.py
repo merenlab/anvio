@@ -226,9 +226,59 @@ dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,\
 # Helper functions
 ########################################
 
+def A(_list, d, default_value = ""):
+    '''
+        A helper function to make sense of config details.
+        string_list is a list of strings (or a single string)
+        d is a dictionary
+
+        this function checks if the strings in x are nested values in y.
+        For example if x = ['a','b','c'] then this function checkes if the
+        value y['a']['b']['c'] exists, if it does then it is returned
+    '''
+    if type(_list) is not list:
+        # converting to list for the cases of only one item
+        _list = [_list]
+    while _list:
+        a = _list.pop(0)
+        if a in d:
+            d = d[a]
+        else:
+            return default_value
+    return d
+
+
+def B(config, _rule, _param, default=''):
+    # helper function for params
+    val = A([_rule, _param], config, default)
+    if val:
+        if isinstance(val, bool):
+            # the param is a flag so no need for a value
+            val = ''
+        return _param + ' ' + val
+    else:
+        return ''
+
+
 # a helper function to get the user defined number of threads for a rule
+def T(config, rule_name, N=1): return A([rule_name,'threads'], config, default_value=N)
 
 
+def get_dir_names(config):
+    ########################################
+    # Reading some definitions from config files (also some sanity checks)
+    ########################################
+    DICT = dirs_dict
+    for d in A("output_dirs", config):
+        # renaming folders according to the config file, if the user specified.
+        if d not in DICT:
+            # making sure the user is asking to rename an existing folder.
+            raise ConfigError("You define a name for the directory '%s' in your "\
+                              "config file, but the only available folders are: "\
+                              "%s" % (d, DICT))
+
+        DICT[d] = A(d,config["output_dirs"])
+    return DICT
 
 def get_path_to_workflows_dir():
     # this returns a path
@@ -237,7 +287,7 @@ def get_path_to_workflows_dir():
 
 
 def warning_for_param(config, rule, param, wildcard, our_default=None):
-    value = get_param_value_from_config([rule, param], config)
+    value = A([rule, param], config)
     if value:
         warning_message = 'You chose to define %s for the rule %s in the config file as %s.\
                            while this is allowed, know that you are doing so at your own risk.\
