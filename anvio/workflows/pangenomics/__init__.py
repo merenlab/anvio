@@ -35,21 +35,12 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         self.general_params.extend(["project_name", "samples_txt"])
 
-        self.dirs_dict.update(
-                {
-                    "FASTA_DIR": "01_FASTA",
-                    "CONTIGS_DIR": "02_CONTIGS",
-                    "PAN_DIR": "03_PAN"
-                }
-                             )
+        self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
+                               "CONTIGS_DIR": "02_CONTIGS",
+                               "PAN_DIR": "03_PAN"})
 
-        self.default_config.update(
-                                    {
-                                     "samples_txt": "samples.txt",
-                                     "anvi_pan_genome": {"threads": 20}
-                                    }
-                                  )
-        
+        self.default_config.update({"samples_txt": "samples.txt",
+                                    "anvi_pan_genome": {"threads": 20}})
 
         pan_params = ["--project-name", "--output-dir", "--genome-names", "--skip-alignments",\
                      "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
