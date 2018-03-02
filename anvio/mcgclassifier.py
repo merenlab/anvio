@@ -18,13 +18,11 @@ matplotlib.use('pdf')
 import anvio.utils as utils
 import matplotlib.pyplot as plt
 import anvio.terminal as terminal
-import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
 from scipy import odr as odr
 from anvio.mcgops import MCGPlots
 from anvio.errors import ConfigError
-from anvio.dbops import ProfileSuperclass
 from anvio.sequence import get_list_of_outliers
 from matplotlib.backends.backend_pdf import PdfPages
 
