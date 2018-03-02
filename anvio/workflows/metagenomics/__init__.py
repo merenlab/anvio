@@ -59,3 +59,14 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['anvi_merge'] = []
 
         self.rule_acceptable_params_dict = rule_acceptable_params_dict
+
+        self.dirs_dict.update(
+                {
+                    "QC_DIR": "01_QC",
+                    "FASTA_DIR": "02_FASTA",
+                    "CONTIGS_DIR": "03_CONTIGS",
+                    "MAPPING_DIR": "04_MAPPING",
+                    "PROFILE_DIR": "05_ANVIO_PROFILE",
+                    "MERGE_DIR": "06_MERGED"
+                }
+                             )

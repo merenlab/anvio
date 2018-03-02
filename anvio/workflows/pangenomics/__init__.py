@@ -35,6 +35,14 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         self.general_params.extend(["project_name", "samples_txt"])
 
+        self.dirs_dict.update(
+                {
+                    "FASTA_DIR": "01_FASTA",
+                    "CONTIGS_DIR": "02_CONTIGS",
+                    "PAN_DIR": "03_PAN"
+                }
+                             )
+
         self.default_config.update(
                                     {
                                      "samples_txt": "samples.txt",

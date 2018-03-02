@@ -54,6 +54,11 @@ class WorkflowSuperClass:
                 if param not in self.general_params:
                     self.general_params.append(param)
 
+        self.dirs_dict.update(
+                {
+                    "LOGS_DIR": "00_LOGS"
+                }
+                            )
 
         self.default_config = self.get_default_config()
 
