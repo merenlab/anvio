@@ -27,7 +27,7 @@ default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.enviro
 blank_default = "tnf-splits"
 single_default = "tnf"
 merged_default = "tnf-cov"
-pan_default="presence-absence"
+pan_default = "presence-absence"
 
 default_gene_caller = "prodigal"
 

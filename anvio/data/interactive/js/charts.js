@@ -30,6 +30,9 @@ var contextSvg;
 var state;
 var layers_ordered;
 var visible_layers;
+var contig_id;
+var highlight_gene;
+var gene_mode;
 
 
 function loadAll() {
@@ -45,21 +48,23 @@ function loadAll() {
     });
 
     contig_id = getParameterByName('id');
+    highlight_gene = getParameterByName('highlight_gene') == 'true';
+    gene_mode = getParameterByName('gene_mode') == 'true';
 
-
-    if (typeof sessionStorage.state === 'undefined')
+    if (typeof localStorage.state === 'undefined')
     {
-        alert("Something went wrong, couldn't access to sessionStorage");
+        alert("Something went wrong, couldn't access to localStorage");
     }
     else
     {
         // backup the state, if user changes the page (prev, next) we are going to overwrite it.
-        state = JSON.parse(sessionStorage.state);
-
+        state = JSON.parse(localStorage.state);
+        var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
         $.ajax({
-                type: 'GET',
+                type: 'POST',
                 cache: false,
-                url: '/data/charts/' + state['order-by'] + '/' + contig_id,
+                url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
+                data: {'state': JSON.stringify(state)},
                 success: function(contig_data) {
                     page_header = contig_data.title;
                     layers = contig_data.layers;
@@ -105,11 +110,20 @@ function loadAll() {
                         target_str = 'target="_top"';
                     }
 
+                    var inspect_mode = 'inspect';
+
+                    if (gene_mode) {
+                        inspect_mode = 'inspect_gene';
+                    }
+                    else if (highlight_gene) {
+                        inspect_mode = 'inspect_context';
+                    }
+
                     if(next_contig_name)
-                        next_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link('inspect', next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                        next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
                     if(previous_contig_name)
-                        prev_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link('inspect', previous_contig_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                        prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, previous_contig_name) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
                     $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
 
@@ -142,7 +156,7 @@ function showSetMaxValuesDialog() {
         var layer_name = layers_ordered[i];
         var layer_index = layers.indexOf(layer_name);
 
-        if (!(_state['layers'].hasOwnProperty(layer_name) && parseFloat(_state['layers'][layer_name]['height']) == 0)) {
+        if (!(state['layers'].hasOwnProperty(layer_name) && parseFloat(state['layers'][layer_name]['height']) == 0)) {
             var max_val
             var actual_max_val = Math.max.apply(null, coverage[layer_index]);;
             if (has_max_coverage_values) {

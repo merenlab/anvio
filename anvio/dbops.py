@@ -207,7 +207,7 @@ class ContigsSuperclass(object):
         self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
 
-    def init_splits_taxonomy(self, t_level = 't_genus'):
+    def init_splits_taxonomy(self, t_level='t_genus'):
         if not self.contigs_db_path:
             return
 
@@ -2213,12 +2213,15 @@ class ProfileSuperclass(object):
 
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
 
+        self.progress.new('Loading views%s' % (' for %d items' % len(splits_of_interest) if splits_of_interest else ''))
         for view in views_table:
+            self.progress.update('for %s' % view)
             table_name = views_table[view]['target_table']
             self.views[view] = {'table_name': table_name,
                                 'header': profile_db.db.get_table_structure(table_name)[1:],
                                 'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest, omit_parent_column=omit_parent_column)}
 
+        self.progress.end()
         profile_db.disconnect()
 
 

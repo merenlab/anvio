@@ -1,0 +1,57 @@
+Here you will find the current anvi'o programs in the latest stable version of the platform, and their help menu. The contents of this file was last updated on **{{ meta|lookup:"date" }}**, and then anvi'o looked like this:
+
+|Key|Value|
+|:--|:--:|
+{{ meta|lookup:"version" }}
+
+---
+
+# Summary
+
+**Main anvi'o programs ({{ program_names|length }})**
+{% for p in program_names %}[{{p}}](#{{p}}){% if forloop.last %}.{% else %}, {% endif %}{% endfor %}
+
+**Ad hoc anvi'o scripts ({{ script_names|length }})**
+{% for p in script_names %}[{{p}}](#{{p}}){% if forloop.last %}.{% else %}, {% endif %}{% endfor %}
+
+---
+
+# Programs
+
+Please let us know if there is something unclear in this output.
+
+{% for program_name in all_names %}
+## {{ program_name }}
+
+{% autoescape on %}{{ vignette|lookup:program_name|lookup:"description" }}{% endautoescape %}
+
+{% for tag in vignette|lookup:program_name|lookup:"tags" %}`{{ tag }}` {% endfor %}
+
+{% if vignette|lookup:program_name|lookup:"resources"|length %}
+**Example uses and other resources**
+
+{% for entry in vignette|lookup:program_name|lookup:"resources" %}
+* [{{ entry.0 }}]({{ entry.1 }})
+{% endfor %}
+{% endif %}
+
+**Usage**
+
+```
+{% autoescape off %}{{ vignette|lookup:program_name|lookup:"usage" }}{% endautoescape %}
+```
+
+**Parameters**
+
+{% for section in vignette|lookup:program_name|lookup:"params" %}
+
+**{{ section }}** {% autoescape on %}{{ vignette|lookup:program_name|lookup:"params"|lookup:section|lookup:"description" }}{% endautoescape %}
+
+```
+{% autoescape off %}{{ vignette|lookup:program_name|lookup:"params"|lookup:section|lookup:"params" }}{% endautoescape %}
+```
+
+{% endfor %}
+
+
+{% endfor %}

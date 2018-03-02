@@ -196,9 +196,11 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Search for a function or HMM hit and for each match \
-                                                    get the sequence starting with the match and including \
-                                                    a block of genes the follow the match.")
+    parser = argparse.ArgumentParser(description="Search for a function or HMM hit and for each matching gene \
+                                                    get the sequence including a block of genes the around the match.\
+                                                    The output will be written to a fasta file (or multiple files, see\
+                                                    --separate-fasta option below. The headers of the sequences in the\
+                                                    fasta file hold some information about the gene.)")
 
     groupA = parser.add_argument_group('Essential INPUT')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -210,7 +212,7 @@ if __name__ == '__main__':
                             Whereas, \"-n 5\" will give you five genes after (in addition to the gene that matched). \
                             To get only genes preceeding the match use \"-n 5,0\". \
                             If the number of genes requested exceeds the length of the contig, then the output \
-                            will include the the sequence until the end of the contig.')
+                            will include the sequence until the end of the contig.', required=True)
     groupB =  parser.add_argument_group('Additional essential INPUT - OPTION 1', "Search according to either HMM or functional annotations")
     groupB.add_argument('-s', '--search-term', help='Search term.')
     groupC =  parser.add_argument_group('Additional essential INPUT - OPTION 2', "Search specific gene id's")
@@ -219,7 +221,7 @@ if __name__ == '__main__':
 
     groupD = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be one FASTA file with all matches \
                                        or one FASTA per match (see --separate-fasta)") 
-    groupD.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    groupD.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
 
     groupE = parser.add_argument_group('ADDITIONAL STUFF', "Flags and parameters you can set according to your need")
     groupE.add_argument('--separate-fasta', default = False, action='store_true', help='Split each match to a separate FASTA file.')
