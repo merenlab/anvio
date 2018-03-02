@@ -36,7 +36,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.dirs_dict.update(
                 {
-
+                    "FASTA_DIR": "01_FASTA",
+                    "CONTIGS_DIR": "02_CONTIGS"
                 }
                              )
 
