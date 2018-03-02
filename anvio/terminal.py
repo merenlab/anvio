@@ -72,9 +72,12 @@ class Progress:
             self.terminal_width = 120
 
 
-    def new(self, pid):
+    def new(self, pid, discard_previous_if_exists=False):
         if self.pid:
-            raise TerminalError("Progress.new() can't be called before ending the previous one (Existing: '%s', Competing: '%s')." % (self.pid, pid))
+            if discard_previous_if_exists:
+                self.end()
+            else:
+                raise TerminalError("Progress.new() can't be called before ending the previous one (Existing: '%s', Competing: '%s')." % (self.pid, pid))
 
         if not self.verbose:
             return

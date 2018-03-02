@@ -636,12 +636,22 @@ function menu_callback(action, param) {
             break;
 
         case 'inspect_contig':
-            sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+            localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
             window.open(generate_inspect_link('inspect', item_name), '_blank');
             break;
 
+        case 'inspect_gene':
+            localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+            window.open(generate_inspect_link('inspect_gene', item_name), '_blank');
+            break;
+
+        case 'inspect_context':
+            localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+            window.open(generate_inspect_link('inspect_context', item_name), '_blank');
+            break;
+
         case 'inspect_gene_cluster':
-            sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+            localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
             window.open(generate_inspect_link('geneclusters', item_name), '_blank');
             break;
 

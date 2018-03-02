@@ -20,6 +20,7 @@ cp ../mock_files_for_merenlab_metagenomics_pipeline/*json $output_dir
 cp -R ../mock_files_for_merenlab_metagenomics_pipeline/three_samples_example/ $output_dir/three_samples_example/
 cp ../mock_files_for_merenlab_metagenomics_pipeline/samples*.txt $output_dir
 cp ../mock_files_for_merenlab_metagenomics_pipeline/references.txt $output_dir
+cp ../gen_contigs_db.snake $output_dir
 
 # we have to go into the test directory because snakemake requires you run the command from the directory where the snakemake is
 cd $output_dir

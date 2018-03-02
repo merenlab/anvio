@@ -48,7 +48,7 @@ function loadAll() {
 
     gene_cluster_name = getUrlVars()["id"];
     document.title = gene_cluster_name + " detailed";
-    state = JSON.parse(sessionStorage.state);
+    state = JSON.parse(localStorage.state);
 
     $.ajax({
         type: 'GET',
@@ -81,16 +81,16 @@ function loadAll() {
             }
 
             if(next_gene_cluster_name)
-                next_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link('geneclusters', next_gene_cluster_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link('geneclusters', next_gene_cluster_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
             if(previous_gene_cluster_name)
-                prev_str = '<a onclick="sessionStorage.state = JSON.serialize(state);" href="' + generate_inspect_link('geneclusters', previous_gene_cluster_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link('geneclusters', previous_gene_cluster_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
             document.getElementById("header").innerHTML = "<strong>" + gene_cluster_name + "</strong> with " + gene_caller_ids.length + " genes detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 
-            if (typeof sessionStorage.state === 'undefined')
+            if (typeof localStorage.state === 'undefined')
             {
-                alert("Something went wrong, couldn't access to sessionStorage");
+                alert("Something went wrong, couldn't access to localStorage");
             }
             else
             {
@@ -132,7 +132,7 @@ function createDisplay(){
 
         gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function(caller_id) {
             acid_sequences.push(gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id]);
-            order[layer] = count;
+            order[caller_id] = count;
             count = count + 1;
         });
     }
@@ -217,7 +217,7 @@ function createDisplay(){
                 for (var _letter_index=0; _letter_index < _sequence.length; _letter_index++) {
                     var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                     var index = _letter_index+offset;
-                    var num = order[layer];
+                    var num = order[caller_id];
                     var acid = _sequence[_letter_index];
                     var dict = coded_positions[index][num];
                     tspan.setAttribute('fill', dict[acid]);

@@ -141,12 +141,13 @@ class SummarizerSuperClass(object):
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
+        self.delete_output_directory_if_exists = True if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
 
         self.sanity_check()
 
         if self.output_directory:
             self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
-            filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=True)
+            filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
 
 
     def sanity_check(self):
@@ -341,7 +342,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
                     # populate the entry with item aditional data
                     for items_additional_data_key in self.items_additional_data_keys:
-                        entry.append(self.items_additional_data_dict[gene_cluster_name][items_additional_data_key])
+                        if gene_cluster_name in self.items_additional_data_dict:
+                            entry.append(self.items_additional_data_dict[gene_cluster_name][items_additional_data_key])
+                        else:
+                            entry.append('')
 
                     # populate the entry with functions.
                     for function_source in self.gene_clusters_function_sources:
@@ -1703,7 +1707,7 @@ class AdHocRunGenerator:
 
         data_file_path = self.matrix_data_for_clustering if self.matrix_data_for_clustering else self.view_data_path
 
-        clustering.get_newick_tree_data(data_file_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
+        clustering.create_newick_file_from_matrix_file(data_file_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
 
         self.progress.end()
 

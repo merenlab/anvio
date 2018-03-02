@@ -82,13 +82,6 @@ D = {
                       You can provide these names as a commma-separated list of names, or you can put them in a file,\
                       where you have a single genome name in each line, and provide the file path."}
                 ),
-    'serialized-profile': (
-            ['-d', '--serialized-profile'],
-            {'metavar': "PROFILE",
-             'help': "Serialized profile (PROFILE.cp). You can use anvi'o serialized profile files to re-do the\
-                      profiling much more quickly. This file is generated only if it is requested during the\
-                      initial profiling of the BAM file. See '--gen-serialized-profile' flag for details."}
-                ),
     'blank-profile': (
             ['--blank-profile'],
             {'default': False,
@@ -133,6 +126,24 @@ D = {
             {'metavar': 'FASTA',
              'help': "A FASTA-formatted input file"}
                 ),
+    'layers-information-file': (
+            ['-D', '--layers-information-file'],
+            {'metavar': 'FILE',
+             'help': "A TAB-delimited file with information about layers in your dataset. Each row in this\
+                      file must correspond to a sample name. Each column must contain a unique attribute.\
+                      Please refer to the documentation to learn more about the structure and purpose of\
+                      this file."}
+                ),
+    'layers-order-file': (
+            ['-R', '--layers-order-file'],
+            {'metavar': 'FILE',
+             'help': "A TAB-delimited file with three columns: 'attribute', 'basic', 'newick'. For each attribute,\
+                      the order of samples must be defined either in the 'basic' form or via a 'newick'-formatted\
+                      tree structurei that describes the organization of each sample. Anvi'o will look for a\
+                      comma-separated list of sample names for the 'basic' form. Please refer to the online docs\
+                      for more info. Also you shouldn't hesitate to try to find the right file format until you get\
+                      it working. There are stringent checks on this file, and you will not break anything while trying!."}
+                ),
     'split-length': (
             ['-L', '--split-length'],
             {'metavar': 'INT',
@@ -171,8 +182,8 @@ D = {
              'action': 'store_true',
              'help': "By default anvi'o will return hits even if they are partial. Declaring this flag will make\
                       anvi'o filter all hits that are partial. Partial hits are hits in which you asked for n1\
-                      genes before and n2 genes after the hits but the search hits the end of the contig before\
-                      finding the number of genes that you asked."}
+                      genes before and n2 genes after the gene that matched the search criteria but the search\
+                      hits the end of the contig before finding the number of genes that you asked."}
             ),
     'zeros-are-outliers': (
             ['--zeros-are-outliers'],
@@ -627,11 +638,33 @@ D = {
                       If you declare nothing, you may get everything. Or you may get an error. Really depends on the\
                       situation. Worth a try."}
                 ),
-    'gene-view': (
-            ['--gene-view'],
+    'gene-mode': (
+            ['--gene-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "TO DO."}
+             'help': "Initiate the interactive interface in \"gene mode\". In this mode, the items are genes (instead of\
+                      splits of contigs). The following views are avilable: detection (the detection value of each gene\
+                      in each sample). The mean_coverage (the mean coverage of genes). The non_outlier_mean_coverage\
+                      (the mean coverage of the non-outlier nucleotide positions of each gene in each sample (median absolute\
+                      deviation is used to remove outliers per gene per sample)). The non_outlier_coverage_std view (standrad deviation\
+                      of the coverage of non-outlier positions of genes in samples). You can also choose to order items\
+                      and layers according to each one of the aforementioned views. In addition, all layer ordering\
+                      that are avialable in the regular mode (i.e. the full mode where you have contigs/splits) are also\
+                      available in \"gene mode\", so that, for example, you can choose to order the layers according to \"detection\", and that\
+                      would be the order according to the detection values of splits, whereas if you choose \"genes_detections\"\
+                      then the order of layers would be according to the detection values of genes. Inspection and sequence\
+                      functionality are available (through the right-click menu), except now sequences are of the specific gene.\
+                      Inspection has now two options available: \"Inspect Context\", which brings you to the inspection page of the split\
+                      to which the gene belongs where the inspected gene will be highlighted in yellow in the bottom, and \"Inspect Gene\",\
+                      whih opens the inspection page only for the gene and 100 nts around each side of it (the purpose of this option\
+                      is to make the inspection page load faster if you only want to look at the nucleotide coverage of a specific gene).\
+                      NOTICE: You can't store states or collections in \"gene mode\". However, you still can make fake selections, and create\
+                      fake bins for your viewing covenience only (smiley). Search options are available, and you can even search for functions\
+                      if you have them in your contigs database. ANOTHER NOTICE: loading this mode might take a while if your bin\
+                      has many genes, and your profile database has many samples, this is beacause the gene coverages stats are\
+                      computed in an ad-hoc manner when you load this mode, we know this is not ideal and we plan to improve that\
+                      (along with other things). If you have suggestions/complaints regarding this mode please comment on this\
+                      github issue: https://goo.gl/yHhRei. Please refer to the online tutorial for more information."}
                 ),
     'gene-caller-id': (
             ['--gene-caller-id'],
@@ -1187,6 +1220,13 @@ D = {
                       hierarchical clustering of your items are preformed based on default clustering\
                       recipes matching to your database type."}
                 ),
+    'skip-variability-tables': (
+            ['--skip-variability-tables'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Processing variability tables in profile databse might take a very very long time. With\
+                      this flag you will be asking anvi'o to skip them."}
+                ),
     'enforce-hierarchical-clustering': (
             ['--enforce-hierarchical-clustering'],
             {'default': False,
@@ -1486,6 +1526,19 @@ D = {
              'help': "If you give this flag, Anvi'o will not open new browser to show Contigs database statistics and write all stats \
                       to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
                 ),
+    'workflow': (
+            ['--workflow'],
+            {'required': False,
+             'help': "\
+                      "}
+                ),
+    'list-workflows': (
+            ['--list-workflows'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "\
+                      "}
+                ),
 }
 
 # two functions that works with the dictionary above.
@@ -1534,6 +1587,14 @@ def set_version():
            t.profile_db_version, \
            t.auxiliary_data_version, \
            t.genomes_storage_vesion
+
+def get_version_tuples():
+    return [("Anvi'o version", __version__),
+            ("Profile DB version", __profile__version__),
+            ("Contigs DB version", __contigs__version__),
+            ("Pan DB version", __pan__version__),
+            ("Genome data storage version", __genomes_storage_version__),
+            ("Auxiliary data storage version", __auxiliary_data_version__)]
 
 
 def print_version():

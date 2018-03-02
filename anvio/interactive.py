@@ -87,7 +87,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.bin_ids_file_path = A('bin_ids_file')
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
-        self.gene_view = A('gene_view')
+        self.gene_mode = A('gene_mode')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
@@ -96,7 +96,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
 
-        if self.gene_view:
+        if self.gene_mode:
             if self.collection_name is None or self.bin_id is None:
                 raise ConfigError("Gene view requires a collection and a bin to be specified. If you want to \
                                     view all the genes in your profile database then you can use \
@@ -127,9 +127,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.mode:
             if self.manual_mode:
                 self.mode = 'manual'
-            elif self.gene_view:
+            elif self.gene_mode:
                 # collection mode and gene view mode both uses collection_name
-                # so gene_view needs to be placed before collection view
+                # so gene_mode needs to be placed before collection view
                 self.mode = 'gene'
             elif self.collection_name or self.list_collections:
                 self.mode = 'collection'
@@ -310,15 +310,38 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 continue
 
             item_layer_data_tuple = []
+            items_for_which_we_put_zeros_for_missing_values = set([])
             for item in self.displayed_item_names_ordered:
                 if item not in self.items_additional_data_dict:
                     if layer_type != str:
-                        raise ConfigError("'%s' is looks like numerical layer but value for '%s' is missing or empty. \
-                                          We do not support empty values for numerical layers yet." % (layer, item))
+                        item_layer_data_tuple.append((0.0, item))
+                        items_for_which_we_put_zeros_for_missing_values.add(item)
                     else:
                         item_layer_data_tuple.append(('', item))
                 else:
-                    item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
+                    if self.items_additional_data_dict[item][layer] == None:
+                        if layer_type != str:
+                            items_for_which_we_put_zeros_for_missing_values.add(item)
+                            item_layer_data_tuple.append((0.0, item))
+                        else:
+                            item_layer_data_tuple.append(('', item))
+                    else:
+                        item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
+
+            if len(items_for_which_we_put_zeros_for_missing_values):
+                self.progress.end()
+                self.run.warning("OK. While working on the layer '%s', which actually looked like a numerical layer, anvi'o realized\
+                                  that %d of your items (for instance '%s' was one of them) did not have a value for this layer. To\
+                                  make sure things will continue working in the interface, anvi'o took the liberty of adding zeros\
+                                  as values for these items. Which is not the smartest thing to do, but we unfortunately do not\
+                                  support empty values for numerical layers yet. In MetalBeard's voice: things shall continue to\
+                                  work, but ye here be warned. Back to anvi'o regular voice: Please keep this in mind while you\
+                                  are studying the interactive interface be extra careful how to interpret your analysis when\
+                                  you see zero values in the layer '%s'." % (layer,
+                                                                             len(items_for_which_we_put_zeros_for_missing_values),
+                                                                             items_for_which_we_put_zeros_for_missing_values.pop(),
+                                                                             layer))
+                self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
 
             self.p_meta['available_item_orders'].append('>> %s:none:none' % layer)
             self.p_meta['item_orders']['>> %s' % layer] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple)]}
@@ -895,6 +918,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def load_gene_mode(self):
+        if not self.skip_init_functions:
+            self.init_functions()
+
         ProfileSuperclass.__init__(self, self.args)
 
         self.genes_in_splits_summary_dict = {}
@@ -949,12 +975,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.title = "Genes in '%s'" % self.bin_id
 
-        # FIXME: When we are in gene-view mode, our item names are no longer split names, hence the
+        # FIXME: When we are in gene-mode mode, our item names are no longer split names, hence the
         # following dictionaries are useless. Until we find a better way to fill them up with
         # potentially useful information, we can nullify them
+        self.split_lengths_info = dict([(split_name, self.splits_basic_info[split_name]['length']) for split_name in self.splits_basic_info])
         self.splits_basic_info = {}
         self.splits_taxonomy_dict = {}
         self.p_meta['description'] = 'None'
+
+        # FIX ME: storing collection and states is not available for gene mode atm.
+        self.args.read_only = True
 
         self.items_additional_data_keys, self.items_additional_data_dict = [], {}
 

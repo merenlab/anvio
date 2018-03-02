@@ -256,13 +256,13 @@ def is_program_exists(program, dont_raise=False):
 
     if fpath:
         if IsExe(program):
-            return True
+            return program
     else:
         for path in os.environ["PATH"].split(os.pathsep):
             path = os.path.expanduser(path).strip('"')
             exe_file = os.path.join(path, program)
             if IsExe(exe_file):
-                return True
+                return exe_file
 
     if dont_raise:
         return False
@@ -1600,6 +1600,10 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                                     either should be removed, or edited." % (line_counter + 2))
 
         line_fields = [f if f else None for f in line.strip('\n').split(separator)]
+
+        if line_fields and line_fields[0] == None:
+            raise ConfigError("The line number %d in '%s' has no data in its first column, and this doesn't\
+                               seem right at all :/" % (line_counter + 1, file_path))
 
         if column_mapping:
             updated_line_fields = []

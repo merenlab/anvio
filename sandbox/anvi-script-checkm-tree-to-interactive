@@ -20,11 +20,14 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
+__resources__ = [("The context in which the script was conceived", "https://anvio.slack.com/archives/C8SFMGYF3/p1518192776000335")]
+
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 taxon_letter_to_name = dict((column[2], column[2:]) for column in tables.taxon_names_table_structure[1:])
+
 
 def process(input_fasta_file, output_dir):
     filesnpaths.is_file_exists(input_fasta_file)
@@ -41,10 +44,10 @@ def process(input_fasta_file, output_dir):
     for match in re.finditer(uid_regex, newick):
         uid = match.group(1)
         taxonomy_list = match.group(2).split(';')
-       
+
         for taxonomy_item in taxonomy_list:
             if len(taxonomy_item):
-                # format of taxonomy_item is: 
+                # format of taxonomy_item is:
                 # o__Planctomycetales
                 taxon_letter, full_name = taxonomy_item[0], taxonomy_item[3:]
 
