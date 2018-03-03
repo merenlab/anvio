@@ -1529,15 +1529,14 @@ D = {
     'workflow': (
             ['--workflow'],
             {'required': False,
-             'help': "\
-                      "}
+             'help': "You must specify a workflow name. To see a list of available workflows\
+                      run --list-workflows."}
                 ),
     'list-workflows': (
             ['--list-workflows'],
             {'required': False,
              'action': 'store_true',
-             'help': "\
-                      "}
+             'help': "Print a list of available snakemake workflows"}
                 ),
 }
 

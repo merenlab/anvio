@@ -28,6 +28,7 @@ progress.verbose = False
 run = Run()
 run.verbose = False
 
+available_workflows = ['contigs']
 
 class WorkflowSuperClass:
     def __init__(self, config):
