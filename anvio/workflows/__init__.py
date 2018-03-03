@@ -63,7 +63,7 @@ class WorkflowSuperClass:
 
         self.default_config = self.get_default_config()
 
-        self.dirs_dict = self.get_dir_names()
+        self.dirs_dict.update(self.config.get("output_dirs"))
 
         # make sure that config file doesn't have garbage
         self.check_config()
@@ -81,14 +81,21 @@ class WorkflowSuperClass:
                         the following general parameters: %s. And these are the rules in this \
                         workflow: %s." % (wrong_params, self.general_params, self.rules))
 
+        wrong_dir_names = [d for d in self.config.get("output_dirs") if d not in self.dirs_dict]
+        if wrong_dir_names:
+            raise ConfigError("some of the directory names in your config file are not familiar to us. \
+                        Here is a list of the wrong directories: %s. This workflow only has \
+                        the following directories: %s." % (" ".join(wrong_dir_names), " ".join(list(self.dirs_dict.keys()))))
+
         self.check_rule_params()
 
 
     def get_default_config(self):
         c = self.fill_empty_config_params(self.default_config)
+        c.update(self.dirs_dict)
         return c
-        
-        
+
+
     def check_rule_params(self):
         for rule in self.rules:
             if rule in self.config:
@@ -170,11 +177,11 @@ class WorkflowSuperClass:
     def get_rule_param(self, _rule, _param):
         '''
             returns the parameter as an input argument
-        
+
             this function works differently for two kinds of parameters (flags, vs. non-flags)
             For example the parameter --use-ncbi-blast is a flag hence if the config file contains
             "--use-ncbi-blast": true, then this function would return "--use-ncbi-blast"
-            
+
             for a non-flag the value of the parameter would also be included, for example,
             if the config file contains "--min-occurence: 5" then this function will return
             "--min-occurence 5"
@@ -190,23 +197,6 @@ class WorkflowSuperClass:
 
 
     def T(self, rule_name): return self.get_param_value_from_config([rule_name,'threads']) if self.get_param_value_from_config([rule_name,'threads']) else 1
-
-
-    def get_dir_names(self):
-        ########################################
-        # Reading some definitions from config files (also some sanity checks)
-        ########################################
-        DICT = dirs_dict
-        for d in self.get_param_value_from_config("output_dirs"):
-            # renaming folders according to the config file, if the user specified.
-            if d not in DICT:
-                # making sure the user is asking to rename an existing folder.
-                raise ConfigError("You define a name for the directory '%s' in your "\
-                                  "config file, but the only available folders are: "\
-                                  "%s" % (d, DICT))
-
-            DICT[d] = self.get_param_value_from_config(["output_dirs", d])
-        return DICT
 
 
 # The config file contains many essential configurations for the workflow
