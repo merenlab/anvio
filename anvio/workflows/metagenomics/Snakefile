@@ -100,20 +100,19 @@ samples_txt_file = w.A("samples_txt", config, default_value="samples.txt")
 samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
 # get a list of the sample names
 sample_names = list(samples_information['sample'])
-
 # if no groups are supplied then group names are sample names
 group_names = sample_names
 
-if 'references_txt' in config:
-    # if the user supplied a reference.txt file, then there is no need to
-    # create an assembly (see documentation for 'reference-mode')
-    references_txt_file = config["references_txt"]
-    filesnpaths.is_file_exists(references_txt_file)
-    references_information = pd.read_csv(references_txt_file, sep='\t', index_col=0).to_dict(orient='index')
-    group_names = list(references_information.keys())
-    # in reference mode, unless specified by the user, then the name of 
-    # the directory with the formatted reference fasta will be 02_REFERENCE_FASTA
-    dirs_dict['FASTA_DIR'] = w.A(['output_dirs', 'FASTA_DIR'], config, default_value="02_REFERENCE_FASTA")
+references_mode = M.get_param_value_from_config('references_mode')
+if references_mode:
+    fasta_txt_file = M.get_param_value_from_config('fasta_txt')
+    try:
+        filesnpaths.is_file_exists(fasta_txt_file)
+    except FilesNPathsError as e:
+        raise ConfigError('In references mode you must supply a fasta_txt file.')
+
+    fasta_information = pd.read_csv(fasta_txt_file, sep='\t', index_col=0).to_dict(orient='index')
+    group_names = list(fasta_information.keys())
 
 # Collecting information regarding groups.
 if "group" in samples_information.columns:
@@ -123,20 +122,20 @@ if "group" in samples_information.columns:
     # the groups as values
     group_sizes = samples_information['group'].value_counts().to_dict()
 
-    if 'references_txt' in config:
+    if references_mode:
         # sanity check to see that groups specified in samples.txt match
-        # the names of references.
-        mismatch = set(group_names) - set(references_information.keys())
+        # the names of fasta.
+        mismatch = set(group_names) - set(fasta_information.keys())
         if mismatch:
             raise ConfigError("Group names specified in the samples.txt \
-                               file must match the names of references \
-                               in the reference.txt file. These are the \
+                               file must match the names of fasta \
+                               in the fasta.txt file. These are the \
                                mismatches: %s" % mismatch)
 
 else:
-    if 'references_txt' in config:
+    if references_mode:
         # if the user didn't provide a group column in the samples.txt,
-        # in reference mode the default is 'all_against_all'.
+        # in references mode the default is 'all_against_all'.
         config['all_against_all'] = True
     else:
         # if not groups were specified then each sample would be assembled
@@ -151,7 +150,7 @@ if w.A('all_against_all', config) :
     group_sizes = dict.fromkeys(group_names,len(sample_names))
 
 
-if not w.A('references_txt', config) and not w.A(['reformat_fasta','run'], config, True):
+if not references_mode and not w.A(['reformat_fasta','run'], config, True):
     # in assembly mode (i.e. not in references mode) we always have
     # to run reformat_fasta. The only reason for this is that
     # the megahit output is temporary, and if we dont run
