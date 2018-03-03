@@ -52,7 +52,7 @@ rule generate_and_annotate_contigs_db:
 rule anvi_script_reformat_fasta:
     '''
         Reformating the headers of the contigs fasta files.
-        
+
         This is required to make sure taht the headers don't contain
         any charachters that anvi'o doesn't like.It give contigs
         meaningful names; so that if the group name is 'MYSAMPLE01', the
@@ -120,7 +120,7 @@ def get_fasta(wildcards):
             output of remove_human_dna_using_centrifuge
             output of anvi_script_reformat_fasta
             raw fasta
-        Meaning that if host contamination removal was done then it's 
+        Meaning that if host contamination removal was done then it's
         output is the input fasta, elif anvi_script_reformat_fasta was ran then it's
         output will be used, otherwise the raw fasta will be used.
     '''
@@ -128,7 +128,7 @@ def get_fasta(wildcards):
     # Then the input will be the same as the one that would have been used
     # by the rule run_remove_human_dna_using_centrifuge
     contigs = input_for_run_remove_human_dna_using_centrifuge(wildcards)
-    
+
     if run_remove_human_dna_using_centrifuge:
         # if host contamination removal is used, then use it's output
         contigs = rules.remove_human_dna_using_centrifuge.output.contigs
@@ -274,7 +274,7 @@ rule annotate_contigs_database:
     '''
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-annotate_contigs_database.log"
-    input: 
+    input:
         # this is here just so snakemake would run the taxonomy before running this rule
         taxonomy = rules.anvi_import_taxonomy.output if run_taxonomy_with_centrifuge else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         # this is here just so snakemake would run the hmms before running this rule
