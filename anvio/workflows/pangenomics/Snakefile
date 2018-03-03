@@ -79,7 +79,7 @@ rule anvi_pan_genome:
 
 
 
-# generate external genomes storage 
+# generate external genomes storage
 rule gen_external_genome_file:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "" + "/gen_external_genome_file.log"
@@ -114,7 +114,7 @@ def input_for_anvi_gen_genomes_storage(wildcards):
     return d
 
 
-# generate anvi'o genomes storage 
+# generate anvi'o genomes storage
 rule anvi_gen_genomes_storage:
     log: dirs_dict["LOGS_DIR"] + "/anvi_gen_genomes_storage.log"
     threads: M.T("anvi_gen_genomes_storage")
