@@ -70,12 +70,15 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
+# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
+include: w.get_path_to_workflows_dir() + "/contigs/Snakefile"
+
+# it is important that this comes after the include statement since 
+# M is also defined in the contigs workflow
 M = MetagenomicsWorkflow(config)
 M.init()
 dirs_dict = M.dirs_dict
 
-# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
-include: w.get_path_to_workflows_dir() + "/contigs/Snakefile"
 localrules: all, annotate_contigs_database
 
 
