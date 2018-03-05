@@ -79,9 +79,6 @@ M = MetagenomicsWorkflow(config)
 M.init()
 dirs_dict = M.dirs_dict
 
-localrules: all, annotate_contigs_database
-
-
 # sanity check for requested assembly
 # make sure that the user is not requesting multiple assemblers
 available_assemblers = ['megahit', 'idba_ud']

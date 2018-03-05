@@ -11,6 +11,7 @@ M = ContigsDBWorkflow(config)
 M.init()
 dirs_dict = M.dirs_dict
 
+localrules: annotate_contigs_database
 # setting configuration for optional steps
 run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"])
 # default is NOT running taxonomy with centrifuge
