@@ -1,0 +1,2 @@
+sample	path
+s1	sandbox/contigs.fa
