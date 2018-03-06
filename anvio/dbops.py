@@ -1839,7 +1839,10 @@ class ProfileSuperclass(object):
         self.progress.new('Initializing the profile database superclass')
 
         self.progress.update('Loading split names')
-        self.split_names = utils.get_all_item_names_from_the_database(self.profile_db_path)
+        if utils.is_blank_profile(self.profile_db_path) and self.contigs_db_path:
+            self.split_names = utils.get_all_item_names_from_the_database(self.contigs_db_path)
+        else:
+            self.split_names = utils.get_all_item_names_from_the_database(self.profile_db_path)
 
         if self.split_names == self.split_names_of_interest:
             # the user is being silly. nick that split_names_of_interest
