@@ -232,6 +232,7 @@ For usage and examples: colpick.com/plugin
 				// Prevent the trigger of any direct parent
 				ev.stopPropagation();
 				var cal = $('#' + $(this).data('colpickId'));
+				$(this).colpickSetColor($(this).attr('color'));
 				cal.data('colpick').onBeforeShow.apply(this, [cal.get(0)]);
 				var pos = $(this).offset();
 				var top = pos.top + this.getBoundingClientRect().height;
