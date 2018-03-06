@@ -224,13 +224,12 @@ class Pangenome(object):
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         diamond.names_dict = unique_AA_sequences_names_dict
-        diamond.target_db_path = self.get_output_file_path(filesnpaths.get_name_from_file_path(unique_AA_sequences_fasta_path))
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
 
         diamond.sensitive = self.sensitive
 
-        return diamond.get_blastall_results()
+        return diamond.get_blast_results()
 
 
     def run_blast(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
@@ -242,10 +241,9 @@ class Pangenome(object):
 
         blast.names_dict = unique_AA_sequences_names_dict
         blast.log_file_path = self.log_file_path
-        blast.target_db_path = self.get_output_file_path(filesnpaths.get_name_from_file_path(unique_AA_sequences_fasta_path))
         blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
 
-        return blast.get_blastall_results()
+        return blast.get_blast_results()
 
 
     def run_search(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
