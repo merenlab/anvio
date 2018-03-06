@@ -1,4 +1,5 @@
 {
+    "fasta_txt": "sandbox/workflows/contigs/fasta.txt",
     "output_dirs":{
         "FSTA_DIR": "sandbox",
         "CONTIGS_DIR": "sandbox/workflows/contigs/02_CONTIGS"
