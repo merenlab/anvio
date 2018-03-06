@@ -4,9 +4,11 @@
 import sys
 import anvio
 import anvio.terminal as terminal
-import anvio.workflows as w
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.workflows.contigs import ContigsDBWorkflow
+from anvio.workflows.metagenomics import MetagenomicsWorkflow
+from anvio.workflows.pangenomics import PangenomicsWorkflow 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -20,10 +22,25 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
+workflows_dict = {'contigs': ContigsDBWorkflow,
+                  'metagenomics': MetagenomicsWorkflow,
+                  'pangenomics': PangenomicsWorkflow}
 
 def main(args):
     if args.list_workflows:
-        run.info("Available workflows", " ".join(w.available_workflows))
+        run.info("Available workflows", ", ".join(list(workflows_dict.keys())))
+        sys.exit(0)
+
+    if args.get_default_config:
+        if not args.workflow:
+            raise ConfigError("You must specify a workflow, for a list of available workflows\
+                               you can use --list-workflows.")
+        if not args.output_file:
+            raise ConfigError("You must specify an output file in order to get a default config.")
+
+        M = workflows_dict[args.workflow]({})
+        M.init()
+        M.save_default_config_in_json_format(args.output_file)
 
 
 if __name__ == '__main__':
@@ -35,6 +52,8 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A("workflow"), **anvio.K("workflow"))
     groupB = parser.add_argument_group('ADDITIONAL STUFF', "additional stuff")
     groupB.add_argument(*anvio.A("list-workflows"), **anvio.K("list-workflows"))
+    groupB.add_argument(*anvio.A("get-default-config"), **anvio.K("get-default-config"))
+    groupB.add_argument(*anvio.A("output-file"), **anvio.K("output-file"))
 
     args = anvio.get_args(parser)
 

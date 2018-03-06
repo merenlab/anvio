@@ -2,6 +2,7 @@ import anvio
 import pandas as pd
 import anvio.workflows as w
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows.contigs import ContigsDBWorkflow
 
@@ -20,6 +21,15 @@ M.init()
 dirs_dict = M.dirs_dict
 
 localrules: annotate_contigs_database
+
+group_names = []
+fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
+if fasta_txt_file:
+    filesnpaths.is_file_exists(fasta_txt_file)
+    fasta_information = pd.read_csv(fasta_txt_file, sep='\t', index_col=0).to_dict(orient='index')
+    group_names = list(fasta_information.keys())
+    reference_mode = True
+
 # setting configuration for optional steps
 run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"])
 # default is NOT running taxonomy with centrifuge
@@ -44,19 +54,16 @@ def get_raw_fasta(wildcards):
         This function also deals with the different cases of "reference mode"
         Vs. "assembly mode".
     '''
-    if 'references_txt' in config:
+    if reference_mode:
         # in 'reference mode' the input is the reference fasta
-        references_txt_file = config["references_txt"]
-        filesnpaths.is_file_exists(references_txt_file)
-        references_information = pd.read_csv(references_txt_file, sep='\t', index_col=0).to_dict(orient='index')
-        contigs = references_information[wildcards.group]['path']
+        contigs = fasta_information[wildcards.group]['path']
     else:
         # by default the input fasta is the assembly output
         contigs = dirs_dict["FASTA_DIR"] + "/%s/final.contigs.fa" % wildcards.group
     return contigs
 
 rule generate_and_annotate_contigs_db:
-    input: dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done"
+    input: expand(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done", group=group_names)
 
 rule anvi_script_reformat_fasta:
     '''
@@ -150,7 +157,7 @@ if contigs_project_name:
                  in the config file to %s. You are welcomed to do that, but at your own\
                  risk. Just so you know, by default the project name would match\
                  the name for each contigs file (as defined either in the samples_txt\
-                 or references_txt file that you supplied), by choosing to provide\
+                 or fasta_txt file that you supplied), by choosing to provide\
                  a different name, it means that all your contigs databases would have\
                  the same name, unless you incloded "{group}" in the name you provided\
                  but even then, we did not test that option and we are not sure it would\
@@ -189,10 +196,10 @@ rule anvi_gen_contigs_database:
 if run_taxonomy_with_centrifuge:
     # If the user wants taxonomy to be assigned with centrifuge
     # then these following rules would run.
-    rule export_gene_calls:
+    rule anvi_anvi_export_gene_calls:
         ''' Export gene calls and use for centrifuge'''
         version: 1.0
-        log: dirs_dict["LOGS_DIR"] + "/{group}-export_gene_calls.log"
+        log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_anvi_export_gene_calls.log"
         # marking the input as ancient in order to ignore timestamps.
         input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
         # output is temporary. No need to keep this file.
@@ -206,7 +213,7 @@ if run_taxonomy_with_centrifuge:
         ''' Run centrifuge on the exported gene calls of the contigs.db'''
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-centrifuge.log"
-        input: rules.export_gene_calls.output
+        input: rules.anvi_anvi_export_gene_calls.output
         output:
             hits = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_hits.tsv",
             report = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_report.tsv"
@@ -246,8 +253,8 @@ if run_anvi_run_hmms:
         # by the rule.
         output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done")
         params:
-            installed_hmm_profile = M.get_rule_param("anvi_gen_contigs_database", "--installed-hmm-profile"),
-            hmm_profile_dir = M.get_rule_param("anvi_gen_contigs_database", "--hmm-profile-dir"),
+            installed_hmm_profile = M.get_rule_param("anvi_run_hmms", "--installed-hmm-profile"),
+            hmm_profile_dir = M.get_rule_param("anvi_run_hmms", "--hmm-profile-dir"),
         threads: M.T('anvi_run_hmms')
         resources: nodes = M.T('anvi_run_hmms'),
         shell: "anvi-run-hmms -c {input} -T {threads} {params.hmm_profile_dir} {params.installed_hmm_profile} >> {log} 2>&1"

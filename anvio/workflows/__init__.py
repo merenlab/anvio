@@ -28,7 +28,6 @@ progress.verbose = False
 run = Run()
 run.verbose = False
 
-available_workflows = ['contigs']
 
 class WorkflowSuperClass:
     def __init__(self, config):
@@ -38,6 +37,7 @@ class WorkflowSuperClass:
         self.dirs_dict = {}
         self.general_params = []
         self.default_config = {}
+        self.rules_dependencies = {}
 
 
     def init(self):
@@ -50,11 +50,6 @@ class WorkflowSuperClass:
                 if param not in self.rule_acceptable_params_dict[rule]:
                     self.rule_acceptable_params_dict[rule].append(param)
 
-            general_params_that_all_workflows_must_accept = ['output_dirs']
-            for param in general_params_that_all_workflows_must_accept:
-                if param not in self.general_params:
-                    self.general_params.append(param)
-
         self.dirs_dict.update(
                 {
                     "LOGS_DIR": "00_LOGS"
@@ -63,7 +58,7 @@ class WorkflowSuperClass:
 
         self.default_config = self.get_default_config()
 
-        self.dirs_dict.update(self.config.get("output_dirs"))
+        self.dirs_dict.update(self.config.get("output_dirs", ''))
 
         # make sure that config file doesn't have garbage
         self.check_config()
@@ -81,7 +76,7 @@ class WorkflowSuperClass:
                         the following general parameters: %s. And these are the rules in this \
                         workflow: %s." % (wrong_params, self.general_params, self.rules))
 
-        wrong_dir_names = [d for d in self.config.get("output_dirs") if d not in self.dirs_dict]
+        wrong_dir_names = [d for d in self.config.get("output_dirs", '') if d not in self.dirs_dict]
         if wrong_dir_names:
             raise ConfigError("some of the directory names in your config file are not familiar to us. \
                         Here is a list of the wrong directories: %s. This workflow only has \
@@ -92,7 +87,7 @@ class WorkflowSuperClass:
 
     def get_default_config(self):
         c = self.fill_empty_config_params(self.default_config)
-        c.update(self.dirs_dict)
+        c["output_dirs"] = self.dirs_dict
         return c
 
 
@@ -163,12 +158,16 @@ class WorkflowSuperClass:
         if type(_list) is not list:
             # converting to list for the cases of only one item
             _list = [_list]
-        while _list and d:
+        while _list:
             a = _list.pop(0)
             default_dict = default_dict[a]
-            d = d.get(a, "")
+            try:
+                d = d.get(a, '')
+            except:
+                # we continue becuase we want to get the value from the default config
+                continue
 
-        if not d or repress_default:
+        if d or repress_default:
             return d
         else:
             return default_dict
