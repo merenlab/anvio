@@ -8,7 +8,6 @@
 
 import os
 import anvio
-import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 import anvio.terminal as terminal
@@ -87,8 +86,8 @@ class MCGPlots:
             # plot error box - a box with width and hight corresponding to the
             # standard deciation in sample nucleotide coverage and gene nucleotide
             # coverage correspondingly.
-            x_err_width = (axes.get_xlim()[1] - axes.get_xlim()[0]) / 20
-            y_err_width = (axes.get_ylim()[1] - axes.get_ylim()[0]) / 20
+            #x_err_width = (axes.get_xlim()[1] - axes.get_xlim()[0]) / 20
+            #y_err_width = (axes.get_ylim()[1] - axes.get_ylim()[0]) / 20
 
             for i in range(len(self.x)):
                 plot_err(self.x[i], self.std_x[i], self.y[i], self.std_y[i])
@@ -126,9 +125,9 @@ class MCGPlots:
         if self.save:
             output_dir = self.output_file_prefix + '_gene_consistency_plots'
             os.makedirs(output_dir, exist_ok=True)
-            output_file = output_dir + '/' + str(self.gene_id) + '.png' 
+            output_file = output_dir + '/' + str(self.gene_id) + '.png'
             plt.savefig(output_file, format='png')
-        plt.close() 
+        plt.close()
 
 
 def plot_err(x1,err_x1,x2,err_width,color='m',axis=0):
