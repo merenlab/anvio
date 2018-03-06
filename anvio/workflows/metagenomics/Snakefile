@@ -135,7 +135,7 @@ else:
         # in references mode the default is 'all_against_all'.
         config['all_against_all'] = True
     else:
-        # if not groups were specified then each sample would be assembled
+        # if no groups were specified then each sample would be assembled
         # separately
         samples_information['group'] = samples_information['sample']
         group_names = list(sample_names)
