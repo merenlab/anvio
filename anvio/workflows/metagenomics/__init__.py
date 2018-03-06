@@ -26,7 +26,7 @@ progress = terminal.Progress()
 
 
 class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
-    def __init__(self):
+    def __init__(self, config):
         ContigsDBWorkflow.__init__(self, config)
 
         self.rules = ['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',\
