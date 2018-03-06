@@ -31,7 +31,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         self.rules = ['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',\
                      'fq2fa', 'merge_fastas_for_co_assembly', 'megahit', 'anvi_script_anvi_script_reformat_fasta',\
-                     'anvi_gen_contigs_database', 'export_gene_calls', 'centrifuge',\
+                     'anvi_gen_contigs_database', 'anvi_export_gene_calls', 'centrifuge',\
                      'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam',\
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge']
@@ -45,7 +45,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['megahit'] = []
         rule_acceptable_params_dict['anvi_script_reformat_fasta'] = []
         rule_acceptable_params_dict['anvi_gen_contigs_database'] = []
-        rule_acceptable_params_dict['export_gene_calls'] = []
+        rule_acceptable_params_dict['anvi_export_gene_calls'] = []
         rule_acceptable_params_dict['centrifuge'] = []
         rule_acceptable_params_dict['anvi_import_taxonomy'] = []
         rule_acceptable_params_dict['anvi_run_hmms'] = []
