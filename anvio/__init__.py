@@ -1527,7 +1527,7 @@ D = {
                       to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
                 ),
     'workflow': (
-            ['--workflow'],
+            ['-w', '--workflow'],
             {'required': False,
              'help': "You must specify a workflow name. To see a list of available workflows\
                       run --list-workflows."}
@@ -1537,6 +1537,17 @@ D = {
             {'required': False,
              'action': 'store_true',
              'help': "Print a list of available snakemake workflows"}
+                ),
+    'get-default-config': (
+            ['--get-default-config'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "Store a json formatted config file with all the default settings of the\
+                      workflow. This is a good draft you could use in order to write your own\
+                      config file. This config file contains all parameters that could be configured\
+                      for this workflow. NOTICE: the config file is provided with default values\
+                      only for parameters that are set by us in the workflow. The values for the rest\
+                      of the parameters are determined by the relevant program."}
                 ),
 }
 
