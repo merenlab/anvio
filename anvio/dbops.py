@@ -795,6 +795,7 @@ class PanSuperclass(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.pan_db_path = A('pan_db')
         self.genomes_storage_path = A('genomes_storage')
+        self.skip_init_functions = A('skip_init_functions')
 
         self.genome_names = []
         self.gene_clusters = {}
@@ -877,6 +878,7 @@ class PanSuperclass(object):
             self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
                                                                self.p_meta['genomes_storage_hash'],
                                                                genome_names_to_focus=self.p_meta['genome_names'],
+                                                               skip_init_functions=self.skip_init_functions,
                                                                run=self.run,
                                                                progress=self.progress)
             self.genomes_storage_is_available = True

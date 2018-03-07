@@ -36,7 +36,7 @@ pp = terminal.pretty_print
 
 
 class GenomeStorage(object):
-    def __init__(self, storage_path, storage_hash=None,  genome_names_to_focus=None, create_new=False, run=run, progress=progress):
+    def __init__(self, storage_path, storage_hash=None, genome_names_to_focus=None, create_new=False, skip_init_functions=False, run=run, progress=progress):
         self.db_type = 'genomestorage'
         self.version = anvio.__genomes_storage_version__
         self.run = run
@@ -44,6 +44,7 @@ class GenomeStorage(object):
         self.progress = progress
         self.storage_path = storage_path
         self.genome_names_to_focus = genome_names_to_focus
+        self.skip_init_functions = skip_init_functions
 
         if create_new:
             self.check_storage_path_for_create_new()
@@ -127,7 +128,7 @@ class GenomeStorage(object):
         self.genomes_info = self.db.get_some_rows_from_table_as_dict(t.genome_info_table_name, where_clause)
 
         self.gene_info = {}
-        self.progress.update('Loading gene functions for %s genomes...' % len(self.genomes_info))
+        self.progress.update('Loading genes info for %s genomes...' % len(self.genomes_info))
         for gene_info_tuple in self.db.get_some_rows_from_table(t.gene_info_table_name, where_clause):
             genome_name, gene_caller_id, aa_sequence, dna_sequence, partial, length = gene_info_tuple
             if genome_name not in self.gene_info:
@@ -141,11 +142,13 @@ class GenomeStorage(object):
                 'functions': {}
             }
 
-            functions = self.db.get_some_rows_from_table(t.genome_gene_function_calls_table_name,
-                                                         'genome_name = "%s" and gene_callers_id = "%s"' % (genome_name, gene_caller_id))
 
-            for row in functions:
-                self.gene_info[genome_name][gene_caller_id]['functions'][row[3]] = "%s|||%s" % (row[4], row[5])
+            if not self.skip_init_functions:
+                functions = self.db.get_some_rows_from_table(t.genome_gene_function_calls_table_name,
+                                                             'genome_name = "%s" and gene_callers_id = "%s"' % (genome_name, gene_caller_id))
+
+                for row in functions:
+                    self.gene_info[genome_name][gene_caller_id]['functions'][row[3]] = "%s|||%s" % (row[4], row[5])
 
         self.progress.end()
 
@@ -332,6 +335,9 @@ class GenomeStorage(object):
     def get_gene_functions(self, genome_name, gene_callers_id):
         if not self.functions_are_available:
             raise ConfigError("Functions are not available in this genome storage ('%s'). " % self.storage_path)
+
+        if self.skip_init_functions:
+            raise ConfigError("Functions are not initialized for this genome storage ('%s'). " % self.storage_path)
 
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_callers_id)
