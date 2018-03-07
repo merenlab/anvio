@@ -50,6 +50,11 @@ class WorkflowSuperClass:
                 if param not in self.rule_acceptable_params_dict[rule]:
                     self.rule_acceptable_params_dict[rule].append(param)
 
+            general_params_that_all_workflows_must_accept = ['output_dirs']
+            for param in general_params_that_all_workflows_must_accept:
+                if param not in self.general_params:
+                    self.general_params.append(param)
+
         self.dirs_dict.update(
                 {
                     "LOGS_DIR": "00_LOGS"
