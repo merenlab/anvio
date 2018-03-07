@@ -920,6 +920,19 @@ class PanSuperclass(object):
                                you specified. This looks like a shitty design, but was required to support exploratory / ad hoc user wishes through\
                                both command line and interactive anvi'o interfaces.")
 
+        if not skip_alignments and self.gene_clusters_gene_alignments_available and report_DNA_sequences:
+            self.run.warning("Please read carefully. Here anvi'o attempts to get sequences for the gene clusters you are interested in. While\
+                              the amino acid sequences for those gene clusters were aligned, you are asking for DNA sequences. While amino acid\
+                              seuqence alignment summary (the anvi'o way of storing alignment information) can be used to align DNA sequences\
+                              instantaneously, due to intricacies of gene callers, the amino acid sequence of a gene stored in the\
+                              contigs database may differ from its DNA seqeunce. For those rare instances, the alignment summary for the amino acid\
+                              sequence can no longer be used to make sense of the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for\
+                              more informaiton). What needs to be done is to do another alignment on the fly. But as you probably already guessed,\
+                              anvi'o will not do that for you, and instad will report your DNA sequences for your genes in your gene clusters\
+                              unaligned. If you really really think anvi'o should do it you have two options: if you are a member of the MerenLab,\
+                              re-open and fix the issue #772. If you are not a member, then send us an e-mail.")
+            skip_alignments = True
+
         sequences = {}
 
         if not gene_cluster_names and not gene_clusters_dict:
