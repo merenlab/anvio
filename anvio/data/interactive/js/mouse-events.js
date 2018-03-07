@@ -587,7 +587,7 @@ function menu_callback(action, param) {
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/gene/' + item_name + '?timestamp=' + new Date().getTime(),
+                url: '/data/gene/' + item_name,
                 success: function(data) {
                     $('#modSplitSequence .modal-title').html('Gene Sequence');
                     $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
@@ -600,7 +600,7 @@ function menu_callback(action, param) {
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/contig/' + item_name + '?timestamp=' + new Date().getTime(),
+                url: '/data/contig/' + item_name,
                 success: function(data) {
                     $('#modSplitSequence .modal-title').html('Split Sequence');
                     $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
@@ -621,7 +621,7 @@ function menu_callback(action, param) {
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/hmm/' + item_name + '/' + param + '?timestamp=' + new Date().getTime(),
+                url: '/data/hmm/' + item_name + '/' + param,
                 success: function(data) {
                     if ('error' in data){
                         $('#modGenerateSummary').modal('hide');
@@ -659,7 +659,7 @@ function menu_callback(action, param) {
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/get_AA_sequences_for_gene_cluster/' + item_name + '?timestamp=' + new Date().getTime(),
+                url: '/data/get_AA_sequences_for_gene_cluster/' + item_name,
                 success: function(data) {
                     var output = '';
 

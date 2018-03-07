@@ -214,7 +214,7 @@ function show_sequence(gene_id) {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/gene/' + gene_id + '?timestamp=' + new Date().getTime(),
+        url: '/data/gene/' + gene_id,
         success: function(data) {
           show_sequence_modal('Split Sequence', data['header'] + '\n' + data['sequence']);
         }

@@ -212,7 +212,7 @@ function checkNews() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/news?timestamp=' + new Date().getTime(),
+        url: '/data/news',
         success: function(news) {
             var last_seen_hash = getCookie('last_seen_hash');
             var hash_found = false;
@@ -245,13 +245,11 @@ function newsMarkRead() {
 }
 
 function initData() {
-    var timestamp = new Date().getTime(); 
-
     $.when(
     $.ajax({
             type: 'GET',
             cache: false,
-            url: '/data/init?timestamp=' + timestamp,
+            url: '/data/init',
         })
     )
     .then(
@@ -389,7 +387,7 @@ function initData() {
                         $.ajax({
                                 type: 'POST',
                                 cache: false,
-                                url: '/store_description?timestamp=' + new Date().getTime(),
+                                url: '/store_description',
                                 data: {description: e.getContent()},
                                 success: function(data) {
                                     toastr.info("Description successfully saved to database.");
@@ -509,7 +507,7 @@ function onViewChange() {
                 $.ajax({
                     type: 'GET',
                     cache: false,
-                    url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
+                    url: '/data/view/' + $('#views_container').val(),
                     success: function(data) {
                         layerdata = eval(data);
                         parameter_count = layerdata[0].length;
@@ -887,7 +885,7 @@ function onTreeClusteringChange() {
                 $.ajax({
                     type: 'GET',
                     cache: false,
-                    url: '/tree/' + $('#trees_container').val() + '?timestamp=' + new Date().getTime(),
+                    url: '/tree/' + $('#trees_container').val(),
                     success: function(data) {
                         clusteringData = data;
                         $('#trees_container').attr('disabled', false);
@@ -1656,7 +1654,7 @@ function showGenSummaryWindow() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collections?timestamp=' + new Date().getTime(),
+        url: '/data/collections',
         success: function(data) {
             $('#summaryCollection_list').empty();
 
@@ -1955,7 +1953,7 @@ function showStoreCollectionWindow() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collections?timestamp=' + new Date().getTime(),
+        url: '/data/collections',
         success: function(data) {
             $('#storeCollection_list').empty();
 
@@ -2006,7 +2004,7 @@ function storeRefinedBins() {
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/data/store_refined_bins?timestamp=' + new Date().getTime(),
+        url: '/data/store_refined_bins',
         data: { data: JSON.stringify(data, null, 4), colors: JSON.stringify(colors, null, 4) },
         success: function(data) {
             if (data.status == -1){
@@ -2089,7 +2087,7 @@ function generateSummary() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/summarize/' + collection + '?timestamp=' + new Date().getTime(),
+        url: '/summarize/' + collection,
         success: function(data) {
             if ('error' in data){
                 $('#modGenerateSummary').modal('hide');
@@ -2114,7 +2112,7 @@ function showLoadCollectionWindow() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collections?timestamp=' + new Date().getTime(),
+        url: '/data/collections',
         success: function(data) {
             $('#loadCollection_list').empty();
 
@@ -2158,7 +2156,7 @@ function showCollectionDetails(list) {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collections?timestamp=' + new Date().getTime(),
+        url: '/data/collections',
         success: function(data) {
             var tbl = '<div class="col-md-12">Collection Details</div><hr>' +
                 '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>' + data[cname]['num_splits'] + '</b></div>' +
@@ -2212,7 +2210,7 @@ function loadCollection(default_collection) {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collection/' + collection + '?timestamp=' + new Date().getTime(),
+        url: '/data/collection/' + collection,
         success: function(data) {
             $('#modLoadCollection').modal('hide');
 
@@ -2273,7 +2271,7 @@ function showSaveStateWindow()
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/state/all?timestamp=' + new Date().getTime(),
+        url: '/state/all',
         success: function(state_list) {
             $('#saveState_list').empty();
 
@@ -2304,12 +2302,12 @@ function showGeneratePhylogeneticTreeWindow() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/phylogeny/programs?timestamp=' + new Date().getTime(),
+        url: '/data/phylogeny/programs',
         success: function(available_programs) {
               $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/phylogeny/aligners?timestamp=' + new Date().getTime(),
+                url: '/data/phylogeny/aligners',
                 success: function(available_aligners) {
                     $('#phylogeny_programs').empty();
                     for (var i=0; i < available_programs.length; i++) {
@@ -2365,7 +2363,7 @@ function generatePhylogeneticTree() {
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/data/phylogeny/generate_tree?timestamp=' + new Date().getTime(),
+        url: '/data/phylogeny/generate_tree',
         data: {
             'name': $('#phylogeny_name').val(),
             'program': $('#phylogeny_programs').val(),
@@ -2402,7 +2400,7 @@ function saveState()
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/state/all?timestamp=' + new Date().getTime(),
+        url: '/state/all',
         success: function(state_list) {
             for (state_name in state_list) {
                 if (state_name == name)
@@ -2418,7 +2416,7 @@ function saveState()
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/state/save/' + name + '?timestamp=' + new Date().getTime(),
+        url: '/state/save/' + name,
         data: {
             'content': JSON.stringify(serializeSettings(true), null, 4)
         },
@@ -2465,7 +2463,7 @@ function showUploadProject() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/state/all?timestamp=' + new Date().getTime(),
+        url: '/state/all',
         success: function(state_list) {
             for (state_name in state_list) {
                 $('#upload_state').append('<option>' + state_name + '</option>');
@@ -2474,7 +2472,7 @@ function showUploadProject() {
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/collections?timestamp=' + new Date().getTime(),
+                url: '/data/collections',
                 success: function(collection_list) {
                     for (collection_name in collection_list) {
                         $('#upload_collection').append('<option>' + collection_name + '</option>');
@@ -2490,7 +2488,7 @@ function uploadProject() {
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/upload_project?timestamp=' + new Date().getTime(),
+        url: '/upload_project',
         data: {
             username: $('#username').val(),
             password: $('#password').val(),
@@ -2523,7 +2521,7 @@ function showLoadStateWindow()
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/state/all?timestamp=' + new Date().getTime(),
+        url: '/state/all',
         success: function(state_list) {
             $('#loadState_list').empty();
 
@@ -2570,7 +2568,7 @@ function loadState()
                 $.ajax({
                         type: 'GET',
                         cache: false,
-                        url: '/state/get/' + state_name + '?timestamp=' + new Date().getTime(),
+                        url: '/state/get/' + state_name,
                         success: function(response) {
                             try{
                                 var state = JSON.parse(response);
