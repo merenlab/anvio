@@ -1540,8 +1540,8 @@ D = {
                 ),
     'get-default-config': (
             ['--get-default-config'],
-            {'required': False,
-             'action': 'store_true',
+            {'metavar': 'OUTPUT_FILENAME',
+             'type': str,
              'help': "Store a json formatted config file with all the default settings of the\
                       workflow. This is a good draft you could use in order to write your own\
                       config file. This config file contains all parameters that could be configured\
