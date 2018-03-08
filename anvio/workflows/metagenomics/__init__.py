@@ -26,8 +26,16 @@ progress = terminal.Progress()
 
 
 class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
-    def __init__(self, config):
-        ContigsDBWorkflow.__init__(self, config)
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        # know thyself.
+        self.name = 'metagenomics'
+
+        # initialize the base class
+        ContigsDBWorkflow.__init__(self)
 
         self.rules = ['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',\
                      'fq2fa', 'merge_fastas_for_co_assembly', 'megahit', 'anvi_script_anvi_script_reformat_fasta',\
@@ -60,13 +68,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         self.rule_acceptable_params_dict = rule_acceptable_params_dict
 
-        self.dirs_dict.update(
-                {
-                    "QC_DIR": "01_QC",
-                    "FASTA_DIR": "02_FASTA",
-                    "CONTIGS_DIR": "03_CONTIGS",
-                    "MAPPING_DIR": "04_MAPPING",
-                    "PROFILE_DIR": "05_ANVIO_PROFILE",
-                    "MERGE_DIR": "06_MERGED"
-                }
-                             )
+        self.dirs_dict.update({"QC_DIR": "01_QC",
+                               "FASTA_DIR": "02_FASTA",
+                               "CONTIGS_DIR": "03_CONTIGS",
+                               "MAPPING_DIR": "04_MAPPING",
+                               "PROFILE_DIR": "05_ANVIO_PROFILE",
+                               "MERGE_DIR": "06_MERGED"})
