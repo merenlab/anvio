@@ -91,7 +91,6 @@ var bin_prefix;
 var current_state_name = "";
 
 var unique_session_id;
-var ping_timer;
 var autoload_state;
 var autoload_collection;
 var mode;
@@ -204,8 +203,15 @@ $(document).ready(function() {
         }  
     });
 
+    if (!$.browser.chrome)
+    {
+        toastr.warning("We tested anvi'o only on Google Chrome, and it seems you are using a different browser.\
+                        For the best performance, and to avoid unexpected issues, please consider using anvi'o with\
+                        the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+    }
+
     initData();
-}); // document ready
+});
 
 function checkNews() {
     $('#news-panel-inner').empty();
@@ -245,6 +251,45 @@ function newsMarkRead() {
 }
 
 function initData() {
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/init',
+        success: function(response) {
+            mode = response.mode;
+            server_mode = response.server_mode;
+            switchUserInterfaceMode(response.project, response.title);
+
+            document.title = response.title;
+            $('#title-panel-first-line').text(response.title);
+
+            unique_session_id = response.sessionId;
+            if (!response.noPing) {
+                setTimeout(checkBackgroundProcess, 5000);
+            }
+
+            if(!response.inspectionAvailable){
+                toastr.info("Inspection of data items is not going to be available for this project.");
+                $('.menuItemInspect').addClass('menu-disabled');
+            }
+
+            if(!sequencesAvailable && mode != "collection" && mode != "pan"){
+                toastr.info("No sequence data is available. Some menu items will be disabled.");
+                $('.menuItemSequence').addClass('menu-disabled');
+            }
+
+            if (response.readOnly)
+            {
+                toastr.info("It seems that this is a read-only instance, therefore the database-writing \
+                            functions will be inaccessible.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+
+                $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
+            }
+
+
+        }
+    });
+
     $.when(
     $.ajax({
             type: 'GET',
@@ -261,7 +306,6 @@ function initData() {
         var viewsResponse = [ response.views ];
         var contigLengthsResponse = [ response.contigLengths ];
         var defaultViewResponse = [ response.defaultView ];
-        var modeResponse = [ response.mode ];
         var readOnlyResponse = [ response.readOnly ];
         var prefixResponse = [ response.binPrefix ];
         var sessionIdResponse = [ response.sessionId ];
@@ -274,135 +318,10 @@ function initData() {
         var sequencesAvailable = response.sequencesAvailable;
         var description = response.description;
         var project = response.project;
-            unique_session_id = sessionIdResponse[0];
-            mode = modeResponse[0];
-            server_mode = response.server_mode;
-
-        if(!inspectionAvailable){
-            toastr.info("Inspection of data items is not going to be available for this project.");
-            $('.menuItemInspect').addClass('menu-disabled');
-        }
-
-        if(!sequencesAvailable && mode != "collection" && mode != "pan"){
-            toastr.info("No sequence data is available. Some menu items will be disabled.");
-            $('.menuItemSequence').addClass('menu-disabled');
-        }
-
-        if (server_mode == false && (mode == 'pan' || mode == 'gene' || mode == 'full')) {
-            $('#search_functions_button').attr('disabled', false);
-            $('#searchFunctionsValue').attr('disabled', false);
-            $('.functions-not-available-message').hide();
-        }
-
-        if (! response.noPing) {
-            ping_timer = setInterval(checkBackgroundProcess, 5000);
-        }
-
-            if (!$.browser.chrome)
-            {
-                toastr.warning("We tested anvi'o only on Google Chrome, and it seems you are using a different browser. For the best performance, and to avoid unexpected issues, please consider using anvi'o with the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-            }
-
-            // hide all mode dependent divs:
-            $('.full-mode').hide();
-            $('.pan-mode').hide();
-            $('.collection-mode').hide();
-            $('.manual-mode').hide();
-            $('.server-mode').hide();
-            $('.refine-mode').hide();
-
-            console.log("The running mode for the interface: " + mode);
-
-            // mode switch:
-            if (mode == 'refine')
-            {
-                $('.refine-mode').show();
-                $('.nav-tabs').css('background-image', 'url(images/refine-bg.png)');
-            } else if (mode == 'full') {
-                $('.full-mode').show();
-                $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
-            } else if (mode == 'pan') {
-                $('.pan-mode').show();
-                $('.nav-tabs').css('background-image', 'url(images/pan-bg.png)');
-
-                $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
-                $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
-                $('#splits_title').hide();
-                $('#len_title').hide();
-
-                $('.gene-filters-not-available-message').hide();
-                $('.pan-filters button,input:checkbox').removeAttr('disabled')
-            } else if (mode == 'collection') {
-                $('.collection-mode').show();
-                $('.nav-tabs').css('background-image', 'url(images/collection-bg.png)');
-            } else if (mode == 'manual') {
-                $('.manual-mode').show();
-                $('.nav-tabs').css('background-image', 'url(images/manual-bg.png)');
-            } else if (mode == 'gene') {
-                $('.nav-tabs').css('background-image', 'url(images/gene-bg.png)');
-            }
-
-            if (server_mode) {
-                $('.server-mode').show();
-                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
-                $('#multiUser').show();
-                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
-                $('#multiUser > img').attr('src', project.user_avatar);
-                $('#multiUser > .download-button').attr('href', project.download_zip_url);
-                $('#sidebar').css('margin-top', '81px');
-                $('.upload-button').hide();
-            }
-
-            if (readOnlyResponse[0] == true)
-            {
-                toastr.info("It seems that this is a read-only instance, therefore the database-writing functions will be inaccessible.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-                $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
-            }
 
             bin_prefix = prefixResponse[0];
 
-            document.title = titleResponse[0];
-            $('#title-panel-first-line').text(titleResponse[0]);
 
-            $('#description-editor').val(description);
-            $('#description-editor').markdown({
-                'onShow': function (e) {
-                    $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
-                },
-                'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
-                'parser': function(content) {
-                    return renderMarkdown(content);
-                },
-                'additionalButtons': [
-                  [{
-                    data: [{
-                      name: 'cmdSave',
-                      title: 'Save',
-                      btnText: 'Save',
-                      btnClass: 'btn btn-success btn-sm',
-                      icon: {
-                        'glyph': 'glyphicon glyphicon-floppy-save',
-                      },
-                      callback: function(e) {
-                        $.ajax({
-                                type: 'POST',
-                                cache: false,
-                                url: '/store_description',
-                                data: {description: e.getContent()},
-                                success: function(data) {
-                                    toastr.info("Description successfully saved to database.");
-                                }
-                            });
-                      }
-                    }]
-                  }]
-                ],
-                'fullscreen': {'enable': false},
-            });
-
-            if (description.length > 100) {
-                toggleRightPanel('#description-panel');
-            }
 
             contig_lengths = eval(contigLengthsResponse[0]);
 
@@ -488,6 +407,84 @@ function initData() {
         toastr.error("One or more ajax request has failed, See console logs for details.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
         console.log(arguments);
     }); // promise
+}
+
+function switchUserInterfaceMode(project, title) {
+    if (server_mode == false && (mode == 'pan' || mode == 'gene' || mode == 'full')) {
+        $('#search_functions_button').attr('disabled', false);
+        $('#searchFunctionsValue').attr('disabled', false);
+        $('.functions-not-available-message').hide();
+    }
+
+    // hide all mode dependent divs:
+    $('.full-mode, .pan-mode, .collection-mode, .manual-mode, .server-mode, .refine-mode').hide();
+
+    console.log("The running mode for the interface: " + mode);
+
+    $('.' + mode + '-mode').show();
+    $('.nav-tabs').css('background-image', 'url(images/' + mode + '-bg.png)');
+
+    if (mode == 'pan') {
+        $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
+        $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
+        $('#splits_title').hide();
+        $('#len_title').hide();
+        $('.gene-filters-not-available-message').hide();
+        $('.pan-filters button,input:checkbox').removeAttr('disabled')
+    }
+
+    if (server_mode) {
+        $('.server-mode').show();
+        $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
+        $('#multiUser').show();
+        $('#multiUser > span').html('<b>' + title + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
+        $('#multiUser > img').attr('src', project.user_avatar);
+        $('#multiUser > .download-button').attr('href', project.download_zip_url);
+        $('#sidebar').css('margin-top', '81px');
+        $('.upload-button').hide();
+    }
+}
+
+function setupDescriptionPanel(description) {  
+    $('#description-editor').val(description);
+    $('#description-editor').markdown({
+        'onShow': function (e) {
+            $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
+        },
+        'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
+        'parser': function(content) {
+            return renderMarkdown(content);
+        },
+        'additionalButtons': [
+          [{
+            data: [{
+              name: 'cmdSave',
+              title: 'Save',
+              btnText: 'Save',
+              btnClass: 'btn btn-success btn-sm',
+              icon: {
+                'glyph': 'glyphicon glyphicon-floppy-save',
+              },
+              callback: function(e) {
+                $.ajax({
+                        type: 'POST',
+                        cache: false,
+                        url: '/store_description',
+                        data: {description: e.getContent()},
+                        success: function(data) {
+                            toastr.info("Description successfully saved to database.");
+                        }
+                    });
+              }
+            }]
+          }]
+        ],
+        'fullscreen': {'enable': false},
+    });
+
+    if (description.length > 100) {
+        toggleRightPanel('#description-panel');
+    }
 }
 
 function onViewChange() {
@@ -1318,6 +1315,8 @@ function getLayerId(layer_name)
     }
     return -1;
 }
+
+
 
 function serializeSettings(use_layer_names) {
 
