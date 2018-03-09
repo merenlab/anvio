@@ -3,11 +3,13 @@
 """Helper functions for the anvi'o snakemake workflows"""
 
 import os
+import sys
+import json
 
 import anvio
 import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
 
-from anvio.terminal import Run, Progress
 from anvio.errors import ConfigError
 
 
@@ -21,17 +23,20 @@ __email__ = "alon.shaiber@gmail.com"
 __status__ = "Development"
 
 
-# Mock progress object that will not report anything, for general clarity.
-progress = Progress()
-progress.verbose = False
-
-run = Run()
-run.verbose = False
+run = terminal.Run()
+progress = terminal.Progress()
 
 
 class WorkflowSuperClass:
-    def __init__(self, config):
-        self.config = config
+    def __init__(self):
+        if 'args' not in self.__dict__:
+            raise ConfigError("You need to initialize `WorkflowSuperClass` from within a class that\
+                               has a member `self.args`.")
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.config = A('config')
+        self.default_config_output_path = A('get_default_config')
+
         self.rules = []
         self.rule_acceptable_params_dict = {}
         self.dirs_dict = {}
@@ -50,13 +55,18 @@ class WorkflowSuperClass:
                 if param not in self.rule_acceptable_params_dict[rule]:
                     self.rule_acceptable_params_dict[rule].append(param)
 
-        self.dirs_dict.update(
-                {
-                    "LOGS_DIR": "00_LOGS"
-                }
-                            )
+        self.dirs_dict.update({"LOGS_DIR": "00_LOGS"})
 
         self.default_config = self.get_default_config()
+
+        # the user requested to get a default config path for the workflow
+        if self.default_config_output_path:
+            self.save_default_config_in_json_format(self.default_config_output_path)
+            sys.exit()
+        elif not self.config:
+            raise ConfigError("You need a config file to run this :/ If you need help to start preparing\
+                               a config file for the anvi'o %s workflow, you can try the `--get-default-config`\
+                               flag." % (self.name))
 
         self.dirs_dict.update(self.config.get("output_dirs", ''))
 
@@ -101,19 +111,19 @@ class WorkflowSuperClass:
                                 parameters for this rule are %s." % (rule, wrong_params, self.rule_acceptable_params_dict[rule]))
 
 
-    def save_empty_config_in_json_format(self, filename='empty_config.json'):
-        self.save_config_in_json_format(filename, self.get_empty_config())
+    def save_empty_config_in_json_format(self, file_path='empty_config.json'):
+        self.save_config_in_json_format(file_path, self.get_empty_config())
+        self.run.info("Empty config file", "Stored for workflow '%s' as '%s'." % (self.name, file_path))
 
 
-    def save_default_config_in_json_format(self, filename='default_config.json'):
-        self.save_config_in_json_format(filename, self.default_config)
+    def save_default_config_in_json_format(self, file_path='default_config.json'):
+        self.save_config_in_json_format(file_path, self.default_config)
+        self.run.info("Default config file", "Stored for workflow '%s' as '%s'." % (self.name, file_path))
 
 
-    def save_config_in_json_format(self, filename, config):
-        import json
-        filesnpaths.is_output_file_writable(filename)
-
-        open(filename, 'w').write(json.dumps(config, indent=4))
+    def save_config_in_json_format(self, file_path, config):
+        filesnpaths.is_output_file_writable(file_path)
+        open(file_path, 'w').write(json.dumps(config, indent=4))
 
 
     def get_empty_config(self):
