@@ -30,7 +30,11 @@ class BLAST:
         """BLAST driver.
 
            We generate target database from the `target_fasta`. If `target_fasta` is None,
-           `query_fasta` is treated as `target_fasta`.
+           `query_fasta` is treated as `target_fasta`. If you don't have a FASTA file, but
+           all you have are X.phr, X.pin, and x.psq files, you can set `target_fasta` to
+           '/path/to/X' and it will still be OK. Calling the target FASTA creates some
+           confusion, but we hope if you are reading these lines you have the potential to
+           survive anything, so we are not that concerned really.
         """
         self.run = run
         self.progress = progress
@@ -87,7 +91,7 @@ class BLAST:
         if not os.path.exists(expected_output):
             self.progress.end()
             raise ConfigError("Pfft. Something probably went wrong with '%s' process since one of the expected output files are missing.\
-                                Please check the log file here: '%s." % (process, self.run.log_file_path))
+                               Please check the log file here: '%s'" % (process, self.run.log_file_path))
 
 
     def makedb(self):
