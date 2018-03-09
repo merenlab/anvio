@@ -1549,21 +1549,6 @@ D = {
                       only for parameters that are set by us in the workflow. The values for the rest\
                       of the parameters are determined by the relevant program."}
                 ),
-    'list-dependencies': (
-            ['--list-dependencies'],
-            {'required': False,
-             'action': 'store_true',
-             'help': "Print a list of the dependencies of this workflow. You must provide a workflow name\
-                      and a config file. snakemake will figure out which rules need to be run according\
-                      to your config file, and according to the files available on your disk. According\
-                      to the rules that need to be run, we will let you know which programs are going to\
-                      be used, so that you can make sure you have all of them installed and loaded."}
-                ),
-    'config-file': (
-            ['-c', '--config-file'],
-            {'required': False,
-             'help': "TBD"}
-                ),
 }
 
 # two functions that works with the dictionary above.

@@ -4,13 +4,11 @@
 import sys
 import anvio
 import anvio.terminal as terminal
-import anvio.utils as u
-import anvio.workflows as w
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.workflows.metagenomics import MetagenomicsWorkflow
-from anvio.workflows.pangenomics import PangenomicsWorkflow
+from anvio.workflows.pangenomics import PangenomicsWorkflow 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -44,12 +42,6 @@ def main(args):
         M.init()
         M.save_default_config_in_json_format(args.output_file)
 
-    if args.list_dependencies:
-        workflow_dir = w.get_path_to_workflows_dir()
-        snakefile = workflow_dir + "/" + args.workflow + "/Snakefile"
-        config = args.config_file
-        u.run_command("snakemake -s %s --configfile %s -np" % (snakefile, config))
-
 
 if __name__ == '__main__':
     import argparse
@@ -61,8 +53,6 @@ if __name__ == '__main__':
     groupB = parser.add_argument_group('ADDITIONAL STUFF', "additional stuff")
     groupB.add_argument(*anvio.A("list-workflows"), **anvio.K("list-workflows"))
     groupB.add_argument(*anvio.A("get-default-config"), **anvio.K("get-default-config"))
-    groupB.add_argument(*anvio.A("list-dependencies"), **anvio.K("list-dependencies"))
-    groupB.add_argument(*anvio.A("config-file"), **anvio.K("config-file"))
     groupB.add_argument(*anvio.A("output-file"), **anvio.K("output-file"))
 
     args = anvio.get_args(parser)
