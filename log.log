@@ -1,0 +1,8 @@
+# DATE: 09 Mar 18 10:00:55
+# CMD LINE: snakemake -s /Users/alonshaiber/github/anvio/anvio/workflows/contigs/Snakefile --configfile /Users/alonshaiber/Downloads/config.json -np
+AttributeError in line 19 of /Users/alonshaiber/github/anvio/anvio/workflows/contigs/Snakefile:
+'dict' object has no attribute '__dict__'
+  File "/Users/alonshaiber/github/anvio/anvio/workflows/contigs/Snakefile", line 19, in <module>
+  File "/Users/alonshaiber/github/anvio/anvio/workflows/contigs/__init__.py", line 50, in __init__
+  File "/Users/alonshaiber/github/anvio/anvio/workflows/__init__.py", line 37, in __init__
+  File "/Users/alonshaiber/github/anvio/anvio/workflows/__init__.py", line 36, in <lambda>
