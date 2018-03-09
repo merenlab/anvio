@@ -28,14 +28,17 @@ progress = terminal.Progress()
 
 
 class WorkflowSuperClass:
-    def __init__(self):
+    def __init__(self, config={}):
         if 'args' not in self.__dict__:
             raise ConfigError("You need to initialize `WorkflowSuperClass` from within a class that\
                                has a member `self.args`.")
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
-        self.config = A('config')
+        self.config_file = A('config_file')
         self.default_config_output_path = A('get_default_config')
+
+        if self.config_file:
+            self.config = json.load(open(self.config_file))
 
         self.rules = []
         self.rule_acceptable_params_dict = {}

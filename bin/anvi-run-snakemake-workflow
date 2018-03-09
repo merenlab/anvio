@@ -4,6 +4,8 @@
 import sys
 
 import anvio
+import anvio.utils as u
+import anvio.workflows as w
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -35,6 +37,12 @@ def main(args):
     M = workflows_dict[args.workflow](args)
     M.init()
 
+    if args.list_dependencies:
+        workflow_dir = w.get_path_to_workflows_dir()
+        snakefile = workflow_dir + "/" + args.workflow + "/Snakefile"
+        config = args.config_file
+        u.run_command("snakemake -s %s --configfile %s -np" % (snakefile, config), "log.log")
+
 
 if __name__ == '__main__':
     import argparse
@@ -47,6 +55,8 @@ if __name__ == '__main__':
     groupB = parser.add_argument_group('ADDITIONAL STUFF', "additional stuff")
     groupB.add_argument(*anvio.A("list-workflows"), **anvio.K("list-workflows"))
     groupB.add_argument(*anvio.A("get-default-config"), **anvio.K("get-default-config"))
+    groupB.add_argument(*anvio.A("list-dependencies"), **anvio.K("list-dependencies"))
+    groupB.add_argument(*anvio.A("config-file"), **anvio.K("config-file"))
 
     args = anvio.get_args(parser)
 
