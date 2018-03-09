@@ -4,7 +4,6 @@
     Classes to define and work with anvi'o pangenomics workflows.
 """
 
-
 import anvio
 import anvio.terminal as terminal
 
@@ -26,8 +25,16 @@ progress = terminal.Progress()
 
 
 class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
-    def __init__(self, config):
-        ContigsDBWorkflow.__init__(self, config)
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        # know thyself.
+        self.name = 'pangenomics'
+
+        # initialize the base class
+        ContigsDBWorkflow.__init__(self)
 
         self.rules.extend(['gen_external_genome_file',
                            'anvi_gen_genomes_storage',
