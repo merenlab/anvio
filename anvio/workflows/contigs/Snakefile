@@ -1,6 +1,7 @@
 import anvio
 import pandas as pd
 import anvio.workflows as w
+import anvio.utils as u
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -34,7 +35,7 @@ group_names = []
 fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
 if fasta_txt_file:
     filesnpaths.is_file_exists(fasta_txt_file)
-    fasta_information = pd.read_csv(fasta_txt_file, sep='\t', index_col=0).to_dict(orient='index')
+    fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
     group_names = list(fasta_information.keys())
     reference_mode = True
 
