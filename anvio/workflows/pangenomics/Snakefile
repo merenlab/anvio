@@ -11,6 +11,9 @@ from anvio.workflows.pangenomics import PangenomicsWorkflow
 # the directories in use for this workflow are "LOGS_DIR", "CONTIGS_DIR", "PROFILE_DIR", "PAN_DIR"
 
 M = PangenomicsWorkflow(config)
+# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
+# include statement must come before we get an instance of PangenomicsWorkflow class
+include: w.get_path_to_workflows_dir() + "/contigs/Snakefile"
 M.init()
 dirs_dict = M.dirs_dict
 
@@ -35,9 +38,6 @@ external_genomes_file = M.get_param_value_from_config(["anvi_gen_genomes_storage
 if (not internal_genomes_file) and (not external_genomes_file):
     raise ConfigError("You must provide a path to either internal_genomes_file or external_genomes_file\
                        or both.")
-
-# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
-include: w.get_path_to_workflows_dir() + "/contigs/Snakefile"
 
 # run pangenome
 rule anvi_pan_genome:
