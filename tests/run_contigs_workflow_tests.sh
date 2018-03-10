@@ -19,3 +19,6 @@ anvi-run-snakemake-workflow -w contigs -c default-config.json --list-dependencie
 
 INFO "Running contigs workflow"
 anvi-run-snakemake-workflow -w contigs -c default-config.json
+
+INFO "Examine contigs databases with anvi-display-contigs-stats"
+anvi-display-contigs-stats 02_CONTIGS/*db
