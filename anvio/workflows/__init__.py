@@ -28,12 +28,21 @@ progress = terminal.Progress()
 
 
 class WorkflowSuperClass:
-    def __init__(self, config={}):
+    def __init__(self):
         if 'args' not in self.__dict__:
             raise ConfigError("You need to initialize `WorkflowSuperClass` from within a class that\
                                has a member `self.args`.")
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        # FIXME: it is redundant to have both config and config_file
+        # Alon and Meren will discuss how to do this right.
+        # but for now this is how it is so things would work.
+        # basically, when this class is called from a snakefile
+        # then a config (dictionary) will be provided.
+        # When this class is called from anvi-run-snakemake-workflow
+        # for sanity checks  and things like that, then a config file
+        # will be provided.
+        self.config = A('config')
         self.config_file = A('config_file')
         self.default_config_output_path = A('get_default_config')
 

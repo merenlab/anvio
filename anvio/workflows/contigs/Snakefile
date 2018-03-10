@@ -16,7 +16,15 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-M = ContigsDBWorkflow(config)
+# Ok, so the next few lines are not so great.
+# Meren and Alon should discuss how to do this right.
+# but for now we will do things this way so it would work.
+class ARGS:
+    pass
+args = ARGS()
+args.config = config
+
+M = ContigsDBWorkflow(args)
 M.init()
 dirs_dict = M.dirs_dict
 

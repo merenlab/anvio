@@ -1,2 +1,4 @@
-sample	path
-s1	sandbox/contigs.fa
+name	path
+s01	01.fa
+s02	02.fa
+s03	03.fa
