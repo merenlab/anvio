@@ -27,6 +27,8 @@ M.init()
 dirs_dict = M.dirs_dict
 
 project_name = config["project_name"]
+if not project_name:
+    raise ConfigError("You must provide a project name in your config file.")
 pan_project_name = M.get_param_value_from_config(["anvi_pan_genome", "--project-name"])
 if pan_project_name:
     run.warning('you chose to set the "--project-name" parameter for "anvi_pan_genome". That is ok\
