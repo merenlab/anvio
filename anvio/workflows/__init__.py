@@ -87,9 +87,6 @@ class WorkflowSuperClass:
 
         self.dirs_dict.update(self.config.get("output_dirs", ''))
 
-        # make sure that config file doesn't have garbage
-        self.check_config()
-
         # create log dir if it doesn't exist
         os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
 
