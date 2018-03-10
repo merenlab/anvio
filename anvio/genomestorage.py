@@ -193,7 +193,7 @@ class GenomeStorage(object):
 
 
     def get_storage_hash(self):
-        return self.db.get_meta_value('hash')
+        return str(self.db.get_meta_value('hash'))
 
 
     def store_genomes(self, genome_descriptions):
