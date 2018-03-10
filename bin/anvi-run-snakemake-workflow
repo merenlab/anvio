@@ -47,6 +47,8 @@ def main(args):
     workflow_dir = w.get_path_to_workflows_dir()
     snakefile = workflow_dir + "/" + args.workflow + "/Snakefile"
     config_file = args.config_file
+    # Check that the config file is good
+    M.check_config()
 
     if args.list_dependencies:
         # FIXME: Alon wasn't sure how to run on command line without providing log file...
