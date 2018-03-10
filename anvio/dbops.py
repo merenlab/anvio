@@ -883,6 +883,8 @@ class PanSuperclass(object):
                                                                progress=self.progress)
             self.genomes_storage_is_available = True
             self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
+        else:
+            self.run.warning("The pan database is being initialized without a genomes storage.")
 
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
 
@@ -1101,6 +1103,12 @@ class PanSuperclass(object):
 
 
     def init_gene_clusters_functions(self):
+        if not self.genomes_storage_is_available:
+            self.run.warning("Someone tried to initialize gene cluster functions, but it seems there is no genomes\
+                              storage available to this run. That's OK. But no gene clusters functions for you\
+                              obviously.")
+            return
+
         self.progress.new('Initializing functions for gene clusters')
         self.progress.update('...')
         if not self.gene_clusters:
