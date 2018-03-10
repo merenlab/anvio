@@ -10,10 +10,19 @@ from anvio.workflows.pangenomics import PangenomicsWorkflow
 # the default names are defined in anvio/workflows/__init__.py
 # the directories in use for this workflow are "LOGS_DIR", "CONTIGS_DIR", "PROFILE_DIR", "PAN_DIR"
 
-M = PangenomicsWorkflow(config)
 # in order to generate the contigs databases we include the snakefile for the generation of contigs databases
 # include statement must come before we get an instance of PangenomicsWorkflow class
 include: w.get_path_to_workflows_dir() + "/contigs/Snakefile"
+
+# Ok, so the next few lines are not so great.
+# Meren and Alon should discuss how to do this right.
+# but for now we will do things this way so it would work.
+class ARGS:
+    pass
+args = ARGS()
+args.config = config
+
+M = PangenomicsWorkflow(args)
 M.init()
 dirs_dict = M.dirs_dict
 
