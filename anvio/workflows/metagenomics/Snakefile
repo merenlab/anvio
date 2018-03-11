@@ -247,8 +247,8 @@ rule iu_filter_quality_minoche:
         limit_num_pairs = M.get_rule_param("iu_filter_quality_minoche", "--limit-num-pairs"),
         print_qual_scores = M.get_rule_param("iu_filter_quality_minoche", "--print-qual-scores"),
         store_read_fate = M.get_rule_param("iu_filter_quality_minoche", "--store-read-fate")
-    threads: M.T(config, 'iu_filter_quality_minoche', 2)
-    resources: nodes = M.T(config, 'iu_filter_quality_minoche', 2),
+    threads: M.T(config, 'iu_filter_quality_minoche')
+    resources: nodes = M.T(config, 'iu_filter_quality_minoche'),
     shell:
         """
             iu-filter-quality-minoche {input.ini} {params.store_read_fate}\
