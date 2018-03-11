@@ -394,9 +394,30 @@ if w.A(['megahit', 'run'], config):
         input: unpack(get_fastq)
         params:
             # the minimum length for contigs (smaller contigs will be discarded)
-            min_contig_len = int(w.A(["megahit", "min_contig_len"], config, default_value="1000")),
-            # portion of total memory to use by megahit
-            memory = float(w.A(["megahit", "memory"], config, default_value=0.4))
+            min_contig_len = M.get_rule_param("megahit", "--min-contig-len"),
+            min_count = M.get_rule_param("megahit", "--min-count"),
+            k_min = M.get_rule_param("megahit", "--k-min"),
+            k_max = M.get_rule_param("megahit", "--k-max"),
+            k_step = M.get_rule_param("megahit", "--k-step"),
+            k_list = M.get_rule_param("megahit", "--k-list"),
+            no_mercy = M.get_rule_param("megahit", "--no-mercy"),
+            no_bubble = M.get_rule_param("megahit", "--no-bubble"),
+            merge_level = M.get_rule_param("megahit", "--merge-level"),
+            prune_level = M.get_rule_param("megahit", "--prune-level"),
+            prune_depth = M.get_rule_param("megahit", "--prune-depth"),
+            low_local_ratio = M.get_rule_param("megahit", "--low-local-ratio"),
+            max_tip_len = M.get_rule_param("megahit", "--max-tip-len"),
+            no_local = M.get_rule_param("megahit", "--no-local"),
+            kmin_1pass = M.get_rule_param("megahit", "--kmin-1pass"),
+            presets = M.get_rule_param("megahit", "--presets"),
+            memory = M.get_rule_param("megahit", "--memory"),
+            mem_flag = M.get_rule_param("megahit", "--mem-flag"),
+            use_gpu = M.get_rule_param("megahit", "--use-gpu"),
+            gpu_mem = M.get_rule_param("megahit", "--gpu-mem"),
+            keep_tmp_files = M.get_rule_param("megahit", "--keep-tmp-files"),
+            tmp_dir = M.get_rule_param("megahit", "--tmp-dir"),
+            continue = M.get_rule_param("megahit", "--continue"),
+            verbose = M.get_rule_param("megahit", "--verbose"),
         # Notice that megahit requires a directory to be specified as
         # output. If the directory already exists then megahit will not
         # run. To avoid this, the for megahit is a temporary directory,
@@ -414,12 +435,16 @@ if w.A(['megahit', 'run'], config):
             r1 = ','.join(input.r1)
             r2 = ','.join(input.r2)
 
-            cmd = "megahit -1 %s -2 %s" % (r1, r2) + \
-                " --min-contig-len {params.min_contig_len}" + \
-                " -m {params.memory}" + \
-                " -o {output.temp_dir}" + \
-                " -t {threads}" + \
-                " >> {log} 2>&1"
+            cmd = "megahit -1 %s -2 %s " % (r1, r2) + \
+                "-o {output.temp_dir} " + \
+                "-t {threads} " + \
+                "{params.min_contig_len} {params.min_count} {params.k_min} " + \
+                "{params.k_max} {params.k_step} {params.k_list} {params.no_mercy} " + \
+                "{params.no_bubble} {params.merge_level} {params.prune_level} " + \
+                "{params.prune_depth} {params.low_local_ratio} {params.max_tip_len} " + \
+                "{params.no_local} {params.kmin_1pass} {params.presets} {params.memory} " + \
+                "{params.mem_flag} {params.use_gpu} {params.gpu_mem} {params.keep_tmp_files} " + \
+                "{params.tmp_dir} {params.continue} {params.verbose} >> {log} 2>&1"
             print("Running: %s" % cmd)
             shell(cmd)
             shell("mv {output.temp_dir}/final.contigs.fa {output.contigs} >> {log} 2>&1")
