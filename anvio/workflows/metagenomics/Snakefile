@@ -242,11 +242,11 @@ rule iu_filter_quality_minoche:
         r2 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R2.fastq",
         stats = dirs_dict["QC_DIR"] + "/{sample}-STATS.txt"
     params:
-        ignore_deflines = w.B(config, "iu_filter_quality_minoche", "--ignore-deflines", True),
-        visualize_quality_curves = w.B(config, "iu_filter_quality_minoche", "--visualize-quality-curves"),
-        limit_num_pairs = w.B(config, "iu_filter_quality_minoche", "--limit-num-pairs"),
-        print_qual_scores = w.B(config, "iu_filter_quality_minoche", "--print-qual-scores"),
-        store_read_fate = w.B(config, "iu_filter_quality_minoche", "--store-read-fate")
+        ignore_deflines = M.get_rule_param("iu_filter_quality_minoche", "--ignore-deflines"),
+        visualize_quality_curves = M.get_rule_param("iu_filter_quality_minoche", "--visualize-quality-curves"),
+        limit_num_pairs = M.get_rule_param("iu_filter_quality_minoche", "--limit-num-pairs"),
+        print_qual_scores = M.get_rule_param("iu_filter_quality_minoche", "--print-qual-scores"),
+        store_read_fate = M.get_rule_param("iu_filter_quality_minoche", "--store-read-fate")
     threads: w.T(config, 'iu_filter_quality_minoche', 2)
     resources: nodes = w.T(config, 'iu_filter_quality_minoche', 2),
     shell:
