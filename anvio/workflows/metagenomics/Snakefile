@@ -186,8 +186,8 @@ rule iu_gen_configs:
         dir=dirs_dict["QC_DIR"],
         r1_prefix = w.B(config, "iu_gen_configs", "--r1-prefix"),
         r2_prefix = w.B(config, "iu_gen_configs", "--r2-prefix")
-    threads: w.T(config, 'iu_gen_configs')
-    resources: nodes = w.T(config, 'iu_gen_configs'),
+    threads: M.T(config, 'iu_gen_configs')
+    resources: nodes = M.T(config, 'iu_gen_configs'),
     shell: "iu-gen-configs {input} -o {params.dir} {params.r2_prefix} {params.r1_prefix} >> {log} 2>&1"
 
 
@@ -247,8 +247,8 @@ rule iu_filter_quality_minoche:
         limit_num_pairs = M.get_rule_param("iu_filter_quality_minoche", "--limit-num-pairs"),
         print_qual_scores = M.get_rule_param("iu_filter_quality_minoche", "--print-qual-scores"),
         store_read_fate = M.get_rule_param("iu_filter_quality_minoche", "--store-read-fate")
-    threads: w.T(config, 'iu_filter_quality_minoche', 2)
-    resources: nodes = w.T(config, 'iu_filter_quality_minoche', 2),
+    threads: M.T(config, 'iu_filter_quality_minoche', 2)
+    resources: nodes = M.T(config, 'iu_filter_quality_minoche', 2),
     shell:
         """
             iu-filter-quality-minoche {input.ini} {params.store_read_fate}\
@@ -262,8 +262,8 @@ rule gen_qc_report:
     log: dirs_dict["LOGS_DIR"] + "/gen_qc_report.log"
     input: expand(dirs_dict["QC_DIR"] + "/{sample}-STATS.txt", sample=sample_names)
     output: dirs_dict["QC_DIR"] + "/qc-report.txt"
-    threads: w.T(config, 'gen_qc_report', 1)
-    resources: nodes = w.T(config, 'gen_qc_report', 1)
+    threads: M.T(config, 'gen_qc_report', 1)
+    resources: nodes = M.T(config, 'gen_qc_report', 1)
     run: 
         report_dict = {}
         report_column_headers = ['number of pairs analyzed',
@@ -315,8 +315,8 @@ rule gzip_fastqs:
     log: dirs_dict["LOGS_DIR"] + "/{sample}-{R}-gzip.log"
     input: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq"
     output: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq.gz"
-    threads: w.T(config, 'gzip_fastqs')
-    resources: nodes = w.T(config, 'gzip_fastqs'),
+    threads: M.T(config, 'gzip_fastqs')
+    resources: nodes = M.T(config, 'gzip_fastqs'),
     shell: "gzip {input} >> {log} 2>&1"
 
 
@@ -344,8 +344,8 @@ rule fq2fa:
     log: dirs_dict["LOGS_DIR"] + "/{sample}-fq2fa.log"
     input: unpack(input_for_fq2fa)
     output: temp(dirs_dict["QC_DIR"] + "/{sample}-merged-reads.fa")
-    threads: w.T(config, 'fq2fa', 1)
-    resources: nodes = w.T(config, 'fq2fa', 1)
+    threads: M.T(config, 'fq2fa', 1)
+    resources: nodes = M.T(config, 'fq2fa', 1)
     shell: "fq2fa --merge {input} {output} >> {log} 2>&1"
 
 
@@ -354,8 +354,8 @@ rule merge_fastas_for_co_assembly:
     log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log"
     input: lambda wildcards: expand("{DIR}/{sample}-merged-reads.fa", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
     output: temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa")
-    threads: w.T(config, 'merge_fastas_for_co_assembly', 1)
-    resources: nodes = w.T(config, 'merge_fastas_for_co_assembly', 1)
+    threads: M.T(config, 'merge_fastas_for_co_assembly', 1)
+    resources: nodes = M.T(config, 'merge_fastas_for_co_assembly', 1)
     shell: "cat {input} > {output}"
 
 
@@ -371,8 +371,8 @@ if w.A(['idba_ud', 'run'], config):
         params:
             # the minimum length for contigs (smaller contigs will be discarded)
             min_contig = int(w.A(["idba_ud", "min_contig"], config, default_value="1000")),
-        threads: w.T(config, 'idba_ud', 11)
-        resources: nodes = w.T(config, 'idba_ud', 11)
+        threads: M.T(config, 'idba_ud', 11)
+        resources: nodes = M.T(config, 'idba_ud', 11)
         run:
             cmd = "idba_ud -o {output.temp_dir} --read {input.fasta}" + \ 
                     " --min_contig {params.min_contig}" + \ 
@@ -426,8 +426,8 @@ if w.A(['megahit', 'run'], config):
         output:
             temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa")
-        threads: w.T(config, 'megahit', 11)
-        resources: nodes = w.T(config, 'megahit', 11),
+        threads: M.T(config, 'megahit', 11)
+        resources: nodes = M.T(config, 'megahit', 11),
         # Making this rule a shadow rule so all extra files created by megahit
         # are not retaineded (it is not enough to define the directory as temporary
         # because when failing in the middle of a run, snakemake doesn't delete directories)
@@ -463,8 +463,8 @@ rule bowtie_build:
         o2 = expand(dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + '.rev.{i}.bt2', i=[1,2], group="{group}")
     params:
         prefix = dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs"
-    threads: w.T(config, 'bowtie_build', 4)
-    resources: nodes = w.T(config, 'bowtie_build', 4),
+    threads: M.T(config, 'bowtie_build', 4)
+    resources: nodes = M.T(config, 'bowtie_build', 4),
     shell: "bowtie2-build {input} {params.prefix} >> {log} 2>&1"
 
 
@@ -487,8 +487,8 @@ rule bowtie:
         dir = dirs_dict["MAPPING_DIR"] + "/{sample}",
         bowtie_build_prefix = rules.bowtie_build.params.prefix,
         additional_params = w.A(["bowtie", "additional_params"], config, default_value="--no-unal")
-    threads: w.T(config, 'bowtie', 10)
-    resources: nodes = w.T(config, 'bowtie', 10),
+    threads: M.T(config, 'bowtie', 10)
+    resources: nodes = M.T(config, 'bowtie', 10),
     shell: "bowtie2 --threads {threads} -x {params.bowtie_build_prefix} -1 {input.r1} -2 {input.r2} {params.additional_params} -S {output} >> {log} 2>&1"
 
 
@@ -500,8 +500,8 @@ rule samtools_view:
     params: additional_params = w.A(["samtools_view", "additional_params"], config, default_value="-F 4")
     # output as temp. we only keep the final bam file
     output: temp(dirs_dict["MAPPING_DIR"] + "/{group}/{sample}-RAW.bam")
-    threads: w.T(config, 'samtools_view', 4)
-    resources: nodes = w.T(config, 'samtools_view', 4),
+    threads: M.T(config, 'samtools_view', 4)
+    resources: nodes = M.T(config, 'samtools_view', 4),
     shell: "samtools view {params.additional_params} -bS {input} -o {output} >> {log} 2>&1"
 
 
@@ -513,8 +513,8 @@ rule anvi_init_bam:
     output:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam",
         bai = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam.bai"
-    threads: w.T(config, 'anvi_init_bam', 4)
-    resources: nodes = w.T(config, 'anvi_init_bam', 4),
+    threads: M.T(config, 'anvi_init_bam', 4)
+    resources: nodes = M.T(config, 'anvi_init_bam', 4),
     shell: "anvi-init-bam {input} -o {output.bam} >> {log} 2>&1"
 
 
@@ -542,8 +542,8 @@ rule anvi_profile:
         profile_AA = "--profile-AA-frequencies" if w.A(["anvi_profile", "profile_AA"], config)  else "",
         report_variability_full = "--report-variability-full" if w.A(["anvi_profile", "report_variability_full"], config)  else "",
         output_dir = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}"
-    threads: w.T(config, 'anvi_profile', 5)
-    resources: nodes = w.T(config, 'anvi_profile', 5),
+    threads: M.T(config, 'anvi_profile', 5)
+    resources: nodes = M.T(config, 'anvi_profile', 5),
     shell: "anvi-profile -i {input.bam} -c {input.contigs} -o {params.output_dir} -M {params.min_contig_length} -S {params.name} -T {threads} --overwrite-output-destinations {params.cluster_contigs} {params.profile_AA} {params.report_variability_full} >> {log} 2>&1"
 
 
@@ -629,8 +629,8 @@ rule anvi_merge:
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
         runlog = dirs_dict["MERGE_DIR"] + "/{group}/RUNLOG.txt"
-    threads: w.T(config, 'anvi_merge')
-    resources: nodes = w.T(config, 'anvi_merge'),
+    threads: M.T(config, 'anvi_merge')
+    resources: nodes = M.T(config, 'anvi_merge'),
     params:
         output_dir = dirs_dict["MERGE_DIR"] + "/{group}",
         name = "{group}",
