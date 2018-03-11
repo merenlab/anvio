@@ -184,8 +184,8 @@ rule iu_gen_configs:
     output: temp(expand("{DIR}/{sample}.ini", DIR=dirs_dict["QC_DIR"], sample=sample_names))
     params:
         dir=dirs_dict["QC_DIR"],
-        r1_prefix = w.B(config, "iu_gen_configs", "--r1-prefix"),
-        r2_prefix = w.B(config, "iu_gen_configs", "--r2-prefix")
+        r1_prefix = M.get_rule_param("iu_gen_configs", "--r1-prefix"),
+        r2_prefix = M.get_rule_param("iu_gen_configs", "--r2-prefix")
     threads: M.T(config, 'iu_gen_configs')
     resources: nodes = M.T(config, 'iu_gen_configs'),
     shell: "iu-gen-configs {input} -o {params.dir} {params.r2_prefix} {params.r1_prefix} >> {log} 2>&1"
