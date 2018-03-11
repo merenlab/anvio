@@ -157,7 +157,7 @@ if not references_mode and not w.A(['reformat_fasta','run'], config, True):
                         "please change your config.json file")
 
 # by default fastq files will be zipped after qc is done
-run_gzip_fastqs = w.A(['gzip_fastqs', 'run'], config, True)
+run_gzip_fastqs = M.get_rule_param('gzip_fastqs', 'run')
 
 
 rule all:
