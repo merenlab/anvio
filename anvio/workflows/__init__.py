@@ -5,8 +5,11 @@
 import os
 import sys
 import json
+import copy
+import snakemake
 
 import anvio
+import anvio.utils as u
 import anvio.filesnpaths as filesnpaths
 import anvio.terminal as terminal
 
@@ -95,6 +98,34 @@ class WorkflowSuperClass:
         self.check_rule_params()
 
 
+    def go(self, skip_dry_run=False):
+        """Do the actual running"""
+
+        if not skip_dry_run:
+            self.dry_run()
+
+        # snakemake.main() accepts an `argv` parameter, but then the code has mixed responses to
+        # that, and at places continues to read from sys.argv in a hardcoded manner. so we have to
+        # overwrite our argv here.
+        original_sys_argv = copy.deepcopy(sys.argv)
+
+        sys.argv = ['snakemake',
+                    '--snakefile',
+                    get_workflow_snake_file_path(self.args.workflow),
+                    '--configfile',
+                    self.args.config_file]
+
+        if self.args.list_dependencies:
+            sys.argv.extend(['--dryrun', '--printshellcmds'])
+            snakemake.main()
+            sys.exit(0)
+        else:
+            sys.argv.extend(['-p'])
+            snakemake.main()
+
+        # restore the `sys.argv` to the original for the sake of sakity (totally made up word,
+        # but you already know what it measn. you're welcome.)
+        sys.argv = original_sys_argv
 
 
     def dry_run(self):
