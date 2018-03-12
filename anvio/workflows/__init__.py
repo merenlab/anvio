@@ -91,6 +91,28 @@ class WorkflowSuperClass:
         os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
 
 
+
+    def dry_run(self):
+        """Not your regular dry run.
+
+           The purpose of this function is to make sure there is a way to check for
+           workflow program dependencies before the workflow is actually run. this way,
+           if there is a `check_workflow_program_dependencies` call at the end of the
+           snake file `get_workflow_snake_file_path(self.name)`, it can be called with
+           a compiled snakemake `workflow` instance."""
+
+        self.progress.new('Bleep bloop')
+        self.progress.update('Quick dry run for an initial sanity check ...')
+        args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name), \
+                '--configfile', self.config_file, '--dryrun', '--quiet']
+
+        log_file_path = filesnpaths.get_temp_file_path()
+        self.progress
+        u.run_command(args, log_file_path)
+        os.remove(log_file_path)
+
+        self.progress.end()
+
     def check_config(self):
         acceptable_params = set(self.rules + self.general_params)
         wrong_params = [p for p in self.config if p not in acceptable_params]
