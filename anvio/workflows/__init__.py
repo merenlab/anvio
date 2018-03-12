@@ -301,7 +301,7 @@ def get_path_to_workflows_dir():
     return base_path
 
 
-def get_workflow_snakefile_path(workflow):
+def get_workflow_snake_file_path(workflow):
     workflow_dir = os.path.join(get_path_to_workflows_dir(), workflow)
 
     if not os.path.isdir(workflow_dir):
