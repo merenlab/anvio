@@ -90,6 +90,11 @@ class WorkflowSuperClass:
         # create log dir if it doesn't exist
         os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
 
+        # lets check everything
+        self.check_config()
+        self.check_rule_params()
+
+
 
 
     def dry_run(self):
@@ -127,8 +132,6 @@ class WorkflowSuperClass:
             raise ConfigError("some of the directory names in your config file are not familiar to us. \
                         Here is a list of the wrong directories: %s. This workflow only has \
                         the following directories: %s." % (" ".join(wrong_dir_names), " ".join(list(self.dirs_dict.keys()))))
-
-        self.check_rule_params()
 
 
     def get_default_config(self):
