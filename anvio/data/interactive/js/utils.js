@@ -312,7 +312,7 @@ function checkBackgroundProcess()
         cache: false,
         url: '/data/session_id',
         success: function (data) {
-            if (data != unique_session_id)
+            if (data != session_id)
             {
                 toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             }
