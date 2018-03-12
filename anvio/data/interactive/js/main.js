@@ -776,7 +776,7 @@ function syncViews() {
 
 
 function getComboBoxContent(default_item, available_items){
-    available_items = Object.keys(available_items).sort()
+    available_items = available_items.sort()
     var combo = '';
     var combo_item = '<option value="{val}"{sel}>{text}</option>';
 
