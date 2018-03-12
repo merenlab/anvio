@@ -1,7 +1,11 @@
-import anvio
+# -*- coding: utf-8
+
+import argparse
 import pandas as pd
-import anvio.workflows as w
+
+import anvio
 import anvio.utils as u
+import anvio.workflows as w
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -17,15 +21,9 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-# Ok, so the next few lines are not so great.
-# Meren and Alon should discuss how to do this right.
-# but for now we will do things this way so it would work.
-class ARGS:
-    pass
-args = ARGS()
-args.config = config
-
-M = ContigsDBWorkflow(args)
+# don't be confused, child. when things come to this point, the variable `config`
+# is already magically filled in by snakemake:
+M = ContigsDBWorkflow(argparse.Namespace(config=config))
 M.init()
 dirs_dict = M.dirs_dict
 
@@ -33,6 +31,7 @@ localrules: annotate_contigs_database
 
 group_names = []
 fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
+
 if fasta_txt_file:
     filesnpaths.is_file_exists(fasta_txt_file)
     fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
@@ -41,17 +40,22 @@ if fasta_txt_file:
 
 # setting configuration for optional steps
 run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"])
+
 # default is NOT running taxonomy with centrifuge
 run_taxonomy_with_centrifuge = M.get_param_value_from_config(["centrifuge", "run"])
+
 # default is running anvi_run_hmms
 run_anvi_run_hmms = M.get_param_value_from_config(["anvi_run_hmms", "run"])
+
 # default is running anvi_run_ncbi_cogs
 run_anvi_run_ncbi_cogs = M.get_param_value_from_config(["anvi_run_ncbi_cogs", "run"])
+
 # sanity check for centrifuge db
 if run_taxonomy_with_centrifuge:
     if not M.get_param_value_from_config(["centrifuge", "db"]):
         raise ConfigError("If you plan to run centrifuge, then you must "\
                           "provide a path for the centrifuge db in the "\
+
                           "config file. See documentation for more details.")
 
 def get_raw_fasta(wildcards):
