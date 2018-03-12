@@ -66,7 +66,7 @@ class BottleApplication(Bottle):
         self.export_svg = A('export_svg')
         self.server_only = A('server_only')
 
-        self.unique_session_id = random.randint(0,9999999999)
+        self.session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
 
         self.register_hooks()
@@ -277,19 +277,19 @@ class BottleApplication(Bottle):
                                  "server_mode":                        False,
                                  "read_only":                          self.read_only,
                                  "bin_prefix":                         bin_prefix,
-                                 "unique_session_id":                  self.unique_session_id,
+                                 "session_id":                         self.session_id,
                                  "layers_order":                       self.interactive.layers_order_data_dict,
                                  "layers_information":                 self.interactive.layers_additional_data_dict,
                                  "layers_information_default_order":   self.interactive.layers_additional_data_keys,
                                  "collection":                         None,
-                                 "ping":                               True,
+                                 "check_background_process":           True,
                                  "autodraw":                           autodraw,
                                  "inspection_available":               self.interactive.auxiliary_profile_data_available,
                                  "sequences_available":                True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
                                  "functions_initialized":              self.interactive.gene_function_calls_initiated })
 
         elif name == "session_id":
-            return json.dumps(self.unique_session_id)
+            return json.dumps(self.session_id)
 
 
     def get_view_data(self, view_id):

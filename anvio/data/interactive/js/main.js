@@ -90,7 +90,7 @@ var bin_prefix;
 
 var current_state_name = "";
 
-var unique_session_id;
+var session_id;
 var autoload_state;
 var autoload_collection;
 var mode;
@@ -222,8 +222,8 @@ function initData() {
             document.title = response.title;
             $('#title-panel-first-line').text(response.title);
 
-            unique_session_id = response.sessionId;
-            if (!response.noPing) {
+            session_id = response.session_id;
+            if (response.check_background_process) {
                 setTimeout(checkBackgroundProcess, 5000);
             }
 
