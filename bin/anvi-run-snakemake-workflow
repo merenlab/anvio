@@ -47,7 +47,7 @@ def main(args):
                            to learn what workflows are available, and you can use --get-default-config\
                            if you need help writing your config file.")
 
-    snake_file_path = w.get_workflow_snake_file_path_path(args.workflow)
+    snake_file_path = w.get_workflow_snake_file_path(args.workflow)
     config_file_path = args.config_file
     # Check that the config file is good
     M.check_config()
