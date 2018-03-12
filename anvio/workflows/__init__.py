@@ -294,10 +294,25 @@ def get_dir_names(config):
         DICT[d] = A(d,config["output_dirs"])
     return DICT
 
+
 def get_path_to_workflows_dir():
     # this returns a path
     base_path = os.path.dirname(__file__)
     return base_path
+
+
+def get_workflow_snakefile_path(workflow):
+    workflow_dir = os.path.join(get_path_to_workflows_dir(), workflow)
+
+    if not os.path.isdir(workflow_dir):
+        raise ConfigError("Anvi'o does not know about the workflow '%s' :/")
+
+    snakefile_path = os.path.join(workflow_dir, 'Snakefile')
+
+    if not os.path.exists(snakefile_path):
+        raise ConfigError("The snakefile path for the workflow '%s' seems to be missing :/" % workflow)
+
+    return snakefile_path
 
 
 def warning_for_param(config, rule, param, wildcard, our_default=None):
