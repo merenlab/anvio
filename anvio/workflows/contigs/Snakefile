@@ -276,7 +276,7 @@ rule anvi_run_ncbi_cogs:
     output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_ncbi_cogs-{group}.done")
     params:
         # anvi-run-ncbi-cogs params. See anvi-run-ncbi-cogs help menu for more info.
-        cogs_data_dir = M.get_rule_param('anvi_run_ncbi_cogs', '--cogs-data-dir'),
+        cog_data_dir = M.get_rule_param('anvi_run_ncbi_cogs', '--cog-data-dir'),
         sensitive = M.get_rule_param('anvi_run_ncbi_cogs', '--sensitive'),
         temporary_dir_path = M.get_rule_param('anvi_run_ncbi_cogs', '--temporary-dir-path'),
         search_with = M.get_rule_param('anvi_run_ncbi_cogs', '--search-with')
@@ -285,7 +285,7 @@ rule anvi_run_ncbi_cogs:
     shell:
         """
             anvi-run-ncbi-cogs -c {input} -T {threads}\
-                               {params.cogs_data_dir} {params.sensitive} {params.temporary_dir_path}\
+                               {params.cog_data_dir} {params.sensitive} {params.temporary_dir_path}\
                                {params.search_with} >> {log} 2>&1
         """
 

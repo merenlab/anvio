@@ -66,7 +66,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True}})
 
-        self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cogs-data-dir', '--sensitive', '--temporary-dir-path', '--search-with']
+        self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--sensitive', '--temporary-dir-path', '--search-with']
 
         self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir']
 
