@@ -257,6 +257,14 @@ function initData() {
 
 
             $('.loading-screen').hide();
+
+            if (response.autodraw)
+            {
+                $('#btn_draw_tree').removeClass('glowing-button');
+                drawTree();        
+            }
+
+            newBin();
         }
     });
 }
