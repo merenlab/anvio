@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+import os
 import sys
+import snakemake
 
 import anvio
-import anvio.utils as u
 import anvio.workflows as w
 import anvio.terminal as terminal
 
@@ -12,6 +13,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.workflows.metagenomics import MetagenomicsWorkflow
 from anvio.workflows.pangenomics import PangenomicsWorkflow
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -28,6 +30,7 @@ pp = terminal.pretty_print
 workflows_dict = {'contigs': ContigsDBWorkflow,
                   'metagenomics': MetagenomicsWorkflow,
                   'pangenomics': PangenomicsWorkflow}
+
 
 def main(args):
     if args.list_workflows:
@@ -51,15 +54,15 @@ def main(args):
     M.check_config()
 
     if args.list_dependencies:
-        # FIXME: Alon wasn't sure how to run on command line without providing log file...
-        # So silly log.log will be created
-        u.run_command("snakemake -s %s --configfile %s -np" % (snakefile, config_file), "log.log")
+        sys.argv = ['snakemake', '-s', snakefile, '--configfile', config_file, '-np']
+        snakemake.main()
         sys.exit(0)
 
-    # If everything is set, then run the workflow
-    # FIXME: Alon wasn't sure how to run on command line without providing log file...
-    # So silly log.log will be created
-    u.run_command("snakemake -s %s --configfile %s -p" % (snakefile, config_file), "log.log")
+    # snakemake.main() accepts an `argv` parameter, but then the code has mixed responses to
+    # that, and at places continues to read from sys.argv in a hardcoded manner. so we have to
+    # overwrite our argv here.
+    sys.argv = ['snakemake', '-s', snakefile, '--configfile', os.path.abspath(config_file), '-p']
+    snakemake.main()
 
 
 if __name__ == '__main__':
