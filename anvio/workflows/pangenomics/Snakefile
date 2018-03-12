@@ -12,7 +12,7 @@ from anvio.workflows.pangenomics import PangenomicsWorkflow
 
 # in order to generate the contigs databases we include the snakefile for the generation of contigs databases
 # include statement must come before we get an instance of PangenomicsWorkflow class
-include: w.get_path_to_workflows_dir() + "/contigs/Snakefile"
+include: w.get_workflow_snake_file_path('contigs')
 
 # Ok, so the next few lines are not so great.
 # Meren and Alon should discuss how to do this right.
