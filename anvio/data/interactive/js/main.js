@@ -232,7 +232,7 @@ function initData() {
                 $('.menuItemInspect').addClass('menu-disabled');
             }
 
-            if(!sequencesAvailable && mode != "collection" && mode != "pan"){
+            if(!response.sequencesAvailable && mode != "collection" && mode != "pan"){
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
                 $('.menuItemSequence').addClass('menu-disabled');
             }
@@ -245,127 +245,20 @@ function initData() {
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
 
+            bin_prefix = response.binPrefix;
 
+            var default_tree  = response.item_orders[0];
+            var available_trees = response.item_orders[1];
+            $('#trees_container').append(getComboBoxContent(default_tree, available_trees));
+
+            var default_view = response.views[0];
+            var available_views = response.views[1];
+            $('#views_container').append(getComboBoxContent(default_view, available_views));
+
+
+            $('.loading-screen').hide();
         }
     });
-
-    $.when(
-    $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/data/init',
-        })
-    )
-    .then(
-    function (response)
-        {
-        
-        var titleResponse = [ response.title ];
-        var itemOrdersResponse = [ response.item_orders ];
-        var viewsResponse = [ response.views ];
-        var contigLengthsResponse = [ response.contigLengths ];
-        var defaultViewResponse = [ response.defaultView ];
-        var readOnlyResponse = [ response.readOnly ];
-        var prefixResponse = [ response.binPrefix ];
-        var sessionIdResponse = [ response.sessionId ];
-        var samplesOrderResponse = [ response.samplesOrder ];
-        var sampleInformationResponse = [ response.sampleInformation ];
-        var sampleInformationDefaultLayerOrderResponse = [ response.sampleInformationDefaultLayerOrder ];
-        var stateAutoloadResponse = [ response.stateAutoload ];
-        var collectionAutoloadResponse = [ response.collectionAutoload ];
-        var inspectionAvailable = response.inspectionAvailable;
-        var sequencesAvailable = response.sequencesAvailable;
-        var description = response.description;
-        var project = response.project;
-
-            bin_prefix = prefixResponse[0];
-
-
-
-            contig_lengths = eval(contigLengthsResponse[0]);
-
-            // if --state parameter given, autoload given state.
-            autoload_state = stateAutoloadResponse[0];
-
-            // if --collection parameter given, autoload given collection.
-            autoload_collection = collectionAutoloadResponse[0];
-
-            /* 
-            //  Clusterings
-            */
-            var default_tree = itemOrdersResponse[0][0];
-            var available_trees = itemOrdersResponse[0][1];
-            var available_trees_combo = getComboBoxContent(default_tree, available_trees);
-
-            $('#trees_container').append(available_trees_combo);
-            $('#trees_container').change(function() {
-                onTreeClusteringChange();
-            });
-
-            /* 
-            //  Views
-            */
-            var default_view = viewsResponse[0][0];
-            var available_views = viewsResponse[0][1];
-            var available_views_combo = getComboBoxContent(default_view, available_views);
-
-            $('#views_container').append(available_views_combo);
-            $('#views_container').change(function() {
-                onViewChange();
-            });
-
-            // make layers and samples table sortable
-            var _notFirstSelector = ''
-            if (mode != 'manual' && mode != 'pan' && mode != 'server') {
-                _notFirstSelector = ':not(:first)';
-            }
-            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr" + _notFirstSelector}).disableSelection(); 
-            $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
-
-            samples_order_dict = samplesOrderResponse[0];
-            samples_information_dict = sampleInformationResponse[0];
-            samples_information_default_layer_order = sampleInformationDefaultLayerOrderResponse[0];
-
-            available_orders = Object.keys(samples_order_dict).sort();
-            $('#samples_order').append(new Option('custom'));
-            available_orders.forEach(function(order)
-            {
-                var order_name = order;
-                if (samples_order_dict[order]['newick'] != null && samples_order_dict[order]['newick'] != '')
-                    order_name += " (tree)";
-
-                $('#samples_order').append(new Option(order_name, order));
-            });
-            buildSamplesTable(samples_information_default_layer_order);
-            $('.loading-screen').hide();
-
-            // load default data
-            if (autoload_state !== null)
-            {
-                $('#btn_draw_tree').removeClass('glowing-button');
-                $.when({}).then(onViewChange)
-                      .then(loadState)
-                      .then(onViewChange)
-                      .then(onTreeClusteringChange)
-                      .then(function() {
-                        drawTree();
-                      });                
-            }
-            else
-            {
-                $.when({}).then(onViewChange)
-                          .then(onTreeClusteringChange);          
-            }
-
-            /*
-            //  Add bins
-            */
-            newBin();
-        } // response callback
-    ).fail(function() {
-        toastr.error("One or more ajax request has failed, See console logs for details.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-        console.log(arguments);
-    }); // promise
 }
 
 function switchUserInterfaceMode(project, title) {
