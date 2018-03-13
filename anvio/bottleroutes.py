@@ -269,6 +269,10 @@ class BottleApplication(Bottle):
 
                 autodraw = True
 
+            collection_dict = None
+            if self.interactive.collection_autoload:
+                collection_dict = json.loads(self.get_collection_dict(self.interactive.collection_autoload))
+
             return json.dumps( { "title":                              self.interactive.title,
                                  "description":                        self.interactive.p_meta['description'],
                                  "item_orders":                        (default_order, self.interactive.p_meta['item_orders'][default_order], list(self.interactive.p_meta['item_orders'].keys())),
@@ -288,7 +292,8 @@ class BottleApplication(Bottle):
                                  "inspection_available":               self.interactive.auxiliary_profile_data_available,
                                  "sequences_available":                True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
                                  "functions_initialized":              self.interactive.gene_function_calls_initiated,
-                                 "state":                              (self.interactive.state_autoload, state_dict) })
+                                 "state":                              (self.interactive.state_autoload, state_dict),
+                                 "collection":                         collection_dict })
 
         elif name == "session_id":
             return json.dumps(self.session_id)
@@ -335,7 +340,18 @@ class BottleApplication(Bottle):
     def get_state(self, state_name):
         if state_name in self.interactive.states_table.states:
             state = self.interactive.states_table.states[state_name]
-            return json.dumps(state['content'])
+            state_dict = json.loads(state['content'])
+
+            default_view = self.interactive.default_view
+            default_order = self.interactive.p_meta['default_item_order']
+
+            if state_dict['current-view'] in self.interactive.views:
+                default_view = state_dict['current-view']
+
+            if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
+                default_order = state_dict['order-by']
+
+            return json.dumps((state_dict, self.interactive.p_meta['item_orders'][default_order], self.interactive.views[default_view]))
 
         return json.dumps("")
 
@@ -600,7 +616,6 @@ class BottleApplication(Bottle):
 
     def get_collection_dict(self, collection_name):
         run.info_single('Data for collection "%s" has been requested.' % collection_name)
-        #set_default_headers(response)
 
         collection_dict = self.interactive.collections.get_collection_dict(collection_name)
         bins_info_dict = self.interactive.collections.get_bins_info_dict(collection_name)
