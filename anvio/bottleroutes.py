@@ -270,8 +270,8 @@ class BottleApplication(Bottle):
 
             return json.dumps( { "title":                              self.interactive.title,
                                  "description":                        self.interactive.p_meta['description'],
-                                 "item_orders":                        (self.interactive.p_meta['default_item_order'], list(self.interactive.p_meta['item_orders'].keys())),
-                                 "views":                              (self.interactive.default_view, list(self.interactive.views.keys())),
+                                 "item_orders":                        (default_order, self.interactive.p_meta['item_orders'][default_order], list(self.interactive.p_meta['item_orders'].keys())),
+                                 "views":                              (default_view, self.interactive.views[default_view], list(self.interactive.views.keys())),
                                  "contig_lengths":                     dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info]),
                                  "mode":                               self.interactive.mode,
                                  "server_mode":                        False,
