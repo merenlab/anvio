@@ -66,7 +66,7 @@ class BottleApplication(Bottle):
         self.export_svg = A('export_svg')
         self.server_only = A('server_only')
 
-        self.unique_session_id = random.randint(0,9999999999)
+        self.session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
 
         self.register_hooks()
@@ -100,7 +100,6 @@ class BottleApplication(Bottle):
         self.route('/data/<name>',                             callback=self.send_data)
         self.route('/data/view/<view_id>',                     callback=self.get_view_data)
         self.route('/tree/<items_order_id>',                   callback=self.get_items_order)
-        self.route('/state/autoload',                          callback=self.state_autoload)
         self.route('/state/all',                               callback=self.state_all)
         self.route('/state/get/<state_name>',                  callback=self.get_state)
         self.route('/state/save/<state_name>',                 callback=self.save_state, method='POST')
@@ -254,29 +253,50 @@ class BottleApplication(Bottle):
             if self.interactive.mode == 'refine':
                 bin_prefix = list(self.interactive.bins)[0] + "_" if len(self.interactive.bins) == 1 else "Refined_",
 
+            default_view = self.interactive.default_view
+            default_order = self.interactive.p_meta['default_item_order']
+            autodraw = False
+            state_dict = None
+            
+            if self.interactive.state_autoload:
+                state_dict = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
+
+                if state_dict['current-view'] in self.interactive.views:
+                    default_view = state_dict['current-view']
+
+                if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
+                    default_order = state_dict['order-by']
+
+                autodraw = True
+
+            collection_dict = None
+            if self.interactive.collection_autoload:
+                collection_dict = json.loads(self.get_collection_dict(self.interactive.collection_autoload))
+
             return json.dumps( { "title":                              self.interactive.title,
-                                 "description":                        (self.interactive.p_meta['description']),
-                                 "item_orders":                        (self.interactive.p_meta['default_item_order'], self.interactive.p_meta['item_orders']),
-                                 "views":                              (self.interactive.default_view, dict(list(zip(list(self.interactive.views.keys()), list(self.interactive.views.keys()))))),
-                                 "contigLengths":                      dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info]),
-                                 "defaultView":                        self.interactive.views[self.interactive.default_view],
+                                 "description":                        self.interactive.p_meta['description'],
+                                 "item_orders":                        (default_order, self.interactive.p_meta['item_orders'][default_order], list(self.interactive.p_meta['item_orders'].keys())),
+                                 "views":                              (default_view, self.interactive.views[default_view], list(self.interactive.views.keys())),
+                                 "contig_lengths":                     dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info]),
                                  "mode":                               self.interactive.mode,
                                  "server_mode":                        False,
-                                 "readOnly":                           self.read_only,
-                                 "binPrefix":                          bin_prefix,
-                                 "sessionId":                          self.unique_session_id,
-                                 "samplesOrder":                       self.interactive.layers_order_data_dict,
-                                 "sampleInformation":                  self.interactive.layers_additional_data_dict,
-                                 "sampleInformationDefaultLayerOrder": self.interactive.layers_additional_data_keys,
-                                 "stateAutoload":                      self.interactive.state_autoload,
-                                 "collectionAutoload":                 self.interactive.collection_autoload,
-                                 "noPing":                             False,
-                                 "inspectionAvailable":                self.interactive.auxiliary_profile_data_available,
-                                 "sequencesAvailable":                 True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
-                                 "functions_initialized":              self.interactive.gene_function_calls_initiated })
+                                 "read_only":                          self.read_only,
+                                 "bin_prefix":                         bin_prefix,
+                                 "session_id":                         self.session_id,
+                                 "layers_order":                       self.interactive.layers_order_data_dict,
+                                 "layers_information":                 self.interactive.layers_additional_data_dict,
+                                 "layers_information_default_order":   self.interactive.layers_additional_data_keys,
+                                 "collection":                         None,
+                                 "check_background_process":           True,
+                                 "autodraw":                           autodraw,
+                                 "inspection_available":               self.interactive.auxiliary_profile_data_available,
+                                 "sequences_available":                True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
+                                 "functions_initialized":              self.interactive.gene_function_calls_initiated,
+                                 "state":                              (self.interactive.state_autoload, state_dict),
+                                 "collection":                         collection_dict })
 
         elif name == "session_id":
-            return json.dumps(self.unique_session_id)
+            return json.dumps(self.session_id)
 
 
     def get_view_data(self, view_id):
@@ -301,10 +321,6 @@ class BottleApplication(Bottle):
         return json.dumps("")
 
 
-    def state_autoload(self):
-        return json.dumps(self.interactive.state_autoload)
-
-
     def state_all(self):
         return json.dumps(self.interactive.states_table.states)
 
@@ -324,7 +340,18 @@ class BottleApplication(Bottle):
     def get_state(self, state_name):
         if state_name in self.interactive.states_table.states:
             state = self.interactive.states_table.states[state_name]
-            return json.dumps(state['content'])
+            state_dict = json.loads(state['content'])
+
+            default_view = self.interactive.default_view
+            default_order = self.interactive.p_meta['default_item_order']
+
+            if state_dict['current-view'] in self.interactive.views:
+                default_view = state_dict['current-view']
+
+            if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
+                default_order = state_dict['order-by']
+
+            return json.dumps((state_dict, self.interactive.p_meta['item_orders'][default_order], self.interactive.views[default_view]))
 
         return json.dumps("")
 
@@ -589,7 +616,6 @@ class BottleApplication(Bottle):
 
     def get_collection_dict(self, collection_name):
         run.info_single('Data for collection "%s" has been requested.' % collection_name)
-        #set_default_headers(response)
 
         collection_dict = self.interactive.collections.get_collection_dict(collection_name)
         bins_info_dict = self.interactive.collections.get_bins_info_dict(collection_name)
@@ -882,8 +908,10 @@ class BottleApplication(Bottle):
     def get_available_phylogeny_programs(self):
         return json.dumps(list(drivers.driver_modules['phylogeny'].keys()))
 
+
     def get_available_aligners(self):
         return json.dumps(list(drivers.Aligners().aligners.keys()))
+
 
     def generate_tree(self):
         gene_clusters = set(request.forms.getall('gene_clusters[]'))
