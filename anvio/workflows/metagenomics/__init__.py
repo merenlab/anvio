@@ -58,16 +58,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                   "--presets", "--memory", "--mem-flag",
                                                   "--use-gpu", "--gpu-mem", "--keep-tmp-files",
                                                   "--tmp-dir", "--continue", "--verbose"]
-        rule_acceptable_params_dict['anvi_script_reformat_fasta'] = []
-        rule_acceptable_params_dict['anvi_gen_contigs_database'] = []
-        rule_acceptable_params_dict['anvi_export_gene_calls'] = []
-        rule_acceptable_params_dict['centrifuge'] = []
-        rule_acceptable_params_dict['anvi_import_taxonomy'] = []
-        rule_acceptable_params_dict['anvi_run_hmms'] = []
-        rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = []
         rule_acceptable_params_dict['bowtie_build'] = []
         rule_acceptable_params_dict['bowtie'] = []
-        rule_acceptable_params_dict['samtools_view'] = []
+        rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
         rule_acceptable_params_dict['anvi_init_bam'] = []
         rule_acceptable_params_dict['anvi_profile'] = []
         rule_acceptable_params_dict['annotate_contigs_database'] = []
@@ -84,7 +77,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         self.default_config.update({'megahit': {"--min_contig": 1000, "--memory": 0.4, "threads": 11},
                                     'iu_filter_quality_minoche': {"--ignore-deflines": True, "threads": 2},
-                                    "gzip_fastqs": {"run": True}})
+                                    "gzip_fastqs": {"run": True},
+                                    "samtools_view": {"additional_params": "-F 4", "threads": 4}})
 
         self.rules_dependencies.update({'megahit': 'megahit',
                                         'iu_gen_configs': "iu-gen-configs",
