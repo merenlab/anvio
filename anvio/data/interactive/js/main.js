@@ -218,6 +218,7 @@ function initData() {
             mode = response.mode;
             server_mode = response.server_mode;
             switchUserInterfaceMode(response.project, response.title);
+            setupDescriptionPanel(response.description);
 
             document.title = response.title;
             $('#title-panel-first-line').text(response.title);
@@ -248,12 +249,22 @@ function initData() {
             bin_prefix = response.binPrefix;
 
             var default_tree  = response.item_orders[0];
-            var available_trees = response.item_orders[1];
+            var available_trees = response.item_orders[2];
             $('#trees_container').append(getComboBoxContent(default_tree, available_trees));
+            clusteringData = response.item_orders[1];
 
             var default_view = response.views[0];
-            var available_views = response.views[1];
+            var available_views = response.views[2];
             $('#views_container').append(getComboBoxContent(default_view, available_views));
+            changeViewData(response.views[1]);
+
+            // make layers and samples table sortable
+            var _notFirstSelector = ''
+            if (mode != 'manual' && mode != 'pan' && mode != 'server') {
+                _notFirstSelector = ':not(:first)';
+            }
+            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr" + _notFirstSelector}).disableSelection(); 
+            $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
 
 
             $('.loading-screen').hide();
@@ -366,42 +377,7 @@ function onViewChange() {
                     cache: false,
                     url: '/data/view/' + $('#views_container').val(),
                     success: function(data) {
-                        layerdata = eval(data);
-                        parameter_count = layerdata[0].length;
-
-                        // since we are painting parent layers odd-even, 
-                        // we should remove single parents (single means no parent)
-                        removeSingleParents(); // in utils.js
-
-                        layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
-                        layer_types = {};
-
-                        // add layerdata columns to search window
-                        $('#searchLayerList').empty();
-                        for (var i=0; i < parameter_count; i++)
-                        {
-                            if (i == 0) {
-                                $('#searchLayerList').append(new Option("Item Name", i));
-                            } else {
-                                $('#searchLayerList').append(new Option(getPrettyName(layerdata[0][i]),i));
-                            }
-                        }
-
-                        $('#views_container').attr('disabled', false);
-                        $('#btn_draw_tree').attr('disabled', false);
-
-                        if (current_view != '') {
-                            // backup current layer order and layers table to global views object
-                            syncViews();
-                        }
-                        current_view = $('#views_container').val();
-
-                        $("#tbody_layers").empty();
-
-                        buildLayersTable(layer_order, views[current_view]);
-                        populateColorDicts();
-                        buildLegendTables();
-
+                        changeViewData(JSON.parse(data));
                         waitingDialog.hide();
                     }
                 });
@@ -410,6 +386,46 @@ function onViewChange() {
 
     return defer.promise();
 }
+
+
+function changeViewData(view_data) {
+    layerdata = view_data;
+    parameter_count = layerdata[0].length;
+
+    // since we are painting parent layers odd-even, 
+    // we should remove single parents (single means no parent)
+    removeSingleParents(); // in utils.js
+
+    layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
+    layer_types = {};
+
+    // add layerdata columns to search window
+    $('#searchLayerList').empty();
+    for (var i=0; i < parameter_count; i++)
+    {
+        if (i == 0) {
+            $('#searchLayerList').append(new Option("Item Name", i));
+        } else {
+            $('#searchLayerList').append(new Option(getPrettyName(layerdata[0][i]),i));
+        }
+    }
+
+    $('#views_container').attr('disabled', false);
+    $('#btn_draw_tree').attr('disabled', false);
+
+    if (current_view != '') {
+        // backup current layer order and layers table to global views object
+        syncViews();
+    }
+    current_view = $('#views_container').val();
+
+    $("#tbody_layers").empty();
+
+    buildLayersTable(layer_order, views[current_view]);
+    populateColorDicts();
+    buildLegendTables();
+}
+
 
 function populateColorDicts() {
     for (var layer_id=0; layer_id < parameter_count; layer_id++)
