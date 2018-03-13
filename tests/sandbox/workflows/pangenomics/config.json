@@ -26,7 +26,7 @@
     "anvi_run_ncbi_cogs": {
         "run": true,
         "threads": 5,
-        "--cogs-data-dir": "",
+        "--cog-data-dir": "",
         "--sensitive": "",
         "--temporary-dir-path": "",
         "--search-with": ""
