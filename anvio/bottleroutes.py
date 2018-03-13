@@ -256,6 +256,7 @@ class BottleApplication(Bottle):
             default_view = self.interactive.default_view
             default_order = self.interactive.p_meta['default_item_order']
             autodraw = False
+            state_dict = None
             
             if self.interactive.state_autoload:
                 state_dict = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
@@ -286,7 +287,8 @@ class BottleApplication(Bottle):
                                  "autodraw":                           autodraw,
                                  "inspection_available":               self.interactive.auxiliary_profile_data_available,
                                  "sequences_available":                True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
-                                 "functions_initialized":              self.interactive.gene_function_calls_initiated })
+                                 "functions_initialized":              self.interactive.gene_function_calls_initiated,
+                                 "state":                              (self.interactive.state_autoload, state_dict) })
 
         elif name == "session_id":
             return json.dumps(self.session_id)
