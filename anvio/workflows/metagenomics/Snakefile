@@ -464,8 +464,8 @@ rule bowtie_build:
         o2 = expand(dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + '.rev.{i}.bt2', i=[1,2], group="{group}")
     params:
         prefix = dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs"
-    threads: M.T(config, 'bowtie_build', 4)
-    resources: nodes = M.T(config, 'bowtie_build', 4),
+    threads: M.T('bowtie_build')
+    resources: nodes = M.T('bowtie_build'),
     shell: "bowtie2-build {input} {params.prefix} >> {log} 2>&1"
 
 
