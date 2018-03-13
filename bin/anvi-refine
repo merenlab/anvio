@@ -84,5 +84,5 @@ except DictIOError as e:
     sys.exit(-3)
 
 
-app = BottleApplication(d, args)
+app = BottleApplication(d)
 app.run_application(args.ip_address, args.port_number)
