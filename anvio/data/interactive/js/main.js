@@ -91,8 +91,6 @@ var bin_prefix;
 var current_state_name = "";
 
 var session_id;
-var autoload_state;
-var autoload_collection;
 var mode;
 var server_mode = false;
 var samples_tree_hover = false;
@@ -284,7 +282,7 @@ function initData() {
             changeViewData(response.views[1]);
 
             if (response.state) {
-                processState(response.state[0], response.state[1], false);
+                processState(response.state[0], response.state[1]);
             }
 
             $('.loading-screen').hide();
@@ -292,7 +290,12 @@ function initData() {
             if (response.autodraw)
             {
                 $('#btn_draw_tree').removeClass('glowing-button');
-                drawTree();        
+                drawTree();
+
+                if (response.collection !== null && mode !== 'refine' && mode !== 'gene')
+                {
+                    processCollection(response.collection);
+                }
             }
 
             newBin();
@@ -1367,12 +1370,6 @@ function drawTree() {
                     $('#tree-radius-container').show();
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
-
-                if (autoload_collection !== null && mode !== 'refine' && mode !== 'gene')
-                {
-                    loadCollection(autoload_collection);
-                    autoload_collection = null;
-                }
             },
         });
 }
@@ -2068,12 +2065,8 @@ function loadCollection(default_collection) {
         return;
     }
 
-    var collection;
-    if (default_collection) {
-        collection = default_collection;
-    } else {
-        collection = $('#loadCollection_list').val();
-    }
+    $('#modLoadCollection').modal('hide');
+    var collection = $('#loadCollection_list').val();
 
     if (collection === null) {
         toastr.warning('Please select a collection.');
@@ -2107,58 +2100,61 @@ function loadCollection(default_collection) {
         cache: false,
         url: '/data/collection/' + collection,
         success: function(data) {
-            $('#modLoadCollection').modal('hide');
-
-            // clear bins tab
-            var bins_cleared = false;
-            SELECTED = new Array();
-            bin_count = 0;
-            bin_counter = 0;
-
-            // calculate treshold.
-            var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
-
-            // load new bins
-            var bin_id=0;
-            for (bin in data['data'])
-            {
-                // collection may be contain unknown splits/contigs, we should clear them.
-                var contigs = new Array();
-                var sum_contig_length = 0;
-
-                for (index in data['data'][bin])
-                {
-                    if (mode === 'manual' || mode === 'pan' || mode === 'server'){
-                        contigs.push(data['data'][bin][index]);
-                    } else if (typeof contig_lengths[data['data'][bin][index]] !== 'undefined') {
-                        contigs.push(data['data'][bin][index]);
-                        sum_contig_length += contig_lengths[data['data'][bin][index]];
-                    }
-                    
-                }
-
-                if (mode === 'manual' || mode === 'pan' || mode === 'server' || sum_contig_length >= threshold)
-                {
-                    if (!bins_cleared)
-                    {
-                        $('#tbody_bins').empty();
-                        bins_cleared = true;
-                    }
-                    bin_id++;
-                    bin_counter++;
-                    SELECTED[bin_id] = contigs;
-
-                    var _color =  (data['colors'][bin]) ? data['colors'][bin] : randomColor();
-
-                    newBin(bin_id, {'name': bin, 'color': _color});
-                }
-            }
-
-            rebuildIntersections();
-            updateBinsWindow();
-            redrawBins();
+            processCollection(data);
         }
     });
+}
+
+function processCollection(collection_data) {
+
+    // clear bins tab
+    var bins_cleared = false;
+    SELECTED = new Array();
+    bin_count = 0;
+    bin_counter = 0;
+
+    // calculate treshold.
+    var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
+
+    // load new bins
+    var bin_id=0;
+    for (bin in collection_data['data'])
+    {
+        // collection may be contain unknown splits/contigs, we should clear them.
+        var contigs = new Array();
+        var sum_contig_length = 0;
+
+        for (index in collection_data['data'][bin])
+        {
+            if (mode === 'manual' || mode === 'pan' || mode === 'server'){
+                contigs.push(collection_data['data'][bin][index]);
+            } else if (typeof contig_lengths[collection_data['data'][bin][index]] !== 'undefined') {
+                contigs.push(collection_data['data'][bin][index]);
+                sum_contig_length += contig_lengths[collection_data['data'][bin][index]];
+            }
+            
+        }
+
+        if (mode === 'manual' || mode === 'pan' || mode === 'server' || sum_contig_length >= threshold)
+        {
+            if (!bins_cleared)
+            {
+                $('#tbody_bins').empty();
+                bins_cleared = true;
+            }
+            bin_id++;
+            bin_counter++;
+            SELECTED[bin_id] = contigs;
+
+            var _color =  (collection_data['colors'][bin]) ? collection_data['colors'][bin] : randomColor();
+
+            newBin(bin_id, {'name': bin, 'color': _color});
+        }
+    }
+
+    rebuildIntersections();
+    updateBinsWindow();
+    redrawBins();    
 }
 
 function showSaveStateWindow()
@@ -2431,28 +2427,14 @@ function showLoadStateWindow()
 
 function loadState()
 {
-    $('#modLoadState').modal('hide');
     var defer = $.Deferred();
-    var state_name;
-    if (autoload_state !== null)
-    {
-        state_name = autoload_state;
-        autoload_state = null // to prevent load again.
-
-        if ($('#panel-left').is(':visible')) {
-            setTimeout(toggleLeftPanel, 500);
-        }
-    }
-    else
-    {
-        if ($('#loadState_list').val() == null) {
-            defer.reject();
-            return;
-        }
-
-        state_name = $('#loadState_list').val();
+    $('#modLoadState').modal('hide');
+    if ($('#loadState_list').val() == null) {
+        defer.reject();
+        return;
     }
 
+    state_name = $('#loadState_list').val();
     waitingDialog.show('Requesting state data from the server ...', 
         {
             dialogSize: 'sm', 
@@ -2466,8 +2448,9 @@ function loadState()
                         url: '/state/get/' + state_name,
                         success: function(response) {
                             try{
-                                var state = JSON.parse(response);
-                                processState(state_name, state, true);
+                                clusteringData = response[1]['data'];
+                                changeViewData(response[2]);
+                                processState(state_name, response[0]);
                             }catch(e){
                                 toastr.error('Failed to parse state data, ' + e);
                                 defer.reject();
@@ -2479,12 +2462,11 @@ function loadState()
             },
         }
     );
-    
 
     return defer.promise();
 }
 
-function processState(state_name, state, trigger_combos) {
+function processState(state_name, state) {
     if (typeof trigger_combos === 'undefined') {
         trigger_combos = true;
     }
@@ -2492,8 +2474,7 @@ function processState(state_name, state, trigger_combos) {
     if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
     {
         toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
-        defer.reject();
-        return;
+        throw "";
     }
 
     if (state.hasOwnProperty('layer-order')) {
