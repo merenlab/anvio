@@ -281,7 +281,7 @@ function initData() {
             buildSamplesTable(samples_information_default_layer_order);
             changeViewData(response.views[1]);
 
-            if (response.state) {
+            if (response.state[0] && response.state[1]) {
                 processState(response.state[0], response.state[1]);
             }
 
