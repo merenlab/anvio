@@ -256,7 +256,6 @@ function initData() {
             var default_view = response.views[0];
             var available_views = response.views[2];
             $('#views_container').append(getComboBoxContent(default_view, available_views));
-            changeViewData(response.views[1]);
 
             // make layers and samples table sortable
             var _notFirstSelector = ''
@@ -265,7 +264,23 @@ function initData() {
             }
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr" + _notFirstSelector}).disableSelection(); 
             $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
+            
+            samples_order_dict = response.layers_order;
+            samples_information_dict = response.layers_information;
+            samples_information_default_layer_order = response.layers_information_default_order;
 
+            available_orders = Object.keys(samples_order_dict).sort();
+            $('#samples_order').append(new Option('custom'));
+            available_orders.forEach(function(order)
+            {
+                var order_name = order;
+                if (samples_order_dict[order]['newick'] != null && samples_order_dict[order]['newick'] != '')
+                    order_name += " (tree)";
+
+                $('#samples_order').append(new Option(order_name, order));
+            });
+            buildSamplesTable(samples_information_default_layer_order);
+            changeViewData(response.views[1]);
 
             $('.loading-screen').hide();
 
