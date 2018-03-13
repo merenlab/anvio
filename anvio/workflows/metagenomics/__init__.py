@@ -60,7 +60,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                   "--tmp-dir", "--continue", "--verbose"]
         rule_acceptable_params_dict['bowtie'] = ["additional_params"]
         rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
-        rule_acceptable_params_dict['anvi_init_bam'] = []
         rule_acceptable_params_dict['anvi_profile'] = []
         rule_acceptable_params_dict['annotate_contigs_database'] = []
         rule_acceptable_params_dict['anvi_merge'] = []
@@ -79,7 +78,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "gzip_fastqs": {"run": True},
                                     "bowtie_build": {"threads": 10},
                                     "bowtie": {"additional_params": "--no-unal", "threads": 10},
-                                    "samtools_view": {"additional_params": "-F 4", "threads": 4}})
+                                    "samtools_view": {"additional_params": "-F 4", "threads": 4},
+                                    "anvi_init_bam": {"threads": 4}})
 
         self.rules_dependencies.update({'megahit': 'megahit',
                                         'iu_gen_configs': "iu-gen-configs",
