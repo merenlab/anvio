@@ -49,6 +49,10 @@ class WorkflowSuperClass:
         self.config_file = A('config_file')
         self.default_config_output_path = A('get_default_config')
 
+        # if this class is being inherited from a snakefile that was 'included' from
+        # within another snakefile.
+        self.slave_mode = A('slave_mode')
+
         if self.config_file:
             self.config = json.load(open(self.config_file))
 
@@ -94,8 +98,9 @@ class WorkflowSuperClass:
         os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
 
         # lets check everything
-        self.check_config()
-        self.check_rule_params()
+        if not self.slave_mode:
+            self.check_config()
+            self.check_rule_params()
 
 
     def go(self, skip_dry_run=False):
@@ -136,6 +141,9 @@ class WorkflowSuperClass:
            if there is a `check_workflow_program_dependencies` call at the end of the
            snake file `get_workflow_snake_file_path(self.name)`, it can be called with
            a compiled snakemake `workflow` instance."""
+
+        if self.slave_mode:
+            return
 
         self.progress.new('Bleep bloop')
         self.progress.update('Quick dry run for an initial sanity check ...')
