@@ -51,6 +51,7 @@
     <script type="text/javascript" src="js/drawer.js"></script>
     <script type="text/javascript" src="js/svg-helpers.js"></script>
     <script type="text/javascript" src="js/bin.js"></script>
+    <script type="text/javascript" src="js/news.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
@@ -152,13 +153,13 @@
                             <div class="form-group form-margin">
                                     <label class="col-md-4 settings-label size-sm" for="trees_container" data-help="order-by">Items order:</label>  
                                     <div class="col-md-8">
-                                        <select id="trees_container" class="form-control input-xs"></select>
+                                        <select id="trees_container" class="form-control input-xs" onchange="onTreeClusteringChange();"></select>
                                     </div>
                             </div>               
                             <div class="form-group form-margin">
                                     <label class="col-md-4 settings-label" for="views_container" data-help="view">View:</label>  
                                     <div class="col-md-8">
-                                        <select id="views_container" class="form-control input-xs"></select>
+                                        <select id="views_container" class="form-control input-xs" onchange="onViewChange();"></select>
                                     </div>
                             </div>
 

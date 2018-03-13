@@ -312,15 +312,17 @@ function checkBackgroundProcess()
         cache: false,
         url: '/data/session_id',
         success: function (data) {
-            if (data != unique_session_id)
+            if (data != session_id)
             {
                 toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-                clearTimeout(ping_timer);
+            }
+            else
+            {
+                setTimeout(checkBackgroundProcess, 5000);
             }
         },
         error: function(data) {
             toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-            clearTimeout(ping_timer);
         }
     });
 }
