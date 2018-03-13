@@ -317,4 +317,4 @@ rule annotate_contigs_database:
 # check if all program dependencies are met. for this line to be effective,
 # there should be an initial dry run step (which is the default behavior of
 # the `WorkflowSuperClass`, so you are most likely covered).
-w.check_workflow_program_dependencies(workflow)
+M.check_workflow_program_dependencies(workflow)
