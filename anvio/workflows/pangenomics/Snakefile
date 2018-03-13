@@ -144,3 +144,4 @@ rule anvi_gen_genomes_storage:
                                      {params.gene_caller}
         """
 
+M.check_workflow_program_dependencies(workflow)
