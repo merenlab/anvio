@@ -514,8 +514,8 @@ rule anvi_init_bam:
     output:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam",
         bai = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam.bai"
-    threads: M.T(config, 'anvi_init_bam', 4)
-    resources: nodes = M.T(config, 'anvi_init_bam', 4),
+    threads: M.T('anvi_init_bam')
+    resources: nodes = M.T('anvi_init_bam'),
     shell: "anvi-init-bam {input} -o {output.bam} >> {log} 2>&1"
 
 
