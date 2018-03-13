@@ -58,7 +58,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                   "--presets", "--memory", "--mem-flag",
                                                   "--use-gpu", "--gpu-mem", "--keep-tmp-files",
                                                   "--tmp-dir", "--continue", "--verbose"]
-        rule_acceptable_params_dict['bowtie_build'] = []
         rule_acceptable_params_dict['bowtie'] = ["additional_params"]
         rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
         rule_acceptable_params_dict['anvi_init_bam'] = []
@@ -78,6 +77,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.default_config.update({'megahit': {"--min_contig": 1000, "--memory": 0.4, "threads": 11},
                                     'iu_filter_quality_minoche': {"--ignore-deflines": True, "threads": 2},
                                     "gzip_fastqs": {"run": True},
+                                    "bowtie_build": {"threads": 10},
                                     "bowtie": {"additional_params": "--no-unal", "threads": 10},
                                     "samtools_view": {"additional_params": "-F 4", "threads": 4}})
 
