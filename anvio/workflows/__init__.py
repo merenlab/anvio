@@ -157,6 +157,29 @@ class WorkflowSuperClass:
 
         self.progress.end()
 
+    def check_workflow_program_dependencies(self, snakemake_workflow_object, dont_raise=False):
+        """This function gets a snakemake workflow object and checks whether each shell command
+           exists in the path.
+        """
+
+        if self.slave_mode:
+            return
+
+        shell_programs_needed = [r.shellcmd.strip().split()[0] for r in snakemake_workflow_object.rules if r.shellcmd]
+
+        shell_programs_missing = [s for s in shell_programs_needed if not u.is_program_exists(s)]
+
+        run.warning(None, 'Shell programs for the workflow')
+        run.info('Needed', ', '.join(shell_programs_needed))
+        run.info('Missing', ', '.join(shell_programs_missing) or 'None', nl_after=1)
+
+        if len(shell_programs_missing):
+            if dont_raise:
+                return
+            else:
+                raise ConfigError("This workflow will not run without those missing programs are no longer\
+                                   missing :(")
+
     def check_config(self):
         acceptable_params = set(self.rules + self.general_params)
         wrong_params = [p for p in self.config if p not in acceptable_params]
@@ -391,25 +414,3 @@ def warning_for_param(config, rule, param, wildcard, our_default=None):
             warning_message = warning_message + ' Just so you are aware, if you dont provide a value\
                                                  in the config file, the default value is %s' % wildcard
         run.warning(warning_message)
-
-
-def check_workflow_program_dependencies(snakemake_workflow_object, dont_raise=False):
-    """This function gets a snakemake workflow object and checks whether each shell command
-       exists in the path.
-    """
-
-    shell_programs_needed = [r.shellcmd.strip().split()[0] for r in snakemake_workflow_object.rules if r.shellcmd]
-
-    shell_programs_missing = [s for s in shell_programs_needed if not u.is_program_exists(s)]
-
-    run.warning(None, 'Shell programs for the workflow')
-    run.info('Needed', ', '.join(shell_programs_needed))
-    run.info('Missing', ', '.join(shell_programs_missing) or 'None', nl_after=1)
-
-    if len(shell_programs_missing):
-        if dont_raise:
-            return
-        else:
-            raise ConfigError("This workflow will not run without those missing programs are no longer\
-                               missing :(")
-
