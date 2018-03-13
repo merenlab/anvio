@@ -290,12 +290,15 @@ function initData() {
             if (response.autodraw)
             {
                 $('#btn_draw_tree').removeClass('glowing-button');
-                drawTree();
 
-                if (response.collection !== null && mode !== 'refine' && mode !== 'gene')
-                {
-                    processCollection(response.collection);
-                }
+                $.when({})
+                 .then(drawTree)
+                 .then(function() {
+                    if (response.collection !== null && mode !== 'refine' && mode !== 'gene')
+                    {
+                        processCollection(response.collection);
+                    }
+                 });
             }
 
             newBin();
@@ -1333,6 +1336,7 @@ function serializeSettings(use_layer_names) {
 }
 
 function drawTree() {
+    var defer = $.Deferred();
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 
@@ -1350,7 +1354,10 @@ function drawTree() {
 
     waitingDialog.show('Drawing ...', 
         {
-            dialogSize: 'sm',
+            dialogSize: 'sm', 
+            onHide: function() {
+                defer.resolve(); 
+            },
             onShow: function() {
                 var drawer = new Drawer(settings);
                 drawer.draw();
@@ -1361,7 +1368,6 @@ function drawTree() {
 
                 redrawBins();
 
-                waitingDialog.hide();
                 $('#btn_draw_tree').prop('disabled', false);
                 $('#btn_redraw_samples').prop('disabled', false);
 
@@ -1370,8 +1376,11 @@ function drawTree() {
                     $('#tree-radius-container').show();
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
+                waitingDialog.hide();
             },
         });
+
+    return defer.promise();
 }
 
 
