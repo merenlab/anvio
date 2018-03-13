@@ -251,7 +251,7 @@ function initData() {
             var default_tree  = response.item_orders[0];
             var available_trees = response.item_orders[2];
             $('#trees_container').append(getComboBoxContent(default_tree, available_trees));
-            clusteringData = response.item_orders[1];
+            clusteringData = response.item_orders[1]['data'];
 
             var default_view = response.views[0];
             var available_views = response.views[2];
