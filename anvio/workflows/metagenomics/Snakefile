@@ -498,11 +498,11 @@ rule samtools_view:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-samtools_view.log"
     input: rules.bowtie.output
-    params: additional_params = w.A(["samtools_view", "additional_params"], config, default_value="-F 4")
+    params: additional_params = M.get_rule_param("samtools_view", "additional_params")
     # output as temp. we only keep the final bam file
     output: temp(dirs_dict["MAPPING_DIR"] + "/{group}/{sample}-RAW.bam")
-    threads: M.T(config, 'samtools_view', 4)
-    resources: nodes = M.T(config, 'samtools_view', 4),
+    threads: M.T('samtools_view')
+    resources: nodes = M.T('samtools_view'),
     shell: "samtools view {params.additional_params} -bS {input} -o {output} >> {log} 2>&1"
 
 
