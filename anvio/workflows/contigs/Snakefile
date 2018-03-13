@@ -23,7 +23,7 @@ run = terminal.Run()
 
 # don't be confused, child. when things come to this point, the variable `config`
 # is already magically filled in by snakemake:
-M = ContigsDBWorkflow(argparse.Namespace(config=config))
+M = ContigsDBWorkflow(argparse.Namespace(config=config, slave_mode=(False if 'workflows/contigs' in workflow.included[0] else True)))
 M.init()
 dirs_dict = M.dirs_dict
 
