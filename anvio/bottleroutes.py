@@ -56,15 +56,17 @@ BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100
 
 
 class BottleApplication(Bottle):
-    def __init__(self, interactive, args, mock_request=None, mock_response=None):
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    def __init__(self, interactive, mock_request=None, mock_response=None):
         super(BottleApplication, self).__init__()
         self.interactive = interactive
-        self.args = args
-        self.read_only = A('read_only')
-        self.browser_path = A('browser_path')
-        self.export_svg = A('export_svg')
-        self.server_only = A('server_only')
+
+        if self.interactive:
+            self.args = self.interactive.args
+            A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+            self.read_only = A('read_only')
+            self.browser_path = A('browser_path')
+            self.export_svg = A('export_svg')
+            self.server_only = A('server_only')
 
         self.session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
