@@ -249,6 +249,21 @@ class WorkflowSuperClass:
         return new_config
 
 
+    def set_config_param(self, _list, value):
+        d = self.config
+        if type(_list) is not list:
+            # converting to list for the cases of only one item
+            _list = [_list]
+        while _list:
+            a = _list.pop(0)
+            if a not in d:
+                d[a] = {}
+            f = d
+            d = d[a]
+            print(d)
+        f[a] = value
+
+
     def get_param_value_from_config(self, _list, repress_default=False):
         '''
             A helper function to make sense of config details.
