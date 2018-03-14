@@ -782,7 +782,40 @@ class Pangenome(object):
                 sequence = genomes_storage.get_gene_sequence(gene_entry['genome_name'], gene_entry['gene_caller_id'])
                 gene_sequences_in_gene_cluster.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
 
-            alignments = aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
+            # sometimes alignments fail, and because pangenomic analyses can take forever,
+            # everything goes into the trash bin. to prevent that, here we have a try/except
+            # block with lots of warnings if something goes wrong.
+            try:
+                alignments = aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
+            except:
+                # realm of sad face. before we continue to spam the user with error messages,
+                # we turn our gene sequences to alignments without alignments. this worker will
+                # report raw, unaligned sequences for this gene cluster as if they were aligned
+                # so things will continue working operationally, and it will be on the user to
+                # make sure they went through their results carefully.
+                alignments = dict(gene_sequences_in_gene_cluster)
+
+                # constructing our #sad:
+                if anvio.DEBUG:
+                    temp_file_path = filesnpaths.get_temp_file_path(prefix='ANVIO_GC_%s' % (gene_cluster_name))
+                    with open(temp_file_path, 'w') as output:
+                        for tpl in gene_sequences_in_gene_cluster:
+                            output.write('>%s\n%s\n' % (tpl[0], tpl[1]))
+                    debug_info = "The %d sequences in gene cluster %s are stored in the temporary file '%s'" % \
+                                        (len(gene_sequences_in_gene_cluster), gene_cluster_name, temp_file_path)
+                else:
+                    debug_info = "If you re-run your last command with a `--debug` flag, anvi'o will generate more\
+                                  information for you about the contenets of this gene cluster (but if you are seeing\
+                                  millions of these warnings, it may not be a good idea since with the `--debug` flag\
+                                  anvi'o will generate a FASTA file in a temporary directory with the contents of the\
+                                  gene cluster, and will not attempt to delete them later)."
+
+                run.warning("VERY BAD NEWS. The alignment of seqeunces with '%s' in the gene cluster '%s' failed\
+                             for some reason. Since the real answer to 'why' is too deep in the matrix, there is\
+                             no reliable solution for anvi'o to find it for you, BUT THIS WILL AFFECT YOUR SCIENCE\
+                             GOING FORWARD, SO YOU SHOULD CONSIDER ADDRESSING THIS ISSUE FIRST. %s" % \
+                                                       (aligner.__name__, gene_cluster_name, debug_info), nl_before=1)
+
 
             output = {'name': gene_cluster_name, 'entry': copy.deepcopy(gene_clusters_dict[gene_cluster_name])}
             for gene_entry in output['entry']:
