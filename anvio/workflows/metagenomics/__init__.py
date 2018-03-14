@@ -44,6 +44,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam',\
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge'])
 
+        self.general_params.extend(["samples_txt", "references_mode"])
 
         rule_acceptable_params_dict = {}
 
