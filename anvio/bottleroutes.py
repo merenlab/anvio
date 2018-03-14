@@ -288,7 +288,6 @@ class BottleApplication(Bottle):
                                  "layers_order":                       self.interactive.layers_order_data_dict,
                                  "layers_information":                 self.interactive.layers_additional_data_dict,
                                  "layers_information_default_order":   self.interactive.layers_additional_data_keys,
-                                 "collection":                         None,
                                  "check_background_process":           True,
                                  "autodraw":                           autodraw,
                                  "inspection_available":               self.interactive.auxiliary_profile_data_available,
