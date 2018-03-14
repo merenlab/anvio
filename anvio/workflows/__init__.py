@@ -112,6 +112,9 @@ class WorkflowSuperClass:
         if not skip_dry_run:
             self.dry_run()
 
+        if self.dry_run_only:
+            return
+
         # snakemake.main() accepts an `argv` parameter, but then the code has mixed responses to
         # that, and at places continues to read from sys.argv in a hardcoded manner. so we have to
         # overwrite our argv here.
