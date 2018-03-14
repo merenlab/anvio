@@ -37,12 +37,13 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
 
-        self.rules = ['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',\
+        self.rules.extend(['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',\
                      'fq2fa', 'merge_fastas_for_co_assembly', 'megahit', 'anvi_script_anvi_script_reformat_fasta',\
                      'anvi_gen_contigs_database', 'anvi_export_gene_calls', 'centrifuge',\
                      'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam',\
-                     'anvi_profile', 'annotate_contigs_database', 'anvi_merge']
+                     'anvi_profile', 'annotate_contigs_database', 'anvi_merge'])
+
 
         rule_acceptable_params_dict = {}
 
@@ -69,7 +70,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['anvi_merge'] = ["--sample-name", "--description", "--skip-hierarchical-clustering",
                                                      "--enforce-hierarchical-clustering", "--distance", "--linkage",
                                                      "--skip-concoct-binning", "--overwrite-output-destinations"]
-        self.rule_acceptable_params_dict = rule_acceptable_params_dict
+
+        self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
         self.dirs_dict.update({"QC_DIR": "01_QC",
                                "FASTA_DIR": "02_FASTA",
