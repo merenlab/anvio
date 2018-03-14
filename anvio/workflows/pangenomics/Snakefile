@@ -5,6 +5,7 @@ import anvio
 import argparse
 import pandas as pd
 import anvio.workflows as w
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
