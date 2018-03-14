@@ -17,6 +17,9 @@ anvi-run-snakemake-workflow -w contigs --get-default-config default-config.json
 INFO "Listing dependencies for contigs workflow"
 anvi-run-snakemake-workflow -w contigs -c default-config.json --list-dependencies
 
+INFO "Saving a workflow graph"
+anvi-run-snakemake-workflow -w contigs -c default-config.json --save-workflow-graph
+
 INFO "Running contigs workflow"
 anvi-run-snakemake-workflow -w contigs -c default-config.json
 

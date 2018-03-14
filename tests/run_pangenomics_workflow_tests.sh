@@ -19,6 +19,9 @@ anvi-run-snakemake-workflow -w pangenomics --get-default-config default-config.j
 INFO "Listing dependencies for pangenomics workflow"
 anvi-run-snakemake-workflow -w pangenomics -c config.json --list-dependencies
 
+INFO "Saving a workflow graph"
+anvi-run-snakemake-workflow -w pangenomics -c config.json --save-workflow-graph
+
 INFO "Running pangenomics workflow"
 anvi-run-snakemake-workflow -w pangenomics -c config.json
 
