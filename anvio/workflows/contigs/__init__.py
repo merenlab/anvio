@@ -85,13 +85,3 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                               '--ignore-internal-stop-codons']
 
         self.rule_acceptable_params_dict['anvi_gen_contigs_database'] = gen_contigs_params
-
-        self.rules_dependencies.update({'anvi_script_reformat_fasta': "anvi-script-reformat-fasta",
-                                        'remove_human_dna_using_centrifuge': "centrifuge",
-                                        'anvi_gen_contigs_database': "anvi-gen-contigs-database",
-                                        'export_gene_calls': "anvi-export-gene-calls",
-                                        'centrifuge': "centrifuge",
-                                        'anvi_import_taxonomy': "anvi-import-taxonomy",
-                                        'anvi_run_hmms': "anvi-run-hmms",
-                                        'anvi_run_ncbi_cogs': "anvi-run-ncbi-cogs",
-                                        'annotate_contigs_database': ""})
