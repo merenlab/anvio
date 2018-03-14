@@ -212,8 +212,8 @@ rule iu_gen_configs:
         dir=dirs_dict["QC_DIR"],
         r1_prefix = M.get_rule_param("iu_gen_configs", "--r1-prefix"),
         r2_prefix = M.get_rule_param("iu_gen_configs", "--r2-prefix")
-    threads: M.T(config, 'iu_gen_configs')
-    resources: nodes = M.T(config, 'iu_gen_configs'),
+    threads: M.T('iu_gen_configs')
+    resources: nodes = M.T('iu_gen_configs'),
     shell: "iu-gen-configs {input} -o {params.dir} {params.r2_prefix} {params.r1_prefix} >> {log} 2>&1"
 
 
@@ -273,8 +273,8 @@ rule iu_filter_quality_minoche:
         limit_num_pairs = M.get_rule_param("iu_filter_quality_minoche", "--limit-num-pairs"),
         print_qual_scores = M.get_rule_param("iu_filter_quality_minoche", "--print-qual-scores"),
         store_read_fate = M.get_rule_param("iu_filter_quality_minoche", "--store-read-fate")
-    threads: M.T(config, 'iu_filter_quality_minoche')
-    resources: nodes = M.T(config, 'iu_filter_quality_minoche'),
+    threads: M.T('iu_filter_quality_minoche')
+    resources: nodes = M.T('iu_filter_quality_minoche'),
     shell:
         """
             iu-filter-quality-minoche {input.ini} {params.store_read_fate}\
@@ -288,8 +288,8 @@ rule gen_qc_report:
     log: dirs_dict["LOGS_DIR"] + "/gen_qc_report.log"
     input: expand(dirs_dict["QC_DIR"] + "/{sample}-STATS.txt", sample=sample_names)
     output: dirs_dict["QC_DIR"] + "/qc-report.txt"
-    threads: M.T(config, 'gen_qc_report')
-    resources: nodes = M.T(config, 'gen_qc_report')
+    threads: M.T('gen_qc_report')
+    resources: nodes = M.T('gen_qc_report')
     run:
         report_dict = {}
         report_column_headers = ['number of pairs analyzed',
@@ -341,8 +341,8 @@ rule gzip_fastqs:
     log: dirs_dict["LOGS_DIR"] + "/{sample}-{R}-gzip.log"
     input: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq"
     output: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq.gz"
-    threads: M.T(config, 'gzip_fastqs')
-    resources: nodes = M.T(config, 'gzip_fastqs'),
+    threads: M.T('gzip_fastqs')
+    resources: nodes = M.T('gzip_fastqs'),
     shell: "gzip {input} >> {log} 2>&1"
 
 
@@ -370,8 +370,8 @@ rule fq2fa:
     log: dirs_dict["LOGS_DIR"] + "/{sample}-fq2fa.log"
     input: unpack(input_for_fq2fa)
     output: temp(dirs_dict["QC_DIR"] + "/{sample}-merged-reads.fa")
-    threads: M.T(config, 'fq2fa')
-    resources: nodes = M.T(config, 'fq2fa')
+    threads: M.T('fq2fa')
+    resources: nodes = M.T('fq2fa')
     shell: "fq2fa --merge {input} {output} >> {log} 2>&1"
 
 
@@ -380,12 +380,12 @@ rule merge_fastas_for_co_assembly:
     log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log"
     input: lambda wildcards: expand("{DIR}/{sample}-merged-reads.fa", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
     output: temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa")
-    threads: M.T(config, 'merge_fastas_for_co_assembly')
-    resources: nodes = M.T(config, 'merge_fastas_for_co_assembly')
+    threads: M.T('merge_fastas_for_co_assembly')
+    resources: nodes = M.T('merge_fastas_for_co_assembly')
     shell: "cat {input} > {output}"
 
 
-if w.A(['idba_ud', 'run'], config):
+if M.get_rule_param('idba_ud', 'run'):
     rule idba_ud:
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-idba_ud.log"
@@ -413,8 +413,8 @@ if w.A(['idba_ud', 'run'], config):
             no_coverage = M.get_rule_param("idba_ud", "--no_coverage"),
             no_correct = M.get_rule_param("idba_ud", "--no_correct"),
             pre_correction = M.get_rule_param("idba_ud", "--pre_correction"),
-        threads: M.T(config, 'idba_ud')
-        resources: nodes = M.T(config, 'idba_ud')
+        threads: M.T('idba_ud')
+        resources: nodes = M.T('idba_ud')
         run:
             cmd = "idba_ud -o {output.temp_dir} --read {input.fasta} --num_threads {threads} " + \
                   "{params.mink} {params.maxk} {params.step} {params.inner_mink} " + \
@@ -427,7 +427,7 @@ if w.A(['idba_ud', 'run'], config):
             shell("mv {output.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
 
 
-if w.A(['megahit', 'run'], config):
+if M.get_rule_param('meghit', 'run'):
     rule megahit:
         '''
             Assembling fastq files using megahit.
@@ -472,8 +472,8 @@ if w.A(['megahit', 'run'], config):
         output:
             temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa")
-        threads: M.T(config, 'megahit', 11)
-        resources: nodes = M.T(config, 'megahit', 11),
+        threads: M.T('megahit')
+        resources: nodes = M.T('megahit'),
         # Making this rule a shadow rule so all extra files created by megahit
         # are not retaineded (it is not enough to define the directory as temporary
         # because when failing in the middle of a run, snakemake doesn't delete directories)
@@ -783,5 +783,7 @@ rule anvi_merge:
             create_fake_output_files(_message, output)
 
         else:
-            shell("anvi-merge {input.profiles} -o {params.output_dir} -c {input.contigs} {params.sample_name} {params.skip_concoct_binning} {params.overwrite_output_destinations} >> {log} 2>&1")
+            shell("anvi-merge {input.profiles} -o {params.output_dir} -c {input.contigs} \
+                   {params.sample_name} {params.skip_concoct_binning} \
+                   {params.overwrite_output_destinations} >> {log} 2>&1")
 
