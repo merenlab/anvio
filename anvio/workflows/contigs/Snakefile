@@ -36,7 +36,7 @@ if fasta_txt_file:
     filesnpaths.is_file_exists(fasta_txt_file)
     fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
     group_names = list(fasta_information.keys())
-    reference_mode = True
+    references_mode = True
 
 # setting configuration for optional steps
 run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"])
@@ -67,7 +67,7 @@ def get_raw_fasta(wildcards):
         This function also deals with the different cases of "reference mode"
         Vs. "assembly mode".
     '''
-    if reference_mode:
+    if references_mode:
         # in 'reference mode' the input is the reference fasta
         contigs = fasta_information[wildcards.group]['path']
     else:
