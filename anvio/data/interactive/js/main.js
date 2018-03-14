@@ -226,17 +226,17 @@ function initData() {
                 setTimeout(checkBackgroundProcess, 5000);
             }
 
-            if(!response.inspectionAvailable){
+            if(!response.inspection_available){
                 toastr.info("Inspection of data items is not going to be available for this project.");
                 $('.menuItemInspect').addClass('menu-disabled');
             }
 
-            if(!response.sequencesAvailable && mode != "collection" && mode != "pan"){
+            if(!response.sequences_available && mode != "collection" && mode != "pan"){
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
                 $('.menuItemSequence').addClass('menu-disabled');
             }
 
-            if (response.readOnly)
+            if (response.read_only)
             {
                 toastr.info("It seems that this is a read-only instance, therefore the database-writing \
                             functions will be inaccessible.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
