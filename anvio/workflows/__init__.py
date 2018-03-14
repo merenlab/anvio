@@ -154,11 +154,11 @@ class WorkflowSuperClass:
                 '--configfile', self.config_file, '--dryrun', '--quiet']
 
         log_file_path = filesnpaths.get_temp_file_path()
-        self.progress
         u.run_command(args, log_file_path)
+        self.progress.end()
+
         os.remove(log_file_path)
 
-        self.progress.end()
 
     def check_workflow_program_dependencies(self, snakemake_workflow_object, dont_raise=False):
         """This function gets a snakemake workflow object and checks whether each shell command
