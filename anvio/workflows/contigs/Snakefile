@@ -33,15 +33,10 @@ group_names = []
 fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
 
 if fasta_txt_file:
-    if not references_mode:
-        raise ConfigError("In order to use reference fasta files you must set\
-                           \"'references_mode': true\" in your config file, yet\
-                           you didn't, but at the same time you supplied the following\
-                           fasta_txt: %s. So we don't know what to do with this\
-                           fasta_txt" % fasta_txt_file)
     filesnpaths.is_file_exists(fasta_txt_file)
     fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
     group_names = list(fasta_information.keys())
+    references_mode = True
 
 # setting configuration for optional steps
 run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"])
