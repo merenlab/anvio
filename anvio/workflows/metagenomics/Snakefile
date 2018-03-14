@@ -226,7 +226,7 @@ def get_raw_fastq(wildcards):
 
 def get_fastq(wildcards):
     ''' return the pair of compressed fastq files for a sample.
-        
+
         There are two types of sources for the fastq:
             1. The output of QC.
             2. From the specified paths in samples.txt (in the case the user
