@@ -32,6 +32,11 @@ localrules: annotate_contigs_database
 group_names = []
 fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
 
+references_mode = M.get_param_value_from_config('references_mode', repress_default=True)
+if references_mode and not fasta_txt_file:
+    raise ConfigError("you asked for references_mode in your config file, but
+                       didn't provide a path to a fasta_txt file.")
+
 if fasta_txt_file:
     if not references_mode:
         raise ConfigError("In order to use reference fasta files you must set\
