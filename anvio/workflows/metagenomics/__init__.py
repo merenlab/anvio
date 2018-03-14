@@ -66,8 +66,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                         "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
                                                         "--contigs-of-interest", "--queue-size", "--write-buffer-size"]
         rule_acceptable_params_dict['annotate_contigs_database'] = []
-        rule_acceptable_params_dict['anvi_merge'] = []
-
+        rule_acceptable_params_dict['anvi_merge'] = ["--sample-name", "--description", "--skip-hierarchical-clustering",
+                                                     "--enforce-hierarchical-clustering", "--distance", "--linkage",
+                                                     "--skip-concoct-binning", "--overwrite-output-destinations"]
         self.rule_acceptable_params_dict = rule_acceptable_params_dict
 
         self.dirs_dict.update({"QC_DIR": "01_QC",
@@ -84,7 +85,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "bowtie": {"additional_params": "--no-unal", "threads": 10},
                                     "samtools_view": {"additional_params": "-F 4", "threads": 4},
                                     "anvi_init_bam": {"threads": 4},
-                                    "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True}})
+                                    "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
+                                    "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True}})
 
         self.rules_dependencies.update({'megahit': 'megahit',
                                         'iu_gen_configs': "iu-gen-configs",
