@@ -43,9 +43,6 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('ignore-internal-stop-codons'), **anvio.K('ignore-internal-stop-codons'))
     groupB.add_argument(*anvio.A('skip-mindful-splitting'), **anvio.K('skip-mindful-splitting'))
 
-    groupD = parser.add_argument_group('MISC', 'Categoryless flags and parameters.')
-    groupD.add_argument(*anvio.A('debug'), **anvio.K('debug'))
-
     args = anvio.get_args(parser)
 
     try:

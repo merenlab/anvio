@@ -6,7 +6,7 @@ import sys
 import argparse
 
 import anvio.db as db
-import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.dictio as dictio
 import anvio.terminal as terminal 
 
@@ -22,7 +22,7 @@ def migrate(db_path):
         raise ConfigError("No profile database is given.")
 
     # make sure someone is not being funny
-    dbops.is_profile_db(db_path)
+    utils.is_profile_db(db_path)
 
     # make sure the version is 5
     profile_db = db.DB(db_path, None, ignore_version = True)
