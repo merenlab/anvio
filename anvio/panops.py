@@ -761,6 +761,9 @@ class Pangenome(object):
 
         aligner = aligners.select(align_with, quiet=True)
 
+        # this instance of Run is here because we don't want to create this over and over again
+        # in the loop down below. there also is another run instance the worker gets to make sure
+        # it can report its own messages .. don't be confused we-do-not-age-discriminate-here padawan.
         r = terminal.Run()
         r.verbose = False
 
