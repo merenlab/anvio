@@ -18,6 +18,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Alon Shaiber"
 __email__ = "alon.shaiber@gmail.com"
 
+run = terminal.Run()
 
 # in order to generate the contigs databases we include the snakefile for the generation of contigs databases
 # include statement must come before we get an instance of PangenomicsWorkflow class
