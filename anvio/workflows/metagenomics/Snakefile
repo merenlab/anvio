@@ -139,15 +139,28 @@ if "group" in samples_information.columns:
                                file must match the names of fasta \
                                in the fasta.txt file. These are the \
                                mismatches: %s" % mismatch)
+        groups_in_fasta_information_but_not_in_samples_txt = set(fasta_information.keys()) - set(group_names)
+        if groups_in_fasta_information_but_not_in_samples_txt:
+            run.warning('The following group names appear in your fasta_txt\
+                         but do not appear in your samples_txt. Maybe this is\
+                         ok with you, but we thought you should know. This means\
+                         that the metagenomics workflow will simply ignore these\
+                         groups.')
 
 else:
     if references_mode:
         # if the user didn't provide a group column in the samples.txt,
         # in references mode the default is 'all_against_all'.
+        run.warning("No groups were provided in your samples_txt,\
+                     hence 'all_against_all' mode has been automatically\
+                     set to True.")
         config['all_against_all'] = True
     else:
         # if no groups were specified then each sample would be assembled
         # separately
+        run.warning("No groups were specified in your samples_txt. This is fine.\
+                     But we thought you should know. Any assembly will be performed\
+                     on individual samples (i.e. NO co-assembly).")
         samples_information['group'] = samples_information['sample']
         group_names = list(sample_names)
         group_sizes = dict.fromkeys(group_names,1)
