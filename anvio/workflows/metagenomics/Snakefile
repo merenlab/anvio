@@ -159,6 +159,8 @@ if not references_mode and not w.A(['reformat_fasta','run'], config, True):
 
 # by default fastq files will be zipped after qc is done
 run_gzip_fastqs = M.get_rule_param('gzip_fastqs', 'run')
+#
+run_qc = M.get_rule_param('iu-filter-quality-minoche', 'run')
 
 
 rule all:
@@ -667,7 +669,7 @@ rule anvi_merge:
         contigs_annotated = rules.annotate_contigs_database.output,
         profiles = input_for_anvi_merge,
         # this is here just so snakemake would run the gen_qc_report before running this rule
-        qc_report = rules.gen_qc_report.output if w.A(['qc', 'run'], config, True) else ancient(rules.gen_contigs_db.output.db)
+        qc_report = rules.gen_qc_report.output if run_qc else ancient(rules.gen_contigs_db.output.db)
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
         runlog = dirs_dict["MERGE_DIR"] + "/{group}/RUNLOG.txt"
