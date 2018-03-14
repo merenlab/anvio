@@ -165,17 +165,17 @@ else:
         group_names = list(sample_names)
         group_sizes = dict.fromkeys(group_names,1)
 
-if w.A('all_against_all', config) :
+if M.get_param_value_from_config('all_against_all', repress_default=True):
     # in all_against_all, the size of each group is as big as the number
     # of samples.
     group_sizes = dict.fromkeys(group_names,len(sample_names))
 
 
-if not references_mode and not w.A(['reformat_fasta','run'], config, True):
+if not references_mode and not M.get_rule_param('reformat_fasta','run'):
     # in assembly mode (i.e. not in references mode) we always have
     # to run reformat_fasta. The only reason for this is that
     # the megahit output is temporary, and if we dont run
-    # reformat_fasta we will delete the output of meghit at the 
+    # reformat_fasta we will delete the output of meghit at the
     # end of the workflow without saving a copy.
     raise ConfigError("You can't skip reformat_fasta in assembly mode "\
                         "please change your config.json file")
