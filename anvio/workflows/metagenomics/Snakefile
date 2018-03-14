@@ -154,7 +154,7 @@ else:
         run.warning("No groups were provided in your samples_txt,\
                      hence 'all_against_all' mode has been automatically\
                      set to True.")
-        config['all_against_all'] = True
+        M.set_config_param('all_against_all', True)
     else:
         # if no groups were specified then each sample would be assembled
         # separately
