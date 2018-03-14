@@ -85,11 +85,11 @@ dirs_dict = M.dirs_dict
 
 # sanity check for requested assembly
 # make sure that the user is not requesting multiple assemblers
-available_assemblers = ['megahit', 'idba_ud']
+available_assemblers = M.get_assembly_software_list()
 number_of_assemblers_in_config_file = 0
 assembly_software_in_config = list()
 for a in available_assemblers:
-    if w.A([a, 'run'], config):
+    if M.get_rule_param(a, 'run'):
         number_of_assemblers_in_config_file += 1
         assembly_software_in_config.append(a)
 if number_of_assemblers_in_config_file > 1:
