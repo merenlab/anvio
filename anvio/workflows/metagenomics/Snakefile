@@ -107,13 +107,20 @@ sample_names = list(samples_information['sample'])
 # if no groups are supplied then group names are sample names
 group_names = sample_names
 
-references_mode = M.get_param_value_from_config('references_mode')
+references_mode = M.get_param_value_from_config('references_mode', repress_default=True)
+fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
 if references_mode:
-    fasta_txt_file = M.get_param_value_from_config('fasta_txt')
     try:
         filesnpaths.is_file_exists(fasta_txt_file)
     except FilesNPathsError as e:
         raise ConfigError('In references mode you must supply a fasta_txt file.')
+
+if fasta_txt_file and not references_mode:
+    raise ConfigError("In order to use reference fasta files you must set\
+                   \"'references_mode': true\" in your config file, yet\
+                   you didn't, but at the same time you supplied the following\
+                   fasta_txt: %s. So we don't know what to do with this\
+                   fasta_txt" % fasta_txt_file)
 
 # Collecting information regarding groups.
 if "group" in samples_information.columns:
