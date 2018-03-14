@@ -1538,6 +1538,14 @@ D = {
              'action': 'store_true',
              'help': "Print a list of available snakemake workflows"}
                 ),
+    'save-workflow-graph': (
+            ['--save-workflow-graph'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "Save a graph representation of the workflow. If you are using this flag and if your\
+                      system is unable to generate such graph outputs, you will hear anvi'o complaining\
+                      (still, totally worth trying)."}
+                ),
     'get-default-config': (
             ['--get-default-config'],
             {'metavar': 'OUTPUT_FILENAME',
