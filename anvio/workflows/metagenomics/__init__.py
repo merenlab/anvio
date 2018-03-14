@@ -24,6 +24,7 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
+min_contig_length_for_assembly = 1000
 
 class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
@@ -82,8 +83,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "MERGE_DIR": "06_MERGED"})
 
         self.default_config.update({'samples_txt': "samples.txt",
-                                    'megahit': {"--min_contig": 1000, "--memory": 0.4, "threads": 11},
-                                    'iu_filter_quality_minoche': {"--ignore-deflines": True, "threads": 2},
+                                    'megahit': {"--min_contig": min_contig_length_for_assembly, "--memory": 0.4, "threads": 11},
+                                    'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 11},
+                                    'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True, "threads": 2},
                                     "gzip_fastqs": {"run": True},
                                     "bowtie_build": {"threads": 10},
                                     "bowtie": {"additional_params": "--no-unal", "threads": 10},
