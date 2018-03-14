@@ -80,7 +80,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "PROFILE_DIR": "05_ANVIO_PROFILE",
                                "MERGE_DIR": "06_MERGED"})
 
-        self.default_config.update({'megahit': {"--min_contig": 1000, "--memory": 0.4, "threads": 11},
+        self.default_config.update({'samples_txt': "samples.txt",
+                                    'megahit': {"--min_contig": 1000, "--memory": 0.4, "threads": 11},
                                     'iu_filter_quality_minoche': {"--ignore-deflines": True, "threads": 2},
                                     "gzip_fastqs": {"run": True},
                                     "bowtie_build": {"threads": 10},
