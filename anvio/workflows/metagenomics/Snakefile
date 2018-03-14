@@ -99,7 +99,7 @@ if number_of_assemblers_in_config_file > 1:
 
 # loading the samples.txt file
 # The default samples file is samples.txt
-samples_txt_file = w.A("samples_txt", config, default_value="samples.txt")
+samples_txt_file = M.get_param_value_from_config(['samples_txt'])
 # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
 samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
 # get a list of the sample names
