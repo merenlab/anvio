@@ -720,7 +720,7 @@ class Pangenome(object):
         workers = []
         for i in range(0, self.num_threads):
             worker = multiprocessing.Process(target=Pangenome.alignment_worker,
-                args=(input_queue, output_queue, gene_clusters_dict, self.genomes_storage, self.align_with))
+                args=(input_queue, output_queue, gene_clusters_dict, self.genomes_storage, self.align_with, self.run))
 
             workers.append(worker)
             worker.start()
@@ -755,7 +755,7 @@ class Pangenome(object):
 
 
     @staticmethod
-    def alignment_worker(input_queue, output_queue, gene_clusters_dict, genomes_storage, align_with):
+    def alignment_worker(input_queue, output_queue, gene_clusters_dict, genomes_storage, align_with, run):
         # Note for future changes, this worker should not write anything to gene_clusters_dict
         # or genome_storage, changes will not be reflected to main process or other processes.
 
