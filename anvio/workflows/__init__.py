@@ -109,7 +109,7 @@ class WorkflowSuperClass:
     def go(self, skip_dry_run=False):
         """Do the actual running"""
 
-        if not skip_dry_run:
+        if self.save_workflow_graph or (not skip_dry_run):
             self.dry_run()
 
         if self.dry_run_only:
@@ -139,7 +139,7 @@ class WorkflowSuperClass:
         sys.argv = original_sys_argv
 
 
-    def dry_run(self):
+    def dry_run(self, workflow_graph_output_file_path_prefix='workflow'):
         """Not your regular dry run.
 
            The purpose of this function is to make sure there is a way to check for
@@ -156,9 +156,33 @@ class WorkflowSuperClass:
         args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name), \
                 '--configfile', self.config_file, '--dryrun', '--quiet']
 
+        if self.save_workflow_graph:
+            args.extend(['--dag'])
+
         log_file_path = filesnpaths.get_temp_file_path()
         u.run_command(args, log_file_path)
         self.progress.end()
+
+        # here we're getting the graph info from the log file like a dirty hacker
+        # we are (it still may be better to do it elsewhere more appropriate .. so
+        # we can look more decent or whatever):
+        if self.save_workflow_graph:
+            lines = open(log_file_path, 'rU').readlines()
+            line_of_interest = [line_no for line_no in range(0, len(lines)) if lines[line_no].startswith('digraph')][0]
+            open(workflow_graph_output_file_path_prefix + '.dot', 'w').write(''.join(lines[line_of_interest:]))
+
+            self.run.info('Workflow DOT file', workflow_graph_output_file_path_prefix + '.dot')
+
+            if u.is_program_exists('dot', dont_raise=True):
+                dot_log_file = filesnpaths.get_temp_file_path()
+                u.run_command(['dot', '-Tpng', workflow_graph_output_file_path_prefix + '.dot', '-o', workflow_graph_output_file_path_prefix + '.png'], dot_log_file)
+                os.remove(dot_log_file)
+                self.run.info('Workflow PNG file', workflow_graph_output_file_path_prefix + '.png')
+            else:
+                self.run.warning("Well, anvi'o was going to try to save a nice PNG file for your workflow\
+                                  graph, but clearly you don't have `dot` installed on your system. That's OK. You\
+                                  have your dot file now, and you can Google 'how to view dot file on [your operating\
+                                  system goes here]', and install necessary programs (like .. `dot`).")
 
         os.remove(log_file_path)
 
