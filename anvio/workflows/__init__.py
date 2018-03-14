@@ -48,6 +48,9 @@ class WorkflowSuperClass:
         self.config = A('config')
         self.config_file = A('config_file')
         self.default_config_output_path = A('get_default_config')
+        self.save_workflow_graph = A('save_workflow_graph')
+        self.list_dependencies = A('list_dependencies')
+        self.dry_run_only = A('save_workflow_graph')
 
         # if this class is being inherited from a snakefile that was 'included' from
         # within another snakefile.
@@ -120,7 +123,7 @@ class WorkflowSuperClass:
                     '--configfile',
                     self.args.config_file]
 
-        if self.args.list_dependencies:
+        if self.list_dependencies:
             sys.argv.extend(['--dryrun', '--printshellcmds'])
             snakemake.main()
             sys.exit(0)
