@@ -116,7 +116,7 @@ class VariabilitySuper(object):
             raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids\
                                as a file at the same time, obviously.")
 
-        if self.gene_caller_id:
+        if self.gene_caller_id is not None:
             try:
                 self.gene_caller_id = int(self.gene_caller_id)
             except:
@@ -165,7 +165,7 @@ class VariabilitySuper(object):
             raise ConfigError('You need to provide a contigs database.')
 
         self.progress.update('Making sure our databases are compatible ..')
-        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         if self.min_coverage_in_each_sample and not self.quince_mode:
             self.progress.end()
@@ -1190,7 +1190,7 @@ class ConsensusSequences(VariableNtPositionsEngine, VariableAAPositionsEngine):
         """Populates the main dictionary that keeps track of variants for each sample."""
 
         # no data no play.
-        if not self.data:
+        if not len(self.data):
             raise ConfigError("ConsensusSequences class is upset because it doesn't have any data. There can be two reasons\
                                to this. One, anvi'o variability engines reported nothing (in which case you should have gotten\
                                an error much earler). Two, you are a programmer and failed to call the 'process()' on your\
@@ -1203,7 +1203,7 @@ class ConsensusSequences(VariableNtPositionsEngine, VariableAAPositionsEngine):
             gene_sequences[gene_callers_id] = d[gene_callers_id]['sequence'].lower()
 
         # here we populate a dictionary with all the right items but witout any real data.
-        sample_names = set([e['sample_id'] for e in self.data.values()])
+        sample_names = set(self.data['sample_id'])
         for sample_name in sample_names:
             self.sequence_variants_in_samples_dict[sample_name] = {}
 
@@ -1216,7 +1216,7 @@ class ConsensusSequences(VariableNtPositionsEngine, VariableAAPositionsEngine):
         # some items in sequences for each sample based on variability infomration.
         self.progress.new('Populating sequence variants in samples data')
         self.progress.update('processing %d variants ...' % len(self.data))
-        for entry in list(self.data.values()):
+        for idx, entry in self.data.iterrows():
             sample_name = entry['sample_id']
             gene_callers_id = entry['corresponding_gene_call']
 

@@ -1,0 +1,3 @@
+reference	path
+G01	three_samples_example/G01-contigs.fa
+G02	three_samples_example/G02-contigs.fa

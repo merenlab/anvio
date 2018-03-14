@@ -4,11 +4,11 @@
 import sys
 
 import anvio
-import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -46,7 +46,7 @@ def main(args):
     if collection_name not in collections.collections_dict:
         raise ConfigError("The collection name '%s' is not in this database :/" % collection_name)
 
-    collections_table = dbops.TablesForCollections(profile_db_path)
+    collections_table = TablesForCollections(profile_db_path)
     collections_table.delete(collection_name)
     run.info('Collection delete', 'Done. The collection "%s" is no more.' % (collection_name))
 

@@ -6,6 +6,7 @@ import argparse
 
 import anvio
 import anvio.tables as t
+import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 
@@ -27,7 +28,7 @@ progress = terminal.Progress()
 
 
 def compute_completeness(args):
-    dbops.is_contigs_db(args.contigs_db)
+    utils.is_contigs_db(args.contigs_db)
 
     completeness = Completeness(args.contigs_db, args.completeness_source)
 

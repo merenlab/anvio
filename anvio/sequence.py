@@ -6,6 +6,8 @@
 import numpy
 import collections
 
+from itertools import permutations
+
 import anvio
 import anvio.constants as constants
 
@@ -22,6 +24,40 @@ __status__ = "Development"
 class Codon:
     def __init__(self):
         pass
+
+    def get_codon_to_codon_sequence_trajectory(self, start_codon, end_codon, as_amino_acids=False):
+        '''
+        this returns a list of all possible sequence trajectories to get from one codon to another
+        assuming the least amount of mutations necessary. if as_amino_acids, the trajectories will
+        be converted into amino acid space
+        '''
+        indices_of_variation = []
+        for i in range(3):
+            if start_codon[i] != end_codon[i]:
+                indices_of_variation.append(i)
+        index_trajectories = list(permutations(indices_of_variation))
+
+        all_trajectories = []
+        for index_trajectory in index_trajectories:
+            sequence_trajectory = [start_codon]
+            mutate = list(start_codon)
+            for index in index_trajectory:
+                mutate[index] = end_codon[index]
+                sequence_trajectory.append(''.join(mutate))
+            all_trajectories.append(sequence_trajectory)
+
+        if as_amino_acids:
+            # each codon is converted to an amino acid. if two adjacent codons are the same amino
+            # acid then only one is kept
+            for i, trajectory in enumerate(all_trajectories):
+                for j, node in enumerate(trajectory):
+                    trajectory[j] = constants.codon_to_AA[node]
+
+                # gets rid of duplicates
+                all_trajectories[i] = list(dict.fromkeys(trajectory))
+
+        return all_trajectories
+
 
     def get_codon_to_codon_dist_dictionary(self):
         """
@@ -157,7 +193,7 @@ def get_indices_for_outlier_values(c):
     return set([p for p in range(0, c.size) if is_outlier[p]])
 
 
-def get_list_of_outliers(values, threshold=None):
+def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False):
     """
     Returns a boolean array with True if values are outliers and False
     otherwise.
@@ -207,5 +243,12 @@ def get_list_of_outliers(values, threshold=None):
             return numpy.array([False] * values.size)
 
     modified_z_score = 0.6745 * diff / median_absolute_deviation
+    non_outliers = modified_z_score > threshold
 
-    return modified_z_score > threshold
+    if not zeros_are_outliers:
+        return non_outliers
+    else:
+        zero_positions = [x for x in range(len(values)) if values[x] == 0]
+        for i in zero_positions:
+            non_outliers[i] = True
+        return non_outliers
