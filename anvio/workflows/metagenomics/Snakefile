@@ -79,7 +79,7 @@ include: w.get_workflow_snake_file_path('contigs')
 
 # it is important that this comes after the include statement since
 # M is also defined in the contigs workflow
-M = MetagenomicsWorkflow(config=config, slave_mode=(False if 'workflows/metagenomics' in workflow.included[0] else True)))
+M = MetagenomicsWorkflow(argparse.Namespace(config=config, slave_mode=(False if 'workflows/metagenomics' in workflow.included[0] else True)))
 M.init()
 dirs_dict = M.dirs_dict
 
