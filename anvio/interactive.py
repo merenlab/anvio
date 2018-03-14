@@ -1247,6 +1247,13 @@ class ContigsInteractive():
 
         self.contigs_stats = {}
 
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.input_contig_db_paths = A('input')
+
+        if not len(self.input_contig_db_paths):
+            raise ConfigError("ContigsInteractive should be inherited with an args object with a valid `input`\
+                               member. Not like the way you tried it with no input paths whatsoever :/")
+
         for contig_db_path in self.args.input:
             self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path).get_summary_dict_for_assembly()
 
