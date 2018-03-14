@@ -59,7 +59,3 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         storage_params = ["--internal-genomes", "--external-genomes", "--gene-caller"]
         self.rule_acceptable_params_dict['anvi_gen_genomes_storage'] = storage_params
-
-        self.rules_dependencies.update({'gen_external_genome_file': "",
-                                        'anvi_gen_genomes_storage': "anvi-gen-genomes-storage",
-                                        'anvi_pan_genome': "anvi-pan-genome"})

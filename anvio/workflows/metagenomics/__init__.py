@@ -87,8 +87,3 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "anvi_init_bam": {"threads": 4},
                                     "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True}})
-
-        self.rules_dependencies.update({'megahit': 'megahit',
-                                        'iu_gen_configs': "iu-gen-configs",
-                                        'iu_filter_quality_minoche': 'iu-filter-quality-minoche',
-                                        'gzip_fastqs': 'gzip'})
