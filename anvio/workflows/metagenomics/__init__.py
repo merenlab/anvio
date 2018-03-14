@@ -63,7 +63,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--sample-name", "--report-variability-full",
                                                         "--skip-SNV-profiling", "--profile-AA-frequencies", "--description",
                                                         "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
-                                                        "--min-mean-coverage", "--min-coverage-for-variability",
+                                                        "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
                                                         "--contigs-of-interest", "--queue-size", "--write-buffer-size"]
         rule_acceptable_params_dict['annotate_contigs_database'] = []
         rule_acceptable_params_dict['anvi_merge'] = []
@@ -84,7 +84,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "bowtie": {"additional_params": "--no-unal", "threads": 10},
                                     "samtools_view": {"additional_params": "-F 4", "threads": 4},
                                     "anvi_init_bam": {"threads": 4},
-                                    "anvi_profile": {"threads": 5, "--sample-name": "{sample}"}})
+                                    "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True}})
 
         self.rules_dependencies.update({'megahit': 'megahit',
                                         'iu_gen_configs': "iu-gen-configs",

@@ -553,7 +553,6 @@ rule anvi_profile:
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-anvi_profile.log"
     input:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam",
-        # TODO: add option to profile all to all (all samples to all contigs)
         # marking the contigs.db as ancient in order to ignore timestamps.
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
     output:
@@ -577,12 +576,12 @@ rule anvi_profile:
         contigs_of_interest = M.get_rule_param("anvi_profile", "--contigs-of-interest"),
         queue_size = M.get_rule_param("anvi_profile", "--queue-size"),
         write_buffer_size = M.get_rule_param("anvi_profile", "--write-buffer-size"),
-    threads: M.T(config, 'anvi_profile', 5)
-    resources: nodes = M.T(config, 'anvi_profile', 5),
+    threads: M.T('anvi_profile')
+    resources: nodes = M.T('anvi_profile'),
     shell: "anvi-profile -i {input.bam} -c {input.contigs} -o {params.output_dir} \
                          {params.cluster_contigs} {params.min_contig_length} \
                          {params.sample_name} -T {threads} {params.overwrite_output_destinations} \
-                         {params.profile_AA} {params.report_variability_full} \
+                         {params.profile_AA_frequencies} {params.report_variability_full} \
                          {params.skip_SNV_profiling} {params.description} \
                          {params.skip_hierarchical_clustering} {params.distance} \
                          {params.linkage} {params.min_mean_coverage} \
