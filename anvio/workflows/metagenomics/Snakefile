@@ -600,7 +600,7 @@ def input_for_anvi_merge(wildcards):
         between these modes.
     '''
 
-    if w.A('all_against_all', config):
+    if M.get_param_value_from_config(['all_against_all']):
         # If the user specified 'all against all' in the configs file
         # the end product would be a merge of all samples per group
         profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(samples_information['sample']), group=wildcards.group)
