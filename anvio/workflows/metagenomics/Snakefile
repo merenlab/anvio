@@ -519,6 +519,33 @@ rule anvi_init_bam:
     shell: "anvi-init-bam {input} -o {output.bam} >> {log} 2>&1"
 
 
+sample_name = M.get_param_value_from_config(['anvi_profile', '--sample-name'], repress_default=True)
+if sample_name:
+    run.warning('You chose to set the "--sample-name" for your profile databases\
+                 in the config file to %s. You are welcomed to do that, but at your own\
+                 risk. Just so you know, by default the sample name would match\
+                 the name defined either in the samples_txt, by choosing to provide\
+                 a different name, it means that all your profile databases would have\
+                 the same name, unless you incloded "{sample}" in the name you provided\
+                 but even then, we did not test that option and we are not sure it would\
+                 work...' % sample_name)
+
+
+def get_cluster_contigs_param(wildcards):
+    """ helper function to sort out whether to cluster contigs for a single profile database"""
+    if M.get_param_value_from_config(['anvi_profile', '--cluster-contigs'], repress_default=True):
+        run.warning('You chose to set the value for --cluster-contigs as %s. You can do that if you\
+                     choose to, but just so you know, if you don\'t provide a value then \
+                     the workflow would automatically cluster contigs for profile databases\
+                     that are not merged (i.e. profiles that belong to groups of size 1).')
+        cluster_contigs = M.get_rule_param('anvi_profile', '--cluster-contigs')
+    else:
+        # if profiling to individual assembly then clustering contigs
+        # see --cluster-contigs in the help manu of anvi-profile
+        cluster_contigs = '--cluster-contigs' if group_sizes[wildcards.group] == 1 else ''
+    return cluster_contigs
+
+
 rule anvi_profile:
     """ run anvi-profile on the bam file"""
     # setting the rule version to be as the version of the profile database of anvi'o
@@ -533,19 +560,34 @@ rule anvi_profile:
         profile = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db",
         runlog = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/RUNLOG.txt"
     params:
-        # minimal length of contigs to include in the profiling
-        # if not specified in the config file then default is 2,500.
-        min_contig_length = w.A(["anvi_profile", "min_contig_length"], config, default_value=2500),
-        # if profiling to individual assembly then clustering contigs
-        # see --cluster-contigs in the help manu of anvi-profile
-        cluster_contigs = lambda wildcards: '--cluster-contigs' if group_sizes[wildcards.group] == 1 else '',
-        name = "{sample}",
-        profile_AA = "--profile-AA-frequencies" if w.A(["anvi_profile", "profile_AA"], config)  else "",
-        report_variability_full = "--report-variability-full" if w.A(["anvi_profile", "report_variability_full"], config)  else "",
         output_dir = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}"
+        cluster_contigs = get_cluster_contigs_param,
+        sample_name = M.get_rule_param("anvi-profile", "--sample-name"),
+        overwrite_output_destinations = w.B("anvi_profile", "--overwrite-output-destinations"),
+        report_variability_full = M.get_rule_param("anvi_profile", "--report-variability-full"),
+        skip_SNV_profiling = M.get_rule_param("anvi_profile", "--skip-SNV-profiling"),
+        profile_AA_frequencies = M.get_rule_param("anvi_profile", "--profile-AA-frequencies"),
+        description = M.get_rule_param("anvi_profile", "--description"),
+        skip_hierarchical_clustering = M.get_rule_param("anvi_profile", "--skip-hierarchical-clustering"),
+        distance = M.get_rule_param("anvi_profile", "--distance"),
+        linkage = M.get_rule_param("anvi_profile", "--linkage"),
+        min_contig_length = M.get_rule_param("anvi_profile", "--min-contig-length"),
+        min_mean_coverage = M.get_rule_param("anvi_profile", "--min-mean-coverage"),
+        min_coverage_for_variability = M.get_rule_param("anvi_profile", "--min-coverage-for-variability"),
+        contigs_of_interest = M.get_rule_param("anvi_profile", "--contigs-of-interest"),
+        queue_size = M.get_rule_param("anvi_profile", "--queue-size"),
+        write_buffer_size = M.get_rule_param("anvi_profile", "--write-buffer-size"),
     threads: M.T(config, 'anvi_profile', 5)
     resources: nodes = M.T(config, 'anvi_profile', 5),
-    shell: "anvi-profile -i {input.bam} -c {input.contigs} -o {params.output_dir} -M {params.min_contig_length} -S {params.name} -T {threads} --overwrite-output-destinations {params.cluster_contigs} {params.profile_AA} {params.report_variability_full} >> {log} 2>&1"
+    shell: "anvi-profile -i {input.bam} -c {input.contigs} -o {params.output_dir} \
+                         {params.cluster_contigs} {params.min_contig_length} \
+                         {params.sample_name} -T {threads} {params.overwrite_output_destinations} \
+                         {params.profile_AA} {params.report_variability_full} \
+                         {params.skip_SNV_profiling} {params.description} \
+                         {params.skip_hierarchical_clustering} {params.distance} \
+                         {params.linkage} {params.min_mean_coverage} \
+                         {params.min_coverage_for_variability} {params.contigs_of_interest} \
+                         {params.queue_size} {params.write_buffer_size} >> {log} 2>&1"
 
 
 def input_for_anvi_merge(wildcards):
