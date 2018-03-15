@@ -186,7 +186,7 @@ run_gzip_fastqs = M.get_rule_param('gzip_fastqs', 'run')
 run_qc = M.get_rule_param('iu-filter-quality-minoche', 'run')
 
 
-rule all:
+rule metagenomics_workflow_target_rule:
     '''
         The target rule for the workflow.
 
