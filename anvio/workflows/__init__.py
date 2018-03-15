@@ -50,7 +50,10 @@ class WorkflowSuperClass:
         self.default_config_output_path = A('get_default_config')
         self.save_workflow_graph = A('save_workflow_graph')
         self.list_dependencies = A('list_dependencies')
-        self.dry_run_only = A('save_workflow_graph')
+        self.dry_run_only = A('dry_run')
+
+        if self.save_workflow_graph:
+            self.dry_run_only = True
 
         # if this class is being inherited from a snakefile that was 'included' from
         # within another snakefile.
