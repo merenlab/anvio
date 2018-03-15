@@ -1701,7 +1701,7 @@ function showCompleteness(bin_id, updateOnly) {
     var msg = '<table class="table table-striped sortable">' +
         '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent completion</th></tr></thead><tbody>';
 
-    for (var source in stats){
+    for (let source in stats){
         if(stats[source]['domain'] != averages['domain'])
             // if the source is not matching the best domain recovered
             // don't show it in the interface
@@ -2016,7 +2016,7 @@ function showLoadCollectionWindow() {
         success: function(data) {
             $('#loadCollection_list').empty();
 
-            for (source in data) {
+            for (let source in data) {
                 var read_only = data[source]["read_only"];
 
                 if (read_only) {
@@ -2126,13 +2126,13 @@ function processCollection(collection_data) {
 
     // load new bins
     var bin_id=0;
-    for (bin in collection_data['data'])
+    for (let bin in collection_data['data'])
     {
         // collection may be contain unknown splits/contigs, we should clear them.
         var contigs = new Array();
         var sum_contig_length = 0;
 
-        for (index in collection_data['data'][bin])
+        for (let index in collection_data['data'][bin])
         {
             if (mode === 'manual' || mode === 'pan' || mode === 'server'){
                 contigs.push(collection_data['data'][bin][index]);
@@ -2174,7 +2174,7 @@ function showSaveStateWindow()
         success: function(state_list) {
             $('#saveState_list').empty();
 
-            for (state_name in state_list) {
+            for (let state_name in state_list) {
                 var _select = "";
                 if (state_name == current_state_name)
                 {
@@ -2301,7 +2301,7 @@ function saveState()
         cache: false,
         url: '/state/all',
         success: function(state_list) {
-            for (state_name in state_list) {
+            for (let state_name in state_list) {
                 if (state_name == name)
                 {
                     if (!confirm('"' + name + '" already exist, do you want to overwrite it?'))
@@ -2364,7 +2364,7 @@ function showUploadProject() {
         cache: false,
         url: '/state/all',
         success: function(state_list) {
-            for (state_name in state_list) {
+            for (let state_name in state_list) {
                 $('#upload_state').append('<option>' + state_name + '</option>');
             }
 
@@ -2424,7 +2424,7 @@ function showLoadStateWindow()
         success: function(state_list) {
             $('#loadState_list').empty();
 
-            for (state_name in state_list) {
+            for (let state_name in state_list) {
                 $('#loadState_list').append('<option lastmodified="' + state_list[state_name]['last_modified'] + '">' + state_name + '</option>');
             }
 
@@ -2509,12 +2509,12 @@ function processState(state_name, state) {
 
     if (state.hasOwnProperty('views')) {
         views = {};
-        for (var view_key in state['views'])
+        for (let view_key in state['views'])
         {
             views[view_key] = {};
-            for (var key in state['views'][view_key])
+            for (let key in state['views'][view_key])
             {
-                var layer_id = getLayerId(key);
+                let layer_id = getLayerId(key);
                 if (layer_id != -1)
                 {
                     views[view_key][layer_id] = state['views'][view_key][key];
@@ -2525,9 +2525,9 @@ function processState(state_name, state) {
 
     if (state.hasOwnProperty('layers')) {
         layers = {};
-        for (var key in state['layers'])
+        for (let key in state['layers'])
         {
-            var layer_id = getLayerId(key);
+            let layer_id = getLayerId(key);
             if (layer_id != -1)
             {
                 layers[layer_id] = state['layers'][key];
@@ -2536,9 +2536,9 @@ function processState(state_name, state) {
     }
 
     if (state.hasOwnProperty('categorical_data_colors')) {
-        for (var key in state['categorical_data_colors'])
+        for (let key in state['categorical_data_colors'])
         {
-            var layer_id = getLayerId(key);
+            let layer_id = getLayerId(key);
             if (layer_id != -1)
             {
                 categorical_data_colors[layer_id] = state['categorical_data_colors'][key];
@@ -2547,9 +2547,9 @@ function processState(state_name, state) {
     }
 
     if (state.hasOwnProperty('stack_bar_colors')) {
-        for (var key in state['stack_bar_colors'])
+        for (let key in state['stack_bar_colors'])
         {
-            var layer_id = getLayerId(key);
+            ;et layer_id = getLayerId(key);
             if (layer_id != -1)
             {
                 stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
@@ -2639,14 +2639,14 @@ function processState(state_name, state) {
     $("#tbody_layers").empty();
 
     if (state.hasOwnProperty('samples-categorical-colors')) {
-        for (key in state['samples-categorical-colors']) {
+        for (let key in state['samples-categorical-colors']) {
             if (key in samples_categorical_colors) {
                 samples_categorical_colors[key] = state['samples-categorical-colors'][key];
             } 
         }
     }
     if (state.hasOwnProperty('samples-stack-bar-colors')) {
-        for (key in state['samples-stack-bar-colors']) {
+        for (let key in state['samples-stack-bar-colors']) {
             if (key in samples_stack_bar_colors) {
                 samples_stack_bar_colors[key] = state['samples-stack-bar-colors'][key];
             } 
