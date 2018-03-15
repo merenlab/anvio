@@ -283,7 +283,7 @@ rule iu_filter_quality_minoche:
         """
             iu-filter-quality-minoche {input.ini} {params.store_read_fate}\
                                       {params.print_qual_scores} {params.limit_num_pairs}\
-                                      {params.visualize_quality_curves} {params.ignore_deflines} >> {log} 2>&1"
+                                      {params.visualize_quality_curves} {params.ignore_deflines} >> {log} 2>&1
         """
 
 
