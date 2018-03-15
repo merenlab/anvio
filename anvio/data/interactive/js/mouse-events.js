@@ -562,7 +562,10 @@ function menu_callback(action, param) {
             break;
 
         case 'rotate':
-            rotateNode = item_name;
+            let new_tree = new Tree();
+            new_tree.Parse(clusteringData.trim(), false);
+            new_tree.FindNode(item_name).Rotate();
+            clusteringData = new_tree.Serialize();
             drawTree();
             break;
 
