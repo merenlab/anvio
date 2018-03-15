@@ -79,7 +79,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
                               '--ignore-internal-stop-codons', '--skip-mindful-splitting',\
-                              '--contigs-fasta', '--project-name', '--output-db-path',\
+                              '--contigs-fasta', '--project-name',\
                               '--description', '--split-length', '--kmer-size',\
                               '--skip-mindful-splitting', '--skip-gene-calling', '--external-gene-calls',\
                               '--ignore-internal-stop-codons']
