@@ -42,7 +42,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'fq2fa', 'merge_fastas_for_co_assembly', 'megahit', 'anvi_script_anvi_script_reformat_fasta',\
                      'anvi_gen_contigs_database', 'anvi_export_gene_calls', 'centrifuge',\
                      'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
-                     'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam',\
+                     'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud', \
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped'])
 
         self.general_params.extend(["samples_txt", "references_mode", "all_against_all"])
@@ -51,9 +51,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # defining the accesible params per rule
         rule_acceptable_params_dict['iu_gen_configs'] = ["--r1-prefix", "--r2-prefix"]
-        rule_acceptable_params_dict['iu_filter_quality_minoche'] = ['visualize_quality_curves', 'ignore_deflines', 'limit_num_pairs', 'print_qual_scores', 'store_read_fate']
+        rule_acceptable_params_dict['iu_filter_quality_minoche'] = ['run', '--visualize-quality-curves', '--ignore-deflines', '--limit-num-pairs', '--print-qual-scores', '--store-read-fate']
         rule_acceptable_params_dict['gzip_fastqs'] = ["run"]
-        rule_acceptable_params_dict['megahit'] = ["--min-contig-len", "--min-count", "--k-min",
+        rule_acceptable_params_dict['megahit'] = ["run", "--min-contig-len", "--min-count", "--k-min",
                                                   "--k-max", "--k-step", "--k-list",
                                                   "--no-mercy", "--no-bubble", "--merge-level",
                                                   "--prune-level", "--prune-depth", "--low-local-ratio",
@@ -61,6 +61,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                   "--presets", "--memory", "--mem-flag",
                                                   "--use-gpu", "--gpu-mem", "--keep-tmp-files",
                                                   "--tmp-dir", "--continue", "--verbose"]
+        rule_acceptable_params_dict['idba_ud'] = ["run", "--mink", "--maxk", "--step", "--inner-mink",
+                                                  "--inner-step", "--prefix", "--min-count",
+                                                  "--min-support", "--seed-kmer", "--min-contig",
+                                                  "--similar", "--max-mismatch", "--min-pairs",
+                                                  "--no-bubble", "--no-local", "--no-coverage",
+                                                  "--no-correct", "--pre-correction"]
         rule_acceptable_params_dict['bowtie'] = ["additional_params"]
         rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
         rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--sample-name", "--report-variability-full",
@@ -84,8 +90,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "MERGE_DIR": "06_MERGED"})
 
         self.default_config.update({'samples_txt': "samples.txt",
-                                    'megahit': {"--min_contig": min_contig_length_for_assembly, "--memory": 0.4, "threads": 11},
-                                    'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 11},
+                                    'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 11},
+                                    'idba_ud': {"--min-contig": min_contig_length_for_assembly, "threads": 11},
                                     'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True, "threads": 2},
                                     "gzip_fastqs": {"run": True},
                                     "bowtie_build": {"threads": 10},

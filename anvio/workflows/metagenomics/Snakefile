@@ -89,6 +89,7 @@ available_assemblers = M.get_assembly_software_list()
 number_of_assemblers_in_config_file = 0
 assembly_software_in_config = list()
 for a in available_assemblers:
+    print(a)
     if M.get_param_value_from_config([a, 'run']):
         number_of_assemblers_in_config_file += 1
         assembly_software_in_config.append(a)
@@ -183,7 +184,7 @@ if not references_mode and not M.get_param_value_from_config(['reformat_fasta','
 # by default fastq files will be zipped after qc is done
 run_gzip_fastqs = M.get_param_value_from_config(['gzip_fastqs', 'run'])
 #
-run_qc = M.get_param_value_from_config(['iu-filter-quality-minoche', 'run'])
+run_qc = M.get_param_value_from_config(['iu_filter_quality_minoche', 'run'])
 
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run'])
 
@@ -196,8 +197,8 @@ rule metagenomics_workflow_target_rule:
         for each group
     '''
     input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=group_names),
-           contigs_annotated = rules.annotate_contigs_database.output,
-           qc_report = rules.gen_qc_report.output if run_qc else rules.annotate_contigs_database.output
+           contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=group_names),
+           qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=group_names)
 
 
 rule iu_gen_configs:
@@ -266,7 +267,7 @@ rule iu_filter_quality_minoche:
     log: dirs_dict["LOGS_DIR"] + "/{sample}-iu_filter_quality_minoche.log"
     # making the config file as "ancient" so QC wouldn't run just because
     # a new config file was produced.
-    input: unpack(input_for_iu_filter_quality_minoche)
+    input: unpack(input_for_qc)
     output:
         r1 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R1.fastq",
         r2 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R2.fastq",
@@ -431,7 +432,7 @@ if M.get_param_value_from_config(['idba_ud', 'run']):
             shell("mv {output.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
 
 
-if M.get_param_value_from_config(['meghit', 'run']):
+if M.get_param_value_from_config(['megahit', 'run']):
     rule megahit:
         '''
             Assembling fastq files using megahit.
@@ -466,7 +467,7 @@ if M.get_param_value_from_config(['meghit', 'run']):
             gpu_mem = M.get_rule_param("megahit", "--gpu-mem"),
             keep_tmp_files = M.get_rule_param("megahit", "--keep-tmp-files"),
             tmp_dir = M.get_rule_param("megahit", "--tmp-dir"),
-            continue = M.get_rule_param("megahit", "--continue"),
+            _continue = M.get_rule_param("megahit", "--continue"),
             verbose = M.get_rule_param("megahit", "--verbose"),
         # Notice that megahit requires a directory to be specified as
         # output. If the directory already exists then megahit will not
@@ -494,7 +495,7 @@ if M.get_param_value_from_config(['meghit', 'run']):
                 "{params.prune_depth} {params.low_local_ratio} {params.max_tip_len} " + \
                 "{params.no_local} {params.kmin_1pass} {params.presets} {params.memory} " + \
                 "{params.mem_flag} {params.use_gpu} {params.gpu_mem} {params.keep_tmp_files} " + \
-                "{params.tmp_dir} {params.continue} {params.verbose} >> {log} 2>&1"
+                "{params.tmp_dir} {params._continue} {params.verbose} >> {log} 2>&1"
             print("Running: %s" % cmd)
             shell(cmd)
             shell("mv {output.temp_dir}/final.contigs.fa {output.contigs} >> {log} 2>&1")
@@ -608,10 +609,10 @@ rule anvi_profile:
         profile = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db",
         runlog = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/RUNLOG.txt"
     params:
-        output_dir = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}"
+        output_dir = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}",
         cluster_contigs = get_cluster_contigs_param,
-        sample_name = M.get_rule_param("anvi-profile", "--sample-name"),
-        overwrite_output_destinations = w.B("anvi_profile", "--overwrite-output-destinations"),
+        sample_name = M.get_rule_param("anvi_profile", "--sample-name"),
+        overwrite_output_destinations = M.get_rule_param("anvi_profile", "--overwrite-output-destinations"),
         report_variability_full = M.get_rule_param("anvi_profile", "--report-variability-full"),
         skip_SNV_profiling = M.get_rule_param("anvi_profile", "--skip-SNV-profiling"),
         profile_AA_frequencies = M.get_rule_param("anvi_profile", "--profile-AA-frequencies"),
@@ -638,6 +639,7 @@ rule anvi_profile:
                          {params.queue_size} {params.write_buffer_size} >> {log} 2>&1"
 
 
+print(group_names)
 def input_for_anvi_merge(wildcards):
     '''
         Create dictionary as input for rule anvi_merge.
@@ -647,7 +649,7 @@ def input_for_anvi_merge(wildcards):
         between these modes.
     '''
     # marking the contigs.db as ancient in order to ignore timestamps.
-    contigs = ancient(rules.gen_contigs_db.output.db)
+    contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/%s-contigs.db" % wildcards.group)
 
     if M.get_param_value_from_config(['all_against_all']):
         # If the user specified 'all against all' in the configs file
