@@ -89,7 +89,7 @@ available_assemblers = M.get_assembly_software_list()
 number_of_assemblers_in_config_file = 0
 assembly_software_in_config = list()
 for a in available_assemblers:
-    if M.get_rule_param(a, 'run'):
+    if M.get_param_value_from_config([a, 'run']):
         number_of_assemblers_in_config_file += 1
         assembly_software_in_config.append(a)
 if number_of_assemblers_in_config_file > 1:
@@ -171,7 +171,7 @@ if M.get_param_value_from_config('all_against_all', repress_default=True):
     group_sizes = dict.fromkeys(group_names,len(sample_names))
 
 
-if not references_mode and not M.get_rule_param('reformat_fasta','run'):
+if not references_mode and not M.get_param_value_from_config(['reformat_fasta','run']):
     # in assembly mode (i.e. not in references mode) we always have
     # to run reformat_fasta. The only reason for this is that
     # the megahit output is temporary, and if we dont run
@@ -181,9 +181,10 @@ if not references_mode and not M.get_rule_param('reformat_fasta','run'):
                         "please change your config.json file")
 
 # by default fastq files will be zipped after qc is done
-run_gzip_fastqs = M.get_rule_param('gzip_fastqs', 'run')
+run_gzip_fastqs = M.get_param_value_from_config(['gzip_fastqs', 'run'])
 #
-run_qc = M.get_rule_param('iu-filter-quality-minoche', 'run')
+run_qc = M.get_param_value_from_config(['iu-filter-quality-minoche', 'run'])
+
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run'])
 
 
@@ -388,7 +389,7 @@ rule merge_fastas_for_co_assembly:
     shell: "cat {input} > {output}"
 
 
-if M.get_rule_param('idba_ud', 'run'):
+if M.get_param_value_from_config(['idba_ud', 'run']):
     rule idba_ud:
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-idba_ud.log"
@@ -430,7 +431,7 @@ if M.get_rule_param('idba_ud', 'run'):
             shell("mv {output.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
 
 
-if M.get_rule_param('meghit', 'run'):
+if M.get_param_value_from_config(['meghit', 'run']):
     rule megahit:
         '''
             Assembling fastq files using megahit.
