@@ -318,12 +318,12 @@ class WorkflowSuperClass:
             a = _list.pop(0)
             default_dict = default_dict[a]
             try:
-                d = d.get(a, '')
+                d = d.get(a, None)
             except:
                 # we continue becuase we want to get the value from the default config
                 continue
 
-        if d or repress_default:
+        if (d is not None) or repress_default:
             return d
         else:
             return default_dict
