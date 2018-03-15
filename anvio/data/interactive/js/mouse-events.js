@@ -576,6 +576,23 @@ function menu_callback(action, param) {
             drawTree();
             break;
 
+        case 'reroot':
+            $.ajax({
+                type: 'POST',
+                async: false,
+                cache: false,
+                url: '/data/reroot_tree',
+                data: {
+                    'newick': clusteringData,
+                    'branch': item_name  
+                },
+                success: function(data) {
+                    clusteringData = data['newick'];
+                    drawTree();
+                }
+            });
+            break;
+
         case 'select':
             var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
             lineClickHandler(fake_event);
