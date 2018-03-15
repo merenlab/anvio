@@ -27,10 +27,6 @@ function formatString(s) {
 //--------------------------------------------------------------------------------------------------
 // http://stackoverflow.com/questions/894860/set-a-default-parameter-value-for-a-javascript-function
 function Node(label) {
-    if (typeof label === 'undefined')
-    {
-        label = 'UnnamedNode' + (unnamed_node_counter++);
-    }
     this.ancestor = null;
     this.child = null;
     this.sibling = null;
