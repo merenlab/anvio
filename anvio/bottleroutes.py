@@ -19,7 +19,7 @@ import argparse
 import requests
 import datetime
 from multiprocessing import Process
-
+from ete3 import Tree
 from bottle import Bottle
 from bottle import BaseRequest
 from bottle import redirect, static_file
@@ -129,6 +129,7 @@ class BottleApplication(Bottle):
         self.route('/data/search_functions',                   callback=self.search_functions, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
+        self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
 
 
     def run_application(self, ip, port):
@@ -1034,3 +1035,15 @@ class BottleApplication(Bottle):
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
+
+    def reroot_tree(self):
+        newick = request.forms.get('newick')
+        branch = request.forms.get('branch')
+
+        tree = Tree(newick, format=1)
+        new_root = tree.search_nodes(name=branch)[0]
+        tree.set_outgroup(new_root)
+
+        return json.dumps({'newick': tree.write(format=1)})
+
+
