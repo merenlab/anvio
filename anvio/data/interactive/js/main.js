@@ -18,8 +18,6 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
-"use strict";
-
 var VERSION = '0.2.1';
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
@@ -2236,9 +2234,9 @@ function showGeneratePhylogeneticTreeWindow() {
 }
 
 function generatePhylogeneticTree() {
-    new_phylogeny_name = $('#phylogeny_name').val();
-    gene_cluster_list = [];
-    gene_clusters_id = $('#phylogeny_gene_cluster').val();
+    var new_phylogeny_name = $('#phylogeny_name').val();
+    var gene_cluster_list = [];
+    var gene_clusters_id = $('#phylogeny_gene_cluster').val();
     for (var i=0; i < SELECTED[gene_clusters_id].length; i++) {
         if (label_to_node_map[SELECTED[gene_clusters_id][i]].IsLeaf()) {
             gene_cluster_list.push(SELECTED[gene_clusters_id][i]);
