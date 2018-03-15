@@ -171,7 +171,7 @@ if M.get_param_value_from_config('all_against_all', repress_default=True):
     group_sizes = dict.fromkeys(group_names,len(sample_names))
 
 
-if not references_mode and not M.get_param_value_from_config(['reformat_fasta','run']):
+if not references_mode and not M.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
     # in assembly mode (i.e. not in references mode) we always have
     # to run reformat_fasta. The only reason for this is that
     # the megahit output is temporary, and if we dont run
