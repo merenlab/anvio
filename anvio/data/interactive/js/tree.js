@@ -37,6 +37,7 @@ function Node(label) {
     this.label = label;
     this.id = 0;
     this.xy = [];
+    this.original_edge_length = 0.0;
     this.edge_length = 0.0;
     this.path_length = 0.0;
     this.depth = 0;
@@ -167,6 +168,8 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                     case ':':
                         i++;
                         if (isNumber(token[i])) {
+                            curnode.original_edge_length = token[i];
+
                             // nnormalization of edge lengths
                             if (edge_length_norm) {
                                 curnode.edge_length = Math.sqrt(parseFloat(token[i]) * 1000000) / 1000000;
@@ -241,6 +244,8 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                         case ':':
                             i++;
                             if (isNumber(token[i])) {
+                                curnode.original_edge_length = token[i];
+                                
                                 // nnormalization of edge lengths
                                 if (edge_length_norm) {
                                     curnode.edge_length = Math.sqrt(parseFloat(token[i]) * 1000000) / 1000000;
@@ -308,7 +313,7 @@ Tree.prototype.SerializeNode = function(node) {
     text += node.label; 
 
     if (this.has_edge_lengths) {
-        text += ":" + node.edge_length;
+        text += ":" + node.original_edge_length;
     }
 
     if (node.sibling) {
