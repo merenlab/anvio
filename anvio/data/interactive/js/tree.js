@@ -299,6 +299,22 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
     }
 }
 
+Tree.prototype.FindNode = function(label) {
+    var n = new NodeIterator(this);
+    var q = n.Begin();
+    while (q != null)
+    {
+        if (q.label == label)
+            return q;
+
+        q=n.Next();
+    }
+
+    console.log("Couldn't find item with label '" + label + "'");
+    return null;
+};
+
+
 Tree.prototype.Serialize = function() {
     return this.SerializeNode(this.root) + ";";
 };
