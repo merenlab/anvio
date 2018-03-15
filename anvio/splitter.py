@@ -420,14 +420,14 @@ class BinSplitter(summarizer.Bin):
                               clustering to be done anyway, you can re-run the splitting process only for this bin\
                               by adding these parameters to your run: '--bin-id %s --enforce-hierarchical-clustering'.\
                               If you feel like you are lost, don't hesitate to get in touch with anvi'o developers." \
-                                                                % pp(self.max_num_splits_for_hierarchical_clustering))
+                                                        % (pp(self.max_num_splits_for_hierarchical_clustering), self.bin_id))
             skip_hierarchical_clustering = True
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
             self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt\
                               to create a hierarchical clustering of your %s splits for this bin. It may take a bit of\
                               time, and it is not even anvi'o's fault, you know  :/" \
-                                                                % pp(self.max_num_splits_for_hierarchical_clustering))
+                                                        % pp(self.max_num_splits_for_hierarchical_clustering))
 
         return skip_hierarchical_clustering
 
