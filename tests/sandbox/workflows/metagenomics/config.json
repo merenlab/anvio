@@ -41,10 +41,10 @@
     },
     "samples_txt": "samples.txt",
     "megahit": {
-        "--min_contig": 1000,
+        "--min-contig-len": 1000,
         "--memory": 0.4,
         "threads": 11,
-        "--min-contig-len": "",
+        "run": "",
         "--min-count": "",
         "--k-min": "",
         "--k-max": "",
@@ -69,18 +69,35 @@
         "--verbose": ""
     },
     "idba_ud": {
-        "--min_contig": 1000,
-        "threads": 11
+        "--min-contig": 1000,
+        "threads": 11,
+        "run": "",
+        "--mink": "",
+        "--maxk": "",
+        "--step": "",
+        "--inner-mink": "",
+        "--inner-step": "",
+        "--prefix": "",
+        "--min-count": "",
+        "--min-support": "",
+        "--seed-kmer": "",
+        "--similar": "",
+        "--max-mismatch": "",
+        "--min-pairs": "",
+        "--no-bubble": "",
+        "--no-local": "",
+        "--no-coverage": "",
+        "--no-correct": "",
+        "--pre-correction": ""
     },
     "iu_filter_quality_minoche": {
         "run": true,
         "--ignore-deflines": true,
         "threads": 2,
-        "visualize_quality_curves": "",
-        "ignore_deflines": "",
-        "limit_num_pairs": "",
-        "print_qual_scores": "",
-        "store_read_fate": ""
+        "--visualize-quality-curves": "",
+        "--limit-num-pairs": "",
+        "--print-qual-scores": "",
+        "--store-read-fate": ""
     },
     "gzip_fastqs": {
         "run": true,
@@ -167,7 +184,7 @@
     "anvi_export_gene_calls": {
         "threads": ""
     },
-    "references_mode": "",
+    "references_mode": true,
     "all_against_all": "",
     "output_dirs": {
         "FASTA_DIR": "02_FASTA",
