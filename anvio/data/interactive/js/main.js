@@ -92,7 +92,6 @@ var samples_tree_hover = false;
 var bbox;
 
 var request_prefix = getParameterByName('request_prefix');
-var collapsedNodes = []; 
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------

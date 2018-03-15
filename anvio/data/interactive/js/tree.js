@@ -30,7 +30,8 @@ function Node(label) {
     this.ancestor = null;
     this.child = null;
     this.sibling = null;
-    this.label = label;
+    this.collapsed = false;
+    this.label = null;
     this.id = 0;
     this.xy = [];
     this.original_edge_length = 0.0;
@@ -38,13 +39,19 @@ function Node(label) {
     this.path_length = 0.0;
     this.depth = 0;
     this.order = null;
-    this.collapsed = false;
     this.max_child_path = 0;
 }
+//--------------------------------------------------------------------------------------------------
+Node.prototype.SetLabel = function(label) {
+    this.collapsed = (label && label.endsWith('_collapsed')) ? true : false;
+    this.label = (label) ? label.replace(/_collapsed$/,'') : '';
+}
+
 //--------------------------------------------------------------------------------------------------
 Node.prototype.IsLeaf = function() {
     return (!this.child);
 }
+
 
 //--------------------------------------------------------------------------------------------------
 Node.prototype.GetRightMostSibling = function() {
@@ -90,8 +97,8 @@ function Tree() {
 }
 
 //--------------------------------------------------------------------------------------------------
-Tree.prototype.NewNode = function(label) {
-    var node = new Node(label);
+Tree.prototype.NewNode = function() {
+    var node = new Node();
     node.id = this.num_nodes++;
     this.nodes[node.id] = node;
     return node;
@@ -127,7 +134,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
                     this.num_leaves++;
                     label = token[i];
-                    curnode.label = label;
+                    curnode.SetLabel(label);
                     i++;
                     state = 1;
                 } else {
@@ -233,7 +240,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
 
             case 3: // finishchildren
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
-                    curnode.label = token[i];
+                    curnode.SetLabel(token[i]);
                     i++;
                 } else {
                     switch (token[i]) {
@@ -323,6 +330,10 @@ Tree.prototype.SerializeNode = function(node) {
     }
 
     text += node.label; 
+
+    if (node.collapsed) {
+        text += '_collapsed';
+    }
 
     if (this.has_edge_lengths) {
         text += ":" + node.original_edge_length;
