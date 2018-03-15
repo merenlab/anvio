@@ -16,5 +16,8 @@ gzip -d three_samples_example/*.fa.gz
 INFO "Creating a default config for metagenomics workflow"
 anvi-run-snakemake-workflow -w metagenomics --get-default-config default-config.json
 
+INFO "List dependencies for metagenomics workflow"
+anvi-run-snakemake-workflow -w metagenomics --config config.json --list-dependencies
+
 INFO "Runnind a dry run"
 anvi-run-snakemake-workflow -w metagenomics --config config.json --dry-run
