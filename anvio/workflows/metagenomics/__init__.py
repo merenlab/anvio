@@ -43,7 +43,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'anvi_gen_contigs_database', 'anvi_export_gene_calls', 'centrifuge',\
                      'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam',\
-                     'anvi_profile', 'annotate_contigs_database', 'anvi_merge'])
+                     'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped'])
 
         self.general_params.extend(["samples_txt", "references_mode", "all_against_all"])
 
@@ -72,6 +72,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['anvi_merge'] = ["--sample-name", "--description", "--skip-hierarchical-clustering",
                                                      "--enforce-hierarchical-clustering", "--distance", "--linkage",
                                                      "--skip-concoct-binning", "--overwrite-output-destinations"]
+        rule_acceptable_params_dict['import_percent_of_reads_mapped'] = ["run"]
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -92,6 +93,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "samtools_view": {"additional_params": "-F 4", "threads": 4},
                                     "anvi_init_bam": {"threads": 4},
                                     "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
-                                    "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True}})
+                                    "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
+                                    "import_percent_of_reads_mapped": {"run": True}})
+
+
     def get_assembly_software_list(self):
         return ['megahit', 'idba_ud']
