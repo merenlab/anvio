@@ -1659,14 +1659,14 @@ function updateComplateness(bin_id) {
         cache: false,
         data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
         success: function(completeness_info_dict){
-            stats = completeness_info_dict['stats'];
-            refs = completeness_info_dict['refs'];
-            averages = completeness_info_dict['averages'];
+            let stats = completeness_info_dict['stats'];
+            let refs = completeness_info_dict['refs'];
+            let averages = completeness_info_dict['averages'];
 
             completeness_dict[bin_id] = completeness_info_dict;
 
-            average_completeness = averages['percent_completion'];
-            average_redundancy = averages['percent_redundancy'];
+            let average_completeness = averages['percent_completion'];
+            let average_redundancy = averages['percent_redundancy'];
 
             if (average_completeness != null && average_redundancy != null) {
                 $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%').parent().attr('data-value', average_completeness);
