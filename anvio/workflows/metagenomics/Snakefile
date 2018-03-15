@@ -89,7 +89,6 @@ available_assemblers = M.get_assembly_software_list()
 number_of_assemblers_in_config_file = 0
 assembly_software_in_config = list()
 for a in available_assemblers:
-    print(a)
     if M.get_param_value_from_config([a, 'run']):
         number_of_assemblers_in_config_file += 1
         assembly_software_in_config.append(a)
@@ -641,7 +640,6 @@ rule anvi_profile:
                          {params.queue_size} {params.write_buffer_size} >> {log} 2>&1"
 
 
-print(group_names)
 def input_for_anvi_merge(wildcards):
     '''
         Create dictionary as input for rule anvi_merge.
