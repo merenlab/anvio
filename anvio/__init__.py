@@ -1572,6 +1572,15 @@ D = {
             {'required': False,
              'help': "TBD"}
                 ),
+    'additional-params': (
+            ['-A', '--additional-params'],
+            {'required': False,
+             'help': "Additional snakemake parameters to add when running snakemake. Any parameter that is accepted \
+                      by snakemake should be fair game here, but it is your responsibility to make sure that \
+                      whatever you added makes sense. To see what parameters are available please refer to the \
+                      snakemake documentation. For example you could use this to set up cluster submission \
+                      using --additional-params '--cluster \"YOUR-CLUSTER-SUBMISSION-CMD\"'"}
+                ),
 }
 
 # two functions that works with the dictionary above.

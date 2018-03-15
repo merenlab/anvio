@@ -61,6 +61,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A("config-file"), **anvio.K("config-file"))
     groupB.add_argument(*anvio.A("dry-run"), **anvio.K("dry-run"))
     groupB.add_argument(*anvio.A("save-workflow-graph"), **anvio.K("save-workflow-graph"))
+    groupB.add_argument(*anvio.A("additional-params"), **anvio.K("additional-params"))
 
     args = anvio.get_args(parser)
 
