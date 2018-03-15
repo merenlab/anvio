@@ -20,6 +20,9 @@ anvi-run-snakemake-workflow -w contigs -c default-config.json --list-dependencie
 INFO "Saving a workflow graph"
 anvi-run-snakemake-workflow -w contigs -c default-config.json --save-workflow-graph
 
+INFO "Running contigs workflow with a dry-run"
+anvi-run-snakemake-workflow -w contigs -c default-config.json --dry-run
+
 INFO "Running contigs workflow"
 anvi-run-snakemake-workflow -w contigs -c default-config.json
 
