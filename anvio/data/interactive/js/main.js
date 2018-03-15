@@ -2549,7 +2549,7 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('stack_bar_colors')) {
         for (let key in state['stack_bar_colors'])
         {
-            ;et layer_id = getLayerId(key);
+            let layer_id = getLayerId(key);
             if (layer_id != -1)
             {
                 stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
