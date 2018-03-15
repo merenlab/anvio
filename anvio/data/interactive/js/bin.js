@@ -219,6 +219,9 @@ function redrawBins()
         var start = label_to_node_map[highlighted_splits[i]];
         var end = start;
 
+        if (!start)
+            continue;
+
         var color = document.getElementById('picker_highlight').getAttribute('color');
 
         if (tree_type == 'circlephylogram')
