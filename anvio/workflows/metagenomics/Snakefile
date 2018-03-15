@@ -575,7 +575,7 @@ rule anvi_init_bam:
 
 
 sample_name = M.get_param_value_from_config(['anvi_profile', '--sample-name'], repress_default=True)
-if sample_name:
+if sample_name != M.default_config['anvi_profile']['--sample-name']:
     run.warning('You chose to set the "--sample-name" for your profile databases\
                  in the config file to %s. You are welcomed to do that, but at your own\
                  risk. Just so you know, by default the sample name would match\
