@@ -194,7 +194,7 @@ function lineContextMenuHandler(event) {
         return false;
     } else {
 
-        var is_collapsed = (collapsedNodes.indexOf(id_to_node_map[context_menu_target_id].label) > -1);
+        var is_collapsed = id_to_node_map[context_menu_target_id].collapsed;
         var is_ctrl_pressed = ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey);
 
         if (is_collapsed) {
@@ -549,20 +549,27 @@ function write_mouse_table(content, item_name, layer_id) {
 function menu_callback(action, param) {
     var item_name = id_to_node_map[context_menu_target_id].label;
     var target = (mode == 'gene') ? 'gene' : 'contig';
+    var new_tree;
 
     switch (action) {
         case 'collapse':
-            collapsedNodes.push(item_name);
+            new_tree = new Tree();
+            new_tree.Parse(clusteringData.trim(), false);
+            new_tree.FindNode(item_name).collapsed = true;
+            clusteringData = new_tree.Serialize();
             drawTree();
             break;
 
         case 'expand':
-            collapsedNodes.splice(collapsedNodes.indexOf(item_name), 1);
+            new_tree = new Tree();
+            new_tree.Parse(clusteringData.trim(), false);
+            new_tree.FindNode(item_name).collapsed = false;
+            clusteringData = new_tree.Serialize();
             drawTree();
             break;
 
         case 'rotate':
-            let new_tree = new Tree();
+            new_tree = new Tree();
             new_tree.Parse(clusteringData.trim(), false);
             new_tree.FindNode(item_name).Rotate();
             clusteringData = new_tree.Serialize();
