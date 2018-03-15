@@ -1857,7 +1857,7 @@ function showStoreCollectionWindow() {
         success: function(data) {
             $('#storeCollection_list').empty();
 
-            for (source in data) {
+            for (let source in data) {
                 var read_only = data[source]["read_only"];
 
                 if (read_only) {
@@ -1880,8 +1880,8 @@ function showStoreCollectionWindow() {
 
 
 function storeRefinedBins() {
-    data = {};
-    colors = {};
+    var data = {};
+    var colors = {};
 
     $('#tbody_bins tr').each(
         function(index, bin) {
@@ -1891,7 +1891,7 @@ function storeRefinedBins() {
             colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
             data[bin_name] = new Array();
 
-            for (var i=0; i < SELECTED[bin_id].length; i++)
+            for (let i=0; i < SELECTED[bin_id].length; i++)
             {
                 if (label_to_node_map[SELECTED[bin_id][i]].IsLeaf())
                 {
@@ -1954,7 +1954,7 @@ function serializeCollection() {
 
             var items = new Array();
             
-            for (var i=0; i < SELECTED[bin_id].length; i++)
+            for (let i=0; i < SELECTED[bin_id].length; i++)
             {
                 var node_label = SELECTED[bin_id][i];
                 var node = label_to_node_map[node_label];
@@ -2090,9 +2090,9 @@ function loadCollection(default_collection) {
     function(index, bin) {
         bin_list.push(parseInt($(bin).attr('bin-id')));
     });
-    for (var _i = 0; _i < bin_list.length; _i++) {
-        var bin_id = bin_list[_i];
-        for (var j = 0; j < SELECTED[bin_id].length; j++) {
+    for (let _i = 0; _i < bin_list.length; _i++) {
+        let bin_id = bin_list[_i];
+        for (let j = 0; j < SELECTED[bin_id].length; j++) {
             if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf())
                 total_selection++;
         }
@@ -2114,12 +2114,10 @@ function loadCollection(default_collection) {
 }
 
 function processCollection(collection_data) {
-
-    // clear bins tab
-    var bins_cleared = false;
     SELECTED = new Array();
-    bin_count = 0;
-    bin_counter = 0;
+    var bins_cleared = false;
+    var bin_count = 0;
+    var bin_counter = 0;
 
     // calculate treshold.
     var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
