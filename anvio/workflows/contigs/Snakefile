@@ -39,16 +39,16 @@ if fasta_txt_file:
     references_mode = True
 
 # setting configuration for optional steps
-run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"])
+run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"]) == True
 
 # default is NOT running taxonomy with centrifuge
-run_taxonomy_with_centrifuge = M.get_param_value_from_config(["centrifuge", "run"])
+run_taxonomy_with_centrifuge = M.get_param_value_from_config(["centrifuge", "run"]) == True
 
 # default is running anvi_run_hmms
-run_anvi_run_hmms = M.get_param_value_from_config(["anvi_run_hmms", "run"])
+run_anvi_run_hmms = M.get_param_value_from_config(["anvi_run_hmms", "run"]) == True
 
 # default is running anvi_run_ncbi_cogs
-run_anvi_run_ncbi_cogs = M.get_param_value_from_config(["anvi_run_ncbi_cogs", "run"])
+run_anvi_run_ncbi_cogs = M.get_param_value_from_config(["anvi_run_ncbi_cogs", "run"]) == True
 
 # sanity check for centrifuge db
 if run_taxonomy_with_centrifuge:
