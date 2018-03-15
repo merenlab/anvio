@@ -346,7 +346,7 @@ class WorkflowSuperClass:
             if isinstance(val, bool):
                 # the param is a flag so no need for a value
                 val = ''
-            return _param + ' ' + val
+            return _param + ' ' + str(val)
         else:
             return ''
 
