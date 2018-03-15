@@ -2442,7 +2442,7 @@ function loadState()
         return;
     }
 
-    state_name = $('#loadState_list').val();
+    var state_name = $('#loadState_list').val();
     waitingDialog.show('Requesting state data from the server ...', 
         {
             dialogSize: 'sm', 
