@@ -93,7 +93,6 @@ var bbox;
 
 var request_prefix = getParameterByName('request_prefix');
 var collapsedNodes = []; 
-var rotateNode = null;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------

@@ -296,7 +296,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
 }
 
 Tree.prototype.FindNode = function(label) {
-    var n = new NodeIterator(this);
+    var n = new NodeIterator(this.root);
     var q = n.Begin();
     while (q != null)
     {
