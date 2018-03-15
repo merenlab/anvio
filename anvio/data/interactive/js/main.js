@@ -18,9 +18,7 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
-//--------------------------------------------------------------------------------------------------
-//  Globals
-//--------------------------------------------------------------------------------------------------
+"use strict";
 
 var VERSION = '0.2.1';
 var LINE_COLOR='#888888';
@@ -54,7 +52,7 @@ var parameter_count;
 
 var bin_counter = 0; // for id
 var bin_count = 0;
-
+var tree_type;
 var layer_types;
 
 var categorical_data_colors = {};
@@ -266,9 +264,9 @@ function initData() {
             
             samples_order_dict = response.layers_order;
             samples_information_dict = response.layers_information;
-            samples_information_default_layer_order = response.layers_information_default_order;
+            let samples_information_default_layer_order = response.layers_information_default_order;
 
-            available_orders = Object.keys(samples_order_dict).sort();
+            let available_orders = Object.keys(samples_order_dict).sort();
             $('#samples_order').append(new Option('custom'));
             available_orders.forEach(function(order)
             {
@@ -456,7 +454,7 @@ function changeViewData(view_data) {
 function populateColorDicts() {
     for (var layer_id=0; layer_id < parameter_count; layer_id++)
     {
-        layer_name = layerdata[0][layer_id];
+        let layer_name = layerdata[0][layer_id];
 
         if (layer_types[layer_id] == 1) {
             if (!(layer_id in stack_bar_colors))
@@ -497,7 +495,7 @@ function populateColorDicts() {
 
     if (typeof first_sample !== 'undefined')
     {
-        for (sample_layer_name in samples_information_dict[first_sample])
+        for (let sample_layer_name in samples_information_dict[first_sample])
         {
             if (isNumber(samples_information_dict[first_sample][sample_layer_name]))
             {
@@ -520,7 +518,7 @@ function populateColorDicts() {
                     samples_categorical_colors[sample_layer_name] = {};
                     samples_categorical_stats[sample_layer_name] = {};
 
-                    for (_sample in samples_information_dict)
+                    for (let _sample in samples_information_dict)
                     {
                         var _category_name = samples_information_dict[_sample][sample_layer_name];
                         if (_category_name == null || _category_name == '' || _category_name == 'null')
@@ -548,7 +546,7 @@ function buildLegendTables() {
     
     legends = [];
 
-    for (pindex in categorical_data_colors)
+    for (let pindex in categorical_data_colors)
     {
         var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
 
@@ -582,7 +580,7 @@ function buildLegendTables() {
         });    
     }
 
-    for (sample in samples_categorical_colors)
+    for (let sample in samples_categorical_colors)
     {
         var names = Object.keys(samples_categorical_colors[sample]);
 
@@ -596,7 +594,7 @@ function buildLegendTables() {
         });
     }
 
-    for (sample in samples_stack_bar_colors)
+    for (let sample in samples_stack_bar_colors)
     {
         var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
         var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
@@ -831,6 +829,7 @@ function getComboBoxContent(default_item, available_items){
     var combo_item = '<option value="{val}"{sel}>{text}</option>';
 
     $.each(available_items, function(index, item) {
+        let text_val;
         if (item.indexOf(':') == -1) {
             text_val = getPrettyName(item);
         } else {
@@ -2476,11 +2475,7 @@ function loadState()
 }
 
 function processState(state_name, state) {
-    if (typeof trigger_combos === 'undefined') {
-        trigger_combos = true;
-    }
-
-    if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
+    if (!state.hasOwnProperty('version') || (state['version'] !== VERSION))
     {
         toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
         throw "";
