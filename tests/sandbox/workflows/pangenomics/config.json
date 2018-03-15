@@ -9,7 +9,6 @@
         "--ignore-internal-stop-codons": "",
         "--skip-mindful-splitting": "",
         "--contigs-fasta": "",
-        "--output-db-path": "",
         "--split-length": "",
         "--kmer-size": ""
     },
@@ -42,7 +41,6 @@
     "anvi_pan_genome": {
         "threads": 20,
         "--project-name": "",
-        "--output-dir": "",
         "--genome-names": "",
         "--skip-alignments": "",
         "--align-with": "",
