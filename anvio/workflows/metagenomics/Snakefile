@@ -541,7 +541,11 @@ rule bowtie:
         additional_params = M.get_rule_param("bowtie", "additional_params")
     threads: M.T('bowtie')
     resources: nodes = M.T('bowtie'),
-    shell: "bowtie2 --threads {threads} -x {params.bowtie_build_prefix} -1 {input.r1} -2 {input.r2} {params.additional_params} -S {output.sam} >> {log} 2>&1"
+    shell:
+        """
+            bowtie2 --threads {threads} -x {params.bowtie_build_prefix} -1 {input.r1} -2 {input.r2} \
+            {params.additional_params} -S {output.sam} >> {log} 2>&1
+        """
 
 
 rule samtools_view:
@@ -629,15 +633,18 @@ rule anvi_profile:
         write_buffer_size = M.get_rule_param("anvi_profile", "--write-buffer-size"),
     threads: M.T('anvi_profile')
     resources: nodes = M.T('anvi_profile'),
-    shell: "anvi-profile -i {input.bam} -c {input.contigs} -o {params.output_dir} \
-                         {params.cluster_contigs} {params.min_contig_length} \
-                         {params.sample_name} -T {threads} {params.overwrite_output_destinations} \
-                         {params.profile_AA_frequencies} {params.report_variability_full} \
-                         {params.skip_SNV_profiling} {params.description} \
-                         {params.skip_hierarchical_clustering} {params.distance} \
-                         {params.linkage} {params.min_mean_coverage} \
-                         {params.min_coverage_for_variability} {params.contigs_of_interest} \
-                         {params.queue_size} {params.write_buffer_size} >> {log} 2>&1"
+    shell:
+        """
+            anvi-profile -i {input.bam} -c {input.contigs} -o {params.output_dir} \
+                             {params.cluster_contigs} {params.min_contig_length} \
+                             {params.sample_name} -T {threads} {params.overwrite_output_destinations} \
+                             {params.profile_AA_frequencies} {params.report_variability_full} \
+                             {params.skip_SNV_profiling} {params.description} \
+                             {params.skip_hierarchical_clustering} {params.distance} \
+                             {params.linkage} {params.min_mean_coverage} \
+                             {params.min_coverage_for_variability} {params.contigs_of_interest} \
+                             {params.queue_size} {params.write_buffer_size} >> {log} 2>&1
+        """
 
 
 def input_for_anvi_merge(wildcards):
