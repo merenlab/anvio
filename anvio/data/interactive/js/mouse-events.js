@@ -582,7 +582,6 @@ function menu_callback(action, param) {
         case 'reroot':
             $.ajax({
                 type: 'POST',
-                async: false,
                 cache: false,
                 url: '/data/reroot_tree',
                 data: {
