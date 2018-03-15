@@ -557,6 +557,7 @@ function menu_callback(action, param) {
             new_tree.Parse(clusteringData.trim(), false);
             new_tree.FindNode(item_name).collapsed = true;
             clusteringData = new_tree.Serialize();
+            $('#tree_modified_warning').show();
             drawTree();
             break;
 
@@ -565,6 +566,7 @@ function menu_callback(action, param) {
             new_tree.Parse(clusteringData.trim(), false);
             new_tree.FindNode(item_name).collapsed = false;
             clusteringData = new_tree.Serialize();
+            $('#tree_modified_warning').show();
             drawTree();
             break;
 
@@ -573,6 +575,7 @@ function menu_callback(action, param) {
             new_tree.Parse(clusteringData.trim(), false);
             new_tree.FindNode(item_name).Rotate();
             clusteringData = new_tree.Serialize();
+            $('#tree_modified_warning').show();
             drawTree();
             break;
 
@@ -588,6 +591,7 @@ function menu_callback(action, param) {
                 },
                 success: function(data) {
                     clusteringData = data['newick'];
+                    $('#tree_modified_warning').show();
                     drawTree();
                 }
             });
