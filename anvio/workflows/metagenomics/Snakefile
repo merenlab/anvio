@@ -193,7 +193,9 @@ rule metagenomics_workflow_target_rule:
         The final product of the workflow is an anvi'o merged profile directory
         for each group
     '''
-    input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=group_names)
+    input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=group_names),
+           contigs_annotated = rules.annotate_contigs_database.output,
+           qc_report = rules.gen_qc_report.output if run_qc else rules.annotate_contigs_database.output
 
 
 rule iu_gen_configs:
@@ -709,10 +711,7 @@ rule anvi_merge:
     input:
         # marking the contigs.db as ancient in order to ignore timestamps.
         contigs = ancient(rules.gen_contigs_db.output.db),
-        contigs_annotated = rules.annotate_contigs_database.output,
         profiles = input_for_anvi_merge,
-        # this is here just so snakemake would run the gen_qc_report before running this rule
-        qc_report = rules.gen_qc_report.output if run_qc else ancient(rules.gen_contigs_db.output.db)
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
         runlog = dirs_dict["MERGE_DIR"] + "/{group}/RUNLOG.txt"
