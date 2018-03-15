@@ -184,6 +184,7 @@ if not references_mode and not M.get_rule_param('reformat_fasta','run'):
 run_gzip_fastqs = M.get_rule_param('gzip_fastqs', 'run')
 #
 run_qc = M.get_rule_param('iu-filter-quality-minoche', 'run')
+run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run'])
 
 
 rule metagenomics_workflow_target_rule:
@@ -644,18 +645,25 @@ def input_for_anvi_merge(wildcards):
         modes. See the documentation to learn more about the difference
         between these modes.
     '''
+    # marking the contigs.db as ancient in order to ignore timestamps.
+    contigs = ancient(rules.gen_contigs_db.output.db)
 
     if M.get_param_value_from_config(['all_against_all']):
         # If the user specified 'all against all' in the configs file
         # the end product would be a merge of all samples per group
         profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(samples_information['sample']), group=wildcards.group)
+        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(samples_information['sample']), group=wildcards.group)
 
     else:
         # The default behaviour is to only merge (and hence map and profile)
         # together samples that belong to the same group.
         profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(samples_information[samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
+        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(samples_information[samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
 
-    return profiles
+    if not run_import_percent_of_reads_mapped:
+        percent_of_reads_mapped_imported_flag = profiles
+
+    return {"contigs": contigs, "profiles": profiles, "percent_of_reads_mapped_imported_flag": percent_of_reads_mapped_imported_flag}
 
 
 def create_fake_output_files(_message, output):
@@ -709,9 +717,7 @@ rule anvi_merge:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_merge.log"
     # The input are all profile databases that belong to the same group
     input:
-        # marking the contigs.db as ancient in order to ignore timestamps.
-        contigs = ancient(rules.gen_contigs_db.output.db),
-        profiles = input_for_anvi_merge,
+        unpack(input_for_anvi_merge)
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
         runlog = dirs_dict["MERGE_DIR"] + "/{group}/RUNLOG.txt"
@@ -785,4 +791,55 @@ rule anvi_merge:
             shell("anvi-merge {input.profiles} -o {params.output_dir} -c {input.contigs} \
                    {params.sample_name} {params.skip_concoct_binning} \
                    {params.overwrite_output_destinations} >> {log} 2>&1")
+
+
+rule import_percent_of_reads_mapped:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_percent_of_reads_mapped.log"
+    input:
+        bowtie_log = rules.bowtie.log,
+        profile = rules.anvi_profile.output.profile
+    output:
+        flag = touch(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done"),
+        total_num_reads_txt = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/total-num-reads.txt"),
+        layers_additional_data = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/layers-additional-data.txt"),
+        layers_additional_data_updated = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/layers-additional-data-updated.txt")
+    threads: M.T('import_percent_of_reads_mapped')
+    resources: nodes = M.T('import_percent_of_reads_mapped')
+    shell:
+        """
+            echo -e "sample\ttotal_num_reads" > {output.total_num_reads_txt}
+            # ok so this whole thing is a terrible hack anyway, so the next two lines
+            # shouldn't surprise you. Basically printing one line with the sample name
+            # and the the number of reads (which is grepped from the log file)
+            echo -e "`echo -n "{input.bowtie_log}" | awk 'BEGIN{FS="-"}{printf("%s\t", $2)}';\
+                    grep 'reads; of these:' {input.bowtie_log} | awk '{print $1 * 2}'`" >> {output.total_num_reads_txt}
+
+            # import this into the profile database. this part is simply
+            # a 'hack' so we can get a file with both 'mapper reads' and
+            # 'total reads' columns in the next step.
+            anvi-import-misc-data {output.total_num_reads_txt} \
+                                  -p {input.profile} \
+                                  -t layers \
+                                  --just-do-it
+
+            # get the layers additional data table, which has two columns
+            # now.
+            anvi-export-misc-data -p {input.profile} \
+                                  -t layers \
+                                  -o {output.layers_additional_data}
+
+            # do an awk one-liner to add a third column, 'percent mapped'.
+            awk '{if(NR==1) \
+                     {print $0 "\tpercent_mapped"} \
+                  else \
+                      {print $0 "\t" ($2 * 100 / $3)}}' \
+                {output.layers_additional_data} > {output.layers_additional_data_updated}
+
+            # import the new file with three columns
+            anvi-import-misc-data {output.layers_additional_data_updated} \
+                                  -p {input.profile} \
+                                  -t layers \
+                                  --just-do-it
+        """
 
