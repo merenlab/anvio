@@ -2657,3 +2657,14 @@ function processState(state_name, state) {
 
     toastr.success("State '" + current_state_name + "' successfully loaded.");
 }
+
+function restoreOriginalTree() {
+    $.when({})
+     .then(onTreeClusteringChange)
+     .then(
+        function() {
+            $('#tree_modified_warning').hide();
+            drawTree();
+        }
+    );
+}
