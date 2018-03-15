@@ -25,7 +25,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         # if a regular instance of `ContigsDBWorkflow` is being generated, we
         # expect it to have a parameter `args`. if there is no `args` given, we
-        # assume the class is being inherited as a base class from within another 
+        # assume the class is being inherited as a base class from within another
         if args:
             if len(self.__dict__):
                 raise ConfigError("Something is wrong. You are ineriting `ContigsDBWorkflow` from \
