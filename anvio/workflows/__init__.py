@@ -51,6 +51,7 @@ class WorkflowSuperClass:
         self.save_workflow_graph = A('save_workflow_graph')
         self.list_dependencies = A('list_dependencies')
         self.dry_run_only = A('dry_run')
+        self.additional_params = A('additional_params')
 
         if self.save_workflow_graph:
             self.dry_run_only = True
@@ -128,6 +129,9 @@ class WorkflowSuperClass:
                     get_workflow_snake_file_path(self.args.workflow),
                     '--configfile',
                     self.args.config_file]
+
+        if self.additional_params:
+            sys.argv.extend(self.additional_params.split(' '))
 
         if self.list_dependencies:
             sys.argv.extend(['--dryrun', '--printshellcmds'])
