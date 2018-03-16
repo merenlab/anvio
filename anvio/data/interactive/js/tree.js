@@ -18,14 +18,7 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
-// Remove NEXUS-style string formatting, e.g. underscores
-function formatString(s) {
-    s = s.replace(/_/g, ' ');
-    return s;
-}
 
-//--------------------------------------------------------------------------------------------------
-// http://stackoverflow.com/questions/894860/set-a-default-parameter-value-for-a-javascript-function
 function Node(label) {
     this.ancestor = null;
     this.child = null;
@@ -41,28 +34,28 @@ function Node(label) {
     this.order = null;
     this.max_child_path = 0;
 }
-//--------------------------------------------------------------------------------------------------
+
+
 Node.prototype.SetLabel = function(label) {
     this.collapsed = (label && label.endsWith('_collapsed')) ? true : false;
     this.label = (label) ? label.replace(/_collapsed$/,'') : '';
-}
+};
 
-//--------------------------------------------------------------------------------------------------
+
 Node.prototype.IsLeaf = function() {
     return (!this.child);
-}
+};
 
 
-//--------------------------------------------------------------------------------------------------
 Node.prototype.GetRightMostSibling = function() {
     var p = this;
     while (p.sibling) {
         p = p.sibling;
     }
     return p;
-}
+};
 
-//--------------------------------------------------------------------------------------------------
+
 Node.prototype.Rotate = function() {
     if (this.child) {
         var siblings = [];
@@ -85,7 +78,7 @@ Node.prototype.Rotate = function() {
     }
 };
 
-//--------------------------------------------------------------------------------------------------
+
 function Tree() {
     this.root = null;
     this.num_leaves = 0;
@@ -96,15 +89,13 @@ function Tree() {
     this.error = 0;
 }
 
-//--------------------------------------------------------------------------------------------------
 Tree.prototype.NewNode = function() {
     var node = new Node();
     node.id = this.num_nodes++;
     this.nodes[node.id] = node;
     return node;
-}
+};
 
-//--------------------------------------------------------------------------------------------------
 Tree.prototype.Parse = function(str, edge_length_norm) {
     str = str.replace(/\(/g, "|(|");
     str = str.replace(/\)/g, "|)|");
@@ -300,7 +291,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 break;
         }
     }
-}
+};
 
 Tree.prototype.FindNode = function(label) {
     var n = new NodeIterator(this.root);
@@ -321,6 +312,7 @@ Tree.prototype.FindNode = function(label) {
 Tree.prototype.Serialize = function() {
     return this.SerializeNode(this.root) + ";";
 };
+
 
 Tree.prototype.SerializeNode = function(node) {
     var text = "";
@@ -346,7 +338,7 @@ Tree.prototype.SerializeNode = function(node) {
     return text;
 };
 
-//--------------------------------------------------------------------------------------------------
+
 Tree.prototype.ComputeDepths = function() {
     for (var i in this.nodes) {
         if (this.nodes[i].IsLeaf()) {
@@ -359,12 +351,9 @@ Tree.prototype.ComputeDepths = function() {
             }
         }
     }
-}
+};
 
 
-//--------------------------------------------------------------------------------------------------
-//  Iterator
-//--------------------------------------------------------------------------------------------------
 function NodeIterator(root)
 {
     this.root = root;
@@ -372,7 +361,7 @@ function NodeIterator(root)
     this.stack = [];
 }
 
-//--------------------------------------------------------------------------------------------------
+
 NodeIterator.prototype.Begin = function() 
 {
     if (this.root.constructor === Array)
@@ -387,9 +376,9 @@ NodeIterator.prototype.Begin = function()
         this.cur = this.cur.child;
     }
     return this.cur;
-}
+};
 
-//--------------------------------------------------------------------------------------------------
+
 NodeIterator.prototype.Next = function() 
 {
     if (this.root.constructor === Array)
@@ -423,24 +412,23 @@ NodeIterator.prototype.Next = function()
         }
     }
     return this.cur;
-}
+};
 
-//--------------------------------------------------------------------------------------------------
 PreorderIterator.prototype = new NodeIterator;
+
 
 function PreorderIterator()
 {
     NodeIterator.apply(this, arguments)
 };
 
-//--------------------------------------------------------------------------------------------------
+
 PreorderIterator.prototype.Begin = function() 
 {
     this.cur = this.root;
     return this.cur;
-}
+};
 
-//--------------------------------------------------------------------------------------------------
 PreorderIterator.prototype.Next = function() 
 {
     if (this.cur.child)
@@ -464,6 +452,6 @@ PreorderIterator.prototype.Next = function()
         }
     }
     return this.cur;
-}
+};
 
 
