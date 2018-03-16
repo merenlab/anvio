@@ -90,9 +90,9 @@ function lineClickHandler(event) {
 
     var bins_to_update = [];
     for (var i = 0; i < p.child_nodes.length; i++) {
-        var pos = SELECTED[bin_id].indexOf(id_to_node_map[p.child_nodes[i]].label);
+        var pos = SELECTED[bin_id].indexOf(p.child_nodes[i]);
         if (pos == -1) {
-            SELECTED[bin_id].push(id_to_node_map[p.child_nodes[i]].label);
+            SELECTED[bin_id].push(p.child_nodes[i]);
 
             if (bins_to_update.indexOf(bin_id) == -1)
                 bins_to_update.push(bin_id);
@@ -104,7 +104,7 @@ function lineClickHandler(event) {
             if (bid == bin_id)
                 continue;
 
-            var pos = SELECTED[bid].indexOf(id_to_node_map[p.child_nodes[i]].label);
+            var pos = SELECTED[bid].indexOf(p.child_nodes[i]);
             if (pos > -1) {
                 SELECTED[bid].splice(pos, 1);
 
@@ -163,7 +163,7 @@ function lineContextMenuHandler(event) {
         }
 
         if (bin_id > 0) {
-            var pos = SELECTED[bin_id].indexOf(id_to_node_map[parseInt(context_menu_target_id)].label);
+            var pos = SELECTED[bin_id].indexOf(parseInt(context_menu_target_id));
 
             if (pos == -1) {
                 $('#default_right_click_menu #select').show();
@@ -230,7 +230,7 @@ function removeBranchFromBin(event) {
     for (var i = 0; i < p.child_nodes.length; i++) {
         // remove nodes from all bins
         for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
-            var pos = SELECTED[bin_id].indexOf(id_to_node_map[p.child_nodes[i]].label);
+            var pos = SELECTED[bin_id].indexOf(p.child_nodes[i]);
             if (pos > -1) {
                 SELECTED[bin_id].splice(pos, 1);
 
