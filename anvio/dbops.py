@@ -2109,7 +2109,7 @@ class ProfileSuperclass(object):
                                 represented in this profile database. Are you sure you are looking for it\
                                 in the right database?" % split_name)
 
-        self.progress.new('Recovering variability information for split')
+        self.progress.new('Recovering variability information for split', discard_previous_if_exists=True)
         self.progress.update('...')
 
         profile_db = ProfileDatabase(self.profile_db_path)
