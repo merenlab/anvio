@@ -106,8 +106,6 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
     str = str.replace(/^\|/, "");
     str = str.replace(/\|$/, "");
 
-    //console.log(str);
-
     var token = str.split("|");
     var curnode = this.NewNode();
     this.root = curnode;
@@ -240,7 +238,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                             if (isNumber(token[i])) {
                                 curnode.original_edge_length = token[i];
                                 
-                                // nnormalization of edge lengths
+                                // normalization of edge lengths
                                 if (edge_length_norm) {
                                     curnode.edge_length = Math.sqrt(parseFloat(token[i]) * 1000000) / 1000000;
                                 } else {
@@ -428,6 +426,7 @@ PreorderIterator.prototype.Begin = function()
     this.cur = this.root;
     return this.cur;
 };
+
 
 PreorderIterator.prototype.Next = function() 
 {
