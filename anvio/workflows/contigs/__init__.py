@@ -52,7 +52,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.rules.extend(['anvi_script_reformat_fasta', 'remove_human_dna_using_centrifuge',
                            'anvi_gen_contigs_database', 'export_gene_calls', 'centrifuge',
                            'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
-                           'annotate_contigs_database'])
+                           'annotate_contigs_database', 'anvi_get_aa_sequences_for_gene_calls',
+                           'emapper', 'anvi_script_run_eggnog_mapper'])
 
         self.general_params.extend(["fasta_txt"])
 
@@ -64,13 +65,20 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "centrifuge": {"threads": 5},
                                     "anvi_run_hmms": {"run": True, "threads": 20},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
-                                    "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True}})
+                                    "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True},
+                                    "emapper": {"--database": "bact", "--usemem": True, "--override": True},
+                                    "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"}})
 
         self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--sensitive', '--temporary-dir-path', '--search-with']
 
         self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir']
 
         self.rule_acceptable_params_dict['centrifuge'] = ['run']
+
+        self.rule_acceptable_params_dict['emapper'] = ['--database', '--usemem', '--override', 'path_to_emapper_dir']
+
+        self.rule_acceptable_params_dict['anvi_script_run_eggnog_mapper'] = ['run', '--cog-data-dir', '--drop-previous-annotations',
+                                         '--use-version']
 
         self.rule_acceptable_params_dict['anvi_script_reformat_fasta'] = \
                     ['run', '--simplify-names', '--keep-ids', '--exclude-ids', '--min-len']
