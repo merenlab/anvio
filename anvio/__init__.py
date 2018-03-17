@@ -6,16 +6,16 @@
 import os
 import sys
 import copy
+import platform
 import pkg_resources
-
 
 DEBUG = '--debug' in sys.argv
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
 # on systems working with multiple Python installations that are managed through modules):
 try:
-    if sys.version_info.major != 3:
-        sys.stderr.write("Your active Python major version ('%d') is not compatible with what anvi'o expects :/ We recently switched to Python 3.\n" % sys.version_info.major)
+    if sys.version_info.major != 3 or sys.version_info.minor < 5:
+        sys.stderr.write("Sad face :( Your active Python version is %s, but anvi'o only works with Python version 3.5.0 or later.\n" % (platform.python_version()))
         sys.exit(-1)
 except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")

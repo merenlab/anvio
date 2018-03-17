@@ -78,11 +78,11 @@ Drawer.prototype.draw = function() {
     order_to_node_map = new Array();
 
     this.initialize_tree();
-    this.rotate_branches();
 
     if (this.has_tree) {
-        this.generate_mock_data_for_collapsed_nodes();
-        this.collapse_nodes();
+        let node_list = this.find_collapsed_nodes();
+        this.generate_mock_data_for_collapsed_nodes(node_list);
+        this.collapse_nodes(node_list);
     }
 
     this.generate_tooltips();
@@ -138,26 +138,30 @@ Drawer.prototype.draw = function() {
     ANIMATIONS_ENABLED = false;
 };
 
-Drawer.prototype.rotate_branches = function() {
-    if (this.has_tree && rotateNode) {
-        label_to_node_map[rotateNode].Rotate();
 
-        // rotateNode needs to be cleared after branch is rotated.
-        // otherwise when tree is redrawn it will rotate again.
-        rotateNode = null;
+Drawer.prototype.find_collapsed_nodes = function() {
+    var node_list = [];
 
-        // we need to generate new newick based on modified tree 
-        // and overwrite exists global clusteringData;
-        clusteringData = this.tree.Serialize();
+    var n = new NodeIterator(this.tree.root);
+    var q = n.Begin();
+    while (q != null)
+    {
+        if (q.collapsed)
+            node_list.push(q);
+
+        q=n.Next();
     }
-}
 
-Drawer.prototype.generate_mock_data_for_collapsed_nodes = function() {
+    return node_list;
+};
+
+
+Drawer.prototype.generate_mock_data_for_collapsed_nodes = function(node_list) {
     if (!this.has_tree)
         return;
 
-    for (var i=0; i < collapsedNodes.length; i++) {
-        var q = label_to_node_map[collapsedNodes[i]];
+    for (var i=0; i < node_list.length; i++) {
+        var q = node_list[i];
 
         var mock_data = [q.label];
         for (var j = 1; j < parameter_count; j++) {
@@ -444,9 +448,9 @@ Drawer.prototype.assign_leaf_order = function() {
     }
 };
 
-Drawer.prototype.collapse_nodes = function() {
-    for (var i=0; i < collapsedNodes.length; i++) {
-        var cnode = label_to_node_map[collapsedNodes[i]];
+Drawer.prototype.collapse_nodes = function(node_list) {
+    for (var i=0; i < node_list.length; i++) {
+        var cnode = node_list[i];
 
         var max_edge = 0;
         var sum_size = 0;

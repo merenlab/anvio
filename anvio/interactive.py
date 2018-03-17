@@ -1240,16 +1240,26 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 class ContigsInteractive():
     def __init__(self, args, run=run, progress=progress):
         self.mode = 'contigs'
+
+        self.args = args
         self.run = run
         self.progress = progress
 
         self.contigs_stats = {}
 
-        for contig_db_path in args.input:
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.input_contig_db_paths = A('input')
+
+        if not len(self.input_contig_db_paths):
+            raise ConfigError("ContigsInteractive should be inherited with an args object with a valid `input`\
+                               member. Not like the way you tried it with no input paths whatsoever :/")
+
+        for contig_db_path in self.args.input:
             self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path).get_summary_dict_for_assembly()
 
         self.tables = {}
         self.generate_tables()
+
 
     def generate_tables(self):
         # let's keep track of all keys we will need to access later from the interface. if

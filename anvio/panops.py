@@ -224,13 +224,12 @@ class Pangenome(object):
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         diamond.names_dict = unique_AA_sequences_names_dict
-        diamond.target_db_path = self.get_output_file_path(filesnpaths.get_name_from_file_path(unique_AA_sequences_fasta_path))
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
 
         diamond.sensitive = self.sensitive
 
-        return diamond.get_blastall_results()
+        return diamond.get_blast_results()
 
 
     def run_blast(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
@@ -242,10 +241,9 @@ class Pangenome(object):
 
         blast.names_dict = unique_AA_sequences_names_dict
         blast.log_file_path = self.log_file_path
-        blast.target_db_path = self.get_output_file_path(filesnpaths.get_name_from_file_path(unique_AA_sequences_fasta_path))
         blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
 
-        return blast.get_blastall_results()
+        return blast.get_blast_results()
 
 
     def run_search(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
@@ -722,7 +720,7 @@ class Pangenome(object):
         workers = []
         for i in range(0, self.num_threads):
             worker = multiprocessing.Process(target=Pangenome.alignment_worker,
-                args=(input_queue, output_queue, gene_clusters_dict, self.genomes_storage, self.align_with))
+                args=(input_queue, output_queue, gene_clusters_dict, self.genomes_storage, self.align_with, self.run))
 
             workers.append(worker)
             worker.start()
@@ -757,12 +755,15 @@ class Pangenome(object):
 
 
     @staticmethod
-    def alignment_worker(input_queue, output_queue, gene_clusters_dict, genomes_storage, align_with):
+    def alignment_worker(input_queue, output_queue, gene_clusters_dict, genomes_storage, align_with, run):
         # Note for future changes, this worker should not write anything to gene_clusters_dict
         # or genome_storage, changes will not be reflected to main process or other processes.
 
         aligner = aligners.select(align_with, quiet=True)
 
+        # this instance of Run is here because we don't want to create this over and over again
+        # in the loop down below. there also is another run instance the worker gets to make sure
+        # it can report its own messages .. don't be confused we-do-not-age-discriminate-here padawan.
         r = terminal.Run()
         r.verbose = False
 
@@ -781,7 +782,40 @@ class Pangenome(object):
                 sequence = genomes_storage.get_gene_sequence(gene_entry['genome_name'], gene_entry['gene_caller_id'])
                 gene_sequences_in_gene_cluster.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
 
-            alignments = aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
+            # sometimes alignments fail, and because pangenomic analyses can take forever,
+            # everything goes into the trash bin. to prevent that, here we have a try/except
+            # block with lots of warnings if something goes wrong.
+            try:
+                alignments = aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
+            except:
+                # realm of sad face. before we continue to spam the user with error messages,
+                # we turn our gene sequences to alignments without alignments. this worker will
+                # report raw, unaligned sequences for this gene cluster as if they were aligned
+                # so things will continue working operationally, and it will be on the user to
+                # make sure they went through their results carefully.
+                alignments = dict(gene_sequences_in_gene_cluster)
+
+                # constructing our #sad:
+                if anvio.DEBUG:
+                    temp_file_path = filesnpaths.get_temp_file_path(prefix='ANVIO_GC_%s' % (gene_cluster_name))
+                    with open(temp_file_path, 'w') as output:
+                        for tpl in gene_sequences_in_gene_cluster:
+                            output.write('>%s\n%s\n' % (tpl[0], tpl[1]))
+                    debug_info = "The %d sequences in gene cluster %s are stored in the temporary file '%s'" % \
+                                        (len(gene_sequences_in_gene_cluster), gene_cluster_name, temp_file_path)
+                else:
+                    debug_info = "If you re-run your last command with a `--debug` flag, anvi'o will generate more\
+                                  information for you about the contenets of this gene cluster (but if you are seeing\
+                                  millions of these warnings, it may not be a good idea since with the `--debug` flag\
+                                  anvi'o will generate a FASTA file in a temporary directory with the contents of the\
+                                  gene cluster, and will not attempt to delete them later)."
+
+                run.warning("VERY BAD NEWS. The alignment of seqeunces with '%s' in the gene cluster '%s' failed\
+                             for some reason. Since the real answer to 'why' is too deep in the matrix, there is\
+                             no reliable solution for anvi'o to find it for you, BUT THIS WILL AFFECT YOUR SCIENCE\
+                             GOING FORWARD, SO YOU SHOULD CONSIDER ADDRESSING THIS ISSUE FIRST. %s" % \
+                                                       (aligner.__name__, gene_cluster_name, debug_info), nl_before=1)
+
 
             output = {'name': gene_cluster_name, 'entry': copy.deepcopy(gene_clusters_dict[gene_cluster_name])}
             for gene_entry in output['entry']:

@@ -51,7 +51,7 @@ function searchFunctions() {
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/data/search_functions?timestamp=' + new Date().getTime(),
+        url: '/data/search_functions',
         data: {terms: $('#searchFunctionsValue').val()},
         success: function(data) {
             if (data['status'] == 0) {
@@ -114,7 +114,7 @@ function filterGeneClusters() {
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/data/filter_gene_clusters?timestamp=' + new Date().getTime(),
+        url: '/data/filter_gene_clusters',
         data: parameters,
         success: function(data) {
             if (data['status'] == 0) {
