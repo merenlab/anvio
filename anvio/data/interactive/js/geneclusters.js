@@ -198,8 +198,15 @@ function createDisplay(){
                 text.setAttribute('class', 'callerTitle');
                 text.setAttribute('gene-callers-id', caller_id);
                 text.setAttribute('genome-name', layer);
-                text.setAttribute('data-content', get_gene_functions_table_html_for_pan(caller_id, layer) + '')
                 text.setAttribute('data-toggle', 'popover');
+                text.onclick = function(event) {
+                    var obj = event.target;
+                    var caller_id = obj.getAttribute('gene-callers-id');
+                    var layer = obj.getAttribute('genome-name');
+                    if (!obj.getAttribute('data-content')) {
+                        obj.setAttribute('data-content', get_gene_functions_table_html_for_pan(caller_id, layer) + '');
+                    }
+                };
 
                 text.appendChild(document.createTextNode(caller_id));
                 fragment.appendChild(text);

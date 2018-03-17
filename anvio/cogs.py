@@ -60,31 +60,47 @@ class COGs:
         self.sensitive = A('sensitive')
 
         self.log_file_path = None
-        self.available_db_search_programs = [p for p in ['diamond', 'blastp'] if utils.is_program_exists(p, dont_raise=True)]
 
-        self.COG_setup = COGsSetup(args)
-        self.COG_data_dir = self.COG_setup.COG_data_dir
-        self.available_db_search_program_targets = self.COG_setup.get_formatted_db_paths()
-        self.essential_files = self.COG_setup.get_essential_file_paths()
+        self.default_search_method = 'diamond'
+        self.search_methods_factory = {'diamond': self.search_with_diamond,
+                                       'blastp': self.search_with_ncbi_blast}
+        self.available_search_methods = [p for p in self.search_methods_factory.keys() if utils.is_program_exists(p, dont_raise=True)]
 
-        self.search_factory = {'diamond': self.search_with_diamond,
-                               'blastp': self.search_with_blastp}
+        if not len(self.available_search_methods):
+            raise ConfigError("None of the serach methods this class could use, which include '%s', seem to be\
+                               available on your system :/" % (', '.join(list(self.search_methods_factory.keys()))))
+
+        if self.default_search_method not in self.available_search_methods:
+            self.default_search_method = self.available_search_methods[0]
+
 
         self.hits = None # the search function will take care of this one.
 
+        if len(args.__dict__):
+            self.COG_setup = COGsSetup(args)
+            self.COG_data_dir = self.COG_setup.COG_data_dir
+            self.available_db_search_program_targets = self.COG_setup.get_formatted_db_paths()
+            self.essential_files = self.COG_setup.get_essential_file_paths()
+
 
     def process(self, aa_sequences_file_path=None):
+        if self.search_with not in self.available_search_methods:
+            raise ConfigError("Let us start by making it clear that we probably like '%s' as much as you do, but it doesn't\
+                               seem to be available on your system OR recognized by the COGs class since anvi'o couldn't\
+                               find it among the available search methods. You probably need to try something else :/" \
+                                                                                                    % self.search_with)
+
         if self.search_with not in self.available_db_search_program_targets:
             raise ConfigError("Anvi'o understands that you want to use '%s' to search for COGs, however, there is no\
-                                database formatted under the COGs data directory for that program :/ You may need to\
-                                re-run the COGs setup, UNLESS, you set up your COG data directory somewhere else than what\
-                                anvi'o attempts to use at the moment ('%s'). If that is the case, this may be the best\
-                                time to point the right directory using the --cog-data-dir parameter, or the environmental\
-                                variable 'ANVIO_COG_DATA_DIR'." % (self.search_with, self.COG_data_dir))
+                               database formatted under the COGs data directory for that program :/ You may need to\
+                               re-run the COGs setup, UNLESS, you set up your COG data directory somewhere else than what\
+                               anvi'o attempts to use at the moment ('%s'). If that is the case, this may be the best\
+                               time to point the right directory using the --cog-data-dir parameter, or the environmental\
+                               variable 'ANVIO_COG_DATA_DIR'." % (self.search_with, self.COG_data_dir))
 
         if not aa_sequences_file_path and not self.contigs_db_path:
             raise ConfigError("You either need to provide an anvi'o contigs database path, or a FASTA file for AA\
-                                sequences")
+                               sequences")
 
         if aa_sequences_file_path and self.contigs_db_path:
             raise ConfigError("You can't provide both an AA sequences file and a contigs database. Choose one!")
@@ -113,7 +129,7 @@ class COGs:
             aa_sequences_file_path = dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, J(self.temp_dir_path, 'aa_sequences.fa'))
 
         # do the search
-        search_results_tabular = self.search_factory[self.search_with](aa_sequences_file_path)
+        search_results_tabular = self.search_methods_factory[self.search_with](aa_sequences_file_path)
 
         # convert the output to a hits dict
         self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
@@ -212,7 +228,7 @@ class COGs:
     def search_with_diamond(self, aa_sequences_file_path):
         diamond = Diamond(aa_sequences_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
 
-        diamond.target_db_path = self.available_db_search_program_targets['diamond']
+        diamond.target_fasta = self.available_db_search_program_targets['diamond']
         self.run.log_file_path = self.log_file_path or J(self.temp_dir_path, 'log.txt')
         diamond.search_output_path = J(self.temp_dir_path, 'diamond-search-results')
         diamond.tabular_output_path = J(self.temp_dir_path, 'diamond-search-results.txt')
@@ -226,15 +242,15 @@ class COGs:
         return diamond.tabular_output_path
 
 
-    def search_with_blastp(self, aa_sequences_file_path):
+    def search_with_ncbi_blast(self, aa_sequences_file_path):
         blast = BLAST(aa_sequences_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
 
-        blast.target_db_path = self.available_db_search_program_targets['blastp']
+        blast.target_fasta = self.available_db_search_program_targets['blastp']
         self.run.log_file_path = self.log_file_path or J(self.temp_dir_path, 'log.txt')
         blast.search_output_path = J(self.temp_dir_path, 'blast-search-results.txt')
         blast.max_target_seqs = 1
 
-        blast.blastp()
+        blast.blast()
 
         return blast.search_output_path
 

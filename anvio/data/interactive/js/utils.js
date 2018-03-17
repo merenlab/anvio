@@ -38,7 +38,7 @@ function get_sequence_and_blast(item_name, program, database, target) {
         // chrome popup blocker will not allow opening new window.
         // async: false does not use asynchronus callbacks so protects direct call chain.
         async: false,
-        url: '/data/' + target + '/' + item_name + '?timestamp=' + new Date().getTime(),
+        url: '/data/' + target + '/' + item_name,
         success: function(data) {
             if ('error' in data){
                 toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
@@ -310,17 +310,19 @@ function checkBackgroundProcess()
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/session_id?timestamp=' + new Date().getTime(),
+        url: '/data/session_id',
         success: function (data) {
-            if (data != unique_session_id)
+            if (data != session_id)
             {
                 toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-                clearTimeout(ping_timer);
+            }
+            else
+            {
+                setTimeout(checkBackgroundProcess, 5000);
             }
         },
         error: function(data) {
             toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-            clearTimeout(ping_timer);
         }
     });
 }

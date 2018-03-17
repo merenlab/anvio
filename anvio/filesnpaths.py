@@ -177,8 +177,8 @@ def get_temp_directory_path():
     return tempfile.mkdtemp()
 
 
-def get_temp_file_path():
-    f = tempfile.NamedTemporaryFile(delete=False)
+def get_temp_file_path(prefix=None):
+    f = tempfile.NamedTemporaryFile(delete=False, prefix=prefix)
     temp_file_name = f.name
     f.close()
     return temp_file_name

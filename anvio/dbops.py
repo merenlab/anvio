@@ -795,6 +795,7 @@ class PanSuperclass(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.pan_db_path = A('pan_db')
         self.genomes_storage_path = A('genomes_storage')
+        self.skip_init_functions = A('skip_init_functions')
 
         self.genome_names = []
         self.gene_clusters = {}
@@ -877,10 +878,13 @@ class PanSuperclass(object):
             self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
                                                                self.p_meta['genomes_storage_hash'],
                                                                genome_names_to_focus=self.p_meta['genome_names'],
+                                                               skip_init_functions=self.skip_init_functions,
                                                                run=self.run,
                                                                progress=self.progress)
             self.genomes_storage_is_available = True
             self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
+        else:
+            self.run.warning("The pan database is being initialized without a genomes storage.")
 
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
 
@@ -917,6 +921,19 @@ class PanSuperclass(object):
                                it will operate on it. If you call it with names, it will use self.gene_clusters to find the names\
                                you specified. This looks like a shitty design, but was required to support exploratory / ad hoc user wishes through\
                                both command line and interactive anvi'o interfaces.")
+
+        if not skip_alignments and self.gene_clusters_gene_alignments_available and report_DNA_sequences:
+            self.run.warning("Please read carefully. Here anvi'o attempts to get sequences for the gene clusters you are interested in. While\
+                              the amino acid sequences for those gene clusters were aligned, you are asking for DNA sequences. While amino acid\
+                              seuqence alignment summary (the anvi'o way of storing alignment information) can be used to align DNA sequences\
+                              instantaneously, due to intricacies of gene callers, the amino acid sequence of a gene stored in the\
+                              contigs database may differ from its DNA seqeunce. For those rare instances, the alignment summary for the amino acid\
+                              sequence can no longer be used to make sense of the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for\
+                              more informaiton). What needs to be done is to do another alignment on the fly. But as you probably already guessed,\
+                              anvi'o will not do that for you, and instad will report your DNA sequences for your genes in your gene clusters\
+                              unaligned. If you really really think anvi'o should do it you have two options: if you are a member of the MerenLab,\
+                              re-open and fix the issue #772. If you are not a member, then send us an e-mail.")
+            skip_alignments = True
 
         sequences = {}
 
@@ -1086,6 +1103,12 @@ class PanSuperclass(object):
 
 
     def init_gene_clusters_functions(self):
+        if not self.genomes_storage_is_available:
+            self.run.warning("Someone tried to initialize gene cluster functions, but it seems there is no genomes\
+                              storage available to this run. That's OK. But no gene clusters functions for you\
+                              obviously.")
+            return
+
         self.progress.new('Initializing functions for gene clusters')
         self.progress.update('...')
         if not self.gene_clusters:
@@ -2086,7 +2109,7 @@ class ProfileSuperclass(object):
                                 represented in this profile database. Are you sure you are looking for it\
                                 in the right database?" % split_name)
 
-        self.progress.new('Recovering variability information for split')
+        self.progress.new('Recovering variability information for split', discard_previous_if_exists=True)
         self.progress.update('...')
 
         profile_db = ProfileDatabase(self.profile_db_path)
@@ -2272,7 +2295,9 @@ class ProfileDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability', 'merged', 'blank', 'contigs_ordered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length']:
+            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability',
+                        'merged', 'blank', 'contigs_ordered', 'report_variability_full', 'num_contigs',
+                        'num_splits', 'total_length']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
