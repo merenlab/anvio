@@ -135,6 +135,9 @@ class GenomeDescriptions(object):
         self.internal_genome_names = list(self.internal_genomes_dict.keys())
         self.external_genome_names = list(self.external_genomes_dict.keys())
 
+        # let us know if the user did not want a full init.
+        self.full_init = init
+
         # convert relative paths to absolute paths and MERGE internal and external genomes into self.genomes:
         for source, input_file in [(self.external_genomes_dict, self.input_file_for_external_genomes), (self.internal_genomes_dict, self.input_file_for_internal_genomes)]:
             for genome_name in source:
@@ -171,10 +174,17 @@ class GenomeDescriptions(object):
         # this will populate self.genomes with relevant data that can be learned about these genomes such as 'avg_gene_length',
         # 'num_splits', 'num_contigs', 'num_genes', 'percent_redundancy', 'gene_caller_ids', 'total_length', 'partial_gene_calls',
         # 'percent_completion', 'num_genes_per_kb', 'gc_content'.
-        if init:
+        if self.full_init:
             self.init_internal_genomes()
             self.init_external_genomes()
-
+        else:
+            # init will do everything. but it is very expensive. if the user does not want to
+            # init all the bulky stuff, we still can give them the contents of the meta tables.
+            for genome_name in self.genomes:
+                g = self.genomes[genome_name]
+                contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+                for key in contigs_db.meta:
+                    g[key] = contigs_db.meta[key]
 
         # make sure it is OK to go with self.genomes
         self.sanity_check()
@@ -398,6 +408,14 @@ class GenomeDescriptions(object):
         if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.internal_genome_names])) != len(self.internal_genome_names):
             raise ConfigError("Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very\
                                 wrong with your workflow :/ Please let the developers know if you can't figure this one out")
+
+        if not self.full_init:
+            # if this is not full init, stop the sanity check here.
+            self.run.warning("You (or the programmer) requested genome descriptions for your internal and/or external\
+                              genomes to be loaded without a 'full init'. There is nothong for you to be concerned.\
+                              This is just a friendly reminder to make sure if something goes terribly wrong (like your\
+                              computer sets itself on fire), this may be the reason.")
+            return
 
         # make sure HMMs for SCGs were run for every contigs db:
         genomes_missing_hmms_for_scgs =  [g for g in self.genomes if not self.genomes[g]['hmms_for_scgs_were_run']]
