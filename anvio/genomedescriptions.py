@@ -108,13 +108,23 @@ class GenomeDescriptions(object):
         """Returns True if all HMM sources in all genomes are comparable"""
         hmm_sources_found = set([])
         for genome_name in self.genomes:
-            [hmm_sources_found.add(s) for s in self.genomes[genome_name]['hmm_sources_info'].keys()]
+            if 'hmm_sources_info' not in self.genomes[genome_name]:
+                # someone did not run the expensive `init` function. but we can recover this
+                # here quitte cheaply
+                contigs_db = dbops.ContigsDatabase(self.genomes[genome_name]['contigs_db_path'])
+                hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+                for hmm_source in hmm_sources_info:
+                    hmm_sources_info[hmm_source]['genes'] = sorted([g.strip() for g in hmm_sources_info[hmm_source]['genes'].split(',')])
+            else:
+                hmm_sources_info = self.genomes[genome_name]['hmm_sources_info']
+
+            [hmm_sources_found.add(s) for s in hmm_sources_info.keys()]
 
         # find out hmm_sources that occur in all genomes
         hmm_sources_in_all_genomes = copy.deepcopy(hmm_sources_found)
         for genome_name in self.genomes:
             for hmm_source in hmm_sources_found:
-                if hmm_source not in self.genomes[genome_name]['hmm_sources_info'] and hmm_source in hmm_sources_in_all_genomes:
+                if hmm_source not in hmm_sources_info and hmm_source in hmm_sources_in_all_genomes:
                     hmm_sources_in_all_genomes.remove(hmm_source)
 
         if not len(hmm_sources_in_all_genomes):
