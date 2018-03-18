@@ -38,7 +38,7 @@ class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDe
         # contigs databases could be processed by this talented class seamlessly.
         hmm_hits_splits_counter = 0
         for genome_name in self.genomes:
-            contigs_db_path = self.genomes[genome_name]['path']
+            contigs_db_path = self.genomes[genome_name]['contigs_db_path']
             contigs_db_hash = self.genomes[genome_name]['contigs_db_hash']
 
             current = SequencesForHMMHits(contigs_db_path, sources = hmm_sources)
