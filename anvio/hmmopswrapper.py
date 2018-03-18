@@ -30,7 +30,7 @@ class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDe
 
         # process genome descriptions
         GenomeDescriptions.__init__(self, args)
-        self.load_genomes_descriptions(skip_functions=True)
+        self.load_genomes_descriptions(skip_functions=True, init=False)
         hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes()
 
         # very hacky code follows. here we generate a self SequencesForHMMHits object,
