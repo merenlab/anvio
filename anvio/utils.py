@@ -967,6 +967,31 @@ def get_split_start_stops_without_gene_calls(contig_length, split_length):
     return chunks
 
 
+def get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids):
+    """Takes a set of gene caller ids, returns all split and contig names in a
+       contigs database that are affiliated with them.
+    """
+
+    if not isinstance(gene_caller_ids, set):
+        raise ConfigError("`gene_caller_ids` must be of type `set`.")
+
+    is_contigs_db(contigs_db_path)
+
+    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+
+    where_clause_genes = "gene_callers_id in (%s)" % ', '.join(['%d' % g for g in gene_caller_ids])
+    genes_in_contigs = contigs_db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause_genes)
+    contig_names_of_interest = set([e['contig'] for e in genes_in_contigs.values()])
+
+    where_clause_contigs = "parent in (%s)" % ', '.join(['"%s"' % c for c in contig_names_of_interest])
+    splits_info = contigs_db.get_some_rows_from_table_as_dict(t.splits_info_table_name, where_clause=where_clause_contigs)
+    split_names_of_ineterest = set(splits_info.keys())
+
+    contigs_db.disconnect()
+
+    return (split_names_of_ineterest, contig_names_of_interest)
+
+
 def get_contigs_splits_dict(split_ids, splits_basic_info):
     """
     For a given list of split ids, create a dictionary of contig names
