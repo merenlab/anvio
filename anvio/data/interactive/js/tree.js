@@ -56,6 +56,21 @@ Node.prototype.GetRightMostSibling = function() {
 };
 
 
+Node.prototype.GetChildren = function() {
+    var n = new NodeIterator(this.root);
+    var q = n.Begin();
+    var children = [];
+
+    while (q != null)
+    {
+        children.push(q);
+        q=n.Next();
+    }
+
+    return children;
+}
+
+
 Node.prototype.Rotate = function() {
     if (this.child) {
         var siblings = [];
@@ -84,10 +99,12 @@ function Tree() {
     this.num_leaves = 0;
     this.num_nodes = 0;
     this.nodes = [];
+    this.leaves = [];
     this.rooted = true;
     this.has_edge_lengths = false;
     this.error = 0;
 }
+
 
 Tree.prototype.NewNode = function() {
     var node = new Node();
@@ -95,6 +112,7 @@ Tree.prototype.NewNode = function() {
     this.nodes[node.id] = node;
     return node;
 };
+
 
 Tree.prototype.Parse = function(str, edge_length_norm) {
     str = str.replace(/\(/g, "|(|");
@@ -121,7 +139,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
         switch (state) {
             case 0:
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
-                    this.num_leaves++;
+                    this.leaves[this.num_leaves++] = curnode;
                     label = token[i];
                     curnode.SetLabel(label);
                     i++;
