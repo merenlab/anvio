@@ -73,10 +73,6 @@ Drawer.prototype.draw = function() {
         this.settings['angle-max'] = 359.9999999;
     } 
 
-    id_to_node_map = new Array();
-    label_to_node_map = {};
-    order_to_node_map = new Array();
-
     this.initialize_tree();
 
     if (this.has_tree) {
