@@ -1699,13 +1699,22 @@ class PanSuperclass(object):
 
             for result in results:
                 gene_caller_id, source, accession, function, genome_name = result
+
+                # we're finding gene caller ids in the genomes storage, but they may not end up in any
+                # of the final gene clusters stored in the pan database due to various reasons. for
+                # instance, if the user set a min occurrence parameter, a singleton will not be found
+                # in the pan db yet it will return a functional hit. FIXME: we need to track these and
+                # report them to the user.
+                if gene_caller_id not in self.gene_callers_id_to_gene_cluster[genome_name]:
+                    continue
+
                 gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
 
                 gene_dict = self.genomes_storage.gene_info[genome_name][gene_caller_id]
 
-                full_report.extend([(gene_caller_id, source, accession, function, search_term, 
+                full_report.extend([(gene_caller_id, source, accession, function, search_term,
                     gene_cluster_id, gene_dict['dna_sequence'], gene_dict['aa_sequence'])])
-                
+
                 gene_clusters[search_term].append(gene_cluster_id)
 
             self.progress.end()
