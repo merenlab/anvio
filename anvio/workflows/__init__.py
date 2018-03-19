@@ -51,6 +51,15 @@ class WorkflowSuperClass:
         self.save_workflow_graph = A('save_workflow_graph')
         self.list_dependencies = A('list_dependencies')
         self.dry_run_only = A('dry_run')
+        self.additional_params = A('additional_params')
+
+        if self.additional_params:
+            run.warning("OK, SO THIS IS SERIUOUS, AND WHEN THINGS ARE SERIUOUS THEN WE USE CAPS. \
+                         WE SEE THAT YOU ARE USING --additional-params AND THAT'S GREAT, BUT WE \
+                         WANT TO REMIND YOU THAT ANYTHING THAT FOLLOWS --additional-params WILL \
+                         BE CONSIDERED AS A snakemake PARAM THAT IS TRANSFERED TO snakemake DIRECTLY. \
+                         So make sure that these don't include anything that you didn't mean to \
+                         include as an additional param: %s." % ', '.join(str(i) for i in self.additional_params))
 
         if self.save_workflow_graph:
             self.dry_run_only = True
@@ -128,6 +137,9 @@ class WorkflowSuperClass:
                     get_workflow_snake_file_path(self.args.workflow),
                     '--configfile',
                     self.args.config_file]
+
+        if self.additional_params:
+            sys.argv.extend(self.additional_params)
 
         if self.list_dependencies:
             sys.argv.extend(['--dryrun', '--printshellcmds'])
