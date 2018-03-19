@@ -60,6 +60,13 @@ class SequencesForHMMHits:
             raise ConfigError('Some of the requested sources were not found in the contigs database :/\
                                 Here is a list of the ones that are missing: %s' % ', '.join(missing_sources))
 
+        if not self.sources:
+            self.sources = set(list(self.hmm_hits_info.keys()))
+
+        if not self.sources:
+            # there is nothing to initialize..
+            return
+
         self.progress.new("Recovering sequences for HMM Hits")
         self.progress.update('...')
 
