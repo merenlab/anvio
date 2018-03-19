@@ -291,10 +291,16 @@ function initData() {
                     {
                         processCollection(response.collection);
                     }
+
+                    if ($('#panel-left').is(':visible')) {
+                        setTimeout(toggleLeftPanel, 500);
+                    }
                  });
             }
 
-            newBin();
+            if (!response.collection) {
+                newBin();
+            }   
         }
     });
 }
@@ -2111,8 +2117,8 @@ function loadCollection(default_collection) {
 function processCollection(collection_data) {
     SELECTED = new Array();
     var bins_cleared = false;
-    var bin_count = 0;
-    var bin_counter = 0;
+    bin_count = 0;
+    bin_counter = 0;
 
     // calculate treshold.
     var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
