@@ -291,6 +291,10 @@ function initData() {
                     {
                         processCollection(response.collection);
                     }
+
+                    if ($('#panel-left').is(':visible')) {
+                        setTimeout(toggleLeftPanel, 500);
+                    }
                  });
             }
 
