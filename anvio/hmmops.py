@@ -63,6 +63,10 @@ class SequencesForHMMHits:
         if not self.sources:
             self.sources = set(list(self.hmm_hits_info.keys()))
 
+        if not self.sources:
+            # there is nothing to initialize..
+            return
+
         self.progress.new("Recovering sequences for HMM Hits")
         self.progress.update('...')
 
