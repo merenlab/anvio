@@ -380,68 +380,19 @@ Drawer.prototype.initialize_tree = function() {
         var q = n.Begin();
         while (q != null)
         {
-            label_to_node_map[q.label] = q;
-            id_to_node_map[q.id] = q;
-            q.size = 1;
-
             if (!this.tree.has_edge_lengths) {
                 q.edge_length = 1;
             }
-
-            var _n = new NodeIterator(q);
-            var _q = _n.Begin();
-
-            q.child_nodes = [];
-            while (_q != null) {
-                q.child_nodes.push(_q.id);
-                _q = _n.Next();
-            }
-
-            q=n.Next();
         }
     }
     else
     {
         for (var i = 0; i < clusteringData.length; i++) {
             var q = new Node(clusteringData[i]);
-
             q.id = i + 1;
-            q.size = 1;
-            q.child_nodes = [q.id];
-            id_to_node_map[q.id] = q;
-            label_to_node_map[q.label] = q;
+            q.order = i;
         }
     }  
-};
-
-Drawer.prototype.assign_leaf_order = function() {
-    if (this.has_tree) {
-        var n = new NodeIterator(this.tree.root);
-        var q = n.Begin();
-
-        var order_counter = 0;   
-        while (q != null) {
-            if (q.IsLeaf()) {
-                q.order = order_counter++;
-                order_to_node_map[q.order] = q;
-            }
-            q=n.Next();
-        }
-        
-        this.tree.num_leaves = order_counter;
-        leaf_count = this.tree.num_leaves;
-    }
-    else
-    {
-        for (var i = 0; i < clusteringData.length; i++) {
-            var q = label_to_node_map[clusteringData[i]];
-
-            q.order = i;
-            order_to_node_map[i] = q;
-        }
-
-        leaf_count = clusteringData.length;
-    }
 };
 
 Drawer.prototype.collapse_nodes = function(node_list) {
