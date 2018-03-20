@@ -24,7 +24,8 @@ function Node(label) {
     this.child = null;
     this.sibling = null;
     this.collapsed = false;
-    this.label = null;
+    this.label = label;
+    this.size = 1;
     this.id = 0;
     this.xy = [];
     this.original_edge_length = 0.0;
@@ -34,12 +35,6 @@ function Node(label) {
     this.order = null;
     this.max_child_path = 0;
 }
-
-
-Node.prototype.SetLabel = function(label) {
-    this.collapsed = (label && label.endsWith('_collapsed')) ? true : false;
-    this.label = (label) ? label.replace(/_collapsed$/,'') : '';
-};
 
 
 Node.prototype.IsLeaf = function() {
@@ -140,8 +135,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
             case 0:
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
                     this.leaves[this.num_leaves++] = curnode;
-                    label = token[i];
-                    curnode.SetLabel(label);
+                    curnode.label = token[i];
                     i++;
                     state = 1;
                 } else {
@@ -247,7 +241,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
 
             case 3: // finishchildren
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
-                    curnode.SetLabel(token[i]);
+                    curnode.label = token[i];
                     i++;
                 } else {
                     switch (token[i]) {
