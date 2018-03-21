@@ -18,9 +18,10 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
-var VERSION = '0.2.1';
-var LINE_COLOR='#888888';
-var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
+const VERSION = '0.2.1';
+const LINE_COLOR='#888888';
+const MONOSPACE_FONT_ASPECT_RATIO = 0.6;
+
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
 
