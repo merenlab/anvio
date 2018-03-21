@@ -1,0 +1,4 @@
+name	path
+s01	01.fa
+s02	02.fa
+s03	03.fa

@@ -1527,17 +1527,62 @@ D = {
                       to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
                 ),
     'workflow': (
-            ['--workflow'],
+            ['-w', '--workflow'],
             {'required': False,
-             'help': "\
-                      "}
+             'help': "You must specify a workflow name. To see a list of available workflows\
+                      run --list-workflows."}
                 ),
     'list-workflows': (
             ['--list-workflows'],
             {'required': False,
              'action': 'store_true',
-             'help': "\
-                      "}
+             'help': "Print a list of available snakemake workflows"}
+                ),
+    'save-workflow-graph': (
+            ['--save-workflow-graph'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "Save a graph representation of the workflow. If you are using this flag and if your\
+                      system is unable to generate such graph outputs, you will hear anvi'o complaining\
+                      (still, totally worth trying)."}
+                ),
+    'get-default-config': (
+            ['--get-default-config'],
+            {'metavar': 'OUTPUT_FILENAME',
+             'type': str,
+             'help': "Store a json formatted config file with all the default settings of the\
+                      workflow. This is a good draft you could use in order to write your own\
+                      config file. This config file contains all parameters that could be configured\
+                      for this workflow. NOTICE: the config file is provided with default values\
+                      only for parameters that are set by us in the workflow. The values for the rest\
+                      of the parameters are determined by the relevant program."}
+                ),
+    'list-dependencies': (
+            ['--list-dependencies'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "Print a list of the dependencies of this workflow. You must provide a workflow name\
+                      and a config file. snakemake will figure out which rules need to be run according\
+                      to your config file, and according to the files available on your disk. According\
+                      to the rules that need to be run, we will let you know which programs are going to\
+                      be used, so that you can make sure you have all of them installed and loaded."}
+                ),
+    'config-file': (
+            ['-c', '--config-file'],
+            {'required': False,
+             'help': "TBD"}
+                ),
+    'additional-params': (
+            ['-A', '--additional-params'],
+            {'required': False,
+             'nargs':'...', 'type':str,
+             'help': "Additional snakemake parameters to add when running snakemake. NOTICE: --additional-params \
+                      HAS TO BE THE LAST ARGUMENT THAT IS PASSED TO anvi-run-snakemake-workflow, ANYTHING THAT \
+                      FOLLOWS WILL BE CONSIDERED AS PART OF THE ADDITIONAL PARAMETERS THAT ARE PASSED TO SNAKEMAKE. \
+                      Any parameter that is accepted by snakemake should be fair game here, but it is your \
+                      responsibility to make sure that whatever you added makes sense. To see what parameters are \
+                      available please refer to the snakemake documentation. For example, you could use this to set \
+                      up cluster submission using --additional-params --cluster \"YOUR-CLUSTER-SUBMISSION-CMD\""}
                 ),
 }
 
