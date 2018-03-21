@@ -26,6 +26,7 @@ var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
 
 var scale = 0;
+var drawer;
 
 var samples_id_to_node_map;
 var total_radius = 0;
