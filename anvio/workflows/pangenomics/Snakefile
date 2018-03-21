@@ -1,64 +1,84 @@
+# -*- coding: utf-8
+
 import os
 import anvio
+import argparse
 import pandas as pd
 import anvio.workflows as w
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.workflows.pangenomics import PangenomicsWorkflow
-# Get all the folder names from the config file
-# the default names are defined in anvio/workflows/__init__.py
-# the directories in use for this workflow are "LOGS_DIR", "CONTIGS_DIR", "PROFILE_DIR", "PAN_DIR"
 
-M = PangenomicsWorkflow(config)
+__author__ = "Alon Shaiber"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Alon Shaiber"
+__email__ = "alon.shaiber@gmail.com"
+
+run = terminal.Run()
+
+# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
+# include statement must come before we get an instance of PangenomicsWorkflow class
+include: w.get_workflow_snake_file_path('contigs')
+
+M = PangenomicsWorkflow(argparse.Namespace(config=config, slave_mode=(False if 'workflows/pangenomics' in workflow.included[0] else True)))
 M.init()
 dirs_dict = M.dirs_dict
 
 project_name = config["project_name"]
-pan_project_name = w.A(["anvi_pan_genome", "--project-name"], config, project_name)
+if not project_name:
+    raise ConfigError("You must provide a project name in your config file.")
+pan_project_name = M.get_param_value_from_config(["anvi_pan_genome", "--project-name"])
+if pan_project_name:
+    run.warning('you chose to set the "--project-name" parameter for "anvi_pan_genome". That is ok\
+                 but just so you know, if you haven\'t supplied this, then we would have taken the value\
+                 from "project_name" in your config file to also be the project name for "anvi_pan_genome"')
+else:
+    pan_project_name = project_name
 
-# the default name for the input samples.txt file is "samples.txt"
-samples_txt = w.A("samples_txt", config, "samples.txt")
-filesnpaths.is_file_exists(samples_txt)
-samples_information = pd.read_csv(samples_txt, sep='\t', index_col=0).to_dict(orient='index')
-ALL_SAMPLES = list(samples_information.keys())
+# the default name for the input fasta.txt file is "fasta.txt"
+fasta_txt = M.get_param_value_from_config("fasta_txt")
+filesnpaths.is_file_exists(fasta_txt)
+fasta_information = pd.read_csv(fasta_txt, sep='\t', index_col=0).to_dict(orient='index')
+ALL_SAMPLES = list(fasta_information.keys())
 
-internal_genomes_file = w.A(["anvi_gen_genomes_storage", "--internal-genomes"], config)
-external_genomes_file = w.A(["anvi_gen_genomes_storage", "--external-genomes"], config)
+internal_genomes_file = M.get_param_value_from_config(["anvi_gen_genomes_storage", "--internal-genomes"])
+external_genomes_file = M.get_param_value_from_config(["anvi_gen_genomes_storage", "--external-genomes"])
 
 if (not internal_genomes_file) and (not external_genomes_file):
     raise ConfigError("You must provide a path to either internal_genomes_file or external_genomes_file\
                        or both.")
 
-# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
-include: w.get_path_to_workflows_dir() + "/contigs/Snakefile"
-
 # run pangenome
 rule anvi_pan_genome:
     version: anvio.__pan__version__
     log: dirs_dict["LOGS_DIR"] + "/anvi_pan_genome.log"
-    threads: w.T(config, "anvi_pan_genome", 20)
-    resources: nodes = w.T(config, "anvi_pan_genome", 20)
+    threads: M.T("anvi_pan_genome")
+    resources: nodes = M.T("anvi_pan_genome")
     input: dirs_dict["PAN_DIR"] + "/" + project_name + "-GENOMES.db"
     params:
         output_dir = dirs_dict["PAN_DIR"],
-        genome_names = w.B(config, "anvi_pan_genome", "--genome-names"),
+        genome_names = M.get_rule_param("anvi_pan_genome", "--genome-names"),
         project_name = pan_project_name,
-        skip_alignments = w.B(config, "anvi_pan_genome", "--skip-alignments"),
-        align_with = w.B(config, "anvi_pan_genome", "--align-with"),
-        exclude_partial_gene_calls = w.B(config, "anvi_pan_genome", "--exclude-partial-gene-calls"),
-        use_ncbi_blast = w.B(config, "anvi_pan_genome", "--use-ncbi-blast"),
-        minbit = w.B(config, "anvi_pan_genome", "--minbit"),
-        mcl_inflation = w.B(config, "anvi_pan_genome", "--mcl-inflation"),
-        min_occurrence = w.B(config, "anvi_pan_genome", "--min-occurrence"),
-        min_percent_identity = w.B(config, "anvi_pan_genome", "--min-percent-identity"),
-        sensitive = w.B(config, "anvi_pan_genome", "--sensitive"),
-        description = w.B(config, "anvi_pan_genome", "--description"),
-        overwrite_output_destinations = w.B(config, "anvi_pan_genome", "--overwrite-output-destinations"),
-        skip_hierarchical_clustering = w.B(config, "anvi_pan_genome", "--skip-hierarchical-clustering"),
-        enforce_hierarchical_clustering = w.B(config, "anvi_pan_genome", "--enforce-hierarchical-clustering"),
-        distance = w.B(config, "anvi_pan_genome", "--distance"),
-        linkage = w.B(config, "anvi_pan_genome", "--linkage")
+        skip_alignments = M.get_rule_param("anvi_pan_genome", "--skip-alignments"),
+        align_with = M.get_rule_param("anvi_pan_genome", "--align-with"),
+        exclude_partial_gene_calls = M.get_rule_param("anvi_pan_genome", "--exclude-partial-gene-calls"),
+        use_ncbi_blast = M.get_rule_param("anvi_pan_genome", "--use-ncbi-blast"),
+        minbit = M.get_rule_param("anvi_pan_genome", "--minbit"),
+        mcl_inflation = M.get_rule_param("anvi_pan_genome", "--mcl-inflation"),
+        min_occurrence = M.get_rule_param("anvi_pan_genome", "--min-occurrence"),
+        min_percent_identity = M.get_rule_param("anvi_pan_genome", "--min-percent-identity"),
+        sensitive = M.get_rule_param("anvi_pan_genome", "--sensitive"),
+        description = M.get_rule_param("anvi_pan_genome", "--description"),
+        overwrite_output_destinations = M.get_rule_param("anvi_pan_genome", "--overwrite-output-destinations"),
+        skip_hierarchical_clustering = M.get_rule_param("anvi_pan_genome", "--skip-hierarchical-clustering"),
+        enforce_hierarchical_clustering = M.get_rule_param("anvi_pan_genome", "--enforce-hierarchical-clustering"),
+        distance = M.get_rule_param("anvi_pan_genome", "--distance"),
+        linkage = M.get_rule_param("anvi_pan_genome", "--linkage")
     output: dirs_dict["PAN_DIR"] + "/" + pan_project_name + "-PAN.db"
     shell:
         """
@@ -73,7 +93,7 @@ rule anvi_pan_genome:
 
 
 
-# generate external genomes storage 
+# generate external genomes storage
 rule gen_external_genome_file:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "" + "/gen_external_genome_file.log"
@@ -81,8 +101,8 @@ rule gen_external_genome_file:
         annotation_done = expand(dirs_dict['CONTIGS_DIR'] + "/{sample}-annotate_contigs_database.done", sample=ALL_SAMPLES),
         contigs_dbs = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}-contigs.db", sample=ALL_SAMPLES)
     output: external_genomes_file
-    threads: w.T(config, "gen_external_genome_file", 1)
-    resources: nodes = w.T(config, "gen_external_genome_file", 1)
+    threads: M.T("gen_external_genome_file")
+    resources: nodes = M.T("gen_external_genome_file")
     run:
         with open(output[0], 'w') as f:
             f.write("name\tcontigs_db_path\n")
@@ -108,17 +128,17 @@ def input_for_anvi_gen_genomes_storage(wildcards):
     return d
 
 
-# generate anvi'o genomes storage 
+# generate anvi'o genomes storage
 rule anvi_gen_genomes_storage:
     log: dirs_dict["LOGS_DIR"] + "/anvi_gen_genomes_storage.log"
-    threads: w.T(config, "anvi_gen_genomes_storage", 1)
-    resources: nodes = w.T(config, "anvi_gen_genomes_storage", 1)
+    threads: M.T("anvi_gen_genomes_storage")
+    resources: nodes = M.T("anvi_gen_genomes_storage")
     input: unpack(input_for_anvi_gen_genomes_storage)
     output: dirs_dict["PAN_DIR"] + "/" + project_name + "-GENOMES.db"
     params:
         internal_genomes_argument = lambda wildcards: "--internal-genomes " + internal_genomes_file if internal_genomes_file else "",
         external_genomes_argument = lambda wildcards: "--external-genomes " + external_genomes_file if external_genomes_file else "",
-        gene_caller = w.B(config, "anvi_gen_genomes_storage", "--gene-caller"),
+        gene_caller = M.get_rule_param("anvi_gen_genomes_storage", "--gene-caller"),
     shell:
         """
             anvi-gen-genomes-storage -o {output}\
@@ -127,3 +147,4 @@ rule anvi_gen_genomes_storage:
                                      {params.gene_caller}
         """
 
+M.check_workflow_program_dependencies(workflow)
