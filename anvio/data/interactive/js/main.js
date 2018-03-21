@@ -26,14 +26,7 @@ var VIEWER_HEIGHT;
 
 var scale = 0;
 
-var leaf_count;
 var samples_id_to_node_map;
-
-var angle_per_leaf;
-var height_per_leaf;
-var margin;
-var order_counter;
-
 var total_radius = 0;
 
 var SELECTED = new Array();
@@ -57,7 +50,6 @@ var context_menu_target_id = 0;
 var context_menu_layer_id = 0;
 
 var layerdata_title = {};
-var layerdata_dict;
 var empty_tooltip = "";
 
 var last_settings;
@@ -73,10 +65,6 @@ var layer_order;
 
 var completeness_dict = {};
 var gene_cluster_bins_summary_dict = {}
-
-var sort_column;
-var sort_order;
-
 var bin_prefix;
 
 var current_state_name = "";
