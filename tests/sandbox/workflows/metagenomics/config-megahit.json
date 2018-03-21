@@ -186,12 +186,12 @@
     "references_mode": false,
     "all_against_all": "",
     "output_dirs": {
-        "FASTA_DIR": "02_FASTA",
-        "CONTIGS_DIR": "03_CONTIGS",
-        "QC_DIR": "01_QC",
-        "MAPPING_DIR": "04_MAPPING",
-        "PROFILE_DIR": "05_ANVIO_PROFILE",
-        "MERGE_DIR": "06_MERGED",
-        "LOGS_DIR": "00_LOGS"
+        "FASTA_DIR": "02_FASTA_megahit",
+        "CONTIGS_DIR": "03_CONTIGS_megahit",
+        "QC_DIR": "01_QC_megahit",
+        "MAPPING_DIR": "04_MAPPING_megahit",
+        "PROFILE_DIR": "05_ANVIO_PROFILE_megahit",
+        "MERGE_DIR": "06_MERGED_megahit",
+        "LOGS_DIR": "00_LOGS_megahit"
     }
 }

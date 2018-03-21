@@ -180,12 +180,12 @@
     "references_mode": false,
     "all_against_all": "",
     "output_dirs": {
-        "FASTA_DIR": "02_FASTA",
-        "CONTIGS_DIR": "03_CONTIGS",
-        "QC_DIR": "01_QC",
-        "MAPPING_DIR": "04_MAPPING",
-        "PROFILE_DIR": "05_ANVIO_PROFILE",
-        "MERGE_DIR": "06_MERGED",
-        "LOGS_DIR": "00_LOGS"
+        "FASTA_DIR": "02_FASTA_megahit_no_qc",
+        "CONTIGS_DIR": "03_CONTIGS_megahit_no_qc",
+        "QC_DIR": "01_QC_megahit_no_qc",
+        "MAPPING_DIR": "04_MAPPING_megahit_no_qc",
+        "PROFILE_DIR": "05_ANVIO_PROFILE_megahit_no_qc",
+        "MERGE_DIR": "06_MERGED_megahit_no_qc",
+        "LOGS_DIR": "00_LOGS_megahit_no_qc"
     }
 }
