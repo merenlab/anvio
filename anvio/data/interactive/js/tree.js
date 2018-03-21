@@ -134,8 +134,10 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
         switch (state) {
             case 0:
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
-                    this.leaves[this.num_leaves++] = curnode;
+                    var order = this.num_leaves++;
+                    this.leaves[order] = curnode;
                     curnode.label = token[i];
+                    curnode.order = order;
                     i++;
                     state = 1;
                 } else {

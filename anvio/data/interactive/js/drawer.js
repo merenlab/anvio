@@ -122,7 +122,7 @@ Drawer.prototype.draw = function() {
     $('svg').svgPan(
         {
             'viewportId': 'viewport', 
-            'onlyPanOnMouseUp': (this.total_object_count > 10000 || order_to_node_map.length > 5000),
+            'onlyPanOnMouseUp': (this.total_object_count > 10000 || this.tree.leaves.length > 5000),
         });
 
     this.bind_tree_events();
@@ -927,8 +927,8 @@ Drawer.prototype.draw_categorical_layers = function() {
                         color = '#666666';
                 }
 
-                var start = order_to_node_map[categorical_item[0]];
-                var end = order_to_node_map[categorical_item[1]];
+                var start = this.tree.leaves[categorical_item[0]];
+                var end = this.tree.leaves[categorical_item[1]];
 
                 if (tree_type == 'circlephylogram')
                 {
@@ -1049,8 +1049,8 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         } 
         else 
         {
-            var _first = order_to_node_map[0];
-            var _last = order_to_node_map[order_to_node_map.length - 1];
+            var _first = this.tree.leaves[0];
+            var _last = this.tree.leaves[this.tree.leaves.length - 1];
             drawPie('event_catcher_' + layer.order,
                 'event',
                 _first.angle - _first.size / 2,
@@ -1097,8 +1097,8 @@ Drawer.prototype.draw_layer_backgrounds = function() {
 
         if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text') || layer.is_stackbar))
         {
-            var _first = order_to_node_map[0];
-            var _last = order_to_node_map[order_to_node_map.length - 1];
+            var _first = this.tree.leaves[0];
+            var _last = this.tree.leaves[this.tree.leaves.length - 1];
 
             drawPie('layer_background_' + layer.order,
                 'all',
@@ -1157,8 +1157,8 @@ Drawer.prototype.draw_numerical_layers = function() {
 
         var previous_non_zero_order = 0;
 
-        for (var i=0; i < order_to_node_map.length; i++) {
-            q = order_to_node_map[i];
+        for (var i=0; i < this.tree.leaves.length; i++) {
+            q = this.tree.leaves[i];
 
             if (this.settings['tree-type'] == 'phylogram') {
                 if (layer.get_visual_attribute('type') == 'intensity') {
@@ -1181,7 +1181,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                     if (this.settings['optimize-speed'] || layer.get_visual_attribute('type') == 'line') {
                         if (this.layerdata_dict[q.label][layer.index] > 0)
                         {
-                            if (q.order == 0 || (q.order > 0 && this.layerdata_dict[order_to_node_map[i-1].label][layer.index] == 0)) {
+                            if (q.order == 0 || (q.order > 0 && this.layerdata_dict[this.tree.leaves[i-1].label][layer.index] == 0)) {
                                 numeric_cache.push(
                                     "M", 
                                     this.layer_boundaries[layer.order][1], 
@@ -1209,7 +1209,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                                     );
                             }
 
-                            if ((q.order == order_to_node_map.length - 1) || (q.order < (order_to_node_map.length - 1) && this.layerdata_dict[order_to_node_map[i+1].label][layer.index] == 0)) {
+                            if ((q.order == this.tree.leaves.length - 1) || (q.order < (this.tree.leaves.length - 1) && this.layerdata_dict[this.tree.leaves[i+1].label][layer.index] == 0)) {
                                 numeric_cache.push(
                                     "L", 
                                     this.layer_boundaries[layer.order][1], 
@@ -1262,7 +1262,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                         var outer_radius = this.layer_boundaries[layer.order][0] + this.layerdata_dict[q.label][layer.index];
 
                         if (this.layerdata_dict[q.label][layer.index] > 0) {
-                            if (q.order == 0 || this.layerdata_dict[order_to_node_map[i-1].label][layer.index] == 0)
+                            if (q.order == 0 || this.layerdata_dict[this.tree.leaves[i-1].label][layer.index] == 0)
                             {
                                 var ax = Math.cos(start_angle) * inner_radius;
                                 var ay = Math.sin(start_angle) * inner_radius;
@@ -1288,12 +1288,12 @@ Drawer.prototype.draw_numerical_layers = function() {
                                 numeric_cache.push("L", bx, by, "A", outer_radius, outer_radius, 0, is_large_angle(start_angle, end_angle), 1, cx, cy);
                             }
 
-                            if ((q.order == order_to_node_map.length - 1) || this.layerdata_dict[order_to_node_map[i+1].label][layer.index] == 0) {
+                            if ((q.order == this.tree.leaves.length - 1) || this.layerdata_dict[this.tree.leaves[i+1].label][layer.index] == 0) {
                                 var dx = Math.cos(end_angle) * inner_radius;
                                 var dy = Math.sin(end_angle) * inner_radius;
 
                                 numeric_cache.push("L", dx, dy);
-                                var first_node = order_to_node_map[previous_non_zero_order];
+                                var first_node = this.tree.leaves[previous_non_zero_order];
                                 var first_node_start_angle = first_node.angle - first_node.size / 2;
 
                                 var ex = Math.cos(first_node_start_angle) * inner_radius;
@@ -1356,8 +1356,8 @@ Drawer.prototype.draw_stack_bar_layers = function() {
 
         var path_cache = [];
 
-        for (var i=0; i < order_to_node_map.length; i++) {
-            q = order_to_node_map[i];
+        for (var i=0; i < this.tree.leaves.length; i++) {
+            q = this.tree.leaves[i];
 
             if (q.collapsed)
                 continue;
@@ -1384,7 +1384,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
                         q.xy['y'] + q.size / 2
                         );
 
-                    if (q.order == (order_to_node_map.length - 1)) {
+                    if (q.order == (this.tree.leaves.length - 1)) {
                         path_cache[j].push(
                             "L", 
                             this.layer_boundaries[layer.order][1], 
@@ -1418,7 +1418,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
 
                     path_cache[j].push("L", bx, by, "A", outer_radius, outer_radius, 0, is_large_angle(start_angle, end_angle), 1, cx, cy);
 
-                    if (q.order == order_to_node_map.length - 1) {
+                    if (q.order == this.tree.leaves.length - 1) {
                         var bx = Math.cos(end_angle) * inner_radius;
                         var by = Math.sin(end_angle) * inner_radius;
 
@@ -1535,12 +1535,12 @@ Drawer.prototype.update_title_panel = function() {
 };
 
 Drawer.prototype.show_drawing_statistics = function() {
-    this.tree_object_count = document.getElementById('tree').getElementsByTagName('*').length + document.getElementById('guide_lines').getElementsByTagName('*').length;
-    this.total_object_count = document.getElementById('svg').getElementsByTagName('*').length;
+    var tree_object_count = document.getElementById('tree').getElementsByTagName('*').length + document.getElementById('guide_lines').getElementsByTagName('*').length;
+    var total_object_count = document.getElementById('svg').getElementsByTagName('*').length;
 
-    $('#draw_delta_time').html(order_to_node_map.length + ' splits and ' + this.total_object_count +' objects drawn in ' + this.timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
+    $('#draw_delta_time').html(this.tree.leaves.length + ' splits and ' + total_object_count +' objects drawn in ' + this.timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
 
-    console.log('[info] Leaf count: ' + order_to_node_map.length);
-    console.log('[info] Object count in tree (with guide lines): ' + this.tree_object_count);
-    console.log('[info] Total objects in SVG: ' + this.total_object_count);
+    console.log('[info] Leaf count: ' + this.tree.leaves.length);
+    console.log('[info] Object count in tree (with guide lines): ' + tree_object_count);
+    console.log('[info] Total objects in SVG: ' + total_object_count);
 };
