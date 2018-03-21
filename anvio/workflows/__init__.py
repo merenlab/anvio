@@ -110,7 +110,7 @@ class WorkflowSuperClass:
         self.dirs_dict.update(self.config.get("output_dirs", ''))
 
         # create log dir if it doesn't exist
-        os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
+        os.makedirs(self.dirs_dict["LOGS_DIR"], exist_ok=True)
 
         # lets check everything
         if not self.slave_mode:
