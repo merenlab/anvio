@@ -21,17 +21,16 @@
 
 function redrawBins()
 {
-    // check if tree parsed, if not there is nothing to redraw.
-    if ($.isEmptyObject(label_to_node_map)) 
+    if (!drawer)
         return;
 
-    var leaf_list = Array.apply(null, new Array(leaf_count+1)).map(Number.prototype.valueOf,0);
+    var leaf_list = Array.apply(null, new Array(drawer.tree.num_leaves)).map(Number.prototype.valueOf,0);
 
     // put bin numbers of selected leaves to leaf list
     // maybe we should write directly into leaf_list in mouse events, instead of generate it everytime.
     for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
         for (var j = SELECTED[bin_id].length - 1; j >= 0; j--) {
-            var node = label_to_node_map[SELECTED[bin_id][j]];
+            var node = drawer.tree.nodes[SELECTED[bin_id][j]];
             if (typeof node === 'undefined')
             {
                 SELECTED[bin_id].splice(j, 1);
@@ -82,8 +81,8 @@ function redrawBins()
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
 
     for (var i=0; i < bins_to_draw.length; i++) {
-        var start = order_to_node_map[bins_to_draw[i][0]];
-        var end = order_to_node_map[bins_to_draw[i][1]];
+        var start = drawer.tree.leaves[bins_to_draw[i][0]];
+        var end = drawer.tree.leaves[bins_to_draw[i][1]];
 
         var color = document.getElementById('bin_color_' + bins_to_draw[i][2]).getAttribute('color');
 
@@ -216,7 +215,7 @@ function redrawBins()
     // draw higlighted splits
     for (var i=0; i < highlighted_splits.length; i++) {
         // TO DO: more performance
-        var start = label_to_node_map[highlighted_splits[i]];
+        var start = drawer.tree.leaves[highlighted_splits[i]];
         var end = start;
 
         if (!start)
@@ -254,7 +253,7 @@ function redrawBins()
     }
 
     try{
-        var fake_event = {'target': {'id': '#line' + order_to_node_map[0].id}};
+        var fake_event = {'target': {'id': '#line0'}};
         lineMouseLeaveHandler(fake_event);
     }catch(err){
         console.log("Triggering mouseLeaveHandler failed.");
@@ -278,11 +277,11 @@ function rebuildIntersections()
             var length = nodes.length;
             for (var cursor = 0; cursor < length; cursor++)
             {
-                if (!label_to_node_map.hasOwnProperty(nodes[cursor])) {
+                if (!drawer.tree.nodes.hasOwnProperty(nodes[cursor])) {
                     continue;
                 }
 
-                var node = label_to_node_map[nodes[cursor]];
+                var node = drawer.tree.nodes[nodes[cursor]];
                 var parent = node.ancestor;
 
                 if (parent == null || parent.ancestor == null) 
