@@ -84,8 +84,6 @@ Drawer.prototype.draw = function() {
     this.generate_tooltips();
     this.normalize_values();
     this.calculate_bar_sizes();
-    
-    this.assign_leaf_order();
     this.calculate_leaf_sizes();
         
     createBin('svg', 'viewport');
@@ -383,6 +381,7 @@ Drawer.prototype.initialize_tree = function() {
             if (!this.tree.has_edge_lengths) {
                 q.edge_length = 1;
             }
+            q=n.Next();
         }
     }
     else
@@ -431,10 +430,7 @@ Drawer.prototype.collapse_nodes = function(node_list) {
 
         cnode.max_child_path = max_edge;
         cnode.size = Math.max(1, sum_size / 4);
-
-        cnode.child_nodes = [];
         cnode.child = null;
-        cnode.collapsed = true;
     }
 };
 
@@ -449,8 +445,8 @@ Drawer.prototype.bind_tree_events = function() {
 Drawer.prototype.calculate_leaf_sizes = function() {
     var total_size = 0;
 
-    for (var i=0; i < order_to_node_map.length; i++) {
-        total_size += order_to_node_map[i].size;
+    for (var i=0; i < this.tree.leaves.length; i++) {
+        total_size += this.tree.leaves[i].size;
     }
 
     var total_width;
@@ -464,8 +460,8 @@ Drawer.prototype.calculate_leaf_sizes = function() {
         var total_width = this.width;
     }
 
-    for (var i=0; i < order_to_node_map.length; i++) {
-        q = order_to_node_map[i];
+    for (var i=0; i < this.tree.leaves.length; i++) {
+        q = this.tree.leaves[i];
         q.size = q.size * (total_width / total_size);
 
         if (typeof this.smallest_leaf_size === 'undefined' || q.size < this.smallest_leaf_size) {
@@ -518,8 +514,8 @@ Drawer.prototype.calculate_tree_coordinates = function() {
     }
     else
     {
-        for (var i=0; i < order_to_node_map.length; i++) {
-            this.calculate_leaf_coordinate(order_to_node_map[i]);
+        for (var i=0; i < this.tree.leaves.length; i++) {
+            this.calculate_leaf_coordinate(this.tree.leaves[i]);
         }
     }
 };
@@ -530,7 +526,7 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
         if (p.order == 0) {
             p.angle = Math.min(Math.toRadians(this.settings['angle-min']), Math.toRadians(this.settings['angle-max'])) + p.size / 2;
         } else {
-            var prev_leaf = order_to_node_map[p.order - 1];
+            var prev_leaf = this.tree.leaves[p.order - 1];
             p.angle = prev_leaf.angle + prev_leaf.size / 2 + p.size / 2;
         }
 
@@ -560,7 +556,7 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
         if (p.order == 0) {
             pt['y'] = p.size / 2;
         } else {
-            var prev_leaf = order_to_node_map[p.order - 1];
+            var prev_leaf = this.tree.leaves[p.order - 1];
             pt['y'] = prev_leaf.xy['y'] + prev_leaf.size / 2 + p.size / 2;
         }
 
@@ -661,8 +657,8 @@ Drawer.prototype.draw_tree = function() {
             p = n.Next();
         }
     } else {
-        for (var i=0; i < order_to_node_map.length; i++) {
-            var p = order_to_node_map[i];
+        for (var i=0; i < this.tree.leaves.length; i++) {
+            var p = this.tree.leaves[i];
             p.backarc = p.xy;
             this.draw_leaf(p);
         }
@@ -815,8 +811,8 @@ Drawer.prototype.draw_categorical_layers = function() {
 
         var layer_items = [];
 
-        for (var node_i=0; node_i < order_to_node_map.length; node_i++) {
-            q = order_to_node_map[node_i];
+        for (var node_i=0; node_i < this.tree.leaves.length; node_i++) {
+            q = this.tree.leaves[node_i];
 
             if ((layer.is_categorical && layer.get_visual_attribute('type') == 'color') || layer.is_parent)
             {
