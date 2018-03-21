@@ -1,42 +1,10 @@
 {
     "fasta_txt": "",
-    "anvi_gen_contigs_database": {
-        "--project-name": "{group}",
-        "threads": 5,
-        "--description": "",
-        "--skip-gene-calling": "",
-        "--external-gene-calls": "",
-        "--ignore-internal-stop-codons": "",
-        "--skip-mindful-splitting": "",
-        "--contigs-fasta": "",
-        "--split-length": "",
-        "--kmer-size": ""
-    },
-    "centrifuge": {
-        "threads": 5,
-        "run": ""
-    },
     "anvi_run_hmms": {
-        "run": true,
-        "threads": 20,
-        "--installed-hmm-profile": "",
-        "--hmm-profile-dir": ""
+        "run": false
     },
     "anvi_run_ncbi_cogs": {
-        "run": true,
-        "threads": 5,
-        "--cog-data-dir": "",
-        "--sensitive": "",
-        "--temporary-dir-path": "",
-        "--search-with": ""
-    },
-    "anvi_script_reformat_fasta": {
-        "run": true,
-        "--simplify-names": true,
-        "--keep-ids": "",
-        "--exclude-ids": "",
-        "--min-len": "",
-        "threads": ""
+        "run": false
     },
     "samples_txt": "samples.txt",
     "megahit": {
@@ -67,118 +35,10 @@
         "--continue": "",
         "--verbose": ""
     },
-    "idba_ud": {
-        "--min-contig": 1000,
-        "threads": 11,
-        "run": "",
-        "--mink": "",
-        "--maxk": "",
-        "--step": "",
-        "--inner-mink": "",
-        "--inner-step": "",
-        "--prefix": "",
-        "--min-count": "",
-        "--min-support": "",
-        "--seed-kmer": "",
-        "--similar": "",
-        "--max-mismatch": "",
-        "--min-pairs": "",
-        "--no-bubble": "",
-        "--no-local": "",
-        "--no-coverage": "",
-        "--no-correct": "",
-        "--pre-correction": ""
-    },
     "iu_filter_quality_minoche": {
         "run": false
     },
-    "gzip_fastqs": {
-        "run": true,
-        "threads": ""
-    },
-    "bowtie_build": {
-        "threads": 10
-    },
-    "bowtie": {
-        "additional_params": "--no-unal",
-        "threads": 10
-    },
-    "samtools_view": {
-        "additional_params": "-F 4",
-        "threads": 4
-    },
-    "anvi_init_bam": {
-        "threads": 4
-    },
-    "anvi_profile": {
-        "threads": 5,
-        "--sample-name": "{sample}",
-        "--overwrite-output-destinations": true,
-        "--report-variability-full": "",
-        "--skip-SNV-profiling": "",
-        "--profile-AA-frequencies": "",
-        "--description": "",
-        "--skip-hierarchical-clustering": "",
-        "--distance": "",
-        "--linkage": "",
-        "--min-contig-length": "",
-        "--min-mean-coverage": "",
-        "--min-coverage-for-variability": "",
-        "--cluster-contigs": "",
-        "--contigs-of-interest": "",
-        "--queue-size": "",
-        "--write-buffer-size": ""
-    },
-    "anvi_merge": {
-        "--sample-name": "{group}",
-        "--overwrite-output-destinations": true,
-        "--description": "",
-        "--skip-hierarchical-clustering": "",
-        "--enforce-hierarchical-clustering": "",
-        "--distance": "",
-        "--linkage": "",
-        "--skip-concoct-binning": "",
-        "threads": ""
-    },
-    "import_percent_of_reads_mapped": {
-        "run": true,
-        "threads": ""
-    },
-    "remove_human_dna_using_centrifuge": {
-        "run": "",
-        "threads": ""
-    },
-    "export_gene_calls": {
-        "threads": ""
-    },
-    "anvi_import_taxonomy": {
-        "threads": ""
-    },
-    "annotate_contigs_database": {
-        "threads": ""
-    },
-    "iu_gen_configs": {
-        "--r1-prefix": "",
-        "--r2-prefix": "",
-        "threads": ""
-    },
-    "gen_qc_report": {
-        "threads": ""
-    },
-    "fq2fa": {
-        "threads": ""
-    },
-    "merge_fastas_for_co_assembly": {
-        "threads": ""
-    },
-    "anvi_script_anvi_script_reformat_fasta": {
-        "threads": ""
-    },
-    "anvi_export_gene_calls": {
-        "threads": ""
-    },
-    "references_mode": false,
-    "all_against_all": "",
+    "all_against_all": true,
     "output_dirs": {
         "FASTA_DIR": "02_FASTA_megahit_no_qc",
         "CONTIGS_DIR": "03_CONTIGS_megahit_no_qc",
