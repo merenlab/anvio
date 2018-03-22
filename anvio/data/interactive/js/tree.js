@@ -51,8 +51,8 @@ Node.prototype.GetRightMostSibling = function() {
 };
 
 
-Node.prototype.GetChildren = function() {
-    var n = new NodeIterator(this.root);
+Node.prototype.GetChildren = function(p) {
+    var n = new NodeIterator(p);
     var q = n.Begin();
     var children = [];
 

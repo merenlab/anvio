@@ -1339,7 +1339,7 @@ function drawTree() {
                 defer.resolve(); 
             },
             onShow: function() {
-                var drawer = new Drawer(settings);
+                drawer = new Drawer(settings);
                 drawer.draw();
 
                 // last_settings used in export svg for layer information,
