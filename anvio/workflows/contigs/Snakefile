@@ -168,7 +168,7 @@ def get_fasta(wildcards):
     return contigs
 
 contigs_project_name = M.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'], repress_default=True)
-if contigs_project_name != M.default_config['anvi_gen_contigs_database']['--project-name']:
+if contigs_project_name != M.default_config['anvi_gen_contigs_database']['--project-name'] and contigs_project_name is not None:
     run.warning('You chose to set the "project_name" for your contigs databases\
                  in the config file to %s. You are welcomed to do that, but at your own\
                  risk. Just so you know, by default the project name would match\
