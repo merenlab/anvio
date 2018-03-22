@@ -44,7 +44,7 @@ function lineClickHandler(event) {
     if (event.target.parentNode && event.target.parentNode.id == 'samples_tree')
     {
         var id = event.target.id.match(/\d+/);
-        var node = samples_id_to_node_map[id];
+        var node = samples_drawer.tree.nodes[id];
 
         var _n = new NodeIterator(node);
         var _q = _n.Begin();
@@ -123,7 +123,7 @@ function lineContextMenuHandler(event) {
     var bin_id = getBinId();
     context_menu_target_id = getNodeFromEvent(event).id;
 
-    if (event.target.id.indexOf('path_') > -1 && !id_to_node_map[context_menu_target_id].collapsed)
+    if (event.target.id.indexOf('path_') > -1 && !drawer.tree.nodes[context_menu_target_id].collapsed)
     {
         if (mode == "collection") {
             $('#collection_mode_right_click_menu').show();
@@ -194,7 +194,7 @@ function lineContextMenuHandler(event) {
         return false;
     } else {
 
-        var is_collapsed = id_to_node_map[context_menu_target_id].collapsed;
+        var is_collapsed = drawer.tree.nodes[context_menu_target_id].collapsed;
         var is_ctrl_pressed = ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey);
 
         if (is_collapsed) {
@@ -371,15 +371,15 @@ function lineMouseLeaveHandler(event) {
         var bin_color = color_picker.getAttribute('color');
 
         for (var i = 0; i < SELECTED[bin_id].length; i++) {
-            node_stack.push(label_to_node_map[SELECTED[bin_id][i]].id);
+            node_stack.push(SELECTED[bin_id][i]);
 
-            var _line = document.getElementById('line' + label_to_node_map[SELECTED[bin_id][i]].id);
+            var _line = document.getElementById('line' + SELECTED[bin_id][i]);
             if (_line) {
                 _line.style['stroke-width'] = '2';
                 _line.style['stroke'] = bin_color;       
             }
 
-            var _arc = document.getElementById('arc' + label_to_node_map[SELECTED[bin_id][i]].id);
+            var _arc = document.getElementById('arc' + SELECTED[bin_id][i]);
             if (_arc) {
                 _arc.style['stroke-width'] = '2';
                 _arc.style['stroke'] = bin_color;
@@ -426,7 +426,7 @@ function mouseMoveHandler(event) {
     if (event.target.parentNode.id == 'samples_tree')
     {
         var id = event.target.id.match(/\d+/);
-        var node = samples_id_to_node_map[id[0]];
+        var node = samples_drawer.tree.nodes[id[0]];
         var _n = new NodeIterator(node);
         var _q = _n.Begin();
 
@@ -490,7 +490,7 @@ function mouseMoveHandler(event) {
     if (!layer_id_exp)
         return;
     var layer_id = layer_id_exp[0];
-    var target_node = id_to_node_map[p.id];
+    var target_node = drawer.tree.nodes[p.id];
 
     if (target_node.collapsed) {
         $('#tooltip_content').html("Collapsed branch");
@@ -547,7 +547,7 @@ function write_mouse_table(content, item_name, layer_id) {
 
 
 function menu_callback(action, param) {
-    var item_name = id_to_node_map[context_menu_target_id].label;
+    var item_name = drawer.tree.nodes[context_menu_target_id].label;
     var target = (mode == 'gene') ? 'gene' : 'contig';
     var new_tree;
 
@@ -741,8 +741,8 @@ function getNodeFromEvent(event)
         {
             var _x = original_width - ((event.clientX - rect_left) * (window['original_width'] / rect_width));
             
-            for (var i=0; i < order_to_node_map.length; i++) {
-                var node = order_to_node_map[i];
+            for (var i=0; i < drawer.tree.leaves.length; i++) {
+                var node = drawer.tree.leaves[i];
                 if ((_x > (node.xy['y'] - node.size / 2)) && (_x < (node.xy['y'] + node.size / 2))) {
                     return node;
                 }
@@ -756,8 +756,8 @@ function getNodeFromEvent(event)
             if (angle < 0)
                 angle = 2 * Math.PI + angle;
 
-            for (var i=0; i < order_to_node_map.length; i++) {
-                var node = order_to_node_map[i];
+            for (var i=0; i < drawer.tree.leaves.length; i++) {
+                var node = drawer.tree.leaves[i];
                 if ((angle > (node.angle - node.size / 2)) && (angle < (node.angle + node.size / 2))) {
                     return node;
                 }
@@ -769,6 +769,6 @@ function getNodeFromEvent(event)
         var id = event.target.id.match(/\d+/);
 
         if (id)
-            return id_to_node_map[id[0]];
+            return drawer.tree.nodes[id[0]];
     }
 }
