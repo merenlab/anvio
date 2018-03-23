@@ -1582,10 +1582,10 @@ function updateBinsWindow(bin_list) {
             var length_sum = 0;
 
             for (var j = 0; j < SELECTED[bin_id].length; j++) {
-                if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf())
+                if (drawer.tree.nodes[SELECTED[bin_id][j]].IsLeaf())
                 {
                     contigs++;
-                    length_sum += parseInt(contig_lengths[SELECTED[bin_id][j]]);
+                    length_sum += parseInt(contig_lengths[drawer.tree.nodes[SELECTED[bin_id][j]]]);
                 }
             }
 
@@ -1896,6 +1896,7 @@ function storeRefinedBins() {
         }
     });
 }
+
 
 function storeCollection() {
     var collection_name = $('#storeCollection_name').val();
