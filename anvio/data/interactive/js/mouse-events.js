@@ -112,7 +112,19 @@ function lineClickHandler(event) {
                 if (bins_to_update.indexOf(bid) == -1)
                     bins_to_update.push(bid);
             }
-        }        
+        }
+
+        let line = document.getElementById('line' + child.id);
+        if (line) {
+            line.style['stroke-width'] = '3';
+            line.style['stroke'] = bin_color;       
+        }
+
+        let arc = document.getElementById('arc' + child.id);
+        if (arc) {
+            arc.style['stroke-width'] = '3';
+            arc.style['stroke'] = bin_color;
+        }
     }
 
     redrawBins();
