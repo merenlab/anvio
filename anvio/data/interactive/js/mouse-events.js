@@ -89,10 +89,11 @@ function lineClickHandler(event) {
     var bin_color = document.getElementById('bin_color_' + bin_id).getAttribute('color');
 
     var bins_to_update = [];
-    for (var i = 0; i < p.child_nodes.length; i++) {
-        var pos = SELECTED[bin_id].indexOf(p.child_nodes[i]);
+
+    for (const child of p.IterateChildren()) {
+        var pos = SELECTED[bin_id].indexOf(child.id);
         if (pos == -1) {
-            SELECTED[bin_id].push(p.child_nodes[i]);
+            SELECTED[bin_id].push(child.id);
 
             if (bins_to_update.indexOf(bin_id) == -1)
                 bins_to_update.push(bin_id);
@@ -104,19 +105,20 @@ function lineClickHandler(event) {
             if (bid == bin_id)
                 continue;
 
-            var pos = SELECTED[bid].indexOf(p.child_nodes[i]);
+            var pos = SELECTED[bid].indexOf(child.id);
             if (pos > -1) {
                 SELECTED[bid].splice(pos, 1);
 
                 if (bins_to_update.indexOf(bid) == -1)
                     bins_to_update.push(bid);
             }
-        }
+        }        
     }
 
     redrawBins();
     updateBinsWindow(bins_to_update);
 }
+
 
 function lineContextMenuHandler(event) {
     if (event.preventDefault) event.preventDefault();
@@ -309,98 +311,13 @@ function lineMouseEnterHandler(event) {
             0.3,
             false);
     }
-
-    if (p.IsLeaf())
-        return;
-
-    for (var index = 0; index < p.child_nodes.length; index++) {
-        var _line = document.getElementById('line' + p.child_nodes[index]);
-        if (_line) {
-            _line.style['stroke-width'] = '3';
-            _line.style['stroke'] = bin_color;       
-        }
-
-        var _arc = document.getElementById('arc' + p.child_nodes[index]);
-        if (_arc) {
-            _arc.style['stroke-width'] = '3';
-            _arc.style['stroke'] = bin_color;
-        }
-    }
 }
 
 function lineMouseLeaveHandler(event) {
     if (drawing_zoom)
         return;
 
-    var p = getNodeFromEvent(event);
-
     $('#path_hover').remove();
-
-    var bin_id = getBinId();
-
-    if (bin_id === 'undefined') {
-        document.focus();
-        return;
-    }
-
-    if (!p)
-        return;
-
-    if (p.collapsed)
-        return;
-
-    for (var index = 0; index < p.child_nodes.length; index++) {
-        var _line = document.getElementById('line' + p.child_nodes[index]);
-        if (_line) {
-            _line.style['stroke-width'] = '1';       
-        }
-
-        var _arc = document.getElementById('arc' + p.child_nodes[index]);
-        if (_arc) {
-            _arc.style['stroke-width'] = '1';
-        }
-    }
-
-    var node_stack = [];
-    for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
-        var color_picker = document.getElementById('bin_color_' + bin_id);
-
-        if (!color_picker)
-            continue;
-
-        var bin_color = color_picker.getAttribute('color');
-
-        for (var i = 0; i < SELECTED[bin_id].length; i++) {
-            node_stack.push(SELECTED[bin_id][i]);
-
-            var _line = document.getElementById('line' + SELECTED[bin_id][i]);
-            if (_line) {
-                _line.style['stroke-width'] = '2';
-                _line.style['stroke'] = bin_color;       
-            }
-
-            var _arc = document.getElementById('arc' + SELECTED[bin_id][i]);
-            if (_arc) {
-                _arc.style['stroke-width'] = '2';
-                _arc.style['stroke'] = bin_color;
-            }
-        }
-    }
-
-    for (var i = 0; i < p.child_nodes.length; i++) {
-        if (node_stack.indexOf(p.child_nodes[i]) > -1)
-            continue;
-
-        var _line = document.getElementById('line' + p.child_nodes[i]);
-        if (_line) {
-            _line.style['stroke'] = LINE_COLOR;       
-        }
-
-        var _arc = document.getElementById('arc' + p.child_nodes[i]);
-        if (_arc) {
-            _arc.style['stroke'] = LINE_COLOR;
-        }
-    }
 }
 
 function mouseMoveHandler(event) {

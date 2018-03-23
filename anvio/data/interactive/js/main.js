@@ -1897,7 +1897,6 @@ function storeRefinedBins() {
     });
 }
 
-
 function storeCollection() {
     var collection_name = $('#storeCollection_name').val();
 
