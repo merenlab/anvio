@@ -1368,8 +1368,9 @@ function getContigNames(bin_id) {
     var names = new Array();
 
     for (var j = 0; j < SELECTED[bin_id].length; j++) {
-        if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf()) {
-            names.push(SELECTED[bin_id][j]);
+        let node = drawer.tree.nodes[SELECTED[bin_id][j]];
+        if (node.IsLeaf()) {
+            names.push(node.label);
         }
     }
 
