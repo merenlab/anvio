@@ -166,8 +166,8 @@ def main(args):
 
     counter = 0
     report = open(report_file_path, 'w')
-    report.write('old_bin_name\tnew_bin_name\n')
-    for bin_name, _, bin_type in MAGs_sorted_by_completion + bins_sorted_by_completion:
+    report.write('old_bin_name\tnew_bin_name\tcompletion\tredundancy\tsize_in_Mbp\n')
+    for bin_name, substantive_completion, completion, redundancy, size_in_Mbp, bin_type in MAGs_sorted_by_completion + bins_sorted_by_completion:
         counter += 1
         new_bin_name = '%s_%s_%05d' % (prefix, bin_type, counter)
         new_collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
@@ -175,8 +175,7 @@ def main(args):
         if bin_name in bins_info_dict:
             new_bins_info_dict[new_bin_name] = copy.deepcopy(bins_info_dict[bin_name])
 
-        report.write('%s\t%s\n' % (bin_name, new_bin_name))
-
+        report.write('%s\t%s\t%.2f\t%.2f\t%.2f\n' % (bin_name, new_bin_name, completion, redundancy, size_in_Mbp))
 
     report.close()
     run.info('Report', '%s' % (report_file_path))
