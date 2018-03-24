@@ -2005,8 +2005,8 @@ def get_all_item_names_from_the_database(db_path, run=run):
         all_items = set(database.get_single_column_from_table(t.splits_info_table_name, 'split'))
     else:
         database.disconnect()
-        raise ConfigError("You wanted to get all items in the database %s, but no one here knows aobut its type. Seriously,\
-                            what is '%s'?" % (db_path, db_type))
+        raise ConfigError("You wanted to get all items in the database %s, but no one here knows about its type. Seriously,\
+                            what is '%s' anyway?" % (db_path, db_type))
 
     if not len(all_items):
         database.disconnect()
