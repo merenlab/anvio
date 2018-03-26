@@ -218,7 +218,7 @@ function redrawBins()
     // draw higlighted splits
     for (var i=0; i < highlighted_splits.length; i++) {
         // TO DO: more performance
-        var start = drawer.tree.leaves[highlighted_splits[i]];
+        var start = drawer.tree.nodes[highlighted_splits[i]];
         var end = start;
 
         if (!start)
