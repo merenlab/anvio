@@ -24,7 +24,10 @@ function redrawBins()
     if (!drawer)
         return;
 
-    var leaf_list = Array.apply(null, new Array(drawer.tree.num_leaves)).map(Number.prototype.valueOf,0);
+    var leaf_list = [];
+    for (var i=0; i < drawer.tree.leaves.length + 1; i++) {
+        leaf_list.push(0);
+    }
 
     // put bin numbers of selected leaves to leaf list
     // maybe we should write directly into leaf_list in mouse events, instead of generate it everytime.
@@ -277,11 +280,11 @@ function rebuildIntersections()
             var length = nodes.length;
             for (var cursor = 0; cursor < length; cursor++)
             {
-                if (!drawer.tree.nodes.hasOwnProperty(nodes[cursor])) {
+                if (!drawer.tree.nodes.hasOwnProperty(nodes[cursor].id)) {
                     continue;
                 }
 
-                var node = drawer.tree.nodes[nodes[cursor]];
+                var node = drawer.tree.nodes[nodes[cursor].id];
                 var parent = node.ancestor;
 
                 if (parent == null || parent.ancestor == null) 
@@ -290,18 +293,18 @@ function rebuildIntersections()
                     continue;
                 }
 
-                if (selected_set.has(parent.label))
+                if (selected_set.has(parent.id))
                 {
                     // parent already in selected list
                     continue;
                 }
 
-                if (node.sibling != null && selected_set.has(node.sibling.label))
+                if (node.sibling != null && selected_set.has(node.sibling.id))
                 {
-                    selected_set.add(parent.label);
-                    next_iteration.push(parent.label);
-                    next_iteration.splice(next_iteration.indexOf(node.label), 1);
-                    next_iteration.splice(next_iteration.indexOf(node.sibling.label), 1);
+                    selected_set.add(parent.id);
+                    next_iteration.push(parent.id);
+                    next_iteration.splice(next_iteration.indexOf(node.id), 1);
+                    next_iteration.splice(next_iteration.indexOf(node.sibling.id), 1);
                     inserted++;
                 }
             }
