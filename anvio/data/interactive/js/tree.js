@@ -110,6 +110,15 @@ function Tree() {
     this.rooted = true;
     this.has_edge_lengths = false;
     this.error = 0;
+    this.label_to_leaves = {};
+}
+
+
+Tree.prototype.GetLeafByName = function(name) {
+    if (this.label_to_leaves.hasOwnProperty(name)) {
+        return this.label_to_leaves[name];
+    }
+    return null;
 }
 
 
@@ -148,6 +157,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
                     var order = this.num_leaves++;
                     this.leaves[order] = curnode;
+                    this.label_to_leaves[token[i]] = curnode;
                     curnode.label = token[i];
                     curnode.order = order;
                     i++;
