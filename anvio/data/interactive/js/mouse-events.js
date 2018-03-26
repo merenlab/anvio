@@ -241,10 +241,10 @@ function removeBranchFromBin(event) {
         return;
 
     var bins_to_update = [];
-    for (var i = 0; i < p.child_nodes.length; i++) {
+    for (const child of p.IterateChildren()) {
         // remove nodes from all bins
         for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
-            var pos = SELECTED[bin_id].indexOf(p.child_nodes[i]);
+            var pos = SELECTED[bin_id].indexOf(child.id);
             if (pos > -1) {
                 SELECTED[bin_id].splice(pos, 1);
 
@@ -252,6 +252,19 @@ function removeBranchFromBin(event) {
                     bins_to_update.push(bin_id);
             }
         }
+
+        let line = document.getElementById('line' + child.id);
+        if (line) {
+            line.style['stroke-width'] = '1';
+            line.style['stroke'] = LINE_COLOR;       
+        }
+
+        let arc = document.getElementById('arc' + child.id);
+        if (arc) {
+            arc.style['stroke-width'] = '1';
+            arc.style['stroke'] = LINE_COLOR;
+        }
+
     }
     redrawBins();
     updateBinsWindow(bins_to_update);
