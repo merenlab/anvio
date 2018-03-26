@@ -31,15 +31,14 @@ var drawer;
 var samples_id_to_node_map;
 var total_radius = 0;
 
-var SELECTED = new Array();
+/*var SELECTED = new Array();*/
+var bins;
 var clusteringData;
 
 var layerdata;
 var contig_lengths;
 var parameter_count;
 
-var bin_counter = 0; // for id
-var bin_count = 0;
 var tree_type;
 var layer_types;
 
@@ -58,7 +57,6 @@ var last_settings;
 
 var search_column;
 var search_results = [];
-var highlighted_splits = [];
 
 var views = {};
 var layers = {};
@@ -67,7 +65,6 @@ var layer_order;
 
 var completeness_dict = {};
 var gene_cluster_bins_summary_dict = {}
-var bin_prefix;
 
 var current_state_name = "";
 
@@ -223,7 +220,6 @@ function initData() {
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
 
-            bin_prefix = response.bin_prefix;
             contig_lengths = response.contig_lengths;
 
             var default_tree  = response.item_orders[0];
@@ -266,6 +262,8 @@ function initData() {
 
             $('.loading-screen').hide();
 
+            bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
+            bins.NewBin();
             if (response.autodraw)
             {
                 $('#btn_draw_tree').removeClass('glowing-button');
@@ -279,8 +277,6 @@ function initData() {
                     }
                  });
             }
-
-            newBin();
         }
     });
 }
@@ -1396,140 +1392,6 @@ function showContigNames(bin_id, updateOnly) {
     msg = msg + '</table>';
 
     showDraggableDialog(title, msg, updateOnly);
-}
-
-function newBin(id, binState) {
-
-    bin_count++;
-
-    if (typeof id === 'undefined')
-    {
-        bin_counter++;
-        var from_state = false;
-        var id = bin_counter;
-        var name = bin_prefix + id;
-        var color = randomColor({luminosity: 'dark'});
-        var contig_count = 0;
-        var contig_length = "N/A";
-        var completeness = '---';
-        var redundancy = '---';
-
-        SELECTED[bin_counter] = [];
-    }
-    else
-    {
-        // we are adding bins from collection
-        var from_state = true;
-        var name = binState['name'];
-        var color = binState['color'];
-        var contig_count = 0;
-        var contig_length = "N/A";
-        var completeness = "---";
-        var redundancy = "---";
-    }
-
-    var template = '<tr bin-id="{id}" id="bin_row_{id}">' +
-                   '    <td><input type="radio" name="active_bin" value="{id}" checked></td>' +
-                   '    <td><div id="bin_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
-                   '    <td data-value="{name}"><input type="text" onChange="redrawBins();" size="21" id="bin_name_{id}" value="{name}"></td>';
-
-    if (mode != 'pan')
-    {
-        template +='    <td data-value="{count}"><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
-                   '    <td data-value="{length}"><span id="contig_length_{id}">{length}</span></td>';
-    }
-
-    template +=    '    <td data-value="{completeness}"><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
-                   '    <td data-value="{redundancy}"><input id="redundancy_{id}" type="button" value="{redundancy}" title="Click for redundant hits" onClick="showRedundants({id});"></td> ' +
-                   '    <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="deleteBin({id});"></span></center></td>' +
-                   '</tr>';
-
-    template = template.replace(new RegExp('{id}', 'g'), id)
-                       .replace(new RegExp('{name}', 'g'), name)
-                       .replace(new RegExp('{color}', 'g'), color)
-                       .replace(new RegExp('{count}', 'g'), contig_count)
-                       .replace(new RegExp('{completeness}', 'g'), completeness)
-                       .replace(new RegExp('{redundancy}', 'g'), redundancy)
-                       .replace(new RegExp('{length}', 'g'), contig_length);
-
-    $('#tbody_bins').append(template);
-
-    if(!from_state){
-        $('#completeness_' + id).attr("disabled", true);
-        $('#redundancy_' + id).attr("disabled", true);
-    }
-
-    $('#bin_color_' + id).colpick({
-        layout: 'hex',
-        submit: 0,
-        colorScheme: 'light',
-        onChange: function(hsb, hex, rgb, el, bySetColor) {
-            $(el).css('background-color', '#' + hex);
-            $(el).attr('color', '#' + hex);
-
-            if (!bySetColor) $(el).val(hex);
-        },
-        onHide: function() {
-            redrawBins();
-        }
-    }).keyup(function() {
-        $(this).colpickSetColor(this.value);
-    });
-}
-
-function deleteBin(id, show_confirm) {
-    if (typeof show_confirm === 'undefined') {
-        show_confirm = true;
-    }
-
-    if (show_confirm && !confirm('Are you sure?')) {
-        return;
-    }
-
-    $('#bin_row_' + id).remove();
-    $('#tbody_bins input[type=radio]').last().prop('checked', true);
-    bin_count--;
-
-    for (var i = 0; i < SELECTED[id].length; i++) {
-        var node = drawer.tree.nodes[SELECTED[id][i]];
-
-        if (typeof node === 'undefined' || !node.hasOwnProperty('id')) {
-            continue;
-        }
-
-        var node_id = node.id;
-        $("#line" + node_id).css('stroke-width', '1');
-        $("#arc" + node_id).css('stroke-width', '1');
-        $("#line" + node_id).css('stroke', LINE_COLOR);
-        $("#arc" + node_id).css('stroke', LINE_COLOR);
-    }
-
-    SELECTED[id] = [];
-    delete completeness_dict[id];
-
-    if (bin_count==0)
-    {
-        newBin();
-    }
-
-    redrawBins();
-}
-
-function deleteAllBins() {
-    if (!confirm('Are you sure you want to remove all bins?')) {
-        return;
-    }
-    var bin_ids_to_delete = [];
-
-    $('#tbody_bins tr').each(
-        function(index, bin) {
-            bin_ids_to_delete.push($(bin).attr('bin-id'));
-        }
-    );
-
-    bin_ids_to_delete.map(function(bin_id) { 
-        deleteBin(bin_id, false);
-    });
 }
 
 function showGenSummaryWindow() {

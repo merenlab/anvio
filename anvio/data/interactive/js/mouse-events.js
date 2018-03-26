@@ -28,15 +28,6 @@ $(document).ready(function() {
     }, false);
 });
 
-function getBinId() {
-    var radios = document.getElementsByName('active_bin');
-    for(var i=0; i < radios.length; i++)
-    {
-        if (radios[i].checked)
-            return radios[i].value;
-    }
-}
-
 function lineClickHandler(event) {
     if (dragging || drawing_zoom)
         return;
@@ -71,64 +62,7 @@ function lineClickHandler(event) {
     }
 
     var p = getNodeFromEvent(event);
-
-    if (p.id == 0)
-        return; // skip root
-
-    if (p.collapsed)
-        return;
-
-    if ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey)
-        newBin();
-
-    var bin_id = getBinId();
-
-    if (bin_id === 'undefined')
-        return;
-
-    var bin_color = document.getElementById('bin_color_' + bin_id).getAttribute('color');
-
-    var bins_to_update = [];
-
-    for (const child of p.IterateChildren()) {
-        var pos = SELECTED[bin_id].indexOf(child.id);
-        if (pos == -1) {
-            SELECTED[bin_id].push(child.id);
-
-            if (bins_to_update.indexOf(bin_id) == -1)
-                bins_to_update.push(bin_id);
-        }
-
-        // remove nodes from other bins
-        for (var bid = 1; bid <= bin_counter; bid++) {
-            // don't remove nodes from current bin
-            if (bid == bin_id)
-                continue;
-
-            var pos = SELECTED[bid].indexOf(child.id);
-            if (pos > -1) {
-                SELECTED[bid].splice(pos, 1);
-
-                if (bins_to_update.indexOf(bid) == -1)
-                    bins_to_update.push(bid);
-            }
-        }
-
-        let line = document.getElementById('line' + child.id);
-        if (line) {
-            line.style['stroke-width'] = '3';
-            line.style['stroke'] = bin_color;       
-        }
-
-        let arc = document.getElementById('arc' + child.id);
-        if (arc) {
-            arc.style['stroke-width'] = '3';
-            arc.style['stroke'] = bin_color;
-        }
-    }
-
-    redrawBins();
-    updateBinsWindow(bins_to_update);
+    bins.AppendBranch(p);
 }
 
 
@@ -286,13 +220,7 @@ function lineMouseEnterHandler(event) {
     if (p.collapsed)
         return;
 
-    var bin_id = getBinId();
-
-    if (bin_id === 'undefined')
-        return;
-
-    var bin_color = document.getElementById('bin_color_' + bin_id).getAttribute('color');
-
+    var bin_color = bins.GetSelectedBinColor();
     var [p1, p2] = p.GetBorderNodes();
 
     if (tree_type == 'circlephylogram')
@@ -445,7 +373,7 @@ function mouseMoveHandler(event) {
         }
     }
 
-    var belongs = "n/a";
+/*    var belongs = "n/a";
     var stop = false;
     var bin_color = '#FFFFFF';
 
@@ -462,8 +390,8 @@ function mouseMoveHandler(event) {
     }
 
     var tr_bin = '<tr><td class="tk">bin</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + bin_color + '"></div>' + belongs + '</td></tr>'
-
-    write_mouse_table(message+tr_bin, target_node.label, layer_id);
+*/
+    write_mouse_table(message, target_node.label, layer_id);
 }
 
 
