@@ -171,35 +171,30 @@ Bins.prototype.AppendBranch = function(p) {
         return; 
 
     if ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey)
-        newBin();
+        this.NewBin();
 
-    var bin_id = getBinId();
-
-    if (bin_id === 'undefined')
-        return;
-
-    var bin_color = document.getElementById('bin_color_' + bin_id).getAttribute('color');
-
+    var bin_id = this.GetSelectedBinId();
+    var bin_color = this.GetSelectedBinColor();
     var bins_to_update = [];
 
     for (const child of p.IterateChildren()) {
-        var pos = SELECTED[bin_id].indexOf(child.id);
+        var pos = this.selections[bin_id].indexOf(child.id);
         if (pos == -1) {
-            SELECTED[bin_id].push(child.id);
+            this.selections[bin_id].push(child.id);
 
             if (bins_to_update.indexOf(bin_id) == -1)
                 bins_to_update.push(bin_id);
         }
 
         // remove nodes from other bins
-        for (var bid = 1; bid <= bin_counter; bid++) {
+        for (var bid = 1; bid <= this.selections.length; bid++) {
             // don't remove nodes from current bin
             if (bid == bin_id)
                 continue;
 
-            var pos = SELECTED[bid].indexOf(child.id);
+            var pos = this.selections[bin_id].indexOf(child.id)
             if (pos > -1) {
-                SELECTED[bid].splice(pos, 1);
+                this.selections[bin_id].splice(pos, 1);
 
                 if (bins_to_update.indexOf(bid) == -1)
                     bins_to_update.push(bid);
@@ -219,6 +214,7 @@ Bins.prototype.AppendBranch = function(p) {
         }
     }
 
+    return;
     this.RedrawBins();
     this.UpdateBinsWindow(bins_to_update);
 };
