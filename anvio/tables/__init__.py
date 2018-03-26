@@ -24,7 +24,6 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'pan': pan_db_version,
                          'genomestorage': genomes_storage_vesion}
 
-
 ####################################################################################################
 #
 #     TABLE DESCRIPTIONS SPECIFIC FOR THE PAN DATABASE (THE REST COMES FROM THE PROFILE DATABASE)
@@ -211,3 +210,5 @@ genome_gene_function_calls_table_name      = 'gene_function_calls'
 genome_gene_function_calls_table_structure = ['genome_name', ] + gene_function_calls_table_structure[:]
 genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_calls_table_types[:]
 
+
+tables_without_unique_entry_ids = [genome_gene_function_calls_table_name]
