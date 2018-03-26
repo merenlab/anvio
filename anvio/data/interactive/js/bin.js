@@ -19,8 +19,219 @@
  */
 
 
+function Bins(prefix, container) {
+    this.selections = {}
+    this.bin_counter = 0;
+    this.prefix = prefix || "Bin_";
+    this.higlighted_items = [];
+    this.container = container;
+}
+
+
+Bins.prototype.NewBin = function(id, binState) {
+    if (typeof id === 'undefined')
+    {
+        var from_state = false;
+        var id = this.bin_counter++;
+        var name = this.prefix + id;
+        var color = randomColor({luminosity: 'dark'});
+        var contig_count = 0;
+        var contig_length = "N/A";
+        var completeness = '---';
+        var redundancy = '---';
+
+        this.selections[id] = [];
+    }
+    else
+    {
+        // we are adding bins from collection
+        var from_state = true;
+        var name = binState['name'];
+        var color = binState['color'];
+        var contig_count = 0;
+        var contig_length = "N/A";
+        var completeness = "---";
+        var redundancy = "---";
+    }
+
+    var template = '<tr bin-id="${id}" id="bin_row_{id}">' +
+                   '    <td><input type="radio" name="active_bin" value="{id}" checked></td>' +
+                   '    <td><div id="bin_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
+                   '    <td data-value="{name}"><input type="text" onChange="redrawBins();" size="21" id="bin_name_{id}" value="{name}"></td>';
+
+    if (mode != 'pan')
+    {
+        template +='    <td data-value="{count}"><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
+                   '    <td data-value="{length}"><span id="contig_length_{id}">{length}</span></td>';
+    }
+
+    template +=    '    <td data-value="{completeness}"><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
+                   '    <td data-value="{redundancy}"><input id="redundancy_{id}" type="button" value="{redundancy}" title="Click for redundant hits" onClick="showRedundants({id});"></td> ' +
+                   '    <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin({id});"></span></center></td>' +
+                   '</tr>';
+
+    template = template.replace(new RegExp('{id}', 'g'), id)
+                       .replace(new RegExp('{name}', 'g'), name)
+                       .replace(new RegExp('{color}', 'g'), color)
+                       .replace(new RegExp('{count}', 'g'), contig_count)
+                       .replace(new RegExp('{completeness}', 'g'), completeness)
+                       .replace(new RegExp('{redundancy}', 'g'), redundancy)
+                       .replace(new RegExp('{length}', 'g'), contig_length);
+
+    this.container.insertAdjacentHTML('beforeend', template);
+
+/*    if(!from_state){
+        $('#completeness_' + id).attr("disabled", true);
+        $('#redundancy_' + id).attr("disabled", true);
+    }*/
+/*
+    $('#bin_color_' + id).colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        },
+        onHide: function() {
+            redrawBins();
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });*/
+}
+
+
+Bins.prototype.GetSelectedBinId = function() {
+    return this.container.querySelector('input[name=active_bin]:checked').value;
+};
+
+
+Bins.prototype.GetSelectedBinColor = function(id) {
+    return this.container.querySelector('#bin_color_' + this.GetSelectedBinId()).getAttribute('color');
+};
+
+
+Bins.prototype.DeleteBin = function(id, show_confirm=true) {
+    if (show_confirm && !confirm('Are you sure?')) {
+        return;
+    }
+
+    this.container.querySelector('#bin_row_' + id).remove();
+    this.container.querySelectorAll('input[type=radio]')[0].setAttribute('checked', true);
+
+    for (var i = 0; i < SELECTED[id].length; i++) {
+        var node = drawer.tree.nodes[SELECTED[id][i]];
+
+        if (typeof node === 'undefined' || !node.hasOwnProperty('id')) {
+            continue;
+        }
+
+        var node_id = node.id;
+        $("#line" + node_id).css('stroke-width', '1');
+        $("#arc" + node_id).css('stroke-width', '1');
+        $("#line" + node_id).css('stroke', LINE_COLOR);
+        $("#arc" + node_id).css('stroke', LINE_COLOR);
+    }
+
+    SELECTED[id] = [];
+    delete completeness_dict[id];
+
+    if (this.selections.length == 0)
+    {
+        newBin();
+    }
+
+    redrawBins();
+};
+
+
+Bins.prototype.DeleteAllBins = function() {
+    if (!confirm('Are you sure you want to remove all bins?')) {
+        return;
+    }
+    var bin_ids_to_delete = [];
+
+    $('#tbody_bins tr').each(
+        function(index, bin) {
+            bin_ids_to_delete.push($(bin).attr('bin-id'));
+        }
+    );
+
+    bin_ids_to_delete.map(function(bin_id) { 
+        deleteBin(bin_id, false);
+    });
+};
+
+
+Bins.prototype.AppendBranch = function(p) {
+    if (p.id == 0 || p.collapsed)
+        return; 
+
+    if ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey)
+        newBin();
+
+    var bin_id = getBinId();
+
+    if (bin_id === 'undefined')
+        return;
+
+    var bin_color = document.getElementById('bin_color_' + bin_id).getAttribute('color');
+
+    var bins_to_update = [];
+
+    for (const child of p.IterateChildren()) {
+        var pos = SELECTED[bin_id].indexOf(child.id);
+        if (pos == -1) {
+            SELECTED[bin_id].push(child.id);
+
+            if (bins_to_update.indexOf(bin_id) == -1)
+                bins_to_update.push(bin_id);
+        }
+
+        // remove nodes from other bins
+        for (var bid = 1; bid <= bin_counter; bid++) {
+            // don't remove nodes from current bin
+            if (bid == bin_id)
+                continue;
+
+            var pos = SELECTED[bid].indexOf(child.id);
+            if (pos > -1) {
+                SELECTED[bid].splice(pos, 1);
+
+                if (bins_to_update.indexOf(bid) == -1)
+                    bins_to_update.push(bid);
+            }
+        }
+
+        let line = document.getElementById('line' + child.id);
+        if (line) {
+            line.style['stroke-width'] = '3';
+            line.style['stroke'] = bin_color;       
+        }
+
+        let arc = document.getElementById('arc' + child.id);
+        if (arc) {
+            arc.style['stroke-width'] = '3';
+            arc.style['stroke'] = bin_color;
+        }
+    }
+
+    this.RedrawBins();
+    this.UpdateBinsWindow(bins_to_update);
+};
+
+
+Bins.prototype.RemoveBranch = function(p) {
+
+};
+
+
 function redrawBins()
 {
+    return;
     if (!drawer)
         return;
 
@@ -267,6 +478,7 @@ function redrawBins()
 
 function rebuildIntersections()
 {
+    return;
     for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
         // try to make new intersections
 
