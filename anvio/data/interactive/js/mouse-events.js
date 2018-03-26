@@ -293,16 +293,7 @@ function lineMouseEnterHandler(event) {
 
     var bin_color = document.getElementById('bin_color_' + bin_id).getAttribute('color');
 
-    var p1 = p;
-    while (p1.child) {
-        p1 = p1.child;
-    }
-
-    var p2 = p;
-
-    while (p2.child) {
-        p2 = p2.child.GetRightMostSibling();
-    }
+    var [p1, p2] = p.GetBorderNodes();
 
     if (tree_type == 'circlephylogram')
     {

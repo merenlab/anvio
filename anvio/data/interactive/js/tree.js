@@ -51,6 +51,21 @@ Node.prototype.GetRightMostSibling = function() {
 };
 
 
+Node.prototype.GetBorderNodes = function() {
+    var p1 = this;
+    while (p1.child) {
+        p1 = p1.child;
+    }
+
+    var p2 = this;
+    while (p2.child) {
+        p2 = p2.child.GetRightMostSibling();
+    }
+
+    return [p1, p2];
+};
+
+
 Node.prototype.GetChildren = function() {
     var n = new NodeIterator(this);
     var q = n.Begin();
