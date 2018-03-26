@@ -157,7 +157,7 @@ function showSearchResult() {
 
 function highlightResult() {
     // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
+    if (!drawer) {
         alert('Draw tree first.');
         return;
     }
@@ -165,8 +165,8 @@ function highlightResult() {
     highlighted_splits = [];
 
     for (var i=0; i < search_results.length; i++) {
-        var _contig_name = search_results[i]['split'];
-        highlighted_splits.push(_contig_name);
+        let node = drawer.tree.GetLeafByName(search_results[i]['split']);
+        highlighted_splits.push(node.id);
     }
 
     redrawBins(); 
@@ -174,18 +174,18 @@ function highlightResult() {
 
 function highlightSplit(name) {
     // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
+    if (!drawer) {
         alert('Draw tree first.');
         return;
     }
-
-    highlighted_splits = [name];
+    let node = drawer.tree.GetLeafByName(name);
+    highlighted_splits = [node.id];
     redrawBins();
 }
 
 function appendResult() {
     // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
+    if (!drawer) {
         alert('Draw tree first.');
         return;
     }
