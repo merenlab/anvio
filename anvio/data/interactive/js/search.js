@@ -198,9 +198,10 @@ function appendResult() {
     var bins_to_update = [];
     var _len = search_results.length;
     for (var i=0; i < _len; i++) {
-        _contig_name = search_results[i]['split'];
-        if (SELECTED[bin_id].indexOf(_contig_name) == -1) {
-            SELECTED[bin_id].push(_contig_name);
+        let node = drawer.tree.GetLeafByName(search_results[i]['split']);
+
+        if (SELECTED[bin_id].indexOf(node.id) == -1) {
+            SELECTED[bin_id].push(node.id);
 
             if (bins_to_update.indexOf(bin_id) == -1)
                 bins_to_update.push(bin_id);
@@ -211,7 +212,7 @@ function appendResult() {
             if (bid == bin_id)
                 continue;
 
-            var pos = SELECTED[bid].indexOf(_contig_name);
+            var pos = SELECTED[bid].indexOf(node.id);
             if (pos > -1) {
                 SELECTED[bid].splice(pos, 1);
 
@@ -227,7 +228,7 @@ function appendResult() {
 
 function removeResult() {
     // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
+    if (!drawer) {
         alert('Draw tree first.');
         return;
     }
@@ -240,9 +241,9 @@ function removeResult() {
     var bins_to_update = [];
     var _len = search_results.length;
     for (var i=0; i < _len; i++) {
-        _contig_name = search_results[i]['split'];
+        let node = drawer.tree.GetLeafByName(search_results[i]['split']);
 
-        var pos = SELECTED[bin_id].indexOf(_contig_name);
+        var pos = SELECTED[bin_id].indexOf(node.id);
         if (pos > -1) {
             SELECTED[bin_id].splice(pos, 1);
             
