@@ -215,12 +215,15 @@ class TablesForHMMHits(Table):
             # update the next available gene callers id:
             next_id += 1
 
+        if not len(additional_gene_calls):
+            return search_results_dict
+
         # update the contigs db with the gene calls in `additional_gene_calls` dict.
         gene_calls_table = TablesForGeneCalls(self.db_path, run=terminal.Run(verbose=False))
         gene_calls_table.use_external_gene_calls_to_populate_genes_in_contigs_table(input_file_path=None,
                                                                                     gene_calls_dict=additional_gene_calls,
                                                                                     ignore_internal_stop_codons=True)
-        gene_calls_table.populate_genes_in_splits_tables()
+        gene_calls_table.populate_genes_in_splits_tables(gene_calls_dict=additional_gene_calls)
 
         # refresh the gene calls dict
         self.init_gene_calls_dict()
