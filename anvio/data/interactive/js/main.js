@@ -1491,7 +1491,7 @@ function deleteBin(id, show_confirm) {
     bin_count--;
 
     for (var i = 0; i < SELECTED[id].length; i++) {
-        var node = label_to_node_map[SELECTED[id][i]];
+        var node = drawer.tree.nodes[SELECTED[id][i]];
 
         if (typeof node === 'undefined' || !node.hasOwnProperty('id')) {
             continue;
