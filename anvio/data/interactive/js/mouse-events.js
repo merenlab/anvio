@@ -166,17 +166,6 @@ function lineContextMenuHandler(event) {
     return false;
 }
 
-function removeBranchFromBin(event) {
-    var p = getNodeFromEvent(event);
-
-    if (p.id == 0)
-        return; // skip root
-
-    if (bin_id === 'undefined')
-        return;
-
-
-}
 
 function lineMouseEnterHandler(event) {
     if (drawing_zoom)
