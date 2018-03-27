@@ -2043,7 +2043,7 @@ def is_blank_profile(db_path):
         return False
 
     database = db.DB(db_path, None, ignore_version=True)
-    blank = database.get_meta_value('blank')
+    blank = int(database.get_meta_value('blank'))
     database.disconnect()
 
     return True if blank == 1 else False
