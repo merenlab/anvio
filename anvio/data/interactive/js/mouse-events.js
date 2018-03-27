@@ -67,11 +67,13 @@ function lineClickHandler(event) {
 
 
 function lineContextMenuHandler(event) {
+    var p = getNodeFromEvent(event);
     if (event.preventDefault) event.preventDefault();
+/*
     var bin_id = getBinId();
     context_menu_target_id = getNodeFromEvent(event).id;
-
-    if (event.target.id.indexOf('path_') > -1 && !drawer.tree.nodes[context_menu_target_id].collapsed)
+*/
+    if (event.target.id.indexOf('path_') > -1 && !p.collapsed)
     {
         if (mode == "collection") {
             $('#collection_mode_right_click_menu').show();
@@ -157,8 +159,7 @@ function lineContextMenuHandler(event) {
             $('#branch_right_click_menu').show();
             $('#branch_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
         } else {
-            var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
-            removeBranchFromBin(fake_event);
+            bins.RemoveBranch(p);
         }
     }
 
@@ -174,36 +175,7 @@ function removeBranchFromBin(event) {
     if (bin_id === 'undefined')
         return;
 
-    var bins_to_update = [];
-    for (const child of p.IterateChildren()) {
-        // remove nodes from all bins
-        for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
-            var pos = SELECTED[bin_id].indexOf(child.id);
-            if (pos > -1) {
-                SELECTED[bin_id].splice(pos, 1);
 
-                if (bins_to_update.indexOf(bin_id) == -1)
-                    bins_to_update.push(bin_id);
-            }
-        }
-
-        let line = document.getElementById('line' + child.id);
-        if (line) {
-            line.style['stroke-width'] = '1';
-            line.style['stroke'] = LINE_COLOR;       
-        }
-
-        let arc = document.getElementById('arc' + child.id);
-        if (arc) {
-            arc.style['stroke-width'] = '1';
-            arc.style['stroke'] = LINE_COLOR;
-        }
-
-    }
-    redrawBins();
-    updateBinsWindow(bins_to_update);
-    lineMouseLeaveHandler(event);
-    return false;
 }
 
 function lineMouseEnterHandler(event) {
@@ -463,8 +435,7 @@ function menu_callback(action, param) {
             break;
 
         case 'remove':
-            var fake_event = {'target': {'id': '#line' + context_menu_target_id}};
-            removeBranchFromBin(fake_event);
+            bins.RemoveBranch(drawer.tree.nodes[context_menu_target_id]);
             break;
 
         case 'select_layer':

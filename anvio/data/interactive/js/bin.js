@@ -141,7 +141,7 @@ Bins.prototype.DeleteBin = function(id, show_confirm=true) {
 
     if (this.selections.length == 0)
     {
-        newBin();
+        this.NewBin();
     }
 
     redrawBins();
@@ -187,7 +187,7 @@ Bins.prototype.AppendBranch = function(p) {
         }
 
         // remove nodes from other bins
-        for (var bid = 1; bid <= this.selections.length; bid++) {
+        for (var bid = 0; bid <= this.selections.length; bid++) {
             // don't remove nodes from current bin
             if (bid == bin_id)
                 continue;
@@ -214,14 +214,44 @@ Bins.prototype.AppendBranch = function(p) {
         }
     }
 
-    return;
     this.RedrawBins();
     this.UpdateBinsWindow(bins_to_update);
 };
 
 
 Bins.prototype.RemoveBranch = function(p) {
+    var bins_to_update = [];
+    for (const child of p.IterateChildren()) {
+        for (let bin_id in this.selections) {
+            let pos = this.selections[bin_id].indexOf(child.id);
+            if (pos > -1) {
+                this.selections[bin_id].splice(pos, 1);
 
+                if (bins_to_update.indexOf(bin_id) == -1)
+                    bins_to_update.push(bin_id);
+            }
+        }
+
+        let line = document.getElementById('line' + child.id);
+        if (line) {
+            line.style['stroke-width'] = '1';
+            line.style['stroke'] = LINE_COLOR;       
+        }
+
+        let arc = document.getElementById('arc' + child.id);
+        if (arc) {
+            arc.style['stroke-width'] = '1';
+            arc.style['stroke'] = LINE_COLOR;
+        }
+    }
+
+    this.RedrawBins();
+    this.UpdateBinsWindow(bins_to_update);
+};
+
+
+Bins.prototype.UpdateBinsWindow = function(bins_to_update) {
+    return;
 };
 
 
@@ -234,14 +264,10 @@ Bins.prototype.RedrawBins = function() {
         leaf_list.push(0);
     }
 
-    // put bin numbers of selected leaves to leaf list
-    // maybe we should write directly into leaf_list in mouse events, instead of generate it everytime.
-    for (var bin_id = 0; bin_id < this.bin_counter; bin_id++) {
-        console.log(bin_id);
-        for (var j = this.selections[bin_id].length - 1; j >= 0; j--) {
-            console.log(j);
-            var node = drawer.tree.nodes[this.selections[bin_id][j]];
-            console.log(node);
+    for (let bin_id in this.selections) {
+        for (let j = this.selections[bin_id].length - 1; j >= 0; j--) {
+            let node = drawer.tree.nodes[this.selections[bin_id][j]];
+
             if (typeof node === 'undefined')
             {
                 this.selections[bin_id].splice(j, 1);
@@ -253,7 +279,6 @@ Bins.prototype.RedrawBins = function() {
             }
         }
     }
-    
 
     // cluster bins and put them into bins_to_draw array with (start, end, bin_id);
     var prev_value = leaf_list[0];
@@ -322,8 +347,7 @@ Bins.prototype.RedrawBins = function() {
 
             if (show_bin_labels)
             {
-                // so much trigonometry, sorry :(
-                var bin_label_radius = total_radius + outer_ring_margin * 1.5 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1);
+                var bin_label_radius = total_radius + outer_ring_margin * 1.5 + outer_ring_size * (this.higlighted_items.length > 0 ? 2 : 1);
                 var bin_label_angle = (end.angle + end.size / 2 + start.angle - start.size / 2) / 2;
 
                 var bin_label_px = bin_label_radius * Math.cos(bin_label_angle);
@@ -390,7 +414,7 @@ Bins.prototype.RedrawBins = function() {
                     'bin',
                     {
                         'y':  (start.xy.y - start.size / 2 + end.xy.y + end.size / 2) / 2 + (bin_labels_font_size / 3), 
-                        'x': (total_radius + outer_ring_margin * 1.5 + outer_ring_size * (highlighted_splits.length > 0 ? 2 : 1)), 
+                        'x': (total_radius + outer_ring_margin * 1.5 + outer_ring_size * (this.higlighted_items.length > 0 ? 2 : 1)), 
                     },
                     $('#bin_name_' + bins_to_draw[i][2]).val().replace("_", " "),
                     (autorotate_bin_labels) ? 0 : bin_labels_angle,
