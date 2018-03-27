@@ -1342,7 +1342,7 @@ function drawTree() {
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
                 last_settings = serializeSettings();
 
-                redrawBins();
+                bins.RedrawBins();
 
                 $('#btn_draw_tree').prop('disabled', false);
                 $('#btn_redraw_samples').prop('disabled', false);
