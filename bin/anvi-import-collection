@@ -84,10 +84,18 @@ def main(args):
     # is no contigs database is associated with the profile database, so if there is none,
     # we cheat :
     if args.pan_or_profile_db:
-        db_names = utils.get_all_item_names_from_the_database(args.pan_or_profile_db)
+        if utils.is_blank_profile(args.pan_or_profile_db):
+            db_names = input_names
+
+            run.warning("Since you are working with a blank proifle, anvi'o is not going to check whether the names item\
+                         names in your collections file matches to the item names in other databases of yours. It is all\
+                         fine for now, but this requires you to be even extra careful with your downstream analyses in\
+                         case stuff hits the fan later.")
+        else:
+            db_names = utils.get_all_item_names_from_the_database(args.pan_or_profile_db)
         run.info('Items in %s database' % utils.get_db_type(args.pan_or_profile_db), len(db_names), mc='green')
     elif we_have_a_contigs_db:
-        db_names = utils.get_all_item_names_from_the_database(args.pan_or_profile_db)
+        db_names = utils.get_all_item_names_from_the_database(args.contigs_db)
         run.info('Items in contigs database', len(db_names), mc='green')
     else:
         db_names = input_names
