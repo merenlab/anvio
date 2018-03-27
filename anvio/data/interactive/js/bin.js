@@ -24,7 +24,7 @@ function Bins(prefix, container) {
     this.bin_counter = 0;
     this.prefix = prefix || "Bin_";
     this.higlighted_items = [];
-    this.container = container;
+    this.container = container || document.createElement("div");
 }
 
 
@@ -32,8 +32,8 @@ Bins.prototype.NewBin = function(id, binState) {
     if (typeof id === 'undefined')
     {
         var from_state = false;
-        var id = this.bin_counter++;
-        var name = this.prefix + id;
+        var id = this.bin_counter;
+        var name = this.prefix + (id + 1);
         var color = randomColor({luminosity: 'dark'});
         var contig_count = 0;
         var contig_length = "N/A";
@@ -41,6 +41,7 @@ Bins.prototype.NewBin = function(id, binState) {
         var redundancy = '---';
 
         this.selections[id] = [];
+        this.bin_counter++;
     }
     else
     {
@@ -104,6 +105,11 @@ Bins.prototype.NewBin = function(id, binState) {
 }
 
 
+Bins.prototype.IsEmpty = function() {
+    return !this.container.hasChildNodes();
+};
+
+
 Bins.prototype.GetSelectedBinId = function() {
     return this.container.querySelector('input[name=active_bin]:checked').value;
 };
@@ -130,21 +136,28 @@ Bins.prototype.DeleteBin = function(id, show_confirm=true) {
         }
 
         var node_id = node.id;
-        $("#line" + node_id).css('stroke-width', '1');
-        $("#arc" + node_id).css('stroke-width', '1');
-        $("#line" + node_id).css('stroke', LINE_COLOR);
-        $("#arc" + node_id).css('stroke', LINE_COLOR);
+
+        let line = document.getElementById('line' + child.id);
+        if (line) {
+            line.style['stroke-width'] = '3';
+            line.style['stroke'] = bin_color;       
+        }
+
+        let arc = document.getElementById('arc' + child.id);
+        if (arc) {
+            arc.style['stroke-width'] = '3';
+            arc.style['stroke'] = bin_color;
+        }
     }
 
     SELECTED[id] = [];
-    delete completeness_dict[id];
 
-    if (this.selections.length == 0)
+    if (this.IsEmpty())
     {
         this.NewBin();
     }
 
-    redrawBins();
+    this.RedrawBins();
 };
 
 
@@ -167,12 +180,6 @@ Bins.prototype.DeleteAllBins = function() {
 
 
 Bins.prototype.AppendBranch = function(p) {
-    if (p.id == 0 || p.collapsed)
-        return; 
-
-    if ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey)
-        this.NewBin();
-
     var bin_id = this.GetSelectedBinId();
     var bin_color = this.GetSelectedBinColor();
     var bins_to_update = [];
@@ -187,7 +194,7 @@ Bins.prototype.AppendBranch = function(p) {
         }
 
         // remove nodes from other bins
-        for (var bid = 0; bid <= this.selections.length; bid++) {
+        for (let bid in this.selections) {
             // don't remove nodes from current bin
             if (bid == bin_id)
                 continue;
@@ -261,7 +268,7 @@ Bins.prototype.RedrawBins = function() {
 
     var leaf_list = [];
     for (var i=0; i < drawer.tree.leaves.length + 1; i++) {
-        leaf_list.push(0);
+        leaf_list.push(-1);
     }
 
     for (let bin_id in this.selections) {
@@ -285,12 +292,11 @@ Bins.prototype.RedrawBins = function() {
     var prev_start = 0;
 
     var bins_to_draw = new Array();
-
     for (var i=1; i < leaf_list.length; i++)
     {
         if (prev_value != leaf_list[i])
         {
-            if (prev_value != 0) {
+            if (prev_value != -1) {
                 bins_to_draw.push(new Array(prev_start, i - 1, prev_value)); // start, end, bin_id;
             }
 
@@ -299,7 +305,6 @@ Bins.prototype.RedrawBins = function() {
         prev_value = leaf_list[i];
     }
 
-    // remove exist bin drawings
     var bin = document.getElementById('bin');
     while (bin.hasChildNodes()) {
         bin.removeChild(bin.lastChild);
