@@ -225,9 +225,7 @@ Bins.prototype.RemoveBranch = function(p) {
 };
 
 
-function redrawBins()
-{
-    return;
+Bins.prototype.RedrawBins = function() {
     if (!drawer)
         return;
 
@@ -238,12 +236,15 @@ function redrawBins()
 
     // put bin numbers of selected leaves to leaf list
     // maybe we should write directly into leaf_list in mouse events, instead of generate it everytime.
-    for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
-        for (var j = SELECTED[bin_id].length - 1; j >= 0; j--) {
-            var node = drawer.tree.nodes[SELECTED[bin_id][j]];
+    for (var bin_id = 0; bin_id < this.bin_counter; bin_id++) {
+        console.log(bin_id);
+        for (var j = this.selections[bin_id].length - 1; j >= 0; j--) {
+            console.log(j);
+            var node = drawer.tree.nodes[this.selections[bin_id][j]];
+            console.log(node);
             if (typeof node === 'undefined')
             {
-                SELECTED[bin_id].splice(j, 1);
+                this.selections[bin_id].splice(j, 1);
                 continue;
             }
 
@@ -252,6 +253,7 @@ function redrawBins()
             }
         }
     }
+    
 
     // cluster bins and put them into bins_to_draw array with (start, end, bin_id);
     var prev_value = leaf_list[0];
@@ -422,7 +424,7 @@ function redrawBins()
     }
 
 
-    // draw higlighted splits
+/*    // draw higlighted splits
     for (var i=0; i < highlighted_splits.length; i++) {
         // TO DO: more performance
         var start = drawer.tree.nodes[highlighted_splits[i]];
@@ -460,15 +462,7 @@ function redrawBins()
                 1,
                 false);
         }
-    }
-
-    try{
-        var fake_event = {'target': {'id': '#line0'}};
-        lineMouseLeaveHandler(fake_event);
-    }catch(err){
-        console.log("Triggering mouseLeaveHandler failed.");
-        console.log(err);
-    }
+    }*/
 }
 
 
