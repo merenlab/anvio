@@ -166,9 +166,10 @@ class ContigsSuperclass(object):
         self.progress.update('Reading genes in splits table')
         self.genes_in_splits = contigs_db.db.get_table_as_dict(t.genes_in_splits_table_name)
 
+        # FIXME: these dicts need to be filled
         self.progress.update('Reading genes in splits summary table')
-        self.genes_in_splits_summary_dict = contigs_db.db.get_table_as_dict(t.genes_in_splits_summary_table_name)
-        self.genes_in_splits_summary_headers = contigs_db.db.get_table_structure(t.genes_in_splits_summary_table_name)
+        self.genes_in_splits_summary_dict = {}
+        self.genes_in_splits_summary_headers = {}
 
         self.progress.update('Identifying HMM searches for single-copy genes and others')
         self.hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
@@ -2525,7 +2526,6 @@ class ContigsDatabase:
         self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
         self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
         self.db.create_table(t.gene_amino_acid_sequences_table_name, t.gene_amino_acid_sequences_table_structure, t.gene_amino_acid_sequences_table_types)
-        self.db.create_table(t.genes_in_splits_summary_table_name, t.genes_in_splits_summary_table_structure, t.genes_in_splits_summary_table_types)
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
