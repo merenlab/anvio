@@ -20,6 +20,10 @@ genes_in_splits_table_name             = 'genes_in_splits'
 genes_in_splits_table_structure        = ['entry_id', 'split', 'gene_callers_id', 'start_in_split', 'stop_in_split', 'percentage_in_split']
 genes_in_splits_table_types            = [ 'numeric',  'text',      'numeric'   ,    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
+genes_in_splits_summary_table_name      = 'genes_in_splits_summary'
+genes_in_splits_summary_table_structure = ['split', 'num_genes', 'avg_gene_length', 'ratio_coding']
+genes_in_splits_summary_table_types     = [ 'text',  'numeric' ,     'numeric'    ,   'numeric'   ]
+
 def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
@@ -29,6 +33,10 @@ def migrate(db_path):
     contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:
         raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
+
+    progress.new("Removing '" + genes_in_splits_summary_table_name + "'")
+    contigs_db._exec("DROP TABLE %s;" % genes_in_splits_summary_table_name)
+    progress.end()
 
     progress.new("Upgrading '" + genes_in_splits_table_name + "'")
 
