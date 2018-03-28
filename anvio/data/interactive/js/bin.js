@@ -25,6 +25,8 @@ function Bins(prefix, container) {
     this.prefix = prefix || "Bin_";
     this.higlighted_items = [];
     this.container = container || document.createElement("div");
+
+    this.cache = {};
 }
 
 
@@ -55,15 +57,15 @@ Bins.prototype.NewBin = function(id, binState) {
         var redundancy = "---";
     }
 
-    var template = '<tr bin-id="${id}" id="bin_row_{id}">' +
+    var template = '<tr bin-id="{id}">' +
                    '    <td><input type="radio" name="active_bin" value="{id}" checked></td>' +
                    '    <td><div id="bin_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
                    '    <td data-value="{name}"><input type="text" onChange="redrawBins();" size="21" id="bin_name_{id}" value="{name}"></td>';
 
     if (mode != 'pan')
     {
-        template +='    <td data-value="{count}"><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
-                   '    <td data-value="{length}"><span id="contig_length_{id}">{length}</span></td>';
+        template +='    <td data-value="{count}" class="num-items"><input type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
+                   '    <td data-value="{length}" class="length-sum"><span>{length}</span></td>';
     }
 
     template +=    '    <td data-value="{completeness}"><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
@@ -185,7 +187,7 @@ Bins.prototype.AppendBranch = function(p) {
     var bins_to_update = [];
 
     for (const child of p.IterateChildren()) {
-        var pos = this.selections[bin_id].indexOf(child.id);
+        let pos = this.selections[bin_id].indexOf(child.id);
         if (pos == -1) {
             this.selections[bin_id].push(child.id);
 
@@ -199,7 +201,7 @@ Bins.prototype.AppendBranch = function(p) {
             if (bid == bin_id)
                 continue;
 
-            var pos = this.selections[bin_id].indexOf(child.id)
+            let pos = this.selections[bin_id].indexOf(child.id)
             if (pos > -1) {
                 this.selections[bin_id].splice(pos, 1);
 
@@ -257,8 +259,47 @@ Bins.prototype.RemoveBranch = function(p) {
 };
 
 
-Bins.prototype.UpdateBinsWindow = function(bins_to_update) {
-    return;
+Bins.prototype.UpdateBinsWindow = function(bin_list) {
+    if (typeof bin_list === 'undefined')
+    {
+        var bin_list = Object.keys(self.selections);
+    }
+
+    for (let i = 0; i < bin_list.length; i++) {
+        let bin_id = bin_list[i];
+
+        if (mode == 'pan') {
+
+        } else {
+            let num_items = 0;
+            let length_sum = 0;
+
+            for (let j = 0; j < this.selections[bin_id].length; j++) {
+                let node_id = this.selections[bin_id][j];
+                let node = drawer.tree.nodes[node_id];
+
+                if (node.IsLeaf()) {
+                    num_items++;
+                    length_sum += parseInt(contig_lengths[node.label]);
+                }
+
+                let bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
+
+                bin_row.querySelector('td.num-items').setAttribute('data-value', num_items);
+                bin_row.querySelector('td.num-items>input').value = num_items;
+
+                if (isNaN(length_sum)) {
+                    bin_row.querySelector('td.length-sum').setAttribute('data-value', 0);
+                    bin_row.querySelector('td.length-sum>span').innerHTML = 'n/a';
+                } else {
+                    bin_row.querySelector('td.length-sum').setAttribute('data-value', length_sum);
+                    bin_row.querySelector('td.length-sum>span').innerHTML = readableNumber(length_sum);
+                }
+            }        
+        }
+    }
+
+    $('#bin_settings_tab:not(.active) a').css('color', "#ff0000");
 };
 
 

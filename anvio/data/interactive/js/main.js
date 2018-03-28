@@ -1423,52 +1423,6 @@ function showGenSummaryWindow() {
 }
 
 
-function updateBinsWindow(bin_list) {
-    if (typeof bin_list === 'undefined')
-    {
-        var bin_list = [];
-        $('#tbody_bins tr').each(
-        function(index, bin) {
-            bin_list.push(parseInt($(bin).attr('bin-id')));
-        });
-    }
-
-    for (var _i = 0; _i < bin_list.length; _i++) {
-        var bin_id = bin_list[_i];
-
-        if (mode === 'pan'){
-            updateGeneClustersBin(bin_id);
-        } else {
-            updateComplateness(bin_id);
-
-            var contigs = 0;
-            var length_sum = 0;
-
-            for (var j = 0; j < SELECTED[bin_id].length; j++) {
-                if (drawer.tree.nodes[SELECTED[bin_id][j]].IsLeaf())
-                {
-                    contigs++;
-                    length_sum += parseInt(contig_lengths[drawer.tree.nodes[SELECTED[bin_id][j]]]);
-                }
-            }
-
-            $('#contig_count_' + bin_id).val(contigs).parent().attr('data-value', contigs);
-
-            // it is likely in manual or server modes lenghts are not going to be available.
-            if (isNaN(length_sum))
-                $('#contig_length_' + bin_id).html('N/A').parent().attr('data-value', 0);
-            else
-                $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
-
-        }
-
-        showContigNames(bin_id, true);
-    }
-
-    $('#bin_settings_tab:not(.active) a').css('color', "#ff0000");
-}
-
-
 function updateGeneClustersBin(bin_id) {
     if (mode !== 'pan'){ 
         return;
