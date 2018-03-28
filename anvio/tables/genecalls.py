@@ -353,9 +353,6 @@ class TablesForGeneCalls(Table):
 
         # open connection
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        # push raw entries for splits table
-        db_entries = [tuple([split] + [splits_dict[split][h] for h in t.genes_in_splits_summary_table_structure[1:]]) for split in splits_dict]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.genes_in_splits_summary_table_name, db_entries)
 
         # push entries for genes in splits table
         db_entries = [tuple([entry_id] + [genes_in_splits.splits_to_prots[entry_id][h] for h in t.genes_in_splits_table_structure[1:]]) for entry_id in genes_in_splits.splits_to_prots]

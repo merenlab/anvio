@@ -201,7 +201,6 @@ class BinSplitter(summarizer.Bin):
                     t.gene_amino_acid_sequences_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.genes_in_contigs_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.genes_in_splits_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    t.genes_in_splits_summary_table_name: ('split', self.split_names),
                     t.genes_taxonomy_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.hmm_hits_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.hmm_hits_splits_table_name: ('split', self.split_names),
