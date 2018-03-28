@@ -763,7 +763,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.hmm_sources_info = {}
         self.split_sequences = None
         self.splits_taxonomy_dict = {}
-        self.genes_in_splits_summary_dict = {}
         self.displayed_item_names_ordered = sorted(self.views[self.default_view]['dict'].keys())
 
         # set the title:
@@ -922,8 +921,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.init_functions()
 
         ProfileSuperclass.__init__(self, self.args)
-
-        self.genes_in_splits_summary_dict = {}
 
         self.init_gene_level_coverage_stats_dicts()
 
@@ -1113,27 +1110,23 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             if len(self.splits_taxonomy_dict):
                 json_header.extend(['taxonomy'])
 
-            # (3) then add split summaries from contigs db, if exists
-            if len(self.genes_in_splits_summary_dict):
-                json_header.extend(self.genes_in_splits_summary_headers[1:])
-
-            # (4) then add length and GC content IF we have sequences available
+            # (3) then add length and GC content IF we have sequences available
             if self.splits_basic_info:
                 basic_info_headers = ['length', 'gc_content']
                 json_header.extend(basic_info_headers)
 
-            # (5) then add the view!
+            # (4) then add the view!
             json_header.extend(view_headers)
 
-            # (6) then add 'additional' headers as the outer ring:
+            # (5) then add 'additional' headers as the outer ring:
             if self.items_additional_data_keys:
                 json_header.extend(self.items_additional_data_keys)
 
-            # (7) finally add hmm search results
+            # (6) finally add hmm search results
             if self.hmm_searches_dict:
                 json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
 
-            # (8) and finalize it (yay):
+            # (7) and finalize it (yay):
             json_object.append(json_header)
 
             for split_name in view_dict:
@@ -1148,27 +1141,23 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                         json_entry.extend([None])
 
                 # (3)
-                if self.genes_in_splits_summary_dict:
-                    json_entry.extend([self.genes_in_splits_summary_dict[split_name][header] for header in self.genes_in_splits_summary_headers[1:]])
-
-                # (4)
                 if self.splits_basic_info:
                     json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
 
-                # (5) adding essential data for the view
+                # (4) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
-                # (6) adding additional layers
+                # (5) adding additional layers
                 json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
 
-                # (7) adding hmm stuff
+                # (6) adding hmm stuff
                 if self.hmm_searches_dict:
                     if self.split_hmm_layers:
                         json_entry.extend([self.hmm_searches_dict[split_name][header] if split_name in self.hmm_searches_dict else None for header in [tpl[0] for tpl in self.hmm_searches_header]])
                     else:
                         json_entry.extend([len(self.hmm_searches_dict[split_name][header]) if split_name in self.hmm_searches_dict else 0 for header in [tpl[1] for tpl in self.hmm_searches_header]])
 
-                # (8) send it along!
+                # (7) send it along!
                 json_object.append(json_entry)
 
             self.views[view] = json_object

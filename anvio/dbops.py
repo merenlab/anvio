@@ -97,8 +97,6 @@ class ContigsSuperclass(object):
         self.gene_lengths = {}
         self.contig_name_to_genes = {}
         self.genes_in_splits = {} # keys of this dict are NOT gene caller ids. they are ids for each entry.
-        self.genes_in_splits_summary_dict = {}
-        self.genes_in_splits_summary_headers = []
         self.split_name_to_genes_in_splits_entry_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
@@ -165,11 +163,6 @@ class ContigsSuperclass(object):
 
         self.progress.update('Reading genes in splits table')
         self.genes_in_splits = contigs_db.db.get_table_as_dict(t.genes_in_splits_table_name)
-
-        # FIXME: these dicts need to be filled
-        self.progress.update('Reading genes in splits summary table')
-        self.genes_in_splits_summary_dict = {}
-        self.genes_in_splits_summary_headers = {}
 
         self.progress.update('Identifying HMM searches for single-copy genes and others')
         self.hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
