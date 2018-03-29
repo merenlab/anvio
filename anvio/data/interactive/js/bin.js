@@ -167,16 +167,9 @@ Bins.prototype.DeleteAllBins = function() {
     if (!confirm('Are you sure you want to remove all bins?')) {
         return;
     }
-    var bin_ids_to_delete = [];
 
-    $('#tbody_bins tr').each(
-        function(index, bin) {
-            bin_ids_to_delete.push($(bin).attr('bin-id'));
-        }
-    );
-
-    bin_ids_to_delete.map(function(bin_id) { 
-        deleteBin(bin_id, false);
+    this.container.querySelectorAll('tr').forEach(function(tr) {
+        this.DeleteBin(tr.getAttribute('bin-id'), false);
     });
 };
 
