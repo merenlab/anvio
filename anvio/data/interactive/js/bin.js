@@ -530,62 +530,32 @@ Bins.prototype.RedrawBins = function() {
     }*/
 }
 
-
-function rebuildIntersections()
-{
-    return;
-    for (var bin_id = 1; bin_id <= bin_counter; bin_id++) {
-        // try to make new intersections
-
-        var selected_set = new Set(SELECTED[bin_id]);
-
-        var next_iteration = [].concat(SELECTED[bin_id]);
-        var inserted;
-        do {
-            inserted = 0;
-            var nodes = [].concat(next_iteration);
-            var length = nodes.length;
-            for (var cursor = 0; cursor < length; cursor++)
-            {
-                if (!drawer.tree.nodes.hasOwnProperty(nodes[cursor].id)) {
-                    continue;
-                }
-
-                var node = drawer.tree.nodes[nodes[cursor].id];
-                var parent = node.ancestor;
-
-                if (parent == null || parent.ancestor == null) 
-                {
-                    // skip root
-                    continue;
-                }
-
-                if (selected_set.has(parent.id))
-                {
-                    // parent already in selected list
-                    continue;
-                }
-
-                if (node.sibling != null && selected_set.has(node.sibling.id))
-                {
-                    selected_set.add(parent.id);
-                    next_iteration.push(parent.id);
-                    next_iteration.splice(next_iteration.indexOf(node.id), 1);
-                    next_iteration.splice(next_iteration.indexOf(node.sibling.id), 1);
-                    inserted++;
-                }
-            }
-
-        } while (inserted > 0)
-
-        SELECTED[bin_id] = Array.from(selected_set);
-    }
-}
-
 Bins.prototype.RebuildIntersections = function() {
     for (let bin_id in this.selections) {
-        let next_iteration = new Set(this.selections[bin_id].values());
+        let inserted = true;
 
-        
+        while (inserted) {
+            inserted = false;
+            for (let node_id of this.selections[bin_id].values()) {
+                let node = drawer.tree.nodes[node_id];
+                let parent = node.ancestor;
+
+                if (!parent) {
+                    // no parent to add
+                    continue;
+                }
+
+                if (this.selections[bin_id].has(parent.id)) {
+                    // parent already in bin
+                    continue;
+                }
+
+                if (node.sibling && this.selections[bin_id].has(node.sibling.id)) {
+                    // node and its sibling in same bin, so parent should too.
+                    this.selections[bin_id].add(parent.id);
+                    inserted = true;
+                }
+            }
+        }
     }
 }
