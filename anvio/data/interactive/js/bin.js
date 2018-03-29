@@ -42,7 +42,7 @@ Bins.prototype.NewBin = function(id, binState) {
         var completeness = '---';
         var redundancy = '---';
 
-        this.selections[id] = [];
+        this.selections[id] = new Set();
         this.bin_counter++;
     }
     else
@@ -184,29 +184,23 @@ Bins.prototype.DeleteAllBins = function() {
 Bins.prototype.AppendBranch = function(p) {
     var bin_id = this.GetSelectedBinId();
     var bin_color = this.GetSelectedBinColor();
-    var bins_to_update = [];
+    var bins_to_update = new Set();
 
     for (const child of p.IterateChildren()) {
-        let pos = this.selections[bin_id].indexOf(child.id);
-        if (pos == -1) {
-            this.selections[bin_id].push(child.id);
-
-            if (bins_to_update.indexOf(bin_id) == -1)
-                bins_to_update.push(bin_id);
+        if (!this.selections[bin_id].has(child.id)) {
+            this.selections[bin_id].add(child.id);
+            bins_to_update.add(bin_id);
         }
 
-        // remove nodes from other bins
-        for (let bid in this.selections) {
-            // don't remove nodes from current bin
-            if (bid == bin_id)
+        for (let other_bin_id in this.selections) {
+            // remove node from other bins except the current one
+            if (other_bin_id == bin_id) {
                 continue;
+            }
 
-            let pos = this.selections[bin_id].indexOf(child.id)
-            if (pos > -1) {
-                this.selections[bin_id].splice(pos, 1);
-
-                if (bins_to_update.indexOf(bid) == -1)
-                    bins_to_update.push(bid);
+            if (this.selections[other_bin_id].has(child.id)) {
+                this.selections[other_bin_id].delete(child.id);
+                bins_to_update.add(other_bin_id);
             }
         }
 
@@ -223,21 +217,22 @@ Bins.prototype.AppendBranch = function(p) {
         }
     }
 
+    bins_to_update = Array.from(bins_to_update);
     this.RedrawBins();
     this.UpdateBinsWindow(bins_to_update);
 };
 
 
 Bins.prototype.RemoveBranch = function(p) {
-    var bins_to_update = [];
+    var bin_id = this.GetSelectedBinId();
+    var bin_color = this.GetSelectedBinColor();
+    var bins_to_update = new Set();
+
     for (const child of p.IterateChildren()) {
         for (let bin_id in this.selections) {
-            let pos = this.selections[bin_id].indexOf(child.id);
-            if (pos > -1) {
-                this.selections[bin_id].splice(pos, 1);
-
-                if (bins_to_update.indexOf(bin_id) == -1)
-                    bins_to_update.push(bin_id);
+            if (this.selections[bin_id].has(child.id)) {
+                this.selections[bin_id].delete(child.id);
+                bins_to_update.add(bin_id);
             }
         }
 
@@ -254,6 +249,7 @@ Bins.prototype.RemoveBranch = function(p) {
         }
     }
 
+    bins_to_update = Array.from(bins_to_update);
     this.RedrawBins();
     this.UpdateBinsWindow(bins_to_update);
 };
@@ -274,28 +270,27 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
             let num_items = 0;
             let length_sum = 0;
 
-            for (let j = 0; j < this.selections[bin_id].length; j++) {
-                let node_id = this.selections[bin_id][j];
+            for (let node_id of this.selections[bin_id].values()) {
                 let node = drawer.tree.nodes[node_id];
 
                 if (node.IsLeaf()) {
                     num_items++;
                     length_sum += parseInt(contig_lengths[node.label]);
                 }
+            }
 
-                let bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
+            let bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
 
-                bin_row.querySelector('td.num-items').setAttribute('data-value', num_items);
-                bin_row.querySelector('td.num-items>input').value = num_items;
+            bin_row.querySelector('td.num-items').setAttribute('data-value', num_items);
+            bin_row.querySelector('td.num-items>input').value = num_items;
 
-                if (isNaN(length_sum)) {
-                    bin_row.querySelector('td.length-sum').setAttribute('data-value', 0);
-                    bin_row.querySelector('td.length-sum>span').innerHTML = 'n/a';
-                } else {
-                    bin_row.querySelector('td.length-sum').setAttribute('data-value', length_sum);
-                    bin_row.querySelector('td.length-sum>span').innerHTML = readableNumber(length_sum);
-                }
-            }        
+            if (isNaN(length_sum)) {
+                bin_row.querySelector('td.length-sum').setAttribute('data-value', 0);
+                bin_row.querySelector('td.length-sum>span').innerHTML = 'n/a';
+            } else {
+                bin_row.querySelector('td.length-sum').setAttribute('data-value', length_sum);
+                bin_row.querySelector('td.length-sum>span').innerHTML = readableNumber(length_sum);
+            }
         }
     }
 
@@ -313,12 +308,12 @@ Bins.prototype.RedrawBins = function() {
     }
 
     for (let bin_id in this.selections) {
-        for (let j = this.selections[bin_id].length - 1; j >= 0; j--) {
-            let node = drawer.tree.nodes[this.selections[bin_id][j]];
+        for (let node_id of this.selections[bin_id].values()) {
+            let node = drawer.tree.nodes[node_id];
 
             if (typeof node === 'undefined')
             {
-                this.selections[bin_id].splice(j, 1);
+                this.selections[bin_id].delete(node_id);
                 continue;
             }
 
@@ -584,5 +579,13 @@ function rebuildIntersections()
         } while (inserted > 0)
 
         SELECTED[bin_id] = Array.from(selected_set);
+    }
+}
+
+Bins.prototype.RebuildIntersections = function() {
+    for (let bin_id in this.selections) {
+        let next_iteration = new Set(this.selections[bin_id].values());
+
+        
     }
 }

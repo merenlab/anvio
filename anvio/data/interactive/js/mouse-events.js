@@ -61,6 +61,12 @@ function lineClickHandler(event) {
         return;
     }
 
+    var is_ctrl_pressed = ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey);
+
+    if (is_ctrl_pressed) {
+        bins.NewBin();
+    }
+
     var p = getNodeFromEvent(event);
     bins.AppendBranch(p);
 }
