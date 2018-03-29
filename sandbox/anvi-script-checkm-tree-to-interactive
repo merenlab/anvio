@@ -38,7 +38,7 @@ def process(input_fasta_file, output_dir):
 
     run.info('Input tree found', input_fasta_file)
 
-    uid_regex = re.compile(r"'?(\w+)\|(.*?)\|([\.eE\-0-9]+)?'?")
+    uid_regex = re.compile(r"'?(\w+)\|(.*?)[\|\:]([\.eE\-0-9]+)?'?")
     uid_to_taxonomy = {}
 
     for match in re.finditer(uid_regex, newick):
