@@ -132,35 +132,26 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
         return;
     }
 
-    this.container.querySelector('#bin_row_' + id).remove();
+    this.container.querySelector(`tr[bin-id='${bin_id}']`).remove();
     this.container.querySelectorAll('input[type=radio]')[0].setAttribute('checked', true);
 
-    for (var i = 0; i < SELECTED[id].length; i++) {
-        var node = drawer.tree.nodes[SELECTED[id][i]];
+    for (let node_id of this.selections[bin_id].values()) {
+        let node = drawer.tree.nodes[node_id];
 
-        if (typeof node === 'undefined' || !node.hasOwnProperty('id')) {
-            continue;
-        }
-
-        var node_id = node.id;
-
-        let line = document.getElementById('line' + child.id);
+        let line = document.getElementById('line' + node.id);
         if (line) {
-            line.style['stroke-width'] = '3';
-            line.style['stroke'] = bin_color;       
+            line.style['stroke-width'] = '1';
+            line.style['stroke'] = LINE_COLOR;       
         }
 
-        let arc = document.getElementById('arc' + child.id);
+        let arc = document.getElementById('arc' + node.id);
         if (arc) {
-            arc.style['stroke-width'] = '3';
-            arc.style['stroke'] = bin_color;
+            arc.style['stroke-width'] = '1';
+            arc.style['stroke'] = LINE_COLOR;
         }
     }
 
-    SELECTED[id] = [];
-
-    if (this.IsEmpty())
-    {
+    if (this.IsEmpty()) {
         this.NewBin();
     }
 
@@ -184,9 +175,9 @@ Bins.prototype.AppendBranch = function(p) {
     var bin_color = this.GetSelectedBinColor();
     var bins_to_update = new Set();
 
-    for (const child of p.IterateChildren()) {
-        if (!this.selections[bin_id].has(child.id)) {
-            this.selections[bin_id].add(child.id);
+    for (const node of p.IterateChildren()) {
+        if (!this.selections[bin_id].has(node.id)) {
+            this.selections[bin_id].add(node.id);
             bins_to_update.add(bin_id);
         }
 
@@ -196,19 +187,19 @@ Bins.prototype.AppendBranch = function(p) {
                 continue;
             }
 
-            if (this.selections[other_bin_id].has(child.id)) {
-                this.selections[other_bin_id].delete(child.id);
+            if (this.selections[other_bin_id].has(node.id)) {
+                this.selections[other_bin_id].delete(node.id);
                 bins_to_update.add(other_bin_id);
             }
         }
 
-        let line = document.getElementById('line' + child.id);
+        let line = document.getElementById('line' + node.id);
         if (line) {
             line.style['stroke-width'] = '3';
             line.style['stroke'] = bin_color;       
         }
 
-        let arc = document.getElementById('arc' + child.id);
+        let arc = document.getElementById('arc' + node.id);
         if (arc) {
             arc.style['stroke-width'] = '3';
             arc.style['stroke'] = bin_color;
@@ -226,21 +217,21 @@ Bins.prototype.RemoveBranch = function(p) {
     var bin_color = this.GetSelectedBinColor();
     var bins_to_update = new Set();
 
-    for (const child of p.IterateChildren()) {
+    for (const node of p.IterateChildren()) {
         for (let bin_id in this.selections) {
-            if (this.selections[bin_id].has(child.id)) {
-                this.selections[bin_id].delete(child.id);
+            if (this.selections[bin_id].has(node.id)) {
+                this.selections[bin_id].delete(node.id);
                 bins_to_update.add(bin_id);
             }
         }
 
-        let line = document.getElementById('line' + child.id);
+        let line = document.getElementById('line' + node.id);
         if (line) {
             line.style['stroke-width'] = '1';
             line.style['stroke'] = LINE_COLOR;       
         }
 
-        let arc = document.getElementById('arc' + child.id);
+        let arc = document.getElementById('arc' + node.id);
         if (arc) {
             arc.style['stroke-width'] = '1';
             arc.style['stroke'] = LINE_COLOR;
