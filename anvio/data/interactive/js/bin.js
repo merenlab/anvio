@@ -298,6 +298,28 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
 };
 
 
+Bins.prototype.RedrawLineColors = function() {
+    for (let bin_id in this.selections) {
+        let bin_color = this.GetBinColor(bin_id);
+        for (let node_id of this.selections[bin_id].values()) {
+            let node = drawer.tree.nodes[node_id];
+
+            let line = document.getElementById('line' + node.id);
+            if (line) {
+                line.style['stroke-width'] = '3';
+                line.style['stroke'] = bin_color;       
+            }
+
+            let arc = document.getElementById('arc' + node.id);
+            if (arc) {
+                arc.style['stroke-width'] = '3';
+                arc.style['stroke'] = bin_color;
+            }
+        }
+    }
+}
+
+
 Bins.prototype.RedrawBins = function() {
     if (!drawer)
         return;
