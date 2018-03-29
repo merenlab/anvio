@@ -108,7 +108,9 @@ Drawer.prototype.draw = function() {
     this.draw_layer_names();
     this.draw_samples();
     
-    rebuildIntersections();
+    bins.RebuildIntersections();
+    bins.RedrawLineColors();
+
     createBin('tree_bin', 'bin');
     
     this.initialize_tree_observer();
