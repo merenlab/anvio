@@ -117,12 +117,17 @@ Bins.prototype.GetSelectedBinId = function() {
 };
 
 
-Bins.prototype.GetSelectedBinColor = function(id) {
-    return this.container.querySelector('#bin_color_' + this.GetSelectedBinId()).getAttribute('color');
+Bins.prototype.GetSelectedBinColor = function() {
+    return this.GetBinColor(this.GetSelectedBinId());
 };
 
 
-Bins.prototype.DeleteBin = function(id, show_confirm=true) {
+Bins.prototype.GetBinColor = function(bin_id) {
+    return this.container.querySelector('#bin_color_' + bin_id).getAttribute('color');
+}
+
+
+Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
     if (show_confirm && !confirm('Are you sure?')) {
         return;
     }
