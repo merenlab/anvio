@@ -93,33 +93,23 @@ Node.prototype.IterateChildren = function*() {
 }
 
 
-Node.prototype.SetColor = function(color) {
+Node.prototype.SetColor = function(color, width=3) {
     let line = document.getElementById('line' + this.id);
     if (line) {
-        line.style['stroke-width'] = '3';
-        line.style['stroke'] = color;       
+        line.style['stroke-width'] = width;
+        line.style['stroke'] = color;
     }
 
     let arc = document.getElementById('arc' + this.id);
     if (arc) {
-        arc.style['stroke-width'] = '3';
+        arc.style['stroke-width'] = width;
         arc.style['stroke'] = color;
     }
 }
 
 
 Node.prototype.ResetColor = function() {
-    let line = document.getElementById('line' + this.id);
-    if (line) {
-        line.style['stroke-width'] = '1';
-        line.style['stroke'] = LINE_COLOR;
-    }
-
-    let arc = document.getElementById('arc' + this.id);
-    if (arc) {
-        arc.style['stroke-width'] = '1';
-        arc.style['stroke'] = LINE_COLOR;
-    }
+    this.SetColor(LINE_COLOR, width=1);
 }
 
 
