@@ -68,7 +68,7 @@ function lineClickHandler(event) {
     }
 
     var p = getNodeFromEvent(event);
-    bins.AppendBranch(p);
+    bins.AppendNode(p);
 }
 
 
@@ -165,7 +165,7 @@ function lineContextMenuHandler(event) {
             $('#branch_right_click_menu').show();
             $('#branch_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
         } else {
-            bins.RemoveBranch(p);
+            bins.RemoveNode(p);
         }
     }
 
@@ -430,7 +430,7 @@ function menu_callback(action, param) {
             break;
 
         case 'remove':
-            bins.RemoveBranch(drawer.tree.nodes[context_menu_target_id]);
+            bins.RemoveNode(drawer.tree.nodes[context_menu_target_id]);
             break;
 
         case 'select_layer':
