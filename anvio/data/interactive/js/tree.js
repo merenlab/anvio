@@ -93,6 +93,36 @@ Node.prototype.IterateChildren = function*() {
 }
 
 
+Node.prototype.SetColor = function(color) {
+    let line = document.getElementById('line' + this.id);
+    if (line) {
+        line.style['stroke-width'] = '3';
+        line.style['stroke'] = color;       
+    }
+
+    let arc = document.getElementById('arc' + this.id);
+    if (arc) {
+        arc.style['stroke-width'] = '3';
+        arc.style['stroke'] = color;
+    }
+}
+
+
+Node.prototype.ResetColor = function() {
+    let line = document.getElementById('line' + this.id);
+    if (line) {
+        line.style['stroke-width'] = '1';
+        line.style['stroke'] = LINE_COLOR;
+    }
+
+    let arc = document.getElementById('arc' + this.id);
+    if (arc) {
+        arc.style['stroke-width'] = '1';
+        arc.style['stroke'] = LINE_COLOR;
+    }
+}
+
+
 Node.prototype.Rotate = function() {
     if (this.child) {
         var siblings = [];
