@@ -466,46 +466,35 @@ Bins.prototype.RedrawBins = function() {
         }
     }
 
-
-/*    // draw higlighted splits
-    for (var i=0; i < highlighted_splits.length; i++) {
-        // TO DO: more performance
-        var start = drawer.tree.nodes[highlighted_splits[i]];
-        var end = start;
-
-        if (!start)
-            continue;
-
-        var color = document.getElementById('picker_highlight').getAttribute('color');
+    for (const node of this.higlighted_items) {
+        let color = document.getElementById('picker_highlight').getAttribute('color');
 
         if (tree_type == 'circlephylogram')
         {
             drawPie('bin',
                 'bin_outer_' + 1,
-                start.angle - start.size / 2,
-                end.angle + end.size / 2,
+                node.angle - node.size / 2,
+                node.angle + node.size / 2,
                 total_radius + outer_ring_margin + outer_ring_size,
                 total_radius + outer_ring_margin + outer_ring_size * 2,
-                (end.angle - start.angle + start.size / 2 + end.size / 2 > Math.PI) ? 1 : 0,
+                (node.size / 2 > Math.PI) ? 1 : 0,
                 color,
                 1,
                 false);     
         }
         else
         {
-            var height = end.xy['y'] + end.size / 2 - start.xy['y'] + start.size / 2;
-            
             drawPhylogramRectangle('bin',
                 'bin_outer_' + 1,
                 total_radius + outer_ring_margin + outer_ring_size,
-                start.xy['y'] - start.size / 2 + height / 2,
-                height,
+                node.xy['y'] - node.size / 2,
+                node.size,
                 outer_ring_size,
                 color,
                 1,
                 false);
         }
-    }*/
+    }
 }
 
 Bins.prototype.RebuildIntersections = function() {
