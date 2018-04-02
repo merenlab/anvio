@@ -256,6 +256,18 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
 };
 
 
+Bins.prototype.HighlightItems = function(item_list) {
+    this.higlighted_items = item_list;
+    this.RedrawBins();
+};
+
+
+Bins.prototype.ClearHighlightedItems = function(item_list) {
+    this.higlighted_items = [];
+    this.RedrawBins();
+};
+
+
 Bins.prototype.RedrawLineColors = function() {
     for (let bin_id in this.selections) {
         let bin_color = this.GetBinColor(bin_id);
