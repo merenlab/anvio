@@ -58,7 +58,7 @@ Bins.prototype.NewBin = function(id, binState) {
     }
 
     var template = '<tr bin-id="{id}">' +
-                   '    <td><input type="radio" name="active_bin" value="{id}" checked></td>' +
+                   '    <td><input type="radio" name="active_bin" value="{id}"></td>' +
                    '    <td><div id="bin_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
                    '    <td data-value="{name}"><input type="text" onChange="redrawBins();" size="21" id="bin_name_{id}" value="{name}"></td>';
 
@@ -82,6 +82,7 @@ Bins.prototype.NewBin = function(id, binState) {
                        .replace(new RegExp('{length}', 'g'), contig_length);
 
     this.container.insertAdjacentHTML('beforeend', template);
+    this.SelectLastRadio();
 
 /*    if(!from_state){
         $('#completeness_' + id).attr("disabled", true);
@@ -106,9 +107,9 @@ Bins.prototype.NewBin = function(id, binState) {
     });*/
 }
 
-
-Bins.prototype.IsEmpty = function() {
-    return !this.container.hasChildNodes();
+Bins.prototype.SelectLastRadio = function() {
+    let radios = this.container.querySelectorAll('input[name=active_bin]');
+    radios[radios.length - 1].checked = true;
 };
 
 
@@ -133,16 +134,19 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
     }
 
     this.container.querySelector(`tr[bin-id='${bin_id}']`).remove();
-    this.container.querySelectorAll('input[type=radio]')[0].setAttribute('checked', true);
+    if (!this.container.hasChildNodes()) {
+        this.NewBin();
+    }
+
+    if (!this.container.querySelector('input[name=active_bin]:checked')) {
+        this.SelectLastRadio();
+    }
 
     for (let node of this.selections[bin_id].values()) {
         node.ResetColor();
     }
 
-    if (this.IsEmpty()) {
-        this.NewBin();
-    }
-
+    this.selections[bin_id].clear();
     this.RedrawBins();
 };
 
@@ -152,9 +156,9 @@ Bins.prototype.DeleteAllBins = function() {
         return;
     }
 
-    this.container.querySelectorAll('tr').forEach(function(tr) {
+    for (let tr of this.container.querySelectorAll('tr')) {
         this.DeleteBin(tr.getAttribute('bin-id'), false);
-    });
+    }
 };
 
 
