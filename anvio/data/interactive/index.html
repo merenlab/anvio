@@ -645,7 +645,7 @@
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
                                 <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="glyphicon glyphicon-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
                                 <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FF0000;" color="#FF0000" data-help="search-color"></div>
-                                <button type="button" class="btn btn-default btn-sm" onclick="highlighted_splits = []; redrawBins();" data-help="search-clear"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear highlight</button>
+                                <button type="button" class="btn btn-default btn-sm" onclick="bins.ClearHighlightedItems();" data-help="search-clear"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear highlight</button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
                                 <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>

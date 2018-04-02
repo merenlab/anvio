@@ -166,10 +166,10 @@ function highlightResult() {
 
     for (var i=0; i < search_results.length; i++) {
         let node = drawer.tree.GetLeafByName(search_results[i]['split']);
-        highlighted_splits.push(node.id);
+        highlighted_splits.push(node);
     }
 
-    redrawBins(); 
+    bins.HighlightItems(highlighted_splits); 
 }
 
 function highlightSplit(name) {
@@ -179,8 +179,7 @@ function highlightSplit(name) {
         return;
     }
     let node = drawer.tree.GetLeafByName(name);
-    highlighted_splits = [node.id];
-    redrawBins();
+    bins.HighlightItems(highlighted_splits); 
 }
 
 function appendResult() {
@@ -190,40 +189,13 @@ function appendResult() {
         return;
     }
 
-    var bin_id = getBinId();
-
-    if (bin_id === 'undefined')
-        return;
-
-    var bins_to_update = [];
-    var _len = search_results.length;
-    for (var i=0; i < _len; i++) {
-        let node = drawer.tree.GetLeafByName(search_results[i]['split']);
-
-        if (SELECTED[bin_id].indexOf(node.id) == -1) {
-            SELECTED[bin_id].push(node.id);
-
-            if (bins_to_update.indexOf(bin_id) == -1)
-                bins_to_update.push(bin_id);
-        }
-
-        for (var bid = 1; bid <= bin_counter; bid++) {
-            // don't remove nodes from current bin
-            if (bid == bin_id)
-                continue;
-
-            var pos = SELECTED[bid].indexOf(node.id);
-            if (pos > -1) {
-                SELECTED[bid].splice(pos, 1);
-
-                if (bins_to_update.indexOf(bid) == -1)
-                    bins_to_update.push(bid);
-            }
-        }
+    let node_list = [];
+    for (const result of search_results) {
+        let node = drawer.tree.GetLeafByName(result['split']);
+        node_list.push(node);
     }
 
-    updateBinsWindow(bins_to_update);
-    redrawBins();
+    bins.AppendNode(node_list);
 }
 
 function removeResult() {
@@ -233,25 +205,11 @@ function removeResult() {
         return;
     }
 
-    var bin_id = getBinId();
-
-    if (bin_id === 'undefined')
-        return;
-
-    var bins_to_update = [];
-    var _len = search_results.length;
-    for (var i=0; i < _len; i++) {
-        let node = drawer.tree.GetLeafByName(search_results[i]['split']);
-
-        var pos = SELECTED[bin_id].indexOf(node.id);
-        if (pos > -1) {
-            SELECTED[bin_id].splice(pos, 1);
-            
-            if (bins_to_update.indexOf(bin_id) == -1)
-                bins_to_update.push(bin_id);
-        }
+    let node_list = [];
+    for (const result of search_results) {
+        let node = drawer.tree.GetLeafByName(result['split']);
+        node_list.push(node);
     }
 
-    updateBinsWindow(bins_to_update);
-    redrawBins();
+    bins.RemoveNode(node_list);
 }
