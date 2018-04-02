@@ -389,7 +389,7 @@ class BottleApplication(Bottle):
 
         data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, item_name)
 
-        layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if float(state['layers'][layer]['height']) > 0]
+        layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
 
         auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
                                                                                  self.interactive.p_meta['contigs_db_hash'])
@@ -475,7 +475,7 @@ class BottleApplication(Bottle):
 
         data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, str(gene_callers_id))
 
-        layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if float(state['layers'][layer]['height']) > 0]
+        layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
 
         auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
                                                                                  self.interactive.p_meta['contigs_db_hash'])
