@@ -162,51 +162,63 @@ Bins.prototype.DeleteAllBins = function() {
 };
 
 
-Bins.prototype.AppendNode = function(target) {
+Bins.prototype.AppendNode = function(targets) {
     var bin_id = this.GetSelectedBinId();
     var bin_color = this.GetSelectedBinColor();
     var bins_to_update = new Set();
 
-    for (const node of target.IterateChildren()) {
-        if (!this.selections[bin_id].has(node)) {
-            this.selections[bin_id].add(node);
-            bins_to_update.add(bin_id);
-        }
-
-        for (let other_bin_id in this.selections) {
-            // remove node from other bins except the current one
-            if (other_bin_id == bin_id) {
-                continue;
-            }
-
-            if (this.selections[other_bin_id].has(node)) {
-                this.selections[other_bin_id].delete(node);
-                bins_to_update.add(other_bin_id);
-            }
-        }
-
-        node.SetColor(bin_color);
+    if (!Array.isArray(targets)) {
+        targets = [targets];
     }
 
+    for (const target of targets) {
+        for (const node of target.IterateChildren()) {
+            if (!this.selections[bin_id].has(node)) {
+                this.selections[bin_id].add(node);
+                bins_to_update.add(bin_id);
+            }
+
+            for (let other_bin_id in this.selections) {
+                // remove node from other bins except the current one
+                if (other_bin_id == bin_id) {
+                    continue;
+                }
+
+                if (this.selections[other_bin_id].has(node)) {
+                    this.selections[other_bin_id].delete(node);
+                    bins_to_update.add(other_bin_id);
+                }
+            }
+
+            node.SetColor(bin_color);
+        }    
+    }
+    
     bins_to_update = Array.from(bins_to_update);
     this.RedrawBins();
     this.UpdateBinsWindow(bins_to_update);
 };
 
 
-Bins.prototype.RemoveNode = function(target) {
+Bins.prototype.RemoveNode = function(targets) {
     var bin_id = this.GetSelectedBinId();
     var bins_to_update = new Set();
 
-    for (const node of target.IterateChildren()) {
-        for (let bin_id in this.selections) {
-            if (this.selections[bin_id].has(node)) {
-                this.selections[bin_id].delete(node);
-                bins_to_update.add(bin_id);
-            }
-        }
+    if (!Array.isArray(targets)) {
+        targets = [targets];
+    }
 
-        node.ResetColor();
+    for (const target of targets) {
+        for (const node of target.IterateChildren()) {
+            for (let bin_id in this.selections) {
+                if (this.selections[bin_id].has(node)) {
+                    this.selections[bin_id].delete(node);
+                    bins_to_update.add(bin_id);
+                }
+            }
+
+            node.ResetColor();
+        }
     }
 
     bins_to_update = Array.from(bins_to_update);
