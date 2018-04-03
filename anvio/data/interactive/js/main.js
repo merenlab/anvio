@@ -31,7 +31,6 @@ var drawer;
 var samples_id_to_node_map;
 var total_radius = 0;
 
-/*var SELECTED = new Array();*/
 var bins;
 var clusteringData;
 
@@ -47,9 +46,6 @@ var categorical_stats = {};
 var stack_bar_colors = {};
 var legends = [];
 
-var context_menu_target_id = 0;
-var context_menu_layer_id = 0;
-
 var layerdata_title = {};
 var empty_tooltip = "";
 
@@ -62,9 +58,6 @@ var views = {};
 var layers = {};
 var current_view = '';
 var layer_order;
-
-var completeness_dict = {};
-var gene_cluster_bins_summary_dict = {}
 
 var current_state_name = "";
 
@@ -1359,21 +1352,6 @@ function drawTree() {
     return defer.promise();
 }
 
-
-function getContigNames(bin_id) {
-    var names = new Array();
-
-    for (var j = 0; j < SELECTED[bin_id].length; j++) {
-        let node = drawer.tree.nodes[SELECTED[bin_id][j]];
-        if (node.IsLeaf()) {
-            names.push(node.label);
-        }
-    }
-
-    return names;
-}
-
-
 function showContigNames(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
@@ -1384,10 +1362,9 @@ function showContigNames(bin_id, updateOnly) {
         return;
 
     var msg = '<table class="table table-striped">';
-    var names = getContigNames(bin_id);
-
-    for (var i in names)
-        msg += "<tr><td><a href='#' class='no-link' onclick='highlightSplit(\"" + names[i] + "\");'>" + names[i] + "</a></td></tr>";
+    for (const node of bins.GetBinNodeLabels(bin_id)) {
+        msg += "<tr><td><a href='#' class='no-link'>" + node.label + "</a></td></tr>";
+    }
 
     msg = msg + '</table>';
 
@@ -1432,7 +1409,7 @@ function updateGeneClustersBin(bin_id) {
         type: "POST",
         url: "/data/geneclusterssummary",
         cache: false,
-        data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
+        data: {split_names: JSON.stringify(bins.GetBinNodeLabels(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
         success: function(data){
             gene_cluster_bins_summary_dict[bin_id] = data;
             $('#redundancy_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);

@@ -27,7 +27,7 @@ function Bins(prefix, container) {
     this.container = container || document.createElement("div");
 
     this.cache = {};
-}
+};
 
 
 Bins.prototype.NewBin = function(id, binState) {
@@ -57,38 +57,28 @@ Bins.prototype.NewBin = function(id, binState) {
         var redundancy = "---";
     }
 
-    var template = '<tr bin-id="{id}">' +
-                   '    <td><input type="radio" name="active_bin" value="{id}"></td>' +
-                   '    <td><div id="bin_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
-                   '    <td data-value="{name}"><input type="text" onChange="redrawBins();" size="21" id="bin_name_{id}" value="{name}"></td>';
-
-    if (mode != 'pan')
-    {
-        template +='    <td data-value="{count}" class="num-items"><input type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
-                   '    <td data-value="{length}" class="length-sum"><span>{length}</span></td>';
-    }
-
-    template +=    '    <td data-value="{completeness}"><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
-                   '    <td data-value="{redundancy}"><input id="redundancy_{id}" type="button" value="{redundancy}" title="Click for redundant hits" onClick="showRedundants({id});"></td> ' +
-                   '    <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin({id});"></span></center></td>' +
-                   '</tr>';
-
-    template = template.replace(new RegExp('{id}', 'g'), id)
-                       .replace(new RegExp('{name}', 'g'), name)
-                       .replace(new RegExp('{color}', 'g'), color)
-                       .replace(new RegExp('{count}', 'g'), contig_count)
-                       .replace(new RegExp('{completeness}', 'g'), completeness)
-                       .replace(new RegExp('{redundancy}', 'g'), redundancy)
-                       .replace(new RegExp('{length}', 'g'), contig_length);
+    var template = `<tr bin-id="${id}">
+                       <td><input type="radio" name="active_bin" value="${id}"></td>
+                       <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></td>
+                       <td data-value="${name}"><input type="text" onChange="bins.RedrawBins();" size="21" id="bin_name_${id}" value="${name}"></td>
+                       ${mode != 'pan' ? `
+                           <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
+                           <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
+                       ` : ''}
+                       <td data-value="${completeness}"><input id="completeness_${id}" type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
+                       <td data-value="${redundancy}"><input id="redundancy_${id}" type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
+                       <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
+                    </tr>`;
 
     this.container.insertAdjacentHTML('beforeend', template);
     this.SelectLastRadio();
 
-/*    if(!from_state){
+    // TODO: Remove jQuery.
+    if(!from_state){
         $('#completeness_' + id).attr("disabled", true);
         $('#redundancy_' + id).attr("disabled", true);
-    }*/
-/*
+    }
+
     $('#bin_color_' + id).colpick({
         layout: 'hex',
         submit: 0,
@@ -100,12 +90,13 @@ Bins.prototype.NewBin = function(id, binState) {
             if (!bySetColor) $(el).val(hex);
         },
         onHide: function() {
-            redrawBins();
+            bins.RedrawBins();
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
-    });*/
-}
+    });
+};
+
 
 Bins.prototype.SelectLastRadio = function() {
     let radios = this.container.querySelectorAll('input[name=active_bin]');
@@ -268,6 +259,29 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
 };
 
 
+Bins.prototype.GetBinNodeLabels = function(bin_id) {
+    let node_labels = [];
+
+    for (const node of this.selections[bin_id].values()) {
+        if (node.IsLeaf()) {
+            node_labels.push(node.label);
+        }
+    }
+
+    return node_labels;
+};
+
+
+Bins.prototype.ImportCollection = function(data, threshold) {
+
+};
+
+
+Bins.prototype.ExportCollection = function() {
+
+};
+
+
 Bins.prototype.HighlightItems = function(item_list) {
     this.higlighted_items = item_list;
     this.RedrawBins();
@@ -287,7 +301,7 @@ Bins.prototype.RedrawLineColors = function() {
             node.SetColor(bin_color);
         }
     }
-}
+};
 
 
 Bins.prototype.RedrawBins = function() {
