@@ -163,7 +163,6 @@ function highlightResult() {
     }
 
     highlighted_splits = [];
-
     for (var i=0; i < search_results.length; i++) {
         let node = drawer.tree.GetLeafByName(search_results[i]['split']);
         highlighted_splits.push(node);
@@ -173,22 +172,11 @@ function highlightResult() {
 }
 
 function highlightSplit(name) {
-    // check if tree exists
-    if (!drawer) {
-        alert('Draw tree first.');
-        return;
-    }
     let node = drawer.tree.GetLeafByName(name);
     bins.HighlightItems(highlighted_splits); 
 }
 
 function appendResult() {
-    // check if tree exists
-    if (!drawer) {
-        alert('Draw tree first.');
-        return;
-    }
-
     let node_list = [];
     for (const result of search_results) {
         let node = drawer.tree.GetLeafByName(result['split']);
@@ -199,12 +187,6 @@ function appendResult() {
 }
 
 function removeResult() {
-    // check if tree exists
-    if (!drawer) {
-        alert('Draw tree first.');
-        return;
-    }
-
     let node_list = [];
     for (const result of search_results) {
         let node = drawer.tree.GetLeafByName(result['split']);
