@@ -2034,7 +2034,7 @@ class ProfileSuperclass(object):
         if self.split_names_of_interest:
             split_names = self.split_names_of_interest
 
-            self.run.warning('A subset of genes (%d of %d, to be precise) are requested to initiate gene-level coverage stats for.\
+            self.run.warning('A subset of splits (%d of %d, to be precise) are requested to initiate gene-level coverage stats for.\
                               No need to worry, this is just a warning in case you are as obsessed as wanting to know everything\
                               there is to know.' % (len(self.split_names_of_interest), len(self.split_names)), overwrite_verbose=True)
 
