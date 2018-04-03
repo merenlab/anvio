@@ -498,9 +498,9 @@ class MetagenomeCentricGeneClassifier:
         self.gene_class_df = pd.DataFrame(index=gene_ids)
         for gene_id in gene_ids:
             # determine the number of occurences in positive samples
-            self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] = np.sum(self.gene_presence_absence_in_samples.loc[gene_id, self.positive_samples])
+            self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] = len([s for s in self.positive_samples if self.gene_presence_absence_in_samples.loc[gene_id,s] == True])
             # determine the number of occurences in negative samples
-            self.gene_class_df.loc[gene_id, 'occurence_in_negative_samples'] = np.sum(self.gene_presence_absence_in_samples.loc[gene_id, self.negative_samples])
+            self.gene_class_df.loc[gene_id, 'occurence_in_negative_samples'] = len([s for s in self.negative_samples if self.gene_presence_absence_in_samples.loc[gene_id,s] == True])
             # set the occurence_in_positive_and_negative_samples
             self.gene_class_df.loc[gene_id, 'occurence_in_positive_and_negative_samples'] = self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] + self.gene_class_df.loc[gene_id, 'occurence_in_negative_samples']
 
