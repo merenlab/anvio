@@ -34,7 +34,7 @@ files_dir = A("files_dir", config, "../sandbox/mock_files_for_alons_classifier")
 samples = ["hmp0041", "hmp0062", "hmp0074", "hmp0075", "hmp0079", "hmp0094"]
 
 rule all:
-    input: "mcg.finished"
+    input: output_dir + "/mcg.finished"
 
 
 rule gen_contigs_db:
@@ -102,7 +102,7 @@ rule run_mcg_classifier:
     input:
         profile = output_dir + "/TEST/MERGED-SAMPLES/PROFILE.db",
         contigs = output_dir + "/TEST.db"
-    output: touch("mcg.finished")
+    output: touch(output_dir + "/mcg.finished")
     params:
         output_prefix= output_dir + "/TEST"
     shell: "anvi-mcg-classifier -p {input.profile} -c {input.contigs} -O {params.output_prefix} --outliers-threshold 1.5 --alpha 0.15 --gen-figures --zeros-are-outliers -C TEST -b Bin_1 -W >> {log} 2>&1"
