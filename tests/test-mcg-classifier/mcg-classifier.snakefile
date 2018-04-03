@@ -105,4 +105,4 @@ rule run_mcg_classifier:
     output: touch(output_dir + "/mcg.finished")
     params:
         output_prefix= output_dir + "/TEST"
-    shell: "anvi-mcg-classifier -p {input.profile} -c {input.contigs} -O {params.output_prefix} --outliers-threshold 1.5 --alpha 0.15 --gen-figures --zeros-are-outliers -C TEST -b Bin_1 -W >> {log} 2>&1"
+    shell: "anvi-mcg-classifier -p {input.profile} -c {input.contigs} -O {params.output_prefix} --outliers-threshold 1.5 --alpha 0.05 --gen-figures --zeros-are-outliers -C TEST -b Bin_1 -W --debug >> {log} 2>&1"
