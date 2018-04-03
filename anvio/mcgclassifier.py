@@ -22,7 +22,7 @@ import anvio.filesnpaths as filesnpaths
 
 from scipy import odr as odr
 from anvio.mcgops import MCGPlots
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import get_list_of_outliers
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -144,9 +144,12 @@ class MetagenomeCentricGeneClassifier:
         if self.output_file_prefix:
             filesnpaths.is_output_file_writable(self.output_file_prefix + '-additional-layers.txt', ok_if_exists=self.overwrite_output_destinations)
 
-        if self.gen_figures:
-            plot_dir = self.output_file_prefix + '-nucleotide-coverage-distribution-plots'
-            os.makedirs(plot_dir, exist_ok=self.overwrite_output_destinations)
+        try:
+            if self.gen_figures:
+                plot_dir = self.output_file_prefix + '-nucleotide-coverage-distribution-plots'
+                os.makedirs(plot_dir, exist_ok=self.overwrite_output_destinations)
+        except FileExistsError as e:
+            raise FilesNPathsError("%s already exists, if you would like to overwrite it, then use -W (see help menu)." % plot_dir)
 
         # checking alpha
         if not isinstance(self.alpha, float):
