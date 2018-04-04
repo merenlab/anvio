@@ -1532,13 +1532,15 @@ D = {
              'help': "If you give this flag, Anvi'o will not open new browser to show Contigs database statistics and write all stats \
                       to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
                 ),
-    'black-no-sugar': (
-            ['--black-no-sugar'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "By default, the output folder contains one structure file for each gene that was modelled, and that's it. That's \
-                      two sugar and two cream. If you give this flag, you've used MODELLER or related software, you're a structural \
-                      biologist, or you're a masochist."}),
+    'dump-dir': (
+            ['--dump-dir'],
+            {'required': False,
+             'help': "Modelling and annotating structures requires a lot of moving parts, each which have \
+                      their own outputs. The output of this program is a structure database containing the \
+                      pertinent results of this computation, however a lot of stuff doesn't make the cut. \
+                      By providing a directory for this parameter you will get, in addition to the structure \
+                      database, a directory containing the raw output for everything."}
+                ),
     'workflow': (
             ['--workflow'],
             {'required': False,

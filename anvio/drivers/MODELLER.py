@@ -235,7 +235,6 @@ class MODELLER:
 
         # check that MODELLER exists
         utils.is_program_exists(self.executable)
-
         if A('executable', null):
             self.run.warning("As per your request, anvi'o will use %s to run MODELER." % self.executable)
         else:

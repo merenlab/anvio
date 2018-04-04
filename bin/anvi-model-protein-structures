@@ -51,12 +51,13 @@ if __name__ == '__main__':
     groupG = parser.add_argument_group('GENES', 'Specifying which genes you want to be modelled.')
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style.')
     groupM = parser.add_argument_group('MODELLER PARAMS', 'Parameters for MODELLER\'s homology modeling.')
+    groupE = parser.add_argument_group('EXTRA', 'Everything else.')
 
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     groupG.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     groupG.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
-    groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
-    groupO.add_argument(*anvio.A('black-no-sugar'), **anvio.K('black-no-sugar'))
+    groupO.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path'))
+    groupO.add_argument(*anvio.A('dump-dir'), **anvio.K('dump-dir'))
 
     groupM.add_argument("--num-models", "-N", type=int, default=3, help = \
                         """This parameter determines the number of predicted structures that are
@@ -126,6 +127,13 @@ if __name__ == '__main__':
                         process all the templates that differ substantially from each other, if they
                         share approximately the same overall similarity to the target sequence. The
                         default is 5'.""")
+
+    groupE.add_argument("--skip-DSSP", action = "store_true", help = \
+                        """Define Secondary Structure of Proteins (DSSP) is a  program that  takes
+                        as its input a protein structure file and outputs predicted secondary
+                        structure (alpha helix, beta strand, etc.), measures of solvent
+                        accessibility, and hydrogen bonds for each residue in the protein. If for
+                        some reason you don't want this, provide this flag.""")
 
     args = parser.parse_args()
 

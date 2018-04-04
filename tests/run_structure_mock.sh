@@ -95,14 +95,15 @@ anvi-map-variability-on-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
 INFO "anvi-model-protein-structures"
 anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
                               --gene-caller-ids 2 \
-                              --output-dir test-output/STRUCTURES \
+                              --output-db-path test-output/STRUCTURE.db \
+                              --skip-DSSP
 
 
 INFO "anvi-model-protein-structures --black-no-sugar"
 anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
                               --gene-caller-ids 2,3,4 \
-                              --output-dir test-output/STRUCTURES_full \
-                              --black-no-sugar
+                              --dump-dir test-output/STRUCTURES_full \
+                              --output-db-path test-output/STRUCTURE.db
 
 
 INFO "Do you want the interactive interface? Run the following:"

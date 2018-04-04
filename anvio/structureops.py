@@ -62,6 +62,7 @@ class StructureDatabase(object):
         self.db.insert_many(t.structure_table_name, entries=self.entries)
         self.entries = []
 
+
     def close(self):
         self.db.disconnect()
 
@@ -82,8 +83,10 @@ class Structure(object):
         self.bin_id = A('bin_id', null)
         self.collection_name = A('collection_name', null)
         self.gene_caller_ids = A('gene_caller_ids', null)
-        self.output_dir = A('output_dir', null)
-        self.full_output = A('black_no_sugar', bool)
+        self.output_db_path = A('output_db_path', null)
+        self.full_output = A('dump_dir', null)
+        self.skip_DSSP = A('skip_DSSP', bool)
+        self.DSSP_executable = None
 
         # MODELLER params
         self.modeller_database = A('database_name', null)
@@ -94,14 +97,16 @@ class Structure(object):
         self.deviation = A('deviation', null)
         self.very_fast = A('very_fast', bool)
 
-        # check output and define absolute path
-        self.output_dir = filesnpaths.check_output_directory(self.output_dir, ok_if_exists=False)
+        # check outputs are writable
+        filesnpaths.is_output_file_writable(self.output_db_path)
+        if self.full_output:
+            self.full_output = filesnpaths.check_output_directory(self.full_output, ok_if_exists=False)
 
         # identify which genes user wants to model structures for
         self.get_genes_of_interest()
 
         self.sanity_check()
-    
+
 
     def sanity_check(self):
 
@@ -123,6 +128,28 @@ class Structure(object):
         if self.min_proper_pident < 25:
             self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention \
                               to the quality of the proteins...".format(self.min_proper_pident))
+
+        # check that DSSP exists
+        if self.skip_DSSP:
+            self.run.warning("You requested to skip amino acid residue annotation with DSSP. A bold move only an expert could justify... \
+                              Anvi'o's respect for you increases slightly.")
+
+        else:
+            if utils.is_program_exists("mkdssp", dont_raise=True): # mkdssp is newer and preferred
+                self.DSSP_executable = "mkdssp"
+
+            if not self.DSSP_executable:
+                if utils.is_program_exists("dssp", dont_raise=True):
+                    self.DSSP_executable = "dssp"
+                else:
+                    raise ConfigError("An anvi'o function needs 'mkdssp' or 'dssp' to be installed on your system, but\
+                                       neither seem to appear in your path :/ If you are certain you have either on your\
+                                       system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal\
+                                       window), you may want to send a detailed bug report. If you want to skip secondary\
+                                       structure and solvent accessibility annotation, provide the flag --skip-DSSP.")
+
+            self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
+                                  % self.DSSP_executable, nl_before=1, nl_after=1)
 
 
     def get_genes_of_interest(self):
@@ -175,55 +202,46 @@ class Structure(object):
         modelling the structure of the target protein using the homologous protein structures.
         """
 
-        structure_db = StructureDatabase("STRUCTURE.db", "DUMMYHASH", create_new=True)
+        structure_db = StructureDatabase(self.output_db_path, "DUMMYHASH", create_new=True)
 
         for gene_id in self.genes_of_interest:
 
             # MODELLER outputs a lot of stuff into its working directory. A temporary directory is made
-            # for each instance of MODELLER (i.e. each protein), and files are moved into
-            # self.output_dir afterwards. If --black-no-sugar is provided, everything is moved.
-            # Otherwise, only pertinent files are moved. See move_results_to_output_dir()
+            # for each instance of MODELLER (i.e. each protein), And bits and pieces of this
+            # directory are used in the creation of the structure database. If self.full_output is
+            # provided, these directories and their contents are moved into self.full_output.
             self.args.directory = filesnpaths.get_temp_directory_path()
             self.args.target_fasta_path = filesnpaths.get_temp_file_path()
 
             dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([gene_id]), quiet=True)
 
-            model_path = self.run_modeller()
-            structure_db.append(gene_id, model_path)
+            # pdb_filepath is the file path for the best structure model
+            pdb_filepath = self.run_modeller()
+            DSSP_path = self.run_DSSP(pdb_filepath)
+
+            structure_db.append(gene_id, pdb_filepath)
+
+            if self.full_output:
+                self.dump_results_to_full_output()
 
         structure_db.store()
         structure_db.close()
-            #self.move_results_to_output_dir()
 
-    # This is now deprecated since we are going to use a structured database. But it may be useful for
-    # an anvio program that will be for exporting the structure db into a folder structure
-    def move_results_to_output_dir(self):
+
+    def dump_results_to_full_output(self):
         """
-        if --black-no-sugar, all files from MODELLERs directory are recursively moved into
-        output_gene_dir.  Otherwise, the list of files we care about are defined in this function
+        if self.full_output, all files from MODELLERs temp directory are recursively moved into
+        output_gene_dir. Otherwise, the list of files we care about are defined in this function
         and moved into output_gene_dir.
         """
-        output_gene_dir = os.path.join(self.output_dir, self.modeller.gene_id)
+        output_gene_dir = os.path.join(self.full_output, self.modeller.gene_id)
         filesnpaths.check_output_directory(output_gene_dir)
+        shutil.move(self.modeller.directory, output_gene_dir)
 
-        if self.full_output:
-            shutil.move(self.modeller.directory, output_gene_dir)
-
-        else:
-            filesnpaths.gen_output_directory(output_gene_dir)
-            list_to_keep = [self.best_structure_filepath,
-                            self.modeller.alignment_pap_path,
-                            self.modeller.search_results_path,
-                            self.modeller.model_info_path]
-            for filepath in list_to_keep:
-                shutil.move(filepath, output_gene_dir)
-
-        self.run.warning("results folder: {}".format(output_gene_dir),
-                     header='FINISHED STRUCTURE FOR GENE ID {}'.format(self.modeller.gene_id),
-                     lc="green")
-
+    def run_DSSP(self, pdb_filepath):
+        pass
 
     def run_modeller(self):
         self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
-        
+
         return self.modeller.get_best_model()
