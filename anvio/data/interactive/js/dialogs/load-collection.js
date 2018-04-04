@@ -1,5 +1,5 @@
 /**
- * Draw bins, bin labels stuff.
+ *  Dialog for loading collections.
  *
  *  Author: Özcan Esen <ozcanesen@gmail.com>
  *  Credits: A. Murat Eren
@@ -21,10 +21,10 @@
 
 LoadCollectionDialog = function() {
     this.dialog = document.createElement('div');
-    this.dialog.setAttribute('class', 'modal fade');
-    this.dialog.style.display = 'block';
+    this.dialog.setAttribute('class', 'modal fade in');
 
-    this.dialog.innerHTML = `<div class="modal-content">
+    this.dialog.innerHTML = `<div class="modal-dialog">
+            <div class="modal-content">
                 <div class="modal-header">
                     <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Load bin collection</h4>
@@ -77,7 +77,7 @@ LoadCollectionDialog.prototype.Show = async function() {
         this.dialog.querySelector('.collection-list').innerHTML += `<option value="${source}">${name}</option>`;
     }
 
-    document.body.appendChild(this.dialog);
+    $(this.dialog).modal('show').on('hidden.bs.modal', () => this.dialog.remove());
 };
 
 
@@ -112,7 +112,7 @@ LoadCollectionDialog.prototype.LoadCollection = function() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collection/' + collection,
+        url: '/data/collection/' + collection_name,
         success: function(data) {
             bins.ImportCollection(data, threshold);
         }
