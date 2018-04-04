@@ -19,13 +19,6 @@
 
 $(document).ready(function() {
     document.body.addEventListener('mousemove', mouseMoveHandler, false); // for tooltip
-    document.body.addEventListener('click', function() { 
-        $('#default_right_click_menu').hide();
-        $('#collection_mode_right_click_menu').hide();
-        $('#pan_mode_right_click_menu').hide();
-        $('#branch_right_click_menu').hide();
-        $('#gene_mode_right_click_menu').hide();
-    }, false);
 });
 
 function lineClickHandler(event) {
