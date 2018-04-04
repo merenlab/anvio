@@ -135,7 +135,8 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
     }
 
     this.container.querySelector(`tr[bin-id='${bin_id}']`).remove();
-    if (!this.container.hasChildNodes()) {
+    if (!this.container.querySelectorAll('*').length) {
+        // No bins left
         this.NewBin();
     }
 
