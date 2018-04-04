@@ -114,7 +114,7 @@ function generate_inspect_link(type, item_name) {
 
         if (url.endsWith('index.html')) {
             // on index page
-            if (type == 'inspect') {
+            if (type == 'inspect_split') {
                 return 'charts.html?id=' + item_name;
             }
             else if (type == 'inspect_context') {
@@ -123,7 +123,7 @@ function generate_inspect_link(type, item_name) {
             else if (type == 'inspect_gene') {
                 return 'charts.html?id=' + item_name + '&highlight_gene=true&gene_mode=true';
             } 
-            else if (type == 'geneclusters') {
+            else if (type == 'inspect_geneclusters') {
                 return 'geneclusters.html?id=' + item_name;
             }
         }
