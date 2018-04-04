@@ -53,6 +53,7 @@
     <script type="text/javascript" src="js/bin.js"></script>
     <script type="text/javascript" src="js/news.js"></script>
     <script type="text/javascript" src="js/context-menu.js"></script>
+    <script type="text/javascript" src="js/dialogs/load-collection.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
@@ -389,7 +390,7 @@
 
                                 <div class="full-mode">
                                     <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
+                                        <button type="button" class="btn btn-default btn-sm" onclick="new LoadCollectionDialog().Show();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
                                         <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
                                     </div>
                                     <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
@@ -775,46 +776,6 @@
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" onclick="saveState();">Save</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- LOAD COLLECTION -->
-    <div class="modal fade" id="modLoadCollection">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
-                    <h4 class="modal-title">Load bin collection</h4>
-                </div>
-
-                <div class="modal-body">
-                    <div class="col-md-7">
-                        <select class="form-control" size="10" id="loadCollection_list" ondblclick="loadCollection();" onchange="showCollectionDetails(this);"></select>
-                    </div>
-                    <div class="col-md-5 collection-details">
-                            <div class="col-md-12">Collection Details</div>
-                            <hr>
-                            <div class="col-md-8">Number of Splits:</div><div class="col-md-4">n/a</div>
-                            <div class="col-md-8">Number of Bins:</div><div class="col-md-4">n/a</div>
-                    </div>
-
-                    <div class="col-md-6 col-md-offset-3 form-inline">
-                    <br />
-                        Minimum bin size: 
-                        <input type="text" id="loadCollection_threshold" value="1" size="4" class="form-control input-xs">
-                        <select id="loadCollection_threshold_base" class="form-control input-xs">
-                            <option value="1000">K</option>
-                            <option value="1000000">M</option>
-                            <option value="1000000000">G</option>
-                        </select> bases.
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" id="btn-load-collection" class="btn btn-primary" onclick="loadCollection();">Load</button>
                     <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>

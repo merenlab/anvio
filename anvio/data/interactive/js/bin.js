@@ -109,6 +109,16 @@ Bins.prototype.GetSelectedBinId = function() {
 };
 
 
+Bins.prototype.GetTotalSelectionCount = function() {
+    let sum = 0;
+    for (let bin_id in this.selections) {
+        sum += this.selections[bin_id].size;
+    }
+
+    return sum;
+};
+
+
 Bins.prototype.GetSelectedBinColor = function() {
     return this.GetBinColor(this.GetSelectedBinId());
 };
@@ -273,7 +283,53 @@ Bins.prototype.GetBinNodeLabels = function(bin_id) {
 
 
 Bins.prototype.ImportCollection = function(data, threshold) {
+    SELECTED = new Array();
+    var bins_cleared = false;
+    var bin_count = 0;
+    var bin_counter = 0;
 
+    // calculate treshold.
+    var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
+
+    // load new bins
+    var bin_id=0;
+    for (let bin in collection_data['data'])
+    {
+        // collection may be contain unknown splits/contigs, we should clear them.
+        var contigs = new Array();
+        var sum_contig_length = 0;
+
+        for (let index in collection_data['data'][bin])
+        {
+            if (mode === 'manual' || mode === 'pan' || mode === 'server'){
+                contigs.push(collection_data['data'][bin][index]);
+            } else if (typeof contig_lengths[collection_data['data'][bin][index]] !== 'undefined') {
+                contigs.push(collection_data['data'][bin][index]);
+                sum_contig_length += contig_lengths[collection_data['data'][bin][index]];
+            }
+            
+        }
+
+        if (mode === 'manual' || mode === 'pan' || mode === 'server' || sum_contig_length >= threshold)
+        {
+            if (!bins_cleared)
+            {
+                $('#tbody_bins').empty();
+                bins_cleared = true;
+            }
+            bin_id++;
+            bin_counter++;
+            SELECTED[bin_id] = contigs;
+
+            var _color =  (collection_data['colors'][bin]) ? collection_data['colors'][bin] : randomColor();
+
+            newBin(bin_id, {'name': bin, 'color': _color});
+        }
+    }
+
+    rebuildIntersections();
+    updateBinsWindow();
+    redrawBins();  
 };
 
 
