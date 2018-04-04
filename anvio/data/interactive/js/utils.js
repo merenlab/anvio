@@ -279,6 +279,11 @@ function showDraggableDialog(title, content, updateOnly)
 }
 
 //--------------------------------------------------------------------------------------------------
+function IsCtrlPressed(event) {
+    return ((navigator.platform.toUpperCase().indexOf('MAC') >= 0 && event.metaKey) || event.ctrlKey);
+}
+
+
 
 function checkObjectExists(selector)
 {
