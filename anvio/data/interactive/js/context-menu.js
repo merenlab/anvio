@@ -5,7 +5,7 @@
  *  Credits: A. Murat Eren
  *  Copyright 2018, The anvio Project
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ * This file is part of anvi'o (<https://github.com/merenlab/anvio>).
  * 
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public 
@@ -43,9 +43,10 @@ ContextMenu.prototype.BuildMenu = function() {
         }        
         else if (mode == 'pan') {
             menu.push({'type': 'divider'},
-                      {'type': 'item', 'title': 'Inspect', 'action': 'inspect', 'param': 'genecluster'});            
+                      {'type': 'item', 'title': 'Inspect', 'action': 'inspect', 'param': 'geneclusters'});            
         } else {
-
+            menu.push({'type': 'divider'},
+                      {'type': 'item', 'title': 'Inspect', 'action': 'inspect', 'param': 'split'}); 
         }
     } else {
         if (this.node.collapsed) {
@@ -106,9 +107,13 @@ ContextMenu.prototype.MenuClickHandler = function(action, param) {
         bins.RemoveNode(this.node);
     }
     else if (action == 'select_layer') {
-
+        $('#tbody_layers tr:nth-child(' + this.layer + ') input:checkbox').prop('checked', true);
     }
     else if (action == 'unselect_layer') {
-
+        $('#tbody_layers tr:nth-child(' + this.layer + ') input:checkbox').prop('checked', false);
+    }
+    else if (action == 'inspect') {
+        localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+        window.open(generate_inspect_link('inspect_' + param, item_name), '_blank');
     }
 };
