@@ -61,9 +61,7 @@ function lineClickHandler(event) {
         return;
     }
 
-    var is_ctrl_pressed = ((navigator.platform.toUpperCase().indexOf('MAC')>=0 && event.metaKey) || event.ctrlKey);
-
-    if (is_ctrl_pressed) {
+    if (IsCtrlPressed(event)) {
         bins.NewBin();
     }
 
@@ -77,12 +75,21 @@ function lineContextMenuHandler(event) {
         event.preventDefault();
     }
 
-    var menu = new ContextMenu({'container': document.body,
-                                'event': event,
-                                'node': drawer.tree.nodes[getNodeFromEvent(event).id],
-                                'layer': event.target.parentNode.id.match(/\d+/)});
+    let p = getNodeFromEvent(event);
+    let layer_id = event.target.parentNode.id.match(/\d+/);
 
-    menu.Show();
+    if (p.IsLeaf() || IsCtrlPressed(event)) {
+        let menu = new ContextMenu({'container': document.body,
+                                    'event': event,
+                                    'node': p,
+                                    'layer': layer_id});
+
+        menu.Show();
+    }
+    else
+    {
+        bins.RemoveNode(p);
+    }
 }
 
 
