@@ -58,7 +58,7 @@ LoadCollectionDialog = function() {
         </div>`;
 
     this.dialog.querySelector('.collection-list').addEventListener('change', (event) => { this.UpdateDetails(); });
-    this.dialog.querySelector('.collection-list').addEventListener('dbclick', (event) => { this.LoadCollection(); });
+    this.dialog.querySelector('.collection-list').addEventListener('dblclick', (event) => { this.LoadCollection(); });
     this.dialog.querySelector('.btn-primary').addEventListener('click', (event) => { this.LoadCollection(); });
 };
 
@@ -115,7 +115,10 @@ LoadCollectionDialog.prototype.LoadCollection = function() {
         url: '/data/collection/' + collection_name,
         success: function(data) {
             bins.ImportCollection(data, threshold);
-        }
+            
+            $(this.dialog).modal('hide');
+            this.dialog.remove();
+        }.bind(this)
     });
 };
 
