@@ -789,7 +789,7 @@ rule anvi_merge:
                        "and you got your answer: whatever you have in " \
                        "your fasta file is not represented in your  " \
                        "metagenomes. Feel free to contact us if you think " \
-                       "That this is our fault. sincerely, Meren Lab" \
+                       "that this is our fault. sincerely, Meren Lab" \
                        % wildcards.group
             # creating the expected output files for the rule
             create_fake_output_files(_message, output)
