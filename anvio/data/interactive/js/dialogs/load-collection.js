@@ -19,7 +19,7 @@
  */
 
 
-LoadCollectionDialog = function() {
+function LoadCollectionDialog() {
     this.dialog = document.createElement('div');
     this.dialog.setAttribute('class', 'modal fade in');
 
