@@ -39,7 +39,7 @@ LoadCollectionDialog = function() {
                             <div class="col-md-8">Number of Splits:</div><div class="col-md-4">n/a</div>
                             <div class="col-md-8">Number of Bins:</div><div class="col-md-4">n/a</div>
                     </div>
-                    <div class="col-md-6 col-md-offset-3 form-inline">
+                    <div class="col-md-6 col-md-offset-3 form-inline" style="${mode != 'full' ? 'display:none' : ''}">
                         <br /> Minimum bin size: 
                         <input type="text" value="1" size="4" class="form-control input-xs threshold-value">
                         <select class="form-control input-xs threshold-base">
