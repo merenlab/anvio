@@ -1624,35 +1624,6 @@ function exportSvg(dontDownload) {
     $('#legend_group').remove();
 }
 
-function showStoreCollectionWindow() {
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/collections',
-        success: function(data) {
-            $('#storeCollection_list').empty();
-
-            for (let source in data) {
-                var read_only = data[source]["read_only"];
-
-                if (read_only) {
-                    var _disabled = ' disabled="true"';
-                    var _name = source + ' (read only)';
-                }
-                else
-                {
-                    var _disabled = '';
-                    var _name = source;
-                }
-
-                $('#storeCollection_list').append('<option value="' + source + '"' + _disabled + '>' + _name + '</option>');
-            }
-
-            $('#modStoreCollection').modal('show');
-        }
-    });
-}
-
 
 function storeRefinedBins() {
     var data = {};
@@ -1689,32 +1660,6 @@ function storeRefinedBins() {
             }
         }
     });
-}
-
-
-function storeCollection() {
-    var collection_name = $('#storeCollection_name').val();
-
-    collection_name = collection_name.replace(/\W+/g, "_");
-    $('#storeCollection_name').val(collection_name);
-
-    if (collection_name.length==0) {
-        $('#storeCollection_name').focus();
-        return;
-    }
-
-    var collection_info = serializeCollection();
-
-    $.post("/store_collection", {
-        source: collection_name,
-        data: JSON.stringify(collection_info['data'], null, 4),
-        colors: JSON.stringify(collection_info['colors'], null, 4),
-    },
-    function(server_response, status){
-        toastr.info(server_response, "Server");
-    });
-
-    $('#modStoreCollection').modal('hide');    
 }
 
 
