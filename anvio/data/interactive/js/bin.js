@@ -230,10 +230,7 @@ Bins.prototype.RemoveNode = function(targets) {
 
 
 Bins.prototype.UpdateBinsWindow = function(bin_list) {
-    if (typeof bin_list === 'undefined')
-    {
-        var bin_list = Object.keys(self.selections);
-    }
+    bin_list = bin_list || Object.keys(this.selections);
 
     for (let i = 0; i < bin_list.length; i++) {
         let bin_id = bin_list[i];
@@ -283,54 +280,51 @@ Bins.prototype.GetBinNodeLabels = function(bin_id) {
 };
 
 
-Bins.prototype.ImportCollection = function(data, threshold) {
-    SELECTED = new Array();
-    var bins_cleared = false;
-    var bin_count = 0;
-    var bin_counter = 0;
+Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
+    let bins_cleared = false;
 
-    // calculate treshold.
-    var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
-
-    // load new bins
-    var bin_id=0;
-    for (let bin in collection_data['data'])
+    for (let bin_name of Object.keys(collection['data']).sort())
     {
-        // collection may be contain unknown splits/contigs, we should clear them.
-        var contigs = new Array();
-        var sum_contig_length = 0;
+        let nodes = [];
+        let sum_length = 0;
 
-        for (let index in collection_data['data'][bin])
+        for (let i = 0; i < collection['data'][bin_name].length; i++)
         {
-            if (mode === 'manual' || mode === 'pan' || mode === 'server'){
-                contigs.push(collection_data['data'][bin][index]);
-            } else if (typeof contig_lengths[collection_data['data'][bin][index]] !== 'undefined') {
-                contigs.push(collection_data['data'][bin][index]);
-                sum_contig_length += contig_lengths[collection_data['data'][bin][index]];
+            if (mode != 'full')
+            {
+                nodes.push(collection['data'][bin_name][i]);
+            } 
+            else if (typeof contig_lengths[collection['data'][bin_name][i]] !== 'undefined') 
+            {
+                nodes.push(collection['data'][bin_name][i]);
+                sum_length += contig_lengths[collection['data'][bin_name][i]];
             }
-            
         }
 
-        if (mode === 'manual' || mode === 'pan' || mode === 'server' || sum_contig_length >= threshold)
+        if ((mode != 'full' || sum_length >= threshold) && nodes.length > 0)
         {
             if (!bins_cleared)
             {
-                $('#tbody_bins').empty();
+                this.bin_counter = 0;
+                this.selections = {};
+                this.container.innerHTML = '';
                 bins_cleared = true;
             }
-            bin_id++;
-            bin_counter++;
-            SELECTED[bin_id] = contigs;
 
-            var _color =  (collection_data['colors'][bin]) ? collection_data['colors'][bin] : randomColor();
+            this.selections[this.bin_counter] = new Set(nodes.map((node_label) => drawer.tree.GetLeafByName(node_label)));
 
-            newBin(bin_id, {'name': bin, 'color': _color});
+            let bin_color = (collection['colors'][bin_name]) ? collection['colors'][bin_name] : randomColor();
+            this.NewBin(this.bin_counter, {'name': bin_name, 'color': bin_color});
+            this.bin_counter++;
         }
     }
 
-    rebuildIntersections();
-    updateBinsWindow();
-    redrawBins();  
+    if (bins_cleared) {
+        // means we have added new things.
+        this.RebuildIntersections();
+        this.UpdateBinsWindow();
+        this.RedrawBins();
+    }
 };
 
 
