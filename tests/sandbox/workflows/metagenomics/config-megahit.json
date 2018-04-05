@@ -1,7 +1,7 @@
 {
     "centrifuge": {
         "threads": 5,
-        "run": true
+        "run": false
     },
     "anvi_run_hmms": {
         "run": true,

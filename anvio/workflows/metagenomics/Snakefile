@@ -676,25 +676,35 @@ def input_for_anvi_merge(wildcards):
         modes. See the documentation to learn more about the difference
         between these modes.
     '''
-    # marking the contigs.db as ancient in order to ignore timestamps.
-    contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/%s-contigs.db" % wildcards.group)
 
     if M.get_param_value_from_config(['all_against_all']):
         # If the user specified 'all against all' in the configs file
         # the end product would be a merge of all samples per group
         profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(samples_information['sample']), group=wildcards.group)
-        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(samples_information['sample']), group=wildcards.group)
 
     else:
         # The default behaviour is to only merge (and hence map and profile)
         # together samples that belong to the same group.
         profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(samples_information[samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
+
+    return profiles
+
+
+def percent_of_reads_mapped_imported_flag_input(wildcards):
+    '''
+        this function creates the input to anvi_merge rule with
+        regards to percent_of_reads_mapped_imported_flag_input.
+    '''
+    if M.get_param_value_from_config(['all_against_all']):
+        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(samples_information['sample']), group=wildcards.group)
+
+    else:
         percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(samples_information[samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
 
     if not run_import_percent_of_reads_mapped:
-        percent_of_reads_mapped_imported_flag = profiles
+        percent_of_reads_mapped_imported_flag = ancient(dirs_dict["CONTIGS_DIR"] + "/%s-contigs.db" % wildcards.group)
 
-    return {"contigs": contigs, "profiles": profiles, "percent_of_reads_mapped_imported_flag": percent_of_reads_mapped_imported_flag}
+    return percent_of_reads_mapped_imported_flag
 
 
 def create_fake_output_files(_message, output):
@@ -748,7 +758,10 @@ rule anvi_merge:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_merge.log"
     # The input are all profile databases that belong to the same group
     input:
-        unpack(input_for_anvi_merge)
+        # marking the contigs.db as ancient in order to ignore timestamps.
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        profiles = input_for_anvi_merge,
+        percent_of_reads_mapped_imported_flag = percent_of_reads_mapped_imported_flag_input
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
         runlog = dirs_dict["MERGE_DIR"] + "/{group}/RUNLOG.txt"
@@ -789,7 +802,7 @@ rule anvi_merge:
                        "and you got your answer: whatever you have in " \
                        "your fasta file is not represented in your  " \
                        "metagenomes. Feel free to contact us if you think " \
-                       "That this is our fault. sincerely, Meren Lab" \
+                       "that this is our fault. sincerely, Meren Lab" \
                        % wildcards.group
             # creating the expected output files for the rule
             create_fake_output_files(_message, output)
