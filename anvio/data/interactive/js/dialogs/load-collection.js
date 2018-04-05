@@ -36,7 +36,7 @@ LoadCollectionDialog = function() {
                     <div class="col-md-5 collection-details">
                             <div class="col-md-12">Collection Details</div>
                             <hr>
-                            <div class="col-md-8">Number of Splits:</div><div class="col-md-4">n/a</div>
+                            <div class="col-md-8">Number of Items:</div><div class="col-md-4">n/a</div>
                             <div class="col-md-8">Number of Bins:</div><div class="col-md-4">n/a</div>
                     </div>
                     <div class="col-md-6 col-md-offset-3 form-inline" style="${mode != 'full' ? 'display:none' : ''}">
@@ -88,7 +88,7 @@ LoadCollectionDialog.prototype.UpdateDetails = function() {
 
     let collection_info = this.collections[collection_name];
     this.dialog.querySelector('.collection-details').innerHTML = `<div class="col-md-12">Collection Details</div><hr>
-        <div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>${collection_info['num_splits']}</b></div>
+        <div class="col-md-8">Number of Items:</div><div class="col-md-4"><b>${collection_info['num_splits']}</b></div>
         <div class="col-md-8">Number of Bins:</div><div class="col-md-4"><b>${collection_info['num_bins']}</b></div>`;
 };
 
