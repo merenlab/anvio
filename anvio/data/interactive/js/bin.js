@@ -60,7 +60,7 @@ Bins.prototype.NewBin = function(id, binState) {
     var template = `<tr bin-id="${id}">
                        <td><input type="radio" name="active_bin" value="${id}"></td>
                        <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></td>
-                       <td data-value="${name}"><input type="text" onChange="bins.RedrawBins();" size="21" id="bin_name_${id}" value="${name}"></td>
+                       <td data-value="${name}"><input type="text" class="bin-name" onChange="bins.RedrawBins();" size="21" id="bin_name_${id}" value="${name}"></td>
                        ${mode != 'pan' ? `
                            <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
                            <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
@@ -329,7 +329,28 @@ Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
 
 
 Bins.prototype.ExportCollection = function() {
+    let data = {};
+    let colors = {};
 
+    for (let tr of this.container.querySelectorAll('tr')) {
+        let bin_id = tr.getAttribute('bin-id');
+        let bin_name = tr.querySelector('.bin-name').value;
+        let bin_color = tr.querySelector('.colorpicker').getAttribute('color');
+        let items = [];
+
+        for (let node of this.selections[bin_id].values()) {
+            if (node.IsLeaf()) {
+                items.push(node.label);
+            }
+        }
+
+        if (items.length > 0) {
+            data[bin_name] = items;
+            colors[bin_name] = bin_color;
+        }
+    }
+
+    return {'data': data, 'colors': colors};
 };
 
 

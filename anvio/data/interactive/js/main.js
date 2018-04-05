@@ -1718,39 +1718,6 @@ function storeCollection() {
 }
 
 
-function serializeCollection() {
-    var data = {};
-    var colors = {};
-
-    $('#tbody_bins tr').each(
-        function(index, bin) {
-            var bin_id = $(bin).attr('bin-id');
-            var bin_name = $('#bin_name_' + bin_id).val();
-
-            var items = new Array();
-            
-            for (let i=0; i < SELECTED[bin_id].length; i++)
-            {
-                var node_label = SELECTED[bin_id][i];
-                var node = label_to_node_map[node_label];
-
-                if (node.IsLeaf() && !node.collapsed)
-                {
-                    items.push(node_label);
-                }
-            }
-
-            if (items.length > 0) {
-                colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
-                data[bin_name] = items;
-            }
-        }
-    );
-
-    return {'data': data, 'colors': colors};
-}
-
-
 function generateSummary() {
     var collection = $('#summaryCollection_list').val();
 
