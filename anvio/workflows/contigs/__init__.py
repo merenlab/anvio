@@ -73,7 +73,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir']
 
-        self.rule_acceptable_params_dict['centrifuge'] = ['run']
+        self.rule_acceptable_params_dict['centrifuge'] = ['run', 'db']
 
         self.rule_acceptable_params_dict['emapper'] = ['--database', '--usemem', '--override', 'path_to_emapper_dir']
 
