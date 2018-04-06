@@ -637,6 +637,8 @@ def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expe
 
 
 def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
+    filesnpaths.is_file_exists(file_path)
+
     if include_first_column:
         return open(file_path, 'rU').readline().strip('\n').split('\t')
     else:
