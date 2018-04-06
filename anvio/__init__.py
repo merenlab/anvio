@@ -530,7 +530,7 @@ D = {
              'metavar': 'INTEGER',
              'help': "This filter will remove gene clusters from your report. Let's assume you have 100 genomes in your pan\
                       genome analysis. You can use this parameter if you want to work only with gene clusters that occur in\
-                      at most X number of genomes. If you say '--min-num-genomes-gene-cluster-occurs 1', you will get gene\
+                      at most X number of genomes. If you say '--max-num-genomes-gene-cluster-occurs 1', you will get gene\
                       clusters that are singletons. Combining this paramter with --min-num-genomes-gene-cluster-occurs can\
                       give you a very precise way to filter your gene clusters."}
                 ),
