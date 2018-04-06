@@ -1362,8 +1362,8 @@ function showContigNames(bin_id, updateOnly) {
         return;
 
     var msg = '<table class="table table-striped">';
-    for (const node of bins.GetBinNodeLabels(bin_id)) {
-        msg += "<tr><td><a href='#' class='no-link'>" + node.label + "</a></td></tr>";
+    for (const label of bins.GetBinNodeLabels(bin_id)) {
+        msg += `<tr><td><a href='#' class='no-link'>${label}</a></td></tr>`;
     }
 
     msg = msg + '</table>';
