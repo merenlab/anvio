@@ -24,7 +24,7 @@ clustering_configs = {}
 
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
-blank_default = "tnf-splits"
+blank_default = "tnf"
 single_default = "tnf"
 merged_default = "tnf-cov"
 pan_default = "presence-absence"
