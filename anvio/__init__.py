@@ -9,6 +9,8 @@ import copy
 import platform
 import pkg_resources
 
+anvio_codename = 'rosalind'
+
 DEBUG = '--debug' in sys.argv
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
@@ -1627,6 +1629,7 @@ def set_version():
             pass
 
     return anvio_version, \
+           anvio_codename, \
            t.contigs_db_version, \
            t.pan_db_version, \
            t.profile_db_version, \
@@ -1634,7 +1637,8 @@ def set_version():
            t.genomes_storage_vesion
 
 def get_version_tuples():
-    return [("Anvi'o version", __version__),
+    return [("Anvi'o version", '%s', __version__),
+            ("Codename", __codename__),
             ("Profile DB version", __profile__version__),
             ("Contigs DB version", __contigs__version__),
             ("Pan DB version", __pan__version__),
@@ -1643,7 +1647,7 @@ def get_version_tuples():
 
 
 def print_version():
-    run.info("Anvi'o version", __version__, mc='green')
+    run.info("Anvi'o version", '%s, "%s"' % (__version__, __codename__), mc='green')
     run.info("Profile DB version", __profile__version__)
     run.info("Contigs DB version", __contigs__version__)
     run.info("Pan DB version", __pan__version__)
@@ -1652,6 +1656,7 @@ def print_version():
 
 
 __version__, \
+__codename__, \
 __contigs__version__, \
 __pan__version__, \
 __profile__version__, \
