@@ -835,9 +835,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.p_meta['blank']:
             blank_dict = {}
             for split_name in self.splits_basic_info:
-                blank_dict[split_name] = {'blank_view': 0}
+                blank_dict[split_name] = {'blank_view': 0, '__parent__': self.splits_basic_info[split_name]['parent']}
 
-            self.views['blank_view'] = {'header': ['blank_view'],
+            self.views['blank_view'] = {'header': ['blank_view', '__parent__'],
                                         'dict': blank_dict}
             self.default_view = 'blank_view'
 
