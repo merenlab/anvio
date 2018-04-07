@@ -1010,14 +1010,17 @@ class PanSuperclass(object):
         self.run.info('Output FASTA file', output_file_path, mc='green')
 
 
-    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, gene_cluster_names=set([]), \
-                    skip_alignments=False, output_file_path=None, report_DNA_sequences=False, align_with=None):
+    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, skip_alignments=False, \
+                                                output_file_path=None, report_DNA_sequences=False, align_with=None, \
+                                                separator=None):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
+        if not separator:
+            separator = 'NNN' if report_DNA_sequences else 'XXX'
+
         output_file = open(output_file_path, 'w')
         sequences_dict = self.get_sequences_for_gene_clusters(gene_clusters_dict=gene_clusters_dict,
-                                                              gene_cluster_names=gene_cluster_names,
                                                               skip_alignments=skip_alignments,
                                                               report_DNA_sequences=report_DNA_sequences)
 
@@ -1027,6 +1030,11 @@ class PanSuperclass(object):
             run.warning("It seems sequences in gene clusters were not aligned during the pangenomic analysis, so we\
                          are going to have do it now .. which may take some time .. and it is totally your fault :/")
             progress.new("Aligning sequences")
+        elif align_with:
+            run.warning("Your gene clusters are already aligned, yet you are asking for them to be aligned with\
+                         '%s' :( If you know what's going on (i.e. you are here because you run a command and\
+                         used the '--align-with' parameter or something), here anvi'o lets you know that it will\
+                         not use '%s' becase things are already aligned." % (align_with, align_with))
 
         get_first_value = lambda x: next(iter(x.values()))
         get_first_key = lambda x: next(iter(x.keys()))
@@ -1038,6 +1046,7 @@ class PanSuperclass(object):
         for genome_name in self.genome_names:
             output_buffer[genome_name] = StringIO()
 
+        gene_cluster_names = list(sequences_dict.keys())
         for gene_cluster_name in gene_cluster_names:
             multiple_gene_calls = False
             multiple_gene_call_genome = None
@@ -1081,11 +1090,15 @@ class PanSuperclass(object):
                 else:
                     output_buffer[genome_name].write("-" * sequence_length)
 
+                if not gene_cluster_name == gene_cluster_names[-1]:
+                    output_buffer[genome_name].write(separator)
+
+
         if not self.gene_clusters_gene_alignments_available:
             progress.end()
 
         for genome_name in self.genome_names:
-            output_file.write('>%s\n' % genome_name)
+            output_file.write('>%s gene_clusters:%s|separator:%s\n' % (genome_name, ','.join(gene_cluster_names), separator))
             output_file.write(output_buffer[genome_name].getvalue())
             output_file.write('\n')
             output_buffer[genome_name].close()
