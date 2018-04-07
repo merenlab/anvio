@@ -104,8 +104,11 @@ samples_txt_file = M.get_param_value_from_config(['samples_txt'])
 samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
 # get a list of the sample names
 sample_names = list(samples_information['sample'])
-# if no groups are supplied then group names are sample names
-group_names = sample_names
+
+if not references_mode:
+    # if it is reference mode then the group names have been assigned in the contigs Snakefile
+    # if it is not reference mode and no groups are supplied in the samples_txt then group names are sample names
+    group_names = sample_names
 
 references_mode = M.get_param_value_from_config('references_mode', repress_default=True)
 fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
