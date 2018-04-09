@@ -94,7 +94,7 @@ class MODELLER:
     def get_best_model(self):
         
         self.run.warning("Working directory: {}".format(self.directory),
-                         header='Modelling structure for gene id {}'.format(self.gene_id),
+                         header='Modelling structure for gene id {}'.format(self.gene_callers_id),
                          lc="cyan")
 
         best_model_path = None
@@ -136,7 +136,7 @@ class MODELLER:
         self.progress.new("Downloading homologs from PDB")
 
         # define directory path name to store the template PDBs (it can already exist)
-        self.template_pdbs = os.path.join(self.directory, "{}_TEMPLATE_PDBS".format(self.gene_id))
+        self.template_pdbs = os.path.join(self.directory, "{}_TEMPLATE_PDBS".format(self.gene_callers_id))
 
         downloaded = utils.download_protein_structures([code[0] for code in self.top_seq_matches], self.template_pdbs)
 
@@ -178,7 +178,7 @@ class MODELLER:
 
         if not matches_found:
             self.progress.end()
-            self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".format(self.gene_id))
+            self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".format(self.gene_callers_id))
             raise self.EndModeller
 
         # add some useful columns
@@ -197,7 +197,7 @@ class MODELLER:
             self.progress.end()
             self.run.warning("Gene {} did not have a search result with percent identicalness above or equal \
                          to {}. The max found was {}%. No structure will be modelled.".\
-                         format(self.gene_id, self.min_proper_pident, max_pident_found))
+                         format(self.gene_callers_id, self.min_proper_pident, max_pident_found))
             raise self.EndModeller
 
         self.progress.update("Keeping top {} matches as the template homologs".format(self.max_matches))
@@ -256,9 +256,9 @@ class MODELLER:
             raise ConfigError("MODELLER::The input FASTA file must have exactly one sequence.\
                                You provided one with {}.".format(target_fasta.total_seq))
 
-        # (not sanity check but we get self.gene_id since target_fasta is opened)
+        # (not sanity check but we get self.gene_callers_id since target_fasta is opened)
         while next(target_fasta):
-            self.gene_id = target_fasta.id
+            self.gene_callers_id = target_fasta.id
         target_fasta.close()
 
         # parameter consistencies
@@ -273,7 +273,7 @@ class MODELLER:
     def pick_best_model(self):
         """
         The user is not interested in all of this output. They just want a pdb file for a given
-        self.gene_id. renames as gene_<gene_id>.pdb.
+        self.gene_callers_id. renames as gene_<gene_callers_id>.pdb.
 
         self.best must be one of the ["molpdf", "GA341_score", "DOPE_score", "average"]
         """
@@ -295,7 +295,7 @@ class MODELLER:
             best_basename = self.model_info.loc[self.model_info[self.best].idxmax(axis=0), "name"]
             self.model_info.loc[self.model_info[self.best].idxmax(axis=0), "picked_as_best"] = True
 
-        new_best_file_path = J(self.directory, "gene_{}.pdb".format(self.gene_id))
+        new_best_file_path = J(self.directory, "gene_{}.pdb".format(self.gene_callers_id))
         os.rename(J(self.directory, best_basename), new_best_file_path)
 
         return new_best_file_path
@@ -331,10 +331,10 @@ class MODELLER:
 
             # The default names are bad. This is where they are defined
             if basename == "cluster.opt":
-                new_basename = "gene_{}_ModelAvg.pdb".format(self.gene_id)
+                new_basename = "gene_{}_ModelAvg.pdb".format(self.gene_callers_id)
             else:
                 model_num = os.path.splitext(basename)[0][-3:]
-                new_basename = "gene_{}_Model{}.pdb".format(self.gene_id, model_num)
+                new_basename = "gene_{}_Model{}.pdb".format(self.gene_callers_id, model_num)
 
             # rename the files (an reflect changes in self.model_info)
             file_path = J(self.directory, basename)
@@ -355,7 +355,7 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         # model info
-        self.model_info_path = J(self.directory, "gene_{}_ModelInfo.txt".format(self.gene_id))
+        self.model_info_path = J(self.directory, "gene_{}_ModelInfo.txt".format(self.gene_callers_id))
 
         self.run.info("Number of models", num_models)
         self.run.info("deviation", str(deviation) + " angstroms")
@@ -367,7 +367,7 @@ class MODELLER:
         command = [self.executable,
                    script_name,
                    self.alignment_pir_path,
-                   self.gene_id,
+                   self.gene_callers_id,
                    self.template_info_path,
                    str(num_models),
                    str(deviation),
@@ -397,7 +397,7 @@ class MODELLER:
         self.copy_script_to_directory(script_name)
 
         # First, write ids and chains to file read by align_to_templates.py MODELLER script
-        self.template_info_path = J(self.directory, "gene_{}_BestTemplateIDs.txt".format(self.gene_id))
+        self.template_info_path = J(self.directory, "gene_{}_BestTemplateIDs.txt".format(self.gene_callers_id))
         f = open(self.template_info_path, "w")
         for match in templates_info:
             f.write("{}\t{}\n".format(match[0], match[1]))
@@ -405,14 +405,14 @@ class MODELLER:
 
         # name of the output. .pir is the standard format for MODELLER, .pap is human readable
         # protein_family computes a matrix comparing the different templates agianst one another
-        self.alignment_pir_path = J(self.directory, "gene_{}_Alignment.ali".format(self.gene_id))
-        self.alignment_pap_path = J(self.directory, "gene_{}_Alignment.pap".format(self.gene_id))
-        self.template_family_matrix_path = J(self.directory, "gene_{}_ProteinFamily.mat".format(self.gene_id))
+        self.alignment_pir_path = J(self.directory, "gene_{}_Alignment.ali".format(self.gene_callers_id))
+        self.alignment_pap_path = J(self.directory, "gene_{}_Alignment.pap".format(self.gene_callers_id))
+        self.template_family_matrix_path = J(self.directory, "gene_{}_ProteinFamily.mat".format(self.gene_callers_id))
 
         command = [self.executable,
                    script_name,
                    self.target_pir_path,
-                   self.gene_id,
+                   self.gene_callers_id,
                    self.template_info_path,
                    self.alignment_pir_path,
                    self.alignment_pap_path,
@@ -439,8 +439,8 @@ class MODELLER:
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
 
-        # name pir file by the gene_id (i.e. defline of the fasta)
-        self.search_results_path = J(self.directory, "gene_{}_SearchResults.prf".format(self.gene_id))
+        # name pir file by the gene_callers_id (i.e. defline of the fasta)
+        self.search_results_path = J(self.directory, "gene_{}_SearchResults.prf".format(self.gene_callers_id))
 
         command = [self.executable,
                    script_name,
@@ -506,8 +506,8 @@ class MODELLER:
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
 
-        # name pir file by the gene_id (i.e. defline of the fasta)
-        self.target_pir_path = "{}.pir".format(self.gene_id)
+        # name pir file by the gene_callers_id (i.e. defline of the fasta)
+        self.target_pir_path = "{}.pir".format(self.gene_callers_id)
 
         command = [self.executable,
                    script_name,
@@ -553,8 +553,8 @@ class MODELLER:
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
 
-        # name pir file by the gene_id (i.e. defline of the fasta)
-        self.target_pir_path = J(self.directory, "{}.pir".format(self.gene_id))
+        # name pir file by the gene_callers_id (i.e. defline of the fasta)
+        self.target_pir_path = J(self.directory, "{}.pir".format(self.gene_callers_id))
 
         command = [self.executable,
                    script_name,
@@ -613,7 +613,7 @@ class MODELLER:
 
         # MODELLER outputs a log that we rename right here, right now
         old_log_name = os.path.splitext(script_name)[0] + ".log"
-        new_log_name = "gene_{}_{}".format(self.gene_id, old_log_name)
+        new_log_name = "gene_{}_{}".format(self.gene_callers_id, old_log_name)
         os.rename(old_log_name, new_log_name)
 
         # add to logs

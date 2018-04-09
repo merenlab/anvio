@@ -215,11 +215,18 @@ genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_c
 
 ####################################################################################################
 #
-#     TABLE DESCRIPTIONS FOR THE PROFILE AUXILIARY COVERAGE DATABASE
+#     TABLE DESCRIPTIONS FOR THE STRUCTURE DB
 #
 ####################################################################################################
 
-structure_table_name       = 'structures'
-structure_table_structure  = [ 'gene_id', 'pdb_content']
-structure_table_types      = [ 'numeric',    'blob'    ]
+structure_pdb_data_table_name       = 'structures'
+structure_pdb_data_table_structure  = [ 'gene_callers_id', 'pdb_content']
+structure_pdb_data_table_types      = [     'integer'    ,    'blob'    ]
+
+# The FULL table structure is defined in the StructureDatabase class based on what annotation
+# sources are found and/or requested.
+structure_residue_info_table_name       = 'residue_info'
+structure_residue_info_table_structure  = ['gene_callers_id', 'residue_index']
+structure_residue_info_table_types      = [   'integer'     ,    'integer'   ]
+
 

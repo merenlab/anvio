@@ -187,43 +187,61 @@ class DB:
             return self._exec_many(query, entries)
 
 
-    def get_all_rows_from_table(self, table):
-        response = self._exec('''SELECT * FROM %s''' % table)
+    def insert_rows_from_dataframe(self, table_name, dataframe):
+        if table_name not in self.get_table_names():
+            raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does\
+                               not exist in the database you requested. {} are the tables\
+                               existent in the database".\
+                               format(table_name, ", ".join(self.get_table_names())))
+
+        if list(dataframe.columns) != self.get_table_structure(table_name):
+            raise ConfigError("insert_rows_from_dataframe :: The list of columns in the dataframe\
+                               is not equal the list of columns (structure) of the requested table.\
+                               The columns from each are respectively [{}]; and [{}].".\
+                               format(", ".join(list(dataframe.columns)),
+                                      ", ".join(self.get_table_structure)))
+
+        entries = [tuple(row) for row in dataframe.values]
+        self.insert_many(table_name, entries=entries)
+
+
+    def get_all_rows_from_table(self, table_name):
+        response = self._exec('''SELECT * FROM %s''' % table_name)
         return response.fetchall()
 
 
-    def get_row_counts_from_table(self, table, where_clause):
-        response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table, where_clause))
+    def get_row_counts_from_table(self, table_name, where_clause):
+        response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table_name, where_clause))
         return response.fetchall()[0][0]
 
 
-    def get_some_rows_from_table(self, table, where_clause):
-        response = self._exec('''SELECT * FROM %s WHERE %s''' % (table, where_clause))
+    def get_some_rows_from_table(self, table_name, where_clause):
+        response = self._exec('''SELECT * FROM %s WHERE %s''' % (table_name, where_clause))
         return response.fetchall()
 
 
-    def get_single_column_from_table(self, table, column, unique=False):
-        response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table))
+    def get_single_column_from_table(self, table_name, column, unique=False):
+        response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table_name))
         return [t[0] for t in response.fetchall()]
 
 
-    def get_table_column_types(self, table):
-        response = self._exec('PRAGMA TABLE_INFO(%s)' % table)
+    def get_table_column_types(self, table_name):
+        response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
         return [t[2] for t in response.fetchall()]
 
 
-    def get_table_structure(self, table):
-        response = self._exec('''SELECT * FROM %s''' % table)
+    def get_table_structure(self, table_name):
+        response = self._exec('''SELECT * FROM %s''' % table_name)
         return [t[0] for t in response.description]
 
 
-    def get_table_as_list_of_tuples(self, table, table_structure=None):
-        return self.get_all_rows_from_table(table)
+    def get_table_as_list_of_tuples(self, table_name, table_structure=None):
+        return self.get_all_rows_from_table(table_name)
 
 
-    def get_table_as_dict(self, table, table_structure=None, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
+    def get_table_as_dict(self, table_name, table_structure=None, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
         if not table_structure:
-            table_structure = self.get_table_structure(table)
+            table_structure = self.get_table_structure(table_name)
 
         columns_to_return = list(range(0, len(table_structure)))
 
@@ -249,7 +267,7 @@ class DB:
 
         results_dict = {}
 
-        rows = self.get_all_rows_from_table(table)
+        rows = self.get_all_rows_from_table(table_name)
 
         for row in rows:
             entry = {}
@@ -274,7 +292,7 @@ class DB:
         return results_dict
 
 
-    def get_table_as_dataframe(self, table, table_structure=None, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
+    def get_table_as_dataframe(self, table_name, table_structure=None, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
         """
         get_table_as_dict() uses the first column as the key in the resulting
         dictionary. For pandas DataFrames there are two reasonable design
@@ -284,7 +302,7 @@ class DB:
         and use numerical indices for the DataFrame.
         """
         if not table_structure:
-            table_structure = self.get_table_structure(table)
+            table_structure = self.get_table_structure(table_name)
 
         columns_to_return = table_structure
 
@@ -308,7 +326,7 @@ class DB:
         if keys_of_interest:
             keys_of_interest = set(keys_of_interest)
 
-        rows = self.get_all_rows_from_table(table)
+        rows = self.get_all_rows_from_table(table_name)
         results_df = pd.DataFrame(rows, columns=table_structure)
 
         if keys_of_interest:
@@ -318,7 +336,7 @@ class DB:
         return results_df
 
 
-    def get_some_rows_from_table_as_dict(self, table, where_clause, error_if_no_data=True, string_the_key=False):
+    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False):
         """This is similar to get_table_as_dict, but much less general.
 
            get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
@@ -328,10 +346,10 @@ class DB:
 
         results_dict = {}
 
-        table_structure = self.get_table_structure(table)
+        table_structure = self.get_table_structure(table_name)
         columns_to_return = list(range(0, len(table_structure)))
 
-        rows = self._exec('''SELECT * FROM %s WHERE %s''' % (table, where_clause)).fetchall()
+        rows = self._exec('''SELECT * FROM %s WHERE %s''' % (table_name, where_clause)).fetchall()
 
         for row in rows:
             entry = {}
@@ -345,7 +363,7 @@ class DB:
                 results_dict[row[0]] = entry
 
         if error_if_no_data and not len(results_dict):
-            raise ConfigError("Query on %s with the where clause of '%s' did not return anything." % (table, where_clause))
+            raise ConfigError("Query on %s with the where clause of '%s' did not return anything." % (table_name, where_clause))
 
         return results_dict
 
