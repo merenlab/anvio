@@ -1880,6 +1880,11 @@ def get_HMM_sources_dictionary(source_dirs=[]):
         anvio_hmm_target_term_to_alphabet_and_context(target)
 
         domain = None
+        if kind == 'singlecopy' and kind.count(':') == 0:
+            raise ConfigError("This HMM profile seems to be a collection of single-copy core genes. Great. But for\
+                               this kind, you must also declare a 'domain' in your 'kind.txt' file. It is simple.\
+                               For instance, you could use 'singlecopy:bacteria', or 'singlecopy:archaea', or\
+                               'singlecopy:myspecificbranch'.")
         if kind.count(':') == 1:
             kind, domain = kind.split(':')
 
