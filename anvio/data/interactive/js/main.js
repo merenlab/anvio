@@ -149,7 +149,7 @@ $(document).ready(function() {
             if (!bySetColor) $(el).val(hex);
         },
         onHide: function() {
-            redrawBins();
+            emit('bin-settings-changed');
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
