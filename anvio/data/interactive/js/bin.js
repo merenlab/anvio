@@ -144,7 +144,7 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
         this.SelectLastRadio();
     }
 
-    for (let node of this.selections[bin_id].values()) {
+    for (const node of this.selections[bin_id].values()) {
         node.ResetColor();
     }
 
