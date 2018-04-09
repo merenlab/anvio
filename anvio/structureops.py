@@ -21,13 +21,24 @@ import anvio.drivers.MODELLER as MODELLER
 import numpy as np
 import pandas as pd
 
+from collections import OrderedDict
 from anvio.errors import ConfigError
 from Bio.PDB import PDBParser
 from Bio.PDB import DSSP
 
 
 class StructureDatabase(object):
-    def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
+    def __init__(self,
+                 file_path,
+                 db_hash,
+                 residue_info_structure_extras=[],
+                 residue_info_types_extras=[],
+                 create_new=False,
+                 ignore_hash=False,
+                 run=terminal.Run(),
+                 progress=terminal.Progress(),
+                 quiet=False):
+
         self.db_type = 'structure'
         self.db_hash = str(db_hash)
         self.version = anvio.__auxiliary_data_version__
@@ -35,39 +46,78 @@ class StructureDatabase(object):
         self.quiet = quiet
         self.run = run
         self.progress = progress
-        self.entries = []
+        self.table_names = None
 
         self.db = db.DB(self.file_path, self.version, new_database=create_new)
 
         if create_new:
-            self.create_tables()
+            # structure of the residue info table depend on annotation sources used
+            self.residue_info_structure, self.residue_info_types = self.get_residue_info_table_structure(residue_info_structure_extras, residue_info_types_extras)
+            self.table_names = self.create_tables()
 
         if not ignore_hash:
             self.check_hash()
 
+        # entries initialized as empty list are added with insert_many()
+        # entries initialized as empty DataFrame are added with insert_rows_from_dataframe()
+        self.entries = {
+            t.structure_pdb_data_table_name     : [],
+            t.structure_residue_info_table_name : pd.DataFrame({}),
+            }
+
+
+    def get_residue_info_table_structure(self, residue_info_structure_extras, residue_info_types_extras):
+        """
+        The structure (i.e. column numbers and labels) of the residue_info table depend on
+        annotation sources used, and are taken from residue_info_structure_extras.
+        """
+        # If residue_info_structure_extras was sloppily passed to this class, it may have
+        # "gene_callers_id" and "residue_index" within it, even though these are already in the
+        # t.structure_residue_info_table_structure. So we delete them if they exist
+        indices_to_del = [residue_info_structure_extras.index(x) for x in residue_info_structure_extras \
+                                                                     if x == "gene_callers_id" \
+                                                                     or x == "residue_index"]
+        for index in indices_to_del:
+            del residue_info_structure_extras[index]
+            del residue_info_types_extras[index]
+
+        residue_info_structure = t.structure_residue_info_table_structure + residue_info_structure_extras
+        residue_info_types = t.structure_residue_info_table_types + residue_info_types_extras
+        return residue_info_structure, residue_info_types
+
+
     def create_tables(self):
         self.db.set_meta_value('db_type', self.db_type)
-        self.db.set_meta_value('profile_db_hash', self.db_hash)
+        self.db.set_meta_value('profile_db_hash', self.db_hash) # FIXME contigs db
         self.db.set_meta_value('creation_date', time.time())
 
-        self.db.create_table(t.structure_table_name, t.structure_table_structure, t.structure_table_types)
+        self.db.create_table(t.structure_pdb_data_table_name, t.structure_pdb_data_table_structure, t.structure_pdb_data_table_types)
+        self.db.create_table(t.structure_residue_info_table_name, self.residue_info_structure, self.residue_info_types)
+
+        table_names = [t.structure_pdb_data_table_name, t.structure_residue_info_table_name]
+        return table_names
 
 
     def check_hash(self):
         actual_db_hash = str(self.db.get_meta_value('profile_db_hash'))
         if self.db_hash != actual_db_hash:
             raise ConfigError('The hash value inside Structure Database "%s" does not match with Profile Database hash "%s",\
-                                      this files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
+                                      these files probably belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
-    def append(self, gene_id, pdb_path):
-        pdb_content = open(pdb_path, 'rb').read()
-        self.entries.append((gene_id, pdb_content))
+    def store(self, table_name):
+        rows_data = self.entries[table_name]
 
+        if type(rows_data) == list:
+            self.db.insert_many(table_name, entries=rows_data)
+            self.entries[table_name] = []
 
-    def store(self):
-        self.db.insert_many(t.structure_table_name, entries=self.entries)
-        self.entries = []
+        elif type(rows_data) == pd.core.frame.DataFrame:
+            self.db.insert_rows_from_dataframe(table_name, rows_data)
+            self.entries[table_name] = pd.DataFrame({})
+
+        else:
+            raise ConfigError("store :: rows_data must be either a list of tuples or a pandas dataframe.")
 
 
     def close(self):
@@ -109,18 +159,76 @@ class Structure(object):
         if self.full_output:
             self.full_output = filesnpaths.check_output_directory(self.full_output, ok_if_exists=False)
 
-        # initialize residue annotation dataframe
-        self.residue_annotation_df = pd.DataFrame({})
-
-        # list of methods to be used for residue annotation table
-        self.list_of_residue_annotation_methods = [self.run_DSSP]
-        if self.skip_DSSP:
-            del self.list_of_residue_annotation_methods[self.list_of_residue_annotation_methods.index(self.run_DSSP)]
-
         # identify which genes user wants to model structures for
         self.get_genes_of_interest()
 
         self.sanity_check()
+
+        # residue annotation
+        self.annotation_sources_info = self.get_annotation_sources_info()
+        self.residue_info_table_structure, self.residue_info_table_types = self.get_residue_info_table_structure()
+        self.res_annotation_df = pd.DataFrame({})
+
+        # initialize StructureDatabase
+        self.structure_db = StructureDatabase(self.output_db_path,
+                                              "DUMMYHASH", # FIXME must be contigs db hash
+                                              residue_info_structure_extras = self.residue_info_table_structure,
+                                              residue_info_types_extras = self.residue_info_table_types,
+                                              create_new=True)
+
+
+
+    def get_residue_info_table_structure(self):
+        """
+        Table structure is dependent on which annotation sources are available or of interest.
+        That's why it is defined on the fly when db is created. To generate on the fly, the columns
+        from each source are added, but only if skip=False for the annotation source.  residue_index
+        is ignored Since it is common to each annotation source and is already present in
+        t.structure_residue_info_table_structure.
+        """
+        structure = []
+        types = []
+
+        for source, info in self.annotation_sources_info.items():
+            if not info["skip"]:
+                structure.extend(list(info["structure"].keys()))
+                types.extend([info["structure"][x] for x in info["structure"].keys()])
+        return structure, types
+
+
+    def get_annotation_sources_info(self):
+        """
+        The annotation_sources_info is a dictionary spelling out all column names relevant to each
+        annotation source, the method which returns the annotation dataframe, and the boolean
+        stating whether or not the annotation source will be called.
+        """
+        annotation_sources_info = {
+            "DSSP": {
+                "method"    : self.run_DSSP,
+                "skip"      : self.skip_DSSP,
+                "structure" : {"residue_index"   : "integer",
+                               "aa"              : "text",
+                               "sec_struct"      : "text",
+                               "rel_solvent_acc" : "real",
+                               "phi"             : "real",
+                               "psi"             : "real",
+                               "NH_O_1_index"    : "integer",
+                               "NH_O_1_energy"   : "real",
+                               "O_NH_1_index"    : "integer",
+                               "O_NH_1_energy"   : "real",
+                               "NH_O_2_index"    : "integer",
+                               "NH_O_2_energy"   : "real",
+                               "O_NH_2_index"    : "integer",
+                               "O_NH_2_energy"   : "real"},
+                },
+            "STRIDE": {
+                "method"  : lambda *args, **kwargs: None,
+                "skip"    : True,
+                "columns" : {
+                            },
+                },
+            }
+        return annotation_sources_info
 
 
     def sanity_check(self):
@@ -215,10 +323,10 @@ class Structure(object):
         """
         """
 
-        self.structure_db = StructureDatabase(self.output_db_path, "DUMMYHASH", create_new=True) # FIXME
+        # will be empty if all sources in self.annotation_sources_info have "skip": True
+        residue_annotation_methods = [info["method"] for _, info in self.annotation_sources_info.items() if not info["skip"]]
 
-        for gene_id in self.genes_of_interest:
-
+        for gene_callers_id in self.genes_of_interest:
             # MODELLER outputs a lot of stuff into its working directory. A temporary directory is
             # made for each instance of MODELLER (i.e. each protein), And bits and pieces of this
             # directory are used in the creation of the structure database. If self.full_output is
@@ -226,41 +334,41 @@ class Structure(object):
             self.args.directory = filesnpaths.get_temp_directory_path()
             self.args.target_fasta_path = filesnpaths.get_temp_file_path()
 
-            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([gene_id]), quiet=True)
+            # export AA sequence fasta for gene_callers_id
+            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([gene_callers_id]), quiet=True)
 
-            # pdb_filepath is the file path for the best structure model
-            pdb_filepath = self.run_modeller()
+            # run modeller for gene, append to self.structure_db.entries
+            structure_table_entry, pdb_filepath = self.run_modeller(gene_callers_id)
+            self.structure_db.entries[t.structure_pdb_data_table_name].append(structure_table_entry)
 
-            # annotation_subset_for_gene_id is a dataframe that stores annotations made by all
-            # annotation methods (e.g.  DSSP) for the current gene_id. Each time an annotation
-            # source is ran, its results are appended as columns to annotation_subset_for_gene_id.
-            # All annotation sources must have the index called "residue_index" whose values are
-            # anvi'o-indexed, i.e. the methionine has index 0. Each annotation source does NOT have
-            # to annotate each residue in the gene. Each annotation source should have distinct
-            # column names from all other annotation sources, however if they do not they will be
-            # generically uniquified with the internal pandas method `_maybe_dep_names`, e.g. 2
-            # columns named "A" will be named "A" and "A.1".
-            if self.list_of_residue_annotation_methods:
-                annotation_subset_for_gene_id = pd.DataFrame({})
-
-                for annotation_method in self.list_of_residue_annotation_methods:
-                    annotation_subset_for_gene_id = pd.concat([annotation_subset_for_gene_id, annotation_method(gene_id, pdb_filepath)], axis=1)
-                annotation_subset_for_gene_id.columns = pd.io.parsers.ParserBase({'names':annotation_subset_for_gene_id.columns})._maybe_dedup_names(annotation_subset_for_gene_id.columns)
-                annotation_subset_for_gene_id.insert(0, "gene_callers_id", gene_id)
-
-                self.residue_annotation_df = self.residue_annotation_df.append(annotation_subset_for_gene_id)
-
-            self.append_results_to_structure_db(gene_id, pdb_filepath)
+            # run residue annotation for gene, append to self.structure_db.entries
+            residue_info_table_entries = self.run_residue_annotation_for_gene(residue_annotation_methods, gene_callers_id, pdb_filepath)
+            self.structure_db.entries[t.structure_residue_info_table_name] = self.structure_db.entries[t.structure_residue_info_table_name].append(residue_info_table_entries)
 
             if self.full_output:
                 self.dump_results_to_full_output()
 
-        self.structure_db.store()
+        for table_name in self.structure_db.table_names:
+            self.structure_db.store(table_name)
         self.structure_db.close()
 
 
-    def append_results_to_structure_db(self, gene_id, pdb_filepath):
-        self.structure_db.append(gene_id, pdb_filepath)
+    def run_residue_annotation_for_gene(self, residue_annotation_methods, gene_callers_id, pdb_filepath):
+        # res_annotation_for_gene is a dataframe that stores annotations made by all
+        # annotation methods (e.g.  DSSP) for the current gene_callers_id. Each time an annotation
+        # source is ran, its results are appended as columns to res_annotation_for_gene.
+        # All annotation sources must have the index called "residue_index" whose values are
+        # anvi'o-indexed, i.e. the methionine has index 0. Each annotation source does NOT have
+        # to annotate each residue in the gene.
+        res_annotation_for_gene = pd.DataFrame({})
+        for method in residue_annotation_methods:
+            res_annotation_for_gene = pd.concat([res_annotation_for_gene, method(gene_callers_id, pdb_filepath)], axis=1)
+
+        # add gene_callers_id and residue_index as 0th and 1st columns
+        res_annotation_for_gene.insert(0, "gene_callers_id", gene_callers_id)
+        res_annotation_for_gene.insert(1, "residue_index", res_annotation_for_gene.index)
+
+        return res_annotation_for_gene
 
 
     def dump_results_to_full_output(self):
@@ -269,14 +377,19 @@ class Structure(object):
         output_gene_dir. Otherwise, the list of files we care about are defined in this function
         and moved into output_gene_dir.
         """
-        output_gene_dir = os.path.join(self.full_output, self.modeller.gene_id)
+        output_gene_dir = os.path.join(self.full_output, self.modeller.gene_callers_id)
         filesnpaths.check_output_directory(output_gene_dir)
         shutil.move(self.modeller.directory, output_gene_dir)
 
-    def run_DSSP(self, gene_id, pdb_filepath):
+
+    def run_DSSP(self, gene_callers_id, pdb_filepath):
+        """
+        DSSP is ran using the API developed in Biopython. That means we don't work directly from the
+        text output of DSSP, but rather a Biopython object.
+        """
         # Determine the model name by loading the structure file
         p = PDBParser()
-        structure = p.get_structure(gene_id, pdb_filepath)
+        structure = p.get_structure(gene_callers_id, pdb_filepath)
         model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
 
         # run DSSP
@@ -289,24 +402,24 @@ class Structure(object):
     def convert_DSSP_output_from_biopython_to_dataframe(self, dssp_biopython_object):
         """
         From the DSSP module in Biopython:
-            ============ ===
-            Tuple Index  Value
-            ============ ===
-            0            DSSP index
-            1            Amino acid
-            2            Secondary structure
-            3            Relative ASA
-            4            Phi
-            5            Psi
-            6            NH-->O_1_relidx
-            7            NH-->O_1_energy
-            8            O-->NH_1_relidx
-            9            O-->NH_1_energy
-            10           NH-->O_2_relidx
-            11           NH-->O_2_energy
-            12           O-->NH_2_relidx
-            13           O-->NH_2_energy
-            ============ ===
+            ============ ==================== ================
+            Tuple Index  Biopython            Anvi'o
+            ============ ==================== ================
+            0            DSSP index           residue_index
+            1            Amino acid           aa
+            2            Secondary structure  sec_struct
+            3            Relative ASA         rel_solvent_acc
+            4            Phi                  phi
+            5            Psi                  psi
+            6            NH__>O_1_relidx      NH_O_1_index
+            7            NH__>O_1_energy      NH_O_1_energy
+            8            O__>NH_1_relidx      O_NH_1_index
+            9            O__>NH_1_energy      O_NH_1_energy
+            10           NH__>O_2_relidx      NH_O_2_index
+            11           NH__>O_2_energy      NH_O_2_energy
+            12           O__>NH_2_relidx      O_NH_2_index
+            13           O__>NH_2_energy      O_NH_2_energy
+            ============ ==================== ================
 
         Changes from Biopython format to anvi'o format:
             - residue index converted from 1Met to 0Met
@@ -317,20 +430,7 @@ class Structure(object):
         """
 
         one_to_three = {v: k for k, v in constants.AA_to_single_letter_code.items()}
-        columns = ("residue_index",
-                   "aa",
-                   "sec_struct",
-                   "rel_solvent_acc",
-                   "phi",
-                   "psi",
-                   "NH-O_1_index",
-                   "NH-O_1_energy",
-                   "O-NH_1_index",
-                   "O-NH_1_energy",
-                   "NH-O_2_index",
-                   "NH-O_2_energy",
-                   "O-NH_2_index",
-                   "O-NH_2_energy")
+        columns = list(self.annotation_sources_info["DSSP"]["structure"].keys())
 
         # convert biopython object to dictionary d
         d = {}
@@ -341,7 +441,7 @@ class Structure(object):
             if d[key][columns.index("sec_struct")] == "-":
                 d[key][columns.index("sec_struct")] = "C"
 
-            for hbond in ["NH-O_1", "O-NH_1", "NH-O_2", "O-NH_2"]:
+            for hbond in ["NH_O_1", "O_NH_1", "NH_O_2", "O_NH_2"]:
                 res_index = d[key][columns.index("residue_index")]
                 rel_index = d[key][columns.index(hbond+"_index")]
                 if rel_index == 0:
@@ -354,8 +454,15 @@ class Structure(object):
         return pd.DataFrame(d, index=columns).T.set_index("residue_index")
 
 
-    def run_modeller(self):
+    def run_modeller(self, gene_callers_id):
         self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
-        return self.modeller.get_best_model()
+
+        pdb_filepath = self.modeller.get_best_model()
+        pdb_file = open(pdb_filepath, 'rb')
+        pdb_contents = pdb_file.read()
+        pdb_file.close()
+
+        structures_table_entry = (gene_callers_id, pdb_contents)
+        return structures_table_entry, pdb_filepath
 
 

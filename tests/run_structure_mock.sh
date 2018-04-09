@@ -97,11 +97,11 @@ anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
                               --dump-dir test-output/STRUCTURES_full \
                               --output-db-path test-output/STRUCTURE.db
 
-INFO "anvi-model-protein-structures"
-anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
-                              --gene-caller-ids 2,3,4 \
-                              --output-db-path test-output/STRUCTURE.db \
-                              --skip-DSSP
+#INFO "anvi-model-protein-structures"
+#anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
+#                              --gene-caller-ids 2,3,4 \
+#                              --output-db-path test-output/STRUCTURE.db \
+#                              --skip-DSSP
 
 
 INFO "Do you want the interactive interface? Run the following:"
