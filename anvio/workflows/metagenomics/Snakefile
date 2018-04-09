@@ -105,11 +105,6 @@ samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
 # get a list of the sample names
 sample_names = list(samples_information['sample'])
 
-if not references_mode:
-    # if it is reference mode then the group names have been assigned in the contigs Snakefile
-    # if it is not reference mode and no groups are supplied in the samples_txt then group names are sample names
-    group_names = sample_names
-
 references_mode = M.get_param_value_from_config('references_mode', repress_default=True)
 fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
 if references_mode:
@@ -117,6 +112,11 @@ if references_mode:
         filesnpaths.is_file_exists(fasta_txt_file)
     except FilesNPathsError as e:
         raise ConfigError('In references mode you must supply a fasta_txt file.')
+
+if not references_mode:
+    # if it is reference mode then the group names have been assigned in the contigs Snakefile
+    # if it is not reference mode and no groups are supplied in the samples_txt then group names are sample names
+    group_names = sample_names
 
 if fasta_txt_file and not references_mode:
     raise ConfigError("In order to use reference fasta files you must set\
