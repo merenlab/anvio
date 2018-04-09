@@ -253,24 +253,6 @@ function mouseMoveHandler(event) {
         }
     }
 
-/*    var belongs = "n/a";
-    var stop = false;
-    var bin_color = '#FFFFFF';
-
-    for (var bin_id = 1; !stop && bin_id <= bin_counter; bin_id++) 
-    {
-        for (var i = 0; !stop && i < SELECTED[bin_id].length; i++) {
-            if (SELECTED[bin_id][i] == p.label) {
-                belongs = $('#bin_name_' + bin_id).val();
-                bin_color = $('#bin_color_'+ bin_id).attr('color');
-                stop = true; // break nested loop
-                break;
-            }
-        }
-    }
-
-    var tr_bin = '<tr><td class="tk">bin</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + bin_color + '"></div>' + belongs + '</td></tr>'
-*/
     write_mouse_table(message, target_node.label, layer_id);
 }
 
