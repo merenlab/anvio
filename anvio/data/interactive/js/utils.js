@@ -18,8 +18,8 @@
  */
 
 
-function emit(name, element=document.body, details = {}) {
-    let event = new CustomEvent(name, details);
+function emit(name, element=document.body) {
+    let event = new Event(name);
     element.dispatchEvent(event);
 };
 
