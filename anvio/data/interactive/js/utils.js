@@ -18,8 +18,14 @@
  */
 
 
+function emit(name, element=document.body, details = {}) {
+    let event = new CustomEvent(name, details);
+    element.dispatchEvent(event);
+};
+
 //--------------------------------------------------------------------------------------------------
 // http://stackoverflow.com/questions/3019278/any-way-to-specify-the-base-of-math-log-in-javascript
+
 function log10(val) {
   return Math.log(val) / Math.LN10;
 }

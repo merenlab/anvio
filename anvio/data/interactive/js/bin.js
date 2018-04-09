@@ -27,6 +27,8 @@ function Bins(prefix, container) {
     this.container = container || document.createElement("div");
 
     this.cache = {};
+
+    document.body.addEventListener('bin-settings-changed', (event) => this.RedrawBins());
 };
 
 
@@ -60,7 +62,7 @@ Bins.prototype.NewBin = function(id, binState) {
     var template = `<tr bin-id="${id}">
                        <td><input type="radio" name="active_bin" value="${id}"></td>
                        <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></td>
-                       <td data-value="${name}"><input type="text" class="bin-name" onChange="bins.RedrawBins();" size="21" id="bin_name_${id}" value="${name}"></td>
+                       <td data-value="${name}"><input type="text" class="bin-name" onChange="emit('bin-settings-changed');" size="21" id="bin_name_${id}" value="${name}"></td>
                        ${mode != 'pan' ? `
                            <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
                            <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
@@ -90,7 +92,7 @@ Bins.prototype.NewBin = function(id, binState) {
             if (!bySetColor) $(el).val(hex);
         },
         onHide: function() {
-            bins.RedrawBins();
+            emit('bin-settings-changed');
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
