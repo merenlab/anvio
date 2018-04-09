@@ -29,10 +29,10 @@ class SuppressAllOutput(object):
     def __enter__(self):
         sys.stderr.flush()
         self.old_stderr = sys.stderr
-        sys.stderr = open('/dev/null', 'ab+', 0)
+        sys.stderr = open('/dev/null', 'a')
         sys.stdout.flush()
         self.old_stdout = sys.stdout
-        sys.stdout = open('/dev/null', 'ab+', 0)
+        sys.stdout = open('/dev/null', 'a')
 
     def __exit__(self, exc_type, exc_value, traceback):
         sys.stderr.flush()
