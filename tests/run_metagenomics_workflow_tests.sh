@@ -31,9 +31,6 @@ anvi-run-snakemake-workflow -w metagenomics --config config-megahit.json --list-
 INFO "Runnind a dry run for metagenomics workflow with megahit"
 anvi-run-snakemake-workflow -w metagenomics --config config-megahit.json --dry-run
 
-INFO "Running metagenomics workflow using megahit"
-anvi-run-snakemake-workflow -w metagenomics --config config-megahit.json
-
 INFO "Runnind a dry run for metagenomics workflow with megahit with no qc"
 anvi-run-snakemake-workflow -w metagenomics --config config-megahit-no-qc-all-against-all.json --dry-run
 
