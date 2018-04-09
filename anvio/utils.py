@@ -1857,21 +1857,23 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                 and must not contain any characters but ASCII letters, digits and\
                                 underscore" % os.path.basename(source))
 
-        for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']:
-            f_path = os.path.join(source, f)
-            if not os.path.exists(f_path):
-                raise ConfigError("Each search database directory must contain following files: 'kind.txt', \
-                                   'reference.txt', 'genes.txt', 'target.txt', 'genes.hmm.gz', and\
-                                   'noise_cutoff_terms.txt'. %s does not seem to be a proper source. See\
-                                   this blog post to make sure you are doing it the way it should be done:\
-                                   http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
-                                                os.path.basename(source))
-            if os.stat(f_path).st_size == 0:
-                raise ConfigError("The file '%s' in the HMM source '%s' seems to be empty. Which creates lots of\
-                                   counfusion around these parts of the code. Anvi'o could set some defualts for you,\
-                                   but it would be much better if you set your own defaults explicitly. You're not\
-                                   sure what would make a good default in this context for the %s? Reach out to\
-                                   a developer, and they will help you!" % (f, os.path.basename(source), f))
+        expected_files = ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']
+
+        missing_files = [f for f in expected_files if not os.path.exists(os.path.join(source, f))]
+        if missing_files:
+            raise ConfigError("Each search database directory must contain following files: %s'. Yet, the HMM source '%s' seems to\
+                               be missing the follwoing one(s): %s. See this blog post to make sure you are doing it the way it\
+                               should be done: http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
+                                            (', '.join(expected_files), os.path.basename(source), ', '.join(missing_files)))
+
+        empty_files = [f for f in expected_files if os.stat(os.path.join(source, f)).st_size == 0]
+        if empty_files:
+            raise ConfigError("One or more files for the HMM source '%s' seems to be empty. Which creates lots of\
+                               counfusion around these parts of the code. Anvi'o could set some defualts for you,\
+                               but it would be much better if you set your own defaults explicitly. You're not\
+                               sure what would make a good default for your HMM collection? Reach out to\
+                               a developer, and they will help you! Here are the files that are empty: %s." % \
+                                    (os.path.basename(source), ', '.join(empty_files)))
 
         ref = R('reference.txt')
         kind = R('kind.txt')
