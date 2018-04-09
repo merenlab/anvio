@@ -1626,32 +1626,16 @@ function exportSvg(dontDownload) {
 
 
 function storeRefinedBins() {
-    var data = {};
-    var colors = {};
-
-    $('#tbody_bins tr').each(
-        function(index, bin) {
-            var bin_id = $(bin).attr('bin-id');
-            var bin_name = $('#bin_name_' + bin_id).val();
-
-            colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
-            data[bin_name] = new Array();
-
-            for (let i=0; i < SELECTED[bin_id].length; i++)
-            {
-                if (label_to_node_map[SELECTED[bin_id][i]].IsLeaf())
-                {
-                    data[bin_name].push(SELECTED[bin_id][i]);
-                }
-            }
-        }
-    );
+    let collection_info = bins.ExportCollection();
 
     $.ajax({
         type: 'POST',
         cache: false,
         url: '/data/store_refined_bins',
-        data: { data: JSON.stringify(data, null, 4), colors: JSON.stringify(colors, null, 4) },
+        data: { 
+            data: JSON.stringify(collection_info['data'], null, 4), 
+            colors: JSON.stringify(collection_info['colors'], null, 4)
+        },
         success: function(data) {
             if (data.status == -1){
                 toastr.error(data.message, "You made the server upset :(");
