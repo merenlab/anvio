@@ -1065,31 +1065,32 @@ def get_codon_order_to_nt_positions_dict(gene_call):
     return codon_order_to_nt_positions
 
 
-def convert_sequence_indexing(index, source="anvio", destination="not anvio"):
+def convert_sequence_indexing(index, source="M0", destination="M1"):
     """
     Anvi'o zero-indexes sequences. For example, the methionine that every
-    ORF starts with has the index 0. This is in contrast to the rest of the
-    world, in which the methionine is indexed by 1. This function converts
-    between the two. 
+    ORF starts with has the index 0 (M0). This is in contrast to the rest of the
+    world, in which the methionine is indexed by 1 (M1). This function converts
+    between the two.
     
-    index : integer
-        The sequence index you are converting. 
+    index : integer, numpy array, pandas series, list
+        The sequence index/indices you are converting.
     source : string
-        The convention you are converting from. Must be either "anvio" or "not
-        anvio"
+        The convention you are converting from. Must be either "M0" (anvio) or 
+        "M1" (not anvio)
     destination : string
-        The convention you are converting to. Must be either "anvio" or "not
-        anvio"
+        The convention you are converting to. Must be either "M0" (anvio) or 
+        "M1" (not anvio)
     """
+    convert = lambda x, a: [i + a for i in x] if type(x) == list else x + a
 
-    if source not in ["anvio", "not anvio"] or destination not in ["anvio", "not anvio"]:
-        raise ValueError("Must be 'anvio' or 'not anvio'.")
+    if source not in ["M0", "M1"] or destination not in ["M0", "M1"]:
+        raise ValueError("Must be 'M0' or 'M1'.")
 
-    if source == "anvio" and destination == "not anvio":
-        return index + 1
+    if source == "M0" and destination == "M1":
+        return convert(index, 1)
 
-    if source == "not anvio" and destination == "anvio":
-        return index - 1
+    if source == "M1" and destination == "M0":
+        return convert(index, -1)
 
     return index
 
