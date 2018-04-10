@@ -72,11 +72,11 @@ class StructureDatabase(object):
         annotation sources used, and are taken from residue_info_structure_extras.
         """
         # If residue_info_structure_extras was sloppily passed to this class, it may have
-        # "gene_callers_id" and "residue_index" within it, even though these are already in the
+        # "corresponding_gene_call" and "codon_order_in_gene" within it, even though these are already in the
         # t.structure_residue_info_table_structure. So we delete them if they exist
         indices_to_del = [residue_info_structure_extras.index(x) for x in residue_info_structure_extras \
-                                                                     if x == "gene_callers_id" \
-                                                                     or x == "residue_index"]
+                                                                     if x == "corresponding_gene_call" \
+                                                                     or x == "codon_order_in_gene"]
         for index in indices_to_del:
             del residue_info_structure_extras[index]
             del residue_info_types_extras[index]
@@ -182,7 +182,7 @@ class Structure(object):
         """
         Table structure is dependent on which annotation sources are available or of interest.
         That's why it is defined on the fly when db is created. To generate on the fly, the columns
-        from each source are added, but only if skip=False for the annotation source.  residue_index
+        from each source are added, but only if skip=False for the annotation source.  codon_order_in_gene
         is ignored Since it is common to each annotation source and is already present in
         t.structure_residue_info_table_structure.
         """
@@ -206,7 +206,7 @@ class Structure(object):
             "DSSP": {
                 "method"    : self.run_DSSP,
                 "skip"      : self.skip_DSSP,
-                "structure" : {"residue_index"   : "integer",
+                "structure" : {"codon_order_in_gene"   : "integer",
                                "aa"              : "text",
                                "sec_struct"      : "text",
                                "rel_solvent_acc" : "real",
@@ -326,7 +326,7 @@ class Structure(object):
         # will be empty if all sources in self.annotation_sources_info have "skip": True
         residue_annotation_methods = [info["method"] for _, info in self.annotation_sources_info.items() if not info["skip"]]
 
-        for gene_callers_id in self.genes_of_interest:
+        for corresponding_gene_call in self.genes_of_interest:
             # MODELLER outputs a lot of stuff into its working directory. A temporary directory is
             # made for each instance of MODELLER (i.e. each protein), And bits and pieces of this
             # directory are used in the creation of the structure database. If self.full_output is
@@ -334,15 +334,15 @@ class Structure(object):
             self.args.directory = filesnpaths.get_temp_directory_path()
             self.args.target_fasta_path = filesnpaths.get_temp_file_path()
 
-            # export AA sequence fasta for gene_callers_id
-            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([gene_callers_id]), quiet=True)
+            # export AA sequence fasta for corresponding_gene_call
+            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([corresponding_gene_call]), quiet=True)
 
             # run modeller for gene, append to self.structure_db.entries
-            structure_table_entry, pdb_filepath = self.run_modeller(gene_callers_id)
+            structure_table_entry, pdb_filepath = self.run_modeller(corresponding_gene_call)
             self.structure_db.entries[t.structure_pdb_data_table_name].append(structure_table_entry)
 
             # run residue annotation for gene, append to self.structure_db.entries
-            residue_info_table_entries = self.run_residue_annotation_for_gene(residue_annotation_methods, gene_callers_id, pdb_filepath)
+            residue_info_table_entries = self.run_residue_annotation_for_gene(residue_annotation_methods, corresponding_gene_call, pdb_filepath)
             self.structure_db.entries[t.structure_residue_info_table_name] = self.structure_db.entries[t.structure_residue_info_table_name].append(residue_info_table_entries)
 
             if self.full_output:
@@ -353,20 +353,20 @@ class Structure(object):
         self.structure_db.close()
 
 
-    def run_residue_annotation_for_gene(self, residue_annotation_methods, gene_callers_id, pdb_filepath):
+    def run_residue_annotation_for_gene(self, residue_annotation_methods, corresponding_gene_call, pdb_filepath):
         # res_annotation_for_gene is a dataframe that stores annotations made by all
-        # annotation methods (e.g.  DSSP) for the current gene_callers_id. Each time an annotation
+        # annotation methods (e.g.  DSSP) for the current corresponding_gene_call. Each time an annotation
         # source is ran, its results are appended as columns to res_annotation_for_gene.
-        # All annotation sources must have the index called "residue_index" whose values are
+        # All annotation sources must have the index called "codon_order_in_gene" whose values are
         # anvi'o-indexed, i.e. the methionine has index 0. Each annotation source does NOT have
         # to annotate each residue in the gene.
         res_annotation_for_gene = pd.DataFrame({})
         for method in residue_annotation_methods:
-            res_annotation_for_gene = pd.concat([res_annotation_for_gene, method(gene_callers_id, pdb_filepath)], axis=1)
+            res_annotation_for_gene = pd.concat([res_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1)
 
-        # add gene_callers_id and residue_index as 0th and 1st columns
-        res_annotation_for_gene.insert(0, "gene_callers_id", gene_callers_id)
-        res_annotation_for_gene.insert(1, "residue_index", res_annotation_for_gene.index)
+        # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
+        res_annotation_for_gene.insert(0, "corresponding_gene_call", corresponding_gene_call)
+        res_annotation_for_gene.insert(1, "codon_order_in_gene", res_annotation_for_gene.index)
 
         return res_annotation_for_gene
 
@@ -377,19 +377,19 @@ class Structure(object):
         output_gene_dir. Otherwise, the list of files we care about are defined in this function
         and moved into output_gene_dir.
         """
-        output_gene_dir = os.path.join(self.full_output, self.modeller.gene_callers_id)
+        output_gene_dir = os.path.join(self.full_output, self.modeller.corresponding_gene_call)
         filesnpaths.check_output_directory(output_gene_dir)
         shutil.move(self.modeller.directory, output_gene_dir)
 
 
-    def run_DSSP(self, gene_callers_id, pdb_filepath):
+    def run_DSSP(self, corresponding_gene_call, pdb_filepath):
         """
         DSSP is ran using the API developed in Biopython. That means we don't work directly from the
         text output of DSSP, but rather a Biopython object.
         """
         # Determine the model name by loading the structure file
         p = PDBParser()
-        structure = p.get_structure(gene_callers_id, pdb_filepath)
+        structure = p.get_structure(corresponding_gene_call, pdb_filepath)
         model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
 
         # run DSSP
@@ -405,7 +405,7 @@ class Structure(object):
             ============ ==================== ================
             Tuple Index  Biopython            Anvi'o
             ============ ==================== ================
-            0            DSSP index           residue_index
+            0            DSSP index           codon_order_in_gene
             1            Amino acid           aa
             2            Secondary structure  sec_struct
             3            Relative ASA         rel_solvent_acc
@@ -436,13 +436,13 @@ class Structure(object):
         d = {}
         for key in dssp_biopython_object.keys():
             d[key] = list(dssp_biopython_object[key])
-            d[key][columns.index("residue_index")] = utils.convert_sequence_indexing(d[key][columns.index("residue_index")], source="not anvio", destination="anvio")
+            d[key][columns.index("codon_order_in_gene")] = utils.convert_sequence_indexing(d[key][columns.index("codon_order_in_gene")], source="not anvio", destination="anvio")
             d[key][columns.index("aa")] = one_to_three[d[key][columns.index("aa")]]
             if d[key][columns.index("sec_struct")] == "-":
                 d[key][columns.index("sec_struct")] = "C"
 
             for hbond in ["NH_O_1", "O_NH_1", "NH_O_2", "O_NH_2"]:
-                res_index = d[key][columns.index("residue_index")]
+                res_index = d[key][columns.index("codon_order_in_gene")]
                 rel_index = d[key][columns.index(hbond+"_index")]
                 if rel_index == 0:
                     d[key][columns.index(hbond+"_index")] = np.nan
@@ -451,10 +451,10 @@ class Structure(object):
                     d[key][columns.index(hbond+"_index")] = res_index + rel_index
 
         # convert dictionary d to dataframe df
-        return pd.DataFrame(d, index=columns).T.set_index("residue_index")
+        return pd.DataFrame(d, index=columns).T.set_index("codon_order_in_gene")
 
 
-    def run_modeller(self, gene_callers_id):
+    def run_modeller(self, corresponding_gene_call):
         self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
 
         pdb_filepath = self.modeller.get_best_model()
@@ -462,7 +462,7 @@ class Structure(object):
         pdb_contents = pdb_file.read()
         pdb_file.close()
 
-        structures_table_entry = (gene_callers_id, pdb_contents)
+        structures_table_entry = (corresponding_gene_call, pdb_contents)
         return structures_table_entry, pdb_filepath
 
 

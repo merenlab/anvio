@@ -220,13 +220,13 @@ genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_c
 ####################################################################################################
 
 structure_pdb_data_table_name       = 'structures'
-structure_pdb_data_table_structure  = [ 'gene_callers_id', 'pdb_content']
-structure_pdb_data_table_types      = [     'integer'    ,    'blob'    ]
+structure_pdb_data_table_structure  = ['corresponding_gene_call', 'pdb_content']
+structure_pdb_data_table_types      = [         'integer'       ,    'blob'    ]
 
 # The FULL table structure is defined in the StructureDatabase class based on what annotation
 # sources are found and/or requested.
 structure_residue_info_table_name       = 'residue_info'
-structure_residue_info_table_structure  = ['gene_callers_id', 'residue_index']
-structure_residue_info_table_types      = [   'integer'     ,    'integer'   ]
+structure_residue_info_table_structure  = ['corresponding_gene_call', 'codon_order_in_gene']
+structure_residue_info_table_types      = [        'integer'        ,        'integer'     ]
 
 
