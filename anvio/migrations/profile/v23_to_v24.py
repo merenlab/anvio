@@ -29,9 +29,11 @@ class AdditionalAndOrderDataBaseClass(object):
         database = db.DB(self.db_path, None, ignore_version=True)
         self.additional_data_keys = database.get_single_column_from_table(self.table_name, 'data_key')
 
-        self.entry_id = int(database.get_max_value_in_column('layer_additional_data', 'entry_id')) + 1
+        self.entry_id = database.get_max_value_in_column('layer_additional_data', 'entry_id')
         if not self.entry_id:
             self.entry_id = 0
+        else:
+            self.entry_id = int(self.entry_id) + 1
 
         database.disconnect()
 
