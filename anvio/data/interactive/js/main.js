@@ -35,7 +35,7 @@ var bins;
 var clusteringData;
 
 var layerdata;
-var contig_lengths;
+var item_lengths;
 var parameter_count;
 
 var tree_type;
@@ -213,7 +213,7 @@ function initData() {
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
 
-            contig_lengths = response.contig_lengths;
+            item_lengths = response.item_lengths;
 
             var default_tree  = response.item_orders[0];
             var available_trees = response.item_orders[2];
@@ -1396,28 +1396,6 @@ function showGenSummaryWindow() {
             showCollectionDetails('');
             $('#modGenerateSummary').modal('show');
         }
-    });
-}
-
-
-function updateGeneClustersBin(bin_id) {
-    if (mode !== 'pan'){ 
-        return;
-    }
-
-    $.ajax({
-        type: "POST",
-        url: "/data/geneclusterssummary",
-        cache: false,
-        data: {split_names: JSON.stringify(bins.GetBinNodeLabels(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
-        success: function(data){
-            gene_cluster_bins_summary_dict[bin_id] = data;
-            $('#redundancy_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);
-            $('#completeness_' + bin_id).val(data['num_gene_clusters']).parent().attr('data-value', data['num_gene_clusters']);
-
-            $('#completeness_' + bin_id).attr("disabled", false);
-            $('#redundancy_' + bin_id).attr("disabled", false);
-        },
     });
 }
 
