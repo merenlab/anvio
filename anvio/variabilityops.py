@@ -21,6 +21,7 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
+import anvio.structureops as structureops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
@@ -77,6 +78,7 @@ class VariabilitySuper(object):
         self.include_split_names_in_output = A('include_split_names', null)
         self.gene_caller_id = A('gene_caller_id', null)
 
+        self.append_structure_residue_info = True if self.structure_db_path else False
         self.substitution_scoring_matrices = None
         self.merged_split_coverage_values = None
         self.unique_pos_identifier = 0
@@ -165,7 +167,7 @@ class VariabilitySuper(object):
         if not self.contigs_db_path:
             raise ConfigError('You need to provide a contigs database.')
 
-        if self.structure_db_path and self.engine not in ["AA", "CDN"]:
+        if self.append_structure_residue_info and self.engine not in ["AA", "CDN"]:
             raise ConfigError('You provided a structure database, which is only compatible with --engine AA (or maybe\
                                ... plot spoiler: --engine CDN)')
 
@@ -191,7 +193,7 @@ class VariabilitySuper(object):
                                     However it wasn't found at '%s' :/" % auxiliary_data_file_path)
             self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, None, ignore_hash=True)
 
-        self.progress.update('Attempting to get our splits of interest sorted ..')
+        self.progress.update('Attempting to get our splits of interest sorted ...')
         if self.collection_name:
             # the user wants to go with the collection id path. fine. we will get our split names from
             # the profile database.
@@ -221,7 +223,7 @@ class VariabilitySuper(object):
 
         self.input_file_path = '/' + '/'.join(os.path.abspath(self.profile_db_path).split('/')[:-1])
 
-        self.progress.update('Reading the data ...')
+        self.progress.update('Reading the profile database ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         self.sample_ids = sorted(list(profile_db.samples)) # we set this now, but we will overwrite it with args.samples_of_interest if necessary
 
@@ -241,20 +243,45 @@ class VariabilitySuper(object):
         # another one is the substitution scoring matrices.
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, table_structure=t.variable_nts_table_structure)
-            self.progress.end()
 
         elif self.engine == 'AA':
             if not profile_db.meta['AA_frequencies_profiled']:
                 raise ConfigError("It seems AA frequencies were not characterized for this profile database.\
                                     There is nothing to report here for AAs!")
             self.data = profile_db.db.get_table_as_dataframe(t.variable_aas_table_name)
-            self.progress.end()
 
-            # append split_name information
-            self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
+        # append split_name information
+        self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
 
         # we're done here. bye.
         profile_db.disconnect()
+
+        ##################### LOAD STRUCTURE DATA #####################
+        # open up residue_info table from structure db, if provided
+        if self.append_structure_residue_info:
+
+            self.progress.update('Reading the structure database ...')
+            structure_db = structureops.StructureDatabase(self.structure_db_path)
+            self.residue_info = structure_db.db.get_table_as_dataframe(t.structure_residue_info_table_name)
+
+            self.genes_with_structure = set(self.residue_info["corresponding_gene_call"].unique())
+            # genes_included = genes_of_interest, unless genes_of_interest weren't specified. then
+            # it equals all genes in self.data. I don't overwrite self.genes_of_interest because a
+            # needless gene filtering step will be carried out of self.genes_of_interest is not an
+            # empty set
+            genes_included = self.genes_of_interest if self.genes_of_interest else set(self.data["corresponding_gene_call"].unique())
+            if not [g for g in self.genes_with_structure if g in genes_included]:
+                self.progress.end()
+                raise ConfigError("There is no overlap between genes that have structures and genes that have variability.\
+                                   Consider changing things upstream in your workflow or do not provide the structure db.\
+                                   Here are the genes in your structure database: {}".\
+                                   format(", ".join([str(x) for x in self.genes_with_structure])))
+
+            # we're done here. bye.
+            structure_db.disconnect()
+
+        # done Init
+        self.progress.end()
 
 
     def check_if_data_is_empty(self):
@@ -556,10 +583,17 @@ class VariabilitySuper(object):
         """
         changed = "removed" if not added else "added"
 
+        genes_remaining = self.data["corresponding_gene_call"].unique()
+        if self.append_structure_residue_info:
+            structures_remaining = [gene for gene in self.genes_with_structure if gene in genes_remaining]
+
+        extra_msg = ", %d with structure" % (len(structures_remaining)) if self.append_structure_residue_info else ""
         self.run.info('Entries after "%s"' % (reason),
-                         '%s (%s were %s)' % (pp(num_after),
-                                              pp(abs(num_before - num_after)),
-                                              changed),
+                      '%s (%s were %s) [%s genes remaining%s]' % (pp(num_after),
+                                                                  pp(abs(num_before - num_after)),
+                                                                  changed,
+                                                                  len(genes_remaining),
+                                                                  extra_msg),
                       mc='green')
 
         self.check_if_data_is_empty()
@@ -746,7 +780,7 @@ class VariabilitySuper(object):
             # item, pj is the frequency of the jth item, and S_{i,j} is the substitution matrix score for the i->j
             # substitution. If you remember, we already set i=j entries to zero so they contribute zero weight to
             # the score.
-            self.data.loc[keep, SMM + "_weighted"] = normalization * np.sum(freq_table[np.newaxis, :].T * freq_table[:, np.newaxis].T * matrix, axis=(1,2))
+            self.data.loc[keep, SMM + "_weighted"] = normalization * np.sum(freq_table[np.newaxis, :].T * freq_table[:, np.newaxis].T * matrix, axis=(1,2)) # V/\
 
         if not self.quince_mode:
             self.progress.end()
@@ -793,7 +827,6 @@ class VariabilitySuper(object):
         self.data['kullback_leibler_divergence_raw'] = entropy(coverage_by_pos, coverage_summed_over_samples).flatten()
         self.data['kullback_leibler_divergence_normalized'] = entropy(freq_by_pos, freq_summed_over_samples).flatten()
 
-        # Vape Nation V/\
         self.progress.end()
         self.comprehensive_variability_scores_computed = True
 
@@ -850,6 +883,12 @@ class VariabilitySuper(object):
         self.filter_based_on_minimum_coverage_in_each_sample()
 
         self.compute_comprehensive_variability_scores()
+
+        self.get_residue_structure_information()
+
+
+    def get_residue_structure_information(self):
+        pass
 
 
     def get_gene_length(self, gene_callers_id):

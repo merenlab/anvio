@@ -30,7 +30,7 @@ from Bio.PDB import DSSP
 class StructureDatabase(object):
     def __init__(self,
                  file_path,
-                 db_hash,
+                 db_hash=None,
                  residue_info_structure_extras=[],
                  residue_info_types_extras=[],
                  create_new=False,
@@ -48,12 +48,17 @@ class StructureDatabase(object):
         self.progress    = progress
         self.table_names = None
 
+        if not db_hash and create_new:
+            raise ConfigError("You cannot create a Structure DB without supplying a DB hash.")
+
         self.db = db.DB(self.file_path, self.version, new_database = create_new)
 
         if create_new:
             # structure of the residue info table depend on annotation sources used
             self.residue_info_structure, self.residue_info_types = self.get_residue_info_table_structure(residue_info_structure_extras, residue_info_types_extras)
             self.table_names = self.create_tables()
+        else:
+            self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
 
         if not ignore_hash:
             self.check_hash()
@@ -120,7 +125,7 @@ class StructureDatabase(object):
             raise ConfigError("store :: rows_data must be either a list of tuples or a pandas dataframe.")
 
 
-    def close(self):
+    def disconnect(self):
         self.db.disconnect()
 
 
@@ -352,7 +357,7 @@ class Structure(object):
 
         for table_name in self.structure_db.table_names:
             self.structure_db.store(table_name)
-        self.structure_db.close()
+        self.structure_db.disconnect()
 
 
     def run_residue_annotation_for_gene(self, residue_annotation_methods, corresponding_gene_call, pdb_filepath):
