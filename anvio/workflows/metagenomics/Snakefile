@@ -190,6 +190,7 @@ run_qc = M.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == 
 
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True
 
+run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
 rule metagenomics_workflow_target_rule:
     '''
@@ -399,7 +400,6 @@ rule merge_fastas_for_co_assembly:
     shell: "cat {input} > {output}"
 
 
-run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 if run_idba_ud == True:
     rule idba_ud:
         version: 1.0
