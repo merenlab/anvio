@@ -26,9 +26,7 @@ function Bins(prefix, container) {
     this.higlighted_items = [];
     this.container = container || document.createElement("div");
 
-    this.cache = {
-        'gene_cluster_bins_summary_dict': {}
-    };
+    this.cache = {};
 
     document.body.addEventListener('bin-settings-changed', (event) => this.RedrawBins());
 };
@@ -43,6 +41,8 @@ Bins.prototype.NewBin = function(id, binState) {
         var color = randomColor({luminosity: 'dark'});
         var contig_count = 0;
         var contig_length = "N/A";
+        var num_gene_clusters = '---';
+        var num_gene_calls = '---';
         var completeness = '---';
         var redundancy = '---';
 
@@ -57,6 +57,8 @@ Bins.prototype.NewBin = function(id, binState) {
         var color = binState['color'];
         var contig_count = 0;
         var contig_length = "N/A";
+        var num_gene_clusters = "---";
+        var num_gene_calls = "---";
         var completeness = "---";
         var redundancy = "---";
     }
@@ -69,19 +71,18 @@ Bins.prototype.NewBin = function(id, binState) {
                            <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
                            <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
                        ` : ''}
-                       <td data-value="${completeness}"><input id="completeness_${id}" type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
-                       <td data-value="${redundancy}"><input id="redundancy_${id}" type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
+                       ${mode == 'pan' ? `
+                            <td data-value="${num_gene_clusters}" class="num-gene-clusters"><input type="button" value="${num_gene_clusters}" title="Click for gene clusters table" onClick="bins.ShowGeneClusters(${id});"></td>
+                            <td data-value="${num_gene_calls}" class="num-gene-calls"><input type="button" value="${num_gene_calls}"></td>                           
+                       ` : `
+                            <td data-value="${completeness}"><input id="completeness_${id}" type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
+                            <td data-value="${redundancy}"><input id="redundancy_${id}" type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
+                       `}
                        <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>`;
 
     this.container.insertAdjacentHTML('beforeend', template);
     this.SelectLastRadio();
-
-    // TODO: Remove jQuery.
-    if(!from_state){
-        $('#completeness_' + id).attr("disabled", true);
-        $('#redundancy_' + id).attr("disabled", true);
-    }
 
     $('#bin_color_' + id).colpick({
         layout: 'hex',
@@ -240,22 +241,28 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
         let bin_id = bin_list[i];
 
         if (mode == 'pan') {
-            $.ajax({
-                type: "POST",
-                url: "/data/geneclusterssummary",
-                cache: false,
-                data: {
-                    split_names: JSON.stringify(this.GetBinNodeLabels(bin_id)), 
-                    bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
-                success: (data) => {
-                    this.cache['gene_cluster_bins_summary_dict'][bin_id] = data;
-                    $('#redundancy_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);
-                    $('#completeness_' + bin_id).val(data['num_gene_clusters']).parent().attr('data-value', data['num_gene_clusters']);
+            let num_gene_clusters = 0;
+            let num_gene_calls = 0;
+            
+            for (let node of this.selections[bin_id].values()) {
+                if (node.IsLeaf()) {
+                    num_gene_clusters++;
+                    num_gene_calls += parseInt(item_lengths[node.label]);
+                }
+            }
 
-                    $('#completeness_' + bin_id).attr("disabled", false);
-                    $('#redundancy_' + bin_id).attr("disabled", false);
-                },
-            });
+            let bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
+
+            bin_row.querySelector('td.num-gene-clusters').setAttribute('data-value', num_gene_clusters);
+            bin_row.querySelector('td.num-gene-clusters>input').value = num_gene_clusters;
+
+            if (isNaN(num_gene_calls)) {
+                bin_row.querySelector('td.num-gene-calls').setAttribute('data-value', 0);
+                bin_row.querySelector('td.num-gene-calls>input').value = 'n/a';
+            } else {
+                bin_row.querySelector('td.num-gene-calls').setAttribute('data-value', num_gene_calls);
+                bin_row.querySelector('td.num-gene-calls>input').value = num_gene_calls;
+            }
         } else {
             let num_items = 0;
             let length_sum = 0;
@@ -263,7 +270,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
             for (let node of this.selections[bin_id].values()) {
                 if (node.IsLeaf()) {
                     num_items++;
-                    length_sum += parseInt(contig_lengths[node.label]);
+                    length_sum += parseInt(item_lengths[node.label]);
                 }
             }
 
@@ -313,10 +320,10 @@ Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
             {
                 nodes.push(collection['data'][bin_name][i]);
             } 
-            else if (typeof contig_lengths[collection['data'][bin_name][i]] !== 'undefined') 
+            else if (typeof item_lengths[collection['data'][bin_name][i]] !== 'undefined') 
             {
                 nodes.push(collection['data'][bin_name][i]);
-                sum_length += contig_lengths[collection['data'][bin_name][i]];
+                sum_length += item_lengths[collection['data'][bin_name][i]];
             }
         }
 
