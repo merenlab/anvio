@@ -87,6 +87,14 @@ class Table(object):
 
 
     def set_next_available_id(self, table):
+        # FIXME: This is one of the least efficient funcitons ever.
+        #        we need to get the max int value found in the first
+        #        column of the table .. there is no need to get the
+        #        entire table as a dict! we even have a function for
+        #        that
+        #
+        #            db.get_max_value_in_column(table_name, 'entry_id')
+        #
         database = db.DB(self.db_path, self.version)
         table_content = database.get_table_as_dict(table)
         if table_content:
