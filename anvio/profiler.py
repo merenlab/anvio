@@ -7,6 +7,7 @@ import sys
 import time
 import pysam
 import shutil
+import argparse
 import multiprocessing
 
 import anvio
@@ -25,6 +26,7 @@ from anvio.errors import ConfigError
 from anvio.tables.views import TablesForViews
 from anvio.tables.aafrequencies import TableForAAFrequencies
 from anvio.tables.variability import TableForVariability
+from anvio.tables.miscdata import TableForLayerAdditionalData
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -141,6 +143,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # we don't know what we are about
         self.description = None
 
+        # additional layer data will be filled later
+        self.layer_additional_keys = []
+        self.layer_additional_data = {}
+
 
     def init_dirs_and_dbs(self):
         if not self.contigs_db_path:
@@ -249,6 +255,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
         else:
             raise ConfigError("What are you doing? :( Whatever it is, anvi'o will have none of it.")
 
+        # update layer additional data table content
+        if self.layer_additional_data:
+            layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
+            layer_additional_data_table.add({self.sample_id: self.layer_additional_data}, self.layer_additional_keys)
+
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
 
@@ -345,6 +356,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     variable_nts_table.append(column_profile)
 
         variable_nts_table.store()
+
+        self.layer_additional_data['num_SNVs_reported'] = variable_nts_table.num_entries
+        self.layer_additional_keys.append('num_SNVs_reported')
 
 
     def store_split_coverages(self):
@@ -494,8 +508,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         profile_db.db.set_meta_value('num_splits', self.num_splits)
         profile_db.db.set_meta_value('num_contigs', self.num_contigs)
         profile_db.db.set_meta_value('total_length', self.total_length)
-        profile_db.db.set_meta_value('total_reads_mapped', int(self.num_reads_mapped))
         profile_db.disconnect()
+
+        self.layer_additional_data['total_reads_mapped'] = self.num_reads_mapped
+        self.layer_additional_keys.append('total_reads_mapped')
 
 
     def init_mock_profile(self):
@@ -528,8 +544,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         profile_db.db.set_meta_value('num_splits', self.num_splits)
         profile_db.db.set_meta_value('num_contigs', self.num_contigs)
         profile_db.db.set_meta_value('total_length', self.total_length)
-        profile_db.db.set_meta_value('total_reads_mapped', int(self.num_reads_mapped))
         profile_db.disconnect()
+
+        self.layer_additional_data['total_reads_mapped'] = self.num_reads_mapped
+        self.layer_additional_keys.append('total_reads_mapped')
 
 
     def generate_output_destination(self, postfix, directory=False):
