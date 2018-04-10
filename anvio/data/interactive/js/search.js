@@ -164,16 +164,14 @@ function highlightResult() {
 
     highlighted_splits = [];
     for (var i=0; i < search_results.length; i++) {
-        let node = drawer.tree.GetLeafByName(search_results[i]['split']);
-        highlighted_splits.push(node);
+        highlighted_splits.push(search_results[i]['split']);
     }
 
     bins.HighlightItems(highlighted_splits); 
 }
 
 function highlightSplit(name) {
-    let node = drawer.tree.GetLeafByName(name);
-    bins.HighlightItems(highlighted_splits); 
+    bins.HighlightItems(name); 
 }
 
 function appendResult() {

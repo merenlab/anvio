@@ -381,12 +381,25 @@ Bins.prototype.ExportCollection = function() {
 
 
 Bins.prototype.HighlightItems = function(item_list) {
-    this.higlighted_items = item_list;
+    if (!Array.isArray(item_list)) {
+        item_list = [item_list];
+    }
+
+    this.higlighted_items = [];
+    for (let name of item_list) {
+        let node = drawer.tree.GetLeafByName(name);
+        if (node) {
+            this.higlighted_items.push(node);
+        } else {
+            console.error('Received highlight request for non-existed node: ' + name);
+        }
+    }
+
     this.RedrawBins();
 };
 
 
-Bins.prototype.ClearHighlightedItems = function(item_list) {
+Bins.prototype.ClearHighlightedItems = function() {
     this.higlighted_items = [];
     this.RedrawBins();
 };
