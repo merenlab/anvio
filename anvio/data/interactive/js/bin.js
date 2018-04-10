@@ -26,7 +26,9 @@ function Bins(prefix, container) {
     this.higlighted_items = [];
     this.container = container || document.createElement("div");
 
-    this.cache = {};
+    this.cache = {
+        'completeness': {}
+    };
 
     document.body.addEventListener('bin-settings-changed', (event) => this.RedrawBins());
 };
@@ -75,8 +77,8 @@ Bins.prototype.NewBin = function(id, binState) {
                             <td data-value="${num_gene_clusters}" class="num-gene-clusters"><input type="button" value="${num_gene_clusters}"></td>
                             <td data-value="${num_gene_calls}" class="num-gene-calls"><input type="button" value="${num_gene_calls}"></td>                           
                        ` : `
-                            <td data-value="${completeness}"><input id="completeness_${id}" type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
-                            <td data-value="${redundancy}"><input id="redundancy_${id}" type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
+                            <td data-value="${completeness}" class="completeness"><input type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
+                            <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
                        `}
                        <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>`;
@@ -285,6 +287,34 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
             } else {
                 bin_row.querySelector('td.length-sum').setAttribute('data-value', length_sum);
                 bin_row.querySelector('td.length-sum>span').innerHTML = readableNumber(length_sum);
+            }
+
+            if (mode == 'full') {
+                $.ajax({
+                    type: "POST",
+                    url: "/data/completeness",
+                    cache: false,
+                    data: {
+                        'split_names': JSON.stringify(this.GetBinNodeLabels(bin_id)),
+                        'bin_name': JSON.stringify($('#bin_name_' + bin_id).val())
+                    },
+                    success: (data) => {
+                        this.cache['completeness'][bin_id] = data;
+                        let average_completeness = data['averages']['percent_completion'];
+                        let average_redundancy = data['averages']['percent_redundancy'];
+
+                        if (average_completeness != null && average_redundancy != null) {
+                            bin_row.querySelector('td.completeness').setAttribute('data-value', average_completeness);
+                            bin_row.querySelector('td.completeness>input').value = average_completeness.toFixed(1);
+
+                            bin_row.querySelector('td.redundancy').setAttribute('data-value', average_redundancy);
+                            bin_row.querySelector('td.redundancy>input').value = average_redundancy.toFixed(1);
+                        }
+
+                        showCompleteness(bin_id, true);
+                        showRedundants(bin_id, true);
+                    },
+                });
             }
         }
     }
