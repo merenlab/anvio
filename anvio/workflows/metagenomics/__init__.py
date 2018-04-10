@@ -39,7 +39,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         ContigsDBWorkflow.__init__(self)
 
         self.rules.extend(['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',\
-                     'fq2fa', 'merge_fastas_for_co_assembly', 'megahit', 'anvi_script_anvi_script_reformat_fasta',\
+                     'fq2fa', 'merge_fastas_for_co_assembly', 'megahit',\
                      'anvi_gen_contigs_database', 'anvi_export_gene_calls', 'centrifuge',\
                      'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud', \
