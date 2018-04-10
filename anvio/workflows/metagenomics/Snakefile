@@ -341,12 +341,19 @@ rule gen_qc_report:
                         firstline = False
         u.store_dict_as_TAB_delimited_file(report_dict, output[0], headers= ["sample"] + report_column_headers)
 
+# if idba_ud is used then we need to ensure the fastq files
+# will only be compressed AFTER fq2fa is done
+flag_file_for_gzip = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq"
+if run_idba_ud:
+    flag_file_for_gzip = rules.fq2fa.output
 
 rule gzip_fastqs:
     ''' Compressing the quality controlled fastq files'''
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{sample}-{R}-gzip.log"
-    input: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq"
+    input:
+        fastq = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq",
+        run_gzip_flag = flag_file_for_gzip
     output: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq.gz"
     threads: M.T('gzip_fastqs')
     resources: nodes = M.T('gzip_fastqs'),
@@ -392,7 +399,8 @@ rule merge_fastas_for_co_assembly:
     shell: "cat {input} > {output}"
 
 
-if M.get_param_value_from_config(['idba_ud', 'run']) == True:
+run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
+if run_idba_ud == True:
     rule idba_ud:
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-idba_ud.log"
