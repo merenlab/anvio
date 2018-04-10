@@ -1403,12 +1403,12 @@ function showCompleteness(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
 
-    if (!completeness_dict.hasOwnProperty(bin_id))
+    if (!bins.cache['completeness'].hasOwnProperty(bin_id))
         return;
 
-    var refs = completeness_dict[bin_id]['refs'];
-    var stats = completeness_dict[bin_id]['stats'];
-    var averages = completeness_dict[bin_id]['averages'];
+    var refs = bins.cache['completeness'][bin_id]['refs'];
+    var stats = bins.cache['completeness'][bin_id]['stats'];
+    var averages = bins.cache['completeness'][bin_id]['averages'];
 
     var title = 'Completeness of "' + $('#bin_name_' + bin_id).val() + '"';
 
@@ -1436,11 +1436,11 @@ function showRedundants(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
     
-    if (!completeness_dict.hasOwnProperty(bin_id))
+    if (!bins.cache['completeness'].hasOwnProperty(bin_id))
         return;
 
-    var stats = completeness_dict[bin_id]['stats'];
-    var averages = completeness_dict[bin_id]['averages'];
+    var stats = bins.cache['completeness'][bin_id]['stats'];
+    var averages = bins.cache['completeness'][bin_id]['averages'];
 
     var output_title = 'Redundants of "' + $('#bin_name_' + bin_id).val() + '"';
 
