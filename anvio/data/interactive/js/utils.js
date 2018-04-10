@@ -197,7 +197,7 @@ function renderMarkdown(content) {
             var item_name = href.split('//')[1];
 
             var html = '<a href="#" class="item-link">' + text + '<span class="tooltiptext"> \
-                <span href="#" onclick="highlighted_splits = [\'' + item_name + '\']; redrawBins();">HIGHLIGHT</span>';
+                <span href="#" onclick="bins.HighlightItems(\'' + item_name + '\');">HIGHLIGHT</span>';
 
             if (mode == 'full' | mode == 'pan') {
                 var target = (mode == 'pan') ? 'inspect_gene_cluster' : 'inspect_contig';
