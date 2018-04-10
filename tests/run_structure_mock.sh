@@ -58,12 +58,20 @@ then
     INFO "Defining a collection and bin"
     anvi-import-collection mock_data_for_structure/collection.txt -c test-output/one_contig_five_genes.db -p test-output/SAMPLES-MERGED/PROFILE.db -C default
 
+####################################################################################
+
+INFO "anvi-model-protein-structures with DSSP"
+anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
+                              --gene-caller-ids 2,4 \
+                              --dump-dir test-output/STRUCTURES_full \
+                              --output-db-path test-output/STRUCTURE.db
+
 elif [ $1 = "continue"  ]
 then
     cd sandbox
     
-    rm -rf test-output/STRUCTURES
-    rm -rf test-output/STRUCTURES_full
+    #rm -rf test-output/STRUCTURES
+    #rm -rf test-output/STRUCTURES_full
 
     if [ ! -f "test-output/one_contig_five_genes.db"  ]
     then
@@ -83,19 +91,15 @@ else
         exit -1
 fi
 
-INFO "anvi-map-variability-on-structure"
-anvi-map-variability-on-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
-                                  -c test-output/one_contig_five_genes.db \
-                                  -C default \
-                                  -b bin1 \
-                                  -S mock_data_for_structure/STRUCTURES \
-                                  --quince-mode
 
-INFO "anvi-model-protein-structures with DSSP"
-anvi-model-protein-structures -c test-output/one_contig_five_genes.db \
-                              --gene-caller-ids 2,4 \
-                              --dump-dir test-output/STRUCTURES_full \
-                              --output-db-path test-output/STRUCTURE.db
+INFO "anvi-gen-variability-profile"
+anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
+                             -c test-output/one_contig_five_genes.db \
+                             -s test-output/STRUCTURE.db \
+                             -C default \
+                             -b bin1 \
+                             --engine AA \
+                             --quince-mode
 
 #INFO "anvi-model-protein-structures"
 #anvi-model-protein-structures -c test-output/one_contig_five_genes.db \

@@ -2014,6 +2014,12 @@ def is_profile_db(db_path):
     return True
 
 
+def is_structure_db(db_path):
+    if get_db_type(db_path) != 'structure':
+        raise ConfigError("'%s' is not an anvi'o structure database." % db_path)
+    return True
+
+
 def is_blank_profile(db_path):
     if get_db_type(db_path) != 'profile':
         return False
@@ -2032,8 +2038,8 @@ def is_pan_db(db_path):
 
 
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
-    is_contigs_db(contigs_db_path)
     is_profile_db(profile_db_path)
+    is_contigs_db(contigs_db_path)
 
     profile_db = db.DB(profile_db_path, get_required_version_for_db(profile_db_path))
     contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
@@ -2051,6 +2057,28 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
                            database is not the one that was used when %s generated\
                            this profile database (%s != %s).'\
                                % ('anvi-merge' if merged else 'anvi-profile', a_hash, p_hash))
+
+    return True
+
+
+def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path):
+    is_structure_db(structure_db_path)
+    is_contigs_db(contigs_db_path)
+
+    structure_db = db.DB(structure_db_path, get_required_version_for_db(structure_db_path))
+    contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
+
+    p_hash = structure_db.get_meta_value('contigs_db_hash')
+    a_hash = contigs_db.get_meta_value('contigs_db_hash')
+
+    structure_db.disconnect()
+    contigs_db.disconnect()
+
+    if a_hash != p_hash:
+        raise ConfigError('The contigs and structure databases do not seem compatible.\
+                           More specifically, the contigs database is not the one that\
+                           was used when the structure database was created (%s != %s).'\
+                               % (a_hash, p_hash))
 
     return True
 

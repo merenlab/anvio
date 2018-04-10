@@ -22,6 +22,7 @@ structure_db_version = "1"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
+                         'structure': structure_db_version,
                          'pan': pan_db_version,
                          'genomestorage': genomes_storage_vesion}
 
