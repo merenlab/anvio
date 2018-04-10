@@ -77,8 +77,12 @@ D = {
     'structure-db': (
             ['-s', '--structure-db'],
             {'metavar': "STRUCTURE_DB",
-             'required': True,
-             'help': "Anvi'o structure database"}
+             'required': False,
+             'help': "Anvi'o structure database. If supplied for anvi-gen-varability-profile,\
+                      structural information about residues such as solvent accessibility and secondary\
+                      structure are appended to the output as additional columns for entries in genes that have\
+                      modelled protein structures. Note this setting is only\
+                      valid if the `--engine AA` flag is given."}
                 ),
     'genomes-names': (
             ['-G', '--genome-names'],
@@ -1608,6 +1612,7 @@ def get_version_tuples():
     return [("Anvi'o version", __version__),
             ("Profile DB version", __profile__version__),
             ("Contigs DB version", __contigs__version__),
+            ("Structure DB version", __structure__version__),
             ("Pan DB version", __pan__version__),
             ("Genome data storage version", __genomes_storage_version__),
             ("Auxiliary data storage version", __auxiliary_data_version__)]
@@ -1620,7 +1625,7 @@ def print_version():
     run.info("Pan DB version", __pan__version__)
     run.info("Genome data storage version", __genomes_storage_version__)
     run.info("Auxiliary data storage version", __auxiliary_data_version__)
-    run.info("Structure DB version", __structure_database_version__)
+    run.info("Structure DB version", __structure__version__)
 
 
 __version__, \
@@ -1629,7 +1634,7 @@ __pan__version__, \
 __profile__version__, \
 __auxiliary_data_version__, \
 __genomes_storage_version__ , \
-__structure_database_version__ = set_version()
+__structure__version__ = set_version()
 
 
 if '-v' in sys.argv or '--version' in sys.argv:

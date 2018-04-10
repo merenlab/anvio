@@ -129,7 +129,7 @@ if __name__ == '__main__':
                         default is 5'.""")
 
     groupE.add_argument("--skip-DSSP", action = "store_true", help = \
-                        """Dictionary of Secondary Structure of Proteins (DSSP) is a  program that  takes
+                        """Dictionary of Secondary Structure of Proteins (DSSP) is a program that takes
                         as its input a protein structure file and outputs predicted secondary
                         structure (alpha helix, beta strand, etc.), measures of solvent
                         accessibility, and hydrogen bonds for each residue in the protein. If for

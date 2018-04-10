@@ -39,16 +39,16 @@ class StructureDatabase(object):
                  progress=terminal.Progress(),
                  quiet=False):
 
-        self.db_type = 'structure'
-        self.db_hash = str(db_hash)
-        self.version = anvio.__auxiliary_data_version__
-        self.file_path = file_path
-        self.quiet = quiet
-        self.run = run
-        self.progress = progress
+        self.db_type     = 'structure'
+        self.db_hash     = str(db_hash)
+        self.version     = anvio.__structure__version__
+        self.file_path   = file_path
+        self.quiet       = quiet
+        self.run         = run
+        self.progress    = progress
         self.table_names = None
 
-        self.db = db.DB(self.file_path, self.version, new_database=create_new)
+        self.db = db.DB(self.file_path, self.version, new_database = create_new)
 
         if create_new:
             # structure of the residue info table depend on annotation sources used
@@ -88,7 +88,7 @@ class StructureDatabase(object):
 
     def create_tables(self):
         self.db.set_meta_value('db_type', self.db_type)
-        self.db.set_meta_value('profile_db_hash', self.db_hash) # FIXME contigs db
+        self.db.set_meta_value('contigs_db_hash', self.db_hash)
         self.db.set_meta_value('creation_date', time.time())
 
         self.db.create_table(t.structure_pdb_data_table_name, t.structure_pdb_data_table_structure, t.structure_pdb_data_table_types)
@@ -99,10 +99,10 @@ class StructureDatabase(object):
 
 
     def check_hash(self):
-        actual_db_hash = str(self.db.get_meta_value('profile_db_hash'))
+        actual_db_hash = str(self.db.get_meta_value('contigs_db_hash'))
         if self.db_hash != actual_db_hash:
-            raise ConfigError('The hash value inside Structure Database "%s" does not match with Profile Database hash "%s",\
-                                      these files probably belong to different projects.' % (actual_db_hash, self.db_hash))
+            raise ConfigError('The hash value inside Structure Database "%s" does not match with Contigs Database hash "%s",\
+                               these files probably belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
     def store(self, table_name):
@@ -132,27 +132,30 @@ class Structure(object):
         self.progress = progress
 
         # initialize self.arg parameters
-        A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
-        null = lambda x: x
-        self.contigs_db_path = A('contigs_db', null)
-        self.genes_of_interest_path = A('genes_of_interest', null)
+        A                            = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
+        null                         = lambda x: x
+        self.contigs_db_path         = A('contigs_db', null)
+        self.genes_of_interest_path  = A('genes_of_interest', null)
         self.splits_of_interest_path = A('splits_of_interest', null)
-        self.bin_id = A('bin_id', null)
-        self.collection_name = A('collection_name', null)
-        self.gene_caller_ids = A('gene_caller_ids', null)
-        self.output_db_path = A('output_db_path', null)
-        self.full_output = A('dump_dir', null)
-        self.skip_DSSP = A('skip_DSSP', bool)
-        self.DSSP_executable = None
+        self.bin_id                  = A('bin_id', null)
+        self.collection_name         = A('collection_name', null)
+        self.gene_caller_ids         = A('gene_caller_ids', null)
+        self.output_db_path          = A('output_db_path', null)
+        self.full_output             = A('dump_dir', null)
+        self.skip_DSSP               = A('skip_DSSP', bool)
+        self.DSSP_executable         = None
+
+        contigs_db                   = dbops.ContigsDatabase(self.contigs_db_path)
+        contigs_db_hash              = contigs_db.meta['contigs_db_hash']
 
         # MODELLER params
-        self.modeller_database = A('database_name', null)
-        self.best = A('best', null)
-        self.max_matches = A('max_number_templates', null)
-        self.min_proper_pident = A('percent_identical_cutoff', null)
-        self.num_models = A('num_models', null)
-        self.deviation = A('deviation', null)
-        self.very_fast = A('very_fast', bool)
+        self.modeller_database       = A('database_name', null)
+        self.best                    = A('best', null)
+        self.max_matches             = A('max_number_templates', null)
+        self.min_proper_pident       = A('percent_identical_cutoff', null)
+        self.num_models              = A('num_models', null)
+        self.deviation               = A('deviation', null)
+        self.very_fast               = A('very_fast', bool)
 
         # check outputs are writable
         filesnpaths.is_output_file_writable(self.output_db_path)
@@ -171,11 +174,10 @@ class Structure(object):
 
         # initialize StructureDatabase
         self.structure_db = StructureDatabase(self.output_db_path,
-                                              "DUMMYHASH", # FIXME must be contigs db hash
+                                              contigs_db_hash,
                                               residue_info_structure_extras = self.residue_info_table_structure,
                                               residue_info_types_extras = self.residue_info_table_types,
                                               create_new=True)
-
 
 
     def get_residue_info_table_structure(self):
@@ -436,17 +438,20 @@ class Structure(object):
         d = {}
         for key in dssp_biopython_object.keys():
             d[key] = list(dssp_biopython_object[key])
-            d[key][columns.index("codon_order_in_gene")] = utils.convert_sequence_indexing(d[key][columns.index("codon_order_in_gene")], source="not anvio", destination="anvio")
+            d[key][columns.index("codon_order_in_gene")] = utils.convert_sequence_indexing(d[key][columns.index("codon_order_in_gene")], source="M1", destination="M0")
             d[key][columns.index("aa")] = one_to_three[d[key][columns.index("aa")]]
+
             if d[key][columns.index("sec_struct")] == "-":
                 d[key][columns.index("sec_struct")] = "C"
 
             for hbond in ["NH_O_1", "O_NH_1", "NH_O_2", "O_NH_2"]:
                 res_index = d[key][columns.index("codon_order_in_gene")]
                 rel_index = d[key][columns.index(hbond+"_index")]
+
                 if rel_index == 0:
                     d[key][columns.index(hbond+"_index")] = np.nan
                     d[key][columns.index(hbond+"_energy")] = np.nan
+
                 else:
                     d[key][columns.index(hbond+"_index")] = res_index + rel_index
 

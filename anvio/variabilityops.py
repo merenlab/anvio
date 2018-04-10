@@ -67,6 +67,7 @@ class VariabilitySuper(object):
         self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', int) or 0
         self.profile_db_path = A('profile_db', null)
         self.contigs_db_path = A('contigs_db', null)
+        self.structure_db_path = A('structure_db', null)
         self.quince_mode = A('quince_mode', bool)
         self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
         self.output_file_path = A('output_file', null)
@@ -164,17 +165,22 @@ class VariabilitySuper(object):
         if not self.contigs_db_path:
             raise ConfigError('You need to provide a contigs database.')
 
+        if self.structure_db_path and self.engine not in ["AA", "CDN"]:
+            raise ConfigError('You provided a structure database, which is only compatible with --engine AA (or maybe\
+                               ... plot spoiler: --engine CDN)')
+
         self.progress.update('Making sure our databases are compatible ..')
         utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        utils.is_structure_db_and_contigs_db_compatible(self.structure_db_path, self.contigs_db_path)
 
         if self.min_coverage_in_each_sample and not self.quince_mode:
             self.progress.end()
-            raise ConfigError("When you sepecify a coverage value through --min-coverage-in-each-sample, you must also\
+            raise ConfigError("When you specify a coverage value through --min-coverage-in-each-sample, you must also\
                                 use --quince-mode flag, since the former parameter needs to know the coverage values in all\
-                                samples even if variation is reported for only one sample among otheres. This is the only way\
+                                samples even if variation is reported for only one sample among others. This is the only way\
                                 to figure out whether variation is not reported for other samples due to low or zero coverage,\
                                 or there was no variation to report despite the high coverage. Anvi'o could turn --quince-mode\
-                                flat automatically for you, but then it is much better if you have full control and understaning\
+                                flat automatically for you, but it is much better if you have full control and understanding\
                                 of what is going on.")
 
         if self.quince_mode:
