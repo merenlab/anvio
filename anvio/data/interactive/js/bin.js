@@ -26,7 +26,9 @@ function Bins(prefix, container) {
     this.higlighted_items = [];
     this.container = container || document.createElement("div");
 
-    this.cache = {};
+    this.cache = {
+        'gene_cluster_bins_summary_dict': {}
+    };
 
     document.body.addEventListener('bin-settings-changed', (event) => this.RedrawBins());
 };
@@ -238,7 +240,22 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
         let bin_id = bin_list[i];
 
         if (mode == 'pan') {
+            $.ajax({
+                type: "POST",
+                url: "/data/geneclusterssummary",
+                cache: false,
+                data: {
+                    split_names: JSON.stringify(this.GetBinNodeLabels(bin_id)), 
+                    bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
+                success: (data) => {
+                    this.cache['gene_cluster_bins_summary_dict'][bin_id] = data;
+                    $('#redundancy_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);
+                    $('#completeness_' + bin_id).val(data['num_gene_clusters']).parent().attr('data-value', data['num_gene_clusters']);
 
+                    $('#completeness_' + bin_id).attr("disabled", false);
+                    $('#redundancy_' + bin_id).attr("disabled", false);
+                },
+            });
         } else {
             let num_items = 0;
             let length_sum = 0;
