@@ -77,12 +77,18 @@ class MultipleRuns:
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
+        self.profiles = []
         self.split_names = None
         self.sample_ids_found_in_input_dbs = []
         self.normalization_multiplier = {}
 
         self.profile_dbs_info_dict = {}
-        self.profiles = []
+
+        # these will describe layer additional data common to all profile
+        # databases to be merged:
+        self.layer_additional_data_dict = {}
+        self.layer_additional_data_keys = []
+
 
         self.merged_profile_db_path = None
 
@@ -94,8 +100,8 @@ class MultipleRuns:
         self.description = None
 
 
-    def populate_profile_dbs_info_dict(self):
-        improper = []
+    def check_dbs_to_be_merged(self):
+        proper, improper = [], []
 
         for p in self.input_profile_db_paths:
             utils.is_profile_db(p)
@@ -105,7 +111,7 @@ class MultipleRuns:
             if profile_db.meta['db_type'] != 'profile' or profile_db.meta['blank'] or profile_db.meta['merged']:
                 improper.append(p)
             else:
-                self.profile_dbs_info_dict[p] = profile_db.meta
+                proper.append(p)
 
         proper = [p for p in self.input_profile_db_paths if p not in improper]
 
@@ -126,6 +132,65 @@ class MultipleRuns:
                               Here are all the paths for excluded databases: %s." \
                                             % (len(self.input_profile_db_paths), len(improper), len(proper), ', '.join(["'%s'" % p for p in improper])))
 
+        # replace input profile database paths with proper paths:
+        self.input_profile_db_paths = proper
+
+
+    def populate_layer_additional_data_dict(self):
+        self.progress.new('Layer additional data ops')
+        self.progress.update('...')
+
+        dicts_of_layer_additional_data_dicts = {}
+
+        for p in self.input_profile_db_paths:
+            self.progress.update(p)
+            keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get()
+            dicts_of_layer_additional_data_dicts[p] = {'keys': keys, 'data': data}
+
+        # find common keys to all layer additional data tables:
+        all_keys = [set(e['keys']) for e in dicts_of_layer_additional_data_dicts.values()]
+
+        self.layer_additional_data_keys = all_keys.pop()
+
+        for key_set in all_keys:
+            self.layer_additional_data_keys.intersection_update(key_set)
+
+        # if there are no keys that are common to all single profiles, we shall merge nothing of these
+        # tables.
+        if not 'total_reads_mapped' in self.layer_additional_data_keys:
+            self.progress.end()
+            raise ConfigError("While trying to learn everything there is to learn about layer additional data in single\
+                               profiles to be merged, anvi'o realized that 'total_reads_mapped' is not common to all \
+                               profile databases :( This is bad, becasue this indicates there is something terribly\
+                               wrong with one or more of your single profile databases. If you are a programmer trying to\
+                               mimic anvi'o single profiles, you will have to look at the code of the profiler a bit more\
+                               carefully. If you are a user, well, you are *really* in trouble... Send us an e-mail or\
+                               something?")
+
+        self.progress.update('Finalizing ...')
+        # otherwise, let's create a final data dictionary for these assholes based on common keys.
+        for data in [v['data'] for v in dicts_of_layer_additional_data_dicts.values()]:
+            sample_id = list(data.keys())[0]
+
+            keys_of_no_interest = [k for k in data[sample_id] if k not in self.layer_additional_data_keys]
+            for key in keys_of_no_interest:
+                data[sample_id].pop(key)
+
+            self.layer_additional_data_dict[sample_id] = data[sample_id]
+
+        self.progress.end()
+
+
+    def populate_profile_dbs_info_dict(self):
+        self.progress.new('Reading self tables of each single profile db')
+        self.progress.update('...')
+
+        for p in self.input_profile_db_paths:
+            profile_db = dbops.ProfileDatabase(p)
+            self.profile_dbs_info_dict[p] = profile_db.meta
+
+        self.progress.end()
+
 
     def sanity_check(self):
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.overwrite_output_destinations)
@@ -140,7 +205,11 @@ class MultipleRuns:
             raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
                                 while also asking it to enforce it.")
 
+        self.check_dbs_to_be_merged()
+
         self.populate_profile_dbs_info_dict()
+
+        self.populate_layer_additional_data_dict()
 
         self.sample_ids_found_in_input_dbs = sorted([v['sample_id'] for v in list(self.profile_dbs_info_dict.values())])
         if len(self.profile_dbs_info_dict) != len(set(self.sample_ids_found_in_input_dbs)):
@@ -327,7 +396,7 @@ class MultipleRuns:
                               to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
                                                                 % pp(self.num_splits))
 
-        self.total_reads_mapped_per_sample =  dict([(v['sample_id'], int(v['total_reads_mapped'][v['sample_id']])) for v in list(self.profile_dbs_info_dict.values())])
+        self.total_reads_mapped_per_sample = dict([(s, self.layer_additional_data_dict[s]['total_reads_mapped']) for s in self.layer_additional_data_dict])
 
         sample_ids_list = ', '.join(sorted(self.sample_ids_found_in_input_dbs)) 
         total_reads_mapped_list = ', '.join([str(self.total_reads_mapped_per_sample[sample_id]) for sample_id in self.sample_ids_found_in_input_dbs])
@@ -367,6 +436,7 @@ class MultipleRuns:
         self.run.info('contigs_db_hash', self.contigs_db_hash)
         self.run.info('num_runs_processed', len(self.sample_ids_found_in_input_dbs))
         self.run.info('merged_sample_ids', sample_ids_list)
+        self.run.info("Common layer additional data keys", ', '.join(self.layer_additional_data_keys))
         self.run.info('total_reads_mapped', total_reads_mapped_list)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('clustering_performed', not self.skip_hierarchical_clustering)
@@ -403,7 +473,7 @@ class MultipleRuns:
         if not self.skip_concoct_binning and __CONCOCT_IS_AVAILABLE__:
             self.bin_contigs_concoct()
 
-        self.populate_layers_additional_data_and_layer_orders()
+        self.populate_misc_data_tables()
 
         self.run.quit()
 
@@ -427,7 +497,7 @@ class MultipleRuns:
         return self.normalized_coverages[target][split_name][sample_id] / denominator if denominator else 0
 
 
-    def populate_layers_additional_data_and_layer_orders(self):
+    def populate_misc_data_tables(self):
         self.run.info_single("Additional data and layer orders...", nl_before=1, nl_after=1, mc="blue")
 
         essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
@@ -437,7 +507,7 @@ class MultipleRuns:
         profile_db_super = dbops.ProfileSuperclass(args)
         profile_db_super.load_views(omit_parent_column=True)
 
-        # figure out sample orders dictionary
+        # figure out layer orders dictionary
         layer_orders_data_dict = {}
         failed_attempts = []
         self.progress.new('Working on layer orders')
@@ -467,21 +537,10 @@ class MultipleRuns:
                               the clustering in fact worked. Here is the list of stuff that failed: '%s'"\
                               % (', '.join(failed_attempts)))
 
-        self.progress.new('Working on layer additional data')
-        self.progress.update('...')
-
-        layer_additional_data_dict = {}
-        for sample_name in self.sample_ids_found_in_input_dbs:
-            layer_additional_data_dict[sample_name] = {}
-
-        # figure out num reads mapped per sample:
-        for sample_name in self.sample_ids_found_in_input_dbs:
-            layer_additional_data_dict[sample_name]['num_mapped_reads'] = self.total_reads_mapped_per_sample[sample_name]
-
-        self.progress.end()
-
         TableForLayerOrders(args).add(layer_orders_data_dict)
-        TableForLayerAdditionalData(args).add(layer_additional_data_dict, ['num_mapped_reads'])
+
+        # done with layer orders. let's add our layer additional data and call it a day.
+        TableForLayerAdditionalData(args).add(self.layer_additional_data_dict, list(self.layer_additional_data_keys))
 
 
     def gen_view_data_tables_from_atomic_data(self):
