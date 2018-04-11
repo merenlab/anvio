@@ -220,12 +220,7 @@ function initData() {
             var available_views = response.views[2];
             $('#views_container').append(getComboBoxContent(default_view, available_views));
 
-            // make layers and samples table sortable
-            var _notFirstSelector = ''
-            if (mode != 'manual' && mode != 'pan' && mode != 'server') {
-                _notFirstSelector = ':not(:first)';
-            }
-            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr" + _notFirstSelector}).disableSelection(); 
+            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
             $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
             
             samples_order_dict = response.layers_order;
