@@ -155,10 +155,6 @@ $(document).ready(function() {
         $(this).colpickSetColor(this.value);
     });
 
-    document.body.addEventListener('click', function() {
-        $('#control_contextmenu').hide();
-    }, false);
-
     $("li[role='presentation']").click(function (e) {
         if ($(this).hasClass('disabled')) {
             e.preventDefault();
