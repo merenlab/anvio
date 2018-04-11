@@ -382,6 +382,8 @@ rule fq2fa:
 
         if len(files_that_end_with_gz):
             # uncompress the files before running fq2fa
+            run.warning("The following fastq files are compressed and will now \
+                         be uncompressed using gunzip: %s." % files_that_end_with_gz)
             shell("gunzip {input.r1} >> {log} 2>&1")
             shell("gunzip {input.r2} >> {log} 2>&1")
 
@@ -390,6 +392,8 @@ rule fq2fa:
 
         if len(files_that_end_with_gz):
             # after fq2fa is done we can compress those files again
+            run.warning("fq2fa is done so we will now compress the following fastq files \
+                         to return them to their original state: %s." % files_that_end_with_gz)
             shell("gzip {input.r1} >> {log} 2>&1")
             shell("gzip {input.r2} >> {log} 2>&1")
 
