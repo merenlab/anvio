@@ -369,7 +369,29 @@ rule fq2fa:
     output: temp(dirs_dict["QC_DIR"] + "/{sample}-merged-reads.fa")
     threads: M.T('fq2fa')
     resources: nodes = M.T('fq2fa')
-    shell: "fq2fa --merge {input} {output} >> {log} 2>&1"
+    run:
+        # Checking if any of the input files are compressed
+        # this should only happen if QC is not performed in this snakemake session
+        # because if QC is performed in this session then the output of iu-filter-quality-minoche
+        # is not compressed and snakemake will schedule fq2fa rule before gzip rule
+        files_that_end_with_gz = [f for f in input if f.endswith('.gz')]
+        if len(files_that_end_with_gz) == 1:
+            raise ConfigError("Something seems very bad: one of the pair fastq files\
+                               is compressed and the other one is not. This is the \
+                               compressed one: %s" % files_that_end_with_gz[0])
+
+        if len(files_that_end_with_gz):
+            # uncompress the files before running fq2fa
+            shell("gunzip {input.r1} >> {log} 2>&1")
+            shell("gunzip {input.r2} >> {log} 2>&1")
+
+        # running fq2fa
+        shell("fq2fa --merge {input} {output} >> {log} 2>&1")
+
+        if len(files_that_end_with_gz):
+            # after fq2fa is done we can compress those files again
+            shell("gzip {input.r1} >> {log} 2>&1")
+            shell("gzip {input.r2} >> {log} 2>&1")
 
 
 rule merge_fastas_for_co_assembly:
