@@ -1354,7 +1354,7 @@ function showContigNames(bin_id, updateOnly) {
 
     var msg = '<table class="table table-striped">';
     for (const label of bins.GetBinNodeLabels(bin_id)) {
-        msg += `<tr><td><a href='#' class='no-link'>${label}</a></td></tr>`;
+        msg += `<tr><td><a href='#' class='no-link' onclick="bins.HighlightItems('${label}');">${label}</a></td></tr>`;
     }
 
     msg = msg + '</table>';
@@ -1470,13 +1470,13 @@ function showRedundants(bin_id, updateOnly) {
 
             redundants_html += '<span style="cursor:pointer;" \
                                     data-toggle="tooltip" data-placement="top" title="' + title + '" \
-                                    onclick="highlighted_splits = [' + split_array + ']; redrawBins();"> \
+                                    onclick="bins.HighlightItems([' + split_array + ']);"> \
                                     ' + redundant + ' (' + stats[source]['redundants'][redundant].length + ') \
                                   </span><br />';
         }
 
         tabletext += '<tr><td valign="top">' + redundants_html + '<br /><br /><span style="cursor:pointer;" \
-                                    onclick="highlighted_splits = [' + split_array_all + ']; redrawBins();">(Highlight All)\
+                                    onclick="bins.HighlightItems([' + split_array_all + ']);">(Highlight All)\
                                   </span></tr></td></table></div>';
         output += tabletext;
 
@@ -1492,8 +1492,7 @@ function showRedundants(bin_id, updateOnly) {
 }
 
 function exportSvg(dontDownload) {
-    // check if tree parsed, which means there is a tree on the screen
-    if ($.isEmptyObject(label_to_node_map)) 
+    if (!drawer) 
         return;
 
     // draw bin and layer legend to output svg
