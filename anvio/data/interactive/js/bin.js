@@ -236,6 +236,16 @@ Bins.prototype.RemoveNode = function(targets) {
 };
 
 
+Bins.prototype.IsNodeMemberOfBin = function(node) {
+    for (let bin_id in this.selections) {
+        if (this.selections[bin_id].has(node)) {
+            return true;
+        }
+    }
+    return false;
+};
+
+
 Bins.prototype.UpdateBinsWindow = function(bin_list) {
     bin_list = bin_list || Object.keys(this.selections);
 
