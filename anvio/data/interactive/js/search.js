@@ -9,7 +9,7 @@ function searchContigs()
         return;
     }
     var column = $('#searchLayerList').val();
-    search_column = layerdata[0][column];
+    search_column = (column == 0) ? 'Item Name' : layerdata[0][column];
     var operator = $('#searchOperator').val();
     
     if (operator < 6)
