@@ -398,7 +398,7 @@ rule gzip_fastqs:
     output: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq.gz"
     threads: M.T('gzip_fastqs')
     resources: nodes = M.T('gzip_fastqs'),
-    shell: "gzip {input} >> {log} 2>&1"
+    shell: "gzip {input.fastq} >> {log} 2>&1"
 
 
 if run_idba_ud == True:
