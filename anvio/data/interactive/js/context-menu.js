@@ -24,18 +24,73 @@ ContextMenu = function(options) {
     this.event = event;
     this.node = options.node;
     this.layer = options.layer;
+
+    this.menu_items = {
+        'select': {
+            'title': 'Add item to bin',
+            'action': (node, layer, param) => {
+                bins.AppendNode(node);
+            }
+        },
+        'remove': {
+            'title': 'Remove item from bin',
+            'action': (node, layer, param) => {
+                bins.RemoveNode(node);
+            }
+        },
+        'select_layer': {
+            'title': 'Select layer',
+            'action': (node, layer, param) => {
+                $(`#tbody_layers tr:nth-child(${layer}) input:checkbox`).prop('checked', true);
+            }
+        },
+        'unselect_layer': {
+            'title': 'Select layer',
+            'action': (node, layer, param) => {
+                $(`#tbody_layers tr:nth-child(${layer}) input:checkbox`).prop('checked', false);
+            }
+        },
+        'inspect': {
+            'title': 'Inspect',
+            'action': (node, layer, param) => {
+                localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+                window.open(generate_inspect_link('inspect_' + param, node.label), '_blank'); 
+            }
+        },
+        'inspect_split': {
+            'title': 'Inspect split',
+            'action': (node, layer, param) => {
+                this.menu_items['inspect']['action'](node, layer, 'split');
+            }
+        },
+        'inspect_geneclusters': {
+            'title': 'Inspect gene cluster',
+            'action': (node, layer, param) => {
+                this.menu_items['inspect']['action'](node, layer, 'geneclusters');
+            }
+        },
+        'inspect_context': {
+            'title': 'Inspect context',
+            'action': (node, layer, param) => {
+                this.menu_items['inspect']['action'](node, layer, 'context');
+            }
+        }
+    }
 }
 
 ContextMenu.prototype.BuildMenu = function() {
     var menu = [];
 
     if (this.node.IsLeaf()) {
-        menu.push({'type': 'item', 'title': 'Add item to bin'     , 'action': 'select'},
-                  {'type': 'item', 'title': 'Remove item from bin', 'action': 'remove'},
-                  {'type': 'divider'},
-                  {'type': 'item', 'title': 'Select layer'  , 'action': 'select_layer'},
-                  {'type': 'item', 'title': 'Unselect layer', 'action': 'unselect_layer'});
-
+        if (bins.IsNodeMemberOfBin(this.node)) {
+            menu.push('remove');
+        } else {
+            menu.push('select');
+        }
+        menu.push('divider');
+        menu.push('select_layer');
+        menu.push('unselect_layer');
+/*
         if (mode == 'gene') {
             menu.push({'type': 'divider'},
                       {'type': 'item', 'title': 'Inspect Context', 'action': 'inspect', 'param': 'context'},
@@ -59,7 +114,7 @@ ContextMenu.prototype.BuildMenu = function() {
                       {'type': 'item', 'title': 'Rotate this branch'  , 'action': 'rotate'},
                       {'type': 'item', 'title': 'Reroot tree here'    , 'action': 'reroot'});   
         }
-    }
+*/    }
 
     return menu;
 };
@@ -78,42 +133,22 @@ ContextMenu.prototype.Show = function() {
     list.style.top = this.event.clientY + 'px';
 
     for (const item of this.BuildMenu()) {
-        if (item.type == 'divider') {
+        if (item == 'divider') {
             list.innerHTML += `<li class="divider"></li>`;
         } else {
-            list.innerHTML += `<li><a href="#" menu-action="${item.action}" menu-param="${item.param}">${item.title}</a></li>`;
+            list.innerHTML += `<li><a href="#" item-name="${item}">${this.menu_items[item]['title']}</a></li>`;
         }
     }
 
     this.container.appendChild(list);
 
     list.addEventListener('click', (event) => {
-        let action = event.target.getAttribute('menu-action');
-        let param = event.target.getAttribute('menu-param');
-        this.MenuClickHandler(action, param);
+        let item_name = event.target.getAttribute('item-name');
+
+        this.menu_items[item_name]['action'](this.node, this.layer);
     });
 
     this.container.addEventListener('click', (event) => {
         list.remove();
     }, {once: true});
-};
-
-
-ContextMenu.prototype.MenuClickHandler = function(action, param) {
-    if (action == 'select') {
-        bins.AppendNode(this.node);
-    } 
-    else if (action == 'remove') {
-        bins.RemoveNode(this.node);
-    }
-    else if (action == 'select_layer') {
-        $('#tbody_layers tr:nth-child(' + this.layer + ') input:checkbox').prop('checked', true);
-    }
-    else if (action == 'unselect_layer') {
-        $('#tbody_layers tr:nth-child(' + this.layer + ') input:checkbox').prop('checked', false);
-    }
-    else if (action == 'inspect') {
-        localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-        window.open(generate_inspect_link('inspect_' + param, item_name), '_blank');
-    }
 };
