@@ -393,14 +393,38 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         AdditionalAndOrderDataBaseClass.__init__(self, args)
 
 
-    def get(self):
+    def get(self, additional_data_keys_requested=[]):
         """Will return the additional data keys and the dict."""
+
+        if not isinstance(additional_data_keys_requested, list):
+            raise ConfigError("The `get` function in AdditionalDataBaseClass is upset with you. You could change that\
+                               by making sure you request additional data keys with a variable of type `list`.")
 
         self.progress.new('Recovering additional keys and data for %s' % self.target)
         self.progress.update('...')
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        additional_data = database.get_table_as_dict(self.table_name)
-        additional_data_keys = database.get_single_column_from_table(self.table_name, 'data_key', unique=True)
+        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True)
+
+        if not len(additional_data_keys_requested):
+            additional_data_keys = additional_data_keys_in_db
+            additional_data = database.get_table_as_dict(self.table_name)
+        else:
+            if not len(additional_data_keys_in_db):
+                raise ConfigError("The %s database at %s does not contain any additional data for its %s to return. Usually this\
+                                   would not have resulted in an exception, and anvi'o would simply returned an empty data\
+                                   dictionary. But since you are requested to get a specific list of keys ('%s'), we are raising\
+                                   an exception and break the flow just to make sure you are aware of the fact that we don't\
+                                   see the stuff you're requesting :(" \
+                                        % (self.db_type, self.db_path, self.target, ' ,'.join(additional_data_keys_requested)))
+
+            if set(additional_data_keys_requested) - set(additional_data_keys_in_db):
+                raise ConfigError("The keys you requested does not seem to appear in the additional data table of this %s db\
+                                   at '%s' :/ Here is the list of keys you requested: '%s'. And here is the list of keys that anvi'o\
+                                   knows about: '%s'." % (self.db_type, self.db_path, ', '.join(additional_data_keys_requested), ', '.join(additional_data_keys_in_db)))
+
+            additional_data = database.get_some_rows_from_table_as_dict(self.table_name, where_clause = """data_key IN (%s)""" % ",".join('"' + key + '"' for key in additional_data_keys_requested))
+            additional_data_keys = additional_data_keys_requested
+
         additional_data_item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True)
         database.disconnect()
 
