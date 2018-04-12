@@ -1,5 +1,5 @@
 {
-    "samples_txt": "samples-for-idba_ud.txt",
+    "samples_txt": "samples.txt",
     "idba_ud": {
         "--min-contig": 1000,
         "threads": 11,
