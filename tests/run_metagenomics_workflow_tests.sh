@@ -48,3 +48,6 @@ anvi-run-snakemake-workflow -w metagenomics --config config-idba_ud.json --list-
 
 INFO "Runnind a dry run with idba_ud"
 anvi-run-snakemake-workflow -w metagenomics --config config-idba_ud.json --dry-run
+
+INFO "Runnind a dry run with idba_ud with no qc"
+anvi-run-snakemake-workflow -w metagenomics --config config-idba_ud-no-qc.json --list-dependencies
