@@ -384,18 +384,19 @@ rule fq2fa:
             # uncompress the files before running fq2fa
             run.warning("The following fastq files are compressed and will now \
                          be uncompressed using gunzip: %s." % files_that_end_with_gz)
-            shell("gunzip {input.r1} >> {log} 2>&1")
-            shell("gunzip {input.r2} >> {log} 2>&1")
+            shell("gunzip --keep {input.r1} >> {log} 2>&1")
+            shell("gunzip --keep {input.r2} >> {log} 2>&1")
 
         # running fq2fa
         shell("fq2fa --merge {input} {output} >> {log} 2>&1")
 
         if len(files_that_end_with_gz):
             # after fq2fa is done we can compress those files again
-            run.warning("fq2fa is done so we will now compress the following fastq files \
-                         to return them to their original state: %s." % files_that_end_with_gz)
-            shell("gzip {input.r1} >> {log} 2>&1")
-            shell("gzip {input.r2} >> {log} 2>&1")
+            file_1_to_remove = input.r1[0:-3]
+            file_2_to_remove = input.r2[0:-3]
+            run.warning("fq2fa is done so we will now remove the uncompressed\
+                         version copy of the fastq files: %s." % (file_1_to_remove + ', ' + file_2_to_remove))
+            shell("rm %s %s >> {log} 2>&1" % (file_1_to_remove, file_2_to_remove))
 
 
 rule merge_fastas_for_co_assembly:
