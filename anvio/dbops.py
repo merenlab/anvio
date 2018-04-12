@@ -2319,13 +2319,6 @@ class ProfileDatabase:
                 except:
                     pass
 
-            sample_ids_list = [s.strip() for s in self.meta['samples'].split(',')]
-            if 'total_reads_mapped' in self.meta:
-                total_reads_mapped_list = [int(n.strip()) for n in self.meta['total_reads_mapped'].split(',')]
-                self.meta['total_reads_mapped'] = dict([(sample_ids_list[i], total_reads_mapped_list[i]) for i in range(0, len(sample_ids_list))])
-            else:
-                self.meta['total_reads_mapped'] = dict([(sample_ids_list[i], 0) for i in range(0, len(sample_ids_list))])
-
             self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
 
             self.run.info('Profile database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
