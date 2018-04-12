@@ -918,7 +918,7 @@ rule import_percent_of_reads_mapped:
             awk '{{if(NR==1) \
                      {{print $0 "\tpercent_mapped"}} \
                   else \
-                      {{print $0 "\t" ($2 * 100 / $3)}}}}' \
+                      {{print $0 "\t" ($2 * 100 / $4)}}}}' \
                 {output.layers_additional_data} > {output.layers_additional_data_updated}
 
             # import the new file with three columns
