@@ -210,7 +210,16 @@ def get_tree_object_in_newick(tree, id_to_sample_dict=None):
                     else:
                         ch_for_new_tree.name = ch_node_in_old_tree.id
                 else:
-                    ch_for_new_tree.name = 'Int' + str(ch_node_in_old_tree.id)
+                    # we used to export our trees with internal node labels so we could
+                    # do various interface operations more easily:
+                    #
+                    #    ch_for_new_tree.name = 'Int' + str(ch_node_in_old_tree.id)
+                    #
+                    # but our new interface design does not require such addditions to
+                    # dendrograms. Although here we add 0 branch support for our
+                    # dendrograms since we wish to use a standard format to export these
+                    # data as a tree.
+                    ch_for_new_tree.support = 0.0
 
                 node_id_to_node_in_new_tree[node_id_in_old_tree].add_child(ch_for_new_tree)
                 node_id_to_node_in_old_tree[node_id] = ch_node_in_old_tree
@@ -233,7 +242,7 @@ def get_tree_object_in_newick(tree, id_to_sample_dict=None):
         # swap childs alphabetically
         node.children = sorted(node.get_children(), key=lambda x:x.name, reverse=True)
 
-    return new_tree.write(format=1)
+    return new_tree.write(format=2)
 
 
 def order_contigs_simple(config, distance=None, linkage=None, progress=progress, run=run, debug=False):
