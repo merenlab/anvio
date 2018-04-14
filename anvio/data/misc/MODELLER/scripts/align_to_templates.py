@@ -20,7 +20,6 @@ from modeller import *
 env = environ()
 env.io.atom_files_directory = ['./%s_TEMPLATE_PDBS' % TARGET_ID]
 
-# Create an alignment of the 'A' chains of 1clf, 1dur, 1fca and 2fdn
 aln = alignment(env)
 for (pdb, chain) in template_ids:
     m = model(env, file=pdb, model_segment=('FIRST:'+chain, 'LAST:'+chain))
@@ -28,15 +27,24 @@ for (pdb, chain) in template_ids:
 
 # Structurally align all four templates and compare them
 aln.malign()
-aln.malign3d()
+# gap_penalties_3d[1] is a gap extension penalty, say 1.75. Pairs of positions are considered
+# equivalent when they have their selected atoms at most 2 times gap_penalties_3d[1] angstroms apart
+# in the current superposition. If too strict, alignment can sometimes fail, so the distance to be
+# considered equivalent increases iteratively until the procedure does not fail.
+d = 1.75
+while d < 10.00:
+    try:
+        aln.malign3d(gap_penalties_3d = (0.0, d))
+        break
+    except:
+        d += 1.00
+
 aln.compare_structures()
 aln.id_table(matrix_file=PROTEIN_FAMILY_MATRIX)
 
 # if there is only one template this will fail
-try:
+if len(template_ids) > 1:
     env.dendrogram(matrix_file=PROTEIN_FAMILY_MATRIX, cluster_cut=-1.0)
-except:
-    pass
 
 # Align the target sequence to the previously-aligned structures
 align_block = len(aln)

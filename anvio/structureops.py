@@ -154,8 +154,8 @@ class Structure(object):
         contigs_db_hash              = contigs_db.meta['contigs_db_hash']
 
         # MODELLER params
-        self.modeller_database       = A('database_name', null)
-        self.best                    = A('best', null)
+        self.modeller_database       = A('modeller_database', null)
+        self.scoring_method          = A('scoring_method', null)
         self.max_matches             = A('max_number_templates', null)
         self.min_proper_pident       = A('percent_identical_cutoff', null)
         self.num_models              = A('num_models', null)
@@ -346,6 +346,10 @@ class Structure(object):
 
             # run modeller for gene, append to self.structure_db.entries
             structure_table_entry, pdb_filepath = self.run_modeller(corresponding_gene_call)
+            if not pdb_filepath:
+                # No structure was modelled. There is nothing more to do for this gene
+                continue
+
             self.structure_db.entries[t.structure_pdb_data_table_name].append(structure_table_entry)
 
             # run residue annotation for gene, append to self.structure_db.entries
@@ -354,6 +358,10 @@ class Structure(object):
 
             if self.full_output:
                 self.dump_results_to_full_output()
+
+        if not self.structure_db.entries[t.structure_pdb_data_table_name]:
+            raise ConfigError("Well this is really sad. No structures were modelled, and therefore\
+                               there is no structure database to create. Bye :'(")
 
         for table_name in self.structure_db.table_names:
             self.structure_db.store(table_name)
@@ -468,11 +476,14 @@ class Structure(object):
         self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
 
         pdb_filepath = self.modeller.get_best_model()
-        pdb_file = open(pdb_filepath, 'rb')
-        pdb_contents = pdb_file.read()
-        pdb_file.close()
+        structures_table_entry = None
+        if pdb_filepath:
+            pdb_file = open(pdb_filepath, 'rb')
+            pdb_contents = pdb_file.read()
+            pdb_file.close()
 
-        structures_table_entry = (corresponding_gene_call, pdb_contents)
+            structures_table_entry = (corresponding_gene_call, pdb_contents)
+
         return structures_table_entry, pdb_filepath
 
 

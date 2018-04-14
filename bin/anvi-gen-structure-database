@@ -68,30 +68,26 @@ if __name__ == '__main__':
                         --num-models is high, since more of the solution space is searched. It
                         should be kept in mind that the largest determinant of a model's accuracy is
                         determined by the protein templates used, so no need to go overboard with an
-                        excessively --num-models.""")
+                        excessively large --num-models. The default is 3.""")
 
     groupM.add_argument("--deviation", "-d", type=float, default=4.0, help = \
                         """Deviation (angstroms)""")
 
-    groupM.add_argument("--database-name", "-D", type=str, default="pdb_95", help = \
-                        """Which database name do you want to use? Default is "pdb_95". If you have
-                        your own database it must have either the extension .bin or .pir. If you
-                        don't have a database, don't worry, we will take care of you.""")
+    groupM.add_argument("--modeller-database", "-D", type=str, default="pdb_95", help = \
+                        """Which database do you want to search the structures of? Default is
+                        "pdb_95". If you have your own database it must have either the extension
+                        .bin or .pir. If you don't have a database or don't know what this
+                        means, don't worry, we will both inform you and take care of you.""")
 
-    #TO DO: it is better if --best is something like --score-method.
-    # rewrite the message
-    groupM.add_argument("--best", "-b", type=str, default="DOPE_score", help = \
-                        """How should the best model be decided? The options are any of GA341_score,
-                        DOPE_score, molpdf, and average. GA341 is an absolute measure, where a good
-                        model will have a score near 1.0, whereas anything below 0.6 can be
-                        considered bad. DOPE and molpdf scores are relative energy measures, where
-                        lower scores are better. DOPE has been generally shown to be a better
-                        distinguisher between good and bad models than molpdf. average is a
-                        geometric average of all models which is then structurally optimized. This
-                        is not recommended because it leads to unrealistic models. By default, DOPE
+    groupM.add_argument("--scoring-method", "-b", type=str, default="DOPE_score", help = \
+                        """How should the best model be decided? The metric used could be any of
+                        GA341_score, DOPE_score, and molpdf. GA341 is an absolute measure,
+                        where a good model will have a score near 1.0, whereas anything below 0.6
+                        can be considered bad. DOPE and molpdf scores are relative energy measures,
+                        where lower scores are better. DOPE has been generally shown to be a better
+                        distinguisher between good and bad models than molpdf. By default, DOPE
                         is used. To learn more see the MODELLER tutorial:
-                        https://salilab.org/modeller/tutorial/basic.html. If --black-no-sugar flag
-                        is provided. This parameter will not do anything.""")
+                        https://salilab.org/modeller/tutorial/basic.html.""")
 
     groupM.add_argument("--very-fast", action = 'store_true', help = \
                         """If provided, a very fast optimization is done for each model at the cost
@@ -99,17 +95,17 @@ if __name__ == '__main__':
                         optimization is so crude that all models will likely converge to the same
                         solution.""")
 
-    groupM.add_argument("--percent-identical-cutoff", "-p", type=float, default=25, help = \
+    groupM.add_argument("--percent-identical-cutoff", "-p", type=float, default=30, help = \
                         """If a protein in the database has a proper percent identity to the gene of
                         interest that is greater than or equal to --percent-identical-cutoff, then
                         it is used as a template. Otherwise it is not. Here we define proper percent
                         identity as the percentage of amino acids in the gene of interest that are
                         identical to an entry in the database given the sequence length of the gene
-                        of interest. For example, if there is 100% identity between the gene of
+                        of interest. For example, if there is 100%% identity between the gene of
                         interest and the template over the length of the alignment, but the
                         alignment length is only half of the gene of interest sequence length, then
-                        the proper percent identical is 50%. (This helps us avoid the inflation of
-                        identity scores due to only partially good matches). The default is 25.""")
+                        the proper percent identical is 50%%. (This helps us avoid the inflation of
+                        identity scores due to only partially good matches). The default is 30.""")
 
     groupM.add_argument("--max-number-templates", "-T", type=int, default=5, help = \
                         """Generally speaking it is best to use as many templates as possible given
@@ -125,8 +121,8 @@ if __name__ == '__main__':
                         likely to automatically build the model on the locally best template
                         [43,44]. In general, it is frequently beneficial to include in the modeling
                         process all the templates that differ substantially from each other, if they
-                        share approximately the same overall similarity to the target sequence. The
-                        default is 5'.""")
+                        share approximately the same overall similarity to the target sequence.' The
+                        default is 5.""")
 
     groupE.add_argument("--skip-DSSP", action = "store_true", help = \
                         """Dictionary of Secondary Structure of Proteins (DSSP) is a program that takes
