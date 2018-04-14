@@ -68,9 +68,7 @@ for model in models:
         else:
             model_info[key].append(model[key])
 
-# manually add average structures
-model_info['num'].extend([NUM_MODELS+1])
-model_info['name'].extend(["cluster.opt"])
+model_info['num'].extend([NUM_MODELS])
 model_info['molpdf'].extend([""])
 model_info['GA341 score'].extend([""])
 model_info['DOPE score'].extend([""])
@@ -79,7 +77,7 @@ columns = ['num', 'name', 'molpdf', 'GA341 score', 'DOPE score']
 f = open(MODEL_INFO, "w")
 f.write("\t".join([column.replace(" ","_") for column in columns]) + "\n")
 
-for i in range(NUM_MODELS+1):
+for i in range(NUM_MODELS):
     line = []
     for column in columns:
         line.append(str(model_info[column][i]))

@@ -49,7 +49,7 @@ class MODELLER:
 
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
-        self.best = A('best', str)
+        self.scoring_method = A('scoring_method', str)
         self.deviation = A('deviation', float)
         self.directory = A('directory', str)
         self.very_fast = A('very_fast', bool)
@@ -57,7 +57,7 @@ class MODELLER:
         self.num_models = A('num_models', int)
         self.target_fasta_path = A('target_fasta_path', str)
         self.full_output = A('black_no_sugar', bool)
-        self.database_name = A('database_name', str) or "pdb_95"
+        self.modeller_database = A('modeller_database', str) or "pdb_95"
         self.max_matches = A('max_number_templates', null)
         self.min_proper_pident = A('percent_identical_cutoff', null)
         self.deviation = A('deviation', null)
@@ -74,6 +74,7 @@ class MODELLER:
 
         self.logs = {}
         self.scripts = {}
+                    
 
         self.sanity_check()
 
@@ -91,8 +92,9 @@ class MODELLER:
         # self.directory and self.start_dir
         self.start_dir = os.getcwd()
 
+
     def get_best_model(self):
-        
+
         self.run.warning("Working directory: {}".format(self.directory),
                          header='Modelling structure for gene id {}'.format(self.corresponding_gene_call),
                          lc="cyan")
@@ -149,7 +151,7 @@ class MODELLER:
             raise self.EndModeller
 
         self.progress.end()
-        self.run.info("structures downloaded for", ", ".join([code[0] for code in self.top_seq_matches]))
+        self.run.info("Structures downloaded for", ", ".join([code[0] for code in self.top_seq_matches]))
 
 
     def parse_search_results(self):
@@ -189,15 +191,20 @@ class MODELLER:
 
         # filter results by self.min_proper_pident.
         max_pident_found = search_df["proper_pident"].max()
+        id_of_max_pident = tuple(search_df.loc[search_df["proper_pident"].idxmax(), ["code", "chain"]].values)
         search_df = search_df[search_df["proper_pident"] >= self.min_proper_pident]
 
         # Order them and take the first self.modeller.max_matches.
         matches_after_filter = len(search_df)
         if not matches_after_filter:
             self.progress.end()
-            self.run.warning("Gene {} did not have a search result with percent identicalness above or equal \
-                         to {}. The max found was {}%. No structure will be modelled.".\
-                         format(self.corresponding_gene_call, self.min_proper_pident, max_pident_found))
+            self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal \
+                              to {}%. The best match (ID: {}, chain: {}) was {:.2f}%. No structure will be modelled.".\
+                              format(self.corresponding_gene_call,
+                                     self.min_proper_pident,
+                                     id_of_max_pident[0],
+                                     id_of_max_pident[1],
+                                     max_pident_found))
             raise self.EndModeller
 
         self.progress.update("Keeping top {} matches as the template homologs".format(self.max_matches))
@@ -275,25 +282,21 @@ class MODELLER:
         The user is not interested in all of this output. They just want a pdb file for a given
         self.corresponding_gene_call. renames as gene_<corresponding_gene_call>.pdb.
 
-        self.best must be one of the ["molpdf", "GA341_score", "DOPE_score", "average"]
+        self.scoring_method must be one of the ["molpdf", "GA341_score", "DOPE_score"]
         """
 
         # initialize new model_info column
         self.model_info["picked_as_best"] = False
 
-        if self.best == "average":
-            best_basename = "average.pdb"
-            self.model_info.loc[self.model_info["name"] == "average.pdb", "picked_as_best"] = True
-
         # For these scores, lower is better
-        if self.best in ["molpself.model_info", "DOPE_score"]:
-            best_basename = self.model_info.loc[self.model_info[self.best].idxmin(axis=0), "name"]
-            self.model_info.loc[self.model_info[self.best].idxmin(axis=0), "picked_as_best"] = True
+        if self.scoring_method in ["molpself.model_info", "DOPE_score"]:
+            best_basename = self.model_info.loc[self.model_info[self.scoring_method].idxmin(axis=0), "name"]
+            self.model_info.loc[self.model_info[self.scoring_method].idxmin(axis=0), "picked_as_best"] = True
 
         # For these scores, higher is better
-        if self.best == "GA341_score":
-            best_basename = self.model_info.loc[self.model_info[self.best].idxmax(axis=0), "name"]
-            self.model_info.loc[self.model_info[self.best].idxmax(axis=0), "picked_as_best"] = True
+        if self.scoring_method == "GA341_score":
+            best_basename = self.model_info.loc[self.model_info[self.scoring_method].idxmax(axis=0), "name"]
+            self.model_info.loc[self.model_info[self.scoring_method].idxmax(axis=0), "picked_as_best"] = True
 
         new_best_file_path = J(self.directory, "gene_{}.pdb".format(self.corresponding_gene_call))
         os.rename(J(self.directory, best_basename), new_best_file_path)
@@ -358,8 +361,8 @@ class MODELLER:
         self.model_info_path = J(self.directory, "gene_{}_ModelInfo.txt".format(self.corresponding_gene_call))
 
         self.run.info("Number of models", num_models)
-        self.run.info("deviation", str(deviation) + " angstroms")
-        self.run.info("fast optimization", str(very_fast))
+        self.run.info("Deviation", str(deviation) + " angstroms")
+        self.run.info("Fast optimization", str(very_fast))
 
         if not deviation and num_models > 1:
             raise ConfigError("run_get_model::deviation must be > 0 if num_models > 1.")
@@ -378,15 +381,14 @@ class MODELLER:
                          script_name = script_name,
                          progress_name = "CALCULATING 3D MODEL")
 
-        self.run.info("model info", os.path.basename(self.model_info_path))
+        self.run.info("Model info", os.path.basename(self.model_info_path))
 
 
     def run_align_to_templates(self, templates_info):
         """
         After identifying best candidate proteins based on sequence data, this function aligns the
-        candidate proteins based on structural and sequence information as well as to the target
-        protein. This alignment file is the make input (besides structures) for the homology
-        modelling aspect of MODELLER.
+        protein. This alignment file is the main input (besides structures) for the homology
+        protein.
 
         templates_info is a list of 2-tuples; the zeroth element is the 4-letter protein code
         and the first element is the chain number. an example is [('4sda', 'A'), ('iq8p', 'E')]
@@ -461,7 +463,7 @@ class MODELLER:
         Checks for the .bin version of database. If it only finds the .pir version, it binarizes it.
         Sets the db filepath.
         """
-        extensionless, extension = os.path.splitext(self.database_name)
+        extensionless, extension = os.path.splitext(self.modeller_database)
         if extension not in [".bin",".pir",""]:
             raise ConfigError("MODELLER :: The only possible database extensions are .bin and .pir")
 
@@ -479,9 +481,9 @@ class MODELLER:
             self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension \
                               of either .bin or .pir, but didn't find anything matching that \
                               criteria. We'll try and download the best database we know of from \
-                              https://salilab.org/modeller/downloads/pdb_95.pir.gz and use that.".\
-                              format(self.database_dir, 
-                                     self.database_name))
+                              https://salilab.org/modeller/downloads/pdb_95.pir.gz and use that. \
+                              You can checkout https://salilab.org/modeller/ for more info about the pdb_95 \
+                              database".format(self.database_dir, self.modeller_database))
 
             db_download_path = os.path.join(self.database_dir, "pdb_95.pir.gz")
             utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
@@ -519,7 +521,7 @@ class MODELLER:
                          progress_name = "BINARIZING DATABASE",
                          check_output=[bin_db_path])
 
-        self.run.info("new database", bin_db_path)
+        self.run.info("New database", bin_db_path)
 
 
     def copy_script_to_directory(self, script_name):
@@ -601,7 +603,7 @@ class MODELLER:
                                     get a new license. After you receive an e-mail with your key, please open '%s' \
                                     and replace 'XXXXX' with your key, save the file and try again. " % license_target_file)
             else:
-                error = "\n".join(error.split('\n')[2:-1])
+                error = "\n" + "\n".join(error.split('\n'))
                 print(terminal.c(error, color='red'))
                 raise ModellerError("The MODELLER script {} did not execute properly. Hopefully it is clear \
                                      from the above error message".format(script_name))
@@ -620,7 +622,7 @@ class MODELLER:
         self.logs[script_name] = new_log_name
 
         self.progress.end()
-        self.run.info("log of {}".format(script_name), new_log_name)
+        self.run.info("Log of {}".format(script_name), new_log_name)
 
         # last things last, we CD back into the starting directory
         os.chdir(self.start_dir)

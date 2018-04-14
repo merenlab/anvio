@@ -74,6 +74,7 @@ class VariabilitySuper(object):
         self.output_file_path = A('output_file', null)
         self.samples_of_interest_path = A('samples_of_interest', null)
         self.genes_of_interest_path = A('genes_of_interest', null)
+        self.only_if_structure = A('only_if_structure', null)
         self.include_contig_names_in_output = A('include_contig_names', null)
         self.include_split_names_in_output = A('include_split_names', null)
         self.gene_caller_id = A('gene_caller_id', null)
@@ -101,6 +102,11 @@ class VariabilitySuper(object):
 
     def init_commons(self):
         self.progress.new('Init')
+
+        if self.only_if_structure and not self.structure_db_path:
+            self.progress.end()
+            raise ConfigError("You can't ask to only include genes with structures \
+                               (--only-if-structure) without providing a structure database.")
 
         self.progress.update('Checking the output file path ..')
         if self.output_file_path:
@@ -173,7 +179,8 @@ class VariabilitySuper(object):
 
         self.progress.update('Making sure our databases are compatible ..')
         utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
-        utils.is_structure_db_and_contigs_db_compatible(self.structure_db_path, self.contigs_db_path)
+        if self.append_structure_residue_info:
+            utils.is_structure_db_and_contigs_db_compatible(self.structure_db_path, self.contigs_db_path)
 
         if self.min_coverage_in_each_sample and not self.quince_mode:
             self.progress.end()
@@ -262,20 +269,26 @@ class VariabilitySuper(object):
 
             self.progress.update('Reading the structure database ...')
             structure_db = structureops.StructureDatabase(self.structure_db_path)
-            self.residue_info = structure_db.db.get_table_as_dataframe(t.structure_residue_info_table_name)
+            self.structure_residue_info = structure_db.db.get_table_as_dataframe(t.structure_residue_info_table_name)
 
-            self.genes_with_structure = set(self.residue_info["corresponding_gene_call"].unique())
+            self.genes_with_structure = set(self.structure_residue_info["corresponding_gene_call"].unique())
             # genes_included = genes_of_interest, unless genes_of_interest weren't specified. then
             # it equals all genes in self.data. I don't overwrite self.genes_of_interest because a
-            # needless gene filtering step will be carried out of self.genes_of_interest is not an
+            # needless gene filtering step will be carried out if self.genes_of_interest is not an
             # empty set
             genes_included = self.genes_of_interest if self.genes_of_interest else set(self.data["corresponding_gene_call"].unique())
-            if not [g for g in self.genes_with_structure if g in genes_included]:
+            genes_with_var_and_struct = set([g for g in self.genes_with_structure if g in genes_included])
+
+            if not genes_with_var_and_struct:
                 self.progress.end()
                 raise ConfigError("There is no overlap between genes that have structures and genes that have variability.\
                                    Consider changing things upstream in your workflow or do not provide the structure db.\
                                    Here are the genes in your structure database: {}".\
                                    format(", ".join([str(x) for x in self.genes_with_structure])))
+
+            if self.only_if_structure:
+                # subset self.genes_of_interest to those that have structure
+                self.genes_of_interest = genes_with_var_and_struct
 
             # we're done here. bye.
             structure_db.disconnect()
@@ -888,14 +901,40 @@ class VariabilitySuper(object):
 
 
     def get_residue_structure_information(self):
-        pass
+        """
+        If by the end of all filtering there is no overlap between genes with variability and genes
+        with structure, this function raises a warning and the structure columns are not added to
+        the table. Otherwise this function appends the columns from residue_info to self.data
+        """
+        if not self.append_structure_residue_info:
+            return
+
+        genes_with_var = list(self.data["corresponding_gene_call"].unique())
+        genes_with_var_and_struct = [g for g in self.genes_with_structure if g in genes_with_var]
+        if not genes_with_var_and_struct:
+            run.warning("Before filtering entries, there was an overlap between genes with\
+                         variability and genes with structuresr, however that is no longer the case. As a result,\
+                         no structure information columns will be added. Above you can see the number of genes\
+                         remaining with structures after each filtering step.")
+            self.append_structure_residue_info = False
+            return
+
+        self.progress.new("Adding structure db info")
+        self.progress.update("Appending residue_info columns")
+
+        self.data = pd.merge(self.data,
+                             self.structure_residue_info,
+                             on = ["corresponding_gene_call", "codon_order_in_gene"],
+                             how = "left")
+
+        self.progress.end()
 
 
     def get_gene_length(self, gene_callers_id):
-            if gene_callers_id in self.gene_lengths:
-                return self.gene_lengths[gene_callers_id]
-            else:
-                return -1
+        if gene_callers_id in self.gene_lengths:
+            return self.gene_lengths[gene_callers_id]
+        else:
+            return -1
 
 
     def get_unique_pos_identifier_to_corresponding_gene_id(self):
@@ -916,6 +955,11 @@ class VariabilitySuper(object):
     def report(self):
         self.progress.new('Reporting variability data')
 
+        structure_columns = []
+        if self.append_structure_residue_info:
+            redundant_structure = ["aa", "corresponding_gene_call", "codon_order_in_gene"]
+            structure_columns = [x for x in list(self.structure_residue_info.columns) if x not in redundant_structure]
+
         if self.engine == 'NT':
             new_structure = [t.variable_nts_table_structure[0]] + \
                              ['unique_pos_identifier', 'gene_length'] + \
@@ -929,7 +973,8 @@ class VariabilitySuper(object):
                              [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + \
                              list(self.substitution_scoring_matrices.keys()) + \
                              ['competing_aas', 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
-                             self.comprehensive_stats_headers
+                             self.comprehensive_stats_headers + \
+                             structure_columns
 
         if self.include_contig_names_in_output:
             new_structure.append('contig_name')

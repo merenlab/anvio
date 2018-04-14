@@ -274,7 +274,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         gene_caller_ids_to_profile = list(codons_in_genes_to_profile_AA_frequencies_dict.keys())
 
-        for i in range(0, len(gene_caller_ids_to_profile)):
+        for i in range(len(gene_caller_ids_to_profile)):
             gene_caller_id = gene_caller_ids_to_profile[i]
             codons_to_profile = codons_in_genes_to_profile_AA_frequencies_dict[gene_caller_id]
 

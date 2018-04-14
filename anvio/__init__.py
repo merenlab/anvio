@@ -84,6 +84,16 @@ D = {
                       modelled protein structures. Note this setting is only\
                       valid if the `--engine AA` flag is given."}
                 ),
+    'only-if-structure': (
+            ['--only-if-structure'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If provided, your genes of interest will be further subset to only include\
+                      genes with structures in your structure database, and therefore must be supplied in\
+                      conjunction with a structure database, i.e. `-s <your_structure_database>`. If you did\
+                      not specify genes of interest, ALL genes will be subset to those that have\
+                      structures."}
+                ),
     'genomes-names': (
             ['-G', '--genome-names'],
             {'metavar': "GENOME_NAMES",
