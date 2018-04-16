@@ -157,13 +157,18 @@ class VariabilitySuper(object):
             self.splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
 
         self.progress.update('Making sure you are not playing games ..')
-        if self.engine not in ['NT', 'AA']:
+        if self.engine not in ['NT', 'AA', 'CDN']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
         # Set items of interest while you are at it. Ensure self.items is sorted alphabetically.
         # This is required for resolving ties in coverage alphabetically, which is described in the
         # docstring of self.insert_additional_fields.
-        self.items = constants.amino_acids if self.engine == 'AA' else list(constants.nucleotides)
+        all_items_dict = {
+            'NT': list(constants.nucleotides),
+            'AA':      constants.amino_acids,
+            'CDN':     constants.codons
+            }
+        self.items = all_items_dict[self.engine]
         self.items = sorted(self.items)
 
         self.progress.update('Making sure our databases are here ..')
@@ -174,8 +179,7 @@ class VariabilitySuper(object):
             raise ConfigError('You need to provide a contigs database.')
 
         if self.append_structure_residue_info and self.engine not in ["AA", "CDN"]:
-            raise ConfigError('You provided a structure database, which is only compatible with --engine AA (or maybe\
-                               ... plot spoiler: --engine CDN)')
+            raise ConfigError('You provided a structure database, which is only compatible with --engine AA or CDN')
 
         self.progress.update('Making sure our databases are compatible ..')
         utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
@@ -390,7 +394,7 @@ class VariabilitySuper(object):
 
         if self.engine == 'NT':
             self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
-        if self.engine == 'AA':
+        elif self.engine == 'AA':
             self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['corresponding_gene_call'].astype(str) + "_" + self.data['codon_order_in_gene'].astype(str)
 
         # this could go anywhere now
@@ -457,7 +461,7 @@ class VariabilitySuper(object):
 
         NOTE For defining the "consensus" column and the "competing_aas" column (or related column
         for different --engine values), it is important to make it explict how we resolve ties. If
-        you finish reading this comment and still do not understand, then I have failed you. It's
+        you finish reading this comment and still do not understand, than I have failed you. It's
         an issue because suppose Ala and Trp are tied for sharing the most reads. Is the consensus
         Ala or Trp? Is competing_aas AlaTrp or TrpAla? In a separate example, if Ser is most
         common and Gly and Glu are tied for second, should Gly or Glu be a part of competing_aas
@@ -466,7 +470,7 @@ class VariabilitySuper(object):
             1. Competing_aas ALWAYS appear in alphabetical order. Even if Cys is most common, and
                Ala is second most commond, competing_aas = AlaCys.  
             2. Ties are always resolved alphabetically. If there is a 3-way tie for second between
-               His, Met, and Thr, the item including in competing_aas will be His.
+               His, Met, and Thr, the item included in competing_aas will be His.
             3. If the coverage of the second-most common item is 0, the most common is paired with
                itself.
 
@@ -975,6 +979,14 @@ class VariabilitySuper(object):
                              ['competing_aas', 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
                              self.comprehensive_stats_headers + \
                              structure_columns
+        elif self.engine == 'CDN':
+            new_structure = [t.variable_nts_table_structure[0]] + \
+                             ['unique_pos_identifier', 'gene_length'] + \
+                             [x for x in t.variable_codons_table_structure[1:] if x != 'split_name'] + \
+                             list(self.substitution_scoring_matrices.keys()) + \
+                             ['competing_aas', 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
+                             self.comprehensive_stats_headers + \
+                             structure_columns
 
         if self.include_contig_names_in_output:
             new_structure.append('contig_name')
@@ -1168,7 +1180,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
                 for sample_name in splits_to_consider_dict[split_name][gene_codon_key]:
                     unique_pos_identifier_str = '_'.join([split_name, str(corresponding_gene_call), str(codon_order_in_gene)])
-                    reference_codon = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
+                    reference_aa = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
 
                     new_entries[next_available_entry_id] = {'entry_id': next_available_entry_id,
                                                             'unique_pos_identifier_str': unique_pos_identifier_str,
@@ -1181,7 +1193,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                             'codon_order_in_gene': codon_order_in_gene,
                                                             'departure_from_reference': 0,
                                                             'coverage': None,
-                                                            'reference': reference_codon}
+                                                            'reference': reference_aa}
 
                     # DEALING WITH COVERAGE ##################################################################
                     # some very cool but expensive shit is going on here, let me break it down for poor souls of the future.
@@ -1212,12 +1224,12 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
                     # DEALING WITH AAs ##################################################################
                     # here we need to put all the codons into the data table for this sample
-                    for codon in set(constants.codon_to_AA.values()):
-                        new_entries[next_available_entry_id][codon] = 0
+                    for aa in constants.amino_acids:
+                        new_entries[next_available_entry_id][aa] = 0
 
                     # and finally update the frequency of the reference codon with the coverage (WHICH IS VERY BAD,
                     # WE HAVE NO CLUE WHAT IS THE ACTUAL COVERAGE OF TRIPLICATE LINKMERS):
-                    new_entries[next_available_entry_id][reference_codon] = coverage
+                    new_entries[next_available_entry_id][reference_aa] = coverage
 
                     next_available_entry_id += 1
 

@@ -2,7 +2,7 @@
 # pylint: disable=line-too-long
 """ Table schemas for databases."""
 
-from anvio.constants import codon_to_AA, essential_genome_info
+from anvio.constants import amino_acids, codons, essential_genome_info
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -142,8 +142,12 @@ states_table_structure               = ['name', 'content', 'last_modified']
 states_table_types                   = ['text',  'text'  ,      'text'    ]
 
 variable_aas_table_name              = 'variable_amino_acid_frequencies'
-variable_aas_table_structure         = ['entry_id', 'sample_id', 'corresponding_gene_call', 'codon_order_in_gene', 'reference', 'departure_from_reference', 'coverage'] + sorted(list(set(codon_to_AA.values())))
-variable_aas_table_types             = [ 'numeric',    'text'  ,        'numeric'         ,       'numeric'      ,    'text'  ,          'numeric'        , 'numeric' ] + ['numeric'] * len(list(set(codon_to_AA.values())))
+variable_aas_table_structure         = ['entry_id', 'sample_id', 'corresponding_gene_call', 'codon_order_in_gene', 'reference', 'departure_from_reference', 'coverage'] + sorted(amino_acids)
+variable_aas_table_types             = [ 'numeric',    'text'  ,        'numeric'         ,       'numeric'      ,    'text'  ,          'numeric'        , 'numeric' ] + ['numeric'] * len(list(amino_acids))
+
+variable_codons_table_name           = 'variable_codon_frequencies'
+variable_codons_table_structure      = ['entry_id', 'sample_id', 'corresponding_gene_call', 'codon_order_in_gene', 'reference', 'departure_from_reference', 'coverage'] + sorted(codons)
+variable_codons_table_types          = [ 'numeric',    'text'  ,        'numeric'         ,       'numeric'      ,    'text'  ,          'numeric'        , 'numeric' ] + ['numeric'] * len(list(codons))
 
 variable_nts_table_name              = 'variable_nucleotide_positions'
 variable_nts_table_structure         = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'corresponding_gene_call', 'in_partial_gene_call', 'in_complete_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'coverage', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'departure_from_reference', 'competing_nts', 'reference',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
