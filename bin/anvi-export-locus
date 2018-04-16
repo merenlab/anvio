@@ -131,7 +131,8 @@ def main(args):
     direction_dict = {'f': 1, 'r': -1}
     for gene_id in matching_genes:
         premature = False
-        reverse_complement = False
+        reverse_complemented = False
+
         # for each gene hit take the sequence that follows in the direction of transcription
         gene_dict = contigs_db.genes_in_contigs_dict[gene_id]
         direction = gene_dict['direction']
@@ -146,10 +147,11 @@ def main(args):
         first_gene_in_contig = genes_in_contig_sorted[0][0]
 
         if last_gene_of_the_block > last_gene_in_contig:
-            # The requested block exceeds the contig length, then just take
-            # FIXME: there must be a better way to do this. Also need to check with Meren if gene id's are always consecutive.
+            # The requested block exceeds the contig length, then set `last_gene_of_the_block` to `last_gene_in_contig`
+            # FIXME: there must be a better way to do this.
             last_gene_of_the_block = last_gene_in_contig
             premature = True
+
         if first_gene_of_the_block < first_gene_in_contig:
             # take the first gene of the contig. FIXME: also might be a better way to do this
             first_gene_of_the_block = first_gene_in_contig
@@ -161,9 +163,9 @@ def main(args):
 
         if direction == 'r' and reverse_complement_if_necessary:
             block_sequence = utils.rev_comp(block_sequence)
-            reverse_complement = "True"
+            reverse_complemented = "True"
         else:
-            reverse_complement = "False"
+            reverse_complemented = "False"
 
         if not (args.remove_partial_hits and premature):
             # don't save if it's a premature result AND the user asked to remove partial hits
@@ -185,11 +187,13 @@ def main(args):
                                      'locus:%s,%s' % (str(first_gene_of_the_block), str(last_gene_of_the_block)),
                                      'nt_positions_in_contig:%s:%s' % (str(start), str(stop)),
                                      'premature:%s' % str(premature),
-                                     'reverse_complement:%s' % str(reverse_complement)])
+                                     'reverse_complemented:%s' % str(reverse_complemented)])
+
             f.write('>%s\n' % block_header)
             f.write('%s\n' % block_sequence)
+
             if args.separate_fasta:
-            # if separate fasta files are created then need to close it now
+                # if separate fasta files are created then need to close it now
                 f.close()
         else:
             filtered_partial_hits += 1
