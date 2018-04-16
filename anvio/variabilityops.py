@@ -394,7 +394,7 @@ class VariabilitySuper(object):
 
         if self.engine == 'NT':
             self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
-        elif self.engine == 'AA':
+        elif self.engine == 'AA' or self.engine == 'CDN':
             self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['corresponding_gene_call'].astype(str) + "_" + self.data['codon_order_in_gene'].astype(str)
 
         # this could go anywhere now
