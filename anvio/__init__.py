@@ -187,6 +187,14 @@ D = {
                       genes before and n2 genes after the gene that matched the search criteria but the search\
                       hits the end of the contig before finding the number of genes that you asked."}
             ),
+    'never-reverse-complement': (
+            ['--never-reverse-complement'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, if a gene that is found by the search criteria is reverse in it's direction,\
+                      then the sequence of the entire locus is reversed before it is saved to the output.\
+                      If you wish to prevent this behavior then use the flag --never-reverse-complement.",}
+             ),
     'zeros-are-outliers': (
             ['--zeros-are-outliers'],
             {'default': False,
