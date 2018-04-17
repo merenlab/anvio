@@ -35,6 +35,15 @@ anvi-gen-contigs-database -f $files/contigs.fa \
                           -L 1000 \
                           --project-name "Contigs DB for anvi'o self-tests"
 
+INFO "Displaying the info for the contigs databse"
+anvi-db-info $output_dir/CONTIGS.db
+
+INFO "Setting a new self value in the self table of the contigs databse"
+anvi-db-info $output_dir/CONTIGS.db \
+             --self-key 'a_new_test_key' \
+             --self-value "a new test value" \
+             --just-do-it
+
 INFO "Exporting gene calls from the contigs database"
 anvi-export-gene-calls -c $output_dir/CONTIGS.db -o $output_dir/exported_gene_calls.txt
 
