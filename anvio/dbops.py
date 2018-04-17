@@ -2497,7 +2497,7 @@ class ContigsDatabase:
 
 
     def get_hash(self):
-        return '%08x' % random.randrange(16**8)
+        return 'hash' + str('%08x' % random.randrange(16**8))
 
 
     def touch(self):
