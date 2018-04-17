@@ -229,17 +229,17 @@ structure_pdb_data_table_structure  = ['corresponding_gene_call', 'pdb_content']
 structure_pdb_data_table_types      = [         'integer'       ,    'blob'    ]
 
 structure_templates_table_name       = 'templates'
-structure_templates_table_structure  = ['corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'ppi']
-structure_templates_table_types      = ['integer'                 , 'text'   , 'text'     , 'real']
+structure_templates_table_structure  = ['entry_id' , 'corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'ppi']
+structure_templates_table_types      = ['integer'  , 'integer'                 , 'text'   , 'text'     , 'real']
 
 structure_models_table_name       = 'models'
-structure_models_table_structure  = ['corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
-structure_models_table_types      = ['integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
+structure_models_table_structure  = ['entry_id' , 'corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
+structure_models_table_types      = ['integer'  , 'integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
 
 # The FULL table structure is defined in the StructureDatabase class based on what annotation
 # sources are found and/or requested.
 structure_residue_info_table_name       = 'residue_info'
-structure_residue_info_table_structure  = ['corresponding_gene_call', 'codon_order_in_gene']
-structure_residue_info_table_types      = [        'integer'        ,        'integer'     ]
+structure_residue_info_table_structure  = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene']
+structure_residue_info_table_types      = ['integer',         'integer'        ,        'integer'     ]
 
 

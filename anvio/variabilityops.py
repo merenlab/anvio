@@ -926,8 +926,10 @@ class VariabilitySuper(object):
         self.progress.new("Adding structure db info")
         self.progress.update("Appending residue_info columns")
 
+        skip_columns = ["entry_id"]
+        include_columns = [x for x in self.structure_residue_info.columns if x not in skip_columns]
         self.data = pd.merge(self.data,
-                             self.structure_residue_info,
+                             self.structure_residue_info[include_columns],
                              on = ["corresponding_gene_call", "codon_order_in_gene"],
                              how = "left")
 
@@ -961,7 +963,7 @@ class VariabilitySuper(object):
 
         structure_columns = []
         if self.append_structure_residue_info:
-            redundant_structure = ["aa", "corresponding_gene_call", "codon_order_in_gene"]
+            redundant_structure = ["aa", "entry_id", "corresponding_gene_call", "codon_order_in_gene"]
             structure_columns = [x for x in list(self.structure_residue_info.columns) if x not in redundant_structure]
 
         if self.engine == 'NT':
@@ -997,6 +999,9 @@ class VariabilitySuper(object):
         # Update entry_id with sequential numbers based on the final ordering of the data:
         self.data.reset_index(drop=True, inplace=True)
         self.data["entry_id"] = self.data.index
+
+        # order by [corresponding_gene_call, codon_order_in_gene]
+        self.data = self.data.sort_values(by = ["corresponding_gene_call", "codon_order_in_gene"])
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
         utils.store_dataframe_as_TAB_delimited_file(self.data, self.args.output_file, columns=new_structure)

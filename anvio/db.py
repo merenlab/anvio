@@ -116,14 +116,18 @@ class DB:
         self._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
 
 
-    def get_max_value_in_column(self, table_name, column_name):
+    def get_max_value_in_column(self, table_name, column_name, value_if_empty=None):
+        """
+        value_if_empty, default = None:
+            If not None and table has no entries, value returned is value_if_empty.
+        """
         response = self._exec("""SELECT MAX(%s) FROM %s""" % (column_name, table_name))
         rows = response.fetchall()
 
         val = rows[0][0]
 
         if isinstance(val, type(None)):
-            return None
+            return value_if_empty
 
         try:
             val = int(val)
@@ -187,7 +191,29 @@ class DB:
             return self._exec_many(query, entries)
 
 
-    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns = True):
+    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns = True, key = None):
+        """
+        raise_if_no_columns, bool:
+            If true, if dataframe has no columns (e.g. dataframe = pd.DataFrame({})), this function
+            returns without raising error.
+
+        key, list-like:
+            If table is meant to have a column with unique and sequential entries, the
+            column name should be passed so appended rows retain sequential order. E.g., consider
+
+                           Table                                dataframe
+                entry_id   value1   value2            entry_id    value1    value2
+                0          yes      30                0           no        2
+                1          yes      23
+
+            Depending if key=None or key="entry_id", the result is different:
+
+                        key = None                         key = "entry_id"
+                entry_id   value1   value2            entry_id   value1   value2
+                0          yes      30                0          yes      30
+                1          yes      23                1          yes      23
+                0          no       2                 2          no       2
+        """
         if table_name not in self.get_table_names():
             raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does\
                                not exist in the database you requested. {} are the tables\
@@ -198,12 +224,31 @@ class DB:
             # if the dataframe has no colums, we just return
             return
 
-        if list(dataframe.columns) != self.get_table_structure(table_name):
-            raise ConfigError("insert_rows_from_dataframe :: The list of columns in the dataframe\
-                               is not equal the list of columns (structure) of the requested table.\
-                               The columns from each are respectively [{}]; and [{}].".\
+        if len(set(dataframe.columns)) != len(list(dataframe.columns)):
+            raise ConfigError("insert_rows_from_dataframe :: There is at least one duplicate column\
+                               name in the dataframe. Here is the list of columns: [{}].".\
+                               format(", ".join(list(dataframe.columns))))
+
+        if set(dataframe.columns) != set(self.get_table_structure(table_name)):
+            raise ConfigError("insert_rows_from_dataframe :: The columns in the dataframe\
+                               do not equal the columns (structure) of the requested table.\
+                               The columns from each are respectively ({}); and ({}).".\
                                format(", ".join(list(dataframe.columns)),
                                       ", ".join(self.get_table_structure(table_name))))
+
+        if key and key not in dataframe.columns:
+            raise ConfigError("insert_rows_from_dataframe :: key ({}) is not a column of your\
+                               dataframe. The columns in your dataframe are [{}].".\
+                               format(key, ", ".join(list(dataframe.columns))))
+
+        elif key:
+            start = self.get_max_value_in_column(table_name, key, value_if_empty=-1) + 1
+            end = start + dataframe.shape[0]
+            key_values = list(range(start, end))
+            dataframe[key] = key_values
+
+        # conform to the column order of the table structure
+        dataframe = dataframe[self.get_table_structure(table_name)]
 
         entries = [tuple(row) for row in dataframe.values]
         self.insert_many(table_name, entries=entries)
