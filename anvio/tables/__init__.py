@@ -228,6 +228,14 @@ structure_pdb_data_table_name       = 'structures'
 structure_pdb_data_table_structure  = ['corresponding_gene_call', 'pdb_content']
 structure_pdb_data_table_types      = [         'integer'       ,    'blob'    ]
 
+structure_templates_table_name       = 'templates'
+structure_templates_table_structure  = ['corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'ppi']
+structure_templates_table_types      = ['integer'                 , 'text'   , 'text'     , 'real']
+
+structure_models_table_name       = 'models'
+structure_models_table_structure  = ['corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
+structure_models_table_types      = ['integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
+
 # The FULL table structure is defined in the StructureDatabase class based on what annotation
 # sources are found and/or requested.
 structure_residue_info_table_name       = 'residue_info'
