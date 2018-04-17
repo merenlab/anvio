@@ -1594,6 +1594,18 @@ D = {
                       available please refer to the snakemake documentation. For example, you could use this to set \
                       up cluster submission using --additional-params --cluster \"YOUR-CLUSTER-SUBMISSION-CMD\""}
                 ),
+    'self-key': (
+            ['--self-key'],
+            {'default': None,
+             'type': str,
+             'help': "The key you wish to set or change."}
+                ),
+    'self-value': (
+            ['--self-value'],
+            {'default': None,
+             'type': str,
+             'help': "The value you wish to set for the self key."}
+                ),
 }
 
 # two functions that works with the dictionary above.
