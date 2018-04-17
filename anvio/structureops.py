@@ -68,6 +68,8 @@ class StructureDatabase(object):
         self.entries = {
             t.structure_pdb_data_table_name     : [],
             t.structure_residue_info_table_name : pd.DataFrame({}),
+            t.structure_templates_table_name    : pd.DataFrame({}),
+            t.structure_models_table_name       : pd.DataFrame({}),
             }
 
 
@@ -97,9 +99,14 @@ class StructureDatabase(object):
         self.db.set_meta_value('creation_date', time.time())
 
         self.db.create_table(t.structure_pdb_data_table_name, t.structure_pdb_data_table_structure, t.structure_pdb_data_table_types)
+        self.db.create_table(t.structure_templates_table_name, t.structure_templates_table_structure, t.structure_templates_table_types)
+        self.db.create_table(t.structure_models_table_name, t.structure_models_table_structure, t.structure_models_table_types)
         self.db.create_table(t.structure_residue_info_table_name, self.residue_info_structure, self.residue_info_types)
 
-        table_names = [t.structure_pdb_data_table_name, t.structure_residue_info_table_name]
+        table_names = [t.structure_pdb_data_table_name,
+                       t.structure_templates_table_name,
+                       t.structure_models_table_name,
+                       t.structure_residue_info_table_name]
         return table_names
 
 
@@ -118,7 +125,7 @@ class StructureDatabase(object):
             self.entries[table_name] = []
 
         elif type(rows_data) == pd.core.frame.DataFrame:
-            self.db.insert_rows_from_dataframe(table_name, rows_data)
+            self.db.insert_rows_from_dataframe(table_name, rows_data, raise_if_no_columns = False)
             self.entries[table_name] = pd.DataFrame({})
 
         else:
@@ -146,7 +153,7 @@ class Structure(object):
         self.collection_name         = A('collection_name', null)
         self.gene_caller_ids         = A('gene_caller_ids', null)
         self.output_db_path          = A('output_db_path', null)
-        self.full_output             = A('dump_dir', null)
+        self.full_modeller_output    = A('dump_dir', null)
         self.skip_DSSP               = A('skip_DSSP', bool)
         self.DSSP_executable         = None
 
@@ -164,8 +171,8 @@ class Structure(object):
 
         # check outputs are writable
         filesnpaths.is_output_file_writable(self.output_db_path)
-        if self.full_output:
-            self.full_output = filesnpaths.check_output_directory(self.full_output, ok_if_exists=False)
+        if self.full_modeller_output:
+            self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=False)
 
         # identify which genes user wants to model structures for
         self.get_genes_of_interest()
@@ -333,38 +340,52 @@ class Structure(object):
         # will be empty if all sources in self.annotation_sources_info have "skip": True
         residue_annotation_methods = [info["method"] for _, info in self.annotation_sources_info.items() if not info["skip"]]
 
+        # which genes had structures and which did not. this information is added to the structure database self table
+        has_structure = {True: [], False: []}
+
         for corresponding_gene_call in self.genes_of_interest:
             # MODELLER outputs a lot of stuff into its working directory. A temporary directory is
             # made for each instance of MODELLER (i.e. each protein), And bits and pieces of this
-            # directory are used in the creation of the structure database. If self.full_output is
-            # provided, these directories and their contents are moved into self.full_output.
+            # directory are used in the creation of the structure database. If self.full_modeller_output is
+            # provided, these directories and their contents are moved into self.full_modeller_output.
             self.args.directory = filesnpaths.get_temp_directory_path()
             self.args.target_fasta_path = filesnpaths.get_temp_file_path()
 
             # export AA sequence fasta for corresponding_gene_call
             dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([corresponding_gene_call]), quiet=True)
 
-            # run modeller for gene, append to self.structure_db.entries
-            structure_table_entry, pdb_filepath = self.run_modeller(corresponding_gene_call)
-            if not pdb_filepath:
+            # run modeller for gene
+            modeller_out = self.run_modeller(corresponding_gene_call)
+            has_structure[modeller_out["structure_exists"]].append(str(corresponding_gene_call))
+
+            if not modeller_out["structure_exists"]:
                 # No structure was modelled. There is nothing more to do for this gene
                 continue
 
-            self.structure_db.entries[t.structure_pdb_data_table_name].append(structure_table_entry)
-
             # run residue annotation for gene, append to self.structure_db.entries
-            residue_info_table_entries = self.run_residue_annotation_for_gene(residue_annotation_methods, corresponding_gene_call, pdb_filepath)
+            residue_info_table_entries = self.run_residue_annotation_for_gene(residue_annotation_methods, corresponding_gene_call, modeller_out["best_model_path"])
             self.structure_db.entries[t.structure_residue_info_table_name] = self.structure_db.entries[t.structure_residue_info_table_name].append(residue_info_table_entries)
 
-            if self.full_output:
+            if self.full_modeller_output:
                 self.dump_results_to_full_output()
 
-        if not self.structure_db.entries[t.structure_pdb_data_table_name]:
+        if not has_structure[True]:
             raise ConfigError("Well this is really sad. No structures were modelled, and therefore\
                                there is no structure database to create. Bye :'(")
 
         for table_name in self.structure_db.table_names:
             self.structure_db.store(table_name)
+
+        # add metadata
+        self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in self.genes_of_interest]))
+        self.structure_db.db.set_meta_value('genes_with_structure', ",".join(has_structure[True]))
+        self.structure_db.db.set_meta_value('genes_without_structure', ",".join(has_structure[False]))
+        self.structure_db.db.set_meta_value('modeller_database', self.modeller.modeller_database)
+        self.structure_db.db.set_meta_value('scoring_method', self.scoring_method)
+        self.structure_db.db.set_meta_value('min_ppi', str(self.min_proper_pident))
+        self.structure_db.db.set_meta_value('fast_optimization', str(int(self.very_fast)))
+        self.structure_db.db.set_meta_value('deviation', self.deviation)
+
         self.structure_db.disconnect()
 
 
@@ -388,11 +409,11 @@ class Structure(object):
 
     def dump_results_to_full_output(self):
         """
-        if self.full_output, all files from MODELLERs temp directory are recursively moved into
+        if self.full_modeller_output, all files from MODELLERs temp directory are recursively moved into
         output_gene_dir. Otherwise, the list of files we care about are defined in this function
         and moved into output_gene_dir.
         """
-        output_gene_dir = os.path.join(self.full_output, self.modeller.corresponding_gene_call)
+        output_gene_dir = os.path.join(self.full_modeller_output, self.modeller.corresponding_gene_call)
         filesnpaths.check_output_directory(output_gene_dir)
         shutil.move(self.modeller.directory, output_gene_dir)
 
@@ -474,16 +495,17 @@ class Structure(object):
 
     def run_modeller(self, corresponding_gene_call):
         self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
+        modeller_out = self.modeller.process()
 
-        pdb_filepath = self.modeller.get_best_model()
-        structures_table_entry = None
-        if pdb_filepath:
-            pdb_file = open(pdb_filepath, 'rb')
+        if modeller_out["structure_exists"]:
+            # add entry to structures table
+            pdb_file = open(modeller_out["best_model_path"], 'rb')
             pdb_contents = pdb_file.read()
             pdb_file.close()
 
-            structures_table_entry = (corresponding_gene_call, pdb_contents)
+            pdb_table_entry = (corresponding_gene_call, pdb_contents)
+            self.structure_db.entries[t.structure_pdb_data_table_name].append(pdb_table_entry)
 
-        return structures_table_entry, pdb_filepath
+        return modeller_out
 
 

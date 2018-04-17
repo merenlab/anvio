@@ -56,7 +56,6 @@ class MODELLER:
         self.executable = A('executable', str) or "mod9.19"
         self.num_models = A('num_models', int)
         self.target_fasta_path = A('target_fasta_path', str)
-        self.full_output = A('black_no_sugar', bool)
         self.modeller_database = A('modeller_database', str) or "pdb_95"
         self.max_matches = A('max_number_templates', null)
         self.min_proper_pident = A('percent_identical_cutoff', null)
@@ -74,9 +73,22 @@ class MODELLER:
 
         self.logs = {}
         self.scripts = {}
-                    
 
         self.sanity_check()
+
+        # as reward, whoever called this class will receive self.out when they run self.process()
+        self.out = {
+            "templates"               : {"pdb_id": [],"chain_id": [],"ppi": []},
+            "models"                  : {"molpdf": [],"GA341_score": [],"DOPE_score": [],"picked_as_best": []},
+            "corresponding_gene_call" : self.corresponding_gene_call,
+            "structure_exists"        : False,
+            "best_model_path"         : None,
+            "best_score"              : None,
+            "scoring_method"          : self.scoring_method,
+            "min_proper_pident"       : self.min_proper_pident,
+            "very_fast"               : self.very_fast,
+            "deviation"               : self.deviation,
+            }
 
         # All MODELLER databases are housed in self.database_dir
         self.database_dir = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
@@ -93,13 +105,11 @@ class MODELLER:
         self.start_dir = os.getcwd()
 
 
-    def get_best_model(self):
+    def process(self):
 
         self.run.warning("Working directory: {}".format(self.directory),
                          header='Modelling structure for gene id {}'.format(self.corresponding_gene_call),
                          lc="cyan")
-
-        best_model_path = None
 
         try:
             self.run_fasta_to_pir()
@@ -118,16 +128,17 @@ class MODELLER:
 
             self.tidyup()
 
-            best_model_path = self.pick_best_model()
+            self.pick_best_model()
 
-            self.model_info.to_csv(self.model_info_path, sep="\t", index=False, na_rep="N/A")
+            self.out["structure_exists"] = True
 
         except self.EndModeller as e:
             print(e)
+
         finally:
             self.abort()
 
-        return best_model_path
+        return self.out
 
 
     def download_structures(self):
@@ -221,11 +232,18 @@ class MODELLER:
         self.run.info("Number of candidate templates", matches_found)
         self.run.info("After >{}% identical filter".format(self.min_proper_pident), matches_after_filter)
         self.run.info("Number accepted as templates", len(self.top_seq_matches))
+
+        # update user on which templates are used, and write the templates to self.out
         for i in range(len(self.top_seq_matches)):
-            self.run.info("Template {}".format(i+1), 
-                     "Protein ID: {}, Chain {} ({:.1f}% identical)".format(self.top_seq_matches[i][0],
-                                                                           self.top_seq_matches[i][1],
-                                                                           search_df["proper_pident"].iloc[i]))
+            pdb_id, chain_id = self.top_seq_matches[i]
+            ppi = search_df["proper_pident"].iloc[i]
+
+            self.out["templates"]["pdb_id"].append(pdb_id)
+            self.out["templates"]["chain_id"].append(chain_id)
+            self.out["templates"]["ppi"].append(ppi)
+
+            self.run.info("Template {}".format(i+1),
+                     "Protein ID: {}, Chain {} ({:.1f}% identical)".format(pdb_id, chain_id, ppi))
 
 
     def sanity_check(self):
@@ -276,6 +294,10 @@ class MODELLER:
             self.run.warning("Since you chose --very-fast, there will be little difference, if at all, between models. You \
                               can potentially save a lot of time by setting --num-models to 1.")
 
+        if self.min_proper_pident <= 20:
+            self.run.warning("Two completely unrelated sequences of same length can expect to have around 10% proper \
+                              percent identicalness... Having this parameter below 20% is probably a bad idea.")
+
 
     def pick_best_model(self):
         """
@@ -301,7 +323,18 @@ class MODELLER:
         new_best_file_path = J(self.directory, "gene_{}.pdb".format(self.corresponding_gene_call))
         os.rename(J(self.directory, best_basename), new_best_file_path)
 
-        return new_best_file_path
+        # append model information to self.out
+        for model_index in self.model_info.index:
+            self.out["models"]["molpdf"].append(self.model_info.loc[model_index, "molpdf"])
+            self.out["models"]["GA341_score"].append(self.model_info.loc[model_index, "GA341_score"])
+            self.out["models"]["DOPE_score"].append(self.model_info.loc[model_index, "DOPE_score"])
+            self.out["models"]["picked_as_best"].append(self.model_info.loc[model_index, "picked_as_best"])
+
+        # append pdb path to self.out
+        self.out["best_model_path"] = new_best_file_path
+
+        # append the best score to self.out
+        self.out["best_score"] = self.model_info.loc[self.model_info["picked_as_best"] == True, self.scoring_method]
 
 
     def abort(self):
@@ -310,7 +343,6 @@ class MODELLER:
         started in and remove any folders and files that just aren't needed anymore.
         """
         os.chdir(self.start_dir)
-
 
 
     def tidyup(self): 
@@ -325,9 +357,6 @@ class MODELLER:
         # remove all copies of all scrips that were ran
         for script_name, file_path in self.scripts.items():
             os.remove(file_path)
-
-        # what are the pdb file names? load model_info.txt to find out
-        self.model_info = pd.read_csv(self.model_info_path, sep="\t", index_col=False)
 
         for model in self.model_info.index:
             basename = self.model_info.loc[model, "name"]
@@ -365,7 +394,7 @@ class MODELLER:
         self.run.info("Fast optimization", str(very_fast))
 
         if not deviation and num_models > 1:
-            raise ConfigError("run_get_model::deviation must be > 0 if num_models > 1.")
+            raise ConfigError("run_get_modeli :: deviation must be > 0 if num_models > 1.")
 
         command = [self.executable,
                    script_name,
@@ -379,7 +408,11 @@ class MODELLER:
 
         self.run_command(command, 
                          script_name = script_name,
-                         progress_name = "CALCULATING 3D MODEL")
+                         progress_name = "CALCULATING 3D MODEL",
+                         check_output = [self.model_info_path])
+
+        # load the model results information as a dataframe
+        self.model_info = pd.read_csv(self.model_info_path, sep="\t", index_col=False)
 
         self.run.info("Model info", os.path.basename(self.model_info_path))
 
@@ -628,6 +661,7 @@ class MODELLER:
         os.chdir(self.start_dir)
 
 
-    class EndModeller(Exception): 
+    class EndModeller(Exception):
         pass
+
 

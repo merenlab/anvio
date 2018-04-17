@@ -187,19 +187,23 @@ class DB:
             return self._exec_many(query, entries)
 
 
-    def insert_rows_from_dataframe(self, table_name, dataframe):
+    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns = True):
         if table_name not in self.get_table_names():
             raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does\
                                not exist in the database you requested. {} are the tables\
                                existent in the database".\
                                format(table_name, ", ".join(self.get_table_names())))
 
+        if not list(dataframe.columns) and not raise_if_no_columns:
+            # if the dataframe has no colums, we just return
+            return
+
         if list(dataframe.columns) != self.get_table_structure(table_name):
             raise ConfigError("insert_rows_from_dataframe :: The list of columns in the dataframe\
                                is not equal the list of columns (structure) of the requested table.\
                                The columns from each are respectively [{}]; and [{}].".\
                                format(", ".join(list(dataframe.columns)),
-                                      ", ".join(self.get_table_structure)))
+                                      ", ".join(self.get_table_structure(table_name))))
 
         entries = [tuple(row) for row in dataframe.values]
         self.insert_many(table_name, entries=entries)
