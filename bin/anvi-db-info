@@ -105,6 +105,9 @@ class DatabaseInfo:
                                anvi'o can't tell you what to do. If you want to be a rebel, feel free to\
                                use the sqlite from the command line to create your own Frankenstein." % self.self_key)
 
+        # make sure we did everything we can to avoid user error
+        self.self_key = self.self_key.replace(' ', '_').strip()
+
         if self.self_key in db_self:
             self.run.warning("The content of the key '%s' in the self table of your %s database,\
                               which currently has a value of '%s', will be replaced with '%s'." % \
