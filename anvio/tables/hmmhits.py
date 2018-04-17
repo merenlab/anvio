@@ -84,14 +84,11 @@ class TablesForHMMHits(Table):
             contigs_db = ContigsSuperclass(args)
 
             if context == 'GENE':
-                if alphabet == 'AA':
-                    target_files_dict['AA:GENE'] = os.path.join(tmp_directory_path, 'aa_gene_sequences.fa')
-                    self.export_sequences_table_in_db_into_FASTA_file(t.gene_amino_acid_sequences_table_name, output_file_path=target_files_dict['AA:GENE'])
-                else:
-                    target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
-                    contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
-                                                                               simple_headers=True,
-                                                                               rna_alphabet=True if alphabet=='RNA' else False)
+                target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
+                contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
+                                                                           simple_headers=True,
+                                                                           rna_alphabet=True if alphabet=='RNA' else False,
+                                                                           report_aa_sequences=True if alphabet=='AA' else False)
             elif context == 'CONTIG':
                 if alphabet == 'AA':
                     raise ConfigError("You are somewhere you shouldn't be. You came here because you thought it would be OK\
