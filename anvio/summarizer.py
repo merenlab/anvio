@@ -53,7 +53,7 @@ from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
-
+from anvio.tables.miscdata import TableForLayerAdditionalData
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -873,8 +873,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             output_file_obj = self.get_output_file_handle(prefix='bins_summary.txt')
             utils.store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
 
-            # store summary of smaples dict. currently we are only reporting the number of reads mapped per sample
-            summary_of_samples = dict([(s, {'total_reads_mapped': self.p_meta['total_reads_mapped'][s]}) for s in self.p_meta['samples']])
+            # store summary of samples dict. currently we are only reporting the number of reads mapped per sample
+            summary_of_samples = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).get(['total_reads_mapped'])[1]
             output_file_obj = self.get_output_file_handle(prefix='samples_summary.txt')
             utils.store_dict_as_TAB_delimited_file(summary_of_samples, None, headers=['samples', 'total_reads_mapped'], file_obj=output_file_obj)
 
