@@ -79,11 +79,9 @@ class StructureDatabase(object):
         annotation sources used, and are taken from residue_info_structure_extras.
         """
         # If residue_info_structure_extras was sloppily passed to this class, it may have
-        # "corresponding_gene_call" and "codon_order_in_gene" within it, even though these are already in the
-        # t.structure_residue_info_table_structure. So we delete them if they exist
+        # some items already in t.structure_residue_info_table_name. So we delete them if they exist
         indices_to_del = [residue_info_structure_extras.index(x) for x in residue_info_structure_extras \
-                                                                     if x == "corresponding_gene_call" \
-                                                                     or x == "codon_order_in_gene"]
+                                                                     if x in t.structure_residue_info_table_structure]
         for index in indices_to_del:
             del residue_info_structure_extras[index]
             del residue_info_types_extras[index]
@@ -117,7 +115,7 @@ class StructureDatabase(object):
                                these files probably belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
-    def store(self, table_name):
+    def store(self, table_name, key=None):
         rows_data = self.entries[table_name]
 
         if type(rows_data) == list:
@@ -125,7 +123,7 @@ class StructureDatabase(object):
             self.entries[table_name] = []
 
         elif type(rows_data) == pd.core.frame.DataFrame:
-            self.db.insert_rows_from_dataframe(table_name, rows_data, raise_if_no_columns = False)
+            self.db.insert_rows_from_dataframe(table_name, rows_data, raise_if_no_columns=False, key=key)
             self.entries[table_name] = pd.DataFrame({})
 
         else:
@@ -351,20 +349,25 @@ class Structure(object):
             self.args.directory = filesnpaths.get_temp_directory_path()
             self.args.target_fasta_path = filesnpaths.get_temp_file_path()
 
-            # export AA sequence fasta for corresponding_gene_call
-            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, self.args.target_fasta_path, set([corresponding_gene_call]), quiet=True)
+            # Export sequence
+            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path,
+                                                      self.args.target_fasta_path,
+                                                      set([corresponding_gene_call]),
+                                                      quiet =True)
 
-            # run modeller for gene
+            # Model structure
             modeller_out = self.run_modeller(corresponding_gene_call)
             has_structure[modeller_out["structure_exists"]].append(str(corresponding_gene_call))
 
-            if not modeller_out["structure_exists"]:
-                # No structure was modelled. There is nothing more to do for this gene
-                continue
+            # Annotate residues
+            residue_info_dataframe = None
+            if modeller_out["structure_exists"]:
+                residue_info_dataframe = self.run_residue_annotation_for_gene(residue_annotation_methods,
+                                                                              corresponding_gene_call,
+                                                                              modeller_out["best_model_path"])
 
-            # run residue annotation for gene, append to self.structure_db.entries
-            residue_info_table_entries = self.run_residue_annotation_for_gene(residue_annotation_methods, corresponding_gene_call, modeller_out["best_model_path"])
-            self.structure_db.entries[t.structure_residue_info_table_name] = self.structure_db.entries[t.structure_residue_info_table_name].append(residue_info_table_entries)
+            # Append info to tables
+            self.append_gene_info_to_tables(modeller_out, residue_info_dataframe)
 
             if self.full_modeller_output:
                 self.dump_results_to_full_output()
@@ -372,9 +375,6 @@ class Structure(object):
         if not has_structure[True]:
             raise ConfigError("Well this is really sad. No structures were modelled, and therefore\
                                there is no structure database to create. Bye :'(")
-
-        for table_name in self.structure_db.table_names:
-            self.structure_db.store(table_name)
 
         # add metadata
         self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in self.genes_of_interest]))
@@ -401,8 +401,9 @@ class Structure(object):
             res_annotation_for_gene = pd.concat([res_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1)
 
         # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
-        res_annotation_for_gene.insert(0, "corresponding_gene_call", corresponding_gene_call)
-        res_annotation_for_gene.insert(1, "codon_order_in_gene", res_annotation_for_gene.index)
+        res_annotation_for_gene.insert(0, "entry_id", list(range(res_annotation_for_gene.shape[0])))
+        res_annotation_for_gene.insert(1, "corresponding_gene_call", corresponding_gene_call)
+        res_annotation_for_gene.insert(2, "codon_order_in_gene", res_annotation_for_gene.index)
 
         return res_annotation_for_gene
 
@@ -497,15 +498,47 @@ class Structure(object):
         self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
         modeller_out = self.modeller.process()
 
+        return modeller_out
+
+
+    def append_gene_info_to_tables(self, modeller_out, residue_info_dataframe):
+        """
+        Modeller and residue annotation sources have been called, now it is time to wrangle these
+        data into formats that can be appended to their respective structure database tables.
+        """
+        corresponding_gene_call = modeller_out["corresponding_gene_call"]
+
+        # templates is always added, even when structure was not modelled
+        templates = pd.DataFrame(modeller_out["templates"])
+        templates.insert(0, "corresponding_gene_call", corresponding_gene_call)
+        templates = templates.reset_index().rename(columns={"index": "entry_id"})
+        self.structure_db.entries[t.structure_templates_table_name] = \
+            self.structure_db.entries[t.structure_templates_table_name].append(templates)
+        self.structure_db.store(t.structure_templates_table_name, key="entry_id")
+
+
+        # entries that are only added if a structure was modelled
         if modeller_out["structure_exists"]:
-            # add entry to structures table
+
+            # models
+            models = pd.DataFrame(modeller_out["models"])
+            models.insert(0, "corresponding_gene_call", corresponding_gene_call)
+            models = models.reset_index().rename(columns={"index": "entry_id"})
+            self.structure_db.entries[t.structure_models_table_name] = \
+                self.structure_db.entries[t.structure_models_table_name].append(models)
+            self.structure_db.store(t.structure_models_table_name, key="entry_id")
+
+            # pdb file data
             pdb_file = open(modeller_out["best_model_path"], 'rb')
             pdb_contents = pdb_file.read()
             pdb_file.close()
-
             pdb_table_entry = (corresponding_gene_call, pdb_contents)
             self.structure_db.entries[t.structure_pdb_data_table_name].append(pdb_table_entry)
+            self.structure_db.store(t.structure_pdb_data_table_name)
 
-        return modeller_out
+            # residue_info
+            self.structure_db.entries[t.structure_residue_info_table_name] = \
+                self.structure_db.entries[t.structure_residue_info_table_name].append(residue_info_dataframe)
+            self.structure_db.store(t.structure_residue_info_table_name, key="entry_id")
 
 
