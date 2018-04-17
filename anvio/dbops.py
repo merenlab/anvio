@@ -686,7 +686,7 @@ class ContigsSuperclass(object):
         return (gene_caller_ids_list, sequences_dict)
 
 
-    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
+    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False, report_aa_sequences=False):
         if not output_file_path:
             raise ConfigError("We need an explicit output file path. Anvi'o does not know how you managed to come \
                                here, but please go back and come again.")
@@ -700,7 +700,7 @@ class ContigsSuperclass(object):
         if wrap and wrap <= 20:
             raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
 
-        gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
+        gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list, include_aa_sequences=report_aa_sequences)
 
         output = open(output_file_path, 'w')
 
@@ -714,8 +714,12 @@ class ContigsSuperclass(object):
             else:
                 header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
-            if rna_alphabet:
+            if report_aa_sequences and rna_alphabet:
+                raise ConfigError("You can not request AA sequences repored in RNA alphabet.")
+            elif rna_alphabet:
                 sequence = entry['sequence'].replace('T', 'U')
+            elif report_aa_sequences:
+                sequence = entry['aa_sequence']
             else:
                 sequence = entry['sequence']
 

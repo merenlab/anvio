@@ -38,12 +38,15 @@ def main(args):
         gene_caller_ids_list=gene_caller_ids,
         output_file_path=args.output_file,
         simple_headers=not args.report_extended_deflines,
-        wrap=args.wrap
+
     )
     if args.export_gff3:
+        if args.get_aa_sequences:
+            raise ConfigError("AA sequences can only be reported in FASTA format, please remove the --export-gff3 flag to continue.")
+
         c.gen_GFF3_file_of_sequences_for_gene_caller_ids(**func_kwargs)
     else:
-        c.gen_FASTA_file_of_sequences_for_gene_caller_ids(**func_kwargs)
+        c.gen_FASTA_file_of_sequences_for_gene_caller_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences)
 
 
 if __name__ == '__main__':
@@ -58,6 +61,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('report-extended-deflines'), **anvio.K('report-extended-deflines'))
     parser.add_argument(*anvio.A('wrap'), **anvio.K('wrap'))
     parser.add_argument(*anvio.A('export-gff3'), **anvio.K('export-gff3'))
+    parser.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences'))
 
     args = anvio.get_args(parser)
 
