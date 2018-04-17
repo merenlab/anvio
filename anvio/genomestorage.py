@@ -187,7 +187,7 @@ class GenomeStorage(object):
         # of the genomes will make sure that the profile databases from this storage and storage itself are not compatible:
 
         concatenated_genome_hashes = '_'.join(sorted(map(str, self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_hash'))))
-        new_hash = hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:8]
+        new_hash = 'hash' + str(hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:8])
 
         self.db.set_meta_value('hash', new_hash)
 
