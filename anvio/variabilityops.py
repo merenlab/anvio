@@ -242,7 +242,8 @@ class VariabilitySuper(object):
         # data is one of them, since they will be read from different tables.
         # another one is the substitution scoring matrices.
         if self.engine == 'NT':
-            self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, table_structure=t.variable_nts_table_structure)
+            self.table_structure = t.variable_nts_table_structure
+            self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, table_structure=self.table_structure)
             self.progress.end()
 
         elif self.engine == 'CDN' or self.engine == 'AA':
@@ -251,18 +252,14 @@ class VariabilitySuper(object):
                                    therefore there is nothing to report here for codon or amino acid variability\
                                    profiles :(")
 
+            self.table_structure = t.variable_codons_table_structure
             self.data = profile_db.db.get_table_as_dataframe(t.variable_codons_table_name)
 
-            # this is where magic happens for the AA engine. we just read the data from the variable codons table, and it\
+            # this is where magic happens for the AA engine. we just read the data from the variable codons table, and it
             # needs to be turned into AAs if the engine is AA.
             if self.engine == 'AA':
-                for amino_acid in sorted(constants.amino_acids):
-                    codons = constants.AA_to_codons[amino_acid]
-                    self.data[amino_acid] = self.data.loc[:, self.data.columns.isin(codons)].apply(lambda entry: sum(entry), axis=1)
-                    self.data = self.data.drop(codons, axis=1)
-
-                # we have a reference still as a codon, let's fix that, too
-                self.data['reference'] = self.data['reference'].map(constants.codon_to_AA)
+                self.convert_item_coverages()
+                self.convert_reference_info()
 
             self.progress.end()
 
@@ -900,7 +897,12 @@ class VariabilitySuper(object):
     def report(self):
         self.progress.new('Reporting variability data')
 
+        truncate_at = lambda x: [column for column in self.table_structure[:self.table_structure.index(x)]]
+        structure_subset = truncate_at(constants.nucleotides[0]) if self.engine == 'NT' else truncate_at(constants.codons[0])
+        structure_subset = [column for column in structure_subset if column not in ["entry_id", "split_name", "competing_nts"]]
+
         new_structure = ['entry_id', 'unique_pos_identifier', 'gene_length'] + \
+                        structure_subset + \
                         self.items + \
                         list(self.substitution_scoring_matrices.keys()) + \
                         [self.competing_items, 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
@@ -1193,6 +1195,18 @@ class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrap
 
         # Init the quince mode recoverer
         QuinceModeWrapperForFancyEngines.__init__(self)
+
+
+    def convert_item_coverages(self):
+        for amino_acid in sorted(constants.amino_acids):
+            codons = constants.AA_to_codons[amino_acid]
+            self.data[amino_acid] = self.data.loc[:, self.data.columns.isin(codons)].apply(lambda entry: sum(entry), axis=1)
+            self.data = self.data.drop(codons, axis=1)
+
+
+    def convert_reference_info(self):
+        self.data['reference'] = self.data['reference'].map(constants.codon_to_AA)
+        self.data['departure_from_reference'] = self.data.apply(lambda entry: 1.0 - entry[entry["reference"]] / entry["coverage"], axis=1)
 
 
 class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperForFancyEngines):
