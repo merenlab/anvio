@@ -193,8 +193,12 @@ class DB:
         return response.fetchall()
 
 
-    def get_row_counts_from_table(self, table, where_clause):
-        response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table, where_clause))
+    def get_row_counts_from_table(self, table, where_clause=None):
+        if where_clause:
+            response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table, where_clause))
+        else:
+            response = self._exec('''SELECT COUNT(*) FROM %s''' % (table))
+
         return response.fetchall()[0][0]
 
 
