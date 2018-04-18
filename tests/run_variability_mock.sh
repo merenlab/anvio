@@ -49,7 +49,7 @@ then
         ../misc/bowtie_batch_single_fasta.sh test-output/$sample.fa test-output/$sample test-output/single_contig
 
         INFO "Profiling the BAM file"
-        anvi-profile -i test-output/$sample.bam -c test-output/single_contig.db -o test-output/$sample-PROFILE -M 0 --profile-AA-frequencies
+        anvi-profile -i test-output/$sample.bam -c test-output/single_contig.db -o test-output/$sample-PROFILE -M 0 --profile-SCVs
     done
     
 
@@ -77,7 +77,7 @@ then
         for sample in 01 02 03 04 05
         do
             INFO "Re-profiling the BAM file"
-            anvi-profile -i test-output/$sample.bam -c test-output/single_contig.db -o test-output/$sample-PROFILE -M 0 --profile-AA-frequencies
+            anvi-profile -i test-output/$sample.bam -c test-output/single_contig.db -o test-output/$sample-PROFILE -M 0 --profile-SCVs
         done
 
         INFO "Merging all"
