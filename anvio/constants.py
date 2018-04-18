@@ -62,7 +62,7 @@ allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
 complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
 
-nucleotides = 'ATCGN'
+nucleotides = sorted(list('ATCG')) + ['N']
 
 AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
@@ -114,7 +114,7 @@ AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': '
                                     'Ser': 'S', 'Thr': 'T', 'Trp': 'W', 'Tyr': 'Y',
                                     'Val': 'V'})
 
-amino_acids = list(AA_to_single_letter_code.keys())
+amino_acids = sorted(list(AA_to_single_letter_code.keys()))
 
 codon_to_AA = Counter({'ATA': 'Ile', 'ATC': 'Ile', 'ATT': 'Ile', 'ATG': 'Met',
                        'ACA': 'Thr', 'ACC': 'Thr', 'ACG': 'Thr', 'ACT': 'Thr',
@@ -167,7 +167,7 @@ codon_to_codon_RC = Counter({'AAA': 'TTT', 'AAC': 'GTT', 'AAG': 'CTT', 'AAT': 'A
                              'TGA': 'TCA', 'TGC': 'GCA', 'TGG': 'CCA', 'TGT': 'ACA',
                              'TTA': 'TAA', 'TTC': 'GAA', 'TTG': 'CAA', 'TTT': 'AAA'})
 
-codons = list(codon_to_AA.keys())
+codons = sorted(list(set(codon_to_AA.keys())))
 
 pretty_names = {}
 
