@@ -1786,6 +1786,12 @@ class ProfileSuperclass(object):
         self.run = r
         self.progress = p
 
+        # this one is a large dictionary with coverage values for every nucletoide positon in every sample for
+        # every split and initialized by the member function `init_split_coverage_values_per_nt_dict` --unless the
+        # member funciton `init_gene_level_coverage_stats_dicts` is not called first, in which case it is
+        # automatically initialized from within that function.
+        self.split_coverage_values_per_nt_dict = None
+
         # these are initialized by the member function `init_gene_level_coverage_stats_dicts`. but you knew
         # that already becasue you are a smart ass.
         self.gene_level_coverage_stats_dict = {}
@@ -1970,6 +1976,43 @@ class ProfileSuperclass(object):
                                                                                            anvio.__profile__version__))
 
 
+    def init_split_coverage_values_per_nt_dict(self):
+        """This function will fill process the auxiliary data and fill this dictionary:
+
+            - self.split_coverage_values_per_nt_dict
+
+           If this is taking forever and you want to kill Meren, everyone will understand you.
+        """
+
+        if self.p_meta['blank']:
+            self.run.warning("Someone asked gene coverages to be initialized when working with a blank profile database.\
+                              Anvi'o will pretend nothing happened, and will return nothing. If you don't know what this\
+                              is warning you about, just carry on.")
+            return
+
+        if not self.auxiliary_profile_data_available:
+            self.run.warning("Gene-level detection and coverage values are always recovered from the auxiliary data files\
+                              associated with profile databases. You don't seem to have one around for this profile database,\
+                              and you shall get NO GENE COVERAGES OR ANYTHING :(")
+            return
+
+        if not self.contigs_db_path:
+            self.run.warning("Someone wants to populate gene coverages data, but they called the profile super class without\
+                              a contigs database path. Anvi'o will pretend nothing happened, but will return nothing back.\
+                              Good luck with your downstream endeavors.")
+            return
+
+        self.progress.new('Initializing split coverage values per nt')
+        self.progress.update('...')
+
+        if self.split_names_of_interest:
+            self.split_coverage_values_per_nt_dict = self.split_coverage_values.get_coverage_for_multiple_splits(self.split_names_of_interest)
+        else:
+            self.split_coverage_values_per_nt_dict = self.split_coverage_values.get_all()
+
+        self.progress.end()
+
+
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False):
         """This function will process `self.split_coverage_values_per_nt_dict` to populate
            `self.gene_level_coverage_stats_dict`.
@@ -2002,6 +2045,9 @@ class ProfileSuperclass(object):
 
         sample_names = self.p_meta['samples']
 
+        if not self.split_coverage_values_per_nt_dict:
+            self.init_split_coverage_values_per_nt_dict()
+
         if self.split_names_of_interest:
             split_names = self.split_names_of_interest
 
@@ -2021,8 +2067,8 @@ class ProfileSuperclass(object):
             if num_splits > 10 and counter % 10 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
-            # recover split coverage values from the auxiliary data file
-            split_coverage = self.split_coverage_values.get(split_name)
+            # recover split coverage values from the auxiliary data file:
+            split_coverage = self.split_coverage_values_per_nt_dict[split_name]
 
             # identify entry ids for genes in `split_name`
             genes_in_splits_entries = contigs_db.split_name_to_genes_in_splits_entry_ids[split_name]
