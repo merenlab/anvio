@@ -261,8 +261,8 @@ class VariabilitySuper(object):
                                     There is nothing to report here for AAs!")
             self.data = profile_db.db.get_table_as_dataframe(t.variable_aas_table_name)
 
-        # append split_name information
-        self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
+            # append split_name information
+            self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
 
         # we're done here. bye.
         profile_db.disconnect()
