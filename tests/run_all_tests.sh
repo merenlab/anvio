@@ -273,10 +273,13 @@ anvi-get-codon-frequencies -i $output_dir/SAMPLE-01.bam \
                            --return-AA-frequencies-instead
 
 INFO "Getting back the sequence for gene call 3"
-anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
+anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
+
+INFO "Getting back the AA sequence for gene call 3"
+anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 --get-aa-sequences -o $output_dir/AA_sequence_for_gene_caller_id_3.fa
 
 INFO "Getting back the sequence for gene call 3 (export as GFF3)"
-anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 --export-gff3 -o $output_dir/Sequence_for_gene_caller_id_3.gff
+anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 --export-gff3 -o $output_dir/Sequence_for_gene_caller_id_3.gff
 
 INFO "Export gene coverage and detection data"
 anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MERGED
