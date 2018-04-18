@@ -681,7 +681,7 @@ rule anvi_profile:
         overwrite_output_destinations = M.get_rule_param("anvi_profile", "--overwrite-output-destinations"),
         report_variability_full = M.get_rule_param("anvi_profile", "--report-variability-full"),
         skip_SNV_profiling = M.get_rule_param("anvi_profile", "--skip-SNV-profiling"),
-        profile_AA_frequencies = M.get_rule_param("anvi_profile", "--profile-AA-frequencies"),
+        profile_SCVs = M.get_rule_param("anvi_profile", "--profile-SCVs"),
         description = M.get_rule_param("anvi_profile", "--description"),
         skip_hierarchical_clustering = M.get_rule_param("anvi_profile", "--skip-hierarchical-clustering"),
         distance = M.get_rule_param("anvi_profile", "--distance"),
@@ -699,7 +699,7 @@ rule anvi_profile:
             anvi-profile -i {input.bam} -c {input.contigs} -o {params.output_dir} \
                              {params.cluster_contigs} {params.min_contig_length} \
                              {params.sample_name} -T {threads} {params.overwrite_output_destinations} \
-                             {params.profile_AA_frequencies} {params.report_variability_full} \
+                             {params.profile_SCVs} {params.report_variability_full} \
                              {params.skip_SNV_profiling} {params.description} \
                              {params.skip_hierarchical_clustering} {params.distance} \
                              {params.linkage} {params.min_mean_coverage} \

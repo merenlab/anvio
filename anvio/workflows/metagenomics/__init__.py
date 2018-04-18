@@ -70,7 +70,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['bowtie'] = ["additional_params"]
         rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
         rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--sample-name", "--report-variability-full",
-                                                        "--skip-SNV-profiling", "--profile-AA-frequencies", "--description",
+                                                        "--skip-SNV-profiling", "--profile-SCVs", "--description",
                                                         "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
                                                         "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
                                                         "--contigs-of-interest", "--queue-size", "--write-buffer-size"]
