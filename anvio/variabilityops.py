@@ -247,7 +247,7 @@ class VariabilitySuper(object):
 
         elif self.engine == 'CDN' or self.engine == 'AA':
             if not profile_db.meta['SCVs_profiled']:
-                raise ConfigError("It seems codon frequencies were not characterized for this profile database,\
+                raise ConfigError("It seems codon frequencies were not computed for this profile database,\
                                    therefore there is nothing to report here for codon or amino acid variability\
                                    profiles :(")
 
