@@ -300,10 +300,10 @@ class BinSplitter(summarizer.Bin):
         # of what the values were, we will set the absolut correct ones.
         if self.skip_variability_tables:
             bin_profile_db.db.update_meta_value('SNVs_profiled', False)
-            bin_profile_db.db.update_meta_value('AA_frequencies_profiled', False)
+            bin_profile_db.db.update_meta_value('SCVs_profiled', False)
         else:
             tables[t.variable_nts_table_name] = ('split_name', self.split_names)
-            tables[t.variable_aas_table_name] = ('corresponding_gene_call', self.gene_caller_ids)
+            tables[t.variable_codons_table_name] = ('corresponding_gene_call', self.gene_caller_ids)
 
         bin_profile_db.disconnect()
 

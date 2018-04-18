@@ -20,7 +20,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.tables.variability import TableForVariability
-from anvio.tables.aafrequencies import TableForAAFrequencies
+from anvio.tables.codonfrequencies import TableForCodonFrequencies
 from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalData
 from anvio.tables.views import TablesForViews
 
@@ -230,7 +230,7 @@ class MultipleRuns:
                      ('min_contig_length', 'The minimum contig length (-M) values'),
                      ('min_coverage_for_variability', 'The minimum coverage values to report variability (-V)'),
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
-                     ('AA_frequencies_profiled', 'Profile AA frequencies flags (--profile-AA-frequencies)'),
+                     ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
                      ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)')]:
             v = set([r[k] for r in list(self.profile_dbs_info_dict.values())])
             if len(v) > 1:
@@ -294,19 +294,19 @@ class MultipleRuns:
         variable_nts_table.store()
 
 
-    def merge_variable_aas_tables(self):
-        variable_aas_table = TableForAAFrequencies(self.merged_profile_db_path, progress=self.progress)
+    def merge_variable_codons_tables(self):
+        variable_codons_table = TableForCodonFrequencies(self.merged_profile_db_path, progress=self.progress)
 
         for input_profile_db_path in self.profile_dbs_info_dict:
             sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_variable_aas_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_aas_table_name, tables.variable_aas_table_structure)
+            sample_variable_codons_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_codons_table_name, tables.variable_codons_table_structure)
             sample_profile_db.disconnect()
 
-            for tpl in sample_variable_aas_table:
-                entry = tuple([variable_aas_table.next_id(tables.variable_aas_table_name)] + list(tpl[1:]))
-                variable_aas_table.db_entries.append(entry)
+            for tpl in sample_variable_codons_table:
+                entry = tuple([variable_codons_table.next_id(tables.variable_codons_table_name)] + list(tpl[1:]))
+                variable_codons_table.db_entries.append(entry)
 
-        variable_aas_table.store()
+        variable_codons_table.store()
 
 
     def merge_split_coverage_data(self):
@@ -377,7 +377,7 @@ class MultipleRuns:
         self.num_splits = C('num_splits')
         self.min_coverage_for_variability = C('min_coverage_for_variability')
         self.report_variability_full = C('report_variability_full')
-        self.AA_frequencies_profiled = C('AA_frequencies_profiled')
+        self.SCVs_profiled = C('SCVs_profiled')
         self.SNVs_profiled = C('SNVs_profiled')
         self.total_length = C('total_length')
 
@@ -412,7 +412,7 @@ class MultipleRuns:
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
                        'SNVs_profiled': self.SNVs_profiled,
-                       'AA_frequencies_profiled': self.AA_frequencies_profiled,
+                       'SCVs_profiled': self.SCVs_profiled,
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
@@ -453,13 +453,13 @@ class MultipleRuns:
         else:
             self.run.warning("SNVs were not profiled, variable nt positions tables will be empty in the merged profile database.")
 
-        if self.AA_frequencies_profiled:
-            self.progress.new('Merging variable AAs tables')
+        if self.SCVs_profiled:
+            self.progress.new('Merging variable codons tables')
             self.progress.update('...')
-            self.merge_variable_aas_tables()
+            self.merge_variable_codons_tables()
             self.progress.end()
         else:
-            self.run.warning("AA frequencies were not profiled, these tables will be empty in the merged profile database.")
+            self.run.warning("Codon frequencies were not profiled, hence, these tables will be empty in the merged profile database.")
 
         # critical part:
         self.gen_view_data_tables_from_atomic_data()
