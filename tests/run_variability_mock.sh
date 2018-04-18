@@ -120,6 +120,16 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
 
 column -t test-output/variability_AA.txt | head
 
+INFO "anvi-gen-variability for CDN"
+anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
+                             -c test-output/single_contig.db \
+                             -o test-output/variability_CDN.txt \
+                             --splits-of-interest test-output/splits_of_interest.txt \
+                             --quince-mode \
+                             --engine CDN
+
+column -t test-output/variability_CDN.txt | head
+
 
 INFO "Do you want thhe interactive interface? Run the following:"
 
