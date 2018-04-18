@@ -278,25 +278,25 @@ class BAMProfiler(dbops.ContigsSuperclass):
         codon_frequencies = bamops.CodonFrequencies()
 
         codons_in_genes_to_profile_SCVs_dict = {}
-        for gene_call_id, codon_order in self.codons_in_genes_to_profile_SCVs:
-            if gene_call_id not in codons_in_genes_to_profile_SCVs_dict:
-                codons_in_genes_to_profile_SCVs_dict[gene_call_id] = set([])
-            codons_in_genes_to_profile_SCVs_dict[gene_call_id].add(codon_order)
+        for gene_callers_id, codon_order in self.codons_in_genes_to_profile_SCVs:
+            if gene_callers_id not in codons_in_genes_to_profile_SCVs_dict:
+                codons_in_genes_to_profile_SCVs_dict[gene_callers_id] = set([])
+            codons_in_genes_to_profile_SCVs_dict[gene_callers_id].add(codon_order)
 
         gene_caller_ids_to_profile = list(codons_in_genes_to_profile_SCVs_dict.keys())
 
         for i in range(0, len(gene_caller_ids_to_profile)):
-            gene_caller_id = gene_caller_ids_to_profile[i]
-            codons_to_profile = codons_in_genes_to_profile_SCVs_dict[gene_caller_id]
+            gene_callers_id = gene_caller_ids_to_profile[i]
+            codons_to_profile = codons_in_genes_to_profile_SCVs_dict[gene_callers_id]
 
-            gene_call = self.genes_in_contigs_dict[gene_caller_id]
+            gene_call = self.genes_in_contigs_dict[gene_callers_id]
             contig_name = gene_call['contig']
             codon_frequencies_dict = codon_frequencies.process_gene_call(self.bam, gene_call, self.contig_sequences[contig_name]['sequence'], codons_to_profile)
 
             for codon_order in codon_frequencies_dict:
                 e = codon_frequencies_dict[codon_order]
 
-                db_entry = {'sample_id': self.sample_id, 'corresponding_gene_call': gene_caller_id}
+                db_entry = {'sample_id': self.sample_id, 'corresponding_gene_call': gene_callers_id}
                 db_entry['reference'] = e['reference']
                 db_entry['coverage'] = e['coverage']
                 db_entry['departure_from_reference'] = e['departure_from_reference']
@@ -344,14 +344,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
                         # position
                         if len(corresponding_gene_caller_ids) == 1:
                             # if we are here, it means this nucleotide position is in a complete gene call. we will do two things here.
-                            # first, we will store the gene_caller_id that corresponds to this nt position, and then we will store the
+                            # first, we will store the gene_callers_id that corresponds to this nt position, and then we will store the
                             # order of the corresponding codon in the gene for this nt position.
-                            gene_caller_id = corresponding_gene_caller_ids[0]
-                            column_profile['corresponding_gene_call'] = gene_caller_id
-                            column_profile['codon_order_in_gene'] = self.get_corresponding_codon_order_in_gene(gene_caller_id, contig.name, pos_in_contig)
+                            gene_callers_id = corresponding_gene_caller_ids[0]
+                            column_profile['corresponding_gene_call'] = gene_callers_id
+                            column_profile['codon_order_in_gene'] = self.get_corresponding_codon_order_in_gene(gene_callers_id, contig.name, pos_in_contig)
 
                             # save this information for later use
-                            self.codons_in_genes_to_profile_SCVs.add((gene_caller_id, column_profile['codon_order_in_gene']),)
+                            self.codons_in_genes_to_profile_SCVs.add((gene_callers_id, column_profile['codon_order_in_gene']),)
 
                     variable_nts_table.append(column_profile)
 
