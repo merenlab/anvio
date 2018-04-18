@@ -874,10 +874,12 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             output_file_obj = self.get_output_file_handle(prefix='bins_summary.txt')
             utils.store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
 
-            # store summary of smaples dict. currently we are only reporting the number of reads mapped per sample
-            summary_of_samples = dict([(s, {'total_reads_mapped': self.p_meta['total_reads_mapped'][s]}) for s in self.p_meta['samples']])
-            output_file_obj = self.get_output_file_handle(prefix='samples_summary.txt')
-            utils.store_dict_as_TAB_delimited_file(summary_of_samples, None, headers=['samples', 'total_reads_mapped'], file_obj=output_file_obj)
+            # store layers additional data (we call it samples summary here, it is confusing in the code,
+            # but will be less confusing to the user).
+            samples_summary_obj = self.get_output_file_handle(prefix='samples_summary.txt')
+            samples_summary_output_path = samples_summary_obj.name
+            samples_summary_obj.close()
+            TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).export(output_file_path=samples_summary_output_path)
 
             # save merged matrices for bins x samples
             for table_name in self.summary['collection_profile_items']:
