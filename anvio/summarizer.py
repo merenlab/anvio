@@ -53,6 +53,7 @@ from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
+from anvio.tables.miscdata import TableForLayerAdditionalData
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -786,7 +787,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                 'percent_contigs_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']),
                                 'percent_contigs_contigs_described_by_profile': P(self.p_meta['num_contigs'], self.a_meta['num_contigs']),
                                 'percent_contigs_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']),
-                                    }
+                                }
 
         # I am not sure whether this is the best place to do this,
         self.summary['basics_pretty'] = {'profile': [
@@ -797,7 +798,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                      ('Number of splits', pretty(int(self.p_meta['num_splits']))),
                                                      ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
                                                      ('SNVs profiled', self.p_meta['SNVs_profiled']),
-                                                     ('SAAVs profiled', self.p_meta['AA_frequencies_profiled']),
+                                                     ('SCVs profiled', self.p_meta['SCVs_profiled']),
                                                     ],
                                          'contigs': [
                                                         ('Created on', self.p_meta['creation_date']),
