@@ -40,29 +40,29 @@ def main(args):
         raise ConfigError("The contigs db does not have the gene caller id '%d' :/" % args.gene_caller_id)
 
     gene_call = c.genes_in_contigs_dict[args.gene_caller_id]
-    return_codon_frequencies_instead = args.return_codon_frequencies_instead
+    return_AA_frequencies_instead = args.return_AA_frequencies_instead
 
-    run.info('Working with', 'Codons' if return_codon_frequencies_instead else 'Amino acids')
+    run.info('Working with', 'Amino acids' if return_AA_frequencies_instead else 'Codons')
 
     # depending on whether we work with amino acids or codons
-    items = sorted(list(set(codon_to_AA.keys()))) if return_codon_frequencies_instead else sorted(list(set(codon_to_AA.values())))
+    items = sorted(list(set(codon_to_AA.values()))) if return_AA_frequencies_instead else sorted(list(set(codon_to_AA.keys())))
 
     if gene_call['partial']:
         raise ConfigError('This seems to be a partial gene call. Sorry :/')
 
     contig_sequence = c.contig_sequences[gene_call['contig']]['sequence']
 
-    aa_frequencies = bamops.AAFrequencies()
+    codon_frequencies = bamops.CodonFrequencies()
 
     d = {}
 
     progress.new('Busy code is busy')
-    progress.update('Generating %s frequencies dict ...' % 'codon' if return_codon_frequencies_instead else 'amino acid')
-    frequencies_dict = aa_frequencies.process_gene_call(bam_file_object,
-                                                        gene_call,
-                                                        contig_sequence,
-                                                        None,
-                                                        return_codon_frequencies_instead)
+    progress.update('Generating %s frequencies dict ...' % 'amino acid' if return_AA_frequencies_instead else 'codon')
+    frequencies_dict = codon_frequencies.process_gene_call(bam_file_object,
+                                                           gene_call,
+                                                           contig_sequence,
+                                                           None,
+                                                           return_AA_frequencies_instead)
 
     progress.update('Working on the output ...')
     for codon_order in frequencies_dict:
@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id', {'required': True}))
-    parser.add_argument(*anvio.A('return-codon-frequencies-instead'), **anvio.K('return-codon-frequencies-instead'))
+    parser.add_argument(*anvio.A('return-AA-frequencies-instead'), **anvio.K('return-AA-frequencies-instead'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
 
