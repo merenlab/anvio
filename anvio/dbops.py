@@ -1970,7 +1970,7 @@ class ProfileSuperclass(object):
                                                                                            anvio.__profile__version__))
 
 
-    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False):
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False, callback=None, callback_interval=100):
         """This function will process `self.split_coverage_values_per_nt_dict` to populate
            `self.gene_level_coverage_stats_dict`.
 
@@ -2029,7 +2029,13 @@ class ProfileSuperclass(object):
 
             self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(contigs_db, split_name, **parameters))
 
+            if callback and counter % callback_interval == 0:
+                callback()
+
             counter += 1
+
+        if callback:
+            callback()
 
         self.progress.end()
 
