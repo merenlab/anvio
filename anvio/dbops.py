@@ -2000,8 +2000,6 @@ class ProfileSuperclass(object):
                               everything because I possibly can not recover from this situation', then send us an e-mail, and we will\
                               think about whether we can be less lazy about stuff, and do things better.")
 
-        sample_names = self.p_meta['samples']
-
         if self.split_names_of_interest:
             split_names = self.split_names_of_interest
 
@@ -2012,6 +2010,14 @@ class ProfileSuperclass(object):
         else:
             split_names = self.split_names
 
+        # we need to pass parameters to sub function as it is.
+        parameters = {
+            'min_cov_for_detection': min_cov_for_detection,
+            'outliers_threshold': outliers_threshold,
+            'populate_nt_level_coverage': populate_nt_level_coverage,
+            'zeros_are_outliers': zeros_are_outliers
+        }
+
         self.progress.new('Computing gene-level coverage stats ...')
         self.progress.update('...')
 
@@ -2021,60 +2027,69 @@ class ProfileSuperclass(object):
             if num_splits > 10 and counter % 10 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
-            # recover split coverage values from the auxiliary data file
-            split_coverage = self.split_coverage_values.get(split_name)
-
-            # identify entry ids for genes in `split_name`
-            genes_in_splits_entries = contigs_db.split_name_to_genes_in_splits_entry_ids[split_name]
-
-            # we have to go back, Kate :(
-            if not genes_in_splits_entries:
-                continue
-
-            # we will go through each gene entry in the split
-            for genes_in_splits_entry in genes_in_splits_entries:
-                e = contigs_db.genes_in_splits[genes_in_splits_entry]
-                gene_callers_id, gene_start, gene_stop = e['gene_callers_id'], e['start_in_split'], e['stop_in_split']
-                gene_length = gene_stop - gene_start
-
-                if gene_length <= 0:
-                    raise ConfigError("What? :( How! The gene with the caller id '%d' has a length of %d :/ We are done\
-                                       here!" % (gene_callers_id, gene_length))
-
-                self.gene_level_coverage_stats_dict[gene_callers_id] = dict([(sample_name, dict([('mean_coverage', 0), ('gene_detection', 0)])) for sample_name in sample_names])
-
-                # the magic happens here:
-                for sample_name in sample_names:
-                    # and recover the gene coverage array per position for a given sample:
-                    gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
-
-                    mean_coverage = numpy.mean(gene_coverage_values_per_nt)
-                    detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
-
-                    # findout outlier psitions, and get non-outliers
-                    outliers_bool = get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
-                    non_outlier_positions = numpy.invert(outliers_bool)
-                    non_outliers = gene_coverage_values_per_nt[non_outlier_positions]
-
-                    if not(len(non_outliers)):
-                        non_outlier_mean_coverage = 0.0
-                        non_outlier_coverage_std = 0.0
-                    else:
-                        non_outlier_mean_coverage = numpy.mean(non_outliers)
-                        non_outlier_coverage_std = numpy.std(non_outliers)
-
-                    self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': mean_coverage,
-                                                                                         'detection': detection,
-                                                                                         'non_outlier_mean_coverage': non_outlier_mean_coverage,
-                                                                                         'non_outlier_coverage_std':  non_outlier_coverage_std}
-                    # FIXME: these shouldn't be under gene_level_coverage_stats_dict see issue #688
-                    if populate_nt_level_coverage == True:
-                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = gene_coverage_values_per_nt
-                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['non_outlier_positions'] = non_outlier_positions
+            self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(contigs_db, split_name, **parameters))
 
             counter += 1
 
         self.progress.end()
+
+
+    def get_gene_level_coverage_stats(self, contigs_db, split_name, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False):
+        # recover split coverage values from the auxiliary data file
+        split_coverage = self.split_coverage_values.get(split_name)
+
+        # identify entry ids for genes in `split_name`
+        genes_in_splits_entries = contigs_db.split_name_to_genes_in_splits_entry_ids[split_name]
+
+        # we have to go back, Kate :(
+        if not genes_in_splits_entries:
+            return {}
+
+        output = {}
+
+        # we will go through each gene entry in the split
+        for genes_in_splits_entry in genes_in_splits_entries:
+            e = contigs_db.genes_in_splits[genes_in_splits_entry]
+            gene_callers_id, gene_start, gene_stop = e['gene_callers_id'], e['start_in_split'], e['stop_in_split']
+            gene_length = gene_stop - gene_start
+
+            if gene_length <= 0:
+                raise ConfigError("What? :( How! The gene with the caller id '%d' has a length of %d :/ We are done\
+                                   here!" % (gene_callers_id, gene_length))
+
+            output[gene_callers_id] = dict([(sample_name, dict([('mean_coverage', 0), ('gene_detection', 0)])) for sample_name in self.p_meta['samples']])
+
+            # the magic happens here:
+            for sample_name in self.p_meta['samples']:
+                # and recover the gene coverage array per position for a given sample:
+                gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
+
+                mean_coverage = numpy.mean(gene_coverage_values_per_nt)
+                detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
+
+                # findout outlier psitions, and get non-outliers
+                outliers_bool = get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
+                non_outlier_positions = numpy.invert(outliers_bool)
+                non_outliers = gene_coverage_values_per_nt[non_outlier_positions]
+
+                if not(len(non_outliers)):
+                    non_outlier_mean_coverage = 0.0
+                    non_outlier_coverage_std = 0.0
+                else:
+                    non_outlier_mean_coverage = numpy.mean(non_outliers)
+                    non_outlier_coverage_std = numpy.std(non_outliers)
+
+                output[gene_callers_id][sample_name] = {'mean_coverage': mean_coverage,
+                                                         'detection': detection,
+                                                         'non_outlier_mean_coverage': non_outlier_mean_coverage,
+                                                         'non_outlier_coverage_std':  non_outlier_coverage_std}
+                
+                # FIXME: these shouldn't be under gene_level_coverage_stats_dict see issue #688
+                if populate_nt_level_coverage == True:
+                    output[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = gene_coverage_values_per_nt
+                    output[gene_callers_id][sample_name]['non_outlier_positions'] = non_outlier_positions
+
+        return output
 
 
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
