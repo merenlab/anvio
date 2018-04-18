@@ -38,6 +38,7 @@ from anvio.tables.states import TablesForStates
 from anvio.tables.genecalls import TablesForGeneCalls
 from anvio.tables.ntpositions import TableForNtPositions
 from anvio.tables.miscdata import TableForItemAdditionalData
+from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
@@ -1943,6 +1944,9 @@ class ProfileSuperclass(object):
             self.item_orders = None
 
         profile_db.disconnect()
+
+        self.progress.update('Accessing the layers additional data')
+        self.layers_additional_data_keys, self.layers_additional_data = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).get()
 
         self.progress.update('Accessing the auxiliary data file')
         self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
