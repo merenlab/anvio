@@ -269,22 +269,23 @@ D = {
                       will instruct profiler to skip that step. Please remember that parameters and flags must be\
                       identical between different profiles using the same contigs database for them to merge properly."}
                 ),
-    'return-codon-frequencies-instead': (
-            ['--return-codon-frequencies-instead'],
+    'return-AA-frequencies-instead': (
+            ['--return-AA-frequencies-instead'],
             {'default': False,
              'action': 'store_true',
-             'help': "By default, anvi'o will return amino acid frequencies here, however, you can ask for codon frequencies\
-                      instead, simply because you always need more data and more stuff. You're lucky this time, but is there\
-                      an end to this? Will you ever be satisfied with what you have? Anvi'o needs answers."}
+             'help': "By default, anvi'o will return codon frequencies (as the name suggests), but you can ask for amino\
+                      acid frequencies instead, simply because you always need more data and more stuff. You're lucky\
+                      this time, but is there an end to this? Will you ever be satisfied with what you have?\
+                      Anvi'o needs answers."}
                 ),
-    'profile-AA-frequencies': (
-            ['--profile-AA-frequencies'],
+    'profile-SCVs': (
+            ['--profile-SCVs'],
             {'default': False,
              'action': 'store_true',
-             'help': "Anvi'o can characterize linkmer frequencies for AA distribution in genes in contigs during\
-                      profiling. However, due to its computational complexity, this feature is by default off. Using\
-                      this flag you can go against the authority, and make anvi'o do it. Please remember that this\
-                      functionality is available only if genes calls are present in contigs database."}
+             'help': "Anvi'o can perform accurate characterization of codon frequencies in genes during profiling. While having\
+                      codon frequencies opens doors to powerful evolutionary insights in downstream analyses, due to its\
+                      computational complexity, this feature comes 'off' by default. Using this flag you can rise against the\
+                      authority as you always should, and make anvi'o profile codons."}
                 ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],

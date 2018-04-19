@@ -55,6 +55,7 @@ from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 from anvio.tables.miscdata import TableForLayerAdditionalData
 
+
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -786,7 +787,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                 'percent_contigs_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']),
                                 'percent_contigs_contigs_described_by_profile': P(self.p_meta['num_contigs'], self.a_meta['num_contigs']),
                                 'percent_contigs_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']),
-                                    }
+                                }
 
         # I am not sure whether this is the best place to do this,
         self.summary['basics_pretty'] = {'profile': [
@@ -797,7 +798,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                      ('Number of splits', pretty(int(self.p_meta['num_splits']))),
                                                      ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
                                                      ('SNVs profiled', self.p_meta['SNVs_profiled']),
-                                                     ('SAAVs profiled', self.p_meta['AA_frequencies_profiled']),
+                                                     ('SCVs profiled', self.p_meta['SCVs_profiled']),
                                                     ],
                                          'contigs': [
                                                         ('Created on', self.p_meta['creation_date']),
@@ -873,10 +874,12 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             output_file_obj = self.get_output_file_handle(prefix='bins_summary.txt')
             utils.store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
 
-            # store summary of samples dict. currently we are only reporting the number of reads mapped per sample
-            summary_of_samples = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).get(['total_reads_mapped'])[1]
-            output_file_obj = self.get_output_file_handle(prefix='samples_summary.txt')
-            utils.store_dict_as_TAB_delimited_file(summary_of_samples, None, headers=['samples', 'total_reads_mapped'], file_obj=output_file_obj)
+            # store layers additional data (we call it samples summary here, it is confusing in the code,
+            # but will be less confusing to the user).
+            samples_summary_obj = self.get_output_file_handle(prefix='samples_summary.txt')
+            samples_summary_output_path = samples_summary_obj.name
+            samples_summary_obj.close()
+            TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).export(output_file_path=samples_summary_output_path)
 
             # save merged matrices for bins x samples
             for table_name in self.summary['collection_profile_items']:

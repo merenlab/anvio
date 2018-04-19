@@ -39,7 +39,7 @@ __status__ = "Development"
 
 
 
-class AAFrequencies:
+class CodonFrequencies:
     def __init__(self, run=run):
         self.run = run
 
@@ -48,7 +48,7 @@ class AAFrequencies:
         pass
 
 
-    def process_gene_call(self, bam_file_object, gene_call, contig_sequence, codons_to_profile=None, return_codon_frequencies_instead=False):
+    def process_gene_call(self, bam_file_object, gene_call, contig_sequence, codons_to_profile=None, return_AA_frequencies_instead=False):
         if gene_call['partial']:
             return None
 
@@ -99,13 +99,7 @@ class AAFrequencies:
             reference_item = None
 
             # vat ve vant?
-            if return_codon_frequencies_instead:
-                reference_item = codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence
-
-                for codon in codon_frequencies:
-                    codon = codon_to_codon_RC[codon] if gene_call['direction'] == 'r' else codon
-                    item_frequencies[codon] += codon_frequencies[codon]
-            else:
+            if return_AA_frequencies_instead:
                 # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
                 conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
                 reference_item = conv_dict[reference_codon_sequence]
@@ -113,6 +107,12 @@ class AAFrequencies:
                 for codon in codon_frequencies:
                     if conv_dict[codon]: # <-- this check here eliminates any codon that contains anything but [A, T, C, G].
                         item_frequencies[conv_dict[codon]] += codon_frequencies[codon]
+            else:
+                reference_item = codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence
+
+                for codon in codon_frequencies:
+                    codon = codon_to_codon_RC[codon] if gene_call['direction'] == 'r' else codon
+                    item_frequencies[codon] += codon_frequencies[codon]
 
             coverage = sum(item_frequencies.values())
 

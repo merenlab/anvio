@@ -25,7 +25,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class TableForAAFrequencies(Table):
+class TableForCodonFrequencies(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
         self.run = run
@@ -35,11 +35,11 @@ class TableForAAFrequencies(Table):
 
         self.num_entries = 0
         self.db_entries = []
-        self.set_next_available_id(t.variable_aas_table_name)
+        self.set_next_available_id(t.variable_codons_table_name)
 
 
     def append(self, profile):
-        db_entry = tuple([self.next_id(t.variable_aas_table_name)] + [profile[h] for h in t.variable_aas_table_structure[1:]])
+        db_entry = tuple([self.next_id(t.variable_codons_table_name)] + [profile[h] for h in t.variable_codons_table_structure[1:]])
         self.db_entries.append(db_entry)
         self.num_entries += 1
         if self.num_entries % 100 == 0:
@@ -49,7 +49,7 @@ class TableForAAFrequencies(Table):
     def store(self):
         utils.is_profile_db(self.db_path)
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.variable_aas_table_name, ','.join(['?'] * len(t.variable_aas_table_structure))), self.db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.variable_codons_table_name, ','.join(['?'] * len(t.variable_codons_table_structure))), self.db_entries)
         database.disconnect()
 
 

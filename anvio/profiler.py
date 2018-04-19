@@ -24,7 +24,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.tables.views import TablesForViews
-from anvio.tables.aafrequencies import TableForAAFrequencies
+from anvio.tables.codonfrequencies import TableForCodonFrequencies
 from anvio.tables.variability import TableForVariability
 from anvio.tables.miscdata import TableForLayerAdditionalData
 
@@ -60,7 +60,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.report_variability_full = A('report_variability_full')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
-        self.profile_AA_frequencies = A('profile_AA_frequencies')
+        self.profile_SCVs = A('profile_SCVs')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -129,16 +129,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # be stored in t.variable_nts_table_name
         self.variable_nts_table_entries = []
 
-        # if genes are not called, yet the user is asking for AA frequencies to be profiled, we give
+        # if genes are not called, yet the user is asking for codon frequencies to be profiled, we give
         # a warning and force-turn that flag off.
-        if (not self.a_meta['genes_are_called']) and self.profile_AA_frequencies:
-            self.run.warning("You asked the amino acid frequencies to be profiled, but genes were not called\
-                              for your contigs database. Anvi'o is assigning `False` to the profile-AA-frequncies\
+        if (not self.a_meta['genes_are_called']) and self.profile_SCVs:
+            self.run.warning("You asked the codon frequencies to be profiled, but genes were not called\
+                              for your contigs database. Anvi'o is assigning `False` to the profile-codon-frequncies\
                               flag, overruling your request like a boss.")
-            self.profile_AA_frequencies = False
+            self.profile_SCVs = False
 
         # following variable will be populated while the variable positions table is computed
-        self.codons_in_genes_to_profile_AA_frequencies = set([])
+        self.codons_in_genes_to_profile_SCVs = set([])
 
         # we don't know what we are about
         self.description = None
@@ -171,7 +171,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
         if self.skip_SNV_profiling:
-            self.profile_AA_frequencies = False
+            self.profile_SCVs = False
 
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
@@ -183,7 +183,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
                        'SNVs_profiled': not self.skip_SNV_profiling,
-                       'AA_frequencies_profiled': self.profile_AA_frequencies,
+                       'SCVs_profiled': self.profile_SCVs,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
@@ -199,7 +199,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling:
             self.run.warning('Single-nucleotide variation will not be characterized for this profile.')
 
-        if not self.profile_AA_frequencies:
+        if not self.profile_SCVs:
             self.run.warning('Amino acid linkmer frequencies will not be characterized for this profile.')
 
 
@@ -227,7 +227,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('clustering_performed', self.contigs_shall_be_clustered)
         self.run.info('min_coverage_for_variability', self.min_coverage_for_variability)
         self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
-        self.run.info('profile_AA_frequencies', self.profile_AA_frequencies)
+        self.run.info('profile_SCVs', self.profile_SCVs)
         self.run.info('report_variability_full', self.report_variability_full)
 
         self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into\
@@ -269,47 +269,47 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.quit()
 
 
-    def generate_variabile_aas_table(self):
-        if self.skip_SNV_profiling or not self.profile_AA_frequencies:
+    def generate_variabile_codons_table(self):
+        if self.skip_SNV_profiling or not self.profile_SCVs:
             return
 
-        variable_aas_table = TableForAAFrequencies(self.profile_db_path, progress=self.progress)
+        variable_codons_table = TableForCodonFrequencies(self.profile_db_path, progress=self.progress)
 
-        aa_frequencies = bamops.AAFrequencies()
+        codon_frequencies = bamops.CodonFrequencies()
 
-        codons_in_genes_to_profile_AA_frequencies_dict = {}
-        for gene_call_id, codon_order in self.codons_in_genes_to_profile_AA_frequencies:
-            if gene_call_id not in codons_in_genes_to_profile_AA_frequencies_dict:
-                codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id] = set([])
-            codons_in_genes_to_profile_AA_frequencies_dict[gene_call_id].add(codon_order)
+        codons_in_genes_to_profile_SCVs_dict = {}
+        for gene_callers_id, codon_order in self.codons_in_genes_to_profile_SCVs:
+            if gene_callers_id not in codons_in_genes_to_profile_SCVs_dict:
+                codons_in_genes_to_profile_SCVs_dict[gene_callers_id] = set([])
+            codons_in_genes_to_profile_SCVs_dict[gene_callers_id].add(codon_order)
 
-        gene_caller_ids_to_profile = list(codons_in_genes_to_profile_AA_frequencies_dict.keys())
+        gene_caller_ids_to_profile = list(codons_in_genes_to_profile_SCVs_dict.keys())
 
         for i in range(0, len(gene_caller_ids_to_profile)):
-            gene_caller_id = gene_caller_ids_to_profile[i]
-            codons_to_profile = codons_in_genes_to_profile_AA_frequencies_dict[gene_caller_id]
+            gene_callers_id = gene_caller_ids_to_profile[i]
+            codons_to_profile = codons_in_genes_to_profile_SCVs_dict[gene_callers_id]
 
-            gene_call = self.genes_in_contigs_dict[gene_caller_id]
+            gene_call = self.genes_in_contigs_dict[gene_callers_id]
             contig_name = gene_call['contig']
-            aa_frequencies_dict = aa_frequencies.process_gene_call(self.bam, gene_call, self.contig_sequences[contig_name]['sequence'], codons_to_profile)
+            codon_frequencies_dict = codon_frequencies.process_gene_call(self.bam, gene_call, self.contig_sequences[contig_name]['sequence'], codons_to_profile)
 
-            for codon_order in aa_frequencies_dict:
-                e = aa_frequencies_dict[codon_order]
+            for codon_order in codon_frequencies_dict:
+                e = codon_frequencies_dict[codon_order]
 
-                db_entry = {'sample_id': self.sample_id, 'corresponding_gene_call': gene_caller_id}
+                db_entry = {'sample_id': self.sample_id, 'corresponding_gene_call': gene_callers_id}
                 db_entry['reference'] = e['reference']
                 db_entry['coverage'] = e['coverage']
                 db_entry['departure_from_reference'] = e['departure_from_reference']
                 db_entry['codon_order_in_gene'] = codon_order
-                for aa in list(constants.codon_to_AA.values()):
-                    db_entry[aa] = e['frequencies'][aa]
+                for codon in list(constants.codon_to_AA.keys()):
+                    db_entry[codon] = e['frequencies'][codon]
 
-                variable_aas_table.append(db_entry)
+                variable_codons_table.append(db_entry)
 
-        variable_aas_table.store()
+        variable_codons_table.store()
 
         # clear contents of set
-        self.codons_in_genes_to_profile_AA_frequencies.clear()
+        self.codons_in_genes_to_profile_SCVs.clear()
 
 
     def generate_variabile_nts_table(self):
@@ -344,14 +344,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
                         # position
                         if len(corresponding_gene_caller_ids) == 1:
                             # if we are here, it means this nucleotide position is in a complete gene call. we will do two things here.
-                            # first, we will store the gene_caller_id that corresponds to this nt position, and then we will store the
+                            # first, we will store the gene_callers_id that corresponds to this nt position, and then we will store the
                             # order of the corresponding codon in the gene for this nt position.
-                            gene_caller_id = corresponding_gene_caller_ids[0]
-                            column_profile['corresponding_gene_call'] = gene_caller_id
-                            column_profile['codon_order_in_gene'] = self.get_corresponding_codon_order_in_gene(gene_caller_id, contig.name, pos_in_contig)
+                            gene_callers_id = corresponding_gene_caller_ids[0]
+                            column_profile['corresponding_gene_call'] = gene_callers_id
+                            column_profile['codon_order_in_gene'] = self.get_corresponding_codon_order_in_gene(gene_callers_id, contig.name, pos_in_contig)
 
                             # save this information for later use
-                            self.codons_in_genes_to_profile_AA_frequencies.add((gene_caller_id, column_profile['codon_order_in_gene']),)
+                            self.codons_in_genes_to_profile_SCVs.add((gene_callers_id, column_profile['codon_order_in_gene']),)
 
                     variable_nts_table.append(column_profile)
 
@@ -726,7 +726,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.verbose = False
         self.generate_variabile_nts_table()
-        self.generate_variabile_aas_table()
+        self.generate_variabile_codons_table()
         self.store_split_coverages()
         self.progress.verbose = True
 
