@@ -285,7 +285,7 @@ D = {
              'help': "Anvi'o can perform accurate characterization of codon frequencies in genes during profiling. While having\
                       codon frequencies opens doors to powerful evolutionary insights in downstream analyses, due to its\
                       computational complexity, this feature comes 'off' by default. Using this flag you can rise against the\
-                      authority as you always should, and make anvi'o to profile codons."}
+                      authority as you always should, and make anvi'o profile codons."}
                 ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
