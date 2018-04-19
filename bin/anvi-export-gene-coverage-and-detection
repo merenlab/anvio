@@ -28,8 +28,6 @@ run = terminal.Run()
 def main(args):
     profile_db = dbops.ProfileSuperclass(args)
 
-    print()
-
     gene_coverages_path = args.output_file_prefix +  '-GENE-COVERAGES.txt'
     gene_detection_path = args.output_file_prefix +  '-GENE-DETECTION.txt'
 

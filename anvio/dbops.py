@@ -1972,7 +1972,7 @@ class ProfileSuperclass(object):
 
 
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False, callback=None, callback_interval=100):
-        """This function will populate both `self.split_coverage_values_per_nt_dict` and 
+        """This function will populate both `self.split_coverage_values_per_nt_dict` and
            `self.gene_level_coverage_stats_dict`.
 
            Note: if a `split_names_of_interest` argument is declared at the class level,
@@ -2099,7 +2099,7 @@ class ProfileSuperclass(object):
                                                          'detection': detection,
                                                          'non_outlier_mean_coverage': non_outlier_mean_coverage,
                                                          'non_outlier_coverage_std':  non_outlier_coverage_std}
-                
+
                 # FIXME: these shouldn't be under gene_level_coverage_stats_dict see issue #688
                 if populate_nt_level_coverage == True:
                     output[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = gene_coverage_values_per_nt
