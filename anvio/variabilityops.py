@@ -86,7 +86,8 @@ class VariabilitySuper(object):
         self.input_file_path = None
 
         if self.engine not in variability_engines:
-            raise ConfigError("The superclass is inherited with an unknown engine. Anvi'o needs an adult :(")
+            raise ConfigError("The VariabilitySuper class is inherited with an unknown engine.\
+                               WTF is '%s'? Anvi'o needs an adult :(" % self.engine)
 
         self.comprehensive_stats_headers = []
         self.comprehensive_variability_scores_computed = False
@@ -149,14 +150,20 @@ class VariabilitySuper(object):
             self.splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
 
         self.progress.update('Making sure you are not playing games ..')
-        if self.engine not in ['NT', 'AA']:
+        if self.engine not in ['NT', 'CDN', 'AA']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
         # Set items of interest while you are at it. Ensure self.items is sorted alphabetically.
         # This is required for resolving ties in coverage alphabetically, which is described in the
         # docstring of self.insert_additional_fields.
-        self.items = constants.amino_acids if self.engine == 'AA' else list(constants.nucleotides)
-        self.items = sorted(self.items)
+        if self.engine == 'NT':
+            self.items = sorted(constants.nucleotides)
+        elif self.engine == 'CDN':
+            self.items = sorted(constants.codons)
+        elif self.engine == 'AA':
+            self.items = sorted(constants.amino_acids)
+        else:
+            raise ConfigError("https://goo.gl/sx6JHg :(")
 
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
@@ -235,14 +242,25 @@ class VariabilitySuper(object):
         # data is one of them, since they will be read from different tables.
         # another one is the substitution scoring matrices.
         if self.engine == 'NT':
-            self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, table_structure=t.variable_nts_table_structure)
+            self.table_structure = t.variable_nts_table_structure
+            self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, table_structure=self.table_structure)
             self.progress.end()
 
-        elif self.engine == 'AA':
-            if not profile_db.meta['AA_frequencies_profiled']:
-                raise ConfigError("It seems AA frequencies were not characterized for this profile database.\
-                                    There is nothing to report here for AAs!")
-            self.data = profile_db.db.get_table_as_dataframe(t.variable_aas_table_name)
+        elif self.engine == 'CDN' or self.engine == 'AA':
+            if not profile_db.meta['SCVs_profiled']:
+                raise ConfigError("It seems codon frequencies were not computed for this profile database,\
+                                   therefore there is nothing to report here for codon or amino acid variability\
+                                   profiles :(")
+
+            self.table_structure = t.variable_codons_table_structure
+            self.data = profile_db.db.get_table_as_dataframe(t.variable_codons_table_name)
+
+            # this is where magic happens for the AA engine. we just read the data from the variable codons table, and it
+            # needs to be turned into AAs if the engine is AA.
+            if self.engine == 'AA':
+                self.convert_item_coverages()
+                self.convert_reference_info()
+
             self.progress.end()
 
             # append split_name information
@@ -282,7 +300,6 @@ class VariabilitySuper(object):
 
 
     def apply_preliminary_filters(self):
-
         self.run.info('Variability data', '%s entries in %s splits across %s samples'\
                 % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.sample_ids))))
 
@@ -345,8 +362,10 @@ class VariabilitySuper(object):
 
         if self.engine == 'NT':
             self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
-        if self.engine == 'AA':
+        elif self.engine == 'CDN' or self.engine == 'AA':
             self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['corresponding_gene_call'].astype(str) + "_" + self.data['codon_order_in_gene'].astype(str)
+        else:
+            pass
 
         # this could go anywhere now
         self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
@@ -419,7 +438,7 @@ class VariabilitySuper(object):
         and should it be GlxSer or SerGlx? There are three rules that define our conventions:
 
             1. Competing_aas ALWAYS appear in alphabetical order. Even if Cys is most common, and
-               Ala is second most commond, competing_aas = AlaCys.  
+               Ala is second most commond, competing_aas = AlaCys.
             2. Ties are always resolved alphabetically. If there is a 3-way tie for second between
                His, Met, and Thr, the item including in competing_aas will be His.
             3. If the coverage of the second-most common item is 0, the most common is paired with
@@ -480,7 +499,14 @@ class VariabilitySuper(object):
         self.data.loc[coverage_nonzero, "n2n1ratio"] = coverages_second[coverage_nonzero] / coverages_first[coverage_nonzero]
 
         # we name the competing_items column differently depending on the engine used
-        competing_items = "competing_aas" if self.engine=="AA" else "competing_nts" if self.engine=="NT" else "competing_codons"
+        if self.engine == 'NT':
+            self.competing_items = 'competing_nts'
+        elif self.engine == 'CDN':
+            self.competing_items = 'competing_codons'
+        elif self.engine == 'AA':
+            self.competing_items = 'competing_aas'
+        else:
+            pass
 
         # This step computes the "competing_items" column. First, convert items_first_and_second
         # [which has shape (len(entry_ids), 2)] into a numpy array, then sort them alphabetically
@@ -488,8 +514,8 @@ class VariabilitySuper(object):
         # Since the elements are of type str, the sum operator concatenates the strings together.
         # Finally, if the coverage of the most common item is equal to the total coverage, we pair
         # the most common item with itself.
-        self.data.loc[entry_ids, competing_items] = np.sum(np.sort(items_first_and_second.values, axis=1), axis=1) # V/\
-        self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == self.data[self.items].max(axis=1)), competing_items] = self.data["consensus"]*2
+        self.data.loc[entry_ids, self.competing_items] = np.sum(np.sort(items_first_and_second.values, axis=1), axis=1) # V/\
+        self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == self.data[self.items].max(axis=1)), self.competing_items] = self.data["consensus"]*2
 
         # Loop through each SSM, filling each corresponding column entry by entry using the `apply`
         # operator. Instead of using self.substitution_scoring_matrices[m], we speed things up by
@@ -498,7 +524,7 @@ class VariabilitySuper(object):
         # common item, and then indexing a triple-nested dictionary.
         for m in self.substitution_scoring_matrices:
             substitution_scoring_matrix = utils.convert_SSM_to_single_accession(self.substitution_scoring_matrices[m])
-            self.data.loc[entry_ids, m] = self.data.loc[entry_ids, competing_items].apply(lambda x: substitution_scoring_matrix.get(x, None))
+            self.data.loc[entry_ids, m] = self.data.loc[entry_ids, self.competing_items].apply(lambda x: substitution_scoring_matrix.get(x, None))
 
 
     def filter_based_on_scattering_factor(self):
@@ -619,8 +645,8 @@ class VariabilitySuper(object):
             not only the two most competing items (and thus it is comprehensive).  Currently the scores that are
             included are: site-entropy, site-Kullback-Leibler divergence (both a raw score and a normalized score (see
             below)), and weighted substitution scores (i.e. BLOSUM).
-            
-            site-entropy 
+
+            site-entropy
             ============
             The entropy of the items at a single position in a single sample. This means that each entry of the
             variability table receives its own site-entropy score (in the table we just called it "entropy"). If a site
@@ -641,7 +667,7 @@ class VariabilitySuper(object):
             score. The disadvantage of this method is that if there is a sample with low coverage then any noise (like a
             single sequencing error) could have a major effect. It is recommended to use this score in combination with
             the --min-coverage-in-each-sample.
-            
+
             Weighted substitution scores
             ============================
             The weights per substitution score is weighted by the joint frequency of the items i.e. sum(S_{i,j}*pi*pj)
@@ -670,7 +696,7 @@ class VariabilitySuper(object):
         # to unique_pos_identifier (and for a given unique_pos_identifier, entries are ordered alphabetically by
         # sample_id). The reason for this is aesthetic but also required for vectorized operations that occur after
         # self.progress.update("Those that do require --quince-mode")
-        self.data = self.data.sort_values(by=["unique_pos_identifier","sample_id"])
+        self.data = self.data.sort_values(by=["unique_pos_identifier", "sample_id"])
         coverage_table = self.data[self.items].T.astype(int).as_matrix()
 
         # Now we compute the entropy, which is defined at a per position, per sample basis. There is a reason we
@@ -714,7 +740,7 @@ class VariabilitySuper(object):
                 # to be 0, which can occur if both a) --quince-mode is enabled and b) --min-coverage-in-each-sample
                 # is 0 (the default). If this is the case we set the total_coverage entry to -1 so that the
                 # frequency for each item in the entry becomes 0/-1 = 0, instead of producing a NaN due to division
-                # by zero. 
+                # by zero.
                 total_coverage = np.sum(coverage_table[indices,:], axis=0)
                 freq_table = np.divide(coverage_table[indices,:], np.where(total_coverage==0, -1, total_coverage))
 
@@ -764,7 +790,6 @@ class VariabilitySuper(object):
         # be 0. NOTE If this is not done, any position where one or more of the samples has 0 coverage yields a
         # normalized kullback-leibler value of inf. I think it makes more sense this way.
         counts_per_pos_per_sample = np.sum(coverage_by_pos, axis=0)
-        #freq_by_pos = np.divide(coverage_by_pos, np.where(counts_per_pos_per_sample==0, -1, counts_per_pos_per_sample))
         freq_by_pos = np.divide(coverage_by_pos, counts_per_pos_per_sample)
 
         # The entropy from scipy.stats operates on axis = 0, so the returned array dimension is flattened in the
@@ -872,20 +897,16 @@ class VariabilitySuper(object):
     def report(self):
         self.progress.new('Reporting variability data')
 
-        if self.engine == 'NT':
-            new_structure = [t.variable_nts_table_structure[0]] + \
-                             ['unique_pos_identifier', 'gene_length'] + \
-                             [x for x in t.variable_nts_table_structure[1:] if x != 'split_name'] + \
-                             list(self.substitution_scoring_matrices.keys()) + \
-                             ['consensus', 'departure_from_consensus', 'n2n1ratio'] + \
-                             self.comprehensive_stats_headers
-        elif self.engine == 'AA':
-            new_structure = [t.variable_nts_table_structure[0]] + \
-                             ['unique_pos_identifier', 'gene_length'] + \
-                             [x for x in t.variable_aas_table_structure[1:] if x != 'split_name'] + \
-                             list(self.substitution_scoring_matrices.keys()) + \
-                             ['competing_aas', 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
-                             self.comprehensive_stats_headers
+        truncate_at = lambda x: [column for column in self.table_structure[:self.table_structure.index(x)]]
+        structure_subset = truncate_at(constants.nucleotides[0]) if self.engine == 'NT' else truncate_at(constants.codons[0])
+        structure_subset = [column for column in structure_subset if column not in ["entry_id", "split_name", "competing_nts"]]
+
+        new_structure = ['entry_id', 'unique_pos_identifier', 'gene_length'] + \
+                        structure_subset + \
+                        self.items + \
+                        list(self.substitution_scoring_matrices.keys()) + \
+                        [self.competing_items, 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
+                        self.comprehensive_stats_headers
 
         if self.include_contig_names_in_output:
             new_structure.append('contig_name')
@@ -906,7 +927,7 @@ class VariabilitySuper(object):
         self.run.info('Num %s positions reported' % self.engine, self.data["unique_pos_identifier"].nunique())
 
 
-class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
+class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
     """This is the main class to make sense and report variability for a given set of splits,
        or a bin in a collection, across multiple or all samples. The user can scrutinize the
        nature of the variable positions to be reported dramatically given the ecology and/or
@@ -1019,38 +1040,39 @@ class VariableNtPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.progress.end()
 
 
-class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
-    def __init__(self, args={}, p=progress, r=run):
-        self.run = r
-        self.progress = p
+class QuinceModeWrapperForFancyEngines(object):
+    """A base class to recover quince mode data for both CDN and AA engines.
 
-        self.engine = 'AA'
-
-        # Init Meta
-        VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
+       This wrapper exists outside of the actual classes for these engines since
+       the way they recover these frequencies is pretty much identical except one
+       place where the engine needs to be specifically. 
+    """
+    def __init__(self):
+        if self.engine not in ['CDN', 'AA']:
+            raise ConfigError("This fancy class is only relevant to be inherited from within CDN or AA engines :(")
 
 
     def recover_base_frequencies_for_all_samples(self):
-        self.progress.new('Recovering AA data')
+        self.progress.new('[%s] Recovering item variability data' % self.engine)
 
         samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
         next_available_entry_id = self.data["entry_id"].max() + 1
 
-        unique_pos_identifier_str_to_consenus_codon = {}
+        unique_pos_identifier_str_to_consenus_item = {}
         unique_pos_identifier_str_to_unique_pos_identifier = {}
         for _, e in self.data.iterrows():
             upi = e['unique_pos_identifier_str']
-            unique_pos_identifier_str_to_consenus_codon[upi] = e['reference']
+            unique_pos_identifier_str_to_consenus_item[upi] = e['reference']
             unique_pos_identifier_str_to_unique_pos_identifier[upi] = e['unique_pos_identifier']
 
-        self.progress.update('creating a dict to track missing AA frequencies for each sample / split / pos')
+        self.progress.update('creating a dict to track missing item frequencies for each sample / split / pos')
 
         splits_to_consider_dict = {}
         for split_name in splits_wanted:
             splits_to_consider_dict[split_name] = {}
 
-        self.progress.update('populating the dict to track missing AA frequencies for each sample / split / pos')
+        self.progress.update('populating the dict to track missing item frequencies for each sample / split / pos')
         for entry_id, v in self.data.iterrows():
             gene_codon_key = '%d_%d' % (v['corresponding_gene_call'], v['codon_order_in_gene'])
             d = splits_to_consider_dict[v['split_name']]
@@ -1079,7 +1101,7 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
                 for sample_name in splits_to_consider_dict[split_name][gene_codon_key]:
                     unique_pos_identifier_str = '_'.join([split_name, str(corresponding_gene_call), str(codon_order_in_gene)])
-                    reference_codon = unique_pos_identifier_str_to_consenus_codon[unique_pos_identifier_str]
+                    reference_item = unique_pos_identifier_str_to_consenus_item[unique_pos_identifier_str]
 
                     new_entries[next_available_entry_id] = {'entry_id': next_available_entry_id,
                                                             'unique_pos_identifier_str': unique_pos_identifier_str,
@@ -1092,20 +1114,20 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                             'codon_order_in_gene': codon_order_in_gene,
                                                             'departure_from_reference': 0,
                                                             'coverage': None,
-                                                            'reference': reference_codon}
+                                                            'reference': reference_item}
 
                     # DEALING WITH COVERAGE ##################################################################
                     # some very cool but expensive shit is going on here, let me break it down for poor souls of the future.
-                    # what we want to do is to learn the coverage of this codon in the sample. all we have is the corresponding
-                    # gene call id, and the order of this codon in the gene. so here how it goes:
+                    # what we want to do is to learn the coverage of this codon or amino acid in the sample. all we have is
+                    # the corresponding gene call id, and the order of this codon or amino acid in the gene. so here how it goes:
                     #
                     # learn the gene call
                     gene_call = self.genes_in_contigs_dict[corresponding_gene_call]
 
-                    # the following dict converts codon orders into nt positions in contig for a geven gene call
+                    # the following dict converts codon  orders into nt positions in contig for a geven gene call
                     codon_order_to_nt_positions_in_contig = utils.get_codon_order_to_nt_positions_dict(gene_call)
 
-                    # so the nucleotide positions for this codon in the contig is the following:
+                    # so the nucleotide positions for this codon or amino acid in the contig is the following:
                     nt_positions_for_codon_in_contig = codon_order_to_nt_positions_in_contig[codon_order_in_gene]
 
                     # but we need to convert those positions to the context of this split. so here is the start pos:
@@ -1121,14 +1143,14 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
                     # and finally update the data table
                     new_entries[next_available_entry_id]['coverage'] = coverage
 
-                    # DEALING WITH AAs ##################################################################
-                    # here we need to put all the codons into the data table for this sample
-                    for codon in set(constants.codon_to_AA.values()):
-                        new_entries[next_available_entry_id][codon] = 0
+                    # DEALING WITH IT ##################################################################
+                    # here we need to put all the codons or amino acids into the data table for this sample
+                    for item in set(constants.codons if self.engine == 'CDN' else constants.amino_acids):
+                        new_entries[next_available_entry_id][item] = 0
 
-                    # and finally update the frequency of the reference codon with the coverage (WHICH IS VERY BAD,
-                    # WE HAVE NO CLUE WHAT IS THE ACTUAL COVERAGE OF TRIPLICATE LINKMERS):
-                    new_entries[next_available_entry_id][reference_codon] = coverage
+                    # and finally update the frequency of the reference codon or amino acid with the coverage
+                    # (WHICH IS VERY BAD WE HAVE NO CLUE WHAT IS THE ACTUAL COVERAGE OF TRIPLICATE LINKMERS):
+                    new_entries[next_available_entry_id][reference_item] = coverage
 
                     next_available_entry_id += 1
 
@@ -1161,7 +1183,47 @@ class VariableAAPositionsEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode", added=True)
 
 
-class ConsensusSequences(VariableNtPositionsEngine, VariableAAPositionsEngine):
+class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperForFancyEngines):
+    def __init__(self, args={}, p=progress, r=run):
+        self.run = r
+        self.progress = p
+
+        self.engine = 'AA'
+
+        # Init Meta
+        VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
+
+        # Init the quince mode recoverer
+        QuinceModeWrapperForFancyEngines.__init__(self)
+
+
+    def convert_item_coverages(self):
+        for amino_acid in sorted(constants.amino_acids):
+            codons = constants.AA_to_codons[amino_acid]
+            self.data[amino_acid] = self.data.loc[:, self.data.columns.isin(codons)].sum(axis = 1)
+            self.data = self.data.drop(codons, axis=1)
+
+
+    def convert_reference_info(self):
+        self.data['reference'] = self.data['reference'].map(constants.codon_to_AA)
+        self.data['departure_from_reference'] = self.data.apply(lambda entry: 1.0 - entry[entry["reference"]] / entry["coverage"], axis=1)
+
+
+class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperForFancyEngines):
+    def __init__(self, args={}, p=progress, r=run):
+        self.run = r
+        self.progress = p
+
+        self.engine = 'CDN'
+
+        # Init Meta
+        VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
+
+        # Init the quince mode recoverer
+        QuinceModeWrapperForFancyEngines.__init__(self)
+
+
+class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
     def __init__(self, args={}, p=progress, r=run):
         self.args = args
         self.run = r
@@ -1180,9 +1242,9 @@ class ConsensusSequences(VariableNtPositionsEngine, VariableAAPositionsEngine):
             raise ConfigError("Anvi'o does not know how to make sene of the variability engine '%s :/" % self.engine)
 
         if self.engine == 'NT':
-            VariableNtPositionsEngine.__init__(self, args=args, r=self.run, p=self.progress)
+            NucleotidesEngine.__init__(self, args=args, r=self.run, p=self.progress)
         elif self.engine == 'AA':
-            VariableAAPositionsEngine.__init__(self, args=args, r=self.run, p=self.progress)
+            AminoAcidsEngine.__init__(self, args=args, r=self.run, p=self.progress)
 
         self.sequence_variants_in_samples_dict = {}
 
@@ -1384,5 +1446,4 @@ class VariabilityNetwork:
         self.run.info('network_description', self.output_file_path)
 
 
-variability_engines = {'NT': VariableNtPositionsEngine,
-                       'AA': VariableAAPositionsEngine}
+variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}

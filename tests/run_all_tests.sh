@@ -122,7 +122,7 @@ anvi-summarize -c $output_dir/CONTIGS.db -p $output_dir/BLANK-PROFILE/PROFILE.db
 for f in 01 02 03
 do
     INFO "Profiling sample SAMPLE-$f"
-    anvi-profile -i $output_dir/SAMPLE-$f.bam -o $output_dir/SAMPLE-$f -c $output_dir/CONTIGS.db --profile-AA-frequencies
+    anvi-profile -i $output_dir/SAMPLE-$f.bam -o $output_dir/SAMPLE-$f -c $output_dir/CONTIGS.db --profile-SCVs
     echo
 done
 
@@ -233,14 +233,24 @@ anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.d
 INFO "Generate a SNV variabilty profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db -C cmdline_concoct_RENAMED -b PSAMPLES_Bin_00001 -o $output_dir/variability_PSAMPLES_Bin_00001.txt --quince-mode
 
-INFO "Generate a SNV variabilty profile for PSAMPLES_Bin_00001 using split ids and gene ids of interest (after summary)"
+INFO "Generate a SNV profile for PSAMPLES_Bin_00001 using split ids and gene ids of interest (after summary)"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                              --splits-of-interest $output_dir/SAMPLES-MERGED-SUMMARY/bin_by_bin/PSAMPLES_Bin_00001/PSAMPLES_Bin_00001-original_split_names.txt \
                              --genes-of-interest $files/example_genes_of_interest.txt \
-                             -o $output_dir/variability_PSAMPLES_Bin_00001_ALT.txt
+                             -o $output_dir/variability_PSAMPLES_Bin_00001_ALT.txt \
+                             --engine NT
 
-INFO "Generate an AA variabilty profile for PSAMPLES_Bin_00001 using a collection id"
+INFO "Generate a SCV profile for PSAMPLES_Bin_00001 using a collection id"
+anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
+                             -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                             -C cmdline_concoct_RENAMED \
+                             -b PSAMPLES_Bin_00001 \
+                             -o $output_dir/variability_CDN_PSAMPLES_Bin_00001.txt \
+                             --quince-mode \
+                             --engine CDN
+
+INFO "Generate a SAAV profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                              -C cmdline_concoct_RENAMED \
@@ -250,17 +260,17 @@ anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              --engine AA
 
 INFO "Generating amino acid frequencies for gene caller id 3 in SAMPLE-01.bam"
-anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam \
-                        -c $output_dir/CONTIGS.db \
-                        --gene-caller-id 3 \
-                        -o $output_dir/AA_frequencies_for_gene_caller_id_3.txt
+anvi-get-codon-frequencies -i $output_dir/SAMPLE-01.bam \
+                           -c $output_dir/CONTIGS.db \
+                           --gene-caller-id 3 \
+                           -o $output_dir/CODON_frequencies_for_gene_caller_id_3.txt
 
 INFO "Generating amino codon frequencies for gene caller id 3 in SAMPLE-01.bam"
-anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam \
-                        -c $output_dir/CONTIGS.db \
-                        --gene-caller-id 3 \
-                        -o $output_dir/CODON_frequencies_for_gene_caller_id_3.txt \
-                        --return-codon-frequencies-instead
+anvi-get-codon-frequencies -i $output_dir/SAMPLE-01.bam \
+                           -c $output_dir/CONTIGS.db \
+                           --gene-caller-id 3 \
+                           -o $output_dir/AA_frequencies_for_gene_caller_id_3.txt \
+                           --return-AA-frequencies-instead
 
 INFO "Getting back the sequence for gene call 3"
 anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
