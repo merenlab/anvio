@@ -58,6 +58,7 @@ def main(args):
             gene_detection_file.write('\t'.join(map(str, line_detection)) + '\n')
 
         profile_db.gene_level_coverage_stats_dict = {}
+        profile_db.split_coverage_values_per_nt_dict = {}
 
     profile_db.init_gene_level_coverage_stats_dicts(callback=write_to_file, callback_interval=1000)
 

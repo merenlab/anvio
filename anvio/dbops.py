@@ -1789,6 +1789,7 @@ class ProfileSuperclass(object):
         # these are initialized by the member function `init_gene_level_coverage_stats_dicts`. but you knew
         # that already becasue you are a smart ass.
         self.gene_level_coverage_stats_dict = {}
+        self.split_coverage_values_per_nt_dict = {}
 
         # this one becomes the object that gives access to the auxiliary data ops for split coverages
         # used heavily in interactive interface to show stuff (see bottle routes and all).
@@ -1971,12 +1972,18 @@ class ProfileSuperclass(object):
 
 
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False, callback=None, callback_interval=100):
-        """This function will process `self.split_coverage_values_per_nt_dict` to populate
+        """This function will populate both `self.split_coverage_values_per_nt_dict` and 
            `self.gene_level_coverage_stats_dict`.
 
            Note: if a `split_names_of_interest` argument is declared at the class level,
            this function will operate on those splits found in that set.
            """
+
+        if self.p_meta['blank']:
+            self.run.warning("Someone asked gene coverages to be initialized when working with a blank profile database.\
+                              Anvi'o will pretend nothing happened, and will return nothing. If you don't know what this\
+                              is warning you about, just carry on.")
+            return
 
         if not self.auxiliary_profile_data_available:
             raise ConfigError("Someone is asking gene level coverage stats to be computed, but then there is no auxiliary profile\
@@ -1999,6 +2006,8 @@ class ProfileSuperclass(object):
                               the performance very negatively. If you are seeing this warning, and go like 'crap, this will ruin\
                               everything because I possibly can not recover from this situation', then send us an e-mail, and we will\
                               think about whether we can be less lazy about stuff, and do things better.")
+
+        sample_names = self.p_meta['samples']
 
         if self.split_names_of_interest:
             split_names = self.split_names_of_interest
@@ -2027,7 +2036,8 @@ class ProfileSuperclass(object):
             if num_splits > 10 and counter % 10 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
-            self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(contigs_db, split_name, **parameters))
+            self.split_coverage_values_per_nt_dict[split_name] = self.split_coverage_values.get(split_name)
+            self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters))
 
             if callback and counter % callback_interval == 0:
                 callback()
@@ -2040,9 +2050,9 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
-    def get_gene_level_coverage_stats(self, contigs_db, split_name, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False):
+    def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False):
         # recover split coverage values from the auxiliary data file
-        split_coverage = self.split_coverage_values.get(split_name)
+        split_coverage = self.split_coverage_values_per_nt_dict[split_name]
 
         # identify entry ids for genes in `split_name`
         genes_in_splits_entries = contigs_db.split_name_to_genes_in_splits_entry_ids[split_name]
