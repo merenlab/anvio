@@ -1200,7 +1200,7 @@ class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrap
     def convert_item_coverages(self):
         for amino_acid in sorted(constants.amino_acids):
             codons = constants.AA_to_codons[amino_acid]
-            self.data[amino_acid] = self.data.loc[:, self.data.columns.isin(codons)].apply(lambda entry: sum(entry), axis=1)
+            self.data[amino_acid] = self.data.loc[:, self.data.columns.isin(codons)].sum(axis = 1)
             self.data = self.data.drop(codons, axis=1)
 
 
