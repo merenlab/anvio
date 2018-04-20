@@ -98,10 +98,6 @@ class CodonFrequencies:
             # codons.
             item_frequencies = Counter({})
 
-            # the reference item is what we will keep track of in item_frequencies dict. it may need to be
-            # reverse-complemented depending on the direction of the gene.
-            reference_item = None
-
             # our conversion dicts will differ if the user is asking for codons or AAs, and if the gene is
             # reverse or forward.
             conv_dict = None
@@ -128,6 +124,7 @@ class CodonFrequencies:
                     # stuff did not get reported
                     self.not_reported_items[codon] += 1
 
+            reference_item = conv_dict[codon]
             coverage = sum(item_frequencies.values())
 
             if not coverage:
