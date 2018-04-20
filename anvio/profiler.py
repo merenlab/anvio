@@ -311,6 +311,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # clear contents of set
         self.codons_in_genes_to_profile_SCVs.clear()
 
+        if len(codon_frequencies.not_reported_items):
+            items = codon_frequencies.not_reported_items
+            self.run.warning("The profiler of single-codon variants failed to report anything for a\
+                              total of %d items, because they looked weird to anvi'o :( Here is a list\
+                              of those that did ended up being ignored: '%s'." % (len(items), ', '.join(items)))
+
 
     def generate_variabile_nts_table(self):
         if self.skip_SNV_profiling:
