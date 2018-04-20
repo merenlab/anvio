@@ -649,6 +649,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # FIXME: memory usage should be generalized.
         last_memory_update = int(time.time())
 
+        self.progress.update('contigs are being processed ...')
         while recieved_contigs < self.num_contigs:
             try:
                 contig = output_queue.get()
