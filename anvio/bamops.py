@@ -17,11 +17,11 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
-from anvio.constants import codon_to_AA, codon_to_AA_RC, codon_to_codon_RC
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -73,7 +73,7 @@ class CodonFrequencies:
             reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
             # if concensus sequence contains shitty characters, we will not continue
-            if reference_codon_sequence not in codon_to_AA:
+            if reference_codon_sequence not in constants.codon_to_AA:
                 continue
 
             linkmers.data = []
