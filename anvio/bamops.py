@@ -73,7 +73,7 @@ class CodonFrequencies:
 
             reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
-            # if concensus sequence contains shitty characters, we will not continue
+            # if consensus sequence contains shitty characters, we will not continue
             if reference_codon_sequence not in constants.codon_to_AA:
                 continue
 
@@ -124,7 +124,7 @@ class CodonFrequencies:
                     # stuff did not get reported
                     self.not_reported_items[codon] += 1
 
-            reference_item = conv_dict[codon]
+            reference_item = conv_dict[reference_codon_sequence]
             coverage = sum(item_frequencies.values())
 
             if not coverage:
