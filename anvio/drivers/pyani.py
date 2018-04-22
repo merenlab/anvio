@@ -32,8 +32,10 @@ class PyANI:
         self.run = run
         self.progress = progress
         self.program_name = 'average_nucleotide_identity.py'
-
         utils.is_program_exists(self.program_name)
+
+        self.run.warning("Anvi'o will use 'PyANI' by Pritchard et al. (DOI: 10.1039/C5AY02550H) to compute ANI. If you publish your findings, \
+                            please do not forget to properly credit their work.", lc='green', header="CITATION")
 
     def run_command(self, input_path, method='ANIb'):
         output_path = filesnpaths.get_temp_directory_path()
