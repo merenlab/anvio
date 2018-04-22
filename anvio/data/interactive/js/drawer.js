@@ -411,6 +411,7 @@ Drawer.prototype.initialize_tree = function() {
 
             q.id = i + 1;
             q.size = 1;
+            q.label = clusteringData[i];
             q.child_nodes = [q.id];
             id_to_node_map[q.id] = q;
             label_to_node_map[q.label] = q;
