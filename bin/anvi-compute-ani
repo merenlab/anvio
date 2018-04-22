@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A script to export a FASTA files from contigs databases and compute ani."""
+
+import os
+import sys
+import argparse
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+import anvio.genomedescriptions as genomedescriptions
+
+from anvio.errors import ConfigError, FilesNPathsError
+import anvio.errors
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Ozcan Esen"
+__email__ = "ozcanesen@gmail.com"
+
+run = terminal.Run()
+
+def main(args):
+    genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
+    genome_desc.load_genomes_descriptions(skip_functions=True, init=False)
+
+    temp_dir = filesnpaths.get_temp_directory_path()
+
+    run.info("Genomes found", len(genome_desc.genomes))
+    run.info("Temporary FASTA output directory", temp_dir)
+
+    for genome_name in genome_desc.genomes:
+        fasta_path = os.path.join(temp_dir, genome_desc.genomes[genome_name]['contigs_db_hash'] + '.fa')
+        utils.export_sequences_from_contigs_db(genome_desc.genomes[genome_name]['contigs_db_path'], fasta_path)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Export sequences from external genomes and compute ANI. If Pan Database is given \
+        anvi'o will write computed output to misc data tables of Pan Database.")
+    parser.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True }))
+    parser.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
