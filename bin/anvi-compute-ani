@@ -11,6 +11,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
+from anvio.drivers import pyani
 
 from anvio.errors import ConfigError, FilesNPathsError
 import anvio.errors
@@ -27,6 +28,8 @@ __email__ = "ozcanesen@gmail.com"
 run = terminal.Run()
 
 def main(args):
+    filesnpaths.is_output_file_writable(args.output_file)
+
     genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
     genome_desc.load_genomes_descriptions(skip_functions=True, init=False)
 
@@ -39,6 +42,11 @@ def main(args):
         fasta_path = os.path.join(temp_dir, genome_desc.genomes[genome_name]['contigs_db_hash'] + '.fa')
         utils.export_sequences_from_contigs_db(genome_desc.genomes[genome_name]['contigs_db_path'], fasta_path)
 
+    program = pyani.PyANI()
+    results = program.run_command(temp_dir)
+
+    with open(args.output_file, 'w') as f:
+        w.write(results)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Export sequences from external genomes and compute ANI. If Pan Database is given \
