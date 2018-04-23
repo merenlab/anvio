@@ -2,8 +2,6 @@
 """Interface to PyANI."""
 
 import os
-import io
-import sys
 
 import anvio
 import anvio.utils as utils
