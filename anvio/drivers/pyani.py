@@ -47,7 +47,7 @@ class PyANI:
         program = Popen(full_command, stdin=PIPE, stderr=PIPE)
         sStdout, sStdErr = program.communicate()
 
-        if len(sStdErr) > 0:
+        if len(sStdErr) > 0 and 'ERROR' in str(sStdErr):
             print(sStdErr.decode('utf-8'))
             sys.exit(1)
 
