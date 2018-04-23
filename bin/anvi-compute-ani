@@ -62,7 +62,7 @@ def main(args):
 
     run.info("Genomes found", len(genome_desc.genomes))
     run.info("Temporary FASTA output directory", temp_dir)
-    run.info("Output directory", args.output_dir)
+    run.info("Output directory", os.path.abspath(args.output_dir))
 
     hash_to_name = {}
     genome_names = set([])
