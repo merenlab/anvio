@@ -22,13 +22,8 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
-
-
 class PyANI:
-    def __init__(self, run=run):
+    def __init__(self, args={}, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress
         self.program_name = 'average_nucleotide_identity.py'
