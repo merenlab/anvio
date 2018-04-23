@@ -44,6 +44,8 @@ class PyANI:
 
         log_file_path = filesnpaths.get_temp_file_path()
         self.run.info('Log file path', log_file_path)
+        self.progress.new('Calculating ANI')
+        self.progress.update("'pyani' is running.")
 
         full_command = [self.program_name, '--outdir', 'output', '--indir', input_path, '-g', '-m', method]
         exit_code = utils.run_command(full_command, log_file_path)
@@ -59,5 +61,6 @@ class PyANI:
         # restore old working directory
         os.chdir(old_wd)
 
+        self.progress.end()
         return percent_identity
 
