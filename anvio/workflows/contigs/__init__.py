@@ -52,7 +52,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.rules.extend(['anvi_script_reformat_fasta', 'remove_human_dna_using_centrifuge',
                            'anvi_gen_contigs_database', 'export_gene_calls', 'centrifuge',
                            'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
-                           'annotate_contigs_database', 'anvi_get_aa_sequences_for_gene_calls',
+                           'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
                            'emapper', 'anvi_script_run_eggnog_mapper'])
 
         self.general_params.extend(["fasta_txt"])
