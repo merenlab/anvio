@@ -298,20 +298,20 @@ rule anvi_run_ncbi_cogs:
         """
 
 
-rule anvi_get_aa_sequences_for_gene_calls:
+rule anvi_get_sequences_for_gene_calls:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_get_aa_sequences_for_gene_calls.log"
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_get_sequences_for_gene_calls.log"
     input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
     output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-TM7_NR-contigs-aa-sequences.fa")
-    threads: M.T('anvi_get_aa_sequences_for_gene_calls')
-    resources: nodes = M.T('anvi_get_aa_sequences_for_gene_calls')
-    shell: "anvi-get-aa-sequences-for-gene-calls -c {input} -o {output} >> {log} 2>&1"
+    threads: M.T('anvi_get_sequences_for_gene_calls')
+    resources: nodes = M.T('anvi_get_sequences_for_gene_calls')
+    shell: "anvi-get-sequences-for-gene-calls -c {input} -o {output} --get-aa-sequences >> {log} 2>&1"
 
 
 rule emapper:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-emapper.log"
-    input: rules.anvi_get_aa_sequences_for_gene_calls.output
+    input: rules.anvi_get_sequences_for_gene_calls.output
     output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.emapper.annotations")
     # TODO: add other emapper params
     params:
