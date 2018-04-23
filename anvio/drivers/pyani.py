@@ -45,7 +45,6 @@ class PyANI:
         old_wd = os.getcwd()
         os.chdir(input_path)
 
-
         full_command = [self.program_name,
                         '--outdir', 'output',
                         '--indir', input_path,
@@ -61,8 +60,9 @@ class PyANI:
             raise ConfigError("PyANI returned with non-zero exit code, there may be some errors. \
                               please check the log file for details.")
 
-        with open(os.path.join(input_path, 'output', self.method + '_percentage_identity.tab'), 'r') as f:
-            percent_identity = f.read()
+        J = lambda name: os.path.join(input_path, 'output', self.method + name)
+
+        percent_identity = utils.get_TAB_delimited_file_as_dictionary(J('_percentage_identity.tab'))
 
         # restore old working directory
         os.chdir(old_wd)
