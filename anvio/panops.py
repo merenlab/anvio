@@ -9,8 +9,6 @@
 import os
 import json
 import math
-import copy
-import multiprocessing
 import pandas as pd
 from itertools import chain
 
@@ -21,7 +19,6 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
-import anvio.tables.miscdata as miscdata
 
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
@@ -30,8 +27,6 @@ from anvio.drivers import Aligners
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
-from anvio.tables.geneclusters import TableForGeneClusters
-from anvio.tables.views import TablesForViews
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -66,7 +61,7 @@ class Pangenome(object):
         self.skip_alignments = A('skip_alignments')
         self.align_with = A('align_with')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
-        self.debug = anvio.DEBUG
+        self.debug = A('debug')
         self.min_percent_identity = A('min_percent_identity')
         self.gene_cluster_min_occurrence = A('min_occurrence')
         self.mcl_inflation = A('mcl_inflation')
@@ -216,6 +211,9 @@ class Pangenome(object):
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
 
+        if not self.skip_alignments:
+            self.aligner = aligners.select(self.align_with)
+
         self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 
 
@@ -224,12 +222,13 @@ class Pangenome(object):
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         diamond.names_dict = unique_AA_sequences_names_dict
+        diamond.target_db_path = self.get_output_file_path(filesnpaths.get_name_from_file_path(unique_AA_sequences_fasta_path))
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
 
         diamond.sensitive = self.sensitive
 
-        return diamond.get_blast_results()
+        return diamond.get_blastall_results()
 
 
     def run_blast(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
@@ -241,9 +240,10 @@ class Pangenome(object):
 
         blast.names_dict = unique_AA_sequences_names_dict
         blast.log_file_path = self.log_file_path
+        blast.target_db_path = self.get_output_file_path(filesnpaths.get_name_from_file_path(unique_AA_sequences_fasta_path))
         blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
 
-        return blast.get_blast_results()
+        return blast.get_blastall_results()
 
 
     def run_search(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
@@ -328,8 +328,7 @@ class Pangenome(object):
 
             # divide the DNA length of the gene by three to get the AA length, and multiply that by two to get an approximate
             # bit score that would have recovered from a perfect match
-            gene_amino_acid_sequence_length = len(self.genomes_storage.get_gene_sequence(genome_name, int(gene_caller_id), report_DNA_sequences=False))
-            self_bit_scores[id_without_self_search] = gene_amino_acid_sequence_length * 2
+            self_bit_scores[id_without_self_search] = (self.genomes[genome_name]['gene_lengths'][int(gene_caller_id)] / 3.0) * 2
 
             # add this SOB into additional_mcl_input_lines dict.
             additional_mcl_input_lines[id_without_self_search] = '%s\t%s\t1.0\n' % (id_without_self_search, id_without_self_search)
@@ -395,7 +394,7 @@ class Pangenome(object):
         for gene_cluster in gene_clusters:
             self.view_data[gene_cluster] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.view_data_presence_absence[gene_cluster] = dict([(genome_name, 0) for genome_name in self.genomes])
-            self.additional_view_data[gene_cluster] = {'num_genes_in_gene_cluster': 0, 'num_genomes_gene_cluster_has_hits': 0, 'SCG': 0, 'max_num_paralogs': 0}
+            self.additional_view_data[gene_cluster] = {'num_genes_in_gene_cluster': 0, 'num_genomes_gene_cluster_has_hits': 0, 'SCG': 0}
 
             for gene_entry in gene_clusters_dict[gene_cluster]:
                 genome_name = gene_entry['genome_name']
@@ -405,7 +404,6 @@ class Pangenome(object):
                 self.additional_view_data[gene_cluster]['num_genes_in_gene_cluster'] += 1
 
             self.additional_view_data[gene_cluster]['SCG'] = 1 if set(self.view_data[gene_cluster].values()) == set([1]) else 0
-            self.additional_view_data[gene_cluster]['max_num_paralogs'] = max(self.view_data[gene_cluster].values())
 
             self.additional_view_data[gene_cluster]['num_genomes_gene_cluster_has_hits'] = len([True for genome in self.view_data[gene_cluster] if self.view_data[gene_cluster][genome] > 0])
 
@@ -454,29 +452,23 @@ class Pangenome(object):
         ########################################################################################
         table_structure=['gene_cluster'] + sorted(self.genomes.keys())
         table_types=['text'] + ['numeric'] * len(self.genomes)
-        TablesForViews(self.pan_db_path).create_new_view(
+        dbops.TablesForViews(self.pan_db_path).create_new_view(
                                         data_dict=self.view_data,
                                         table_name='gene_cluster_frequencies',
                                         table_structure=table_structure,
                                         table_types=table_types,
                                         view_name = 'gene_cluster_frequencies')
 
-        TablesForViews(self.pan_db_path).create_new_view(
+        dbops.TablesForViews(self.pan_db_path).create_new_view(
                                         data_dict=self.view_data_presence_absence,
                                         table_name='gene_cluster_presence_absence',
                                         table_structure=table_structure,
                                         table_types=table_types,
                                         view_name = 'gene_cluster_presence_absence')
 
-        item_additional_data_table = miscdata.TableForItemAdditionalData(self.args)
-        item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
-        item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
-        #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
-        #                                                                                   /
-        # here we say skip_check_names=True, simply because there is no gene_clusters table has not been
-        # generated yet, but the check names functionality in dbops looks for the gene clsuters table to
-        # be certain. it is not a big deal here, since we absoluely know what gene cluster names we are
-        # working with.
+        item_additional_data_table = dbops.TableForItemAdditionalData(self.args)
+        item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'SCG']
+        item_additional_data_table.add(item_additional_data_keys, self.additional_view_data)
 
         ########################################################################################
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
@@ -566,54 +558,67 @@ class Pangenome(object):
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
-    def populate_layers_additional_data_and_orders(self):
-        self.progress.new('Layers additional data and orders')
+    def gen_samples_db(self):
+        samples_info_file_path = self.gen_samples_info_file()
+        samples_order_file_path = self.gen_samples_order_file()
+
+        samples_db_output_path = self.get_output_file_path(self.project_name + '-SAMPLES.db', delete_if_exists=True)
+
+        s = dbops.SamplesInformationDatabase(samples_db_output_path, run=self.run, progress=self.progress, quiet=True)
+        s.create(samples_info_file_path, samples_order_file_path)
+
+
+    def gen_samples_order_file(self):
+        self.progress.new('Samples DB')
         self.progress.update('Copmputing the hierarchical clustering of the (transposed) view data')
 
-        layer_orders_data_dict = {}
+        samples_order_file_path = self.get_output_file_path(self.project_name + '-samples-order.txt')
+        samples_order = open(samples_order_file_path, 'w')
+        samples_order.write('attributes\tbasic\tnewick\n')
+
         for clustering_tuple in [('gene_cluster presence absence', self.view_data), ('gene_cluster frequencies', self.view_data_presence_absence)]:
             v, d = clustering_tuple
             newick = clustering.get_newick_tree_data_for_dict(d, transpose=True, distance = self.distance, linkage=self.linkage)
-            layer_orders_data_dict[v] = {'data_type': 'newick', 'data_value': newick}
+            samples_order.write('%s\t\t%s\n' % (v, newick))
 
-        self.progress.update('Generating layers additional data ..')
-
-        layers_additional_data_dict = {}
-        layers_additional_data_keys = ['total_length', 'gc_content']
-
-        for h in ['percent_completion', 'percent_redundancy']:
-            if h in list(self.genomes.values())[0]:
-                layers_additional_data_keys.append(h)
-
-        layers_additional_data_keys.extend(['num_genes', 'avg_gene_length', 'num_genes_per_kb'])
-
-        for genome_name in self.genomes:
-            new_dict = {}
-            for key in layers_additional_data_keys:
-                new_dict[key] = self.genomes[genome_name][key]
-
-            layers_additional_data_dict[genome_name] = new_dict
-
-        # summarize gene cluster stats across genomes
-        layers_additional_data_keys.extend(['num_gene_clusters', 'singleton_gene_clusters'])
-        for genome_name in self.genomes:
-            layers_additional_data_dict[genome_name]['num_gene_clusters'] = 0
-            layers_additional_data_dict[genome_name]['singleton_gene_clusters'] = 0
-            for gene_cluster in self.view_data_presence_absence:
-                genomes_contributing_to_gene_cluster = [t[0] for t in self.view_data_presence_absence[gene_cluster].items() if t[1]]
-
-                # tracking singletons
-                if len(genomes_contributing_to_gene_cluster) == 1 and genomes_contributing_to_gene_cluster[0] == genome_name:
-                    layers_additional_data_dict[genome_name]['singleton_gene_clusters'] += 1
-
-                # tracking the total number of gene clusters
-                if self.view_data_presence_absence[gene_cluster][genome_name]:
-                    layers_additional_data_dict[genome_name]['num_gene_clusters'] += 1
+        samples_order.close()
 
         self.progress.end()
 
-        miscdata.TableForLayerOrders(self.args).add(layer_orders_data_dict)
-        miscdata.TableForLayerAdditionalData(self.args).add(layers_additional_data_dict, layers_additional_data_keys)
+        self.run.info("Anvi'o samples order", samples_order_file_path)
+
+        return samples_order_file_path
+
+
+    def gen_samples_info_file(self):
+        self.progress.new('Samples DB')
+        self.progress.update('Generating the samples information file ..')
+
+        samples_info_dict = {}
+        samples_info_file_path = self.get_output_file_path(self.project_name + '-samples-information.txt')
+
+        # set headers
+        headers = ['total_length']
+
+        for h in ['percent_completion', 'percent_redundancy']:
+            if h in list(self.genomes.values())[0]:
+                headers.append(h)
+
+        headers.extend(['gc_content', 'num_genes', 'avg_gene_length', 'num_genes_per_kb'])
+
+        for genome_name in self.genomes:
+            new_dict = {}
+            for header in headers:
+                new_dict[header] = self.genomes[genome_name][header]
+
+            samples_info_dict[genome_name] = new_dict
+
+        utils.store_dict_as_TAB_delimited_file(samples_info_dict, samples_info_file_path, headers=['samples'] + headers)
+
+        self.progress.end()
+        self.run.info("Anvi'o samples information", samples_info_file_path)
+
+        return samples_info_file_path
 
 
     def sanity_check(self):
@@ -649,7 +654,7 @@ class Pangenome(object):
         self.progress.new('Storing gene clusters in the database')
         self.progress.update('...')
 
-        table_for_gene_clusters = TableForGeneClusters(self.pan_db_path, run=self.run, progress=self.progress)
+        table_for_gene_clusters = dbops.TableForGeneClusters(self.pan_db_path, run=self.run, progress=self.progress)
 
         num_genes_in_gene_clusters = 0
         for gene_cluster_name in gene_clusters_dict:
@@ -698,130 +703,39 @@ class Pangenome(object):
             self.run.warning('Skipping gene alignments.')
             return gene_clusters_dict
 
-        # we run "select aligner" to print the citation information (the actual selection is
-        # done in the `alignment_worker` down below)
-        aligners.select(self.align_with)
+        r = terminal.Run()
+        r.verbose = False
 
-        self.progress.new('Aligning amino acid sequences for genes in gene clusters')
+        self.progress.new('Aligning genes in amino acid sequences')
         self.progress.update('...')
         gene_cluster_names = list(gene_clusters_dict.keys())
+        num_gene_clusters = len(gene_cluster_names)
+        for i in range(0, num_gene_clusters):
+            self.progress.update('%d of %d' % (i, num_gene_clusters)) if i % 10 == 0 else None
+            gene_cluster_name = gene_cluster_names[i]
 
-        # we only need to align gene clusters with more than one sequence
-        non_singleton_gene_cluster_names = [g for g in gene_cluster_names if len(gene_clusters_dict[g]) > 1]
-        num_non_singleton_gene_clusters = len(non_singleton_gene_cluster_names)
+            if len(gene_clusters_dict[gene_cluster_name]) == 1:
+                # this sequence is a singleton and does not need alignment
+                continue
 
-        manager = multiprocessing.Manager()
-        input_queue = manager.Queue()
-        output_queue = manager.Queue()
+            gene_sequences_in_gene_cluster = []
+            for gene_entry in gene_clusters_dict[gene_cluster_name]:
+                sequence = self.genomes_storage.get_gene_sequence(gene_entry['genome_name'], gene_entry['gene_caller_id'])
+                gene_sequences_in_gene_cluster.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
 
-        for gene_cluster_name in non_singleton_gene_cluster_names:
-            input_queue.put(gene_cluster_name)
+            # alignment
+            if self.debug:
+                self.run.info_single('Aligning sequences in Gene Cluster %s' % gene_cluster_name, nl_before=2, nl_after=1)
+                print(json.dumps(gene_sequences_in_gene_cluster, indent=2))
 
-        workers = []
-        for i in range(0, self.num_threads):
-            worker = multiprocessing.Process(target=Pangenome.alignment_worker,
-                args=(input_queue, output_queue, gene_clusters_dict, self.genomes_storage, self.align_with, self.run))
+            alignments = self.aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
 
-            workers.append(worker)
-            worker.start()
-
-        received_gene_clusters = 0
-        while received_gene_clusters < num_non_singleton_gene_clusters:
-            try:
-                gene_clusters_item = output_queue.get()
-
-                if gene_clusters_item:
-                    # worker returns None if there is nothing to align
-                    # we do not need to owerwrite it to gene_clusters_dict
-                    gene_clusters_dict[gene_clusters_item['name']] = gene_clusters_item['entry']
-
-                if self.debug:
-                    print(json.dumps(gene_clusters_item, indent=2))
-
-                received_gene_clusters += 1
-                self.progress.update("Processed %d of %d non-singleton GCs in %d threads." %
-                    (received_gene_clusters, num_non_singleton_gene_clusters, self.num_threads))
-
-            except KeyboardInterrupt:
-                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
-                break
-
-        for worker in workers:
-            worker.terminate()
+            for gene_entry in gene_clusters_dict[gene_cluster_name]:
+                gene_entry['alignment_summary'] = utils.summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])
 
         self.progress.end()
 
         return gene_clusters_dict
-
-
-    @staticmethod
-    def alignment_worker(input_queue, output_queue, gene_clusters_dict, genomes_storage, align_with, run):
-        # Note for future changes, this worker should not write anything to gene_clusters_dict
-        # or genome_storage, changes will not be reflected to main process or other processes.
-
-        aligner = aligners.select(align_with, quiet=True)
-
-        # this instance of Run is here because we don't want to create this over and over again
-        # in the loop down below. there also is another run instance the worker gets to make sure
-        # it can report its own messages .. don't be confused we-do-not-age-discriminate-here padawan.
-        r = terminal.Run()
-        r.verbose = False
-
-        # Main process needs to kill this worker after it receives all tasks because of this infinite loop
-        while True:
-            gene_cluster_name = input_queue.get(True)
-
-            if len(gene_clusters_dict[gene_cluster_name]) == 1:
-                # this sequence is a singleton and does not need alignment
-                output_queue.put(None)
-                continue
-
-            gene_sequences_in_gene_cluster = []
-
-            for gene_entry in gene_clusters_dict[gene_cluster_name]:
-                sequence = genomes_storage.get_gene_sequence(gene_entry['genome_name'], gene_entry['gene_caller_id'])
-                gene_sequences_in_gene_cluster.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
-
-            # sometimes alignments fail, and because pangenomic analyses can take forever,
-            # everything goes into the trash bin. to prevent that, here we have a try/except
-            # block with lots of warnings if something goes wrong.
-            try:
-                alignments = aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
-            except:
-                # realm of sad face. before we continue to spam the user with error messages,
-                # we turn our gene sequences to alignments without alignments. this worker will
-                # report raw, unaligned sequences for this gene cluster as if they were aligned
-                # so things will continue working operationally, and it will be on the user to
-                # make sure they went through their results carefully.
-                alignments = dict(gene_sequences_in_gene_cluster)
-
-                # constructing our #sad:
-                if anvio.DEBUG:
-                    temp_file_path = filesnpaths.get_temp_file_path(prefix='ANVIO_GC_%s' % (gene_cluster_name))
-                    with open(temp_file_path, 'w') as output:
-                        for tpl in gene_sequences_in_gene_cluster:
-                            output.write('>%s\n%s\n' % (tpl[0], tpl[1]))
-                    debug_info = "The %d sequences in gene cluster %s are stored in the temporary file '%s'" % \
-                                        (len(gene_sequences_in_gene_cluster), gene_cluster_name, temp_file_path)
-                else:
-                    debug_info = "If you re-run your last command with a `--debug` flag, anvi'o will generate more\
-                                  information for you about the contenets of this gene cluster (but if you are seeing\
-                                  millions of these warnings, it may not be a good idea since with the `--debug` flag\
-                                  anvi'o will generate a FASTA file in a temporary directory with the contents of the\
-                                  gene cluster, and will not attempt to delete them later)."
-
-                run.warning("VERY BAD NEWS. The alignment of seqeunces with '%s' in the gene cluster '%s' failed\
-                             for some reason. Since the real answer to 'why' is too deep in the matrix, there is\
-                             no reliable solution for anvi'o to find it for you, BUT THIS WILL AFFECT YOUR SCIENCE\
-                             GOING FORWARD, SO YOU SHOULD CONSIDER ADDRESSING THIS ISSUE FIRST. %s" % \
-                                                       (aligner.__name__, gene_cluster_name, debug_info), nl_before=1)
-
-
-            output = {'name': gene_cluster_name, 'entry': copy.deepcopy(gene_clusters_dict[gene_cluster_name])}
-            for gene_entry in output['entry']:
-                gene_entry['alignment_summary'] = utils.summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])
-
-            output_queue.put(output)
 
 
     def process(self):
@@ -875,8 +789,8 @@ class Pangenome(object):
         # generate orderings of gene_clusters based on synteny of genes
         self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
 
-        # populate layers additional data and orders
-        self.populate_layers_additional_data_and_orders()
+        # gen samples info and order files
+        self.gen_samples_db()
 
         # done
         self.run.info('log file', self.run.log_file_path)

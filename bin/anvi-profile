@@ -15,8 +15,6 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
-__resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
 
 if __name__ == '__main__':
@@ -43,6 +41,7 @@ if __name__ == '__main__':
     groupZ = parser.add_argument_group('PERFORMANCE', 'Performance settings for profiler')
 
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupI.add_argument(*anvio.A('serialized-profile'), **anvio.K('serialized-profile'))
     groupI.add_argument(*anvio.A('blank-profile'), **anvio.K('blank-profile'))
     groupM.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupM.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))

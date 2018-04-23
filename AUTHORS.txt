@@ -4,7 +4,6 @@ A. Murat Eren (a.murat.eren at gmail dot com), University of Chicago
 Özcan Esen (ozcanesen at gmail dot com), University of Chicago
 Alon Shaiber (alon.shaiber at gmail dot com), University of Chicago
 Evan Kiefl (kiefl.evan at gmail dot com), University of Chicago
-Andrea Watson (andreawatson at uchicago dot edu), University of Chicago
 Tom Delmont (tomodelmont at gmail dot com), University of Chicago
 
 Contributors
@@ -13,11 +12,10 @@ Tobias Paczian, Argonne National Laboratory
 Gökmen Göksel, Koding Inc.
 Faruk Uzun, Monera
 Gökmen Görgen, Radity
-Mahmoud Yousef, University of Chicago
-Mike Lee, University of Southern California
 Doğan Can Kilment, Makroser
 S. Çağlar Onur, DigitalOcean
 John Eppley, University of Hawaiʻi at Mānoa
+Mike Lee, University of Southern California
 Daniel Blankenberg, Genomic Medicine Institute
 Ines Martinez, University of Alberta
 M. Fauzi Haroon, Harvard University

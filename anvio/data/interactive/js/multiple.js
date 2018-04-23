@@ -68,7 +68,7 @@ $(document).ready(function() {
         $(table).find('.layer_selectors:checked').each(
             function(){
                 var row = $(this).parent().parent();
-                $(row).find(target_selector).val(new_val).trigger('change');
+                $(row).find(target_selector).val(new_val);
             }
         );
     });

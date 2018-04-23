@@ -5,8 +5,7 @@ import sys
 import argparse
 
 import anvio.db as db
-import anvio.utils as utils
-import anvio.utils as utils
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
@@ -23,119 +22,12 @@ item_additional_data_table_structure = ['entry_id', 'item_name', 'key', 'value',
 item_additional_data_table_types     = [ 'numeric',   'text'   , 'str',  'str' ,  'str']
 
 
-class Table(object):
-    def __init__(self, db_path, version, run=run, progress=progress, quiet=False, simple=False):
-        self.quiet = quiet
-        self.db_type = None
-        self.db_path = db_path
-        self.version = version
-        self.next_available_id = {}
-
-        self.splits_info = None
-        self.contigs_info = None
-        self.split_length = None
-        self.genes_are_called = None
-
-        self.run = run
-        self.progress = progress
-
-        database = db.DB(self.db_path, version, ignore_version=True)
-        self.db_type = database.get_meta_value('db_type')
-
-
-    def next_id(self, table):
-        if table not in self.next_available_id:
-            raise ConfigError("If you need unique ids, you must call 'set_next_available_id' first")
-
-        self.next_available_id[table] += 1
-        return self.next_available_id[table] - 1
-
-
-    def set_next_available_id(self, table):
-        database = db.DB(self.db_path, self.version, ignore_version=True)
-        table_content = database.get_table_as_dict(table)
-        if table_content:
-            self.next_available_id[table] = max(table_content.keys()) + 1
-        else:
-            self.next_available_id[table] = 0
-
-        database.disconnect()
-
-
-    def reset_next_available_id_for_table(self, table):
-        self.next_available_id[table] = 0
-
-
-class TableForItemAdditionalData(Table):
-    """Implements the item additional data class.
-       This is the class where we maintain the item additional data tables in anvi'o
-       pan and profile databases. Related issue: https://github.com/merenlab/anvio/issues/662.
-    """
-
-    def __init__(self, args, r=run, p=progress, table_name=item_additional_data_table_name):
-        self.run = r
-        self.progress = p
-        self.table_name = table_name
-
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
-        self.just_do_it = A('just_do_it')
-
-        if not self.db_path:
-            raise ConfigError("ItemAdditionalData class is inherited with args object that did not\
-                               contain any database path :/ Even though any of the following would\
-                               have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
-
-        database = db.DB(self.db_path, None, ignore_version=True)
-        self.item_additional_data_keys = database.get_single_column_from_table(self.table_name, 'key')
-        database.disconnect()
-
-        Table.__init__(self, self.db_path, None, self.run, self.progress)
-
-
-    def add(self, keys_list, data_dict, skip_check_names=False):
-        if not isinstance(keys_list, list):
-            raise ConfigError("List of keys must be of type `list`. Go away.")
-
-        if not isinstance(data_dict, dict):
-            raise ConfigError("Nope. Your data must be of type `dict`.")
-
-        self.run.warning(None, 'New additional data...', lc="yellow")
-        key_types = {}
-        for key in keys_list:
-            if '!' in key:
-                predicted_key_type = "stackedbar"
-            else:
-                type_class = utils.get_predicted_type_of_items_in_a_dict(data_dict, key)
-                predicted_key_type = type_class.__name__ if type_class else None
-
-            key_types[key] = predicted_key_type
-            self.run.info('Key "%s"' % key, 'Predicted type: %s' % (key_types[key]), \
-                                            nl_after = 1 if key == keys_list[-1] else 0)
-
-        db_entries = []
-        self.set_next_available_id(self.table_name)
-        for item_name in data_dict:
-            for key in data_dict[item_name]:
-                db_entries.append(tuple([self.next_id(self.table_name),
-                                         item_name,
-                                         key,
-                                         data_dict[item_name][key],
-                                         key_types[key]]))
-
-        database = db.DB(self.db_path, None, ignore_version=True)
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, db_entries)
-        database.disconnect()
-
-        self.run.info('New data added to the db', '%s.' % (', '.join(keys_list)))
-
-
 def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    utils.is_pan_db(db_path)
+    dbops.is_pan_db(db_path)
 
     # make sure the version is accurate
     pan_db = db.DB(db_path, None, ignore_version = True)
@@ -220,8 +112,8 @@ def migrate(db_path):
     pan_db.disconnect()
 
     # update the contents of the item_additional_data_table
-    args = argparse.Namespace(pan_db=db_path, just_do_it=True, ignore_db_version=True)
-    item_additional_data_table = TableForItemAdditionalData(args)
+    args = argparse.Namespace(pan_db=db_path, just_do_it=True)
+    item_additional_data_table = dbops.TableForItemAdditionalData(args)
     item_additional_data_table.add(additional_data_headers, additional_data_table_dict)
 
     # open the database again to remove stuff

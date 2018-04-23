@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Export items additional data tables into TAB-delimited files"""
+
+import sys
+import argparse
+
+
+import anvio
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+
+
+def main(args):
+    table_for_item_additional_data = dbops.TableForItemAdditionalData(args)
+    table_for_item_additional_data.export(output_file_path=args.output_file)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Export the contents of an items additional data table in a pan or profile databases")
+
+    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

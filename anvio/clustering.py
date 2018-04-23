@@ -4,8 +4,6 @@
 
 import os
 import numpy as np
-import pandas as pd
-
 from sklearn import manifold
 from sklearn import preprocessing
 from scipy.cluster import hierarchy
@@ -85,26 +83,34 @@ def is_distance_metric_OK(distance):
                             is a list of all the available ones: %s" % (distance, ', '.join(distance_metrics)))
 
 
-def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_method_default, distance=constants.distance_metric_default, norm='l1'):
+def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_method_default, distance=constants.distance_metric_default):
     is_distance_and_linkage_compatible(distance, linkage)
 
-    vectors = pd.DataFrame.from_dict(d, orient='index')
+    matrix_file = filesnpaths.get_temp_file_path()
+    utils.store_dict_as_TAB_delimited_file(d, matrix_file, ['items'] + list(d[list(d.keys())[0]].keys()))
 
-    id_to_sample_dict = dict([(i, vectors.index[i]) for i in range(len(vectors.index))])
+    newick = get_newick_tree_data(matrix_file, transpose=transpose, distance=distance, linkage=linkage)
 
-    if transpose:
-        id_to_sample_dict = dict([(i, vectors.columns[i]) for i in range(len(vectors.columns))])
-
-    newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose=transpose)
-
+    os.remove(matrix_file)
     return newick
 
 
-def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose=False):
-    is_distance_and_linkage_compatible(distance, linkage)
+def get_newick_tree_data(observation_matrix_path, output_file_name=None, linkage=constants.linkage_method_default,
+                         distance=constants.distance_metric_default, norm='l1', progress=progress, transpose=False):
 
-    if transpose:
-        vectors = vectors.transpose()
+    is_distance_and_linkage_compatible(distance, linkage)
+    filesnpaths.is_file_exists(observation_matrix_path)
+    filesnpaths.is_file_tab_delimited(observation_matrix_path)
+
+    if output_file_name:
+        output_file_name = os.path.abspath(output_file_name)
+        output_directory = os.path.dirname(output_file_name)
+        if not os.access(output_directory, os.W_OK):
+            raise ConfigError("You do not have write permission for the output directory: '%s'" % output_directory)
+
+    id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose)
+
+    vectors = np.array(vectors)
 
     # normalize vectors:
     vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
@@ -112,24 +118,10 @@ def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, 
     tree = get_clustering_as_tree(vectors, linkage, distance, progress)
     newick = get_tree_object_in_newick(tree, id_to_sample_dict)
 
-    return newick
-
-
-def create_newick_file_from_matrix_file(observation_matrix_path, output_file_name, linkage=constants.linkage_method_default,
-                         distance=constants.distance_metric_default, norm='l1', progress=progress, transpose=False):
-    is_distance_and_linkage_compatible(distance, linkage)
-    filesnpaths.is_file_exists(observation_matrix_path)
-    filesnpaths.is_file_tab_delimited(observation_matrix_path)
-    filesnpaths.is_output_file_writable(output_file_name)
-
-    id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose)
-
-    vectors = np.array(vectors)
-
-    newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict)
-
     if output_file_name:
         open(output_file_name, 'w').write(newick.strip() + '\n')
+
+    return newick
 
 
 def get_scaled_vectors(vectors, user_seed=None, n_components=12, normalize=True, progress=progress):
@@ -238,26 +230,16 @@ def get_tree_object_in_newick(tree, id_to_sample_dict=None):
 
 def order_contigs_simple(config, distance=None, linkage=None, progress=progress, run=run, debug=False):
     """An anvi'o clustering config comes in, a (clustering_id, newick) tuple goes out.
-
+    
        By default the `linkage` and `distance` is set to the system defaults, constants.linkage_method_default
        and constants.distance_metric_default. If the `config` has either of them defined, the system defaults
        are overwritten with the preference in the config file. If the function gets `linkage` or `distance` as
        parameter, they overwrite both system defaults and config preferences.
     """
-
     if not config.matrices_dict[config.matrices[0]]['ratio']:
         config = set_null_ratios_for_matrices(config)
 
-    distance = distance if distance else (config.distance or constants.distance_metric_default)
-    linkage = linkage if linkage else (config.linkage or constants.linkage_method_default)
-    clustering_id = ':'.join([config.name, distance, linkage])
-
-    if len(config.master_rows) == 1:
-        # there is a single item to cluster. which means there is nothing to cluster really.
-        # return that single item in a newick format:
-        return (clustering_id, '(%s);' % config.master_rows[0])
-
-    if debug or anvio.DEBUG:
+    if debug:
         run.info_single('Peak at the first 5 items in the first 5 rows in matrices:', mc='green', nl_before=2)
 
     for matrix in config.matrices:
@@ -271,7 +253,7 @@ def order_contigs_simple(config, distance=None, linkage=None, progress=progress,
         if m['log']:
             m['scaled_vectors'] = np.log10(m['scaled_vectors'] + 1)
 
-        if debug or anvio.DEBUG:
+        if debug:
             summary = '\n'.join(['%s (...)' % m['scaled_vectors'][i][0:5] for i in range(0, 5)])
             run.warning(summary, 'Vectors for "%s" (%d by %d)' % (matrix, len(m['scaled_vectors']), len(m['scaled_vectors'][0])), lc='crimson', raw=True)
 
@@ -288,6 +270,9 @@ def order_contigs_simple(config, distance=None, linkage=None, progress=progress,
 
     progress.update('Clustering ...')
 
+    distance = distance if distance else (config.distance or constants.distance_metric_default)
+    linkage = linkage if linkage else (config.linkage or constants.linkage_method_default)
+
     tree = get_clustering_as_tree(config.combined_vectors, linkage, distance, progress=progress)
     newick = get_tree_object_in_newick(tree, config.combined_id_to_sample)
 
@@ -295,6 +280,8 @@ def order_contigs_simple(config, distance=None, linkage=None, progress=progress,
 
     if config.output_file_path:
         open(config.output_file_path, 'w').write(newick + '\n')
+
+    clustering_id = ':'.join([config.name, distance, linkage])
 
     return (clustering_id, newick)
 

@@ -19,7 +19,6 @@ import anvio.filesnpaths as filesnpaths
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.blast import BLAST
 from anvio.errors import ConfigError
-from anvio.tables.genefunctions import TableForGeneFunctions
 
 # just to make sure things don't break too far when they do:
 COG_DATA_VERSION='2'
@@ -60,53 +59,37 @@ class COGs:
         self.sensitive = A('sensitive')
 
         self.log_file_path = None
+        self.available_db_search_programs = [p for p in ['diamond', 'blastp'] if utils.is_program_exists(p, dont_raise=True)]
 
-        self.default_search_method = 'diamond'
-        self.search_methods_factory = {'diamond': self.search_with_diamond,
-                                       'blastp': self.search_with_ncbi_blast}
-        self.available_search_methods = [p for p in self.search_methods_factory.keys() if utils.is_program_exists(p, dont_raise=True)]
+        self.COG_setup = COGsSetup(args)
+        self.COG_data_dir = self.COG_setup.COG_data_dir
+        self.available_db_search_program_targets = self.COG_setup.get_formatted_db_paths()
+        self.essential_files = self.COG_setup.get_essential_file_paths()
 
-        if not len(self.available_search_methods):
-            raise ConfigError("None of the serach methods this class could use, which include '%s', seem to be\
-                               available on your system :/" % (', '.join(list(self.search_methods_factory.keys()))))
-
-        if self.default_search_method not in self.available_search_methods:
-            self.default_search_method = self.available_search_methods[0]
-
+        self.search_factory = {'diamond': self.search_with_diamond,
+                               'blastp': self.search_with_blastp}
 
         self.hits = None # the search function will take care of this one.
 
-        if len(args.__dict__):
-            self.COG_setup = COGsSetup(args)
-            self.COG_data_dir = self.COG_setup.COG_data_dir
-            self.available_db_search_program_targets = self.COG_setup.get_formatted_db_paths()
-            self.essential_files = self.COG_setup.get_essential_file_paths()
-
 
     def process(self, aa_sequences_file_path=None):
-        if self.search_with not in self.available_search_methods:
-            raise ConfigError("Let us start by making it clear that we probably like '%s' as much as you do, but it doesn't\
-                               seem to be available on your system OR recognized by the COGs class since anvi'o couldn't\
-                               find it among the available search methods. You probably need to try something else :/" \
-                                                                                                    % self.search_with)
-
         if self.search_with not in self.available_db_search_program_targets:
             raise ConfigError("Anvi'o understands that you want to use '%s' to search for COGs, however, there is no\
-                               database formatted under the COGs data directory for that program :/ You may need to\
-                               re-run the COGs setup, UNLESS, you set up your COG data directory somewhere else than what\
-                               anvi'o attempts to use at the moment ('%s'). If that is the case, this may be the best\
-                               time to point the right directory using the --cog-data-dir parameter, or the environmental\
-                               variable 'ANVIO_COG_DATA_DIR'." % (self.search_with, self.COG_data_dir))
+                                database formatted under the COGs data directory for that program :/ You may need to\
+                                re-run the COGs setup, UNLESS, you set up your COG data directory somewhere else than what\
+                                anvi'o attempts to use at the moment ('%s'). If that is the case, this may be the best\
+                                time to point the right directory using the --cog-data-dir parameter, or the environmental\
+                                variable 'ANVIO_COG_DATA_DIR'." % (self.search_with, self.COG_data_dir))
 
         if not aa_sequences_file_path and not self.contigs_db_path:
             raise ConfigError("You either need to provide an anvi'o contigs database path, or a FASTA file for AA\
-                               sequences")
+                                sequences")
 
         if aa_sequences_file_path and self.contigs_db_path:
             raise ConfigError("You can't provide both an AA sequences file and a contigs database. Choose one!")
 
         if self.contigs_db_path:
-            utils.is_contigs_db(self.contigs_db_path)
+            dbops.is_contigs_db(self.contigs_db_path)
 
         if not self.temp_dir_path:
             self.temp_dir_path = filesnpaths.get_temp_directory_path()
@@ -129,7 +112,7 @@ class COGs:
             aa_sequences_file_path = dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path, J(self.temp_dir_path, 'aa_sequences.fa'))
 
         # do the search
-        search_results_tabular = self.search_methods_factory[self.search_with](aa_sequences_file_path)
+        search_results_tabular = self.search_factory[self.search_with](aa_sequences_file_path)
 
         # convert the output to a hits dict
         self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
@@ -143,8 +126,7 @@ class COGs:
 
     def store_hits_into_contigs_db(self):
         if not self.hits:
-            self.run.warning("COGs class has no hits to process. Returning empty handed.")
-            return
+            raise ConfigError("COGs class has no hits to process. Did you forget to call search?")
 
         cogs_data = COGsData(self.args)
         cogs_data.init_p_id_to_cog_id_dict()
@@ -155,10 +137,10 @@ class COGs:
 
         def add_entry(gene_callers_id, source, accession, function, e_value):
             functions_dict[self.__entry_id] = {'gene_callers_id': int(gene_callers_id),
-                                               'source': source,
-                                               'accession': accession,
-                                               'function': function,
-                                               'e_value': float(e_value)}
+                                        'source': source,
+                                        'accession': accession,
+                                        'function': function,
+                                        'e_value': float(e_value)}
             self.__entry_id += 1
 
         # let's keep track of hits that match to missing COGs
@@ -168,11 +150,7 @@ class COGs:
         for gene_callers_id in self.hits:
             ncbi_protein_id = self.hits[gene_callers_id]['hit']
 
-            in_proteins_FASTA_not_in_cogs_CSV = []
-            if ncbi_protein_id not in cogs_data.p_id_to_cog_id:
-                in_proteins_FASTA_not_in_cogs_CSV.append((ncbi_protein_id, gene_callers_id),)
-            else:
-                COG_ids = cogs_data.p_id_to_cog_id[ncbi_protein_id]
+            COG_ids = cogs_data.p_id_to_cog_id[ncbi_protein_id]
 
             annotations = []
             categories = set([])
@@ -198,7 +176,7 @@ class COGs:
             add_entry(gene_callers_id, 'COG_CATEGORY', '!!!'.join(categories), '!!!'.join(categories), 0.0)
 
         # store hits in contigs db.
-        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+        gene_function_calls_table = dbops.TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
         gene_function_calls_table.create(functions_dict)
 
         if len(missing_cogs_found):
@@ -206,29 +184,11 @@ class COGs:
                               were among the ones that were not described in the raw data. Here is the list of %d COG IDs that\
                               were hit %d times: %s.' % (len(missing_cogs_found), hits_for_missing_cogs, ', '.join(missing_cogs_found)))
 
-        if len(in_proteins_FASTA_not_in_cogs_CSV):
-            # so some of the hits represented in the FASTA file from the NCBI were not put in the
-            # CSV file from NCBI to associate them with COGs
-            report_output_file_path = filesnpaths.get_temp_file_path()
-            report_output = open(report_output_file_path, 'w')
-            report_output.write('anvio_gene_callers_id\tNCBI_protein_id\n')
-
-            for protein_id, gene_callers_id in in_proteins_FASTA_not_in_cogs_CSV:
-                report_output.write('%s\t%s\n' % (gene_callers_id, protein_id))
-
-            report_output.close()
-
-            self.run.warning("This is important. %s hits for your genes that appeared in the proteins FASTA file from the NCBI had protein\
-                              IDs that were not described in the CSV file from the NCBI that associates each protein ID with a COG function.\
-                              That's OK if you don't care. But if you would like to take a look, anvi'o stored a report\
-                              file for you at %s" \
-                        % (len(in_proteins_FASTA_not_in_cogs_CSV), report_output_file_path))
-
 
     def search_with_diamond(self, aa_sequences_file_path):
         diamond = Diamond(aa_sequences_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
 
-        diamond.target_fasta = self.available_db_search_program_targets['diamond']
+        diamond.target_db_path = self.available_db_search_program_targets['diamond']
         self.run.log_file_path = self.log_file_path or J(self.temp_dir_path, 'log.txt')
         diamond.search_output_path = J(self.temp_dir_path, 'diamond-search-results')
         diamond.tabular_output_path = J(self.temp_dir_path, 'diamond-search-results.txt')
@@ -242,15 +202,15 @@ class COGs:
         return diamond.tabular_output_path
 
 
-    def search_with_ncbi_blast(self, aa_sequences_file_path):
+    def search_with_blastp(self, aa_sequences_file_path):
         blast = BLAST(aa_sequences_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
 
-        blast.target_fasta = self.available_db_search_program_targets['blastp']
+        blast.target_db_path = self.available_db_search_program_targets['blastp']
         self.run.log_file_path = self.log_file_path or J(self.temp_dir_path, 'log.txt')
         blast.search_output_path = J(self.temp_dir_path, 'blast-search-results.txt')
         blast.max_target_seqs = 1
 
-        blast.blast()
+        blast.blastp()
 
         return blast.search_output_path
 

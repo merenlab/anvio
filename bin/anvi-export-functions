@@ -27,7 +27,7 @@ progress = terminal.Progress()
 
 
 def main(args):
-    utils.is_contigs_db(args.contigs_db)
+    dbops.is_contigs_db(args.contigs_db)
 
     progress.new('Initializing')
     progress.update('...')

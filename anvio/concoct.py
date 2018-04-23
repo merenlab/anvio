@@ -34,7 +34,6 @@ import anvio.vbgmm as vbgmm
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -61,7 +60,7 @@ class CONCOCT:
         self.contigs_db_path = A('contigs_db')
         self.num_clusters_requested = A('num_clusters_requested') or 80
 
-        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.clusters = {}
 
@@ -69,7 +68,7 @@ class CONCOCT:
         self.kmers = {}
         self.coverages = {}
 
-        self.debug = anvio.DEBUG
+        self.debug = args.debug
 
         self.progress.new('Init')
 
@@ -145,7 +144,7 @@ class CONCOCT:
                                                             #  \
                                                             #    poor man's random color generator
 
-        c = TablesForCollections(self.profile_db_path)
+        c = dbops.TablesForCollections(self.profile_db_path)
         c.append(collection_name, data, bin_info_dict)
 
         self.run.info('CONCOCT results in db', self.profile_db_path, display_only=True)

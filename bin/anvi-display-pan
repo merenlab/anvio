@@ -14,7 +14,7 @@ import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, HDF5Error
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -43,6 +43,7 @@ groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
 groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
 groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
 groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
 groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
 
@@ -83,13 +84,12 @@ except FilesNPathsError as e:
 except DictIOError as e:
     print(e)
     sys.exit(-3)
-except HDF5Error as e:
+except SamplesError as e:
     print(e)
     sys.exit(-4)
+except HDF5Error as e:
+    print(e)
+    sys.exit(-5)
 
-if args.dry_run:
-    run.info_single('Dry run? Kthxbai.', nl_after=1, nl_before=1)
-    sys.exit()
-
-app = BottleApplication(d)
+app = BottleApplication(d, args)
 app.run_application(args.ip_address, args.port_number)

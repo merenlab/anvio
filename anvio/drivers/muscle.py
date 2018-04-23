@@ -61,10 +61,10 @@ class Muscle:
 
         output = utils.run_command_STDIN(cmd_line, log_file_path, sequences_data)
 
-        if not (len(output) and output[0] == '>'):
+        if not output[0] == '>':
             with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))
-            raise ConfigError("Drivers::Muscle: Something went wrong with this alignment that was working on %d\
-                               sequences :/ You can find the output in this log file: %s" % (len(sequences_list), log_file_path))
+            raise ConfigError("Drivers::Muscle: Something went wrong with this run :/ The output does not\
+                                look alright. You can find the output in this log file: %s" % (log_file_path))
 
         alignments = {}
 

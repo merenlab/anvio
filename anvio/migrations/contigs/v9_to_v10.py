@@ -8,7 +8,7 @@ import h5py
 import argparse
 
 import anvio.db as db
-import anvio.utils as utils
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
@@ -34,7 +34,7 @@ def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
-    utils.is_contigs_db(db_path)
+    dbops.is_contigs_db(db_path)
 
     contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:

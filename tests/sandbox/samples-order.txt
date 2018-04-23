@@ -1,3 +1,3 @@
-data_key	data_type	data_value
-test_order_0	newick	(SAMPLE_01:0.139971,(SAMPLE_02:9.6205e-10,SAMPLE_03:9.6205e-10)Int3:0.139971);
-test_order_02	basic	SAMPLE_03,SAMPLE_02,SAMPLE_01
+attributes	basic	newick
+test_order_01		(SAMPLE_01:0.139971,(SAMPLE_02:9.6205e-10,SAMPLE_03:9.6205e-10)Int3:0.139971);
+test_order_02	SAMPLE_03,SAMPLE_02,SAMPLE_01	

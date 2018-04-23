@@ -39,6 +39,7 @@ import sys
 import argparse
 
 import anvio
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
@@ -123,12 +124,11 @@ def main(args):
                 run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
             sys.exit(0)
 
-        if (args.profile_db and not args.collection_name) or (args.collection_name and not args.profile_db):
-            raise ConfigError("You can't use this program with a profile database but without a collection name,\
-                               and vice versa, you also can't use a collection if you didn't provide a profile database. Yes. Because.")
+        if args.profile_db and not args.collection_name:
+            raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
 
         if args.profile_db:
-            utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+            dbops.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
             splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
             run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
         else:

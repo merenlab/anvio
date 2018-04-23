@@ -4,12 +4,12 @@
 import sys
 
 import anvio
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.parsers import parser_modules
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.tables.genefunctions import TableForGeneFunctions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -59,13 +59,13 @@ def main(args):
                                 one file as an input.")
 
         input_matrix = args.input_files[0]
-        functions_dict = utils.get_TAB_delimited_file_as_dictionary(input_matrix,
+        functions_dict = utils.get_TAB_delimited_file_as_dictionary(input_matrix, 
                                                                     expected_fields = ['gene_callers_id', 'source', 'accession', 'function', 'e_value'],
                                                                     column_mapping  = [int, str, str, str, float],
                                                                     only_expected_fields = True,
                                                                     indexing_field = -1)
 
-    gene_function_calls_table = TableForGeneFunctions(args.contigs_db, run, progress)
+    gene_function_calls_table = dbops.TableForGeneFunctions(args.contigs_db, run, progress)
     gene_function_calls_table.create(functions_dict, drop_previous_annotations_first = drop_previous_annotations)
 
 
@@ -88,6 +88,7 @@ if __name__ == '__main__':
                                 will depend on which parser you selected (if you did select any).')
 
     parser.add_argument(*anvio.A('drop-previous-annotations'), **anvio.K('drop-previous-annotations'))
+    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = anvio.get_args(parser)
 

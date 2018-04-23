@@ -2,7 +2,6 @@
 
 <head>
     <title>Contigs DB Stats</title>
-    <meta name="google" value="notranslate">
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <script type='text/javascript' src='js/utils.js'></script>
     <script type='text/javascript' src='lib/d3.js/d3.min.js'></script>
@@ -27,11 +26,11 @@
 
         <div class="container">
             <div style="text-align: right;">
-                <input type="checkbox" id="checkbox_human_readable" name="checkbox_human_readable" onclick="create_table();">
-                <label for="checkbox_human_readable">Round big numbers</label>
+                <input type="checkbox" id="checkbox_human_readable" name="checkbox_human_readable" checked='checked' onclick="create_table();">
+                <label for="checkbox_human_readable">Human readable bases</label>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 <input type="checkbox" id="checkbox_color_output" name="checkbox_color_output" onclick="create_table();">
-                <label for="checkbox_color_output">Colorify output</label>
+                <label for="checkbox_color_output">Color output</label>
             </div>
             <table class="table table-details">
               <tbody>
@@ -166,6 +165,8 @@
 
 
         function array_to_table(table_array, placeholder_text) {
+            var human_readable_keys = ['L50', 'L75', 'L90', 'Shortest Contig', 'Longest Contig', 'Total Length'];
+
             var table_str = "";
             table_array.forEach(function(table_line) {
                 table_str += '<tr>';
@@ -190,7 +191,7 @@
                     if (human_readable && i > 0) {
                         table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + getReadableSeqSizeString(parseInt(table_item)) + '</td>';
                     } else {
-                        table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + getCommafiedNumberString(table_item) + '</td>';
+                        table_str += '<td class="' + td_class + '" style="color: ' + td_color +'">' + table_item + '</td>';
                     }
                 });
 
@@ -226,7 +227,6 @@
             contig_db_names = Object.keys(contigs_stats);
 
             tables = response['tables']
-            human_readable_keys = response['human_readable_keys']
 
             contig_db_names.forEach(function(name) {
                 contigs_stats[name]['project_name'] = contigs_stats[name]['project_name'].replace(/_/g, ' ');

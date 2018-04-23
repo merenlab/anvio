@@ -65,7 +65,7 @@ def main(args):
         pass
 
     print()
-    if anvio.DEBUG:
+    if args.debug:
         print("Anvi'o's self-test is done, and the temporary output files are still here: %s\n" % temporary_output_dir)
     else:
         shutil.rmtree(temporary_output_dir)
@@ -81,6 +81,10 @@ if __name__ == '__main__':
                               commands to ensure your installation is ready to run all scenarios anvi'o developers could\
                               think of. Alternatively you can choose a specific test to run. Here is a full list of available\
                               options: %s." % ', '.join(list(tests.keys())))
+    parser.add_argument('--debug', default=False, action='store_true',
+                        help="This program will create a temporary output directory to store all output files, and will\
+                              clean after itself by deleting it. The use of this flag will make sure the temporary output\
+                              files do not go anywhere so you can play with them further..")
 
     args = anvio.get_args(parser)
 

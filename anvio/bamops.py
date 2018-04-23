@@ -369,6 +369,7 @@ class GetReadsFromBAM:
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
+        self.debug = A('debug')
         self.output_file_path = A('output_file')
 
         self.bins = set([])

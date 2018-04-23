@@ -33,7 +33,7 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 
 def main(args):
-    utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+    dbops.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
     merged_profile_db = dbops.ProfileDatabase(args.profile_db)
 

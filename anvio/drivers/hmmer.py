@@ -44,7 +44,7 @@ class HMMer:
         self.tmp_dirs = []
 
 
-    def run_hmmscan(self, source, alphabet, context, kind, domain, genes_in_model, hmm, ref, noise_cutoff_terms):
+    def run_hmmscan(self, source, alphabet, context, kind, domain, genes_in_model, hmm, ref, cut_off_flag="--cut_ga"):
         target = ':'.join([alphabet, context])
 
         if target not in self.target_files_dict:
@@ -64,7 +64,6 @@ class HMMer:
         self.run.info('Domain', domain if domain else 'N\\A')
         self.run.info('HMM model path', hmm)
         self.run.info('Number of genes', len(genes_in_model))
-        self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
 
         tmp_dir = filesnpaths.get_temp_directory_path()
@@ -107,7 +106,7 @@ class HMMer:
         self.progress.update('Performing HMM scan ...')
 
         cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
-                    '-o', self.hmm_scan_output, *noise_cutoff_terms.split(),
+                    '-o', self.hmm_scan_output, cut_off_flag,
                     '--cpu', self.num_threads_to_use,
                     '--tblout', self.hmm_scan_hits_shitty,
                     hmm_file_path, self.target_files_dict[target]]
@@ -115,7 +114,6 @@ class HMMer:
         utils.run_command(cmd_line, log_file_path)
 
         if not os.path.exists(self.hmm_scan_hits_shitty):
-            self.progress.end()
             raise ConfigError("Something went wrong with hmmscan, and it failed to generate the\
                                 expected output :/ Fortunately, this log file should tell you what\
                                 might be the problem: '%s'. Please do not forget to include this\

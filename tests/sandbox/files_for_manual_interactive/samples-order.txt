@@ -1,3 +1,3 @@
-attributes	data_type	data_value
-test_tree	newick	(c2:0.0370199,(c1:0.0227268,c3:0.0227268)Int3:0.0370199);
-test_list	basic	c3,c1,c2
+attributes	basic	newick
+test_tree		(c2:0.0370199,(c1:0.0227268,c3:0.0227268)Int3:0.0370199);
+test_list	c3,c1,c2	

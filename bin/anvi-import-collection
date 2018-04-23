@@ -13,7 +13,6 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -108,9 +107,9 @@ def main(args):
                                                                                      len(data)), nl_before = 1)
 
     if args.pan_or_profile_db:
-        collections = TablesForCollections(args.pan_or_profile_db)
+        collections = dbops.TablesForCollections(args.pan_or_profile_db)
     else:
-        collections = TablesForCollections(args.contigs_db)
+        collections = dbops.TablesForCollections(args.contigs_db)
 
     collections.append(args.collection_name, data, bins_info_dict)
 
@@ -120,12 +119,12 @@ def sanity_check(args):
         raise ConfigError("You must at least provide an anvi'o contigs database for this to work :(")
 
     if args.pan_or_profile_db:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db)
+        dbops.is_pan_or_profile_db(args.pan_or_profile_db)
 
     if args.contigs_db:
-        utils.is_contigs_db(args.contigs_db)
+        dbops.is_contigs_db(args.contigs_db)
 
-    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db:
+    if args.pan_or_profile_db and dbops.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db: 
         raise ConfigError("There is no need to provide a contigs database when you are working with an anvi'o pan\
                             database")
 
@@ -134,7 +133,7 @@ def sanity_check(args):
                             not declared an anvi'o contigs database")
 
     # if there is a profile database, check whether there is a contigs database associated with the profile
-    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'profile':
+    if args.pan_or_profile_db and dbops.get_db_type(args.pan_or_profile_db) == 'profile':
         pan_or_profile_db = dbops.ProfileDatabase(args.pan_or_profile_db)
 
         if pan_or_profile_db.meta['contigs_db_hash'] and not args.contigs_db:

@@ -17,7 +17,6 @@
  *
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
-
 var request_prefix = getParameterByName('request_prefix');
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
@@ -48,12 +47,11 @@ function loadAll() {
 
     gene_cluster_name = getUrlVars()["id"];
     document.title = gene_cluster_name + " detailed";
-    state = JSON.parse(localStorage.state);
 
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/geneclusters/' + state['order-by'] + '/' + gene_cluster_name,
+        url: '/data/geneclusters/' + gene_cluster_name,
         success: function(_gene_cluster_data) {
             gene_cluster_data = _gene_cluster_data;
             genomes = gene_cluster_data.genomes;
@@ -81,20 +79,21 @@ function loadAll() {
             }
 
             if(next_gene_cluster_name)
-                next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link('geneclusters', next_gene_cluster_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                next_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="' + generate_inspect_link('geneclusters', next_gene_cluster_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
             if(previous_gene_cluster_name)
-                prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link('geneclusters', previous_gene_cluster_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                prev_str = '<a onclick="sessionStorage.state = JSON.stringify(state, null, 4);" href="' + generate_inspect_link('geneclusters', previous_gene_cluster_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
             document.getElementById("header").innerHTML = "<strong>" + gene_cluster_name + "</strong> with " + gene_caller_ids.length + " genes detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
 
-            if (typeof localStorage.state === 'undefined')
+            if (typeof sessionStorage.state === 'undefined')
             {
-                alert("Something went wrong, couldn't access to localStorage");
+                alert("Something went wrong, couldn't access to sessionStorage");
             }
             else
             {
-                initializeCheckBoxes();
+                // backup the state, if user changes the page (prev, next) we are going to overwrite it.
+                state = JSON.parse(sessionStorage.state);
                 createDisplay();
                 $('.loading-screen').hide();
             }
@@ -102,6 +101,7 @@ function loadAll() {
     });
 
 }
+
 
 function createDisplay(){
     var sequence_wrap_val = parseInt($('#wrap_length').val());
@@ -116,38 +116,9 @@ function createDisplay(){
     while (svg.firstChild) {
         svg.removeChild(svg.firstChild);
     }
-    
+
     var y_cord = 0;
     var offset = 0;
-
-    var acid_sequences = [];
-    var order = {};
-    var count = 0;
-    for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
-    {
-        var layer = state['layer-order'][layer_id];
-
-        if (gene_cluster_data.genomes.indexOf(layer) === -1)
-            continue;
-
-        gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function(caller_id) {
-            acid_sequences.push(gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id]);
-            order[caller_id] = count;
-            count = count + 1;
-        });
-    }
-
-    var max_length = maxLength(acid_sequences);
-    var all_positions = [];
-
-    for (var i=0; i < max_length; i++) {
-        var new_item = [];
-        for (var j=0; j < acid_sequences.length; j++) {
-            new_item.push(acid_sequences[j][i]);
-        }
-        all_positions.push(new_item);
-    }
-    var coded_positions = determineColor(all_positions);
 
     while (true)
     {
@@ -156,9 +127,6 @@ function createDisplay(){
         for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
         {
             var layer = state['layer-order'][layer_id];
-
-            if (state['layers'][layer]['height'] == 0)
-                continue;
 
             if (gene_cluster_data.genomes.indexOf(layer) === -1)
                 continue;
@@ -179,35 +147,25 @@ function createDisplay(){
             text.setAttribute('y', parseFloat(rect.getAttribute('y')) + parseFloat(rect.getAttribute('height')) / 2);
             text.setAttribute('font-size', "24px");
             text.setAttribute('font-family', "Lato, Arial");
-            text.setAttribute('font-weight', '300');
+            text.setAttribute('font-weight', '300')
             text.setAttribute('style', 'alignment-baseline:central');
-            text.setAttribute('class', 'genomeTitle');
+            text.setAttribute('class', 'genomeTitle')
             text.appendChild(document.createTextNode(layer));
             fragment.appendChild(text);
 
             sub_y_cord = y_cord + 5;
-	         gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
-                sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id]; 
+
+            gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
+                sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id];
+
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
                 text.setAttribute('font-size', sequence_font_size);
                 text.setAttribute('font-family', "Lato, Arial");
                 text.setAttribute('font-weight', '300');
-                text.setAttribute('style', 'alignment-baseline:text-before-edge; cursor: pointer;');
-                text.setAttribute('class', 'callerTitle');
-                text.setAttribute('gene-callers-id', caller_id);
-                text.setAttribute('genome-name', layer);
-                text.setAttribute('data-toggle', 'popover');
-                text.onclick = function(event) {
-                    var obj = event.target;
-                    var caller_id = obj.getAttribute('gene-callers-id');
-                    var layer = obj.getAttribute('genome-name');
-                    if (!obj.getAttribute('data-content')) {
-                        obj.setAttribute('data-content', get_gene_functions_table_html_for_pan(caller_id, layer) + '');
-                    }
-                };
-
+                text.setAttribute('style', 'alignment-baseline:text-before-edge');
+                text.setAttribute('class', 'callerTitle')
                 text.appendChild(document.createTextNode(caller_id));
                 fragment.appendChild(text);
 
@@ -219,21 +177,7 @@ function createDisplay(){
                 text.setAttribute('font-weight', '100');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
                 text.setAttribute('class', 'sequence');
-
-                _sequence = sequence.substr(offset, sequence_wrap);
-                for (var _letter_index=0; _letter_index < _sequence.length; _letter_index++) {
-                    var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                    var index = _letter_index+offset;
-                    var num = order[caller_id];
-                    var acid = _sequence[_letter_index];
-                    var dict = coded_positions[index][num];
-                    tspan.setAttribute('fill', dict[acid]);
-                    tspan.style.fontWeight = 'bold';
-                    tspan.appendChild(document.createTextNode(acid));
-		            tspan.setAttribute('style', 'alignment-baseline:text-before-edge');
-                    text.appendChild(tspan);
-                } 
-
+                text.appendChild(document.createTextNode(sequence.substr(offset, sequence_wrap)));
                 fragment.appendChild(text);
 
                 sub_y_cord = sub_y_cord + sequence_font_size * 1.5;
@@ -256,26 +200,6 @@ function createDisplay(){
     }
 
     calculateLayout();
-
-    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
-
-    // workaround for known popover bug
-    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
-    $('body').on('hidden.bs.popover', function (e) {
-      $(e.target).data("bs.popover").inState.click = false;
-    });
-
-    $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
-      var popover = $(e.target).data("bs.popover").$tip;
-      
-      if ($(popover).css('top').charAt(0) === '-') {
-        $(popover).css('top', '0px');
-      }
-
-      if ($(popover).css('left').charAt(0) === '-') {
-        $(popover).css('left', '0px');
-      }
-    });
 }
 
 function calculateLayout() {

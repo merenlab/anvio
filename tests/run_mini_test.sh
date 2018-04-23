@@ -45,15 +45,8 @@ INFO "Merging profiles"
 # merge samples
 anvi-merge $output_dir/SAMPLE-*/PROFILE.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --description $files/example_description.md
 
-INFO "Import layer additional data from file"
-anvi-import-misc-data $files/samples-information.txt \
-                      -p $output_dir/SAMPLES-MERGED/PROFILE.db \
-                      --target-data-table layers
-
-INFO "Import layer orders from file"
-anvi-import-misc-data $files/samples-order.txt \
-                      -p $output_dir/SAMPLES-MERGED/PROFILE.db \
-                      --target-data-table layer_orders
+INFO "Generating a samples information database with samples information and samples order"
+anvi-gen-samples-info-database -D $files/samples-information.txt -R $files/samples-order.txt -o $output_dir/SAMPLES.db
 
 INFO "Importing a state file into the merged profile"
 anvi-import-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state $files/example_state.json --name default
@@ -65,6 +58,7 @@ INFO "Firing up the interactive interface"
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
+                 -s $output_dir/SAMPLES.db \
                  --split-hmm-layers
 
 INFO "Summarizing CONCOCT results"

@@ -51,7 +51,6 @@
     <script type="text/javascript" src="js/drawer.js"></script>
     <script type="text/javascript" src="js/svg-helpers.js"></script>
     <script type="text/javascript" src="js/bin.js"></script>
-    <script type="text/javascript" src="js/news.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
@@ -62,17 +61,9 @@
     <link rel="stylesheet" href="lib/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
     <script type="text/javascript" src="lib/bootstrap-markdown/js/bootstrap-markdown.js"></script>
     <link rel="stylesheet" href="css/markdown-local.css" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="css/loading.css" />
-    <link rel="stylesheet" type="text/css" href="css/glowing-button.css" />
 </head>
 
 <body>
-    <div class="loading-screen">
-        <div class="spinner-container">
-            <div class="loader"></div>
-            <br />Loading...
-        </div>
-    </div>
     <div id="wrapper">
         <div id="toggle-panel-top" onclick="$('#title-panel').show();">
             &#9660; TITLE
@@ -153,13 +144,13 @@
                             <div class="form-group form-margin">
                                     <label class="col-md-4 settings-label size-sm" for="trees_container" data-help="order-by">Items order:</label>  
                                     <div class="col-md-8">
-                                        <select id="trees_container" class="form-control input-xs" onchange="onTreeClusteringChange();"></select>
+                                        <select id="trees_container" class="form-control input-xs"></select>
                                     </div>
                             </div>               
                             <div class="form-group form-margin">
                                     <label class="col-md-4 settings-label" for="views_container" data-help="view">View:</label>  
                                     <div class="col-md-8">
-                                        <select id="views_container" class="form-control input-xs" onchange="onViewChange();"></select>
+                                        <select id="views_container" class="form-control input-xs"></select>
                                     </div>
                             </div>
 
@@ -316,7 +307,7 @@
                                         <tr>
                                             <td></td>
                                             <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
-                                            <td><div class="colorpicker picker_start_multiple" color="#FFFFFF"></div><div class="colorpicker picker_multiple" color="#FFFFFF"></div></td>
+                                            <td><div class="colorpicker picker_start_multiple"></div><div class="colorpicker picker_multiple"></div></td>
                                             <td style="width: 50px;">
                                                 <select class="type_multiple" style="width: 50px;" class="type">
                                                     <option value="">Select</option>
@@ -557,16 +548,15 @@
                             </div>
                             <span>Search functions</span>
                             <div class="form-horizontal">
-                                <div class="alert alert-danger functions-not-available-message" style="margin-bottom: 20px;">Functions are not initialized or not available for this mode.</div>
+                                <div class="alert alert-danger functions-not-available-message" style="display: none; margin-bottom: 20px;">Functions are not initialized or not available for this mode.</div>
                                 <table style="width: 100%;">
                                     <tr>
                                         <td>Search terms:</td>
-                                        <td><input id="searchFunctionsValue" class="form-control" value="" onkeypress="var key = event.which || event.charCode || event.keyCode; if (key == 13) { $('#search_functions_button').trigger('click'); }" data-help="search-value" style="width: 100%;" disabled>
-                                            <small>You can separate multiple search terms with ","</small></td>
+                                        <td><input id="searchFunctionsValue" value="" data-help="search-value" style="width: 100%;"></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
-                                        <td style="padding-top: 10px;"><button type="button" class="btn btn-default btn-sm" onclick="searchFunctions();" id="search_functions_button" data-help="search-button" disabled><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search functions</button></td>
+                                        <td style="padding-top: 10px;"><button type="button" class="btn btn-default btn-sm" onclick="searchFunctions();" id="search_functions_button" data-help="search-button"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search functions</button></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
@@ -575,60 +565,6 @@
                                 </table>
                                 <div class="alert alert-danger search-message" style="display: none; margin-top: 20px;">
                                 </div>
-                            </div>
-                            <span>Search gene clusters using filters</span>
-                            <div class="form-horizontal">
-                                <div class="alert alert-danger gene-filters-not-available-message" style="margin-bottom: 20px;">This feature is only available for 'pangenomics' mode.</div>
-                                <table class="table table-borderless">
-                                    <thead>
-                                        <tr>
-                                            <th>Active</th>
-                                            <th>Rule</th>
-                                            <th>Value</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="pan-filters">
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Min number of genomes gene cluster occurs</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Max number of genomes gene cluster occurs</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Min number of genes from each genome</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_num_genes_from_each_genome" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Max number of genes from each genome</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_num_genes_from_each_genome" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><button type="button" class="btn btn-default btn-sm" onclick="filterGeneClusters();" disabled><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button></td>
-                                            <td></td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><div id="search_result_message_pan_filter"></div></td>
-                                            <td></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <div class="alert alert-danger pan-filter-error" style="display: none; margin-top: 20px;"">
-                                </div>
-                                <script type="text/javascript">
-                                    $(document).ready(function() {
-                                        $('.pan-filters input:checkbox').on('change', function(event) {
-                                            $(event.target).closest('tr').find('input:text').prop('disabled', !$(event.target).prop('checked'));
-                                        });
-                                    });
-                                </script>
                             </div>
                         </div>
                         <div class="form-horizontal" style="margin-top: 20px;">
@@ -666,8 +602,8 @@
 
             <div class="sidebar-footer">
                 <div class="sidebar-footer-draw">
-                    <button type="button" class="btn btn-default btn-sm glowing-button" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button">
-                        <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> <u>D</u>raw
+                    <button type="button" class="btn btn-default btn-sm" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button">
+                        <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> Draw
                     </button>
                     <span id="draw_delta_time" style="padding-left: 10px;"></span>
                 </div>
@@ -687,22 +623,18 @@
     </div>
 
     <div id="mouse_hover_panel">
-        <p style="color: #AAAAAA; padding: 5px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
-        <div id="mouse_hover">
-            <table class="table table-striped" style="margin-bottom: 0px; background-color: rgba(100,100,100,0.2); font-weight: bold; word-break: break-all;">
-                <thead>
-                    <tr>
-                        <td width="40%">Item Name</th>
-                        <td width="60%" id="cell_item_name">#</th>
-                    </tr>
-                </thead>
-            </table>
-            <div id="mouse_hover_scroll_parent" style="height: 100%; overflow: hidden;">
-                <div id="mouse_hover_scroll" style="width: 100%; position: relative;">
-                    <table class="table table-striped" id="tooltips-table">
-                        <col width="40%">
-                        <col width="60%">
-                        <tbody id="tooltip_content">
+        <div id="mouse_hover_scroll_parent" style="height: 100%">
+            <div id="mouse_hover_scroll" style="position: absolute;">
+                <p style="color: #AAAAAA; padding: 10px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
+                <div id="mouse_hover" class="form-horizontal">
+                    <table class="table table-striped sortable" id="tooltips-table">
+                        <thead id="thead_search_results">
+                            <tr>
+                                <th width="30%">Key</th>
+                                <th width="70%">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tooltip_content" class="search-results-display">
                             <!-- JS FILLS HERE -->
                         </tbody>
                     </table>
@@ -929,7 +861,7 @@
                     <div class="col-md-12">
                         <label class="col-md-4 settings-label">Gene Cluster Bin:</label>  
                         <div class="col-md-8">
-                            <select id="phylogeny_gene_cluster"></select>
+                            <select id="phylogeny_pc"></select>
                         </div>
                     </div>
                     <div class="col-md-12">
@@ -942,6 +874,12 @@
                         <label class="col-md-4 settings-label">Aligner:</label>  
                         <div class="col-md-8">
                             <select id="phylogeny_aligners"></select>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Skip multiple gene calls:</label>  
+                        <div class="col-md-8">
+                            <input type="checkbox" id="phylogeny_skip_multiple_gene_calls" checked="checked" />
                         </div>
                     </div>
                     <div class="col-md-12">
@@ -1083,7 +1021,7 @@
 
                 <div class="modal-body">
                     <div class="col-md-12">
-                        <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" id="splitSequence" rows="16" onclick="$(this).select();" readonly></textarea> 
+                        <textarea class="form-control" id="splitSequence" rows="16" onclick="$(this).select();" readonly></textarea> 
                     </div>
                 </div>
 
@@ -1113,24 +1051,6 @@
         <li class="menuItemInspect"><a href="#" onclick="menu_callback('inspect_contig');">Inspect</a></li>
         <li class="divider"></li>
         <li class="menuItemSequence"><a href="#" onclick="menu_callback('get_split_sequence');">Show split sequence</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_nr');"> - blastn @ nr</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_refseq_genomic');"> - blastn @ refseq_genomic</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastx_nr');"> - blastx @ nr</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastx_refseq_protein');"> - blastx @ refseq_protein</a></li>
-    </ul>
-
-    <!-- GENE RIGHT CLICK MENU -->
-    <ul id="gene_mode_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
-        <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>
-        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove item from bin</a></li>
-        <li class="divider"></li>
-        <li id="select_layer"><a href="#" onclick="menu_callback('select_layer');">Select layer</a></li>
-        <li id="unselect_layer"><a href="#" onclick="menu_callback('unselect_layer');">Unselect layer</a></li>
-        <li class="divider"></li>
-        <li class="menuItemInspect"><a href="#" onclick="menu_callback('inspect_context');">Inspect Context</a></li>
-        <li class="menuItemInspectGene"><a href="#" onclick="menu_callback('inspect_gene');">Inspect Gene</a></li>
-        <li class="divider"></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('get_gene_sequence');">Show gene sequence</a></li>
         <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_nr');"> - blastn @ nr</a></li>
         <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_refseq_genomic');"> - blastn @ refseq_genomic</a></li>
         <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastx_nr');"> - blastx @ nr</a></li>

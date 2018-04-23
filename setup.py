@@ -2,7 +2,7 @@ import os
 import sys
 import glob
 
-anvio_version='4-master'
+anvio_version='3-master'
 
 requirements = [req.strip() for req in open('requirements.txt', 'rU').readlines() if not req.startswith('#')]
 

@@ -123,7 +123,7 @@ html, body, #wrapper {
     height: 100%;
     background: url('../images/fractal.jpg') center center scroll;
     border-left: 1px solid #D3D3D3;
-    padding: 8px;
+    padding: 15px;
     opacity: 0.9;
     width: 350px;
 }
@@ -515,6 +515,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 #tooltips-table {
+  display: block;
   max-width: 100%;
   overflow: scroll;
 }
@@ -527,7 +528,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 #tooltips-table > tbody > tr > td { padding: 5px; }
 #tooltips-table tbody tr td:first-child  { border-right: 2px solid rgb(230, 230, 230); }
 #tooltips-table thead tr th:first-child  { border-right: 2px solid rgb(230, 230, 230); }
-#search-results-table > tbody > tr > td { padding: 5px; word-break: break-all; }
+#search-results-table > tbody > tr > td { padding: 5px; }
 #search-results-table tbody tr td:first-child  { border-right: 2px solid rgb(230, 230, 230); }
 #search-results-table thead tr th:first-child  { border-right: 2px solid rgb(230, 230, 230); }
 
@@ -565,12 +566,11 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .modal-dialog.modal-sm h3::before {
     display: block;
-    width: 220px;
-    height: 220px;
+    width: 160px;
+    height: 160px;
     margin-right: auto;
     margin-left: auto;
-    margin-bottom: 8px;
-    margin-top: 8px;
+    margin-bottom: 25px;
     content: "";
     background: url("../images/logo.png") no-repeat 0 0;
     background-size: 100%;
@@ -691,17 +691,4 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .modal-body {
     max-height: calc(100vh - 200px);
     overflow-y: auto;
-}
-
-.table-borderless > tbody > tr > td,
-.table-borderless > tbody > tr > th,
-.table-borderless > tfoot > tr > td,
-.table-borderless > tfoot > tr > th,
-.table-borderless > thead > tr > td,
-.table-borderless > thead > tr > th {
-    border: none;
-}
-
-.pan-filters input[type='checkbox'] {
-    width: 15px;
 }

@@ -28,29 +28,7 @@ function is_large_angle(a, b) {
     return (Math.abs(b - a) > Math.PI) ? 1 : 0;
 }
 
-
-function get_sequence_and_blast(item_name, program, database, target) {
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        // async: false is important here. DO NOT REMOVE.
-        // If direct call chain between event handler and the code that opens new window is broken
-        // chrome popup blocker will not allow opening new window.
-        // async: false does not use asynchronus callbacks so protects direct call chain.
-        async: false,
-        url: '/data/' + target + '/' + item_name,
-        success: function(data) {
-            if ('error' in data){
-                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-            } else {
-              var sequence = '>' + data['header'] + '\n' + data['sequence'];
-              fire_up_ncbi_blast(sequence, program, database, target)
-            }
-        }
-    });
-}
-
-function fire_up_ncbi_blast(sequence, program, database, target)
+function fire_up_ncbi_blast(item_name, program, database, target)
 {
     if (["gene", "contig"].indexOf(target) < 0){
         console.log("fire_up_ncbi_blast: Unrecognized target. Target must be either 'gene', or 'contig'.");
@@ -81,8 +59,7 @@ function fire_up_ncbi_blast(sequence, program, database, target)
         "NUM_DIFFS": "0",
         "NUM_OPTS_DIFFS": "0",
         "PAGE_TYPE": "BlastSearch",
-        "USER_DEFAULT_PROG_TYPE": "megaBlast",
-        "QUERY": sequence,
+        "USER_DEFAULT_PROG_TYPE": "megaBlast"
     }
 
     if (typeof program !== 'undefined')
@@ -92,18 +69,32 @@ function fire_up_ncbi_blast(sequence, program, database, target)
         post_variables['DATABASE'] = database;
 
     var blast_window = window.open('about:blank', '_blank');
-    var form = document.createElement('form');
-    
-    form.action = 'https://blast.ncbi.nlm.nih.gov/Blast.cgi';
-    form.method = 'POST';
 
-    for (name in post_variables)
-    {
-        $(form).append('<input type="hidden" name="' + name + '" value="' + post_variables[name] + '" />');
-    }
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/' + target + '/' + item_name + '?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            if ('error' in data){
+                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+            } else {
+                post_variables['QUERY'] = '>' + data['header'] + '\n' + data['sequence'];
 
-    blast_window.document.body.appendChild(form);
-    form.submit();
+                var form = document.createElement('form');
+                
+                form.action = 'https://blast.ncbi.nlm.nih.gov/Blast.cgi';
+                form.method = 'GET';
+
+                for (name in post_variables)
+                {
+                    $(form).append('<input type="hidden" name="' + name + '" value="' + post_variables[name] + '" />');
+                }
+
+                blast_window.document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    });
 }
 //--------------------------------------------------------------------------------------------------
 
@@ -116,12 +107,6 @@ function generate_inspect_link(type, item_name) {
             // on index page
             if (type == 'inspect') {
                 return 'charts.html?id=' + item_name;
-            }
-            else if (type == 'inspect_context') {
-                return 'charts.html?id=' + item_name + '&highlight_gene=true';
-            }
-            else if (type == 'inspect_gene') {
-                return 'charts.html?id=' + item_name + '&highlight_gene=true&gene_mode=true';
             } 
             else if (type == 'geneclusters') {
                 return 'geneclusters.html?id=' + item_name;
@@ -130,18 +115,7 @@ function generate_inspect_link(type, item_name) {
         else
         {
             // on charts or gene cluster page, so changing the ?id= part enough
-            var new_url = "";
-            new_url =  url + '?id=' + item_name;
-
-            if (type == 'inspect_context') {
-                return new_url + '&highlight_gene=true';
-            }
-            else if (type == 'inspect_gene') {
-                return new_url + '&highlight_gene=true&gene_mode=true';
-            }
-            else {
-                return new_url;
-            }
+            return url + '?id=' + item_name;
         }
     }
     else
@@ -187,20 +161,6 @@ function renderMarkdown(content) {
     var renderer = new marked.Renderer();
 
     renderer.link = function( href, title, text ) {
-        if (href.startsWith('item://')) {
-            var item_name = href.split('//')[1];
-
-            var html = '<a href="#" class="item-link">' + text + '<span class="tooltiptext"> \
-                <span href="#" onclick="highlighted_splits = [\'' + item_name + '\']; redrawBins();">HIGHLIGHT</span>';
-
-            if (mode == 'full' | mode == 'pan') {
-                var target = (mode == 'pan') ? 'inspect_gene_cluster' : 'inspect_contig';
-                html += ' | <span href="#" onclick="context_menu_target_id = label_to_node_map[\'' + item_name + '\'].id; \
-                                                 menu_callback(\'' + target + '\');">INSPECT</span>';
-            }
-
-            return html + '</span></a>';
-        }
         return '<a target="_blank" href="' + href + '" title="' + title + '">' + text + '</a>';
     }
 
@@ -310,19 +270,17 @@ function checkBackgroundProcess()
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/session_id',
+        url: '/data/session_id?timestamp=' + new Date().getTime(),
         success: function (data) {
-            if (data != session_id)
+            if (data != unique_session_id)
             {
                 toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-            }
-            else
-            {
-                setTimeout(checkBackgroundProcess, 5000);
+                clearTimeout(ping_timer);
             }
         },
         error: function(data) {
             toastr.error(message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+            clearTimeout(ping_timer);
         }
     });
 }
@@ -440,53 +398,18 @@ function readableNumber(num) {
 }
 
 //--------------------------------------------------------------------------------------------------
-function getReadableSeqSizeString(seqSizeInBases) {
+function getReadableSeqSizeString(seqSizeInBases, fixed) {
     // function based on answer at http://stackoverflow.com/questions/10420352/converting-file-size-in-bytes-to-human-readable
     var i = -1;
-    var baseUnits = [' K', ' M', ' G', ' T'];
-
-    // if the number is less than a K, return as is
-    if (seqSizeInBases < 1000)
-        return seqSizeInBases;
-
+    var baseUnits = [' kB', ' MB', ' GB', ' TB'];
     do {
         seqSizeInBases = seqSizeInBases / 1000;
         i++;
     } while (seqSizeInBases >= 1000);
-
-    return Math.round(seqSizeInBases) + baseUnits[i];
+    fixed = fixed ? fixed : fixed == 0 ? 0 : 1;
+    return Math.max(seqSizeInBases, 0.1).toFixed(fixed) + baseUnits[i];
 };
 
-//--------------------------------------------------------------------------------------------------
-function getCommafiedNumberString(number, decimals, dec_point, thousands_sep) {
-    // function modified from https://stackoverflow.com/a/2901136
-
-    if(isNaN(parseInt(number)))
-        return number;
-
-    var n = !isFinite(+number) ? 0 : +number,
-        prec = !isFinite(+decimals) ? 2 : Math.abs(decimals),
-        sep = (typeof thousands_sep === 'undefined') ? ',' : thousands_sep,
-        dec = (typeof dec_point === 'undefined') ? '.' : dec_point,
-        toFixedFix = function (n, prec) {
-            // Fix for IE parseFloat(0.55).toFixed(0) = 0;
-            var k = Math.pow(10, prec);
-            return Math.round(n * k) / k;
-        },
-        s = (prec ? toFixedFix(n, prec) : Math.round(n)).toString().split('.');
-    if (s[0].length > 3) {
-        s[0] = s[0].replace(/\B(?=(?:\d{3})+(?!\d))/g, sep);
-    }
-    if ((s[1] || '').length < prec) {
-        s[1] = s[1] || '';
-        s[1] += new Array(prec - s[1].length + 1).join('0');
-    }
-
-    if(s[1] > 0)
-        return s.join(dec);
-    else
-        return s[0];
-}
 
 //--------------------------------------------------------------------------------------------------
 function linePath(p0, p1)
