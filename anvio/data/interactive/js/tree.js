@@ -18,47 +18,44 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
-// Remove NEXUS-style string formatting, e.g. underscores
-function formatString(s) {
-    s = s.replace(/_/g, ' ');
-    return s;
-}
 
-//--------------------------------------------------------------------------------------------------
-// http://stackoverflow.com/questions/894860/set-a-default-parameter-value-for-a-javascript-function
 function Node(label) {
-    if (typeof label === 'undefined')
-    {
-        label = 'UnnamedNode' + (unnamed_node_counter++);
-    }
     this.ancestor = null;
     this.child = null;
     this.sibling = null;
-    this.label = label;
+    this.collapsed = false;
+    this.label = null;
     this.id = 0;
     this.xy = [];
+    this.original_edge_length = 0.0;
     this.edge_length = 0.0;
     this.path_length = 0.0;
     this.depth = 0;
     this.order = null;
-    this.collapsed = false;
     this.max_child_path = 0;
 }
-//--------------------------------------------------------------------------------------------------
+
+
+Node.prototype.SetLabel = function(label) {
+    this.collapsed = (label && label.endsWith('_collapsed')) ? true : false;
+    this.label = (label) ? label.replace(/_collapsed$/,'') : '';
+};
+
+
 Node.prototype.IsLeaf = function() {
     return (!this.child);
-}
+};
 
-//--------------------------------------------------------------------------------------------------
+
 Node.prototype.GetRightMostSibling = function() {
     var p = this;
     while (p.sibling) {
         p = p.sibling;
     }
     return p;
-}
+};
 
-//--------------------------------------------------------------------------------------------------
+
 Node.prototype.Rotate = function() {
     if (this.child) {
         var siblings = [];
@@ -81,7 +78,7 @@ Node.prototype.Rotate = function() {
     }
 };
 
-//--------------------------------------------------------------------------------------------------
+
 function Tree() {
     this.root = null;
     this.num_leaves = 0;
@@ -92,15 +89,13 @@ function Tree() {
     this.error = 0;
 }
 
-//--------------------------------------------------------------------------------------------------
-Tree.prototype.NewNode = function(label) {
-    var node = new Node(label);
+Tree.prototype.NewNode = function() {
+    var node = new Node();
     node.id = this.num_nodes++;
     this.nodes[node.id] = node;
     return node;
-}
+};
 
-//--------------------------------------------------------------------------------------------------
 Tree.prototype.Parse = function(str, edge_length_norm) {
     str = str.replace(/\(/g, "|(|");
     str = str.replace(/\)/g, "|)|");
@@ -110,8 +105,6 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
     str = str.replace(/\|\|/g, "|");
     str = str.replace(/^\|/, "");
     str = str.replace(/\|$/, "");
-
-    //console.log(str);
 
     var token = str.split("|");
     var curnode = this.NewNode();
@@ -130,7 +123,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
                     this.num_leaves++;
                     label = token[i];
-                    curnode.label = label;
+                    curnode.SetLabel(label);
                     i++;
                     state = 1;
                 } else {
@@ -167,6 +160,8 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                     case ':':
                         i++;
                         if (isNumber(token[i])) {
+                            curnode.original_edge_length = token[i];
+
                             // nnormalization of edge lengths
                             if (edge_length_norm) {
                                 curnode.edge_length = Math.sqrt(parseFloat(token[i]) * 1000000) / 1000000;
@@ -234,14 +229,16 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
 
             case 3: // finishchildren
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
-                    curnode.label = token[i];
+                    curnode.SetLabel(token[i]);
                     i++;
                 } else {
                     switch (token[i]) {
                         case ':':
                             i++;
                             if (isNumber(token[i])) {
-                                // nnormalization of edge lengths
+                                curnode.original_edge_length = token[i];
+                                
+                                // normalization of edge lengths
                                 if (edge_length_norm) {
                                     curnode.edge_length = Math.sqrt(parseFloat(token[i]) * 1000000) / 1000000;
                                 } else {
@@ -292,11 +289,28 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 break;
         }
     }
-}
+};
+
+Tree.prototype.FindNode = function(label) {
+    var n = new NodeIterator(this.root);
+    var q = n.Begin();
+    while (q != null)
+    {
+        if (q.label == label)
+            return q;
+
+        q=n.Next();
+    }
+
+    console.log("Couldn't find item with label '" + label + "'");
+    return null;
+};
+
 
 Tree.prototype.Serialize = function() {
     return this.SerializeNode(this.root) + ";";
 };
+
 
 Tree.prototype.SerializeNode = function(node) {
     var text = "";
@@ -307,8 +321,12 @@ Tree.prototype.SerializeNode = function(node) {
 
     text += node.label; 
 
+    if (node.collapsed) {
+        text += '_collapsed';
+    }
+
     if (this.has_edge_lengths) {
-        text += ":" + node.edge_length;
+        text += ":" + node.original_edge_length;
     }
 
     if (node.sibling) {
@@ -318,7 +336,7 @@ Tree.prototype.SerializeNode = function(node) {
     return text;
 };
 
-//--------------------------------------------------------------------------------------------------
+
 Tree.prototype.ComputeDepths = function() {
     for (var i in this.nodes) {
         if (this.nodes[i].IsLeaf()) {
@@ -331,12 +349,9 @@ Tree.prototype.ComputeDepths = function() {
             }
         }
     }
-}
+};
 
 
-//--------------------------------------------------------------------------------------------------
-//  Iterator
-//--------------------------------------------------------------------------------------------------
 function NodeIterator(root)
 {
     this.root = root;
@@ -344,7 +359,7 @@ function NodeIterator(root)
     this.stack = [];
 }
 
-//--------------------------------------------------------------------------------------------------
+
 NodeIterator.prototype.Begin = function() 
 {
     if (this.root.constructor === Array)
@@ -359,9 +374,9 @@ NodeIterator.prototype.Begin = function()
         this.cur = this.cur.child;
     }
     return this.cur;
-}
+};
 
-//--------------------------------------------------------------------------------------------------
+
 NodeIterator.prototype.Next = function() 
 {
     if (this.root.constructor === Array)
@@ -395,24 +410,24 @@ NodeIterator.prototype.Next = function()
         }
     }
     return this.cur;
-}
+};
 
-//--------------------------------------------------------------------------------------------------
 PreorderIterator.prototype = new NodeIterator;
+
 
 function PreorderIterator()
 {
     NodeIterator.apply(this, arguments)
 };
 
-//--------------------------------------------------------------------------------------------------
+
 PreorderIterator.prototype.Begin = function() 
 {
     this.cur = this.root;
     return this.cur;
-}
+};
 
-//--------------------------------------------------------------------------------------------------
+
 PreorderIterator.prototype.Next = function() 
 {
     if (this.cur.child)
@@ -436,6 +451,6 @@ PreorderIterator.prototype.Next = function()
         }
     }
     return this.cur;
-}
+};
 
 

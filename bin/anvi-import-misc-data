@@ -6,9 +6,9 @@ import sys
 import argparse
 
 import anvio
-import anvio.dbops as dbops
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.miscdata import MiscDataTableFactory
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -22,7 +22,7 @@ __email__ = "a.murat.eren@gmail.com"
 def main(args):
     # - you're ugly.
     # - no u :(
-    dbops.MiscDataTableFactory(args).populate_from_file(args.data_file)
+    MiscDataTableFactory(args).populate_from_file(args.data_file)
 
 
 if __name__ == '__main__':

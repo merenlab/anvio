@@ -6,6 +6,7 @@ import sys
 import argparse
 
 import anvio
+import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -29,7 +30,7 @@ progress = terminal.Progress()
 
 
 def main(args):
-    dbops.is_profile_db(args.profile_db)
+    utils.is_profile_db(args.profile_db)
 
     profile_db = dbops.ProfileSuperclass(args)
 

@@ -4,14 +4,16 @@
 import os
 import sys
 import gzip
-import h5py
 import argparse
 
 import anvio.db as db
-import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+
+with terminal.SuppressAllOutput():
+    import h5py
 
 current_version = "9"
 next_version = "10"
@@ -34,7 +36,7 @@ def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
-    dbops.is_contigs_db(db_path)
+    utils.is_contigs_db(db_path)
 
     contigs_db = db.DB(db_path, None, ignore_version = True)
     if str(contigs_db.get_version()) != current_version:

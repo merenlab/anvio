@@ -178,11 +178,14 @@ def get_predicted_type_of_items_in_a_dict(d, key):
     else:
         for item in items:
             try:
-                int(item or 0)
+                if int(item or 0) == float(item or 0):
+                    continue
+                else:
+                    return float
             except ValueError:
                 return float
 
-            return int
+        return int
 
 
 def human_readable_file_size(nbytes):
@@ -253,13 +256,13 @@ def is_program_exists(program, dont_raise=False):
 
     if fpath:
         if IsExe(program):
-            return True
+            return program
     else:
         for path in os.environ["PATH"].split(os.pathsep):
             path = os.path.expanduser(path).strip('"')
             exe_file = os.path.join(path, program)
             if IsExe(exe_file):
-                return True
+                return exe_file
 
     if dont_raise:
         return False
@@ -634,6 +637,8 @@ def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expe
 
 
 def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
+    filesnpaths.is_file_exists(file_path)
+
     if include_first_column:
         return open(file_path, 'rU').readline().strip('\n').split('\t')
     else:
@@ -709,6 +714,71 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     sample_to_id_dict = dict([(v, k) for k, v in id_to_sample_dict.items()])
 
     return id_to_sample_dict, sample_to_id_dict, columns, vectors
+
+
+def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):
+    """
+        This function takes the gene_level_coverage_stats_dict and return one of the values
+        as a matrix-like dict of dicts.
+        THIS FUNCTION IS IN utils AND NOT IN summarizer, or dbops, because it used to be in summarizer
+        and why should it be in summarizer?!? that makes no sense. And also mcg-classifier doesn't want
+        to initialize summarizer, it wants to be able to just get the gene_level_coverage_stats_dict as
+        input and then deal with it.
+        
+        There is also an option to as to get the data back as a pandas dataframe.
+    """
+    legal_keys = {'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std'}
+    if key not in legal_keys and as_pandas:
+        raise ConfigError("%s is not a valid key for creating a pandas dataframe of values of gene_level_coverage_stats_dict.\
+                            Here is a list of the valid keys: %s" % (key, list(legal_keys)))
+
+    gene_callers_ids = set(gene_level_coverage_stats_dict.keys())
+    samples = set(next(iter(gene_level_coverage_stats_dict.values())).keys())
+
+    if genes_of_interest is not None:
+        missing_genes = [g for g in genes_of_interest if g not in gene_callers_ids]
+        if len(missing_genes):
+            raise ConfigError("The following genes are not in the gene_level_coverage_stats_dict, and yet you are asking for them: %s" % missing_genes)
+    else:
+        genes_of_interest = gene_callers_ids
+
+    if samples_of_interest is not None:
+        missing_samples = [s for s in samples_of_interest if s not in samples]
+        if len(missing_samples):
+            raise ConfigError("The following samples are not in the gene_level_coverage_stats_dict, and yet you are asking for them: %s" % missing_samples)
+    else:
+        samples_of_interest = samples
+
+    d = {}
+
+    for gene_callers_id in genes_of_interest:
+        d[gene_callers_id] = {}
+        for sample_name in samples_of_interest:
+            d[gene_callers_id][sample_name] = gene_level_coverage_stats_dict[gene_callers_id][sample_name][key]
+    
+    if as_pandas:
+        # This option is used by the mcg-classifier.
+        import pandas as pd
+        return pd.DataFrame.from_dict(d, orient='index')
+    else:
+        return d
+
+
+def get_gene_caller_ids_from_args(gene_caller_ids, delimiter):
+    gene_caller_ids_set = set([])
+    if gene_caller_ids:
+        if os.path.exists(gene_caller_ids):
+            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'rU').readlines()])
+        else:
+            gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
+
+    try:
+        gene_caller_ids_set = set([int(g) for g in gene_caller_ids_set])
+    except:
+        g = gene_caller_ids_set.pop()
+        raise ConfigError("The gene calls you provided do not look like gene callers anvi'o is used to working with :/ Here is\
+                           one of them: '%s' (%s)." % (g, type(g)))
+    return gene_caller_ids_set
 
 
 def get_all_ids_from_fasta(input_file):
@@ -897,6 +967,31 @@ def get_split_start_stops_without_gene_calls(contig_length, split_length):
         chunks.append(last_tuple)
 
     return chunks
+
+
+def get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids):
+    """Takes a set of gene caller ids, returns all split and contig names in a
+       contigs database that are affiliated with them.
+    """
+
+    if not isinstance(gene_caller_ids, set):
+        raise ConfigError("`gene_caller_ids` must be of type `set`.")
+
+    is_contigs_db(contigs_db_path)
+
+    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+
+    where_clause_genes = "gene_callers_id in (%s)" % ', '.join(['%d' % g for g in gene_caller_ids])
+    genes_in_contigs = contigs_db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause_genes)
+    contig_names_of_interest = set([e['contig'] for e in genes_in_contigs.values()])
+
+    where_clause_contigs = "parent in (%s)" % ', '.join(['"%s"' % c for c in contig_names_of_interest])
+    splits_info = contigs_db.get_some_rows_from_table_as_dict(t.splits_info_table_name, where_clause=where_clause_contigs)
+    split_names_of_ineterest = set(splits_info.keys())
+
+    contigs_db.disconnect()
+
+    return (split_names_of_ineterest, contig_names_of_interest)
 
 
 def get_contigs_splits_dict(split_ids, splits_basic_info):
@@ -1534,6 +1629,10 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
 
         line_fields = [f if f else None for f in line.strip('\n').split(separator)]
 
+        if line_fields and line_fields[0] == None:
+            raise ConfigError("The line number %d in '%s' has no data in its first column, and this doesn't\
+                               seem right at all :/" % (line_counter + 1, file_path))
+
         if column_mapping:
             updated_line_fields = []
             for i in range(0, len(line_fields)):
@@ -1732,6 +1831,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                    later.
        - reference.txt: Where is it coming from?
        - target.txt: the target term. see `anvio_hmm_target_term_to_alphabet_and_context` for details. 
+       - noise_cutoff_terms.txt: how the noisy hits should be dealt with? see this for details: https://github.com/merenlab/anvio/issues/498
 
        For an example HMM source directory, take a look at an example in the codebase:
 
@@ -1747,6 +1847,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                        and len(w) >= 3 \
                        and w[0] not in '_0123456789'
 
+    R = lambda f: open(os.path.join(source, f), 'rU').readlines()[0].strip()
     for source in source_dirs:
         if source.endswith('/'):
             source = source[:-1]
@@ -1757,19 +1858,36 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                 and must not contain any characters but ASCII letters, digits and\
                                 underscore" % os.path.basename(source))
 
-        for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt']:
-            if not os.path.exists(os.path.join(source, f)):
-                raise ConfigError("Each search database directory must contain following files:\
-                                    'kind.txt', 'reference.txt', 'genes.txt', 'target.txt', and\
-                                    'genes.hmm.gz'. %s does not seem to be a proper source." % \
-                                                os.path.basename(source))
+        expected_files = ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']
 
-        ref = open(os.path.join(source, 'reference.txt'), 'rU').readlines()[0].strip()
-        kind = open(os.path.join(source, 'kind.txt'), 'rU').readlines()[0].strip()
-        target = open(os.path.join(source, 'target.txt'), 'rU').readlines()[0].strip()
+        missing_files = [f for f in expected_files if not os.path.exists(os.path.join(source, f))]
+        if missing_files:
+            raise ConfigError("Each search database directory must contain following files: %s'. Yet, the HMM source '%s' seems to\
+                               be missing the follwoing one(s): %s. See this blog post to make sure you are doing it the way it\
+                               should be done: http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
+                                            (', '.join(expected_files), os.path.basename(source), ', '.join(missing_files)))
+
+        empty_files = [f for f in expected_files if os.stat(os.path.join(source, f)).st_size == 0]
+        if empty_files:
+            raise ConfigError("One or more files for the HMM source '%s' seems to be empty. Which creates lots of\
+                               counfusion around these parts of the code. Anvi'o could set some defualts for you,\
+                               but it would be much better if you set your own defaults explicitly. You're not\
+                               sure what would make a good default for your HMM collection? Reach out to\
+                               a developer, and they will help you! Here are the files that are empty: %s." % \
+                                    (os.path.basename(source), ', '.join(empty_files)))
+
+        ref = R('reference.txt')
+        kind = R('kind.txt')
+        target = R('target.txt')
+        noise_cutoff_terms = R('noise_cutoff_terms.txt')
         anvio_hmm_target_term_to_alphabet_and_context(target)
 
         domain = None
+        if kind == 'singlecopy' and kind.count(':') == 0:
+            raise ConfigError("This HMM profile seems to be a collection of single-copy core genes. Great. But for\
+                               this kind, you must also declare a 'domain' in your 'kind.txt' file. It is simple.\
+                               For instance, you could use 'singlecopy:bacteria', or 'singlecopy:archaea', or\
+                               'singlecopy:myspecificbranch'.")
         if kind.count(':') == 1:
             kind, domain = kind.split(':')
 
@@ -1793,6 +1911,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                              'domain': domain,
                                              'genes': list(genes.keys()),
                                              'target': target,
+                                             'noise_cutoff_terms': noise_cutoff_terms,
                                              'model': os.path.join(source, 'genes.hmm.gz')}
 
     return sources
@@ -1881,7 +2000,7 @@ def get_all_item_names_from_the_database(db_path, run=run):
     db_type = database.get_meta_value('db_type')
 
     if db_type == 'profile':
-        if int(database.get_meta_value('blank')):
+        if is_blank_profile(db_path):
             run.warning("Someone asked for the split names in a blank profile database. Sadly, anvi'o does not keep track\
                          of split names in blank profile databases. This function will return an empty set as split names\
                          to not kill your mojo, but whatever you were trying to do will not work :(")
@@ -1896,8 +2015,8 @@ def get_all_item_names_from_the_database(db_path, run=run):
         all_items = set(database.get_single_column_from_table(t.splits_info_table_name, 'split'))
     else:
         database.disconnect()
-        raise ConfigError("You wanted to get all items in the database %s, but no one here knows aobut its type. Seriously,\
-                            what is '%s'?" % (db_path, db_type))
+        raise ConfigError("You wanted to get all items in the database %s, but no one here knows about its type. Seriously,\
+                            what is '%s' anyway?" % (db_path, db_type))
 
     if not len(all_items):
         database.disconnect()
@@ -1940,7 +2059,7 @@ def is_blank_profile(db_path):
         return False
 
     database = db.DB(db_path, None, ignore_version=True)
-    blank = database.get_meta_value('blank')
+    blank = int(database.get_meta_value('blank'))
     database.disconnect()
 
     return True if blank == 1 else False

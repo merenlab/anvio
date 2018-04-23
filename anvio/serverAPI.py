@@ -30,8 +30,8 @@ class AnviServerAPI:
         self.view_data = A('view_data')
         self.additional_layers = A('additional_layers')
         self.fasta_file = A('fasta_file')
-        self.samples_information_file = A('samples_information_file')
-        self.samples_order_file = A('samples_order_file')
+        self.layers_order_file = A('layers_order_file')
+        self.layers_information_file = A('layers_information_file')
 
         self.project_name = A('project_name')
         self.description = A('description')
@@ -104,10 +104,10 @@ class AnviServerAPI:
             files['items-order.txt'] = open(self.items_order, 'r')
         if self.fasta_file:
             files['fasta.fa'] = open(self.fasta_file, 'r')
-        if self.samples_information_file:
-            files['samples-info.txt'] = open(self.samples_information_file, 'r')
-        if self.samples_order_file:
-            files['samples-order.txt'] = open(self.samples_order_file, 'r')
+        if self.layers_information_file:
+            files['samples-info.txt'] = open(self.layers_information_file, 'r')
+        if self.layers_order_file:
+            files['samples-order.txt'] = open(self.layers_order_file, 'r')
         if self.additional_layers:
             files['additional-layers.txt'] = open(self.additional_layers, 'r')
         if self.state:

@@ -14,7 +14,7 @@ import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -39,15 +39,15 @@ groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface 
 groupB = parser.add_argument_group('MANUAL INPUTS', "Mandatory input parameters to start the interactive interface\
                                                      without anvi'o databases.")
 groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
-groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+groupD = parser.add_argument_group('GENE MODE', "Gene mode related parameters.")
+groupE = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
                                                        the interface.")
-groupE = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
+groupF = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
                                                                    nice to have).")
-groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+groupG = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
 groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
 groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
 groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':
                                 "If you have a collection in your profile database, you can use this flag to start the\
                                 interactive interface with a tree showing your bins in your collection, instead of each\
@@ -64,33 +64,35 @@ groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
 groupB.add_argument(*anvio.A('items-order'), **anvio.K('items-order'))
 groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
 groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
-groupD.add_argument(*anvio.A('view'), **anvio.K('view'))
-groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
-groupD.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
-groupD.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
-groupD.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
-groupD.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))
-groupD.add_argument(*anvio.A('collection-autoload'), **anvio.K('collection-autoload'))
-groupD.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
-groupE.add_argument(*anvio.A('show-views'), **anvio.K('show-views'))
-groupE.add_argument(*anvio.A('skip-check-names'), **anvio.K('skip-check-names'))
-groupE.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
-groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
-groupE.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
-groupE.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
-groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
-groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
-groupE.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
+groupE.add_argument(*anvio.A('view'), **anvio.K('view'))
+groupE.add_argument(*anvio.A('title'), **anvio.K('title'))
+groupE.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
+groupE.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
+groupE.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
+groupE.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))
+groupE.add_argument(*anvio.A('collection-autoload'), **anvio.K('collection-autoload'))
+groupE.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
+groupD.add_argument(*anvio.A('gene-mode'), **anvio.K('gene-mode'))
+groupD.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+groupF.add_argument(*anvio.A('show-views'), **anvio.K('show-views'))
+groupF.add_argument(*anvio.A('skip-check-names'), **anvio.K('skip-check-names'))
+groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+groupF.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+groupF.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
+groupF.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+groupF.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
+groupF.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
+groupF.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
                                 'The distance metric for the hierarchical clustering. Only relevant if you are running\
                                  the interactive interface in "collection" mode. The default is "%(default)s".'}))
-groupE.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help':
+groupF.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help':
                                 'The linkage method for the hierarchical clustering. Only relevant if you are running\
                                  the interactive interface in "collection" mode. The default is "%(default)s".'}))
-groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-groupF.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
-groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
-groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+groupG.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+groupG.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+groupG.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+groupG.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
+groupG.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
 args = anvio.get_args(parser)
 
@@ -106,17 +108,11 @@ except FilesNPathsError as e:
 except DictIOError as e:
     print(e)
     sys.exit(-3)
-except SamplesError as e:
-    print(e)
-    sys.exit(-4)
-except HDF5Error as e:
-    print(e)
-    sys.exit(-5)
 
 if args.dry_run:
     run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
     sys.exit()
 
-app = BottleApplication(d, args)
+app = BottleApplication(d)
 app.run_application(args.ip_address, args.port_number)
 

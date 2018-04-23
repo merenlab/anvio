@@ -14,6 +14,7 @@ import anvio.ccollections as ccollections
 
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -43,17 +44,9 @@ def main(args):
     min_completion_for_MAG = A('min_completion_for_MAG')
     max_redundancy_for_MAG = A('max_redundancy_for_MAG')
     size_for_MAG = A('size_for_MAG')
-    use_SCG_averages = A('use_SCG_averages')
-    use_highest_completion_score = A('use_highest_completion_score')
     dry_run = A('dry_run')
 
-    if use_SCG_averages and use_highest_completion_score:
-        raise ConfigError("You can't use both `--use-SCG-averages` and `--use-highest-completion-score`")
-
-    if not use_SCG_averages and not use_highest_completion_score:
-        raise ConfigError("You must choose one: `--use-SCG-averages`, or`--use-highest-completion-score`")
-
-    dbops.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
+    utils.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
 
     collections = ccollections.Collections()
     collections.populate_collections_dict(profile_db_path)
@@ -101,25 +94,34 @@ def main(args):
         raise ConfigError("HMM's were not run for this contigs database :/ Without that, how can this poor program can rename bins based on\
                             their completion estimates? :(")
 
-    if use_SCG_averages:
-        run.warning('As per your request, this run will use average completion and redundancy estimates\
-                     recovered from all single-copy core gene collections.')
-
-    elif use_highest_completion_score:
-        run.warning('As per your request, this run will use the completion and redundancy estimate\
+    run.warning('This run will use the completion and redundancy estimate\
                      recovered from the single-copy core gene collection that provides the highest\
                      completion estimate.')
-    else:
-        if not 'Campbell_et_al' in completeness.sources:
-            raise ConfigError("In most cases anvi'o relies on single-copy gene collection by Campbell\
-                                et al., and it seems the contigs database does not contain HMM hits for\
-                                that resource :/ Bad news.")
+
+    if not len(completeness.sources):
+        raise ConfigError("It seems the contigs database does not contain HMM hits for\
+                            any of the single copy core gene collections :/ Bad news.")
 
 
     contigs_db = dbops.ContigsSuperclass(args, r = run, p = progress)
 
     collection_dict = collections.get_collection_dict(collection_name_to_read)
     bins_info_dict = collections.get_bins_info_dict(collection_name_to_read)
+
+    if call_MAGs:
+        warning_msg = "Please read carefully. This program is set to call any bin a 'MAG', if the bin is estimated to be\
+                       less than %.0f%% redundant and more than %.0f%% complete. " % (max_redundancy_for_MAG, min_completion_for_MAG)
+
+        if size_for_MAG:
+            warning_msg += "But since you set a value for MAG size, any bin that meets the redundancy criterion and larger\
+                            than %.2f Mbp in size, WILL ALSO be called a MAG regardless of its completion estimate. This is\
+                            a way to not miss refined bins with low completion estimates but large sizes. If this is not what\
+                            you want, set `--size-for-MAG` to 0." % (size_for_MAG)
+        else:
+            warning_msg += "This process will not pay attention to the bin size (Mbp). If you think it should, please see the\
+                            flag `--size-for-MAG` in the help menu."
+
+        run.warning(warning_msg, "A FRIENDLY REMINDER", lc='green')
 
     counter = 0
     MAGs_sorted_by_completion = []
@@ -130,31 +132,31 @@ def main(args):
         counter += 1
         progress.update('%d in %d' % (counter, total_num_bins))
         p_completion, p_redundancy, domain, domain_confidence, d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
-        if use_SCG_averages:
-            pass
-        elif use_highest_completion_score:
-            l = []
-            for domain in d:
-                for scg_collection_name in d[domain]:
-                    l.append((d[domain][scg_collection_name]['percent_completion'], domain, scg_collection_name),)
-            _, domain, scg_collection_name = sorted(l, reverse=True)[0]
 
-            p_completion = d[domain][scg_collection_name]['percent_completion']
-            p_redundancy = d[domain][scg_collection_name]['percent_redundancy']
-        else:
-            raise ConfigError("WTF :( Something that shuold never happened just happened,")
+        l = []
+        for domain in d:
+            for scg_collection_name in d[domain]:
+                l.append((d[domain][scg_collection_name]['percent_completion'], domain, scg_collection_name),)
+        _, domain, scg_collection_name = sorted(l, reverse=True)[0]
+
+        p_completion = d[domain][scg_collection_name]['percent_completion']
+        p_redundancy = d[domain][scg_collection_name]['percent_redundancy']
 
         size_in_Mbp = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection_dict[bin_name])]) / 1000000.0
         substantive_completion = p_completion - p_redundancy
 
         if call_MAGs:
-            if p_redundancy < max_redundancy_for_MAG and (p_completion >= min_completion_for_MAG or size_in_Mbp >= size_for_MAG):
-                MAGs_sorted_by_completion.append((bin_name, substantive_completion, 'MAG'),)
+            if p_redundancy < max_redundancy_for_MAG:
+                if p_completion >= min_completion_for_MAG:
+                    MAGs_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'MAG'),)
+                elif size_for_MAG and size_in_Mbp >= size_for_MAG:
+                    MAGs_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'MAG'),)
+                else:
+                    bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
             else:
-                bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
+                bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
         else:
-            bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
-
+            bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
     MAGs_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
     bins_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
     progress.end()
@@ -164,8 +166,8 @@ def main(args):
 
     counter = 0
     report = open(report_file_path, 'w')
-    report.write('old_bin_name\tnew_bin_name\n')
-    for bin_name, _, bin_type in MAGs_sorted_by_completion + bins_sorted_by_completion:
+    report.write('old_bin_name\tnew_bin_name\tcompletion\tredundancy\tsize_in_Mbp\n')
+    for bin_name, substantive_completion, completion, redundancy, size_in_Mbp, bin_type in MAGs_sorted_by_completion + bins_sorted_by_completion:
         counter += 1
         new_bin_name = '%s_%s_%05d' % (prefix, bin_type, counter)
         new_collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
@@ -173,8 +175,7 @@ def main(args):
         if bin_name in bins_info_dict:
             new_bins_info_dict[new_bin_name] = copy.deepcopy(bins_info_dict[bin_name])
 
-        report.write('%s\t%s\n' % (bin_name, new_bin_name))
-
+        report.write('%s\t%s\t%.2f\t%.2f\t%.2f\n' % (bin_name, new_bin_name, completion, redundancy, size_in_Mbp))
 
     report.close()
     run.info('Report', '%s' % (report_file_path))
@@ -187,7 +188,7 @@ def main(args):
 
         return
 
-    collections_table = dbops.TablesForCollections(profile_db_path)
+    collections_table = TablesForCollections(profile_db_path)
     collections_table.append(collection_name_to_write, new_collection_dict, new_bins_info_dict)
 
     run.info('Rename', 'All %d bins in the collection "%s" is renamed, and stored under the collection\
@@ -202,8 +203,6 @@ if __name__ == '__main__':
     groupA = parser.add_argument_group('DEFAULT INPUTS', "Standard stuff")
     groupB = parser.add_argument_group('OUTPUT AND TESTING', "a.k.a, sweet parameters of convenience")
     groupC = parser.add_argument_group('MAG OPTIONS', "If you want to call some bins 'MAGs' because you are so cool")
-    groupD = parser.add_argument_group('SCG OPTIONS', "Options related to single-copy genes. How should SCGs utilized to\
-                                                       say what should be considered a MAG?")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     groupA.add_argument('--collection-to-read', default = None,
@@ -242,24 +241,11 @@ if __name__ == '__main__':
                         help="If --call-MAGs flag is used, call any bin a 'MAG' if their redundancy estimate is\
                               below this (the default is %(default)d) and the completion estimate is above\
                               --min-completion-for-MAG.")
-    groupC.add_argument('--size-for-MAG', default=2, type=float, metavar='0.1-10 Mbp', choices=[x / 10.0 for x in range(1, 101)], \
+    groupC.add_argument('--size-for-MAG', default=0.0, type=float, metavar='MEGABASEPAIRS',\
                         help="If --call-MAGs flag is used, call any bin a 'MAG' if their redundancy estimate\
-                              is less than --max-redundancy-for-MAG, and the size is larger than this (the\
-                              default is %(default)d Mbp), regarldless of the completion.")
-
-    groupD.add_argument('--use-SCG-averages', default=False, action="store_true", \
-                        help = "If you use this flag, anvi'o will use all avialble single-copy core gene collections, will\
-                                average their independent completion and redundancy estimates, will select the best matching\
-                                domain (i.e. arcaheal SCGs vs bacterial SCG), and use the resulting estimates numbers for\
-                                renaming purposes.")
-    groupD.add_argument('--use-highest-completion-score', default=False, action="store_true", \
-                        help = "If you use this flag, instead of `--use-SCG-averages`, anvi'o will take the SCG collection\
-                                that estimates the highest completion for a given bin. This will affect how MAGs are called.\
-                                For instance, if you have HMM hits in your contigs database for both bacterial and archaeal\
-                                single-copy gene collections, the completion score for a given archaeal bin with a bacterial\
-                                single-copy genes will be very low. This flag will select the collection with the highest\
-                                completion estimate, and use that instead of taking the average.")
-
+                              is less than --max-redundancy-for-MAG, AND THEIR SIZE IS LARGER THAN THIS VALUE\
+                              REGARDLESS OF THE COMPLETION ESTIMATE. The default behavior is to not care about\
+                              this at all.")
     args = anvio.get_args(parser)
 
     try:

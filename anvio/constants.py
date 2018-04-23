@@ -22,12 +22,12 @@ __status__ = "Development"
 clustering_configs_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/clusterconfigs')
 clustering_configs = {}
 
-default_port_number = 8080
+default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
-blank_default = "tnf-splits"
+blank_default = "tnf"
 single_default = "tnf"
 merged_default = "tnf-cov"
-pan_default="presence-absence"
+pan_default = "presence-absence"
 
 default_gene_caller = "prodigal"
 
@@ -62,7 +62,28 @@ allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
 complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
 
-nucleotides = 'ATCGN'
+nucleotides = sorted(list('ATCG')) + ['N']
+
+AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
+                                 'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
+                                 'Asn': {"C":4,  "H":8,  "N":2, "O":3, "S":0},
+                                 'Asp': {"C":4,  "H":7,  "N":1, "O":4, "S":0},
+                                 'Cys': {"C":3,  "H":7,  "N":1, "O":2, "S":1},
+                                 'Gln': {"C":5,  "H":10, "N":2, "O":3, "S":0},
+                                 'Glu': {"C":5,  "H":9,  "N":1, "O":4, "S":0},
+                                 'Gly': {"C":2,  "H":5,  "N":1, "O":2, "S":0},
+                                 'His': {"C":6,  "H":9,  "N":3, "O":2, "S":0},
+                                 'Ile': {"C":6,  "H":13, "N":1, "O":2, "S":0},
+                                 'Leu': {"C":6,  "H":13, "N":1, "O":2, "S":0},
+                                 'Lys': {"C":6,  "H":14, "N":2, "O":2, "S":0},
+                                 'Met': {"C":5,  "H":11, "N":1, "O":2, "S":1},
+                                 'Phe': {"C":9,  "H":11, "N":1, "O":2, "S":0},
+                                 'Pro': {"C":5,  "H":9,  "N":1, "O":2, "S":0},
+                                 'Ser': {"C":3,  "H":7,  "N":1, "O":3, "S":0},
+                                 'Thr': {"C":4,  "H":9,  "N":1, "O":3, "S":0},
+                                 'Trp': {"C":11, "H":12, "N":2, "O":2, "S":0},
+                                 'Tyr': {"C":9,  "H":11, "N":1, "O":3, "S":0},
+                                 'Val': {"C":5,  "H":11, "N":1, "O":2, "S":0}})
 
 AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
@@ -138,7 +159,7 @@ AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': '
                                     'Ser': 'S', 'Thr': 'T', 'Trp': 'W', 'Tyr': 'Y',
                                     'Val': 'V'})
 
-amino_acids = list(AA_to_single_letter_code.keys())
+amino_acids = sorted(list(AA_to_single_letter_code.keys()))
 
 codon_to_AA = Counter({'ATA': 'Ile', 'ATC': 'Ile', 'ATT': 'Ile', 'ATG': 'Met',
                        'ACA': 'Thr', 'ACC': 'Thr', 'ACG': 'Thr', 'ACT': 'Thr',
@@ -191,7 +212,7 @@ codon_to_codon_RC = Counter({'AAA': 'TTT', 'AAC': 'GTT', 'AAG': 'CTT', 'AAT': 'A
                              'TGA': 'TCA', 'TGC': 'GCA', 'TGG': 'CCA', 'TGT': 'ACA',
                              'TTA': 'TAA', 'TTC': 'GAA', 'TTG': 'CAA', 'TTT': 'AAA'})
 
-codons = list(codon_to_AA_RC.keys())
+codons = sorted(list(set(codon_to_AA.keys())))
 
 pretty_names = {}
 

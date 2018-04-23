@@ -49,7 +49,7 @@ then
         ../misc/bowtie_batch_single_fasta.sh test-output/$sample.fa test-output/$sample test-output/one_contig_five_genes.build
 
         INFO "Profiling the BAM file"
-        anvi-profile -i test-output/$sample.bam -c test-output/one_contig_five_genes.db -o test-output/$sample-PROFILE -M 0 --profile-AA-frequencies
+        anvi-profile -i test-output/$sample.bam -c test-output/one_contig_five_genes.db -o test-output/$sample-PROFILE -M 0 --profile-SCVs
     done
 
     INFO "Merging all"

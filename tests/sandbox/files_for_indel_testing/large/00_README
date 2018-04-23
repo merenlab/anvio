@@ -1,0 +1,8 @@
+
+contig_T300del.fa has the 300th nt position deleted (the A in the first methionine codon counts as 1, i.e. 1-indexing), which is a T
+
+i.e. 
+
+294 295 296 297 298 299 300 301 302 303 304 <-- anvio indexing
+295 296 297 298 299 300 301 302 303 304 305 <-- 1-indexing
+ X   X   X   X   X   T   X   X   X   X   X 

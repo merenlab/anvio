@@ -1,0 +1,20 @@
+{
+    "fasta_txt": "fasta.txt",
+    "samples_txt": "samples-no-groups.txt",
+    "iu_filter_quality_minoche": {
+        "run": false
+    },
+    "gzip_fastqs": {
+        "run": false
+    },
+    "references_mode": true,
+    "output_dirs": {
+        "FASTA_DIR": "02_FASTA_references_mode_no_qc_no_gzip",
+        "CONTIGS_DIR": "03_CONTIGS_references_mode_no_qc_no_gzip",
+        "QC_DIR": "01_QC_references_mode_no_qc_no_gzip",
+        "MAPPING_DIR": "04_MAPPING_references_mode_no_qc_no_gzip",
+        "PROFILE_DIR": "05_ANVIO_PROFILE_references_mode_no_qc_no_gzip",
+        "MERGE_DIR": "06_MERGED_references_mode_no_qc_no_gzip",
+        "LOGS_DIR": "00_LOGS_references_mode_no_qc_no_gzip"
+    }
+}

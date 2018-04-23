@@ -1,0 +1,90 @@
+{
+    "fasta_txt": "fasta.txt",
+    "anvi_gen_contigs_database": {
+        "--project-name": "{group}",
+        "threads": 5,
+        "--description": "",
+        "--skip-gene-calling": "",
+        "--external-gene-calls": "",
+        "--ignore-internal-stop-codons": "",
+        "--skip-mindful-splitting": "",
+        "--contigs-fasta": "",
+        "--split-length": "",
+        "--kmer-size": ""
+    },
+    "centrifuge": {
+        "threads": 5,
+        "run": ""
+    },
+    "anvi_run_hmms": {
+        "run": true,
+        "threads": 20,
+        "--installed-hmm-profile": "",
+        "--hmm-profile-dir": ""
+    },
+    "anvi_run_ncbi_cogs": {
+        "run": true,
+        "threads": 5,
+        "--cog-data-dir": "",
+        "--sensitive": "",
+        "--temporary-dir-path": "",
+        "--search-with": ""
+    },
+    "anvi_script_reformat_fasta": {
+        "run": true,
+        "--simplify-names": true,
+        "--keep-ids": "",
+        "--exclude-ids": "",
+        "--min-len": "",
+        "threads": ""
+    },
+    "anvi_pan_genome": {
+        "threads": 20,
+        "--project-name": "",
+        "--genome-names": "",
+        "--skip-alignments": "",
+        "--align-with": "",
+        "--exclude-partial-gene-calls": "",
+        "--use-ncbi-blast": "",
+        "--minbit": "",
+        "--mcl-inflation": "",
+        "--min-occurrence": "",
+        "--min-percent-identity": "",
+        "--sensitive": "",
+        "--description": "",
+        "--overwrite-output-destinations": "",
+        "--skip-hierarchical-clustering": "",
+        "--enforce-hierarchical-clustering": "",
+        "--distance": "",
+        "--linkage": ""
+    },
+    "remove_human_dna_using_centrifuge": {
+        "run": "",
+        "threads": ""
+    },
+    "export_gene_calls": {
+        "threads": ""
+    },
+    "anvi_import_taxonomy": {
+        "threads": ""
+    },
+    "annotate_contigs_database": {
+        "threads": ""
+    },
+    "gen_external_genome_file": {
+        "threads": ""
+    },
+    "anvi_gen_genomes_storage": {
+        "--internal-genomes": "",
+        "--external-genomes": "external-genomes.txt",
+        "--gene-caller": "",
+        "threads": ""
+    },
+    "project_name": "TEST",
+    "output_dirs": {
+        "FASTA_DIR": "01_FASTA",
+        "CONTIGS_DIR": "02_CONTIGS",
+        "PAN_DIR": "03_PAN",
+        "LOGS_DIR": "00_LOGS"
+    }
+}

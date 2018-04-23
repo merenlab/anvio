@@ -10,10 +10,8 @@ import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import HDF5Error, AuxiliaryDataError
+from anvio.errors import AuxiliaryDataError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -63,7 +61,7 @@ class AuxiliaryDataForSplitCoverages(object):
         actual_db_hash = str(self.db.get_meta_value('contigs_db_hash'))
         if self.db_hash != actual_db_hash:
             raise AuxiliaryDataError('The hash value inside Auxiliary Database "%s" does not match with Contigs Database hash "%s",\
-                                      this files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
+                                      these files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
     def append(self, split_name, sample_name, coverage_list):
@@ -80,8 +78,13 @@ class AuxiliaryDataForSplitCoverages(object):
         return set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'split_name'))
 
 
-    def get_all(self):
-        return self.get_coverage_for_multiple_splits(self.get_all_known_split_names())
+    def get_all(self, split_names=None):
+        if split_names and not isinstance(split_names, set):
+            raise AuxiliaryDataError("Split names for auxiliarydataops::get_all must be of type `set`.`")
+        else:
+            split_names = self.get_all_known_split_names()
+
+        return self.get_coverage_for_multiple_splits(split_names)
 
 
     def get_coverage_for_multiple_splits(self, split_names):
@@ -89,15 +92,18 @@ class AuxiliaryDataForSplitCoverages(object):
         self.progress.update('...')
 
         split_coverages = {}
-        all_known_splits = self.get_all_known_split_names()
 
+        num_split_names = len(split_names)
+        counter = 0
         for split_name in split_names:
-            self.progress.update('Processing split "%s"' % split_name)
+            if counter % 10 == 0:
+                self.progress.update('Processing split %d of %d (%s) ...' % (counter + 1, num_split_names, split_name))
 
             split_coverages[split_name] = self.get(split_name)
+            counter += 1
 
         self.progress.end()
-        return split_coverages        
+        return split_coverages
 
 
     def get(self, split_name):
@@ -114,7 +120,7 @@ class AuxiliaryDataForSplitCoverages(object):
             sample_name, coverage_blob = row # unpack sqlite row tuple
 
             split_coverage[sample_name] = utils.convert_binary_blob_to_numpy_array(coverage_blob, dtype=self.numpy_data_type)
-        
+
         return split_coverage
 
 

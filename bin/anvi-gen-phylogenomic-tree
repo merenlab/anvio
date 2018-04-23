@@ -12,7 +12,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.fastalib import ReadFasta
 from anvio.drivers import driver_modules
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError, HDF5Error
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError, HDF5Error
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -55,7 +55,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate phylogenomic tree from aligment file.")
 
-    groupA = parser.add_argument_group('INPUT FILES', "Concatenated aligment files exported using anvi-export-pc-aligments")
+    groupA = parser.add_argument_group('INPUT FILES', "Concatenated aligment files exported using anvi-get-sequences-for-gene-clusters")
     groupA.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file', {'required': True}))
 
     groupB = parser.add_argument_group('OUTPUT FILE', "The output file where the generated newick tree will be stored.")

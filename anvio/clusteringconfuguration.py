@@ -8,7 +8,6 @@ import configparser
 
 import anvio
 import anvio.db as db
-import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -18,6 +17,7 @@ from anvio.utils import store_dict_as_TAB_delimited_file
 from anvio.utils import is_all_columns_present_in_TAB_delim_file as cols_present
 from anvio.utils import get_vectors_from_TAB_delim_matrix as get_vectors
 from anvio.errors import ConfigError
+from anvio.tables.miscdata import TableForItemAdditionalData
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -312,8 +312,8 @@ class ClusteringConfiguration:
 
                 # time to differentially store table contents.
                 if table_form == 'dataframe':
-                    args = argparse.Namespace(pan_or_profile_db=database_path)
-                    table = dbops.TableForItemAdditionalData(args, table_name=table)
+                    args = argparse.Namespace(pan_or_profile_db=database_path, table_name=table)
+                    table = TableForItemAdditionalData(args)
                     table_keys_list, table_data_dict = table.get()
                     store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
                 else:

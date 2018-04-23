@@ -11,6 +11,7 @@ import os
 import re
 import io
 import sys
+import copy
 import time
 import json
 import random
@@ -19,7 +20,7 @@ import argparse
 import requests
 import datetime
 from multiprocessing import Process
-
+from ete3 import Tree
 from bottle import Bottle
 from bottle import BaseRequest
 from bottle import redirect, static_file
@@ -35,8 +36,9 @@ import anvio.structureops as structureops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
-from anvio.dbops import SamplesInformationDatabase
 from anvio.errors import RefineError, ConfigError
+from anvio.tables.miscdata import TableForLayerOrders
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -44,8 +46,8 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = ["A. Murat Eren"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Ozcan Esen"
+__email__ = "ozcanesen@gmail.com"
 
 
 run = terminal.Run()
@@ -56,17 +58,19 @@ BaseRequest.MEMFILE_MAX = 1024 * 1024 * 100
 
 
 class BottleApplication(Bottle):
-    def __init__(self, interactive, args, mock_request=None, mock_response=None):
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    def __init__(self, interactive, mock_request=None, mock_response=None):
         super(BottleApplication, self).__init__()
         self.interactive = interactive
-        self.args = args
-        self.read_only = A('read_only')
-        self.browser_path = A('browser_path')
-        self.export_svg = A('export_svg')
-        self.server_only = A('server_only')
 
-        self.unique_session_id = random.randint(0,9999999999)
+        if self.interactive:
+            self.args = self.interactive.args
+            A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+            self.read_only = A('read_only')
+            self.browser_path = A('browser_path')
+            self.export_svg = A('export_svg')
+            self.server_only = A('server_only')
+
+        self.session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
 
         self.register_hooks()
@@ -100,11 +104,10 @@ class BottleApplication(Bottle):
         self.route('/data/<name>',                             callback=self.send_data)
         self.route('/data/view/<view_id>',                     callback=self.get_view_data)
         self.route('/tree/<items_order_id>',                   callback=self.get_items_order)
-        self.route('/state/autoload',                          callback=self.state_autoload)
         self.route('/state/all',                               callback=self.state_all)
         self.route('/state/get/<state_name>',                  callback=self.get_state)
         self.route('/state/save/<state_name>',                 callback=self.save_state, method='POST')
-        self.route('/data/charts/<split_name>',                callback=self.charts)
+        self.route('/data/charts/<order_name>/<item_name>',    callback=self.charts, method='POST')
         self.route('/data/completeness',                       callback=self.completeness, method='POST')
         self.route('/data/collections',                        callback=self.get_collections)
         self.route('/data/collection/<collection_name>',       callback=self.get_collection_dict)
@@ -118,15 +121,19 @@ class BottleApplication(Bottle):
         self.route('/data/hmm/<bin_name>/<gene_name>',         callback=self.get_hmm_hit_from_bin)
         self.route('/data/geneclusterssummary',             callback=self.get_gene_clusters_summary, method='POST')
         self.route('/data/get_AA_sequences_for_gene_cluster/<gene_cluster_name>',  callback=self.get_AA_sequences_for_gene_cluster)
-        self.route('/data/geneclusters/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
+        self.route('/data/pan_gene_popup/<gene_callers_id>/<genome_name>',         callback=self.get_gene_popup_for_pan)
+        self.route('/data/geneclusters/<order_name>/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
+        self.route('/data/charts_for_single_gene/<order_name>/<item_name>',        callback=self.charts_for_single_gene, method='POST')
         self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
         self.route('/data/phylogeny/aligners',                 callback=self.get_available_aligners)
         self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
-        self.route('/data/search_functions',                   callback=self.search_functions_in_splits, method='POST')
+        self.route('/data/search_functions',                   callback=self.search_functions, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
         self.route('/data/get_available_structures',           callback=self.get_available_structures)
         self.route('/data/get_structure/<requested_path>',     callback=self.get_structure)
+        self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
+        self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
 
 
     def run_application(self, ip, port):
@@ -255,29 +262,49 @@ class BottleApplication(Bottle):
             if self.interactive.mode == 'refine':
                 bin_prefix = list(self.interactive.bins)[0] + "_" if len(self.interactive.bins) == 1 else "Refined_",
 
+            default_view = self.interactive.default_view
+            default_order = self.interactive.p_meta['default_item_order']
+            autodraw = False
+            state_dict = None
+            
+            if self.interactive.state_autoload:
+                state_dict = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
+
+                if state_dict['current-view'] in self.interactive.views:
+                    default_view = state_dict['current-view']
+
+                if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
+                    default_order = state_dict['order-by']
+
+                autodraw = True
+
+            collection_dict = None
+            if self.interactive.collection_autoload:
+                collection_dict = json.loads(self.get_collection_dict(self.interactive.collection_autoload))
+
             return json.dumps( { "title":                              self.interactive.title,
-                                 "description":                        (self.interactive.p_meta['description']),
-                                 "item_orders":                        (self.interactive.p_meta['default_item_order'], self.interactive.p_meta['item_orders']),
-                                 "views":                              (self.interactive.default_view, dict(list(zip(list(self.interactive.views.keys()), list(self.interactive.views.keys()))))),
-                                 "contigLengths":                      dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info]),
-                                 "defaultView":                        self.interactive.views[self.interactive.default_view],
+                                 "description":                        self.interactive.p_meta['description'],
+                                 "item_orders":                        (default_order, self.interactive.p_meta['item_orders'][default_order], list(self.interactive.p_meta['item_orders'].keys())),
+                                 "views":                              (default_view, self.interactive.views[default_view], list(self.interactive.views.keys())),
+                                 "contig_lengths":                     dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info]),
                                  "mode":                               self.interactive.mode,
                                  "server_mode":                        False,
-                                 "readOnly":                           self.read_only,
-                                 "binPrefix":                          bin_prefix,
-                                 "sessionId":                          self.unique_session_id,
-                                 "samplesOrder":                       self.interactive.samples_order_dict,
-                                 "sampleInformation":                  self.interactive.samples_information_dict,
-                                 "sampleInformationDefaultLayerOrder": self.interactive.samples_information_default_layer_order,
-                                 "stateAutoload":                      self.interactive.state_autoload,
-                                 "collectionAutoload":                 self.interactive.collection_autoload,
-                                 "noPing":                             False,
-                                 "inspectionAvailable":                self.interactive.auxiliary_profile_data_available,
-                                 "sequencesAvailable":                 True if self.interactive.split_sequences else False,
-                                 "functions_initialized":              self.interactive.gene_function_calls_initiated })
+                                 "read_only":                          self.read_only,
+                                 "bin_prefix":                         bin_prefix,
+                                 "session_id":                         self.session_id,
+                                 "layers_order":                       self.interactive.layers_order_data_dict,
+                                 "layers_information":                 self.interactive.layers_additional_data_dict,
+                                 "layers_information_default_order":   self.interactive.layers_additional_data_keys,
+                                 "check_background_process":           True,
+                                 "autodraw":                           autodraw,
+                                 "inspection_available":               self.interactive.auxiliary_profile_data_available,
+                                 "sequences_available":                True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
+                                 "functions_initialized":              self.interactive.gene_function_calls_initiated,
+                                 "state":                              (self.interactive.state_autoload, state_dict),
+                                 "collection":                         collection_dict })
 
         elif name == "session_id":
-            return json.dumps(self.unique_session_id)
+            return json.dumps(self.session_id)
 
 
     def get_view_data(self, view_id):
@@ -302,10 +329,6 @@ class BottleApplication(Bottle):
         return json.dumps("")
 
 
-    def state_autoload(self):
-        return json.dumps(self.interactive.state_autoload)
-
-
     def state_all(self):
         return json.dumps(self.interactive.states_table.states)
 
@@ -325,13 +348,35 @@ class BottleApplication(Bottle):
     def get_state(self, state_name):
         if state_name in self.interactive.states_table.states:
             state = self.interactive.states_table.states[state_name]
-            return json.dumps(state['content'])
+            state_dict = json.loads(state['content'])
+
+            default_view = self.interactive.default_view
+            default_order = self.interactive.p_meta['default_item_order']
+
+            if state_dict['current-view'] in self.interactive.views:
+                default_view = state_dict['current-view']
+
+            if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
+                default_order = state_dict['order-by']
+
+            return json.dumps((state_dict, self.interactive.p_meta['item_orders'][default_order], self.interactive.views[default_view]))
 
         return json.dumps("")
 
 
-    def charts(self, split_name):
+    def charts(self, order_name, item_name):
+        title = None
+        if self.interactive.mode == 'gene':
+            split_name = self.interactive.gene_callers_id_to_split_name_dict[int(item_name)]
+            title = "Gene '%d' in split '%s'" % (int(item_name), split_name)
+        else:
+            split_name = item_name
+            title = split_name
+
+        state = json.loads(request.forms.get('state'))
+
         data = {'layers': [],
+                 'title': title,
                  'index': None,
                  'total': None,
                  'coverage': [],
@@ -348,9 +393,9 @@ class BottleApplication(Bottle):
         if not self.interactive.auxiliary_profile_data_available:
             return data
 
-        data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(split_name)
+        data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, item_name)
 
-        layers = sorted(self.interactive.p_meta['samples'])
+        layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
 
         auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
                                                                                  self.interactive.p_meta['contigs_db_hash'])
@@ -360,7 +405,7 @@ class BottleApplication(Bottle):
         data['coverage'] = [coverages[layer].tolist() for layer in layers]
 
         ## get the variability information dict for split:
-        progress.new('Variability')
+        progress.new('Variability', discard_previous_if_exists=True)
         progress.update('Collecting info for "%s"' % split_name)
         split_variability_info_dict = self.interactive.get_variability_information_for_split(split_name, skip_outlier_SNVs=self.args.hide_outlier_SNVs)
 
@@ -414,20 +459,132 @@ class BottleApplication(Bottle):
         return json.dumps(data)
 
 
-    def get_index_total_previous_and_next_items(self, item_name):
+    def charts_for_single_gene(self, order_name, item_name):
+        gene_callers_id = int(item_name)
+        split_name = self.interactive.gene_callers_id_to_split_name_dict[gene_callers_id]
+        gene_info = [e for e in self.interactive.genes_in_splits.values() if e['gene_callers_id'] == gene_callers_id][0]
+
+        focus_region_start, focus_region_end = max(0, gene_info['start_in_split'] - 100), min(self.interactive.split_lengths_info[split_name], gene_info['stop_in_split'] + 100)
+
+        state = json.loads(request.forms.get('state'))
+        data = {'layers': [],
+                 'title': "Gene '%d' in split '%s'" % (gene_callers_id, split_name),
+                 'index': None,
+                 'total': None,
+                 'coverage': [],
+                 'variability': [],
+                 'competing_nucleotides': [],
+                 'previous_contig_name': None,
+                 'next_contig_name': None,
+                 'genes': [],
+                 'outlier_SNVs_shown': not self.args.hide_outlier_SNVs}
+
+        data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, str(gene_callers_id))
+
+        layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
+
+        auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
+                                                                                 self.interactive.p_meta['contigs_db_hash'])
+        coverages = auxiliary_coverages_db.get(split_name)
+        auxiliary_coverages_db.close()
+
+        data['coverage'] = []
+        for layer in layers:
+            coverage_list = coverages[layer].tolist()
+            # gene -+ 100 gap if possible
+            data['coverage'].append(coverage_list[focus_region_start:focus_region_end])
+
+        ## get the variability information dict for split:
+        progress.new('Variability')
+        progress.update('Collecting info for "%s"' % split_name)
+        split_variability_info_dict = self.interactive.get_variability_information_for_split(split_name, skip_outlier_SNVs=self.args.hide_outlier_SNVs)
+
+        for layer in layers:
+            progress.update('Formatting variability data: "%s"' % layer)
+            data['layers'].append(layer)
+            data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
+            data['variability'].append(split_variability_info_dict[layer]['variability'])
+
+        levels_occupied = {1: []}
+        for entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+            gene_callers_id = self.interactive.genes_in_splits[entry_id]['gene_callers_id']
+            p =  self.interactive.genes_in_splits[entry_id]
+            # p looks like this at this point:
+            #
+            # {'percentage_in_split': 100,
+            #  'start_in_split'     : 16049,
+            #  'stop_in_split'      : 16633}
+            #  'prot'               : u'prot2_03215',
+            #  'split'              : u'D23-1contig18_split_00036'}
+            #
+
+            if p['start_in_split'] <= focus_region_start and p['stop_in_split'] <= focus_region_start:
+                continue
+            if p['start_in_split'] >= focus_region_end and p['stop_in_split'] >= focus_region_end:
+                continue
+
+            # because Python. when we don't do this, the organization of genes in the interface split pages
+            # gets all screwed up in gene view due the permanence of the changes in the dictionary.
+            p = copy.deepcopy(p)
+
+            # add offset
+            p['start_in_split'] -= focus_region_start
+            p['stop_in_split'] -= focus_region_start
+
+            # we will add a bit more attributes:
+            p['source'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['source']
+            p['direction'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['direction']
+            p['start_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['start']
+            p['stop_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['stop']
+            p['complete_gene_call'] = 'No' if  self.interactive.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
+            p['length'] = p['stop_in_contig'] - p['start_in_contig']
+            p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
+
+            for level in levels_occupied:
+                level_ok = True
+                for gene_tuple in levels_occupied[level]:
+                    if (p['start_in_split'] >= gene_tuple[0] - 100 and p['start_in_split'] <= gene_tuple[1] + 100) or\
+                                (p['stop_in_split'] >= gene_tuple[0] - 100 and p['stop_in_split'] <= gene_tuple[1] + 100) or \
+                                (p['start_in_split'] <= gene_tuple[0] - 100 and p['stop_in_split'] >= gene_tuple[1] + 100):
+                        level_ok = False
+                        break
+                if level_ok:
+                    levels_occupied[level].append((p['start_in_split'], p['stop_in_split']), )
+                    p['level'] = level
+                    break
+            if not level_ok:
+                levels_occupied[level + 1] = [(p['start_in_split'], p['stop_in_split']), ]
+                p['level'] = level + 1
+
+            data['genes'].append(p)
+
+        progress.end()
+
+        return json.dumps(data)
+
+
+    def get_index_total_previous_and_next_items(self, order_name, item_name):
         previous_item_name = None
         next_item_name = None
         index = None
         total = None
 
-        index_of_item = self.interactive.displayed_item_names_ordered.index(item_name)
+        # FIXME: improve performance here
+        items_order_entry = self.interactive.p_meta['item_orders'][order_name]
+        items_order = None
+        if items_order_entry['type'] == 'newick':
+            items_order = utils.get_names_order_from_newick_tree(items_order_entry['data'])
+        else:
+            items_order = items_order_entry['data']
+
+        index_of_item = items_order.index(item_name)
         if index_of_item:
-            previous_item_name = self.interactive.displayed_item_names_ordered[index_of_item - 1]
-        if (index_of_item + 1) < len(self.interactive.displayed_item_names_ordered):
-            next_item_name = self.interactive.displayed_item_names_ordered[index_of_item + 1]
+            previous_item_name = items_order[index_of_item - 1]
+        if (index_of_item + 1) < len(items_order):
+            next_item_name = items_order[index_of_item + 1]
 
         index = index_of_item + 1
-        total = len(self.interactive.displayed_item_names_ordered)
+        total = len(items_order)
 
         return index, total, previous_item_name, next_item_name
 
@@ -467,7 +624,6 @@ class BottleApplication(Bottle):
 
     def get_collection_dict(self, collection_name):
         run.info_single('Data for collection "%s" has been requested.' % collection_name)
-        #set_default_headers(response)
 
         collection_dict = self.interactive.collections.get_collection_dict(collection_name)
         bins_info_dict = self.interactive.collections.get_bins_info_dict(collection_name)
@@ -511,7 +667,7 @@ class BottleApplication(Bottle):
 
         # the db here is either a profile db, or a pan db, but it can't be both:
         db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
-        collections = dbops.TablesForCollections(db_path)
+        collections = TablesForCollections(db_path)
         try:
             collections.append(source, data, bins_info_dict)
         except ConfigError as e:
@@ -625,6 +781,21 @@ class BottleApplication(Bottle):
         return json.dumps({'sequence': sequence, 'header': header})
 
 
+    def get_gene_popup_for_pan(self, gene_callers_id, genome_name):
+        if not self.interactive.genomes_storage_is_available:
+            return json.dumps({'error': 'Genome storage does not seem to be available :/ So that button will not work..'})
+
+        gene_callers_id = int(gene_callers_id)
+
+        if genome_name not in self.interactive.genomes_storage.gene_info:
+            return json.dumps({'error': "Your request contains a genome name anvi'o genomes storage does not know about. What are you doing?"})
+
+        if gene_callers_id not in self.interactive.genomes_storage.gene_info[genome_name]:
+            return json.dumps({'error': "Your gene caller id does not work for anvi'o :("})
+
+        return json.dumps({'status': 0, 'gene_info': self.interactive.genomes_storage.gene_info[genome_name][gene_callers_id]})
+
+
     def get_hmm_hit_from_bin(self, bin_name, gene_name):
         if self.interactive.mode != 'collection':
             return json.dumps({'error': "HMM hits from bins can only be requested in 'collection' mode. You are doing something wrong..."})
@@ -676,7 +847,7 @@ class BottleApplication(Bottle):
         return json.dumps(data)
 
 
-    def inspect_gene_cluster(self, gene_cluster_name):
+    def inspect_gene_cluster(self, order_name, gene_cluster_name):
         data = {'gene_cluster_name': gene_cluster_name,
                 'genomes': [],
                 'index': None,
@@ -711,15 +882,14 @@ class BottleApplication(Bottle):
         data['genomes'] = sorted(data['gene_caller_ids_in_genomes'].keys())
 
         # get some contextual stuff
-        data['index'], data['total'], data['previous_gene_cluster_name'], data['next_gene_cluster_name'] = self.get_index_total_previous_and_next_items(gene_cluster_name)
+        data['index'], data['total'], data['previous_gene_cluster_name'], data['next_gene_cluster_name'] = self.get_index_total_previous_and_next_items(order_name, gene_cluster_name)
 
         return json.dumps(data)
 
 
-    def search_functions_in_splits(self):
+    def search_functions(self):
         try:
-            search_terms = [s.strip() for s in request.forms.get('terms').split(',')]
-            matching_split_names_dict, full_report = self.interactive.search_splits_for_gene_functions(search_terms, verbose=False)
+            full_report = self.interactive.search_for_functions(request.forms.get('terms'))
             return json.dumps({'status': 0, 'results': full_report})
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
@@ -746,13 +916,14 @@ class BottleApplication(Bottle):
     def get_available_phylogeny_programs(self):
         return json.dumps(list(drivers.driver_modules['phylogeny'].keys()))
 
+
     def get_available_aligners(self):
         return json.dumps(list(drivers.Aligners().aligners.keys()))
+
 
     def generate_tree(self):
         gene_clusters = set(request.forms.getall('gene_clusters[]'))
         name = request.forms.get('name')
-        skip_multiple_gene_calls = request.forms.get('skip_multiple_genes')
         program = request.forms.get('program')
         aligner = request.forms.get('aligner')
         store_tree = request.forms.get('store_tree')
@@ -762,17 +933,15 @@ class BottleApplication(Bottle):
         tree_text = None
 
         try:
-            self.interactive.write_sequences_in_gene_clusters_for_phylogenomics(gene_cluster_names=gene_clusters, output_file_path=temp_fasta_file, skip_multiple_gene_calls=skip_multiple_gene_calls, align_with=aligner)
+            self.interactive.write_sequences_in_gene_clusters_for_phylogenomics(gene_cluster_names=gene_clusters, output_file_path=temp_fasta_file, align_with=aligner)
             drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file, temp_tree_file)
             tree_text = open(temp_tree_file,'rb').read().decode()
 
             if store_tree:
-                if not self.interactive.samples_information_db_path:
-                    raise ConfigError("This project does not have samples db")
+                TableForLayerOrders(self.interactive.args).add({name: {'data_type': 'newick', 'data_value': tree_text}})
 
-                samples_information_db = SamplesInformationDatabase(self.interactive.samples_information_db_path)
-                samples_information_db.update(single_order_path=temp_tree_file, single_order_name=name)
-                self.interactive.samples_order_dict[name] = {'newick': tree_text, 'basic': ''}
+                # TO DO: instead of injecting new newick tree, we can use TableForLayerOrders.get()
+                self.interactive.layers_order_data_dict[name] = {'newick': tree_text, 'basic': None}
         except Exception as e:
             message = str(e.clear_text()) if 'clear_text' in dir(e) else str(e)
             return json.dumps({'status': 1, 'message': message})
@@ -827,15 +996,16 @@ class BottleApplication(Bottle):
                 args.description = description_path
 
             if request.forms.get('include_samples') == "true":
-                if len(self.interactive.samples_order_dict):
-                    samples_order_path = filesnpaths.get_temp_file_path()
-                    utils.store_dict_as_TAB_delimited_file(self.interactive.samples_order_dict, samples_order_path, headers=['attributes', 'basic', 'newick'])
-                    args.samples_order_file = samples_order_path
+                # FIXME: this will break
+                if len(self.interactive.layers_order_data_dict):
+                    layers_order_data_path = filesnpaths.get_temp_file_path()
+                    utils.store_dict_as_TAB_delimited_file(self.interactive.layers_order_data_dict, layers_order_data_path, headers=['attributes', 'basic', 'newick'])
+                    args.layers_order_data_path = layers_order_data_path
 
-                if len(self.interactive.samples_information_dict):
-                    samples_info_path = filesnpaths.get_temp_file_path()
-                    utils.store_dict_as_TAB_delimited_file(self.interactive.samples_information_dict, samples_info_path)
-                    args.samples_information_file = samples_info_path
+                if len(self.interactive.layers_additional_data_dict):
+                    layers_additional_data_path = filesnpaths.get_temp_file_path()
+                    utils.store_dict_as_TAB_delimited_file(self.interactive.layers_additional_data_dict, layers_additional_data_path)
+                    args.layers_additional_data_file = layers_additional_data_path
 
             collection_name = request.forms.get('collection')
             if collection_name in self.interactive.collections.collections_dict:
@@ -855,7 +1025,9 @@ class BottleApplication(Bottle):
 
 
     def get_contigs_stats(self):
-        return json.dumps({'stats': self.interactive.contigs_stats, 'tables': self.interactive.tables})
+        return json.dumps({'stats': self.interactive.contigs_stats,
+                           'tables': self.interactive.tables,
+                           'human_readable_keys': self.interactive.human_readable_keys})
 
 
     def get_available_structures(self):
@@ -868,3 +1040,28 @@ class BottleApplication(Bottle):
 
         response.content_type = 'application/x-pilot;charset=utf-8'
         return tbl[int(requested_path[:-4])]['pdb_content']
+
+
+    def filter_gene_clusters(self):
+        try:
+            parameters = {}
+            for key in request.forms:
+                parameters[key] = int(request.forms.get(key))
+
+            gene_clusters_dict, _ = self.interactive.filter_gene_clusters_from_gene_clusters_dict(copy.deepcopy(self.interactive.gene_clusters), **parameters)
+            return json.dumps({'status': 0, 'gene_clusters_list': list(gene_clusters_dict.keys())})
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
+
+    def reroot_tree(self):
+        newick = request.forms.get('newick')
+        branch = request.forms.get('branch')
+
+        tree = Tree(newick, format=1)
+        new_root = tree.search_nodes(name=branch)[0]
+        tree.set_outgroup(new_root)
+
+        return json.dumps({'newick': tree.write(format=1)})
+
+

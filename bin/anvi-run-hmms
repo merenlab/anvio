@@ -5,7 +5,6 @@ import os
 import sys
 
 import anvio
-import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 
@@ -15,6 +14,7 @@ with terminal.SuppressAllOutput():
 available_hmm_sources =  list(hmm_data.sources.keys())
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.hmmhits import TablesForHMMHits
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -59,8 +59,7 @@ def main(args):
         # sources will be loaded from defaults.
         pass
 
-    search_tables = dbops.TablesForHMMHits(args.contigs_db, num_threads_to_use = args.num_threads)
-    search_tables.debug = args.debug
+    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use = args.num_threads)
     search_tables.populate_search_tables(sources)
 
 
@@ -79,7 +78,6 @@ if __name__ == '__main__':
                                                  ', '.join(['"%s" (type: %s)' % (s, hmm_data.sources[s]['kind']) \
                                                                                     for s in available_hmm_sources]))}))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = anvio.get_args(parser)
 

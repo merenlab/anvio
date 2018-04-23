@@ -30,6 +30,9 @@ var contextSvg;
 var state;
 var layers_ordered;
 var visible_layers;
+var contig_id;
+var highlight_gene;
+var gene_mode;
 
 
 function loadAll() {
@@ -45,86 +48,103 @@ function loadAll() {
     });
 
     contig_id = getParameterByName('id');
-    document.title = contig_id + " detailed";
+    highlight_gene = getParameterByName('highlight_gene') == 'true';
+    gene_mode = getParameterByName('gene_mode') == 'true';
 
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/charts/' + contig_id,
-        success: function(contig_data) {
-            layers = contig_data.layers;
-            coverage = contig_data.coverage;
-            variability = [];
+    if (typeof localStorage.state === 'undefined')
+    {
+        alert("Something went wrong, couldn't access to localStorage");
+    }
+    else
+    {
+        // backup the state, if user changes the page (prev, next) we are going to overwrite it.
+        state = JSON.parse(localStorage.state);
+        var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
+        $.ajax({
+                type: 'POST',
+                cache: false,
+                url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
+                data: {'state': JSON.stringify(state)},
+                success: function(contig_data) {
+                    page_header = contig_data.title;
+                    layers = contig_data.layers;
+                    coverage = contig_data.coverage;
+                    variability = [];
 
-            for (var i=0; i<coverage.length; i++) {
-                variability[i] = [];
-                for (var l=0; l<4; l++) {
-                    variability[i][l] = [];
-                    for (var h=0; h<coverage[i].length; h++) {
-                        if (contig_data.variability[i][l].hasOwnProperty(h)) {
-                            variability[i][l].push(contig_data.variability[i][l][h]);
-                            if (contig_data.variability[i][l][h] > maxVariability) {
-                                maxVariability = contig_data.variability[i][l][h];
+                    for (var i=0; i<coverage.length; i++) {
+                        variability[i] = [];
+                        for (var l=0; l<4; l++) {
+                            variability[i][l] = [];
+                            for (var h=0; h<coverage[i].length; h++) {
+                                if (contig_data.variability[i][l].hasOwnProperty(h)) {
+                                    variability[i][l].push(contig_data.variability[i][l][h]);
+                                    if (contig_data.variability[i][l][h] > maxVariability) {
+                                        maxVariability = contig_data.variability[i][l][h];
+                                    }
+                                } else {
+                                    variability[i][l].push(0);
+                                }
                             }
-                        } else {
-                            variability[i][l].push(0);
                         }
                     }
+
+                    competing_nucleotides = contig_data.competing_nucleotides;
+                    previous_contig_name = contig_data.previous_contig_name;
+                    next_contig_name = contig_data.next_contig_name;
+                    index = contig_data.index;
+                    total = contig_data.total;
+                    genes = contig_data.genes;
+
+                    if(layers.length == 0){
+                        console.log('Warning: no layers returned')
+                    }
+
+                    next_str = " | next &gt;&gt;&gt;";
+                    prev_str = "&lt;&lt;&lt; prev | ";
+                    position = index + " of " + total;
+
+                    // anvi-server uses iframes for prettier urls, links need to be open _top
+                    var target_str = '';
+
+                    if (self != top) {
+                        target_str = 'target="_top"';
+                    }
+
+                    var inspect_mode = 'inspect';
+
+                    if (gene_mode) {
+                        inspect_mode = 'inspect_gene';
+                    }
+                    else if (highlight_gene) {
+                        inspect_mode = 'inspect_context';
+                    }
+
+                    if(next_contig_name)
+                        next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+
+                    if(previous_contig_name)
+                        prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, previous_contig_name) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+
+                    $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
+
+                    $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px;"> \
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button> \
+                                        </div>');
+
+                    
+                    createCharts(state);
+                    $('.loading-screen').hide();
                 }
-            }
-
-            competing_nucleotides = contig_data.competing_nucleotides;
-            previous_contig_name = contig_data.previous_contig_name;
-            next_contig_name = contig_data.next_contig_name;
-            index = contig_data.index;
-            total = contig_data.total;
-            genes = contig_data.genes;
-
-            if(layers.length == 0){
-                console.log('Warning: no layers returned')
-            }
-
-            next_str = " | next &gt;&gt;&gt;";
-            prev_str = "&lt;&lt;&lt; prev | ";
-            position = index + " of " + total;
-
-            // anvi-server uses iframes for prettier urls, links need to be open _top
-            var target_str = '';
-
-            if (self != top) {
-                target_str = 'target="_top"';
-            }
-
-            if(next_contig_name)
-                next_str = '<a onclick="sessionStorage.state = state;" href="' + generate_inspect_link('inspect', next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
-
-            if(previous_contig_name)
-                prev_str = '<a onclick="sessionStorage.state = state;" href="' + generate_inspect_link('inspect', previous_contig_name) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
-
-            $('#header').append("<strong>" + contig_id + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
-            $('header').append('<button type="button" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
-                                <button type="button" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button>');
-
-            if (typeof sessionStorage.state === 'undefined')
-            {
-                alert("Something went wrong, couldn't access to sessionStorage");
-            }
-            else
-            {
-                // backup the state, if user changes the page (prev, next) we are going to overwrite it.
-                state = sessionStorage.state;
-                createCharts(JSON.parse(state));
-                $('.loading-screen').hide();
-            }
-        }
-    });
+            });
+    }
+    
 }
 
 
 function showSetMaxValuesDialog() {
     var table = '<table class="table borderless"><thead class="thead-light"><tr><th>Sample</th><th>Max Coverage</th><th>Limit Max Coverage</th></tr></thead><tbody>';
 
-    var _state = JSON.parse(state);
     var max_coverage_values;
     var has_max_coverage_values = (typeof sessionStorage.max_coverage !== 'undefined');
     if (has_max_coverage_values) {
@@ -136,7 +156,7 @@ function showSetMaxValuesDialog() {
         var layer_name = layers_ordered[i];
         var layer_index = layers.indexOf(layer_name);
 
-        if (parseFloat(_state['layers'][layer_name]['height']) > 0) {
+        if (!(state['layers'].hasOwnProperty(layer_name) && parseFloat(state['layers'][layer_name]['height']) == 0)) {
             var max_val
             var actual_max_val = Math.max.apply(null, coverage[layer_index]);;
             if (has_max_coverage_values) {
@@ -147,13 +167,26 @@ function showSetMaxValuesDialog() {
     
             table += '<tr> \
                         <td>' + layer_name + '</td> \
-                        <td>' + actual_max_val + '</td> \
-                        <td style="text-align: center;"><input type="text" size="5" value="' + max_val + '"/></td> \
+                        <td><a href="#" onclick="$(\'#max_multiple\').val(\'' + actual_max_val + '\')">' + actual_max_val + '</a></td> \
+                        <td style="text-align: center;"><input class="form-control input-sm max-coverage-input" type="text" size="5" value="' + max_val + '"/></td> \
                       </tr>';
 
             j++;
         }
     }
+
+    table += '<tr> \
+                <td>Set Max for all samples:</td> \
+                <td>&nbsp;</td> \
+                <td style="text-align: center;"><div class="input-group">\
+                    <input class="form-control input-sm" id="max_multiple" type="text" size="5" value="0"/> \
+                        <span class="input-group-btn"> \
+                            <button type="button" class="btn btn-default btn-sm" onclick="$(\'.max-coverage-input\').val($(\'#max_multiple\').val());">Set</button> \
+                        </span> \
+                    </div> \
+                </td> \
+            </tr>';
+
 
     $('#setMaxValuesDialog .modal-body').empty().append(table + '</tbody></table>');
     $('#setMaxValuesDialog').modal('show');
@@ -167,13 +200,13 @@ function applyMaxValues() {
     });
 
     sessionStorage.max_coverage = JSON.stringify(max_values);
-    createCharts(JSON.parse(state));
+    createCharts(state);
 }
 
 
 function resetMaxValues() {
     delete sessionStorage.max_coverage;
-    createCharts(JSON.parse(state));
+    createCharts(state);
 }
 
 

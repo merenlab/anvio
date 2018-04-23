@@ -10,7 +10,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.dbops import ContigsSuperclass
+from anvio.dbops import ContigsSuperclass, PanSuperclass
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -25,86 +25,165 @@ __email__ = "a.murat.eren@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
+class SearchResultReporter(object):
+    def __init__(self, args):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.annotation_sources = A('annotation_sources')
+        self.list_annotation_sources = A('list_annotation_sources')
+        self.basic_report_path = A('output_file') or 'search_results.txt'
+        self.full_report_path = A('full_report')
+        self.include_sequences = A('include_sequences')
+        self.verbose = A('verbose')
+        self.args = args
+        self.search_mode = None
 
-def main(args):
-    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    annotation_sources = A('annotation_sources')
-    delimiter = A('delimiter')
-    search_terms = A('search_terms')
-    basic_report_path = A('output_file') or 'search_results.txt'
-    full_report_path = A('full_report')
+        self.contigs_db = A('contigs_db')
+        self.genomes_storage = A('genomes_storage')
+        self.pan_db = A('pan_db')
 
-    # straighten things out
-    search_terms = [s.strip() for s in search_terms.split(delimiter)]
-    annotation_sources = [a.strip() for a in annotation_sources.split(delimiter)] if annotation_sources else None
+        # get search results will fill these
+        self.all_item_names = None
+        self.matching_item_names_dict = None
+        self.verbose_output = None
 
-    contigs_db = ContigsSuperclass(args)
-    if A('list_annotation_sources'):
-        contigs_db.list_function_sources()
-        sys.exit()
+        # straighten things out
+        self.search_terms = [s.strip() for s in A('search_terms').split(A('delimiter'))]
+        self.annotation_sources = [a.strip() for a in A('annotation_sources').split(A('delimiter'))] if A('annotation_sources') else None
 
-    # basic tests
-    filesnpaths.is_output_file_writable(basic_report_path)
-    filesnpaths.is_output_file_writable(full_report_path) if full_report_path else None
+        self.db = self.get_database()
+        
+        if self.list_annotation_sources:
+            self.db.list_function_sources()
+            sys.exit()
 
-    # do the search
-    matching_split_names_dict, verbose_output = contigs_db.search_splits_for_gene_functions(search_terms, requested_sources=annotation_sources, verbose = args.verbose)
 
-    all_split_names = set([])
+    def process(self):
+        self.get_search_results()
+        self.write_report()
 
-    for split_names in list(matching_split_names_dict.values()):
-        all_split_names.update(split_names)
+        if self.full_report_path:
+            self.write_full_report()
 
-    results_dict = {}
 
-    for split_name in all_split_names:
-        results_dict[split_name] = dict([(s + '_hits', '') for s in search_terms])
+    def get_database(self):
+        if self.contigs_db and (self.genomes_storage or self.pan_db):
+            raise ConfigError("You can not provide both contigs database and genomes storage")
 
-        for search_term in search_terms:
-            if split_name in matching_split_names_dict[search_term]:
-                results_dict[split_name][search_term + '_hits'] = search_term
+        if self.contigs_db:
+            self.search_mode = 'contigs'
+            run.info("Searching in Contigs Database", self.contigs_db)
+            return ContigsSuperclass(self.args)
 
-    utils.store_dict_as_TAB_delimited_file(results_dict, basic_report_path, headers = ['contigs'] + [s + '_hits' for s in search_terms])
+        elif self.genomes_storage and self.pan_db:
+            self.search_mode = 'gene_clusters'
+            run.info("Searching in Genomes Storage", self.genomes_storage)
+            pan_database = PanSuperclass(self.args)
+            pan_database.init_gene_clusters()
+            return pan_database
 
-    if full_report_path:
-        report = open(full_report_path, 'w')
+        else:
+            raise ConfigError("You did not provide enough arguments to initialize contigs database or pan database. \
+                               To initialize pan database you need to provide both genome storage and pan database.")
 
-        report.write('\t'.join(['gene_callers_id', 'source', 'accession', 'function', 'search_term', 'split_name']) + '\n')
 
-        for entry in verbose_output:
-            report.write('\t'.join([str(item) for item in entry]) + '\n')
+    def get_search_results(self):
+        self.matching_item_names_dict, self.verbose_output = self.db.search_for_gene_functions(self.search_terms, requested_sources=self.annotation_sources, verbose = self.verbose)
+
+        self.all_item_names = set([])
+
+        for item_names in list(self.matching_item_names_dict.values()):
+            self.all_item_names.update(item_names)
+
+
+    def write_report(self):
+        results_dict = {}
+
+        for item_name in self.all_item_names:
+            results_dict[item_name] = dict([(s + '_hits', '') for s in self.search_terms])
+
+            for search_term in self.search_terms:
+                if item_name in self.matching_item_names_dict[search_term]:
+                    results_dict[item_name][search_term + '_hits'] = search_term
+
+        utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = [self.search_mode] + [s + '_hits' for s in self.search_terms])
+        run.info('Items additional data compatible output', self.basic_report_path)
+
+
+    def write_full_report(self):
+        header = ['gene_callers_id', 'source', 'accession', 'function', 'search_term']
+        header.append(self.search_mode) # we append either "contigs" or "gene_clusters"
+
+        if self.include_sequences:
+            if self.search_mode == 'contigs':
+                gene_caller_ids = list(set([e[0] for e in self.verbose_output]))
+                _, gene_sequences_dict = self.db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
+                header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
+
+
+        report = open(self.full_report_path, 'w')
+        report.write('\t'.join(header) + '\n')
+        for entry in self.verbose_output:
+            content = [str(item) for item in entry]
+            if self.include_sequences:
+                if self.search_mode == 'contigs':
+                    g = gene_sequences_dict[entry[0]]
+                    content.extend([g['direction'],
+                                    g['rev_compd'],
+                                    g['sequence'],
+                                    g['aa_sequence'],])
+                else:
+                    # it already contains dna and aa sequence for pan search
+                    # we are gonna just inject n/a for direction and rev_compd
+                    content = content[:-2] + ['n/a', 'n/a'] + content[-2:]
+            else:
+                # pan search verbose_output directory contains aa, dna sequence
+                # we need to remove those, user does not want it.
+                content = content[:-2]
+
+            report.write('\t'.join(content) + '\n')
         report.close()
 
-        run.info('Full report', full_report_path)
-
-    run.info('Additional metadata compatible output file', basic_report_path)
+        run.info('Full report', self.full_report_path)
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Search functions in an anvi'o contigs database. Basically, this program searches for one or more search terms\
-                                                  you define in functional annotations of genes in an anvi'o contigs database, and generates multiple reports.\
-                                                  The simpler report (which also is the default one) simply tells you which contigs contain genes with functions\
-                                                  matching to serach terms you used. This file is only useful to quickly highlight matching contigs in the interface\
-                                                  by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also request a much more\
-                                                  comprehensive report, which gives you anything you might need to know, including the matching gene caller id,\
-                                                  functional annotation source, and full function name for each hit and serach term.")
+    parser = argparse.ArgumentParser(description="Search functions in an anvi'o contigs database or genomes storage. Basically, this program searches for one \
+                                                  or more search terms you define in functional annotations of genes in an anvi'o contigs database, and generates \
+                                                  multiple reports. The simpler report (which also is the default one) simply tells you which contigs contain genes \
+                                                  with functions matching to serach terms you used. This file is only useful to quickly highlight matching contigs \
+                                                  in the interface by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also \
+                                                  request a much more comprehensive report, which gives you anything you might need to know, including the matching\
+                                                  gene caller id, functional annotation source, and full function name for each hit and serach term.")
 
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))
-    parser.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    parser.add_argument(*anvio.A('full-report'), **anvio.K('full-report'))
-    parser.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
-    parser.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
-    parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+    groupA = parser.add_argument_group('SEARCH IN', 'Relevant source databases')
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+
+    groupB = parser.add_argument_group('SEARCH FOR', 'Relevant terms')
+    groupB.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))
+    groupB.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
+    groupB.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
+    groupB.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+
+    groupC = parser.add_argument_group('REPORT', "Anvi'o can report the hits in multiple ways. The output file will be a very simple 2-column\
+                                                  TAB-delimited output that is compatible with anvi'o additional data format (so you can give\
+                                                  it to the `anvi-interactive` to see which splits contained genes that were matching to your\
+                                                  search terms). You can also ask anvi'o to generate a full-report, that contains much more and\
+                                                  much helpful information about each hit. Optionally you can even ask the gene seqeunces to\
+                                                  appear in this report.")
+    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupC.add_argument(*anvio.A('full-report'), **anvio.K('full-report'))
+    groupC.add_argument(*anvio.A('include-sequences'), **anvio.K('include-sequences'))
+    groupC.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
 
     args = anvio.get_args(parser)
 
     try:
-        main(args)
+        SearchResultReporter(args).process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)

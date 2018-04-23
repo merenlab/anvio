@@ -4,11 +4,12 @@
 import sys
 
 import anvio
-import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.states import TablesForStates
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -25,13 +26,13 @@ progress = terminal.Progress()
 
 
 def main(args):
-    dbops.is_pan_or_profile_db(args.pan_or_profile_db)
+    utils.is_pan_or_profile_db(args.pan_or_profile_db)
 
-    states_access = dbops.TablesForStates(args.pan_or_profile_db)
+    states_access = TablesForStates(args.pan_or_profile_db)
     states = states_access.states
 
     if not len(states):
-        raise ConfigError("But there are no states in this %s database :/" % dbops.get_db_type(args.pan_or_profile_db))
+        raise ConfigError("But there are no states in this %s database :/" % utils.get_db_type(args.pan_or_profile_db))
 
     if args.list_states:
         states_access.list_states()

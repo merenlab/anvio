@@ -28,3 +28,11 @@ label {
 .histogram_axis path {
     stroke: #777777;
 }
+
+.svgviewbox_big {
+    padding-top: 50px;
+}
+
+.svgviewbox_small {
+    padding-top: 15px;
+}

@@ -1,0 +1,58 @@
+{
+    "centrifuge": {
+        "threads": 5,
+        "run": false
+    },
+    "anvi_run_hmms": {
+        "run": true,
+        "threads": 20,
+        "--installed-hmm-profile": "",
+        "--hmm-profile-dir": ""
+    },
+    "anvi_run_ncbi_cogs": {
+        "run": true,
+        "threads": 5,
+        "--cog-data-dir": "",
+        "--sensitive": "",
+        "--temporary-dir-path": "",
+        "--search-with": ""
+    },
+    "samples_txt": "samples.txt",
+    "megahit": {
+        "--min-contig-len": 1000,
+        "--memory": 0.4,
+        "threads": 11,
+        "run": true,
+        "--min-count": "",
+        "--k-min": "",
+        "--k-max": "",
+        "--k-step": "",
+        "--k-list": "",
+        "--no-mercy": "",
+        "--no-bubble": "",
+        "--merge-level": "",
+        "--prune-level": "",
+        "--prune-depth": "",
+        "--low-local-ratio": "",
+        "--max-tip-len": "",
+        "--no-local": "",
+        "--kmin-1pass": "",
+        "--presets": "",
+        "--mem-flag": "",
+        "--use-gpu": "",
+        "--gpu-mem": "",
+        "--keep-tmp-files": "",
+        "--tmp-dir": "",
+        "--continue": "",
+        "--verbose": ""
+    },
+    "output_dirs": {
+        "FASTA_DIR": "02_FASTA_megahit",
+        "CONTIGS_DIR": "03_CONTIGS_megahit",
+        "QC_DIR": "01_QC_megahit",
+        "MAPPING_DIR": "04_MAPPING_megahit",
+        "PROFILE_DIR": "05_ANVIO_PROFILE_megahit",
+        "MERGE_DIR": "06_MERGED_megahit",
+        "LOGS_DIR": "00_LOGS_megahit"
+    }
+}

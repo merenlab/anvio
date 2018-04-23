@@ -1,0 +1,13 @@
+{
+    "fasta_txt": "fasta.txt",
+    "references_mode": true,
+    "output_dirs": {
+        "FASTA_DIR": "02_FASTA_references_mode",
+        "CONTIGS_DIR": "03_CONTIGS_references_mode",
+        "QC_DIR": "01_QC_references_mode",
+        "MAPPING_DIR": "04_MAPPING_references_mode",
+        "PROFILE_DIR": "05_ANVIO_PROFILE_references_mode",
+        "MERGE_DIR": "06_MERGED_references_mode",
+        "LOGS_DIR": "00_LOGS_references_mode"
+    }
+}
