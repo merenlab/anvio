@@ -54,10 +54,10 @@ class WorkflowSuperClass:
         self.additional_params = A('additional_params')
 
         if self.additional_params:
-            run.warning("OK, SO THIS IS SERIUOUS, AND WHEN THINGS ARE SERIUOUS THEN WE USE CAPS. \
+            run.warning("OK, SO THIS IS SERIOUS, AND WHEN THINGS ARE SERIOUS THEN WE USE CAPS. \
                          WE SEE THAT YOU ARE USING --additional-params AND THAT'S GREAT, BUT WE \
                          WANT TO REMIND YOU THAT ANYTHING THAT FOLLOWS --additional-params WILL \
-                         BE CONSIDERED AS A snakemake PARAM THAT IS TRANSFERED TO snakemake DIRECTLY. \
+                         BE CONSIDERED AS A snakemake PARAM THAT IS TRANSFERRED TO snakemake DIRECTLY. \
                          So make sure that these don't include anything that you didn't mean to \
                          include as an additional param: %s." % ', '.join(str(i) for i in self.additional_params))
 
