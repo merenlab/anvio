@@ -69,7 +69,11 @@ class WorkflowSuperClass:
         self.slave_mode = A('slave_mode')
 
         if self.config_file:
-            self.config = json.load(open(self.config_file))
+            try:
+                self.config = json.load(open(self.config_file))
+            except ValueError as e:
+                raise ConfigError("Your config file is not a proper json file. This is\
+                                   what we know: %s" % e)
 
         self.rules = []
         self.rule_acceptable_params_dict = {}
