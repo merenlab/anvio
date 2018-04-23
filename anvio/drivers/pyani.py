@@ -27,25 +27,41 @@ class PyANI:
         self.program_name = 'average_nucleotide_identity.py'
         utils.is_program_exists(self.program_name)
 
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.num_threads = A('num_threads') or 1
+        self.method = A('method') or 'ANIb'
+        self.log_file_path = os.path.abspath(A('log_file') or filesnpaths.get_temp_file_path())
+
         self.run.warning("Anvi'o will use 'PyANI' by Pritchard et al. (DOI: 10.1039/C5AY02550H) to compute ANI. If you publish your findings, \
                             please do not forget to properly credit their work.", lc='green', header="CITATION")
 
-    def run_command(self, input_path, method='ANIb'):
+        self.run.info('[PyANI] Num threads to use', self.num_threads)
+        self.run.info('[PyANI] Alignment method', self.method)
+        self.run.info('[PyANI] Log file path', self.log_file_path)
+
+
+    def run_command(self, input_path):
         # backup the old working directory before changing the directory
         old_wd = os.getcwd()
         os.chdir(input_path)
 
-        log_file_path = filesnpaths.get_temp_file_path()
-        self.run.info('Log file path', log_file_path)
 
-        full_command = [self.program_name, '--outdir', 'output', '--indir', input_path, '-g', '-m', method]
-        exit_code = utils.run_command(full_command, log_file_path)
+        full_command = [self.program_name,
+                        '--outdir', 'output',
+                        '--indir', input_path,
+                        '--method', self.method,
+                        '--workers', self.num_threads]
 
-        if exit_code != 0:
-            self.run.warning("PyANI returned with non-zero exit code, there may be some errors. \
+        self.progress.new('PyANI')
+        self.progress.update('Running ...')
+        exit_code = utils.run_command(full_command, self.log_file_path)
+        self.progress.end()
+
+        if int(exit_code):
+            raise ConfigError("PyANI returned with non-zero exit code, there may be some errors. \
                               please check the log file for details.")
 
-        with open(os.path.join(input_path, 'output', method + '_percentage_identity.tab'), 'r') as f:
+        with open(os.path.join(input_path, 'output', self.method + '_percentage_identity.tab'), 'r') as f:
             percent_identity = f.read()
 
         # restore old working directory
