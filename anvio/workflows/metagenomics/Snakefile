@@ -228,8 +228,8 @@ rule iu_gen_configs:
 
 def get_raw_fastq(wildcards):
     ''' return a dict with the path to the raw fastq files'''
-    r1 = list(samples_information[samples_information["sample"] == wildcards.sample]['r1'])
-    r2 = list(samples_information[samples_information["sample"] == wildcards.sample]['r2'])
+    r1 = list(samples_information[samples_information["sample"] == wildcards.sample]['r1'])[0].split(',')
+    r2 = list(samples_information[samples_information["sample"] == wildcards.sample]['r2'])[0].split(',')
     return {'r1': r1, 'r2': r2}
 
 
