@@ -3,6 +3,7 @@
 """A script to import collections (and their colors)"""
 
 import sys
+import copy
 from collections import Counter
 
 import anvio
@@ -13,6 +14,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -39,11 +41,6 @@ def main(args):
         contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(splits_basic_info, contigs_basic_info)
         contigs_db.disconnect()
 
-        run.info('Num contigs in the contigs database', len(contigs_basic_info))
-        run.info('Num splits in the contigs database', len(splits_basic_info))
-
-    I = lambda: 'contigs' if args.contigs_mode else 'splits'
-
     # read the input file with split/contig - bin ID associations
     input_data_file_content = utils.get_TAB_delimited_file_as_dictionary(args.data, no_header = True, column_names = ['split_id', 'bin_name'])
 
@@ -54,9 +51,30 @@ def main(args):
             bins_info_dict = utils.get_TAB_delimited_file_as_dictionary(args.bins_info, no_header = True, column_names = ['bin_name', 'source', 'html_color'])
         except Exception as e:
             raise ConfigError("Someone was not happy with the TAB-delimited bins info file you provided. Here\
-                                is the complaint: %s" % e)
-    run.info('Num %s in the input file' % I(), len(input_data_file_content))
-    run.info('Num bins the input file describes', len(set([e['bin_name'] for e in list(input_data_file_content.values())])))
+                               is the complaint: %s" % e)
+
+    # convert contig names into split names if necessary so we can do everything else using the information in
+    # pan or profile database item names (this is only relevant for a workflow that includes a contigs db)
+    if args.contigs_mode:
+        input_names_missing_from_contigs_db = [n for n in input_data_file_content if n not in contigs_basic_info]
+
+        if len(input_names_missing_from_contigs_db):
+            raise ConfigError("OK. %d of %d contig names in your input file have nothing to do with the contig names found in\
+                               the contigs database. Here is an example: %s." % (len(input_names_missing_from_contigs_db),
+                                                                                 len(input_data_file_content),
+                                                                                 input_names_missing_from_contigs_db[0]))
+
+        # convert input data names to split names:
+        contig_names = list(input_data_file_content.keys())
+        for contig_name in contig_names:
+            for split_name in contig_name_to_splits_dict[contig_name]:
+                input_data_file_content[split_name] = copy.deepcopy(input_data_file_content[contig_name])
+            input_data_file_content.pop(contig_name)
+
+        run.info('Contig/split name conversion', '%d contig names converted into %d split names.' % (len(contig_names), len(input_data_file_content)))
+
+    run.info('Item names in input', len(input_data_file_content))
+    run.info('Num bins in input', len(set([e['bin_name'] for e in list(input_data_file_content.values())])))
 
     # learning about the input names like a pro
     input_names = set(input_data_file_content.keys())
@@ -65,66 +83,87 @@ def main(args):
     # names in the contigs database database. but clearly it is not relevant if there
     # is no contigs database is associated with the profile database, so if there is none,
     # we cheat :
-    if we_have_a_contigs_db:
-        db_names = set(list(contigs_basic_info.keys()) if args.contigs_mode else list(splits_basic_info.keys()))
+    if args.pan_or_profile_db:
+        if utils.is_blank_profile(args.pan_or_profile_db):
+            db_names = input_names
+
+            run.warning("Since you are working with a blank proifle, anvi'o is not going to check whether the names item\
+                         names in your collections file matches to the item names in other databases of yours. It is all\
+                         fine for now, but this requires you to be even extra careful with your downstream analyses in\
+                         case stuff hits the fan later.")
+        else:
+            db_names = utils.get_all_item_names_from_the_database(args.pan_or_profile_db)
+        run.info('Items in %s database' % utils.get_db_type(args.pan_or_profile_db), len(db_names), mc='green')
+    elif we_have_a_contigs_db:
+        db_names = utils.get_all_item_names_from_the_database(args.contigs_db)
+        run.info('Items in contigs database', len(db_names), mc='green')
     else:
         db_names = input_names
+        run.warning("Quite an improper setup (no pan, profile, or contigs databases). We are using %d\
+                     input names found in the collection file as item names. Because you are the\
+                     boss that's why." % len(db_names))
 
-    entry_names_overlap_between_input_and_db = set.intersection(*[db_names, input_names])
+    item_names_shared = set.intersection(db_names, input_names)
+    if not len(item_names_shared):
+        raise ConfigError("There is no overlap between the item names found in your input file and item names found in the\
+                           and this is not cool. For instance one of the names from your file looks like this:\
+                           '%(from_file)s', and this is one is an example name from the database: '%(from_db)s'.\
+                           Maybe you need to use the flag `--contigs-mode`. Or maybe the content of the input file\
+                           has nothing to do with the database you are trying to import it into. Anvi'o doesn't know\
+                           but it can't continue unless you figure this out :/" % {'from_file': input_names.pop(), \
+                                                                                   'from_db': db_names.pop()})
+    else:
+        run.info("Item names shared between input and db", len(item_names_shared))
 
-    if not len(entry_names_overlap_between_input_and_db):
-        raise ConfigError("There is no overlap between the %(item)s names found in your input file\
-                            and %(item)s names found in the database. This is odd! For instance one\
-                            of the names from your file looks like this: '%(from_file)s', and this is\
-                            an example name from the database: '%(from_db)s'. Please issue a report if\
-                            you are almost certain that this is anvi'o's fault." \
-                                % {'item': I(), 'from_file': input_names.pop(), 'from_db': db_names.pop()})
+    # find names that are unique to the input file
+    item_names_unique_to_input_file = input_names - db_names
+    if len(item_names_unique_to_input_file):
+        for item_name in item_names_unique_to_input_file:
+            input_data_file_content.pop(item_name)
 
-    run.info('Num %s both input file and the db has' % I(), len(entry_names_overlap_between_input_and_db))
+        input_names = set(input_data_file_content.keys())
+        run.warning('%d item(s) that appeared only in the input file will be ignored (such as this one: %s).\
+                     Just so you know.' % (len(item_names_unique_to_input_file), item_names_unique_to_input_file.pop()))
+
+    # items in db but missing from the input file:
+    item_names_unique_to_db = db_names - input_names
+    if len(item_names_unique_to_db):
+        run.warning("%d item(s) that were in the database, but were not in the input file, will not be described by\
+                     any bin in the collection %s. That is totally fine, but anvi'o hopes that you are aware of that.\
+                     This means you have more things in your database than the number of things your input file\
+                     describes. Here is an example of something that is in your database but not in any bin in your\
+                     input file: %s." % (len(item_names_unique_to_db), args.collection_name, item_names_unique_to_db.pop()))
 
     data = {}
 
     # populate the data dictionary
     for entry_name in input_data_file_content:
         bin_name = input_data_file_content[entry_name]['bin_name']
-        if entry_name not in entry_names_overlap_between_input_and_db:
-            continue
 
         if bin_name not in data:
             data[bin_name] = set([])
 
-        if args.contigs_mode:
-            for split_name in contig_name_to_splits_dict[entry_name]:
-                data[bin_name].add(split_name)
-        else:
-            data[bin_name].add(entry_name)
-
-    if args.contigs_mode:
-        run.info_single('%d of %d contig names in the input file that matched to contig names in the database\
-                         resolved into %d split names that described in %d bins.' % (len(entry_names_overlap_between_input_and_db),
-                                                                                     len(input_data_file_content),
-                                                                                     sum([len(v) for v in list(data.values())]),
-                                                                                     len(data)), nl_before = 1)
+        data[bin_name].add(entry_name)
 
     if args.pan_or_profile_db:
-        collections = dbops.TablesForCollections(args.pan_or_profile_db)
+        collections = TablesForCollections(args.pan_or_profile_db)
     else:
-        collections = dbops.TablesForCollections(args.contigs_db)
+        collections = TablesForCollections(args.contigs_db)
 
     collections.append(args.collection_name, data, bins_info_dict)
 
 
 def sanity_check(args):
-    if not args.pan_or_profile_db and not args.contigs_db:
-        raise ConfigError("You must at least provide an anvi'o contigs database for this to work :(")
+    if not args.pan_or_profile_db:
+        raise ConfigError("You must provide an anvi'o pan or profile database for this to work :(")
 
     if args.pan_or_profile_db:
-        dbops.is_pan_or_profile_db(args.pan_or_profile_db)
+        utils.is_pan_or_profile_db(args.pan_or_profile_db)
 
     if args.contigs_db:
-        dbops.is_contigs_db(args.contigs_db)
+        utils.is_contigs_db(args.contigs_db)
 
-    if args.pan_or_profile_db and dbops.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db: 
+    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db:
         raise ConfigError("There is no need to provide a contigs database when you are working with an anvi'o pan\
                             database")
 
@@ -133,7 +172,7 @@ def sanity_check(args):
                             not declared an anvi'o contigs database")
 
     # if there is a profile database, check whether there is a contigs database associated with the profile
-    if args.pan_or_profile_db and dbops.get_db_type(args.pan_or_profile_db) == 'profile':
+    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'profile':
         pan_or_profile_db = dbops.ProfileDatabase(args.pan_or_profile_db)
 
         if pan_or_profile_db.meta['contigs_db_hash'] and not args.contigs_db:

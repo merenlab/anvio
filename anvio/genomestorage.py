@@ -10,16 +10,13 @@
 
 import time
 import hashlib
-import argparse
 
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.fastalib as fastalib
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 
@@ -39,7 +36,7 @@ pp = terminal.pretty_print
 
 
 class GenomeStorage(object):
-    def __init__(self, storage_path, storage_hash=None,  genome_names_to_focus=None, create_new=False, run=run, progress=progress):
+    def __init__(self, storage_path, storage_hash=None, genome_names_to_focus=None, create_new=False, skip_init_functions=False, run=run, progress=progress):
         self.db_type = 'genomestorage'
         self.version = anvio.__genomes_storage_version__
         self.run = run
@@ -47,6 +44,7 @@ class GenomeStorage(object):
         self.progress = progress
         self.storage_path = storage_path
         self.genome_names_to_focus = genome_names_to_focus
+        self.skip_init_functions = skip_init_functions
 
         if create_new:
             self.check_storage_path_for_create_new()
@@ -86,19 +84,19 @@ class GenomeStorage(object):
 
         if self.storage_path.endswith('.h5'):
             raise ConfigError("We recenlty switched from HD5 files (.h5) to Sqlite (.db) files for the genome storage, \
-                              you can upgrade your genome storage using script 'anvi-script-upgrade-genomes-storage-v4-to-v5'.")
+                              you can upgrade your genome storage by running 'anvi-migrate-db %s'." % self.storage_path)
 
         filesnpaths.is_file_exists(self.storage_path)
 
 
     def init(self):
         if self.db_type != self.db.get_meta_value('db_type'):
-            raise ConfigError('It seems, this database ("%s") is not a genome storage.' % self.storage_path)
+            raise ConfigError('The database "%s" does not look like a genome storage :/' % self.storage_path)
 
         if self.storage_hash:
             if self.storage_hash != self.get_storage_hash():
-                raise ConfigError("Requested storage hash ('%s') does not match with the one readed from database ('%s')." % 
-                    (self.storage_hash, self.get_sorage_hash))
+                raise ConfigError("The requested genome storage hash ('%s') does not match with the one read from the database ('%s')." %
+                    (self.storage_hash, self.get_storage_hash()))
 
         self.genome_names_in_db = self.get_all_genome_names()
 
@@ -112,7 +110,7 @@ class GenomeStorage(object):
                                  are. Not going anywhere until you fix this. For instance this is one of the missing\
                                  genome names: '%s', and this is one random genome name from the database: '%s'" % \
                                          (len(genome_names_to_focus_missing_from_db), len(self.genome_names_to_focus),\
-                                         genome_names_to_focus_missing_from_db[0], list(self.genomes.keys())[0]))
+                                         genome_names_to_focus_missing_from_db[0], ', '.join(self.genome_names_in_db)))
 
             self.genome_names = self.genome_names_to_focus
         else:
@@ -122,11 +120,15 @@ class GenomeStorage(object):
         self.functions_are_available = self.db.get_meta_value('functions_are_available')
         self.gene_functions_entry_id = self.db.get_max_value_in_column(t.genome_gene_function_calls_table_name, 'entry_id')
 
+        self.progress.new('Recovering data from the db')
+
         ## load the data
+        self.progress.update('Loading genomes basic info...')
         where_clause = """genome_name IN (%s)""" % ",".join('"' + item + '"' for item in self.genome_names)
         self.genomes_info = self.db.get_some_rows_from_table_as_dict(t.genome_info_table_name, where_clause)
 
         self.gene_info = {}
+        self.progress.update('Loading genes info for %s genomes...' % len(self.genomes_info))
         for gene_info_tuple in self.db.get_some_rows_from_table(t.gene_info_table_name, where_clause):
             genome_name, gene_caller_id, aa_sequence, dna_sequence, partial, length = gene_info_tuple
             if genome_name not in self.gene_info:
@@ -140,11 +142,15 @@ class GenomeStorage(object):
                 'functions': {}
             }
 
-            functions = self.db.get_some_rows_from_table(t.genome_gene_function_calls_table_name, 
-                                                         'genome_name = "%s" and gene_callers_id = "%s"' % (genome_name, gene_caller_id))
 
-            for row in functions:
-                self.gene_info[genome_name][gene_caller_id]['functions'][row[3]] = "%s|||%s" % (row[4], row[5])
+            if not self.skip_init_functions:
+                functions = self.db.get_some_rows_from_table(t.genome_gene_function_calls_table_name,
+                                                             'genome_name = "%s" and gene_callers_id = "%s"' % (genome_name, gene_caller_id))
+
+                for row in functions:
+                    self.gene_info[genome_name][gene_caller_id]['functions'][row[3]] = "%s|||%s" % (row[4], row[5])
+
+        self.progress.end()
 
         self.run.info('Genomes storage', 'Initialized (storage hash: %s)' % (self.get_storage_hash()))
         self.run.info('Num genomes in storage', len(self.get_all_genome_names()))
@@ -155,6 +161,7 @@ class GenomeStorage(object):
         self.db.create_table(t.genome_info_table_name, t.genome_info_table_structure, t.genome_info_table_types)
         self.db.create_table(t.gene_info_table_name, t.gene_info_table_structure, t.gene_info_table_types)
         self.db.create_table(t.genome_gene_function_calls_table_name, t.genome_gene_function_calls_table_structure, t.genome_gene_function_calls_table_types)
+        self.db._exec("CREATE INDEX covering_index ON %s (gene_callers_id, genome_name);" % t.genome_gene_function_calls_table_name)
 
         self.db.set_meta_value('db_type', self.db_type)
         self.db.set_meta_value('creation_date', time.time())
@@ -180,18 +187,19 @@ class GenomeStorage(object):
         # of the genomes will make sure that the profile databases from this storage and storage itself are not compatible:
 
         concatenated_genome_hashes = '_'.join(sorted(map(str, self.db.get_single_column_from_table(t.genome_info_table_name, 'genome_hash'))))
-        new_hash = hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:8]
+        new_hash = 'hash' + str(hashlib.sha224(concatenated_genome_hashes.encode('utf-8')).hexdigest()[0:8])
 
         self.db.set_meta_value('hash', new_hash)
 
 
     def get_storage_hash(self):
-        return self.db.get_meta_value('hash')
+        return str(self.db.get_meta_value('hash'))
 
 
     def store_genomes(self, genome_descriptions):
         self.functions_are_available = genome_descriptions.functions_are_available
         self.db.set_meta_value('functions_are_available', self.functions_are_available)
+        self.db.set_meta_value('gene_function_sources', ','.join(genome_descriptions.function_annotation_sources))
 
         num_gene_calls_added_total = 0
         num_partial_gene_calls_total = 0
@@ -327,6 +335,9 @@ class GenomeStorage(object):
     def get_gene_functions(self, genome_name, gene_callers_id):
         if not self.functions_are_available:
             raise ConfigError("Functions are not available in this genome storage ('%s'). " % self.storage_path)
+
+        if self.skip_init_functions:
+            raise ConfigError("Functions are not initialized for this genome storage ('%s'). " % self.storage_path)
 
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_callers_id)

@@ -5,7 +5,7 @@ import sys
 import argparse
 
 import anvio
-import anvio.utils as u
+import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -35,8 +35,8 @@ def experimental_organization(args):
                             profile database to be explicit about where to store the resulting tree.")
 
     if args.profile_db:
-        dbops.is_profile_db(args.profile_db)
-    dbops.is_contigs_db(args.contigs_db)
+        utils.is_profile_db(args.profile_db)
+    utils.is_contigs_db(args.contigs_db)
 
     if not args.skip_store_in_db and not args.name:
         raise ConfigError("Since you have not used the --skip-store-in-db flag, this program will attempt\
@@ -44,7 +44,7 @@ def experimental_organization(args):
                             this tree. Please use the --name flag to provide one.")
 
     if args.name:
-        u.is_this_name_OK_for_database('--name parameter', args.name)
+        utils.is_this_name_OK_for_database('--name parameter', args.name)
 
     if args.profile_db:
         profile_db = dbops.ProfileDatabase(args.profile_db)
@@ -74,7 +74,13 @@ def experimental_organization(args):
         run.info('Output', args.output_file, mc='green')
 
     if args.profile_db and not args.skip_store_in_db:
-        dbops.add_hierarchical_clustering_to_db(args.profile_db, args.name, newick, distance=distance, linkage=linkage, run = run)
+        dbops.add_items_order_to_db(anvio_db_path=args.profile_db,
+                                    order_name=args.name,
+                                    order_data=newick,
+                                    distance=distance,
+                                    linkage=linkage,
+                                    make_default=False,
+                                    run=run)
 
 
 if __name__ == '__main__':

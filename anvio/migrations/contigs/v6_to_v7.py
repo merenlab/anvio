@@ -6,8 +6,8 @@ import argparse
 
 import anvio.db as db
 import anvio.tables as t
-import anvio.dbops as dbops
-import anvio.terminal as terminal 
+import anvio.utils as utils
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
@@ -23,7 +23,7 @@ def migrate(db_path):
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    dbops.is_contigs_db(db_path)
+    utils.is_contigs_db(db_path)
 
     # make sure the version is 2
     contigs_db = db.DB(db_path, None, ignore_version = True)

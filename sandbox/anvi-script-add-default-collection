@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Adds a DEAFULT collection with EVERYTHING in it into a profile database."""
+"""Adds a DEAFULT collection with EVERYTHING in it into a pan or profile database."""
 
 import sys
 import argparse
 
 import anvio
-import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -27,18 +28,18 @@ progress = terminal.Progress()
 
 
 def main(args):
-    dbops.is_profile_db(args.profile_db)
+    utils.is_pan_or_profile_db(args.pan_or_profile_db)
 
-    profile_db = dbops.ProfileSuperclass(argparse.Namespace(profile_db=args.profile_db))
+    all_items = utils.get_all_item_names_from_the_database(args.pan_or_profile_db)
 
-    collections_table = dbops.TablesForCollections(args.profile_db)
-    collections_table.append('DEFAULT', {'EVERYTHING': profile_db.split_names})
+    collections_table = TablesForCollections(args.pan_or_profile_db)
+    collections_table.append('DEFAULT', {'EVERYTHING': all_items})
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="A script to add a 'DEFAULT' collection in an anvi'o profile database with a bin\
-                                                  'EVERYTHING' that describes all split names available in the profile databse")
+    parser = argparse.ArgumentParser(description="A script to add a 'DEFAULT' collection in an anvi'o pan or profile database with a bin\
+                                                  named 'EVERYTHING' that describes all items available in the profile databse.")
 
-    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
 
     args = anvio.get_args(parser)
 

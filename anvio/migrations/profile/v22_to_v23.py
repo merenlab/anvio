@@ -8,7 +8,6 @@ import tempfile
 import argparse
 
 import anvio.db as db
-import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 
@@ -279,32 +278,32 @@ def check_samples_db_status():
                            YOUR_PROFILE_DB_PATH'. If you are curious, this was necessary because there may be multiple samples\
                            databases for a given project, or a samples database may be at any location and may have any name." \
                             % current_version)
-    
+
     if os.environ['ANVIO_SAMPLES_DB'] == 'SKIP':
         samples_db_path = None
     else:
         samples_db_path = os.environ['ANVIO_SAMPLES_DB']
-    
+
         if not os.path.exists(samples_db_path):
             raise ConfigError("Your migration did not finish, and your profile database is still at %s. Although anvi'o found\
                                the environmental variable ANVIO_SAMPLES_DB, the path it pointed, '%s', was nowhere to be found.\
                                If you don't want to incorporate the information in the samples database associated with this\
                                profile datbase you can simply call the migration script this way: 'ANVIO_SAMPLES_DB=SKIP anvi-migrate-db YOUR_PROFILE_DB_PATH'.\
                                Otherwise, try again with a proper path." % (current_version, samples_db_path))
-    
+
         try:
             database = db.DB(samples_db_path, None, ignore_version=True)
         except:
             raise ConfigError("The file at %s does not look like an anvi'o database"% samples_db_path)
-    
+
         tables = database.get_table_names()
         if 'self' not in tables:
             database.disconnect()
             raise ConfigError("'%s' does not seem to be a anvi'o database..." % samples_db_path)
-    
+
         if database.get_meta_value('db_type') != 'samples_information':
             raise ConfigError("'%s' does not seem to be a anvi'o samples database..." % samples_db_path)
-    
+
         database.disconnect()
 
     return samples_db_path
@@ -314,7 +313,7 @@ def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
-    dbops.is_profile_db(db_path)
+    utils.is_profile_db(db_path)
 
     profile_db = db.DB(db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != current_version:
@@ -354,7 +353,7 @@ def migrate(db_path):
             fully_upgraded = True
         except Exception as e:
             run.warning('Something went wrong adding the data found in samples database into the profile database. This is what\
-                         we know: "%s".' % e) 
+                         we know: "%s".' % e)
             fully_upgraded = False
     else:
         fully_upgraded = False

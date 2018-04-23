@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""List misc data keys in pan or profile databases"""
+
+import sys
+import argparse
+
+import anvio
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.miscdata import MiscDataTableFactory
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+
+
+def main(args):
+    for table_name in ['items', 'layers', 'layer_orders']:
+        args.target_data_table = table_name
+        table_for_additional_data = MiscDataTableFactory(args)
+        table_for_additional_data.list_data_keys()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Show all misc data keys in all misc data tables")
+
+    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

@@ -7,6 +7,7 @@ import sys
 import textwrap
 import traceback
 
+import anvio
 from anvio.ttycolors import color_text
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -41,7 +42,7 @@ class AnvioError(Exception, object):
         for error_line in error_lines[1:]:
             error_message.append('%s%s' % (' ' * (len(self.error_type) + 2), error_line))
 
-        if '--debug' in sys.argv:
+        if anvio.DEBUG:
             exc_type, exc_value, exc_traceback = sys.exc_info()
 
             sep = color_text('=' * 80, 'red')
@@ -85,17 +86,11 @@ class FilesNPathsError(AnvioError):
         self.error_type = 'File/Path Error'
         AnvioError.__init__(self)
 
+
 class DictIOError(AnvioError):
     def __init__(self, e=None):
         self.e = remove_spaces(e)
         self.error_type = 'Dict IO Error'
-        AnvioError.__init__(self)
-
-
-class SamplesError(AnvioError):
-    def __init__(self, e=None):
-        self.e = remove_spaces(e)
-        self.error_type = 'Samples Info Error'
         AnvioError.__init__(self)
 
 

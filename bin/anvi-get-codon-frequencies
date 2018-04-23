@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Return frequencies of amino acids in a gene
+
+   Takes a bunch of BAM files, and a unique gene caller ID to count
+   AA linkmer frequencies"""
+
+import sys
+
+import anvio
+import anvio.utils as utils
+import anvio.bamops as bamops
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbops import ContigsSuperclass
+from anvio.constants import codon_to_AA
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    c = ContigsSuperclass(args)
+    c.init_contig_sequences()
+
+    bam_file_object = bamops.BAMFileObject(args.input_file).get()
+
+    if args.gene_caller_id not in c.genes_in_contigs_dict:
+        raise ConfigError("The contigs db does not have the gene caller id '%d' :/" % args.gene_caller_id)
+
+    gene_call = c.genes_in_contigs_dict[args.gene_caller_id]
+    return_AA_frequencies_instead = args.return_AA_frequencies_instead
+
+    run.info('Working with', 'Amino acids' if return_AA_frequencies_instead else 'Codons')
+
+    # depending on whether we work with amino acids or codons
+    items = sorted(list(set(codon_to_AA.values()))) if return_AA_frequencies_instead else sorted(list(set(codon_to_AA.keys())))
+
+    if gene_call['partial']:
+        raise ConfigError('This seems to be a partial gene call. Sorry :/')
+
+    contig_sequence = c.contig_sequences[gene_call['contig']]['sequence']
+
+    codon_frequencies = bamops.CodonFrequencies()
+
+    d = {}
+
+    progress.new('Busy code is busy')
+    progress.update('Generating %s frequencies dict ...' % 'amino acid' if return_AA_frequencies_instead else 'codon')
+    frequencies_dict = codon_frequencies.process_gene_call(bam_file_object,
+                                                           gene_call,
+                                                           contig_sequence,
+                                                           None,
+                                                           return_AA_frequencies_instead)
+
+    progress.update('Working on the output ...')
+    for codon_order in frequencies_dict:
+        entry = frequencies_dict[codon_order]
+        d[codon_order] = {'reference': entry['reference'], 'coverage': entry['coverage'],
+                          'contig_name': gene_call['contig'], 'start': gene_call['start'],
+                          'stop': gene_call['stop'], 'direction': gene_call['direction']}
+
+        for item in items:
+            d[codon_order][item] = entry['frequencies'][item]
+
+    header = ['codon_order_in_gene', 'contig_name', 'start', 'stop', 'direction', 'reference', 'coverage'] + items
+    progress.update('Storing output ...')
+    utils.store_dict_as_TAB_delimited_file(d, args.output_file, header)
+
+    progress.end()
+    run.info('Output', args.output_file)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Frequencies of AA linkmers')
+    parser.add_argument('-i', '--input-file', metavar = 'INPUT_BAM', default = None, required = True,
+                        help = 'Sorted and indexed BAM file to analyze.')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id', {'required': True}))
+    parser.add_argument(*anvio.A('return-AA-frequencies-instead'), **anvio.K('return-AA-frequencies-instead'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

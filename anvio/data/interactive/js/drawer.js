@@ -78,11 +78,11 @@ Drawer.prototype.draw = function() {
     order_to_node_map = new Array();
 
     this.initialize_tree();
-    this.rotate_branches();
 
     if (this.has_tree) {
-        this.generate_mock_data_for_collapsed_nodes();
-        this.collapse_nodes();
+        let node_list = this.find_collapsed_nodes();
+        this.generate_mock_data_for_collapsed_nodes(node_list);
+        this.collapse_nodes(node_list);
     }
 
     this.generate_tooltips();
@@ -138,26 +138,30 @@ Drawer.prototype.draw = function() {
     ANIMATIONS_ENABLED = false;
 };
 
-Drawer.prototype.rotate_branches = function() {
-    if (this.has_tree && rotateNode) {
-        label_to_node_map[rotateNode].Rotate();
 
-        // rotateNode needs to be cleared after branch is rotated.
-        // otherwise when tree is redrawn it will rotate again.
-        rotateNode = null;
+Drawer.prototype.find_collapsed_nodes = function() {
+    var node_list = [];
 
-        // we need to generate new newick based on modified tree 
-        // and overwrite exists global clusteringData;
-        clusteringData = this.tree.Serialize();
+    var n = new NodeIterator(this.tree.root);
+    var q = n.Begin();
+    while (q != null)
+    {
+        if (q.collapsed)
+            node_list.push(q);
+
+        q=n.Next();
     }
-}
 
-Drawer.prototype.generate_mock_data_for_collapsed_nodes = function() {
+    return node_list;
+};
+
+
+Drawer.prototype.generate_mock_data_for_collapsed_nodes = function(node_list) {
     if (!this.has_tree)
         return;
 
-    for (var i=0; i < collapsedNodes.length; i++) {
-        var q = label_to_node_map[collapsedNodes[i]];
+    for (var i=0; i < node_list.length; i++) {
+        var q = node_list[i];
 
         var mock_data = [q.label];
         for (var j = 1; j < parameter_count; j++) {
@@ -178,7 +182,7 @@ Drawer.prototype.generate_mock_data_for_collapsed_nodes = function() {
 };
 
 Drawer.prototype.generate_tooltips = function() {
-    empty_tooltip = '<tr><td>split_name</td><td>n/a</td></tr>';
+    empty_tooltip = '<tr><td>Item Name</td><td>n/a</td></tr>';
     empty_tooltip += '<tr><td>parent</td><td>n/a</td></tr>';
 
     for (var i = 1; i < this.settings['layer-order'].length; i++)
@@ -199,7 +203,6 @@ Drawer.prototype.generate_tooltips = function() {
         this.layerdata_dict[params[0]] = params.slice(0);
 
         var title = [];
-        title.push('<td>split_name</td><td>' + layerdata[index][0] + '</td>');
         for (var i = 0; i < this.settings['layer-order'].length; i++) 
         {
             var pindex = this.settings['layer-order'][i];
@@ -408,6 +411,7 @@ Drawer.prototype.initialize_tree = function() {
 
             q.id = i + 1;
             q.size = 1;
+            q.label = clusteringData[i];
             q.child_nodes = [q.id];
             id_to_node_map[q.id] = q;
             label_to_node_map[q.label] = q;
@@ -445,9 +449,9 @@ Drawer.prototype.assign_leaf_order = function() {
     }
 };
 
-Drawer.prototype.collapse_nodes = function() {
-    for (var i=0; i < collapsedNodes.length; i++) {
-        var cnode = label_to_node_map[collapsedNodes[i]];
+Drawer.prototype.collapse_nodes = function(node_list) {
+    for (var i=0; i < node_list.length; i++) {
+        var cnode = node_list[i];
 
         var max_edge = 0;
         var sum_size = 0;
@@ -1298,7 +1302,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                         q.angle + q.size / 2,
                         this.layer_boundaries[layer.order][0], 
                         this.layer_boundaries[layer.order][1],
-                        0,
+                        (Math.abs(q.size) > Math.PI) ? 1 : 0,
                         getGradientColor(
                             layer.get_visual_attribute('color-start'), 
                             layer.get_visual_attribute('color'),  
@@ -1382,10 +1386,10 @@ Drawer.prototype.draw_numerical_layers = function() {
             path.setAttribute('pointer-events', 'none');
 
             if (layer.get_visual_attribute('type') == 'line') {
-                path.setAttribute('stroke', layer.get_visual_attribute('color'));
+                path.setAttribute('stroke', layer.get_visual_attribute('color-start'));
                 path.setAttribute('stroke-width', '1px');  
                 path.setAttribute('vector-effect', 'non-scaling-stroke');
-                path.setAttribute('fill', layer.get_visual_attribute('color-start'));     
+                path.setAttribute('fill', layer.get_visual_attribute('color'));
             }
             else {
                 path.setAttribute('fill', layer.get_visual_attribute('color'));

@@ -1,0 +1,4 @@
+sample	r1	r2
+sample_01	three_samples_example/sample-01-R1.fastq.gz	three_samples_example/sample-01-R2.fastq.gz
+sample_02	three_samples_example/sample-02-R1.fastq.gz	three_samples_example/sample-02-R2.fastq.gz
+sample_03	three_samples_example/sample-03-R1.fastq.gz	three_samples_example/sample-03-R2.fastq.gz

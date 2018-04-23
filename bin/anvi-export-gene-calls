@@ -27,7 +27,7 @@ progress = terminal.Progress()
 
 
 def main(args):
-    dbops.is_contigs_db(args.contigs_db)
+    utils.is_contigs_db(args.contigs_db)
 
     if not args.output_file:
         raise ConfigError("You should provide an output file name so anvi'o does not have to make up a silly\

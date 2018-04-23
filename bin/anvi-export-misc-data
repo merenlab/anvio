@@ -6,10 +6,10 @@ import sys
 import argparse
 
 import anvio
-import anvio.dbops as dbops
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.miscdata import MiscDataTableFactory
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -24,7 +24,7 @@ run = terminal.Run()
 
 
 def main(args):
-    table_for_additional_data = dbops.MiscDataTableFactory(args)
+    table_for_additional_data = MiscDataTableFactory(args)
     table_for_additional_data.export(output_file_path=args.output_file)
 
 

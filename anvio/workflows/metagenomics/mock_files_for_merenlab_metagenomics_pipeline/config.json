@@ -1,0 +1,30 @@
+{
+    "samples_txt": "samples.txt",
+    "output_dirs":{
+        "LOGS_DIR" : "00_LOGS",
+        "QC_DIR" : "01_QC",
+        "CONTIGS_DIR" : "03_CONTIGS",
+        "MAPPING_DIR" : "04_MAPPING",
+        "PROFILE_DIR" : "05_ANVIO_PROFILE",
+        "MERGE_DIR" : "06_MERGED"
+    },
+    "all_against_all": false,
+    "remove_human_contamination":{
+        "run": false
+    },
+    "megahit":{
+        "run": true,
+        "memory": 0.4,
+        "min_contig_len": 1000
+    },
+    "anvi_profile":{
+        "min_contig_length": 2500,
+        "profile_AA": true,
+        "report_variability_full": false,
+        "threads": 5
+    },
+    "run_centrifuge":{
+        "run": true,
+        "db": "$CENTRIFUGE_BASE/p+h+v/p+h+v"
+    }
+}

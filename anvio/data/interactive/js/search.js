@@ -44,14 +44,14 @@ function searchContigs()
             _counter++;
         }
     }
-    $('#search_result_message').html(_counter + " splits found.");
+    $('#search_result_message').html(_counter + " result(s) found.");
 }
 
 function searchFunctions() {
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/data/search_functions?timestamp=' + new Date().getTime(),
+        url: '/data/search_functions',
         data: {terms: $('#searchFunctionsValue').val()},
         success: function(data) {
             if (data['status'] == 0) {
@@ -64,9 +64,10 @@ function searchFunctions() {
                 for (var i=0; i < data['results'].length; i++) {
                     var _gene_caller_id = data['results'][i][0];
                     var _source         = data['results'][i][1];
-                    var _annotation     = data['results'][i][2];
-                    var _search_term    = data['results'][i][3];
-                    var _split_name     = data['results'][i][4];
+                    var _accession      = data['results'][i][2];
+                    var _annotation     = data['results'][i][3];
+                    var _search_term    = data['results'][i][4];
+                    var _split_name     = data['results'][i][5];
 
                     var _beginning = _annotation.toLowerCase().indexOf(_search_term.toLowerCase());
                     _annotation = [_annotation.slice(0, _beginning), 
@@ -76,11 +77,16 @@ function searchFunctions() {
                                    _annotation.slice(_beginning + _search_term.length, _annotation.length)
                                    ].join("");
 
-                    search_results.push({'split': data['results'][i][4], 'value': '<b>Gene caller id:</b> ' + _gene_caller_id +
+                    var reported_column = _split_name;
+                    if (mode == 'gene') {
+                        reported_column = _gene_caller_id;
+                    }
+                    search_results.push({'split': reported_column , 'value': '<b>Gene caller id:</b> ' + _gene_caller_id +
                                                                                   '</br><b>Source:</b> ' + _source +
+                                                                                  '</br><b>Accession:</b> ' + _accession +
                                                                                   '</br><b>Annotation:</b> ' + _annotation});
                 }
-                $('#search_result_message_functions').html(data['results'].length + " results found.");
+                $('#search_result_message_functions').html(data['results'].length + " result(s) found.");
             } else {
                 $('.search-message').show();
                 $('.search-message').html(data['message']);
@@ -89,10 +95,52 @@ function searchFunctions() {
     });
 }
 
+function filterGeneClusters() {
+    var parameters = {};
+
+    $('.pan-filters input:text').each(function (index, input){
+        if (!$(input).prop('disabled')) {
+            parameters[$(input).attr('parameter')] = $(input).val();
+        }
+    });
+
+    if (Object.keys(parameters).length == 0) {
+        $('.pan-filter-error').show();
+        $('.pan-filter-error').html("You need to select at least one filter.");
+        $('#search_result_message_pan_filter').html('');
+        return;
+    }
+
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/data/filter_gene_clusters',
+        data: parameters,
+        success: function(data) {
+            if (data['status'] == 0) {
+                $('.pan-filter-error').hide();
+                $('.pan-filter-error').html('');
+
+                search_results = [];
+                search_column = '';
+
+                for (var i=0; i < data['gene_clusters_list'].length; i++) {
+                    search_results.push({'split': data['gene_clusters_list'][i], 'value': ''});
+                }
+                $('#search_result_message_pan_filter').html(data['gene_clusters_list'].length + " gene clusters passed the filter.");
+            } else {
+                $('.pan-filter-error').show();
+                $('.pan-filter-error').html(data['message']);
+                $('#search_result_message_pan_filter').html('');
+            };
+        }
+    });
+}
+
 function showSearchResult() {
     var clear_link = '<a href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">(clear)</a>';
     $("#search-results-table-header").html('<h4>Search results ' + clear_link + '</h4>');
-    $("#search-results-table-search-name").html('Split name');
+    $("#search-results-table-search-name").html('Item Name');
     $("#search-results-table-search-item").html(search_column);
 
     var rows = "";

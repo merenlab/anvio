@@ -41,13 +41,13 @@ INFO "Exporting the collection 'test_collection'"
 anvi-export-collection -p TEST/TEST-PAN.db -C test_collection -O exported_collection --include-unbinned
 
 INFO "List available aligners for aligning sequences in gene clusters"
-anvi-export-gene-cluster-alignments --list-aligners
+anvi-get-sequences-for-gene-clusters --list-aligners
 
 INFO "Exporting aligned amino acid sequences for some gene clusters"
-anvi-export-gene-cluster-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa
+anvi-get-sequences-for-gene-clusters -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa
 
 INFO "Exporting aligned DNA sequences for some gene clusters"
-anvi-export-gene-cluster-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_DNA.fa --report-DNA-sequences
+anvi-get-sequences-for-gene-clusters -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_DNA.fa --report-DNA-sequences
 
 INFO "First five line from the AA output"
 head -n 5 aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa
@@ -56,7 +56,7 @@ INFO "First five line from the DNA output"
 head -n 5 aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_DNA.fa
 
 INFO "Exporting concatenated amino acid sequences for some gene clusters for phylogenomics"
-anvi-export-gene-cluster-alignments -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa --concatenate-gene-clusters
+anvi-get-sequences-for-gene-clusters -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa --concatenate-gene-clusters
 
 INFO "Summarizing the pan, using the test collection (in quick mode)"
 anvi-summarize -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -o TEST_SUMMARY_QUICK --quick
@@ -72,7 +72,7 @@ anvi-import-state -p TEST/TEST-PAN.db -s default-state.json -n default
 anvi-import-state -p TEST/ANOTHER_TEST-PAN.db -s default-state.json -n default
 
 INFO "Displaying the initial pangenome analysis results"
-anvi-display-pan -p TEST/TEST-PAN.db -s TEST/TEST-SAMPLES.db -g TEST-GENOMES.db --title "A mock pangenome analysis"
+anvi-display-pan -p TEST/TEST-PAN.db -g TEST-GENOMES.db --title "A mock pangenome analysis"
 
 INFO "Displaying the second pangenome analysis results"
-anvi-display-pan -p TEST/ANOTHER_TEST-PAN.db -s TEST/ANOTHER_TEST-SAMPLES.db -g TEST-GENOMES.db --title "A mock pangenome analysis (with --min-occurrence 2)"
+anvi-display-pan -p TEST/ANOTHER_TEST-PAN.db -g TEST-GENOMES.db --title "A mock pangenome analysis (with --min-occurrence 2)"

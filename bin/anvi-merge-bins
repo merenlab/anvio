@@ -6,12 +6,11 @@ import sys
 import argparse
 
 import anvio
-import anvio.dbops as dbops
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.utils import is_this_name_OK_for_database
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -28,7 +27,7 @@ progress = terminal.Progress()
 
 
 def main(args):
-    dbops.is_pan_or_profile_db(args.pan_or_profile_db)
+    utils.is_pan_or_profile_db(args.pan_or_profile_db)
 
     c = ccollections.Collections(r = run, p = progress)
     c.populate_collections_dict(args.pan_or_profile_db)
@@ -60,7 +59,7 @@ def main(args):
     bin_names_list = [b.strip() for b in args.bin_names_list.split(',')]
     run.info('Bins to merge', ', '.join(bin_names_list))
 
-    is_this_name_OK_for_database('bin name', args.new_bin_name, stringent=False)
+    utils.is_this_name_OK_for_database('bin name', args.new_bin_name, stringent=False)
     run.info('New bin name', args.new_bin_name)
 
     c.merge_bins(args.collection_name, args.new_bin_name, bin_names_list)

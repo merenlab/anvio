@@ -6,6 +6,7 @@ The default client of this library is under bin/anvi-merge"""
 
 
 import os
+import argparse
 
 import anvio
 import anvio.utils as utils
@@ -18,6 +19,11 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.tables.variability import TableForVariability
+from anvio.tables.codonfrequencies import TableForCodonFrequencies
+from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalData
+from anvio.tables.views import TablesForViews
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -71,12 +77,18 @@ class MultipleRuns:
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
+        self.profiles = []
         self.split_names = None
         self.sample_ids_found_in_input_dbs = []
         self.normalization_multiplier = {}
 
         self.profile_dbs_info_dict = {}
-        self.profiles = []
+
+        # these will describe layer additional data common to all profile
+        # databases to be merged:
+        self.layer_additional_data_dict = {}
+        self.layer_additional_data_keys = []
+
 
         self.merged_profile_db_path = None
 
@@ -88,22 +100,22 @@ class MultipleRuns:
         self.description = None
 
 
-    def populate_profile_dbs_info_dict(self):
-        improper = []
+    def check_dbs_to_be_merged(self):
+        proper, improper = [], []
 
         for p in self.input_profile_db_paths:
-            dbops.is_profile_db(p)
+            utils.is_profile_db(p)
 
             profile_db = dbops.ProfileDatabase(p)
 
             if profile_db.meta['db_type'] != 'profile' or profile_db.meta['blank'] or profile_db.meta['merged']:
                 improper.append(p)
             else:
-                self.profile_dbs_info_dict[p] = profile_db.meta
+                proper.append(p)
 
         proper = [p for p in self.input_profile_db_paths if p not in improper]
 
-        if len(improper) == len(proper):
+        if len(improper) == len(self.input_profile_db_paths):
             raise ConfigError("None of the databases you asked anvi'o to merge were single, non-blank anvi'o profiles. If you\
                                are not testing anvi'o and yet found yourself here, it is safe to assume that something somewhere\
                                in your workflow is quite wrong :/")
@@ -120,6 +132,65 @@ class MultipleRuns:
                               Here are all the paths for excluded databases: %s." \
                                             % (len(self.input_profile_db_paths), len(improper), len(proper), ', '.join(["'%s'" % p for p in improper])))
 
+        # replace input profile database paths with proper paths:
+        self.input_profile_db_paths = proper
+
+
+    def populate_layer_additional_data_dict(self):
+        self.progress.new('Layer additional data ops')
+        self.progress.update('...')
+
+        dicts_of_layer_additional_data_dicts = {}
+
+        for p in self.input_profile_db_paths:
+            self.progress.update(p)
+            keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get()
+            dicts_of_layer_additional_data_dicts[p] = {'keys': keys, 'data': data}
+
+        # find common keys to all layer additional data tables:
+        all_keys = [set(e['keys']) for e in dicts_of_layer_additional_data_dicts.values()]
+
+        self.layer_additional_data_keys = all_keys.pop()
+
+        for key_set in all_keys:
+            self.layer_additional_data_keys.intersection_update(key_set)
+
+        # if there are no keys that are common to all single profiles, we shall merge nothing of these
+        # tables.
+        if not 'total_reads_mapped' in self.layer_additional_data_keys:
+            self.progress.end()
+            raise ConfigError("While trying to learn everything there is to learn about layer additional data in single\
+                               profiles to be merged, anvi'o realized that 'total_reads_mapped' is not common to all \
+                               profile databases :( This is bad, becasue this indicates there is something terribly\
+                               wrong with one or more of your single profile databases. If you are a programmer trying to\
+                               mimic anvi'o single profiles, you will have to look at the code of the profiler a bit more\
+                               carefully. If you are a user, well, you are *really* in trouble... Send us an e-mail or\
+                               something?")
+
+        self.progress.update('Finalizing ...')
+        # otherwise, let's create a final data dictionary for these assholes based on common keys.
+        for data in [v['data'] for v in dicts_of_layer_additional_data_dicts.values()]:
+            sample_id = list(data.keys())[0]
+
+            keys_of_no_interest = [k for k in data[sample_id] if k not in self.layer_additional_data_keys]
+            for key in keys_of_no_interest:
+                data[sample_id].pop(key)
+
+            self.layer_additional_data_dict[sample_id] = data[sample_id]
+
+        self.progress.end()
+
+
+    def populate_profile_dbs_info_dict(self):
+        self.progress.new('Reading self tables of each single profile db')
+        self.progress.update('...')
+
+        for p in self.input_profile_db_paths:
+            profile_db = dbops.ProfileDatabase(p)
+            self.profile_dbs_info_dict[p] = profile_db.meta
+
+        self.progress.end()
+
 
     def sanity_check(self):
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.overwrite_output_destinations)
@@ -134,7 +205,11 @@ class MultipleRuns:
             raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
                                 while also asking it to enforce it.")
 
+        self.check_dbs_to_be_merged()
+
         self.populate_profile_dbs_info_dict()
+
+        self.populate_layer_additional_data_dict()
 
         self.sample_ids_found_in_input_dbs = sorted([v['sample_id'] for v in list(self.profile_dbs_info_dict.values())])
         if len(self.profile_dbs_info_dict) != len(set(self.sample_ids_found_in_input_dbs)):
@@ -155,7 +230,7 @@ class MultipleRuns:
                      ('min_contig_length', 'The minimum contig length (-M) values'),
                      ('min_coverage_for_variability', 'The minimum coverage values to report variability (-V)'),
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
-                     ('AA_frequencies_profiled', 'Profile AA frequencies flags (--profile-AA-frequencies)'),
+                     ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
                      ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)')]:
             v = set([r[k] for r in list(self.profile_dbs_info_dict.values())])
             if len(v) > 1:
@@ -164,7 +239,7 @@ class MultipleRuns:
                                     run with identical flags and parameters :/" % p)
 
         # get split names from one of the profile databases. split names must be identical across all
-        self.split_names = sorted(list(dbops.get_split_names_in_profile_db(list(self.profile_dbs_info_dict.keys())[0])))
+        self.split_names = sorted(list(utils.get_all_item_names_from_the_database(list(self.profile_dbs_info_dict.keys())[0])))
 
         # make sure all runs were profiled using the same contigs database (if one used):
         hashes_for_profile_dbs = set([r['contigs_db_hash'] for r in self.profile_dbs_info_dict.values()])
@@ -205,7 +280,7 @@ class MultipleRuns:
 
 
     def merge_variable_nts_tables(self):
-        variable_nts_table = dbops.TableForVariability(self.merged_profile_db_path, progress=self.progress)
+        variable_nts_table = TableForVariability(self.merged_profile_db_path, progress=self.progress)
 
         for input_profile_db_path in self.profile_dbs_info_dict:
             sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
@@ -219,19 +294,19 @@ class MultipleRuns:
         variable_nts_table.store()
 
 
-    def merge_variable_aas_tables(self):
-        variable_aas_table = dbops.TableForAAFrequencies(self.merged_profile_db_path, progress=self.progress)
+    def merge_variable_codons_tables(self):
+        variable_codons_table = TableForCodonFrequencies(self.merged_profile_db_path, progress=self.progress)
 
         for input_profile_db_path in self.profile_dbs_info_dict:
             sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_variable_aas_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_aas_table_name, tables.variable_aas_table_structure)
+            sample_variable_codons_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_codons_table_name, tables.variable_codons_table_structure)
             sample_profile_db.disconnect()
 
-            for tpl in sample_variable_aas_table:
-                entry = tuple([variable_aas_table.next_id(tables.variable_aas_table_name)] + list(tpl[1:]))
-                variable_aas_table.db_entries.append(entry)
+            for tpl in sample_variable_codons_table:
+                entry = tuple([variable_codons_table.next_id(tables.variable_codons_table_name)] + list(tpl[1:]))
+                variable_codons_table.db_entries.append(entry)
 
-        variable_aas_table.store()
+        variable_codons_table.store()
 
 
     def merge_split_coverage_data(self):
@@ -253,7 +328,7 @@ class MultipleRuns:
 
             sample_split_coverage_values.close()
 
-        merged_split_coverage_values.store()    
+        merged_split_coverage_values.store()
         merged_split_coverage_values.close()
 
         self.progress.end()
@@ -292,8 +367,6 @@ class MultipleRuns:
         # set database paths
         self.merged_profile_db_path = os.path.join(self.output_directory, 'PROFILE.db')
         self.database_paths['PROFILE.db'] = os.path.abspath(self.merged_profile_db_path)
-        self.samples_db_path = os.path.join(self.output_directory, 'SAMPLES.db')
-        self.database_paths['SAMPLES.db'] = os.path.abspath(self.samples_db_path)
 
         profile_db = dbops.ProfileDatabase(self.merged_profile_db_path)
 
@@ -304,7 +377,7 @@ class MultipleRuns:
         self.num_splits = C('num_splits')
         self.min_coverage_for_variability = C('min_coverage_for_variability')
         self.report_variability_full = C('report_variability_full')
-        self.AA_frequencies_profiled = C('AA_frequencies_profiled')
+        self.SCVs_profiled = C('SCVs_profiled')
         self.SNVs_profiled = C('SNVs_profiled')
         self.total_length = C('total_length')
 
@@ -323,7 +396,7 @@ class MultipleRuns:
                               to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
                                                                 % pp(self.num_splits))
 
-        self.total_reads_mapped_per_sample =  dict([(v['sample_id'], int(v['total_reads_mapped'][v['sample_id']])) for v in list(self.profile_dbs_info_dict.values())])
+        self.total_reads_mapped_per_sample = dict([(s, self.layer_additional_data_dict[s]['total_reads_mapped']) for s in self.layer_additional_data_dict])
 
         sample_ids_list = ', '.join(sorted(self.sample_ids_found_in_input_dbs)) 
         total_reads_mapped_list = ', '.join([str(self.total_reads_mapped_per_sample[sample_id]) for sample_id in self.sample_ids_found_in_input_dbs])
@@ -339,7 +412,7 @@ class MultipleRuns:
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
                        'SNVs_profiled': self.SNVs_profiled,
-                       'AA_frequencies_profiled': self.AA_frequencies_profiled,
+                       'SCVs_profiled': self.SCVs_profiled,
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
@@ -363,6 +436,7 @@ class MultipleRuns:
         self.run.info('contigs_db_hash', self.contigs_db_hash)
         self.run.info('num_runs_processed', len(self.sample_ids_found_in_input_dbs))
         self.run.info('merged_sample_ids', sample_ids_list)
+        self.run.info("Common layer additional data keys", ', '.join(self.layer_additional_data_keys))
         self.run.info('total_reads_mapped', total_reads_mapped_list)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('clustering_performed', not self.skip_hierarchical_clustering)
@@ -373,17 +447,19 @@ class MultipleRuns:
 
         if self.SNVs_profiled:
             self.progress.new('Merging variable positions tables')
+            self.progress.update('...')
             self.merge_variable_nts_tables()
             self.progress.end()
         else:
             self.run.warning("SNVs were not profiled, variable nt positions tables will be empty in the merged profile database.")
 
-        if self.AA_frequencies_profiled:
-            self.progress.new('Merging variable AAs tables')
-            self.merge_variable_aas_tables()
+        if self.SCVs_profiled:
+            self.progress.new('Merging variable codons tables')
+            self.progress.update('...')
+            self.merge_variable_codons_tables()
             self.progress.end()
         else:
-            self.run.warning("AA frequencies were not profiled, these tables will be empty in the merged profile database.")
+            self.run.warning("Codon frequencies were not profiled, hence, these tables will be empty in the merged profile database.")
 
         # critical part:
         self.gen_view_data_tables_from_atomic_data()
@@ -397,8 +473,7 @@ class MultipleRuns:
         if not self.skip_concoct_binning and __CONCOCT_IS_AVAILABLE__:
             self.bin_contigs_concoct()
 
-        # generate a samples database while you are at it
-        self.gen_samples_db_for_the_merged_profile()
+        self.populate_misc_data_tables()
 
         self.run.quit()
 
@@ -422,89 +497,50 @@ class MultipleRuns:
         return self.normalized_coverages[target][split_name][sample_id] / denominator if denominator else 0
 
 
-    def gen_samples_db_for_the_merged_profile(self):
-        """Geenrate a samples db for the merged profile.
-
-           We use the ProfileSuperclass to load all the views we added into the meged profile,
-           and generate clusterings of samples for each view to generate a default samples database."""
-
-        self.run.info_single("SAMPLES.db stuff...", nl_before=1, nl_after=1, mc="blue")
+    def populate_misc_data_tables(self):
+        self.run.info_single("Additional data and layer orders...", nl_before=1, nl_after=1, mc="blue")
 
         essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
 
-        class Args: pass
-        args = Args()
-        args.profile_db = self.merged_profile_db_path
-
         # initialize views.
+        args = argparse.Namespace(profile_db = self.merged_profile_db_path)
         profile_db_super = dbops.ProfileSuperclass(args)
         profile_db_super.load_views(omit_parent_column=True)
 
-        # figure out sample orders dictionary
-        sample_orders = {}
+        # figure out layer orders dictionary
+        layer_orders_data_dict = {}
         failed_attempts = []
-        self.progress.new('Working on SAMPLES.db')
+        self.progress.new('Working on layer orders')
         for essential_field in essential_fields:
-            self.progress.update('recovering samples order for "%s"' % (essential_field))
+            self.progress.update('recovering order for "%s"' % (essential_field))
             try:
-                sample_orders[essential_field] = \
-                        clustering.get_newick_tree_data_for_dict(profile_db_super.views[essential_field]['dict'],
-                                                                 distance=self.distance,
-                                                                 linkage=self.linkage,
-                                                                 transpose=True)
+                data_value = clustering.get_newick_tree_data_for_dict(profile_db_super.views[essential_field]['dict'],
+                                                                      distance=self.distance,
+                                                                      linkage=self.linkage,
+                                                                      transpose=True)
+
+                layer_orders_data_dict[essential_field] = {'data_value': data_value, 'data_type': 'newick'}
             except:
                 failed_attempts.append(essential_field)
         self.progress.end()
 
-        if not len(sample_orders):
-            self.run.warning("This may or may not be important: anvi'o attempted to generate a samples\
-                              database for this merged profile, however, all attempts to cluster samples\
-                              based on view data available in the merged profile failed. No samples db\
-                              for you :/")
+        if not len(layer_orders_data_dict):
+            self.run.warning("This may or may not be important: anvi'o attempted to generate orders for your\
+                              samples based on the view data, however, it failed :/")
             return
 
         if len(failed_attempts):
             self.run.warning("While anvi'o was trying to generate clusterings of samples based on view data\
                               available in the merged profile, clustering of some of the essential data\
                               failed. It is likely not a very big deal, but you shall be the judge of it.\
-                              Anvi'o now proceeds to generate a samples db with clusterings it generated\
-                              using the view data that worked. Here is the list of stuff that failed: '%s'"\
+                              Anvi'o now proceeds to store layers order information for those view items\
+                              the clustering in fact worked. Here is the list of stuff that failed: '%s'"\
                               % (', '.join(failed_attempts)))
 
-        # generate the samples order file
-        samples_order_file_path = filesnpaths.get_temp_file_path()
-        samples_order_file = open(samples_order_file_path, 'w')
-        samples_order_file.write('attributes\tbasic\tnewick\n')
-        for sample_order in sample_orders:
-            samples_order_file.write('%s\t%s\t%s\n' % (sample_order, '', sample_orders[sample_order]))
-        samples_order_file.close()
+        TableForLayerOrders(args).add(layer_orders_data_dict)
 
-        # figure out samples information stuff
-        samples_information = {}
-        headers = []
-        for sample_name in self.sample_ids_found_in_input_dbs:
-            samples_information[sample_name] = {}
-
-        self.progress.new('Working on SAMPLES.db')
-        self.progress.update('...')
-
-        # figure out num reads mapped per sample:
-        for sample_name in self.sample_ids_found_in_input_dbs:
-            samples_information[sample_name]['num_mapped_reads'] = self.total_reads_mapped_per_sample[sample_name]
-
-        self.progress.end()
-        # generate the samples information file
-        samples_information_file_path = filesnpaths.get_temp_file_path()
-        utils.store_dict_as_TAB_delimited_file(samples_information, samples_information_file_path, headers=headers)
-
-        # generate the samples database
-        samples_db = dbops.SamplesInformationDatabase(self.samples_db_path, quiet=False)
-        samples_db.create(samples_order_path=samples_order_file_path, samples_information_path=samples_information_file_path)
-
-        os.remove(samples_order_file_path)
-        os.remove(samples_information_file_path)
-
-        self.run.info('Samples database', self.samples_db_path)
+        # done with layer orders. let's add our layer additional data and call it a day.
+        TableForLayerAdditionalData(args).add(self.layer_additional_data_dict, list(self.layer_additional_data_keys))
 
 
     def gen_view_data_tables_from_atomic_data(self):
@@ -551,7 +587,7 @@ class MultipleRuns:
 
                 # time to store the data for this view in the profile database
                 table_name = '_'.join([essential_field, target])
-                dbops.TablesForViews(self.merged_profile_db_path).create_new_view(
+                TablesForViews(self.merged_profile_db_path).create_new_view(
                                                 data_dict=data_dict,
                                                 table_name=table_name,
                                                 table_structure=view_table_structure,
@@ -560,7 +596,7 @@ class MultipleRuns:
 
         # if SNVs were not profiled, remove all entries from variability tables:
         if not self.SNVs_profiled:
-            dbops.TablesForViews(self.merged_profile_db_path).remove(view_name='variability', table_names_to_blank=['variability_splits', 'variability_contigs'])
+            TablesForViews(self.merged_profile_db_path).remove(view_name='variability', table_names_to_blank=['variability_splits', 'variability_contigs'])
 
         self.progress.end()
 
@@ -617,7 +653,7 @@ class MultipleRuns:
             target_table = 'atomic_data_%s' % target
 
             for input_profile_db_path in self.profile_dbs_info_dict:
-                db = anvio.db.DB(input_profile_db_path, dbops.get_required_version_for_db(input_profile_db_path))
+                db = anvio.db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path))
                 atomic_data_table_for_each_run[target][input_profile_db_path] = db.get_table_as_dict(target_table)
 
         atomic_data_table_fields = db.get_table_structure('atomic_data_splits')

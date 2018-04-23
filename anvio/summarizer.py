@@ -53,6 +53,7 @@ from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
+from anvio.tables.miscdata import TableForLayerAdditionalData
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -141,12 +142,13 @@ class SummarizerSuperClass(object):
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
+        self.delete_output_directory_if_exists = True if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
 
         self.sanity_check()
 
         if self.output_directory:
             self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
-            filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=True)
+            filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
 
 
     def sanity_check(self):
@@ -215,8 +217,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
 
-        # init gene clusters and functins from Pan super.
+        # init gene clusters and functions from Pan super.
         self.init_gene_clusters()
+
+        # init items additional data.
+        self.init_items_additional_data()
 
         if not self.skip_init_functions:
             self.init_gene_clusters_functions()
@@ -266,7 +271,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                         ('Gene cluster min occurrence parameter', pretty(int(self.p_meta['gene_cluster_min_occurrence']))),
                         ('MCL inflation parameter', self.p_meta['mcl_inflation']),
                         ('NCBI blastp or DIAMOND?', 'NCBI blastp' if self.p_meta['use_ncbi_blast'] else ('DIAMOND (and it was %s)' % ('sensitive' if self.p_meta['diamond_sensitive'] else 'not sensitive'))),
-                        ('Number of genomes used', pretty(int(self.p_meta['num_genomes'])))],
+                        ('Number of genomes used', pretty(int(self.p_meta['num_genomes']))),
+                        ('Items aditional data keys', '--' if not self.items_additional_data_keys else ', '.join(self.items_additional_data_keys))],
 
                 'genomes': [('Created on', 'Storage DB knows nothing :('),
                             ('Version', anvio.__genomes_storage_version__),
@@ -304,13 +310,17 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # standard headers
         header = ['unique_id', 'gene_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id']
 
+        # extend the header with items additional data keys
+        for items_additional_data_key in self.items_additional_data_keys:
+            header.append(items_additional_data_key)
+
         # extend the header with functions if there are any
-        for source in self.gene_clusters_function_sources:
+        for function_source in self.gene_clusters_function_sources:
             if self.quick:
-                header.append(source + '_ACC')
+                header.append(function_source + '_ACC')
             else:
-                header.append(source + '_ACC')
-                header.append(source)
+                header.append(function_source + '_ACC')
+                header.append(function_source)
 
         # if this is not a quick summary, have AA sequences in the output
         AA_sequences = None
@@ -320,8 +330,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # write the header
         output_file_obj.write(('\t'.join(header) + '\n').encode('utf-8'))
-
-        #sequences = self.get_AA_sequences_for_gene_clusters
 
         self.progress.new('Gene clusters summary file')
         self.progress.update('...')
@@ -333,6 +341,14 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 for gene_caller_id in self.gene_clusters[gene_cluster_name][genome_name]:
                     entry = [unique_id, gene_cluster_name, gene_cluster_name_to_bin_name[gene_cluster_name], genome_name, gene_caller_id]
 
+                    # populate the entry with item aditional data
+                    for items_additional_data_key in self.items_additional_data_keys:
+                        if gene_cluster_name in self.items_additional_data_dict:
+                            entry.append(self.items_additional_data_dict[gene_cluster_name][items_additional_data_key])
+                        else:
+                            entry.append('')
+
+                    # populate the entry with functions.
                     for function_source in self.gene_clusters_function_sources:
                         annotations_dict = self.gene_clusters_functions_dict[gene_cluster_name][genome_name][gene_caller_id]
                         if function_source in annotations_dict:
@@ -427,7 +443,7 @@ class SAAVsAndProteinStructuresSummary:
             raise ConfigError("The input and the output directories can't be the same.")
 
         if self.contigs_db_path:
-            dbops.is_contigs_db(self.contigs_db_path)
+            utils.is_contigs_db(self.contigs_db_path)
 
         self.output_directory = filesnpaths.check_output_directory(self.output_directory)
         filesnpaths.gen_output_directory(self.output_directory)
@@ -771,7 +787,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                 'percent_contigs_nts_described_by_profile': P(self.p_meta['total_length'], self.a_meta['total_length']),
                                 'percent_contigs_contigs_described_by_profile': P(self.p_meta['num_contigs'], self.a_meta['num_contigs']),
                                 'percent_contigs_splits_described_by_profile': P(self.p_meta['num_splits'], self.a_meta['num_splits']),
-                                    }
+                                }
 
         # I am not sure whether this is the best place to do this,
         self.summary['basics_pretty'] = {'profile': [
@@ -782,7 +798,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                      ('Number of splits', pretty(int(self.p_meta['num_splits']))),
                                                      ('Total nucleotides', humanize_n(int(self.p_meta['total_length']))),
                                                      ('SNVs profiled', self.p_meta['SNVs_profiled']),
-                                                     ('SAAVs profiled', self.p_meta['AA_frequencies_profiled']),
+                                                     ('SCVs profiled', self.p_meta['SCVs_profiled']),
                                                     ],
                                          'contigs': [
                                                         ('Created on', self.p_meta['creation_date']),
@@ -858,10 +874,12 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             output_file_obj = self.get_output_file_handle(prefix='bins_summary.txt')
             utils.store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
 
-            # store summary of smaples dict. currently we are only reporting the number of reads mapped per sample
-            summary_of_samples = dict([(s, {'total_reads_mapped': self.p_meta['total_reads_mapped'][s]}) for s in self.p_meta['samples']])
-            output_file_obj = self.get_output_file_handle(prefix='samples_summary.txt')
-            utils.store_dict_as_TAB_delimited_file(summary_of_samples, None, headers=['samples', 'total_reads_mapped'], file_obj=output_file_obj)
+            # store layers additional data (we call it samples summary here, it is confusing in the code,
+            # but will be less confusing to the user).
+            samples_summary_obj = self.get_output_file_handle(prefix='samples_summary.txt')
+            samples_summary_output_path = samples_summary_obj.name
+            samples_summary_obj.close()
+            TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).export(output_file_path=samples_summary_output_path)
 
             # save merged matrices for bins x samples
             for table_name in self.summary['collection_profile_items']:
@@ -1148,31 +1166,25 @@ class Bin:
         self.num_splits = len(self.split_names)
 
         # make these dicts avilable:
-        self.gene_coverages = {}
-        self.gene_detection = {}
-        self.gene_non_outlier_coverages = {}
-        self.gene_non_outlier_coverage_stds = {}
+        self.gene_level_coverage_stats_dict = {}
         self.split_coverage_values_per_nt_dict = {}
-        self.gene_coverage_per_position = {}
-        self.gene_non_outlier_positions = {}
 
         A = lambda x: self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name][x]
 
-        # populate gene coverage and detection dictionaries
+        # populate gene coverage and detection dictionaries by subsetting them from the parent summary object
         if self.summary.gene_level_coverage_stats_dict:
             for gene_callers_id in self.gene_caller_ids:
-                self.gene_coverages[gene_callers_id], self.gene_detection[gene_callers_id] = {}, {}
-                self.gene_non_outlier_coverages[gene_callers_id], self.gene_non_outlier_coverage_stds[gene_callers_id] = {}, {}
-                self.gene_coverage_per_position[gene_callers_id], self.gene_non_outlier_positions[gene_callers_id] = {}, {}
+                self.gene_level_coverage_stats_dict[gene_callers_id] = {}
 
                 for sample_name in self.summary.p_meta['samples']:
-                    self.gene_coverages[gene_callers_id][sample_name] = A('mean_coverage')
-                    self.gene_detection[gene_callers_id][sample_name] = A('detection')
-                    self.gene_non_outlier_coverages[gene_callers_id][sample_name] = A('non_outlier_mean_coverage')
-                    self.gene_non_outlier_coverage_stds[gene_callers_id][sample_name] = A('non_outlier_coverage_std')
-                    if 'gene_coverage_per_position' in self.summary.gene_level_coverage_stats_dict:
-                        self.gene_coverage_per_position[gene_callers_id][sample_name] = A('gene_coverage_per_position')
-                        self.gene_non_outlier_positions[gene_callers_id][sample_name] = A('non_outlier_positions')
+                    self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': A('mean_coverage'),
+                                                                                         'detection': A('detection'),
+                                                                                         'non_outlier_mean_coverage': A('non_outlier_mean_coverage'),
+                                                                                         'non_outlier_coverage_std': A('non_outlier_coverage_std')}
+
+                    if 'gene_coverage_values_per_nt' in self.summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name]:
+                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = A('gene_coverage_values_per_nt')
+                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['non_outlier_positions'] = A('non_outlier_positions')
 
         # populate coverage values per nucleutide for the bin.
         if self.summary.split_coverage_values_per_nt_dict:
@@ -1342,10 +1354,17 @@ class Bin:
 
         headers = ['gene_callers_id'] + self.summary.p_meta['samples']
 
-        utils.store_dict_as_TAB_delimited_file(self.gene_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_coverages.txt'))
-        utils.store_dict_as_TAB_delimited_file(self.gene_detection, None, headers=headers, file_obj=self.get_output_file_handle('gene_detection.txt'))
-        utils.store_dict_as_TAB_delimited_file(self.gene_non_outlier_coverages, None, headers=headers, file_obj=self.get_output_file_handle('gene_non_outlier_coverages.txt'))
-        utils.store_dict_as_TAB_delimited_file(self.gene_non_outlier_coverage_stds, None, headers=headers, file_obj=self.get_output_file_handle('gene_non_outlier_coverage_stds.txt'))
+        for key, file_name in [('mean_coverage', 'gene_coverages.txt'),
+                               ('detection', 'gene_detection.txt'),
+                               ('non_outlier_mean_coverage', 'gene_non_outlier_coverages.txt'),
+                               ('non_outlier_coverage_std', 'gene_non_outlier_coverage_stds.txt')]:
+            # we will create a new dictionary here by subestting values of `key` from self.gene_level_coverage_stats_dict,
+            # so we can store that information into `file_name`. magical stuff .. by us .. level 3000 wizards who can summon
+            # inefficiency at most random places. SHUT UP.
+
+            d = utils.get_values_of_gene_level_coverage_stats_as_dict(self.gene_level_coverage_stats_dict, key)
+
+            utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=self.get_output_file_handle(file_name))
 
 
     def store_genes_basic_info(self):
@@ -1660,7 +1679,6 @@ class AdHocRunGenerator:
 
     def get_output_file_path(self, file_name):
         return os.path.join(self.output_directory, file_name)
-#
 
     def check_output_directory(self):
         if os.path.exists(self.output_directory) and not self.delete_output_directory_if_exists:
@@ -1692,7 +1710,7 @@ class AdHocRunGenerator:
 
         data_file_path = self.matrix_data_for_clustering if self.matrix_data_for_clustering else self.view_data_path
 
-        clustering.get_newick_tree_data(data_file_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
+        clustering.create_newick_file_from_matrix_file(data_file_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
 
         self.progress.end()
 
@@ -1718,8 +1736,8 @@ class AdHocRunGenerator:
         return samples_order_file_path
 
 
-
     def gen_samples_db(self):
+        # FIXME: THIS WILL NOT WORK.
         if not self.samples_order_file_path:
             self.samples_order_file_path = self.gen_samples_order_file(self.view_data_path)
 

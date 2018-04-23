@@ -108,13 +108,23 @@ class GenomeDescriptions(object):
         """Returns True if all HMM sources in all genomes are comparable"""
         hmm_sources_found = set([])
         for genome_name in self.genomes:
-            [hmm_sources_found.add(s) for s in self.genomes[genome_name]['hmm_sources_info'].keys()]
+            if 'hmm_sources_info' not in self.genomes[genome_name]:
+                # someone did not run the expensive `init` function. but we can recover this
+                # here quitte cheaply
+                contigs_db = dbops.ContigsDatabase(self.genomes[genome_name]['contigs_db_path'])
+                hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+                for hmm_source in hmm_sources_info:
+                    hmm_sources_info[hmm_source]['genes'] = sorted([g.strip() for g in hmm_sources_info[hmm_source]['genes'].split(',')])
+            else:
+                hmm_sources_info = self.genomes[genome_name]['hmm_sources_info']
+
+            [hmm_sources_found.add(s) for s in hmm_sources_info.keys()]
 
         # find out hmm_sources that occur in all genomes
         hmm_sources_in_all_genomes = copy.deepcopy(hmm_sources_found)
         for genome_name in self.genomes:
             for hmm_source in hmm_sources_found:
-                if hmm_source not in self.genomes[genome_name]['hmm_sources_info'] and hmm_source in hmm_sources_in_all_genomes:
+                if hmm_source not in hmm_sources_info and hmm_source in hmm_sources_in_all_genomes:
                     hmm_sources_in_all_genomes.remove(hmm_source)
 
         if not len(hmm_sources_in_all_genomes):
@@ -135,6 +145,9 @@ class GenomeDescriptions(object):
         self.internal_genome_names = list(self.internal_genomes_dict.keys())
         self.external_genome_names = list(self.external_genomes_dict.keys())
 
+        # let us know if the user did not want a full init.
+        self.full_init = init
+
         # convert relative paths to absolute paths and MERGE internal and external genomes into self.genomes:
         for source, input_file in [(self.external_genomes_dict, self.input_file_for_external_genomes), (self.internal_genomes_dict, self.input_file_for_internal_genomes)]:
             for genome_name in source:
@@ -143,6 +156,11 @@ class GenomeDescriptions(object):
                     if db_path_var not in self.genomes[genome_name]:
                         continue
                     path = self.genomes[genome_name][db_path_var]
+
+                    if not path:
+                        raise ConfigError("Bad news: anvi'o was loading genome desriptions, and it run into an empty path for\
+                                           the genome %s. How did this happen? HOW? :(" % genome_name)
+
                     if not path.startswith('/'):
                         self.genomes[genome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(input_file), path))
 
@@ -166,10 +184,17 @@ class GenomeDescriptions(object):
         # this will populate self.genomes with relevant data that can be learned about these genomes such as 'avg_gene_length',
         # 'num_splits', 'num_contigs', 'num_genes', 'percent_redundancy', 'gene_caller_ids', 'total_length', 'partial_gene_calls',
         # 'percent_completion', 'num_genes_per_kb', 'gc_content'.
-        if init:
+        if self.full_init:
             self.init_internal_genomes()
             self.init_external_genomes()
-
+        else:
+            # init will do everything. but it is very expensive. if the user does not want to
+            # init all the bulky stuff, we still can give them the contents of the meta tables.
+            for genome_name in self.genomes:
+                g = self.genomes[genome_name]
+                contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+                for key in contigs_db.meta:
+                    g[key] = contigs_db.meta[key]
 
         # make sure it is OK to go with self.genomes
         self.sanity_check()
@@ -182,7 +207,7 @@ class GenomeDescriptions(object):
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
 
         if self.functions_are_available:
-            contigs_super.init_functions(requested_sources=self.function_annotation_sources)
+            contigs_super.init_functions(requested_sources=list(self.function_annotation_sources))
             function_calls_dict = contigs_super.gene_function_calls_dict
         else:
             function_calls_dict = {}
@@ -274,7 +299,7 @@ class GenomeDescriptions(object):
 
 
     def get_genome_hash_for_external_genome(self, entry):
-        dbops.is_contigs_db(entry['contigs_db_path'])
+        utils.is_contigs_db(entry['contigs_db_path'])
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
         genome_hash = contigs_db.meta['contigs_db_hash']
         contigs_db.disconnect()
@@ -283,7 +308,7 @@ class GenomeDescriptions(object):
 
 
     def get_genome_hash_for_internal_genome(self, entry):
-        dbops.is_contigs_db(entry['contigs_db_path'])
+        utils.is_contigs_db(entry['contigs_db_path'])
         split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(entry)
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
         genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']]).encode('utf-8')).hexdigest()[0:12]
@@ -336,7 +361,7 @@ class GenomeDescriptions(object):
                 c = self.genomes[genome_name]
                 c['external_genome'] = False
 
-                dbops.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
+                utils.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
 
                 split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(c)
 
@@ -356,7 +381,7 @@ class GenomeDescriptions(object):
 
 
     def get_split_names_of_interest_for_internal_genome(self, entry):
-        dbops.is_profile_db(entry['profile_db_path'])
+        utils.is_profile_db(entry['profile_db_path'])
         # get splits of interest:
         class Args: pass
         args = Args()
@@ -394,6 +419,14 @@ class GenomeDescriptions(object):
             raise ConfigError("Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very\
                                 wrong with your workflow :/ Please let the developers know if you can't figure this one out")
 
+        if not self.full_init:
+            # if this is not full init, stop the sanity check here.
+            self.run.warning("You (or the programmer) requested genome descriptions for your internal and/or external\
+                              genomes to be loaded without a 'full init'. There is nothong for you to be concerned.\
+                              This is just a friendly reminder to make sure if something goes terribly wrong (like your\
+                              computer sets itself on fire), this may be the reason.")
+            return
+
         # make sure HMMs for SCGs were run for every contigs db:
         genomes_missing_hmms_for_scgs =  [g for g in self.genomes if not self.genomes[g]['hmms_for_scgs_were_run']]
         if len(genomes_missing_hmms_for_scgs):
@@ -424,12 +457,13 @@ class GenomeDescriptions(object):
                                          ', '.join(['%d gene calls by "%s"' % (tpl[1], tpl[0]) for \
                                                          tpl in self.genomes[genome_name]['gene_calls_from_other_gene_callers'].items()])))
 
-            self.run.warning("PLEASE READ CAREFULLY. Some of your genomes had gene calls identified by gene callers other than\
-                              the gene caller anvi'o used (which should be 'prodigal' unless you specified another one). As a\
-                              result, the following genomes contained gene calls coming from other gene callers that did not\
-                              get processed. This may be exactly what you expected to happen, but if was not, you may need to\
-                              use the `--gene-caller` flag to make sure anvi'o is using the gene caller it should be using. Here\
-                              is the list: %s." % (', '.join(info)), lc='green')
+            gene_caller = list(self.genomes.values())[0]['gene_caller']
+            self.run.warning("Some of your genomes had gene calls identified by gene callers other than\
+                              the gene caller anvi'o used, which was set to '%s' either by default, or because you asked for it.\
+                              The following genomes contained genes that were not processed (this may be exactly what you expect\
+                              to happen, but if was not, you may need to use the `--gene-caller` flag to make sure anvi'o is using\
+                              the gene caller it should be using): %s." % \
+                                            (gene_caller, ', '.join(info)), header="PLEASE READ CAREFULLY", lc='green')
 
         # check whether every genome has at least one gene call.
         genomes_with_no_gene_calls = [g for g in self.genomes if not self.genomes[g]['num_genes']]

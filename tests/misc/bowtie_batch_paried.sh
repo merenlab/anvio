@@ -10,7 +10,7 @@
 
 set -e
 
-bowtie2 -x $4 -1 $1 -2 $2 -S $3.sam
+bowtie2 -x $4 -1 $1 -2 $2 -S $3.sam --no-unal
 samtools view -F 4 -bS $3.sam > $3-RAW.bam
 samtools sort $3-RAW.bam -o $3.bam
 samtools index $3.bam

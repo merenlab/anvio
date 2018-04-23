@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""Returns sequences for a given list of gene caller ids"""
+
+import sys
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbops import ContigsSuperclass
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    c = ContigsSuperclass(args)
+
+    output_file_path = args.output_file if args.output_file else 'sequences_for_gene_calls.txt'
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    gene_caller_ids = list(utils.get_gene_caller_ids_from_args(args.gene_caller_ids, args.delimiter))
+
+    func_kwargs = dict(
+        gene_caller_ids_list=gene_caller_ids,
+        output_file_path=args.output_file,
+        simple_headers=not args.report_extended_deflines,
+
+    )
+    if args.export_gff3:
+        if args.get_aa_sequences:
+            raise ConfigError("AA sequences can only be reported in FASTA format, please remove the --export-gff3 flag to continue.")
+
+        c.gen_GFF3_file_of_sequences_for_gene_caller_ids(**func_kwargs)
+    else:
+        c.gen_FASTA_file_of_sequences_for_gene_caller_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='A script to get back sequences of a list of genes')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+    parser.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
+    parser.add_argument(*anvio.A('report-extended-deflines'), **anvio.K('report-extended-deflines'))
+    parser.add_argument(*anvio.A('wrap'), **anvio.K('wrap'))
+    parser.add_argument(*anvio.A('export-gff3'), **anvio.K('export-gff3'))
+    parser.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

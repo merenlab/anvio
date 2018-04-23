@@ -14,6 +14,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.cogs as cogs
 
 from anvio.errors import ConfigError
+from anvio.tables.genefunctions import TableForGeneFunctions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -81,7 +82,7 @@ class EggNOGMapper:
             self.database = database
 
         if self.contigs_db_path:
-            dbops.is_contigs_db(self.contigs_db_path)
+            utils.is_contigs_db(self.contigs_db_path)
 
         self.parser = None
         self.entry_id = 0
@@ -202,7 +203,7 @@ class EggNOGMapper:
         if not len(self.annotations_dict):
             raise ConfigError('Annotations dictionary is empty :/ There is nothing to add to the database.')
 
-        gene_functions_table = dbops.TableForGeneFunctions(self.contigs_db_path)
+        gene_functions_table = TableForGeneFunctions(self.contigs_db_path)
         gene_functions_table.create(self.annotations_dict, drop_previous_annotations_first=drop_previous_annotations)
 
 

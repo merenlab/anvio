@@ -8,7 +8,6 @@
 
 import os
 import anvio
-import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 import anvio.terminal as terminal
@@ -38,8 +37,8 @@ class MCGPlots:
         self.plot_err = A('plot_error', True)
         self.plot_fit = A('plot_fit', False)
         self.plot_confidence_intervals = A('plot_confidence_intervals', True)
-        self.plot_gene_nuc_coverage = A('plot_gene_nuc_coverage', True)
-        self.plot_sample_nuc_coverage = A('plot_sample_nuc_coverage', True)
+        self.plot_gene_nuc_coverage = A('plot_gene_nuc_coverage', False)
+        self.plot_sample_nuc_coverage = A('plot_sample_nuc_coverage', False)
         self.save = A('save', True)
         self.fit = {}
         self.gene_nuc_coverage_dict = {}
@@ -49,23 +48,27 @@ class MCGPlots:
         self.samples = set(mcg.gene_presence_absence_in_samples.loc[gene_id, mcg.gene_presence_absence_in_samples.loc[gene_id,]==True].index)
         # taking only the positive samples in which the gene is present
         self.samples = self.samples.intersection(mcg.positive_samples)
+        if not self.samples:
+            # if the gene is not detected in any positive samples then dont save the plot
+            self.save = False
+
         self.x = mcg.samples_coverage_stats_dicts.loc[self.samples,'non_outlier_mean_coverage']
-        self.y = mcg.gene_non_outlier_coverages.loc[gene_id, self.samples]
+        self.y = mcg.gene_level_coverage_stats_dict_of_dataframes['non_outlier_mean_coverage'].loc[gene_id, self.samples]
         self.std_x = mcg.samples_coverage_stats_dicts.loc[self.samples,'non_outlier_coverage_std']
-        self.std_y = mcg.gene_non_outlier_coverage_stds.loc[gene_id, self.samples]
+        self.std_y = mcg.gene_level_coverage_stats_dict_of_dataframes['non_outlier_coverage_std'].loc[gene_id, self.samples]
 
         if self.plot_gene_nuc_coverage:
             for sample in self.samples:
             # getting outlier and non outlier nucleotide coverage for the gene
-                non_outliers = mcg.gene_coverage_per_position[gene_id][sample][mcg.gene_non_outlier_positions[gene_id][sample]]
-                outlier_positions = np.logical_not(mcg.gene_non_outlier_positions[gene_id][sample])
-                outliers = mcg.gene_coverage_per_position[gene_id][sample][outlier_positions]
+                non_outliers = mcg.gene_level_coverage_stats_dict_of_dataframes['gene_coverage_values_per_nt'][gene_id][sample][mcg.gene_level_coverage_stats_dict_of_dataframes['non_outlier_positions'][gene_id][sample]]
+                outlier_positions = np.logical_not(mcg.gene_level_coverage_stats_dict_of_dataframes['non_outlier_positions'][gene_id][sample])
+                outliers = mcg.gene_level_coverage_stats_dict_of_dataframes['gene_coverage_values_per_nt'][gene_id][sample][outlier_positions]
 
                 self.gene_nuc_coverage_dict[sample] = {}
                 self.gene_nuc_coverage_dict[sample]['non_outliers'] = non_outliers
-                self.gene_nuc_coverage_dict[sample]['x1'] = np.array([mcg.samples_coverage_stats_dicts.loc[sample,'non_outlier_mean_coverage']] * len(non_outliers))
+                self.gene_nuc_coverage_dict[sample]['x_non_outliers'] = np.array([mcg.samples_coverage_stats_dicts.loc[sample,'non_outlier_mean_coverage']] * len(non_outliers))
                 self.gene_nuc_coverage_dict[sample]['outliers'] = outliers
-                self.gene_nuc_coverage_dict[sample]['x2'] = np.array([mcg.samples_coverage_stats_dicts.loc[sample,'non_outlier_mean_coverage']] * len(outliers))
+                self.gene_nuc_coverage_dict[sample]['x_outliers'] = np.array([mcg.samples_coverage_stats_dicts.loc[sample,'non_outlier_mean_coverage']] * len(outliers))
 
         if self.plot_sample_nuc_coverage:
            for sample in self.samples:
@@ -87,8 +90,8 @@ class MCGPlots:
             # plot error box - a box with width and hight corresponding to the
             # standard deciation in sample nucleotide coverage and gene nucleotide
             # coverage correspondingly.
-            x_err_width = (axes.get_xlim()[1] - axes.get_xlim()[0]) / 20
-            y_err_width = (axes.get_ylim()[1] - axes.get_ylim()[0]) / 20
+            #x_err_width = (axes.get_xlim()[1] - axes.get_xlim()[0]) / 20
+            #y_err_width = (axes.get_ylim()[1] - axes.get_ylim()[0]) / 20
 
             for i in range(len(self.x)):
                 plot_err(self.x[i], self.std_x[i], self.y[i], self.std_y[i])
@@ -116,8 +119,8 @@ class MCGPlots:
 
         if self.plot_gene_nuc_coverage:
             for sample in self.samples:
-                plt.scatter(self.gene_nuc_coverage_dict[sample]['x1'], self.gene_nuc_coverage_dict[sample]['non_outliers'], c='b',s=1)
-                plt.scatter(self.gene_nuc_coverage_dict[sample]['x2'], self.gene_nuc_coverage_dict[sample]['outliers'], c='r',s=1)
+                plt.scatter(self.gene_nuc_coverage_dict[sample]['x_non_outliers'], self.gene_nuc_coverage_dict[sample]['non_outliers'], c='b',s=1)
+                plt.scatter(self.gene_nuc_coverage_dict[sample]['x_outliers'], self.gene_nuc_coverage_dict[sample]['outliers'], c='r',s=1)
 
         if self.plot_sample_nuc_coverage:
             for sample in self.samples:
@@ -126,9 +129,9 @@ class MCGPlots:
         if self.save:
             output_dir = self.output_file_prefix + '_gene_consistency_plots'
             os.makedirs(output_dir, exist_ok=True)
-            output_file = output_dir + '/' + str(self.gene_id) + '.png' 
+            output_file = output_dir + '/' + str(self.gene_id) + '.png'
             plt.savefig(output_file, format='png')
-        plt.close() 
+        plt.close()
 
 
 def plot_err(x1,err_x1,x2,err_width,color='m',axis=0):

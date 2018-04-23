@@ -5,9 +5,8 @@ import os
 import sys
 
 import anvio
-import anvio.db as db
+import anvio.utils as utils
 import anvio.dbops as dbops
-import anvio.tables as t
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -28,60 +27,62 @@ progress = terminal.Progress()
 
 
 class NetworkDescriptonSamples:
-    def __init__(self):
-        self.profile_db_path = None
-        self.contigs_db_path = None
-        self.use_named_functions_only = False
+    def __init__(self, args, skip_auto_init=False):
+        self.args = args
+
+        run.warning("This is not a mature anvi'o program. Please don't use it for anything serious without\
+                     making sure you are on top of its limitations. If your current research question requires\
+                     you to generate network descriptions for your data, please let us know so maybe we can\
+                     work together to develop this tool towards a meaningful direction.")
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.profile_db_path = A('profile_db')
+        self.contigs_db_path = A('contigs_db')
+        self.annotation_source = A('annotation_source')
+
+        if (not self.profile_db_path) or (not self.contigs_db_path):
+            raise ConfigError("This only works if you provide contigs and profile database paths")
+
+        if A('list_annotation_sources'):
+            self.contigs_db = dbops.ContigsSuperclass(self.args)
+            self.contigs_db.list_function_sources()
+            sys.exit()
+
+        if not self.annotation_source:
+            raise ConfigError("You must use a single functional annotation source for this to work. If you\
+                               are not sure what is available in your contigs database, run this program with\
+                               the flag '--list-annotation-sources'.")
+
         self.functions = {'labels': {}}
 
         self.P = lambda x: os.path.join(os.path.dirname(self.profile_db_path), x)
 
+        if not skip_auto_init:
+            self.init()
+
 
     def init(self):
-        dbops.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
-        self.profile_db = db.DB(self.profile_db_path, t.profile_db_version)
-        self.contigs_db = db.DB(self.contigs_db_path, t.contigs_db_version)
+        self.profile_db = dbops.ProfileSuperclass(self.args)
+        self.contigs_db = dbops.ContigsSuperclass(self.args)
 
-        table_names = self.profile_db.get_table_names()
-
-        if not int(self.profile_db.get_meta_value('merged')):
+        if not self.profile_db.p_meta['merged'] or self.profile_db.p_meta['blank']:
             raise ConfigError("The profile database describes a single run. Current implementation of this\
                                program restricts its use to merged runs. Sorry :/")
 
-        if t.gene_coverages_table_name not in table_names:
-            raise ConfigError("There is no '%s' table in the profile database. This does not really make\
-                                      any sense :/" % t.gene_coverages_table_name)
+        self.profile_db.init_gene_level_coverage_stats_dicts()
+        self.contigs_db.init_functions([self.annotation_source])
 
-        progress.new('Init')
-        progress.update('Reading genes table from %s ...' % self.profile_db_path)
-        self.genes_dict = self.profile_db.get_table_as_dict(t.gene_coverages_table_name)
-        self.samples = sorted(list(set([r['sample_id'] for r in list(self.genes_dict.values())])))
-        self.genes = sorted(list(set([r['gene_callers_id'] for r in list(self.genes_dict.values())])))
-
-        progress.update('Reading annotations table from %s  ...' % self.contigs_db_path)
-        self.genes_in_contigs = self.contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
-
-        # read functions.
-        progress.update('Sifting through genes with non-hypothetical functions ...')
+        self.samples = self.profile_db.p_meta['samples']
+        self.genes = list(self.profile_db.gene_level_coverage_stats_dict.keys())
 
         for gene in self.genes:
-            # FIXME: The following is a temporary workaround, and the proper waay to address this 
-            #        is to read the functions for each gene from the appropriate resource:
-            self.functions['labels'][gene] = 'Unknown'
-
-        self.samples_dict = self.get_samples_dict(self.samples, self.genes_dict)
-        progress.end()
-        run.info('init', 'Genes database initialized for %d genes in %d samples.' % (len(self.genes), len(self.samples)))
+            if gene in self.contigs_db.gene_function_calls_dict:
+                self.functions['labels'][gene] = self.contigs_db.gene_function_calls_dict[gene][self.annotation_source][1]
 
 
-    def generate_genes_network(self):
-        network_desc_output_path = self.P('SAMPLE-GENE-NETWORK.gexf')
-        progress.new('Processing')
-        progress.update('Generating network description for %d genes across %d samples ... ' % (len(self.genes), len(self.samples_dict)))
-        gen_gexf_network_file(self.genes, self.samples_dict, network_desc_output_path)
-        progress.end()
-        run.info('network with genes', network_desc_output_path)
+        self.samples_dict = self.get_samples_dict()
 
 
     def generate_functions_network(self):
@@ -93,35 +94,36 @@ class NetworkDescriptonSamples:
         gen_gexf_network_file(genes_with_functions, self.samples_dict,
                               network_desc_output_path, unit_mapping_dict = self.functions)
         progress.end()
-        run.info('network with functions', network_desc_output_path)
+        run.info('Network for gene functions', network_desc_output_path)
 
 
-
-    def get_samples_dict(self, samples, table, unit = 'gene_callers_id'):
+    def get_samples_dict(self, attribute='mean_coverage'):
         samples_dict = {}
-        for sample in samples:
+        for sample in self.samples:
             samples_dict[sample] = {}
-        for v in list(table.values()):
-            samples_dict[v['sample_id']][v[unit]] = v['mean_coverage']
+
+        d = self.profile_db.gene_level_coverage_stats_dict
+
+        for gene_callers_id in d:
+            for sample_name in d[gene_callers_id]:
+                samples_dict[sample_name][gene_callers_id] = d[gene_callers_id][sample_name][attribute]
         return samples_dict
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Generate a network description file')
+    parser = argparse.ArgumentParser(description='Generate a Gephi network for functions based on non-normalized gene coverage values')
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
+    parser.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
 
     args = anvio.get_args(parser)
 
     try:
-        network = NetworkDescriptonSamples()
-        network.profile_db_path = args.profile_db
-        network.contigs_db_path = args.contigs_db
-        network.init()
-        network.generate_genes_network()
+        network = NetworkDescriptonSamples(args)
         network.generate_functions_network()
     except ConfigError as e:
         print(e)
