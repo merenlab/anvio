@@ -4,7 +4,6 @@
 import os
 import io
 import sys
-from subprocess import Popen, PIPE
 
 import anvio
 import anvio.utils as utils
@@ -39,21 +38,25 @@ class PyANI:
                             please do not forget to properly credit their work.", lc='green', header="CITATION")
 
     def run_command(self, input_path, method='ANIb'):
+        # backup the old working directory before changing the directory
         old_wd = os.getcwd()
         os.chdir(input_path)
 
+        log_file_path = filesnpaths.get_temp_file_path()
+        self.run.info('Log file path', log_file_path)
+
         full_command = [self.program_name, '--outdir', 'output', '--indir', input_path, '-g', '-m', method]
+        exit_code = utils.run_command(full_command, log_file_path)
 
-        program = Popen(full_command, stdin=PIPE, stderr=PIPE)
-        sStdout, sStdErr = program.communicate()
-
-        if len(sStdErr) > 0 and 'ERROR' in str(sStdErr):
-            print(sStdErr.decode('utf-8'))
-            sys.exit(1)
+        if exit_code != 0:
+            self.run.warning("PyANI returned with non-zero exit code, there may be some errors. \
+                              please check the log file for details.")
 
         with open(os.path.join(input_path, 'output', method + '_percentage_identity.tab'), 'r') as f:
             percent_identity = f.read()
 
+        # restore old working directory
         os.chdir(old_wd)
+
         return percent_identity
 

@@ -37,6 +37,7 @@ def main(args):
 
     run.info("Genomes found", len(genome_desc.genomes))
     run.info("Temporary FASTA output directory", temp_dir)
+    run.info("Output file", args.output_file)
 
     for genome_name in genome_desc.genomes:
         fasta_path = os.path.join(temp_dir, genome_desc.genomes[genome_name]['contigs_db_hash'] + '.fa')
