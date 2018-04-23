@@ -53,7 +53,7 @@ def restore_names_in_dict(input_dict, conversion_dict):
 
 
 def main(args):
-    filesnpaths.is_output_file_writable(args.output_file)
+    filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
 
     genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
     genome_desc.load_genomes_descriptions(skip_functions=True, init=False)
@@ -62,7 +62,7 @@ def main(args):
 
     run.info("Genomes found", len(genome_desc.genomes))
     run.info("Temporary FASTA output directory", temp_dir)
-    run.info("Output file", args.output_file)
+    run.info("Output directory", args.output_dir)
 
     hash_to_name = {}
     genome_names = set([])
@@ -83,6 +83,14 @@ def main(args):
         clusterings[report_name] = clustering.get_newick_tree_data_for_dict(results[report_name], 
             linkage=args.linkage, distance=args.distance)
 
+    os.mkdir(args.output_dir)
+    for report_name in results:
+        output_path_for_report = os.path.join(args.output_dir, args.method + '_' + report_name)
+
+        utils.store_dict_as_TAB_delimited_file(results[report_name], output_path_for_report + '.txt')
+        with open(output_path_for_report + '.newick', 'w') as f:
+            f.write(clusterings[report_name])
+
     if args.pan_db:
         utils.is_pan_db(args.pan_db)
         pan = db.DB(args.pan_db, anvio.__pan__version__)
@@ -102,7 +110,6 @@ def main(args):
                 anvi'o will add the ones that found in database anyway, but here is the list of missing ones: \
                 " + ", ".join(list(found_only_in_db)))
 
-
     if anvio.DEBUG:
         run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
                      later" % temp_dir, header="Debug")
@@ -117,7 +124,7 @@ if __name__ == '__main__':
                                      to misc data tables of Pan Database.")
 
     parser.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True }))
+    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
     parser.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
