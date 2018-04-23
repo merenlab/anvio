@@ -60,12 +60,17 @@ class PyANI:
             raise ConfigError("PyANI returned with non-zero exit code, there may be some errors. \
                               please check the log file for details.")
 
-        J = lambda name: os.path.join(input_path, 'output', self.method + name)
+        output_table_names = ['alignment_coverage', 'alignment_lengths', 'hadamard', \
+                              'percentage_identity', 'similarity_errors']
 
-        percent_identity = utils.get_TAB_delimited_file_as_dictionary(J('_percentage_identity.tab'))
+        full_table_path = lambda name: os.path.join(input_path, 'output', self.method + '_' + name + '.tab')
+
+        tables = {}
+        for table_name in output_table_names:
+            tables[table_name] = utils.get_TAB_delimited_file_as_dictionary(full_table_path(table_name))
 
         # restore old working directory
         os.chdir(old_wd)
 
-        return percent_identity
+        return tables
 
