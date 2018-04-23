@@ -83,14 +83,12 @@ def main(args):
         clusterings[report_name] = clustering.get_newick_tree_data_for_dict(results[report_name], 
             linkage=args.linkage, distance=args.distance)
 
-    print(clusterings)
-
     if args.pan_db:
-        utils.is_pan_db(self.pan_db)
-        pan = db.DB(self.pan_db)
+        utils.is_pan_db(args.pan_db)
+        pan = db.DB(args.pan_db, anvio.__pan__version__)
 
-        db_genome_names = set(map(str, pan.get_meta_value('external_genome_names').split(',')) + 
-            map(str, pan.get_meta_value('internal_genome_names').split(',')))
+        db_genome_names = set(pan.get_meta_value('external_genome_names').split(',') + 
+            pan.get_meta_value('internal_genome_names').split(','))
 
         found_only_in_db = db_genome_names.difference(genome_names)
         found_only_in_results = genome_names.difference(db_genome_names)
@@ -100,9 +98,9 @@ def main(args):
                 Here are the list of them: " + ", ".join(list(found_only_in_results)))
 
         if len(found_only_in_db) > 0:
-            self.run.warning("Some genome names found in pan database, does not seem to be exists in the ANI report. \
+            run.warning("Some genome names found in pan database, does not seem to be exists in the ANI report. \
                 anvi'o will add the ones that found in database anyway, but here is the list of missing ones: \
-                " + ", ".join(list(found_only_in_results)))
+                " + ", ".join(list(found_only_in_db)))
 
 
     if anvio.DEBUG:
