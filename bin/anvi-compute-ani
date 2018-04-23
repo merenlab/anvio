@@ -8,11 +8,14 @@ import shutil
 import argparse
 
 import anvio
+import anvio.db as db
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
+
 from anvio.drivers import pyani
+from anvio.tables.miscdata import TableForItemAdditionalData
 
 from anvio.errors import ConfigError, FilesNPathsError
 import anvio.errors
@@ -53,8 +56,27 @@ def main(args):
     program = pyani.PyANI(args)
     results = program.run_command(temp_dir)
 
-    with open(args.output_file, 'w') as f:
-        f.write(results)
+    if args.pan_db:
+        utils.is_pan_db(self.pan_db)
+        pan = db.DB(self.pan_db)
+
+        db_genome_names = set(map(str, pan.get_meta_value('external_genome_names').split(',')) + 
+            map(str, pan.get_meta_value('internal_genome_names').split(',')))
+
+        found_only_in_db = db_genome_names.difference(genome_names)
+        found_only_in_results = genome_names.difference(db_genome_names)
+
+        if len(found_only_in_results) > 0:
+            raise ConfigError("Some genome names found in ANI result, does not seem to be exists in the pan database. \
+                Here are the list of them: " + ", ".join(list(found_only_in_results)))
+
+        if len(found_only_in_db) > 0:
+            self.run.warning("Some genome names found in pan database, does not seem to be exists in the ANI report. \
+                anvi'o will add the ones that found in database anyway, but here is the list of missing ones: \
+                " + ", ".join(list(found_only_in_results)))
+
+    # with open(args.output_file, 'w') as f:
+    #     f.write(results)
 
     if anvio.DEBUG:
         run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
