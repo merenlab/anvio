@@ -39,9 +39,15 @@ def main(args):
     run.info("Temporary FASTA output directory", temp_dir)
     run.info("Output file", args.output_file)
 
+    hash_to_name = {}
     for genome_name in genome_desc.genomes:
-        fasta_path = os.path.join(temp_dir, genome_desc.genomes[genome_name]['contigs_db_hash'] + '.fa')
-        utils.export_sequences_from_contigs_db(genome_desc.genomes[genome_name]['contigs_db_path'], fasta_path)
+        db_path = genome_desc.genomes[genome_name]['contigs_db_path']
+        db_hash = genome_desc.genomes[genome_name]['contigs_db_hash']
+
+        hash_to_name[db_hash] = genome_name
+
+        fasta_path = os.path.join(temp_dir, db_hash + '.fa')
+        utils.export_sequences_from_contigs_db(db_path, fasta_path)
 
     program = pyani.PyANI()
     results = program.run_command(temp_dir)
