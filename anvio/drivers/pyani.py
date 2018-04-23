@@ -38,7 +38,7 @@ class PyANI:
                             please do not forget to properly credit their work.", lc='green', header="CITATION")
 
     def run_command(self, input_path, method='ANIb'):
-        output_path = filesnpaths.get_temp_directory_path()
+        output_path = os.path.join(filesnpaths.get_temp_directory_path(), 'output')
 
         full_command = [self.program_name, '-i', input_path, '-o', output_path, '-g', '-m', method]
         program = Popen(full_command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
