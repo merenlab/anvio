@@ -39,9 +39,11 @@ class PyANI:
                             please do not forget to properly credit their work.", lc='green', header="CITATION")
 
     def run_command(self, input_path, method='ANIb'):
-        output_path = os.path.join(filesnpaths.get_temp_directory_path(), 'output')
+        old_wd = os.getcwd()
+        os.chdir(input_path)
 
-        full_command = [self.program_name, '-i', input_path, '-o', output_path, '-m', method]
+        full_command = [self.program_name, '--outdir', 'output', '--indir', input_path, '-g', '-m', method]
+
         program = Popen(full_command, stdin=PIPE, stderr=PIPE)
         sStdout, sStdErr = program.communicate()
 
@@ -49,8 +51,9 @@ class PyANI:
             print(sStdErr.decode('utf-8'))
             sys.exit(1)
 
-        with open(os.path.join(output_path, method + '_percentage_identity.tab'), 'r') as f:
+        with open(os.path.join(input_path, 'output', method + '_percentage_identity.tab'), 'r') as f:
             percent_identity = f.read()
 
+        os.chdir(old_wd)
         return percent_identity
 
