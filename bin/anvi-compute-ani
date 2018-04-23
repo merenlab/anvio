@@ -51,7 +51,7 @@ def main(args):
         db_hash = genome_desc.genomes[genome_name]['contigs_db_hash']
 
         hash_to_name[db_hash] = genome_name
-        utils.export_sequences_from_contigs_db(db_pathb, db_hash + '.fa')
+        utils.export_sequences_from_contigs_db(db_path, db_hash + '.fa')
 
     program = pyani.PyANI(args)
     results = program.run_command(temp_dir)
