@@ -3,6 +3,7 @@
 
 import os
 import io
+import sys
 from subprocess import Popen, PIPE
 
 import anvio
@@ -40,9 +41,13 @@ class PyANI:
     def run_command(self, input_path, method='ANIb'):
         output_path = os.path.join(filesnpaths.get_temp_directory_path(), 'output')
 
-        full_command = [self.program_name, '-i', input_path, '-o', output_path, '-g', '-m', method]
-        program = Popen(full_command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
+        full_command = [self.program_name, '-i', input_path, '-o', output_path, '-m', method]
+        program = Popen(full_command, stdin=PIPE, stderr=PIPE)
         sStdout, sStdErr = program.communicate()
+
+        if len(sStdErr) > 0:
+            print(sStdErr.decode('utf-8'))
+            sys.exit(1)
 
         with open(os.path.join(output_path, method + '_percentage_identity.tab'), 'r') as f:
             percent_identity = f.read()
