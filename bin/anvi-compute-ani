@@ -31,6 +31,26 @@ __email__ = "ozcanesen@gmail.com"
 
 run = terminal.Run()
 
+def restore_names_in_dict(input_dict, conversion_dict):
+    """ 
+    Takes dictionary that contains hashes as keys
+    and replaces it back to genome names using conversion_dict.
+
+    If value is dict, it calls itself.
+    """
+    new_dict = {}
+    for key, value in input_dict.items():
+        if isinstance(value, dict):
+            value = restore_names_in_dict(value, conversion_dict)
+
+        if key in conversion_dict:
+            new_dict[conversion_dict[key]] = value
+        else:
+            new_dict[key] = value
+
+    return new_dict
+
+
 def main(args):
     filesnpaths.is_output_file_writable(args.output_file)
 
@@ -55,6 +75,9 @@ def main(args):
 
     program = pyani.PyANI(args)
     results = program.run_command(temp_dir)
+    results = restore_names_in_dict(results, hash_to_name)
+
+    print(results)
 
     if args.pan_db:
         utils.is_pan_db(self.pan_db)
@@ -75,8 +98,6 @@ def main(args):
                 anvi'o will add the ones that found in database anyway, but here is the list of missing ones: \
                 " + ", ".join(list(found_only_in_results)))
 
-    # with open(args.output_file, 'w') as f:
-    #     f.write(results)
 
     if anvio.DEBUG:
         run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
