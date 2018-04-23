@@ -77,23 +77,16 @@ class SummaryHTMLOutput:
 
         self.summary_type = self.summary_dict['meta']['summary_type']
 
-        if self.summary_type not in ['profile', 'pan', 'saav', 'vignette']:
+        if self.summary_type not in ['profile', 'pan', 'saav']:
             raise ConfigError("Unknown summary type '%s'" % self.summary_type)
 
 
     def generate(self, quick=False):
-        self.progress.new('Generating the output')
-        self.progress.update('Copying static files')
+        self.progress.new('Copying static files')
         self.copy_files()
 
-        self.progress.update('Rendering')
-        rendered = self.render(quick)
-
-        self.progress.update('Writing')
-        index_html = os.path.join(self.summary_dict['meta']['output_directory'], 'index.html')
-        open(index_html, 'wb').write(rendered.encode('utf-8'))
-
-        self.progress.end()
+        self.progress.new('Rendering')
+        index_html = self.render(quick)
 
         self.run.info('HTML Output', index_html, nl_before=1, nl_after=1, mc='green')
 
@@ -103,9 +96,12 @@ class SummaryHTMLOutput:
     def copy_files(self):
         self.progress.update('...')
         shutil.copytree(html_content_dir, os.path.join(self.summary_dict['meta']['output_directory'], '.html'))
+        self.progress.end()
 
 
     def render(self, quick=False):
+        self.progress.update("Processing the template for type '%s' ..." % self.summary_type)
+
         if self.summary_type == 'saav':
                 rendered = render_to_string('saavs-index.tmpl', self.summary_dict)
         elif self.summary_type == 'pan':
@@ -115,12 +111,15 @@ class SummaryHTMLOutput:
                 rendered = render_to_string('profile-index-mini.tmpl', self.summary_dict)
             else:
                 rendered = render_to_string('profile-index.tmpl', self.summary_dict)
-        elif self.summary_type == 'vignette':
-            rendered = render_to_string('vignette.tmpl', self.summary_dict)
         else:
             raise ConfigError("You cray...")
 
-        return rendered
+        index_html = os.path.join(self.summary_dict['meta']['output_directory'], 'index.html')
+        self.progress.update('Writing the index file ...')
+        open(index_html, 'wb').write(rendered.encode('utf-8'))
+
+        self.progress.end()
+        return index_html
 
 
 @register.filter(name='lookup')

@@ -137,20 +137,6 @@ var named_layers = {
         'pretty_name': 'Length',
         'type': 'bar',
     },
-    'num_gene_clusters': {
-        'height': 220,
-        'color': '#661111',
-        'norm': 'none',
-        'pretty_name': 'Num gene clusters',
-        'type': 'bar',
-    },
-    'singleton_gene_clusters': {
-        'height': 220,
-        'color': '#661111',
-        'norm': 'none',
-        'pretty_name': 'Singleton gene clusters',
-        'type': 'bar',
-    },
     'gc_content': {
         'height': 180,
         'color': '#004a0f',
@@ -168,32 +154,13 @@ var named_layers = {
         'height': 180,
         'color': '#002e4f',
         'norm': 'none',
-        'pretty_name': 'Num contributing genomes',
+        'pretty_name': 'Num genomes',
     },
     'num_genes_in_gene_cluster': {
         'height': 180,
         'color': '#002e4f',
         'norm': 'sqrt',
-        'pretty_name': 'Num genes in GC',
-    },
-    'num_genomes_pc_has_hits': {
-        'height': 180,
-        'color': '#002e4f',
-        'norm': 'none',
-        'pretty_name': 'Num contributing genomes',
-    },
-    'num_genes_in_pc': {
-        'height': 180,
-        'color': '#002e4f',
-        'norm': 'sqrt',
-        'pretty_name': 'Num genes in GC',
-    },
-    'max_num_paralogs': {
-        'height': 180,
-        'color': '#002e4f',
-        'norm': 'none',
-        'min': 1,
-        'pretty_name': 'Max num paralogs',
+        'pretty_name': 'Num genes',
     },
     'SCG': {
         'height': 180,
@@ -203,7 +170,7 @@ var named_layers = {
     },
     'total_length': {
         'height': 180,
-        'color': '#414141',
+        'color': '#121261',
         'norm': 'none',
         'pretty_name': 'Total length',
     },
@@ -224,16 +191,6 @@ var named_layers = {
         'color': '#616161',
         'norm': 'none',
         'pretty_name': 'Detection',
-    },
-    'ECGs_and_EAGs!EAG;ECG;NA': {
-        'height': 400,
-        'pretty_name': 'ECGs and EAGs',
-    },
-    'EAG_ECG_ratio': {
-        'height': 400,
-        'pretty_name': 'EAG Ratio',
-        'color': '#940000',
-        'norm': 'none',
     },
     'abundance': {
         'height': 0,
@@ -267,7 +224,7 @@ var named_layers = {
     },
     'percent_completion': {
         'height': 200,
-        'color': '#000077',
+        'color': '#004400',
         'norm': 'none',
         'min': 0,
         'max': 100,
@@ -300,16 +257,16 @@ var named_layers = {
 };
 
 named_category_colors = {
-    'KNOWN'    : '#00AA00',
-    'UNKNOWN'  : '#F0F0F0',
-    'ECG'      : '#00AA00',
-    'EAG'      : '#AA0000',
-    'NA'       : '#F0F0F0',
-    'TSC'      : '#e38181',
-    'TSA'      : '#0000AA',
-    'TNC'      : '#00AA00',
-    'TNA'      : '#00d1ca',
-    'NaN'      : '#73727a'
+    'KNOWN': '#00AA00',
+    'UNKNOWN': '#F0F0F0',
+    'ECG': '#00AA00',
+    'EDG': '#AA0000',
+    'NA': '#F0F0F0',
+    'TSC': '#e38181',
+    'TSA': '#0000AA',
+    'TNC': '#00AA00',
+    'TNA': '#00d1ca',
+    'NaN': '#73727a'
 };
 
 function getNamedCategoryColor(name)
@@ -373,7 +330,7 @@ function getPrettyName(name)
     return name;
 }
 
-function getClusteringPrettyName(name)
+function getClusteringPrettyName(name) 
 {
     var name_parts = name.split(':').map(getPrettyName);
 
@@ -394,7 +351,7 @@ function getNamedLayerDefaults(layer, attribute, default_value)
         if (attribute == 'color')  return '#882222'
     }
 
-    /* Some ad-hoc manipulation of special hmms_ single hmm layers */
+    /* Some ad-hoc manipulation of special hmms_ single hmm layers */ 
     if (layer.substring(0, 5) == "hmms_"){
         if (attribute == 'height') return '150';
         if (attribute == 'norm')   return 'sqrt';

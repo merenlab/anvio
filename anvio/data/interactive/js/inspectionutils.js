@@ -51,16 +51,6 @@ function getUrlVars() {
     return map;
 }
 
-$(document).ready(function() {
-  $(window).on('click', function (e) {
-    //did not click a popover toggle or popover
-    if ($(e.target).data('toggle') !== 'popover'
-        && $(e.target).parents('.popover.in').length === 0) { 
-        $('.popover').popover('hide');
-    }
-  });
-});
-
 
 function get_gene_functions_table_html(gene){
     functions_table_html =  '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
@@ -79,10 +69,10 @@ function get_gene_functions_table_html(gene){
                           + '</td></tr></tbody></table>';
 
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">Get sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
 
     if(!gene.functions)
         return functions_table_html;
@@ -112,101 +102,6 @@ function get_gene_functions_table_html(gene){
     functions_table_html += '</tbody></table>';
 
     return functions_table_html;
-}
-
-
-function get_gene_functions_table_html_for_pan(gene_callers_id, genome_name){
-    var gene;
-
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        async: false,
-        url: '/data/pan_gene_popup/' + gene_callers_id + '/' + genome_name,
-        success: function(data) {
-            data.gene_info['genome_name'] = genome_name;
-            data.gene_info['gene_callers_id'] = gene_callers_id;
-            
-            gene = data.gene_info;
-        }
-    });
-
-    var aa_sequence_fasta = '>' + gene.gene_callers_id + '_' + gene.genome_name + '\n' + gene.aa_sequence;
-    var dna_sequence_fasta = '>' + gene.gene_callers_id + '_' + gene.genome_name + '\n' + gene.dna_sequence;
-
-    functions_table_html =  '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
-    functions_table_html += '<h2>Gene Call</h2>';
-    functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
-    functions_table_html += '<thead><th>ID</th><th>Genome</th><th>Length</th><th>Partial</th></thead>';
-    functions_table_html += '<tbody>';
-    functions_table_html += '<tr><td>' + gene.gene_callers_id
-                          + '</td><td>' + gene.genome_name
-                          + '</td><td>' + gene.length
-                          + '</td><td>' + ((gene.partial == '1') ? 'True' : 'False')
-                          + '</td></tr></tbody></table>';
-    functions_table_html += '<textarea id="aa_sequence_fasta" style="display: none;">' + aa_sequence_fasta + '</textarea>';
-    functions_table_html += '<textarea id="dna_sequence_fasta" style="display: none;">' + dna_sequence_fasta + '</textarea>';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'AA Sequence\', $(\'#aa_sequence_fasta\').val());">Get AA sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'DNA Sequence\', $(\'#dna_sequence_fasta\').val());">Get DNA sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'nr\', \'gene\');">tblastn @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'refseq_genomic\', \'gene\');">tblastn @ refseq_genomic</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'nr\', \'gene\');">blastp @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'refseq_genomic\', \'gene\');">blastp @ refseq_genomic</button> ';
-
-    if(!gene.functions)
-        return functions_table_html;
-
-    functions_table_html += '<h2>Annotations</h2>';
-    functions_table_html += '<table class="table table-striped">';
-    functions_table_html += '<thead><th>Source</th>';
-    functions_table_html += '<th>Accession</th>';
-    functions_table_html += '<th>Annotation</th></thead>';
-    functions_table_html += '<tbody>';
-
-    for (function_source in gene.functions){
-        gene.functions[function_source] = gene.functions[function_source].split('|||');
-        functions_table_html += '<tr>';
-
-        functions_table_html += '<td><b>' + function_source + '</b></td>';
-        if (gene.functions[function_source]) {
-            functions_table_html += '<td>' + decorateAccession(function_source, gene.functions[function_source][0]) + '</td>';
-            functions_table_html += '<td><em>' + decorateAnnotation(function_source, gene.functions[function_source][1]) + '</em></td>';
-        } else {
-            functions_table_html += '<td>&nbsp;</td>';
-            functions_table_html += '<td>&nbsp;</td>';
-        }
-
-        functions_table_html += '</tr>';
-    }
-
-    functions_table_html += '</tbody></table>';
-
-    return functions_table_html;
-}
-
-function show_sequence_modal(title, content) {
-  // remove previous modal window
-  $('.modal-sequence').modal('hide');
-  $('.modal-sequence').remove();
-
-  $('body').append('<div class="modal modal-sequence" style="z-index: 10000;"> \
-      <div class="modal-dialog"> \
-          <div class="modal-content"> \
-              <div class="modal-header"> \
-                  <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
-                  <h4 class="modal-title">' + title + '</h4> \
-              </div> \
-              <div class="modal-body"> \
-                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
-              </div> \
-              <div class="modal-footer"> \
-                  <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
-              </div> \
-          </div> \
-      </div> \
-  </div>');
-  $('.modal-sequence').modal('show');
-  $('.modal-sequence textarea').trigger('click');
 }
 
 
@@ -214,9 +109,28 @@ function show_sequence(gene_id) {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/gene/' + gene_id,
+        url: '/data/gene/' + gene_id + '?timestamp=' + new Date().getTime(),
         success: function(data) {
-          show_sequence_modal('Split Sequence', data['header'] + '\n' + data['sequence']);
+            $('body').append('<div class="modal modal-sequence"> \
+                <div class="modal-dialog"> \
+                    <div class="modal-content"> \
+                        <div class="modal-header"> \
+                            <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
+                            <h4 class="modal-title">Split Sequence</h4> \
+                        </div> \
+                        <div class="modal-body"> \
+                            <div class="col-md-12"> \
+                                <textarea class="form-control" rows="16" onclick="$(this).select();" readonly>&gt;' + data['header'] + '\n' + data['sequence'] + '</textarea> \
+                            </div> \
+                        </div> \
+                        <div class="modal-footer"> \
+                            <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
+                        </div> \
+                    </div> \
+                </div> \
+            </div>');
+            $('[data-toggle="popover"]').popover('hide');
+            $('.modal-sequence').modal('show');
         }
     });
 }
@@ -272,19 +186,6 @@ function drawArrows(_start, _stop) {
       }
       else if (gene.functions !== null) {
         color = 'green';
-      }
-
-      if (highlight_gene && gene.gene_callers_id == contig_id)
-      {
-        var offset = 6;
-        paths.append('svg:rect')
-           .attr('x', start - offset)
-           .attr('width', stop + offset * 2)
-           .attr('y', y - offset)
-           .attr('height', 2 * offset)
-           .attr('fill', 'yellow')
-           .attr('fill-opacity', 1)
-           .attr('stroke-width', 0);
       }
 
       // M10 15 l20 0

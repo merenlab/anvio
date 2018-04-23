@@ -31,14 +31,6 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    try:
-        cogs = COGs(argparse.Namespace())
-        available_search_methods = cogs.available_search_methods
-        default_search_method = cogs.default_search_method
-    except ConfigError as e:
-        print(e)
-        sys.exit(-1)
-
     parser = argparse.ArgumentParser(description='Run NCBI COGs on stuff.')
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -47,11 +39,9 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('sensitive'), **anvio.K('sensitive'))
     parser.add_argument(*anvio.A('temporary-dir-path'), **anvio.K('temporary-dir-path'))
 
-    parser.add_argument('--search-with', default=default_search_method, metavar="SEARCH_METHOD",
-                        help="What program to use for database searching. The default search uses %(default)s.\
-                              All available options include: %(serach_methods)s." \
-                                        % {'serach_methods': ', '.join(available_search_methods),
-                                           'default': default_search_method})
+    parser.add_argument('--search-with', default='diamond', metavar="PROGRAM",
+                        help="What program to use for database searching. The default is 'diamond',\
+                              but you can also use NCBI's 'blastp' if you like.")
 
     args = anvio.get_args(parser)
 

@@ -9,7 +9,7 @@
 
 set -e
 
-bowtie2 -x $3 -f $1 -S $2.sam --no-unal
+bowtie2 -x $3 -f $1 -S $2.sam
 samtools view -F 4 -bS $2.sam > $2-RAW.bam
 samtools sort $2-RAW.bam -o $2.bam
 samtools index $2.bam

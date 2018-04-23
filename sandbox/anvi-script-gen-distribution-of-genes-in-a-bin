@@ -8,6 +8,7 @@ import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
+import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -63,15 +64,12 @@ def main(args):
     else:
         not_enough_detection = False
 
+    split_names_of_interest = ccollections.GetSplitNamesInBins(args).get_dict()[genome_name]
+
     gene_presence_in_the_environment_dict = {}
 
-    genome_bin_summary = summarizer.Bin(summary, genome_name)
-
-    gene_coverages_across_samples = {}
-    for gene_callers_id in genome_bin_summary.gene_level_coverage_stats_dict:
-        gene_coverages_across_samples[gene_callers_id] = {}
-        for sample_name in genome_bin_summary.gene_level_coverage_stats_dict[gene_callers_id]:
-            gene_coverages_across_samples[gene_callers_id][sample_name] = genome_bin_summary.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['mean_coverage']
+    genome_bin_summary = summarizer.Bin(summary, genome_name, split_names_of_interest)
+    gene_coverages_across_samples = genome_bin_summary.gene_coverages
 
     # at this point we have all the genes in the genome bin. what we need is to characterize their detection. first,
     # summarize the coverage of each gene in all samples:

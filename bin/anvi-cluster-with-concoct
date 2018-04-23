@@ -14,24 +14,17 @@ from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
-__credits__ = ["Christopher Quince"]
+__credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__resources__ = [("Original CONCOCT paper by Alneberg et al.", "https://www.nature.com/articles/nmeth.3103"),
-                 ("An example usage of the program in the context of the Infant Gut Dataset by Sharon et al.", "http://merenlab.org/tutorials/infant-gut/#from-fragmentation-to-conflation-error-a-meren-lab-heuristic-to-fight-back"),
-                 ("The use of this program in the context of initial binning of TARA population genomes", "http://merenlab.org/data/2017_Delmont_et_al_HBDs/#initial-automated-binning-with-concoct")]
-__tags__ = ["profile_db", "clustering", "collections"]
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="A program to cluster items in a merged anvi'o profile using CONCOCT, and optionally\
-                                                  creating a collection in the profile database. This is especially useful if you need to\
-                                                  have more control over the number of clusters to work with if you are planning to refine\
-                                                  them manually later.")
+    parser = argparse.ArgumentParser(description="A script to call CONCOCT clustering on a merged anvi'o profile")
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -39,6 +32,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'default': 'CONCOCT'}))
     parser.add_argument(*anvio.A('num-clusters-requested'), **anvio.K('num-clusters-requested'))
+    parser.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 
     args = anvio.get_args(parser)
 

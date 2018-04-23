@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input-file', metavar = 'VARIABILITY_PROFILE', required = True,
                         help = "The anvi'o variability profile. Please see `anvi-gen-variability-profile` to\
                                 generate one.")
+    parser.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
     parser.add_argument(*anvio.A('max-num-unique-positions'), **anvio.K('max-num-unique-positions'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'network.gexf'}))
 

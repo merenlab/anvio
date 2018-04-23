@@ -266,13 +266,13 @@
         ]
     },
     "samples-layer-order": [
-        "num_mapped_reads",
+        "num_reads",
         "percent_mapped_reads",
         "visits",
         "bars!bar1;bar2;bar3"
     ],
     "samples-layers": {
-        "num_mapped_reads": {
+        "num_reads": {
             "data-type": "numeric",
             "height": 500,
             "margin": 15,

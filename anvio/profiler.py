@@ -20,12 +20,7 @@ import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
-
 from anvio.errors import ConfigError
-from anvio.tables.views import TablesForViews
-from anvio.tables.aafrequencies import TableForAAFrequencies
-from anvio.tables.variability import TableForVariability
-
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -127,14 +122,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # be stored in t.variable_nts_table_name
         self.variable_nts_table_entries = []
 
-        # if genes are not called, yet the user is asking for AA frequencies to be profiled, we give
-        # a warning and force-turn that flag off.
-        if (not self.a_meta['genes_are_called']) and self.profile_AA_frequencies:
-            self.run.warning("You asked the amino acid frequencies to be profiled, but genes were not called\
-                              for your contigs database. Anvi'o is assigning `False` to the profile-AA-frequncies\
-                              flag, overruling your request like a boss.")
-            self.profile_AA_frequencies = False
-
         # following variable will be populated while the variable positions table is computed
         self.codons_in_genes_to_profile_AA_frequencies = set([])
 
@@ -184,10 +171,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)
 
-        self.progress.update('Creating a new auxiliary database with contigs hash "%s" ...' % self.a_meta['contigs_db_hash'])
-        self.auxiliary_db_path = self.generate_output_destination('AUXILIARY-DATA.db')
-        self.auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_db_path, self.a_meta['contigs_db_hash'], create_new=True)
-
         self.progress.end()
 
         if self.skip_SNV_profiling:
@@ -236,8 +219,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             # creating a null view_data_splits dict:
             view_data_splits = dict(list(zip(self.split_names, [dict(list(zip(t.atomic_data_table_structure[1:], [None] * len(t.atomic_data_table_structure[1:]))))] * len(self.split_names))))
-            TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
-            TablesForViews(self.profile_db_path).create_new_view(
+            dbops.TablesForViews(self.profile_db_path).remove('single', table_names_to_blank=['atomic_data_splits'])
+            dbops.TablesForViews(self.profile_db_path).create_new_view(
                                            data_dict=view_data_splits,
                                            table_name='atomic_data_splits',
                                            table_structure=t.atomic_data_table_structure,
@@ -262,7 +245,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling or not self.profile_AA_frequencies:
             return
 
-        variable_aas_table = TableForAAFrequencies(self.profile_db_path, progress=self.progress)
+        variable_aas_table = dbops.TableForAAFrequencies(self.profile_db_path, progress=self.progress)
 
         aa_frequencies = bamops.AAFrequencies()
 
@@ -305,7 +288,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling:
             return
 
-        variable_nts_table = TableForVariability(self.profile_db_path, progress=self.progress)
+        variable_nts_table = dbops.TableForVariability(self.profile_db_path, progress=self.progress)
 
         for contig in self.contigs:
             for split in contig.splits:
@@ -348,11 +331,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def store_split_coverages(self):
+        output_file = self.generate_output_destination('AUXILIARY-DATA.db')
+        split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file, self.a_meta['contigs_db_hash'], create_new=True)
+
+        contigs_counter = 1
         for contig in self.contigs:
             for split in contig.splits:
-                self.auxiliary_db.append(split.name, self.sample_id, split.coverage.c)
+                split_coverage_values.append(split.name, self.sample_id, split.coverage.c)
 
-        self.auxiliary_db.store()
+            contigs_counter += 1
+
+        split_coverage_values.store()    
+        split_coverage_values.close()
 
 
     def set_sample_id(self):
@@ -678,7 +668,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             proc.terminate()
 
         self.store_contigs_buffer()
-        self.auxiliary_db.close()
         self.progress.end()
 
         # FIXME: this needs to be checked:
@@ -718,7 +707,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # function create_new_view defined in the class TablesForViews.
         view_data_splits, view_data_contigs = contigops.get_atomic_data_dicts(self.sample_id, self.contigs)
 
-        TablesForViews(self.profile_db_path).create_new_view(
+        dbops.TablesForViews(self.profile_db_path).create_new_view(
                                         data_dict=view_data_splits,
                                         table_name='atomic_data_splits',
                                         table_structure=t.atomic_data_table_structure,
@@ -726,7 +715,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                         view_name='single',
                                         append_mode=True)
 
-        TablesForViews(self.profile_db_path).create_new_view(
+        dbops.TablesForViews(self.profile_db_path).create_new_view(
                                         data_dict=view_data_contigs,
                                         table_name='atomic_data_contigs',
                                         table_structure=t.atomic_data_table_structure,

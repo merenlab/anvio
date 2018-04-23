@@ -26,7 +26,7 @@ pp = terminal.pretty_print
 
 
 class Diamond:
-    def __init__(self, query_fasta, target_fasta=None, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
+    def __init__(self, query_fasta, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
         self.run = run
         self.progress = progress
 
@@ -40,11 +40,7 @@ class Diamond:
         self.max_target_seqs = 100000
 
         self.query_fasta = query_fasta
-        self.target_fasta = target_fasta
-
-        if not self.target_fasta:
-            self.target_fasta = self.query_fasta
-
+        self.target_db_path = 'diamond-target'
         self.search_output_path = 'diamond-search-results'
         self.tabular_output_path = 'diamond-search-results.txt'
 
@@ -58,17 +54,17 @@ class Diamond:
         self.names_dict = None
 
 
-    def get_blast_results(self):
+    def get_blastall_results(self):
         force_makedb, force_blastp, force_view = False, False, False
 
         if self.overwrite_output_destinations:
             force_makedb = True
 
-        if os.path.exists(self.target_fasta + '.dmnd') and not force_makedb:
+        if os.path.exists(self.target_db_path + '.dmnd') and not force_makedb:
             self.run.warning("Notice: A diamond database is found in the output directory, and will be used!")
         else:
             self.makedb()
-            force_blastp, force_view = True, True
+            force_blastp, forrce_view = True, True
 
         if os.path.exists(self.search_output_path + '.daa') and not force_blastp:
             self.run.warning("Notice: A DIAMOND search result is found in the output directory: skipping BLASTP!")
@@ -98,14 +94,14 @@ class Diamond:
         cmd_line = ['diamond',
                     'makedb',
                     '--in', self.query_fasta,
-                    '-d', self.target_fasta,
+                    '-d', self.target_db_path,
                     '-p', self.num_threads]
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
-        expected_output = self.target_fasta + '.dmnd'
+        expected_output = self.target_db_path + '.dmnd'
         self.check_output(expected_output, 'makedb')
 
         self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
@@ -121,7 +117,7 @@ class Diamond:
         cmd_line = ['diamond',
                     'blastp',
                     '-q', self.query_fasta,
-                    '-d', self.target_fasta,
+                    '-d', self.target_db_path,
                     '-a', self.search_output_path,
                     '-t', self.tmp_dir,
                     '-p', self.num_threads]

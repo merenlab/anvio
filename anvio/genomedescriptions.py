@@ -143,11 +143,6 @@ class GenomeDescriptions(object):
                     if db_path_var not in self.genomes[genome_name]:
                         continue
                     path = self.genomes[genome_name][db_path_var]
-
-                    if not path:
-                        raise ConfigError("Bad news: anvi'o was loading genome desriptions, and it run into an empty path for\
-                                           the genome %s. How did this happen? HOW? :(" % genome_name)
-
                     if not path.startswith('/'):
                         self.genomes[genome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(input_file), path))
 
@@ -187,7 +182,7 @@ class GenomeDescriptions(object):
         contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
 
         if self.functions_are_available:
-            contigs_super.init_functions(requested_sources=list(self.function_annotation_sources))
+            contigs_super.init_functions(requested_sources=self.function_annotation_sources)
             function_calls_dict = contigs_super.gene_function_calls_dict
         else:
             function_calls_dict = {}
@@ -279,7 +274,7 @@ class GenomeDescriptions(object):
 
 
     def get_genome_hash_for_external_genome(self, entry):
-        utils.is_contigs_db(entry['contigs_db_path'])
+        dbops.is_contigs_db(entry['contigs_db_path'])
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
         genome_hash = contigs_db.meta['contigs_db_hash']
         contigs_db.disconnect()
@@ -288,7 +283,7 @@ class GenomeDescriptions(object):
 
 
     def get_genome_hash_for_internal_genome(self, entry):
-        utils.is_contigs_db(entry['contigs_db_path'])
+        dbops.is_contigs_db(entry['contigs_db_path'])
         split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(entry)
         contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
         genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']]).encode('utf-8')).hexdigest()[0:12]
@@ -341,7 +336,7 @@ class GenomeDescriptions(object):
                 c = self.genomes[genome_name]
                 c['external_genome'] = False
 
-                utils.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
+                dbops.is_profile_db_and_contigs_db_compatible(c['profile_db_path'], c['contigs_db_path'])
 
                 split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(c)
 
@@ -361,7 +356,7 @@ class GenomeDescriptions(object):
 
 
     def get_split_names_of_interest_for_internal_genome(self, entry):
-        utils.is_profile_db(entry['profile_db_path'])
+        dbops.is_profile_db(entry['profile_db_path'])
         # get splits of interest:
         class Args: pass
         args = Args()
@@ -429,13 +424,12 @@ class GenomeDescriptions(object):
                                          ', '.join(['%d gene calls by "%s"' % (tpl[1], tpl[0]) for \
                                                          tpl in self.genomes[genome_name]['gene_calls_from_other_gene_callers'].items()])))
 
-            gene_caller = list(self.genomes.values())[0]['gene_caller']
-            self.run.warning("Some of your genomes had gene calls identified by gene callers other than\
-                              the gene caller anvi'o used, which was set to '%s' either by default, or because you asked for it.\
-                              The following genomes contained genes that were not processed (this may be exactly what you expect\
-                              to happen, but if was not, you may need to use the `--gene-caller` flag to make sure anvi'o is using\
-                              the gene caller it should be using): %s." % \
-                                            (gene_caller, ', '.join(info)), header="PLEASE READ CAREFULLY", lc='green')
+            self.run.warning("PLEASE READ CAREFULLY. Some of your genomes had gene calls identified by gene callers other than\
+                              the gene caller anvi'o used (which should be 'prodigal' unless you specified another one). As a\
+                              result, the following genomes contained gene calls coming from other gene callers that did not\
+                              get processed. This may be exactly what you expected to happen, but if was not, you may need to\
+                              use the `--gene-caller` flag to make sure anvi'o is using the gene caller it should be using. Here\
+                              is the list: %s." % (', '.join(info)), lc='green')
 
         # check whether every genome has at least one gene call.
         genomes_with_no_gene_calls = [g for g in self.genomes if not self.genomes[g]['num_genes']]

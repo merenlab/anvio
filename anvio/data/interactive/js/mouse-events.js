@@ -24,7 +24,6 @@ $(document).ready(function() {
         $('#collection_mode_right_click_menu').hide();
         $('#pan_mode_right_click_menu').hide();
         $('#branch_right_click_menu').hide();
-        $('#gene_mode_right_click_menu').hide();
     }, false);
 });
 
@@ -131,9 +130,6 @@ function lineContextMenuHandler(event) {
         } else if (mode == "pan"){
             $('#pan_mode_right_click_menu').show();
             $('#pan_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
-        } else if (mode == "gene"){
-            $('#gene_mode_right_click_menu').show();
-            $('#gene_mode_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
         } else {
             $('#default_right_click_menu').show();
             $('#default_right_click_menu').offset({left:event.pageX-2,top:event.pageY-2});
@@ -149,8 +145,6 @@ function lineContextMenuHandler(event) {
             $('#collection_mode_right_click_menu #select_layer').show();
             $('#pan_mode_right_click_menu #unselect_layer').show();
             $('#pan_mode_right_click_menu #select_layer').show();
-            $('#gene_mode_right_click_menu #unselect_layer').show();
-            $('#gene_mode_right_click_menu #select_layer').show();
         } else {
             $('#default_right_click_menu #select_layer').show();
             $('#default_right_click_menu #unselect_layer').hide();
@@ -158,8 +152,6 @@ function lineContextMenuHandler(event) {
             $('#collection_mode_right_click_menu #unselect_layer').show();
             $('#pan_mode_right_click_menu #select_layer').show();
             $('#pan_mode_right_click_menu #unselect_layer').show();
-            $('#gene_mode_right_click_menu #select_layer').show();
-            $('#gene_mode_right_click_menu #unselect_layer').show();
         }
 
         if (bin_id > 0) {
@@ -474,7 +466,12 @@ function mouseMoveHandler(event) {
             }
         }
 
-        write_mouse_table(message, "Layers", layer_pos);
+        $('#tooltip_content').html(message);
+        if ($('#tooltip_content').height() + 300 > $(window).height()) {
+            $('#mouse_hover_scroll').css('top', ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_pos).position()['top']);
+        } else {
+            $('#mouse_hover_scroll').css('top', 0);
+        }
         return;
     }
 
@@ -502,7 +499,7 @@ function mouseMoveHandler(event) {
     var message = "";
     for (var i=0; i < tooltip_arr.length; i++)
     {
-        if (i == layer_id - 1)
+        if (i == layer_id)
         {
             message += '<tr style="background-color: rgb(232, 202, 207);">' + tooltip_arr[i] + '</tr>';
         }
@@ -530,25 +527,17 @@ function mouseMoveHandler(event) {
 
     var tr_bin = '<tr><td class="tk">bin</td><td class="tv"><div class="colorpicker" style="margin-right: 5px; display: inline-block; background-color:' + bin_color + '"></div>' + belongs + '</td></tr>'
 
-    write_mouse_table(message+tr_bin, target_node.label, layer_id);
-}
-
-
-function write_mouse_table(content, item_name, layer_id) {
-    $('#cell_item_name').html(item_name);
-    $('#tooltip_content').html(content);
-
+    $('#tooltip_content').html(message + tr_bin);
     if ($('#tooltip_content').height() + 300 > $(window).height()) {
-        $('#mouse_hover_scroll').css('top', Math.min(0, ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_id).position()['top']));
+        $('#mouse_hover_scroll').css('top', ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_id).position()['top']);
     } else {
         $('#mouse_hover_scroll').css('top', 0);
-    } 
-} 
+    }
+}
 
 
 function menu_callback(action, param) {
     var item_name = id_to_node_map[context_menu_target_id].label;
-    var target = (mode == 'gene') ? 'gene' : 'contig';
 
     switch (action) {
         case 'collapse':
@@ -583,36 +572,22 @@ function menu_callback(action, param) {
             $('#tbody_layers tr:nth-child(' + context_menu_layer_id + ') input:checkbox').prop('checked', false);
             break;
 
-        case 'get_gene_sequence':
-            $.ajax({
-                type: 'GET',
-                cache: false,
-                url: '/data/gene/' + item_name,
-                success: function(data) {
-                    $('#modSplitSequence .modal-title').html('Gene Sequence');
-                    $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
-                    $('#modSplitSequence').modal('show');
-                }
-            });
-            break;
-
         case 'get_split_sequence':
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/contig/' + item_name,
+                url: '/data/contig/' + item_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
-                    $('#modSplitSequence .modal-title').html('Split Sequence');
                     $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
                     $('#modSplitSequence').modal('show');
                 }
             });
             break;
 
-        case 'blastn_nr': get_sequence_and_blast(item_name, 'blastn', 'nr', target); break;
-        case 'blastx_nr': get_sequence_and_blast(item_name, 'blastx', 'nr', target); break;
-        case 'blastn_refseq_genomic': get_sequence_and_blast(item_name, 'blastn', 'refseq_genomic', target); break;
-        case 'blastx_refseq_protein': get_sequence_and_blast(item_name, 'blastx', 'refseq_genomic', target); break;
+        case 'blastn_nr': fire_up_ncbi_blast(item_name, 'blastn', 'nr', 'contig'); break;
+        case 'blastx_nr': fire_up_ncbi_blast(item_name, 'blastx', 'nr', 'contig'); break;
+        case 'blastn_refseq_genomic': fire_up_ncbi_blast(item_name, 'blastn', 'refseq_genomic', 'contig'); break;
+        case 'blastx_refseq_protein': fire_up_ncbi_blast(item_name, 'blastx', 'refseq_genomic', 'contig'); break;
 
         // collection mode-specific:
         case 'refine_bin': toastr.error('Refine function from the interface is not currently implemented :/ ' +
@@ -621,7 +596,7 @@ function menu_callback(action, param) {
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/hmm/' + item_name + '/' + param,
+                url: '/data/hmm/' + item_name + '/' + param + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
                     if ('error' in data){
                         $('#modGenerateSummary').modal('hide');
@@ -636,22 +611,12 @@ function menu_callback(action, param) {
             break;
 
         case 'inspect_contig':
-            localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+            sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
             window.open(generate_inspect_link('inspect', item_name), '_blank');
             break;
 
-        case 'inspect_gene':
-            localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-            window.open(generate_inspect_link('inspect_gene', item_name), '_blank');
-            break;
-
-        case 'inspect_context':
-            localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-            window.open(generate_inspect_link('inspect_context', item_name), '_blank');
-            break;
-
         case 'inspect_gene_cluster':
-            localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
+            sessionStorage.state = JSON.stringify(serializeSettings(true), null, 4);
             window.open(generate_inspect_link('geneclusters', item_name), '_blank');
             break;
 
@@ -659,7 +624,7 @@ function menu_callback(action, param) {
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/get_AA_sequences_for_gene_cluster/' + item_name,
+                url: '/data/get_AA_sequences_for_gene_cluster/' + item_name + '?timestamp=' + new Date().getTime(),
                 success: function(data) {
                     var output = '';
 

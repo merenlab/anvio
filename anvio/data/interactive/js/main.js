@@ -90,7 +90,10 @@ var bin_prefix;
 
 var current_state_name = "";
 
-var session_id;
+var unique_session_id;
+var ping_timer;
+var autoload_state;
+var autoload_collection;
 var mode;
 var server_mode = false;
 var samples_tree_hover = false;
@@ -186,6 +189,10 @@ $(document).ready(function() {
         $(this).colpickSetColor(this.value);
     });
 
+    if (getCookie('news_checked') == null) {
+        checkNews();
+    }
+
     document.body.addEventListener('click', function() {
         $('#control_contextmenu').hide();
     }, false);
@@ -197,64 +204,232 @@ $(document).ready(function() {
         }  
     });
 
-    if (!$.browser.chrome)
-    {
-        toastr.warning("We tested anvi'o only on Google Chrome, and it seems you are using a different browser.\
-                        For the best performance, and to avoid unexpected issues, please consider using anvi'o with\
-                        the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-    }
-
     initData();
-});
+}); // document ready
 
-function initData() {
+function checkNews() {
+    $('#news-panel-inner').empty();
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/init',
-        success: function(response) {
-            mode = response.mode;
+        url: '/data/news?timestamp=' + new Date().getTime(),
+        success: function(news) {
+            var last_seen_hash = getCookie('last_seen_hash');
+            var hash_found = false;
+            var unread_count = 0;
+
+            for (var i=0; i < news.length; i++) {
+                var news_item = news[i];
+                if (hash_found || last_seen_hash == md5(news_item['title'])) {
+                    hash_found = true;
+                } else {
+                    unread_count++;
+                }
+                $('#news-panel-inner').append('<div class="news-item"> \
+                                              <h1>' + ((hash_found) ? '' : '<span class="blue-dot">') + '</span>'+news_item['title']+'</h1> \
+                                              <span class="news-date">'+news_item['date']+'</span>'+renderMarkdown(news_item['content'])+'</div>')
+            }
+            createCookie('news_checked', 'yes', 1); // expiration is 1 days
+
+            if (unread_count > 0) {
+                $('#toggle-panel-right-3').css('color', '#FF0000');
+            }
+        }
+    });
+}
+
+function newsMarkRead() {
+    $('.blue-dot').remove();
+    $('#toggle-panel-right-3').css('color', '#000000');
+    createCookie('last_seen_hash', md5($('.news-item > h1')[0].textContent), -1);
+}
+
+function initData() {
+    var timestamp = new Date().getTime(); 
+
+    $.when(
+    $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/init?timestamp=' + timestamp,
+        })
+    )
+    .then(
+    function (response)
+        {
+        var titleResponse = [ response.title ];
+        var itemOrdersResponse = [ response.item_orders ];
+        var viewsResponse = [ response.views ];
+        var contigLengthsResponse = [ response.contigLengths ];
+        var defaultViewResponse = [ response.defaultView ];
+        var modeResponse = [ response.mode ];
+        var readOnlyResponse = [ response.readOnly ];
+        var prefixResponse = [ response.binPrefix ];
+        var sessionIdResponse = [ response.sessionId ];
+        var samplesOrderResponse = [ response.samplesOrder ];
+        var sampleInformationResponse = [ response.sampleInformation ];
+        var sampleInformationDefaultLayerOrderResponse = [ response.sampleInformationDefaultLayerOrder ];
+        var stateAutoloadResponse = [ response.stateAutoload ];
+        var collectionAutoloadResponse = [ response.collectionAutoload ];
+        var inspectionAvailable = response.inspectionAvailable;
+        var sequencesAvailable = response.sequencesAvailable;
+        var description = response.description;
+        var project = response.project;
+            unique_session_id = sessionIdResponse[0];
+            mode = modeResponse[0];
             server_mode = response.server_mode;
-            switchUserInterfaceMode(response.project, response.title);
-            setupDescriptionPanel(response.description);
 
-            document.title = response.title;
-            $('#title-panel-first-line').text(response.title);
+        if(!inspectionAvailable){
+            toastr.info("Inspection of data items is not going to be available for this project.");
+            $('.menuItemInspect').addClass('menu-disabled');
+        }
 
-            session_id = response.session_id;
-            if (response.check_background_process) {
-                setTimeout(checkBackgroundProcess, 5000);
-            }
+        if(!sequencesAvailable && mode != "collection" && mode != "pan"){
+            toastr.info("No sequence data is available. Some menu items will be disabled.");
+            $('.menuItemSequence').addClass('menu-disabled');
+        }
 
-            if(!response.inspectionAvailable){
-                toastr.info("Inspection of data items is not going to be available for this project.");
-                $('.menuItemInspect').addClass('menu-disabled');
-            }
+        if (!response['functions_initialized']) {
+            $('#search_functions_button').attr('disabled', true);
+            $('.functions-not-available-message').show();
+        }
 
-            if(!response.sequencesAvailable && mode != "collection" && mode != "pan"){
-                toastr.info("No sequence data is available. Some menu items will be disabled.");
-                $('.menuItemSequence').addClass('menu-disabled');
-            }
+        if (! response.noPing) {
+            ping_timer = setInterval(checkBackgroundProcess, 5000);
+        }
 
-            if (response.readOnly)
+            if (!$.browser.chrome)
             {
-                toastr.info("It seems that this is a read-only instance, therefore the database-writing \
-                            functions will be inaccessible.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                toastr.warning("We tested anvi'o only on Google Chrome, and it seems you are using a different browser. For the best performance, and to avoid unexpected issues, please consider using anvi'o with the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+            }
 
+            // hide all mode dependent divs:
+            $('.full-mode').hide();
+            $('.pan-mode').hide();
+            $('.collection-mode').hide();
+            $('.manual-mode').hide();
+            $('.server-mode').hide();
+            $('.refine-mode').hide();
+
+            console.log("The running mode for the interface: " + mode);
+
+            // mode switch:
+            if (mode == 'refine')
+            {
+                $('.refine-mode').show();
+                $('.nav-tabs').css('background-image', 'url(images/refine-bg.png)');
+            } else if (mode == 'full') {
+                $('.full-mode').show();
+                $('.nav-tabs').css('background-image', 'url(images/full-bg.png)');
+            } else if (mode == 'pan') {
+                $('.pan-mode').show();
+                $('.nav-tabs').css('background-image', 'url(images/pan-bg.png)');
+
+                $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
+                $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
+                $('#splits_title').hide();
+                $('#len_title').hide();
+            } else if (mode == 'collection') {
+                $('.collection-mode').show();
+                $('.nav-tabs').css('background-image', 'url(images/collection-bg.png)');
+            } else if (mode == 'manual') {
+                $('.manual-mode').show();
+                $('.nav-tabs').css('background-image', 'url(images/manual-bg.png)');
+            }
+
+            if (server_mode) {
+                $('.server-mode').show();
+                $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
+                $('#multiUser').show();
+                $('#multiUser > span').html('<b>' + titleResponse[0] + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
+                $('#multiUser > img').attr('src', project.user_avatar);
+                $('#multiUser > .download-button').attr('href', project.download_zip_url);
+                $('#sidebar').css('margin-top', '81px');
+                $('.upload-button').hide();
+            }
+
+            if (readOnlyResponse[0] == true)
+            {
+                toastr.info("It seems that this is a read-only instance, therefore the database-writing functions will be inaccessible.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
 
-            bin_prefix = response.bin_prefix;
-            contig_lengths = response.contig_lengths;
+            bin_prefix = prefixResponse[0];
 
-            var default_tree  = response.item_orders[0];
-            var available_trees = response.item_orders[2];
-            $('#trees_container').append(getComboBoxContent(default_tree, available_trees));
-            clusteringData = response.item_orders[1]['data'];
+            document.title = titleResponse[0];
+            $('#title-panel-first-line').text(titleResponse[0]);
 
-            var default_view = response.views[0];
-            var available_views = response.views[2];
-            $('#views_container').append(getComboBoxContent(default_view, available_views));
+            $('#description-editor').val(description);
+            $('#description-editor').markdown({
+                'onShow': function (e) {
+                    $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
+                },
+                'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
+                'parser': function(content) {
+                    return renderMarkdown(content);
+                },
+                'additionalButtons': [
+                  [{
+                    data: [{
+                      name: 'cmdSave',
+                      title: 'Save',
+                      btnText: 'Save',
+                      btnClass: 'btn btn-success btn-sm',
+                      icon: {
+                        'glyph': 'glyphicon glyphicon-floppy-save',
+                      },
+                      callback: function(e) {
+                        $.ajax({
+                                type: 'POST',
+                                cache: false,
+                                url: '/store_description?timestamp=' + new Date().getTime(),
+                                data: {description: e.getContent()},
+                                success: function(data) {
+                                    toastr.info("Description successfully saved to database.");
+                                }
+                            });
+                      }
+                    }]
+                  }]
+                ],
+                'fullscreen': {'enable': false},
+            });
+
+            if (description.length > 100) {
+                toggleRightPanel('#description-panel');
+            }
+
+            contig_lengths = eval(contigLengthsResponse[0]);
+
+            // if --state parameter given, autoload given state.
+            autoload_state = stateAutoloadResponse[0];
+
+            // if --collection parameter given, autoload given collection.
+            autoload_collection = collectionAutoloadResponse[0];
+
+            /* 
+            //  Clusterings
+            */
+            var default_tree = itemOrdersResponse[0][0];
+            var available_trees = itemOrdersResponse[0][1];
+            var available_trees_combo = getComboBoxContent(default_tree, available_trees);
+
+            $('#trees_container').append(available_trees_combo);
+            $('#trees_container').change(function() {
+                onTreeClusteringChange();
+            });
+
+            /* 
+            //  Views
+            */
+            var default_view = viewsResponse[0][0];
+            var available_views = viewsResponse[0][1];
+            var available_views_combo = getComboBoxContent(default_view, available_views);
+
+            $('#views_container').append(available_views_combo);
+            $('#views_container').change(function() {
+                onViewChange();
+            });
 
             // make layers and samples table sortable
             var _notFirstSelector = ''
@@ -263,10 +438,10 @@ function initData() {
             }
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr" + _notFirstSelector}).disableSelection(); 
             $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
-            
-            samples_order_dict = response.layers_order;
-            samples_information_dict = response.layers_information;
-            samples_information_default_layer_order = response.layers_information_default_order;
+
+            samples_order_dict = samplesOrderResponse[0];
+            samples_information_dict = sampleInformationResponse[0];
+            samples_information_default_layer_order = sampleInformationDefaultLayerOrderResponse[0];
 
             available_orders = Object.keys(samples_order_dict).sort();
             $('#samples_order').append(new Option('custom'));
@@ -279,109 +454,33 @@ function initData() {
                 $('#samples_order').append(new Option(order_name, order));
             });
             buildSamplesTable(samples_information_default_layer_order);
-            changeViewData(response.views[1]);
 
-            if (response.state[0] && response.state[1]) {
-                processState(response.state[0], response.state[1]);
-            }
-
-            $('.loading-screen').hide();
-
-            if (response.autodraw)
+            // load default data
+            if (autoload_state !== null)
             {
-                $('#btn_draw_tree').removeClass('glowing-button');
-
-                $.when({})
-                 .then(drawTree)
-                 .then(function() {
-                    if (response.collection !== null && mode !== 'refine' && mode !== 'gene')
-                    {
-                        processCollection(response.collection);
-                    }
-                 });
+                $.when({}).then(onViewChange)
+                      .then(loadState)
+                      .then(onViewChange)
+                      .then(onTreeClusteringChange)
+                      .then(function() {
+                        drawTree();
+                      });                
+            }
+            else
+            {
+                $.when({}).then(onViewChange)
+                          .then(onTreeClusteringChange);          
             }
 
+            /*
+            //  Add bins
+            */
             newBin();
-        }
-    });
-}
-
-function switchUserInterfaceMode(project, title) {
-    if (server_mode == false && (mode == 'pan' || mode == 'gene' || mode == 'full')) {
-        $('#search_functions_button').attr('disabled', false);
-        $('#searchFunctionsValue').attr('disabled', false);
-        $('.functions-not-available-message').hide();
-    }
-
-    // hide all mode dependent divs:
-    $('.full-mode, .pan-mode, .collection-mode, .manual-mode, .server-mode, .refine-mode').hide();
-
-    console.log("The running mode for the interface: " + mode);
-
-    $('.' + mode + '-mode').show();
-    $('.nav-tabs').css('background-image', 'url(images/' + mode + '-bg.png)');
-
-    if (mode == 'pan') {
-        $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
-        $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
-        $('#splits_title').hide();
-        $('#len_title').hide();
-        $('.gene-filters-not-available-message').hide();
-        $('.pan-filters button,input:checkbox').removeAttr('disabled')
-    }
-
-    if (server_mode) {
-        $('.server-mode').show();
-        $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
-        $('#multiUser').show();
-        $('#multiUser > span').html('<b>' + title + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
-        $('#multiUser > img').attr('src', project.user_avatar);
-        $('#multiUser > .download-button').attr('href', project.download_zip_url);
-        $('#sidebar').css('margin-top', '81px');
-        $('.upload-button').hide();
-    }
-}
-
-function setupDescriptionPanel(description) {  
-    $('#description-editor').val(description);
-    $('#description-editor').markdown({
-        'onShow': function (e) {
-            $('[data-handler="bootstrap-markdown-cmdPreview"]').trigger('click');
-        },
-        'hiddenButtons': ['cmdUrl', 'cmdImage', 'cmdCode', 'cmdQuote'],
-        'parser': function(content) {
-            return renderMarkdown(content);
-        },
-        'additionalButtons': [
-          [{
-            data: [{
-              name: 'cmdSave',
-              title: 'Save',
-              btnText: 'Save',
-              btnClass: 'btn btn-success btn-sm',
-              icon: {
-                'glyph': 'glyphicon glyphicon-floppy-save',
-              },
-              callback: function(e) {
-                $.ajax({
-                        type: 'POST',
-                        cache: false,
-                        url: '/store_description',
-                        data: {description: e.getContent()},
-                        success: function(data) {
-                            toastr.info("Description successfully saved to database.");
-                        }
-                    });
-              }
-            }]
-          }]
-        ],
-        'fullscreen': {'enable': false},
-    });
-
-    if (description.length > 100) {
-        toggleRightPanel('#description-panel');
-    }
+        } // response callback
+    ).fail(function() {
+        toastr.error("One or more ajax request has failed, See console logs for details.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+        console.log(arguments);
+    }); // promise
 }
 
 function onViewChange() {
@@ -401,9 +500,40 @@ function onViewChange() {
                 $.ajax({
                     type: 'GET',
                     cache: false,
-                    url: '/data/view/' + $('#views_container').val(),
+                    url: '/data/view/' + $('#views_container').val() + '?timestamp=' + new Date().getTime(),
                     success: function(data) {
-                        changeViewData(data);
+                        layerdata = eval(data);
+                        parameter_count = layerdata[0].length;
+
+                        // since we are painting parent layers odd-even, 
+                        // we should remove single parents (single means no parent)
+                        removeSingleParents(); // in utils.js
+
+                        layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
+                        layer_types = {};
+
+                        // add layerdata columns to search window
+                        $('#searchLayerList').empty();
+                        for (var i=0; i < parameter_count; i++)
+                        {
+                            $('#searchLayerList').append(new Option(layerdata[0][i],i));
+                        }
+
+                        $('#views_container').attr('disabled', false);
+                        $('#btn_draw_tree').attr('disabled', false);
+
+                        if (current_view != '') {
+                            // backup current layer order and layers table to global views object
+                            syncViews();
+                        }
+                        current_view = $('#views_container').val();
+
+                        $("#tbody_layers").empty();
+
+                        buildLayersTable(layer_order, views[current_view]);
+                        populateColorDicts();
+                        buildLegendTables();
+
                         waitingDialog.hide();
                     }
                 });
@@ -412,46 +542,6 @@ function onViewChange() {
 
     return defer.promise();
 }
-
-
-function changeViewData(view_data) {
-    layerdata = view_data;
-    parameter_count = layerdata[0].length;
-
-    // since we are painting parent layers odd-even, 
-    // we should remove single parents (single means no parent)
-    removeSingleParents(); // in utils.js
-
-    layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
-    layer_types = {};
-
-    // add layerdata columns to search window
-    $('#searchLayerList').empty();
-    for (var i=0; i < parameter_count; i++)
-    {
-        if (i == 0) {
-            $('#searchLayerList').append(new Option("Item Name", i));
-        } else {
-            $('#searchLayerList').append(new Option(getPrettyName(layerdata[0][i]),i));
-        }
-    }
-
-    $('#views_container').attr('disabled', false);
-    $('#btn_draw_tree').attr('disabled', false);
-
-    if (current_view != '') {
-        // backup current layer order and layers table to global views object
-        syncViews();
-    }
-    current_view = $('#views_container').val();
-
-    $("#tbody_layers").empty();
-
-    buildLayersTable(layer_order, views[current_view]);
-    populateColorDicts();
-    buildLegendTables();
-}
-
 
 function populateColorDicts() {
     for (var layer_id=0; layer_id < parameter_count; layer_id++)
@@ -465,7 +555,7 @@ function populateColorDicts() {
                 var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
                 for (var j=0; j < bars.length; j++)
                 {
-                    stack_bar_colors[layer_id].push(getNamedCategoryColor(bars[j]));
+                    stack_bar_colors[layer_id].push(randomColor({luminosity: 'dark'}));
                 } 
             }
         }
@@ -784,7 +874,7 @@ function onTreeClusteringChange() {
                 $.ajax({
                     type: 'GET',
                     cache: false,
-                    url: '/tree/' + $('#trees_container').val(),
+                    url: '/tree/' + $('#trees_container').val() + '?timestamp=' + new Date().getTime(),
                     success: function(data) {
                         clusteringData = data;
                         $('#trees_container').attr('disabled', false);
@@ -826,7 +916,7 @@ function syncViews() {
 
 
 function getComboBoxContent(default_item, available_items){
-    available_items = available_items.sort()
+    available_items = Object.keys(available_items).sort()
     var combo = '';
     var combo_item = '<option value="{val}"{sel}>{text}</option>';
 
@@ -1149,31 +1239,6 @@ function buildLayersTable(order, settings)
             $('#tbody_layers').append(template);
         }
 
-        $('#tbody_layers .input-height:last').change(function (ev) {
-            // setting height 0 changes samples order to custom, only if layer is in samples order
-            if (ev.target.value == 0) {
-                var layer_name = $(ev.target).parent().parent().find('td:nth(1)').attr('title');
-                var layer_names_in_samples = null;
-
-                if (samples_order_dict.hasOwnProperty($('#samples_order').val())) {
-                    var samples_organization = samples_order_dict[$('#samples_order').val()];
-
-                    if (samples_organization['basic'] != null && samples_organization['basic'] != "")
-                    {
-                        layer_names_in_samples = samples_organization['basic'].split(',');
-                    }
-                    else
-                    {
-                        layer_names_in_samples = get_newick_leaf_order(samples_organization['newick']);
-                    }
-
-                    if (layer_names_in_samples.indexOf(layer_name) > -1) {
-                        $('#samples_order').val('custom').trigger('change');
-                    }
-                }
-            }
-        });
-
         if($('#custom_layer_margin').is(':checked'))
         {
             $('.column-margin').show();
@@ -1217,8 +1282,6 @@ function getLayerId(layer_name)
     }
     return -1;
 }
-
-
 
 function serializeSettings(use_layer_names) {
 
@@ -1336,11 +1399,9 @@ function serializeSettings(use_layer_names) {
 }
 
 function drawTree() {
-    var defer = $.Deferred();
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 
-    $('#btn_draw_tree').removeClass('glowing-button');
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
     $('#bin_settings_tab').removeClass("disabled"); // enable bins tab
@@ -1354,10 +1415,7 @@ function drawTree() {
 
     waitingDialog.show('Drawing ...', 
         {
-            dialogSize: 'sm', 
-            onHide: function() {
-                defer.resolve(); 
-            },
+            dialogSize: 'sm',
             onShow: function() {
                 var drawer = new Drawer(settings);
                 drawer.draw();
@@ -1368,6 +1426,7 @@ function drawTree() {
 
                 redrawBins();
 
+                waitingDialog.hide();
                 $('#btn_draw_tree').prop('disabled', false);
                 $('#btn_redraw_samples').prop('disabled', false);
 
@@ -1376,11 +1435,14 @@ function drawTree() {
                     $('#tree-radius-container').show();
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
-                waitingDialog.hide();
+
+                if (autoload_collection !== null && mode !== 'refine')
+                {
+                    loadCollection(autoload_collection);
+                    autoload_collection = null;
+                }
             },
         });
-
-    return defer.promise();
 }
 
 
@@ -1555,7 +1617,7 @@ function showGenSummaryWindow() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collections',
+        url: '/data/collections?timestamp=' + new Date().getTime(),
         success: function(data) {
             $('#summaryCollection_list').empty();
 
@@ -1700,7 +1762,7 @@ function showCompleteness(bin_id, updateOnly) {
         return;
 
     var msg = '<table class="table table-striped sortable">' +
-        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent completion</th></tr></thead><tbody>';
+        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent complenetion</th></tr></thead><tbody>';
 
     for (var source in stats){
         if(stats[source]['domain'] != averages['domain'])
@@ -1854,7 +1916,7 @@ function showStoreCollectionWindow() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collections',
+        url: '/data/collections?timestamp=' + new Date().getTime(),
         success: function(data) {
             $('#storeCollection_list').empty();
 
@@ -1905,7 +1967,7 @@ function storeRefinedBins() {
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/data/store_refined_bins',
+        url: '/data/store_refined_bins?timestamp=' + new Date().getTime(),
         data: { data: JSON.stringify(data, null, 4), colors: JSON.stringify(colors, null, 4) },
         success: function(data) {
             if (data.status == -1){
@@ -1988,7 +2050,7 @@ function generateSummary() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/summarize/' + collection,
+        url: '/summarize/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
             if ('error' in data){
                 $('#modGenerateSummary').modal('hide');
@@ -2013,7 +2075,7 @@ function showLoadCollectionWindow() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collections',
+        url: '/data/collections?timestamp=' + new Date().getTime(),
         success: function(data) {
             $('#loadCollection_list').empty();
 
@@ -2057,7 +2119,7 @@ function showCollectionDetails(list) {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collections',
+        url: '/data/collections?timestamp=' + new Date().getTime(),
         success: function(data) {
             var tbl = '<div class="col-md-12">Collection Details</div><hr>' +
                 '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>' + data[cname]['num_splits'] + '</b></div>' +
@@ -2074,8 +2136,12 @@ function loadCollection(default_collection) {
         return;
     }
 
-    $('#modLoadCollection').modal('hide');
-    var collection = $('#loadCollection_list').val();
+    var collection;
+    if (default_collection) {
+        collection = default_collection;
+    } else {
+        collection = $('#loadCollection_list').val();
+    }
 
     if (collection === null) {
         toastr.warning('Please select a collection.');
@@ -2107,63 +2173,60 @@ function loadCollection(default_collection) {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/collection/' + collection,
+        url: '/data/collection/' + collection + '?timestamp=' + new Date().getTime(),
         success: function(data) {
-            processCollection(data);
+            $('#modLoadCollection').modal('hide');
+
+            // clear bins tab
+            var bins_cleared = false;
+            SELECTED = new Array();
+            bin_count = 0;
+            bin_counter = 0;
+
+            // calculate treshold.
+            var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
+
+            // load new bins
+            var bin_id=0;
+            for (bin in data['data'])
+            {
+                // collection may be contain unknown splits/contigs, we should clear them.
+                var contigs = new Array();
+                var sum_contig_length = 0;
+
+                for (index in data['data'][bin])
+                {
+                    if (mode === 'manual' || mode === 'pan' || mode === 'server'){
+                        contigs.push(data['data'][bin][index]);
+                    } else if (typeof contig_lengths[data['data'][bin][index]] !== 'undefined') {
+                        contigs.push(data['data'][bin][index]);
+                        sum_contig_length += contig_lengths[data['data'][bin][index]];
+                    }
+                    
+                }
+
+                if (mode === 'manual' || mode === 'pan' || mode === 'server' || sum_contig_length >= threshold)
+                {
+                    if (!bins_cleared)
+                    {
+                        $('#tbody_bins').empty();
+                        bins_cleared = true;
+                    }
+                    bin_id++;
+                    bin_counter++;
+                    SELECTED[bin_id] = contigs;
+
+                    var _color =  (data['colors'][bin]) ? data['colors'][bin] : randomColor();
+
+                    newBin(bin_id, {'name': bin, 'color': _color});
+                }
+            }
+
+            rebuildIntersections();
+            updateBinsWindow();
+            redrawBins();
         }
     });
-}
-
-function processCollection(collection_data) {
-
-    // clear bins tab
-    var bins_cleared = false;
-    SELECTED = new Array();
-    bin_count = 0;
-    bin_counter = 0;
-
-    // calculate treshold.
-    var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
-
-    // load new bins
-    var bin_id=0;
-    for (bin in collection_data['data'])
-    {
-        // collection may be contain unknown splits/contigs, we should clear them.
-        var contigs = new Array();
-        var sum_contig_length = 0;
-
-        for (index in collection_data['data'][bin])
-        {
-            if (mode === 'manual' || mode === 'pan' || mode === 'server'){
-                contigs.push(collection_data['data'][bin][index]);
-            } else if (typeof contig_lengths[collection_data['data'][bin][index]] !== 'undefined') {
-                contigs.push(collection_data['data'][bin][index]);
-                sum_contig_length += contig_lengths[collection_data['data'][bin][index]];
-            }
-            
-        }
-
-        if (mode === 'manual' || mode === 'pan' || mode === 'server' || sum_contig_length >= threshold)
-        {
-            if (!bins_cleared)
-            {
-                $('#tbody_bins').empty();
-                bins_cleared = true;
-            }
-            bin_id++;
-            bin_counter++;
-            SELECTED[bin_id] = contigs;
-
-            var _color =  (collection_data['colors'][bin]) ? collection_data['colors'][bin] : randomColor();
-
-            newBin(bin_id, {'name': bin, 'color': _color});
-        }
-    }
-
-    rebuildIntersections();
-    updateBinsWindow();
-    redrawBins();    
 }
 
 function showSaveStateWindow()
@@ -2171,7 +2234,7 @@ function showSaveStateWindow()
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/state/all',
+        url: '/state/all?timestamp=' + new Date().getTime(),
         success: function(state_list) {
             $('#saveState_list').empty();
 
@@ -2202,12 +2265,12 @@ function showGeneratePhylogeneticTreeWindow() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/phylogeny/programs',
+        url: '/data/phylogeny/programs?timestamp=' + new Date().getTime(),
         success: function(available_programs) {
               $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/phylogeny/aligners',
+                url: '/data/phylogeny/aligners?timestamp=' + new Date().getTime(),
                 success: function(available_aligners) {
                     $('#phylogeny_programs').empty();
                     for (var i=0; i < available_programs.length; i++) {
@@ -2263,9 +2326,10 @@ function generatePhylogeneticTree() {
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/data/phylogeny/generate_tree',
+        url: '/data/phylogeny/generate_tree?timestamp=' + new Date().getTime(),
         data: {
             'name': $('#phylogeny_name').val(),
+            'skip_multiple_genes': $('#phylogeny_skip_multiple_gene_calls').is(':checked'),
             'program': $('#phylogeny_programs').val(),
             'aligner': $('#phylogeny_aligners').val(),
             'gene_clusters': gene_cluster_list,
@@ -2300,7 +2364,7 @@ function saveState()
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/state/all',
+        url: '/state/all?timestamp=' + new Date().getTime(),
         success: function(state_list) {
             for (state_name in state_list) {
                 if (state_name == name)
@@ -2316,7 +2380,7 @@ function saveState()
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/state/save/' + name,
+        url: '/state/save/' + name + '?timestamp=' + new Date().getTime(),
         data: {
             'content': JSON.stringify(serializeSettings(true), null, 4)
         },
@@ -2363,7 +2427,7 @@ function showUploadProject() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/state/all',
+        url: '/state/all?timestamp=' + new Date().getTime(),
         success: function(state_list) {
             for (state_name in state_list) {
                 $('#upload_state').append('<option>' + state_name + '</option>');
@@ -2372,7 +2436,7 @@ function showUploadProject() {
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/collections',
+                url: '/data/collections?timestamp=' + new Date().getTime(),
                 success: function(collection_list) {
                     for (collection_name in collection_list) {
                         $('#upload_collection').append('<option>' + collection_name + '</option>');
@@ -2388,7 +2452,7 @@ function uploadProject() {
     $.ajax({
         type: 'POST',
         cache: false,
-        url: '/upload_project',
+        url: '/upload_project?timestamp=' + new Date().getTime(),
         data: {
             username: $('#username').val(),
             password: $('#password').val(),
@@ -2421,7 +2485,7 @@ function showLoadStateWindow()
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/state/all',
+        url: '/state/all?timestamp=' + new Date().getTime(),
         success: function(state_list) {
             $('#loadState_list').empty();
 
@@ -2436,14 +2500,28 @@ function showLoadStateWindow()
 
 function loadState()
 {
-    var defer = $.Deferred();
     $('#modLoadState').modal('hide');
-    if ($('#loadState_list').val() == null) {
-        defer.reject();
-        return;
+    var defer = $.Deferred();
+    var state_name;
+    if (autoload_state !== null)
+    {
+        state_name = autoload_state;
+        autoload_state = null // to prevent load again.
+
+        if ($('#panel-left').is(':visible')) {
+            setTimeout(toggleLeftPanel, 500);
+        }
+    }
+    else
+    {
+        if ($('#loadState_list').val() == null) {
+            defer.reject();
+            return;
+        }
+
+        state_name = $('#loadState_list').val();
     }
 
-    state_name = $('#loadState_list').val();
     waitingDialog.show('Requesting state data from the server ...', 
         {
             dialogSize: 'sm', 
@@ -2454,218 +2532,216 @@ function loadState()
                 $.ajax({
                         type: 'GET',
                         cache: false,
-                        url: '/state/get/' + state_name,
+                        url: '/state/get/' + state_name + '?timestamp=' + new Date().getTime(),
                         success: function(response) {
                             try{
-                                clusteringData = response[1]['data'];
-                                changeViewData(response[2]);
-                                processState(state_name, response[0]);
+                                var state = JSON.parse(response);
                             }catch(e){
                                 toastr.error('Failed to parse state data, ' + e);
                                 defer.reject();
                                 return;
                             }
+                            
+                            if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
+                            {
+                                toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
+                                defer.reject();
+                                return;
+                            }
+
+                            if (state.hasOwnProperty('layer-order')) {
+                                layer_order = [];
+                                for (var i = 0; i < state['layer-order'].length; i++)
+                                {
+                                    // remove non-exists layers.
+                                    var layer_id = getLayerId(state['layer-order'][i]);
+
+                                    if (layer_id != -1)
+                                    {
+                                        layer_order.push(layer_id);
+                                    }
+                                }
+
+                                // add layers that not exist in state and exist in layerdata
+                                for (var i=1; i < parameter_count; i++)
+                                {
+                                    if ($.inArray(i, layer_order) === -1)
+                                    {
+                                        layer_order.push(i);
+                                    }
+                                }
+
+                            } else {
+                                layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
+                            }
+
+                            if (state.hasOwnProperty('views')) {
+                                views = {};
+                                for (var view_key in state['views'])
+                                {
+                                    views[view_key] = {};
+                                    for (var key in state['views'][view_key])
+                                    {
+                                        var layer_id = getLayerId(key);
+                                        if (layer_id != -1)
+                                        {
+                                            views[view_key][layer_id] = state['views'][view_key][key];
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (state.hasOwnProperty('layers')) {
+                                layers = {};
+                                for (var key in state['layers'])
+                                {
+                                    var layer_id = getLayerId(key);
+                                    if (layer_id != -1)
+                                    {
+                                        layers[layer_id] = state['layers'][key];
+                                    }
+                                }
+                            }
+
+                            if (state.hasOwnProperty('categorical_data_colors')) {
+                                categorical_data_colors = {};
+                                for (var key in state['categorical_data_colors'])
+                                {
+                                    var layer_id = getLayerId(key);
+                                    if (layer_id != -1)
+                                    {
+                                        categorical_data_colors[layer_id] = state['categorical_data_colors'][key];
+                                    }
+                                }
+                            }
+
+                            if (state.hasOwnProperty('stack_bar_colors')) {
+                                stack_bar_colors = {};
+                                for (var key in state['stack_bar_colors'])
+                                {
+                                    var layer_id = getLayerId(key);
+                                    if (layer_id != -1)
+                                    {
+                                        stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
+                                    }
+                                }
+                            }
+
+                            if (state.hasOwnProperty('tree-type'))
+                                $('#tree_type').val(state['tree-type']).trigger('change');
+                            if (state.hasOwnProperty('angle-min'))
+                                $('#angle-min').val(state['angle-min']);
+                            if (state.hasOwnProperty('tree-height'))
+                                $('#tree_height').val(state['tree-height']);
+                            if (state.hasOwnProperty('tree-width'))
+                                $('#tree_width').val(state['tree-width']);
+                            if (state.hasOwnProperty('angle-max'))
+                                $('#angle-max').val(state['angle-max']);
+                            if (state.hasOwnProperty('tree-radius')) {
+                                $('#tree-radius-container').show();
+                                $('#tree-radius').val(state['tree-radius']);
+                            }
+                            if (state.hasOwnProperty('order-by') && $("#trees_container option[value='" + state['order-by'] + "']").length) {
+                                $('#trees_container').val(state['order-by']);
+                            }
+                            if (state.hasOwnProperty('current-view') && $("#views_container option[value='" + state['current-view'] + "']").length) {
+                                $('#views_container').val(state['current-view']);
+                            }
+                            if (state.hasOwnProperty('max-font-size')) {
+                                $('#max_font_size').val(state['max-font-size']);
+                            }
+                            if (state.hasOwnProperty('max-font-size-label')) {
+                                $('#max_font_size_label').val(state['max-font-size-label']);
+                            }
+                            if (state.hasOwnProperty('layer-margin'))
+                                $('#layer-margin').val(state['layer-margin']);
+                            if (state.hasOwnProperty('outer-ring-height'))
+                                $('#outer-ring-height').val(state['outer-ring-height']);
+                            if (state.hasOwnProperty('outer-ring-margin'))
+                                $('#outer-ring-margin').val(state['outer-ring-margin']);
+                            if (state.hasOwnProperty('edge-normalization'))
+                                $('#edge_length_normalization').prop('checked', state['edge-normalization']);
+                            if (state.hasOwnProperty('optimize-speed'))
+                                $('#optimize_speed').prop('checked', state['optimize-speed']);
+                            if (state.hasOwnProperty('custom-layer-margin')) {
+                                $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
+                            }
+                            if (state.hasOwnProperty('grid-color')) {
+                                $('#grid_color').attr('color', state['grid-color']);
+                                $('#grid_color').css('background-color', state['grid-color']);
+                            }
+                            if (state.hasOwnProperty('grid-width')) {
+                                $('#grid_width').val(state['grid-width']);
+                            }
+                            if (state.hasOwnProperty('bin-labels-font-size')) {
+                                $('#bin_labels_font_size').val(state['bin-labels-font-size']);
+                            }
+                            if (state.hasOwnProperty('bin-labels-angle')) {
+                                $('#bin_labels_angle').val(state['bin-labels-angle']);
+                            }
+                            if (state.hasOwnProperty('show-bin-labels')) {
+                                $('#show_bin_labels').prop('checked', state['show-bin-labels']).trigger('change');
+                            }
+                            if (state.hasOwnProperty('autorotate-bin-labels')) {
+                                $('#autorotate_bin_labels').prop('checked', state['autorotate-bin-labels']).trigger('change');
+                            }
+                            if (state.hasOwnProperty('show-grid-for-bins')) {
+                                $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
+                            }
+                            if (state.hasOwnProperty('samples-edge-length-normalization')) {
+                                $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
+                            }
+                            if (state.hasOwnProperty('samples-ignore-branch-length')) {
+                                $('#samples_ignore_branch_length').prop('checked', state['samples-ignore-branch-length']);
+                            }
+                            if (state.hasOwnProperty('samples-tree-height')) {
+                                $('#samples_tree_height').val(state['samples-tree-height']);
+                            }
+                            if (state.hasOwnProperty('background-opacity')) {
+                                $('#background_opacity').val(state['background-opacity']);
+                            }
+                            if (state.hasOwnProperty('draw-guide-lines')) {
+                                $('#draw_guide_lines').val(state['draw-guide-lines'])
+                            }
+
+                            // reload layers
+                            var current_view = $('#views_container').val();
+                            $("#tbody_layers").empty();
+
+                            if (state.hasOwnProperty('samples-categorical-colors')) {
+                                for (key in state['samples-categorical-colors']) {
+                                    if (key in samples_categorical_colors) {
+                                        samples_categorical_colors[key] = state['samples-categorical-colors'][key];
+                                    } 
+                                }
+                            }
+                            if (state.hasOwnProperty('samples-stack-bar-colors')) {
+                                for (key in state['samples-stack-bar-colors']) {
+                                    if (key in samples_stack_bar_colors) {
+                                        samples_stack_bar_colors[key] = state['samples-stack-bar-colors'][key];
+                                    } 
+                                }
+                            }
+
+                            if (state.hasOwnProperty('samples-order'))
+                                $('#samples_order').val(state['samples-order']);
+
+                            buildLayersTable(layer_order, views[current_view]);
+                            buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+                            buildLegendTables();
+
+                            current_state_name = state_name;
+
+                            toastr.success("State '" + current_state_name + "' successfully loaded.");
                             waitingDialog.hide();
                         }
                     });
             },
         }
     );
+    
 
     return defer.promise();
 }
 
-function processState(state_name, state) {
-    if (typeof trigger_combos === 'undefined') {
-        trigger_combos = true;
-    }
 
-    if ((state['version'] !== VERSION) || !state.hasOwnProperty('version'))
-    {
-        toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
-        throw "";
-    }
-
-    if (state.hasOwnProperty('layer-order')) {
-        layer_order = [];
-        for (var i = 0; i < state['layer-order'].length; i++)
-        {
-            // remove non-exists layers.
-            var layer_id = getLayerId(state['layer-order'][i]);
-
-            if (layer_id != -1)
-            {
-                layer_order.push(layer_id);
-            }
-        }
-
-        // add layers that not exist in state and exist in layerdata
-        for (var i=1; i < parameter_count; i++)
-        {
-            if ($.inArray(i, layer_order) === -1)
-            {
-                layer_order.push(i);
-            }
-        }
-
-    } else {
-        layer_order = Array.apply(null, Array(parameter_count-1)).map(function (_, i) {return i+1;}); // range(1, parameter_count)
-    }
-
-    if (state.hasOwnProperty('views')) {
-        views = {};
-        for (var view_key in state['views'])
-        {
-            views[view_key] = {};
-            for (var key in state['views'][view_key])
-            {
-                var layer_id = getLayerId(key);
-                if (layer_id != -1)
-                {
-                    views[view_key][layer_id] = state['views'][view_key][key];
-                }
-            }
-        }
-    }
-
-    if (state.hasOwnProperty('layers')) {
-        layers = {};
-        for (var key in state['layers'])
-        {
-            var layer_id = getLayerId(key);
-            if (layer_id != -1)
-            {
-                layers[layer_id] = state['layers'][key];
-            }
-        }
-    }
-
-    if (state.hasOwnProperty('categorical_data_colors')) {
-        for (var key in state['categorical_data_colors'])
-        {
-            var layer_id = getLayerId(key);
-            if (layer_id != -1)
-            {
-                categorical_data_colors[layer_id] = state['categorical_data_colors'][key];
-            }
-        }
-    }
-
-    if (state.hasOwnProperty('stack_bar_colors')) {
-        for (var key in state['stack_bar_colors'])
-        {
-            var layer_id = getLayerId(key);
-            if (layer_id != -1)
-            {
-                stack_bar_colors[layer_id] = state['stack_bar_colors'][key];
-            }
-        }
-    }
-
-    if (state.hasOwnProperty('tree-type'))
-        $('#tree_type').val(state['tree-type']).trigger('change');
-    if (state.hasOwnProperty('angle-min'))
-        $('#angle-min').val(state['angle-min']);
-    if (state.hasOwnProperty('tree-height'))
-        $('#tree_height').val(state['tree-height']);
-    if (state.hasOwnProperty('tree-width'))
-        $('#tree_width').val(state['tree-width']);
-    if (state.hasOwnProperty('angle-max'))
-        $('#angle-max').val(state['angle-max']);
-    if (state.hasOwnProperty('tree-radius')) {
-        $('#tree-radius-container').show();
-        $('#tree-radius').val(state['tree-radius']);
-    }
-    if (state.hasOwnProperty('order-by') && $("#trees_container option[value='" + state['order-by'] + "']").length) {
-        $('#trees_container').val(state['order-by']);
-    }
-    if (state.hasOwnProperty('current-view') && $("#views_container option[value='" + state['current-view'] + "']").length) {
-        $('#views_container').val(state['current-view']);
-    }
-    if (state.hasOwnProperty('max-font-size')) {
-        $('#max_font_size').val(state['max-font-size']);
-    }
-    if (state.hasOwnProperty('max-font-size-label')) {
-        $('#max_font_size_label').val(state['max-font-size-label']);
-    }
-    if (state.hasOwnProperty('layer-margin'))
-        $('#layer-margin').val(state['layer-margin']);
-    if (state.hasOwnProperty('outer-ring-height'))
-        $('#outer-ring-height').val(state['outer-ring-height']);
-    if (state.hasOwnProperty('outer-ring-margin'))
-        $('#outer-ring-margin').val(state['outer-ring-margin']);
-    if (state.hasOwnProperty('edge-normalization'))
-        $('#edge_length_normalization').prop('checked', state['edge-normalization']);
-    if (state.hasOwnProperty('optimize-speed'))
-        $('#optimize_speed').prop('checked', state['optimize-speed']);
-    if (state.hasOwnProperty('custom-layer-margin')) {
-        $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
-    }
-    if (state.hasOwnProperty('grid-color')) {
-        $('#grid_color').attr('color', state['grid-color']);
-        $('#grid_color').css('background-color', state['grid-color']);
-    }
-    if (state.hasOwnProperty('grid-width')) {
-        $('#grid_width').val(state['grid-width']);
-    }
-    if (state.hasOwnProperty('bin-labels-font-size')) {
-        $('#bin_labels_font_size').val(state['bin-labels-font-size']);
-    }
-    if (state.hasOwnProperty('bin-labels-angle')) {
-        $('#bin_labels_angle').val(state['bin-labels-angle']);
-    }
-    if (state.hasOwnProperty('show-bin-labels')) {
-        $('#show_bin_labels').prop('checked', state['show-bin-labels']).trigger('change');
-    }
-    if (state.hasOwnProperty('autorotate-bin-labels')) {
-        $('#autorotate_bin_labels').prop('checked', state['autorotate-bin-labels']).trigger('change');
-    }
-    if (state.hasOwnProperty('show-grid-for-bins')) {
-        $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
-    }
-    if (state.hasOwnProperty('samples-edge-length-normalization')) {
-        $('#samples_edge_length_normalization').prop('checked', state['samples-edge-length-normalization']);
-    }
-    if (state.hasOwnProperty('samples-ignore-branch-length')) {
-        $('#samples_ignore_branch_length').prop('checked', state['samples-ignore-branch-length']);
-    }
-    if (state.hasOwnProperty('samples-tree-height')) {
-        $('#samples_tree_height').val(state['samples-tree-height']);
-    }
-    if (state.hasOwnProperty('background-opacity')) {
-        $('#background_opacity').val(state['background-opacity']);
-    }
-    if (state.hasOwnProperty('draw-guide-lines')) {
-        $('#draw_guide_lines').val(state['draw-guide-lines'])
-    }
-
-    // reload layers
-    var current_view = $('#views_container').val();
-    $("#tbody_layers").empty();
-
-    if (state.hasOwnProperty('samples-categorical-colors')) {
-        for (key in state['samples-categorical-colors']) {
-            if (key in samples_categorical_colors) {
-                samples_categorical_colors[key] = state['samples-categorical-colors'][key];
-            } 
-        }
-    }
-    if (state.hasOwnProperty('samples-stack-bar-colors')) {
-        for (key in state['samples-stack-bar-colors']) {
-            if (key in samples_stack_bar_colors) {
-                samples_stack_bar_colors[key] = state['samples-stack-bar-colors'][key];
-            } 
-        }
-    }
-
-    if (state.hasOwnProperty('samples-order'))
-        $('#samples_order').val(state['samples-order']);
-
-    buildLayersTable(layer_order, views[current_view]);
-    buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
-    buildLegendTables();
-
-    current_state_name = state_name;
-
-    toastr.success("State '" + current_state_name + "' successfully loaded.");
-}

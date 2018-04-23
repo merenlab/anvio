@@ -8,7 +8,7 @@ import sys
 import argparse
 
 import anvio
-import anvio.utils as utils
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
@@ -29,7 +29,7 @@ progress = terminal.Progress()
 
 
 def main(args):
-    utils.is_pan_or_profile_db(args.pan_or_profile_db)
+    dbops.is_pan_or_profile_db(args.pan_or_profile_db)
 
     c = ccollections.Collections(r = run, p = progress)
     c.populate_collections_dict(args.pan_or_profile_db)

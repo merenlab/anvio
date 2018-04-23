@@ -17,12 +17,12 @@ import copy
 import anvio
 import anvio.db as db
 import anvio.tables as t
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -37,7 +37,6 @@ __status__ = "Development"
 
 run = terminal.Run()
 progress = terminal.Progress()
-pp = terminal.pretty_print
 
 
 class Collections:
@@ -54,7 +53,7 @@ class Collections:
         filesnpaths.is_file_exists(db_path)
         self.db_path = db_path
 
-        database = db.DB(db_path, utils.get_required_version_for_db(db_path))
+        database = db.DB(db_path, dbops.get_required_version_for_db(db_path))
         self.db_type = database.get_meta_value('db_type')
         collections_info_table = database.get_table_as_dict(t.collections_info_table_name)
         database.disconnect()
@@ -73,16 +72,16 @@ class Collections:
             self.collections_dict[collection_name] = collections_info_table[collection_name]
             self.collections_dict[collection_name]['read_only'] = read_only
             self.collections_dict[collection_name]['source_db_path'] = db_path
-            self.collections_dict[collection_name]['source_db_version'] = utils.get_required_version_for_db(db_path)
+            self.collections_dict[collection_name]['source_db_version'] = dbops.get_required_version_for_db(db_path)
 
 
     def sanity_check(self, collection_name):
         if collection_name not in self.collections_dict:
             raise ConfigError('There is no "%s" I know of. Probably something is spelled wrong somewhere? In case you are\
-                               a programmer and accessing to the collections from your program, here is a reminder for you:\
-                               are you sure `populate_collections_dict` was called for whatever database you are trying to\
-                               get collections from? If you are a user, you can always try to use the `--list-collections`\
-                               flag and hope for the best.' % collection_name)
+                                a programmer and accessing to the collections from your program, here is a reminder for you:\
+                                are you sure `populate_collections_dict` was called for whatever database you are trying to\
+                                get collections from? If you are a user, you can always try to use the `--list-collections`\
+                                flag and hope for the best.' % collection_name)
 
 
     def get_trimmed_dicts(self, collection_name, split_names = set([])):
@@ -208,48 +207,6 @@ class Collections:
             self.run.info_single(output)
 
 
-    def merge_bins(self, collection_name, new_bin_name, bin_names_list):
-        """Merges a given list of bins in a collection"""
-
-        self.sanity_check(collection_name)
-
-        if not self.db_path:
-            raise ConfigError("Something is off. The class does not know which database it is supposed to\
-                               be working with.")
-
-        if not isinstance(bin_names_list, list):
-            raise ConfigError("The `bin_names_list` must be of thpe `set` :/")
-
-        bins_info_dict = self.get_bins_info_dict(collection_name)
-        collection_dict = self.get_collection_dict(collection_name)
-
-        invalid_bin_names = [b for b in bin_names_list if not b in collection_dict]
-        if invalid_bin_names:
-            raise ConfigError("Some of the bin names you want to merge is not in the collection %s :/ Here\
-                               is a list of them: %s" % (collection_name, ', '.join(invalid_bin_names)))
-
-        items_in_new_bin = []
-        for bin_name in bin_names_list:
-            items_in_new_bin.extend(collection_dict[bin_name])
-
-        info_for_new_bin = copy.deepcopy(bins_info_dict[bin_name])
-        info_for_new_bin['source'] = 'anvi-merge-bins'
-
-        # time to remove the ones that are merged
-        for bin_name in bin_names_list:
-            bins_info_dict.pop(bin_name)
-            collection_dict.pop(bin_name)
-
-        # add the merged stuff
-        bins_info_dict[new_bin_name] = info_for_new_bin
-        collection_dict[new_bin_name] = items_in_new_bin
-
-        tables_for_collections = TablesForCollections(self.db_path, run=terminal.Run(verbose=False))
-        tables_for_collections.append(collection_name, collection_dict, bins_info_dict)
-
-        self.run.info_single("You did it. Your bins are now merged.. Onward!", nl_before=1, nl_after=1)
-
-
     def export_collection(self, collection_name, output_file_prefix=None, include_unbinned=False):
         self.sanity_check(collection_name)
 
@@ -286,7 +243,7 @@ class Collections:
                 binned_items.add(item_name)
 
         if include_unbinned:
-            all_items = utils.get_all_item_names_from_the_database(self.db_path)
+            all_items = dbops.get_all_item_names_from_the_database(self.db_path)
 
             unbinned_items = all_items.difference(binned_items)
 
@@ -312,7 +269,7 @@ class GetSplitNamesInBins:
         self.collection_name = A('collection_name')
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
-        self.debug = anvio.DEBUG
+        self.debug = A('debug')
 
         if not self.profile_db_path:
             raise ConfigError("You didn't provide a profile database path. When you clearly should have :/\
@@ -411,3 +368,4 @@ class GetSequentialBlocksOfSplits:
         self.finalize_block()
 
         return self.blocks
+

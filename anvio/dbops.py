@@ -8,38 +8,38 @@ import os
 import sys
 import time
 import copy
-import numpy
 import random
-import argparse
+import hashlib
+import datetime
 import textwrap
 
 from io import StringIO
+from itertools import chain
 from collections import Counter
+
+import numpy
 
 import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.fastalib as u
 import anvio.utils as utils
+import anvio.kmers as kmers
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.contigops as contigops
+import anvio.samplesops as samplesops
 import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccolections
-import anvio.genomestorage as genomestorage
+import anvio.genecalling as genecalling
 import anvio.auxiliarydataops as auxiliarydataops
+import anvio.genomestorage as genomestorage
 
+from anvio.tableops import Table
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
+from anvio.drivers.hmmer import HMMer
+from anvio.parsers import parser_modules
 from anvio.sequence import get_list_of_outliers
-
-from anvio.tables.tableops import Table
-from anvio.tables.states import TablesForStates
-from anvio.tables.genecalls import TablesForGeneCalls
-from anvio.tables.ntpositions import TableForNtPositions
-from anvio.tables.miscdata import TableForItemAdditionalData
-from anvio.tables.kmers import KMerTablesForContigsAndSplits
-from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -65,7 +65,7 @@ class DBClassFactory:
                            'pan': PanDatabase}
 
     def get_db_class(self, db_path):
-        db_type = utils.get_db_type(db_path)
+        db_type = get_db_type(db_path)
 
         if db_type not in self.DB_CLASSES:
             raise ConfigError("DBClassFactory speaking. I do not know a class for database type\
@@ -81,7 +81,6 @@ class DBClassFactory:
 
 class ContigsSuperclass(object):
     def __init__(self, args, r=run, p=progress):
-        self.args = args
         self.run = r
         self.progress = p
 
@@ -119,19 +118,17 @@ class ContigsSuperclass(object):
         # an object that is in `pan` or `manual` mode, neither of which will have a contigs database
         # associated with the call. so having done our part, we will quietly return from here hoping
         # that we are not driving a developer crazy somewhere by doing so.
-        D = lambda x: self.__dict__[x] if x in self.__dict__ else None
-        if D('mode') == 'pan' or D('mode') == 'manual':
+        A = lambda x: self.__dict__[x] if x in self.__dict__ else None
+        if A('mode') == 'pan' or A('mode') == 'manual':
             return
 
-        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
-        self.contigs_db_path = A('contigs_db')
+        self.contigs_db_path = args.contigs_db
 
         if not self.contigs_db_path:
             raise ConfigError("Someone (hopefully, you) is trying to initialize the Contigs Super Class without a contigs database path.\
                                There are many ways this can happen, but .. do you think you were trying to run anvi-interactive in\
-                               manual mode but without a --manual flag right before this? Just a gut feeling... No? Maybe you created\
-                               an instance of the profile superclass without a `contigs_db` argument in the namespace? No? Well, then we \
-                               may be in a really big trouble. Please run what you did before seeing this again with a `--debug` flag,\
+                               manual mode but without a --manual flag right before this? Just a gut feeling... No? Well, then we \
+                               are really in a big trouble. Please run what you did before seeing this again with a `--debug` flag,\
                                and send us an e-mail :(")
 
         filesnpaths.is_file_exists(self.contigs_db_path)
@@ -207,7 +204,7 @@ class ContigsSuperclass(object):
         self.run.info('Contigs DB', 'Initialized: %s (v. %s)' % (self.contigs_db_path, anvio.__contigs__version__))
 
 
-    def init_splits_taxonomy(self, t_level='t_genus'):
+    def init_splits_taxonomy(self, t_level = 't_genus'):
         if not self.contigs_db_path:
             return
 
@@ -351,11 +348,11 @@ class ContigsSuperclass(object):
 
         See `init_nt_position_info_dict` for more info."""
 
-        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
-            return (0, 0, 0)
-
         if not self.nt_positions_info:
             raise ConfigError("get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!")
+
+        if not contig_name in self.nt_positions_info:
+            return (0, 0, 0)
 
         position_info = self.nt_positions_info[contig_name][pos_in_contig]
 
@@ -383,7 +380,15 @@ class ContigsSuperclass(object):
         gene_function_sources_in_db = set(contigs_db.meta['gene_function_sources'] or [])
 
         if requested_sources:
-            self.check_functional_annotation_sources(requested_sources, dont_panic=dont_panic)
+            missing_sources = [s for s in requested_sources if s not in gene_function_sources_in_db]
+            if len(missing_sources):
+                if dont_panic:
+                    requested_sources = [s for s in requested_sources if s in gene_function_sources_in_db]
+                else:
+                    self.progress.end()
+                    raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here\
+                                        they are (or here it is, whatever): %s." % \
+                                                    (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
 
             hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name,
                                                                   '''source IN (%s)''' % (', '.join(["'%s'" % s for s in requested_sources])),
@@ -419,53 +424,9 @@ class ContigsSuperclass(object):
         self.gene_function_calls_initiated = True
 
 
-    def list_function_sources(self):
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=terminal.Run(verbose=False))
-        gene_function_sources = contigs_db.meta['gene_function_sources']
-        contigs_db.disconnect()
-
-        if not len(gene_function_sources):
-            self.run.info_single('No functional annotations found in this contigs database :/', nl_before=1, nl_after=1, mc='red')
-        else:
-            self.run.warning('', 'AVAILABLE FUNCTIONS (%d FOUND)' % (len(gene_function_sources)), lc='yellow')
-            for source in gene_function_sources:
-                self.run.info_single('%s' % (source), nl_after = 1 if source == gene_function_sources[-1] else 0)
-
-
-    def check_functional_annotation_sources(self, sources=None, dont_panic=False):
-        """Checks whether a given list of sources for functional annotation is valid.
-
-           When `dont_panic` is True, quietly returns a list of sources that are matching to the
-           ones in the database.
-        """
-
-        if not sources:
-            return
-
-        if sources and not isinstance(sources, list):
-            raise ConfigError("Sources for functional annotations must be of type `list`.")
-
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=terminal.Run(verbose=False))
-        gene_function_sources_in_db = contigs_db.meta['gene_function_sources']
-        contigs_db.disconnect()
-
-        missing_sources = [s for s in sources if s not in gene_function_sources_in_db]
-
-        if len(missing_sources):
-            if dont_panic:
-                # quietly return matching sources
-                return [s for s in sources if s in gene_function_sources_in_db]
-            else:
-                raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here\
-                                   they are (or here it is, whatever): %s." % \
-                                                 (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
-
-
-    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False):
+    def search_splits_for_gene_functions(self, search_terms, verbose=False, full_report=False):
         if not isinstance(search_terms, list):
             raise ConfigError("Search terms must be of type 'list'")
-
-        self.check_functional_annotation_sources(requested_sources)
 
         search_terms = [s.strip() for s in search_terms]
 
@@ -483,20 +444,15 @@ class ContigsSuperclass(object):
         split_names = dict([(search_term, {}) for search_term in search_terms])
         full_report = []
 
+        if not self.gene_function_calls_initiated:
+            self.init_functions()
+
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
         for search_term in search_terms:
-            self.progress.new('Search functions')
+            self.progress.new('Search function')
             self.progress.update('Searching for term "%s"' % search_term)
-
-            query = '''select gene_callers_id, source, accession, function from gene_functions where (function LIKE "%%''' \
-                            + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%")'''
-            if requested_sources:
-                query += ''' AND source IN (%s);''' % (', '.join(["'%s'" % s for s in requested_sources]))
-            else:
-                query += ';'
-
-            response = contigs_db.db._exec(query).fetchall()
+            response = contigs_db.db._exec('''select gene_callers_id, source, accession, function from gene_functions where function LIKE "%%''' + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%";''').fetchall()
 
             full_report.extend([(r[0], r[1], r[2], r[3], search_term, self.gene_callers_id_to_split_name_dict[r[0]]) for r in response])
 
@@ -637,7 +593,7 @@ class ContigsSuperclass(object):
         return corresponding_gene_calls
 
 
-    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True, include_aa_sequences=False):
+    def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True):
         if not isinstance(gene_caller_ids_list, list):
             raise ConfigError("Gene caller's ids must be of type 'list'")
 
@@ -679,13 +635,6 @@ class ContigsSuperclass(object):
                                                'direction': direction,
                                                'rev_compd': rev_compd,
                                                'length': stop - start}
-
-            if include_aa_sequences:
-                aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
-                if gene_callers_id in aa_sequences_dict:
-                    sequences_dict[gene_callers_id]['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
-                else:
-                    sequences_dict[gene_callers_id]['aa_sequence'] = None
 
         self.progress.end()
 
@@ -790,23 +739,14 @@ class PanSuperclass(object):
         self.run = r
         self.progress = p
 
-        self.run.width = 60
-
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.pan_db_path = A('pan_db')
-        self.genomes_storage_path = A('genomes_storage')
-        self.skip_init_functions = A('skip_init_functions')
-
         self.genome_names = []
         self.gene_clusters = {}
         self.gene_clusters_initialized = False
         self.gene_cluster_names = set([])
-        self.gene_cluster_names_in_db = set([])
         self.gene_clusters_gene_alignments = {}
         self.gene_clusters_gene_alignments_available = False
         self.gene_clusters_function_sources = []
         self.gene_clusters_functions_dict = {}
-        self.gene_callers_id_to_gene_cluster = {}
         self.item_orders = {}
         self.views = {}
         self.collection_profile = {}
@@ -823,8 +763,10 @@ class PanSuperclass(object):
         self.genomes_storage_has_functions = False
         self.functions_initialized = False
 
-        if not self.pan_db_path:
-            self.run.warning('PanSuperclass class called with args without a pan_db variable! Returning prematurely.')
+        try:
+            self.pan_db_path = self.args.pan_db
+        except:
+            self.run.warning('PanSuperclass class called with args without pan_db_path member! Returning prematurely.')
             return
 
         filesnpaths.is_file_exists(self.pan_db_path)
@@ -874,22 +816,19 @@ class PanSuperclass(object):
 
         self.progress.end()
 
-        if self.genomes_storage_path:
-            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
-                                                               self.p_meta['genomes_storage_hash'],
-                                                               genome_names_to_focus=self.p_meta['genome_names'],
-                                                               skip_init_functions=self.skip_init_functions,
-                                                               run=self.run,
-                                                               progress=self.progress)
+        if 'genomes_storage' in args.__dict__ and args.genomes_storage:
+            self.genomes_storage = genomestorage.GenomeStorage(args.genomes_storage,
+                                                                       self.p_meta['genomes_storage_hash'],
+                                                                       genome_names_to_focus=self.p_meta['genome_names'],
+                                                                       run=self.run,
+                                                                       progress=self.progress)
             self.genomes_storage_is_available = True
             self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
-        else:
-            self.run.warning("The pan database is being initialized without a genomes storage.")
 
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
 
 
-    def get_sequences_for_gene_clusters(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, report_DNA_sequences=False):
+    def get_sequences_for_gene_clusters(self, gene_cluster_names=set([]), skip_alignments=False, report_DNA_sequences=False):
         """Returns a dictionary of sequences (aligned or not) in a given gene cluster:
 
         {
@@ -905,61 +844,27 @@ class PanSuperclass(object):
             (...)
         }
 
-        You can call this function either with a `gene_clusters_dict`, or with a `gene_clusters_names` set. If you call it
-        with the dict, it will operate on it. If you call it with names, it will use self.gene_clusters to find the names
-        you specified. This looks like a shitty design, but was required to support exploratory / ad hoc user wishes through
-        both command line and interactive anvi'o interfaces.
-
-        By default, this funciton will report amino acid sequences. You can ask for DNA sequences if setting
+        By default, it will return amino acid sequences. You can ask for DNA sequences if setting
         the flag `report_DNA_sequences` True.
 
         """
 
-        if gene_clusters_dict and gene_cluster_names:
-            raise ConfigError("OK. get_sequences_for_gene_clusters is speaking: You can call this function either with a\
-                               `gene_clusters_dict`, or with a `gene_clusters_names` set. If you call it with the dict,\
-                               it will operate on it. If you call it with names, it will use self.gene_clusters to find the names\
-                               you specified. This looks like a shitty design, but was required to support exploratory / ad hoc user wishes through\
-                               both command line and interactive anvi'o interfaces.")
-
-        if not skip_alignments and self.gene_clusters_gene_alignments_available and report_DNA_sequences:
-            self.run.warning("Please read carefully. Here anvi'o attempts to get sequences for the gene clusters you are interested in. While\
-                              the amino acid sequences for those gene clusters were aligned, you are asking for DNA sequences. While amino acid\
-                              seuqence alignment summary (the anvi'o way of storing alignment information) can be used to align DNA sequences\
-                              instantaneously, due to intricacies of gene callers, the amino acid sequence of a gene stored in the\
-                              contigs database may differ from its DNA seqeunce. For those rare instances, the alignment summary for the amino acid\
-                              sequence can no longer be used to make sense of the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for\
-                              more informaiton). What needs to be done is to do another alignment on the fly. But as you probably already guessed,\
-                              anvi'o will not do that for you, and instad will report your DNA sequences for your genes in your gene clusters\
-                              unaligned. If you really really think anvi'o should do it you have two options: if you are a member of the MerenLab,\
-                              re-open and fix the issue #772. If you are not a member, then send us an e-mail.")
-            skip_alignments = True
-
         sequences = {}
 
-        if not gene_cluster_names and not gene_clusters_dict:
-            raise ConfigError("get_sequences_for_gene_clusters is speaking: You must call this function either with a `gene_clusters_dict`\
-                               or with a `gene_cluster_names` set.")
-
-        if not gene_cluster_names:
-            gene_cluster_names = set(list(gene_clusters_dict.keys()))
-
         if not isinstance(gene_cluster_names, type(set([]))) or not gene_cluster_names:
-            raise ConfigError("gene_cluster_names for get_sequences_for_gene_clusters must be a non-empty `set`.")
+            raise ConfigError("gene_cluster_names for get_sequences_for_gene_clusters must be a non-empty `list`.")
 
         if not self.genomes_storage_is_available:
             raise ConfigError("The pan anvi'o super class for is upset. You are attempting to get AA seqeunces for %s,\
                                but there is not genomes storage is available to get it." \
                                     % 'a gene cluster' if len(gene_cluster_names) > 1 else '%d gene_clusters' % len(gene_cluster_names))
 
-        if gene_clusters_dict is None:
-            if not self.gene_clusters_initialized:
-                self.init_gene_clusters()
-            gene_clusters_dict = self.gene_clusters
+        if not self.gene_clusters_initialized:
+            self.init_gene_clusters()
 
-        missing_gene_cluster_names = [p for p in gene_cluster_names if p not in gene_clusters_dict]
+        missing_gene_cluster_names = [p for p in gene_cluster_names if p not in self.gene_clusters]
         if len(missing_gene_cluster_names[0:5]):
-            raise ConfigError("get_sequences_for_gene_clusters: %d of %d gene clusters are missing in your data. Not good :/\
+            raise ConfigError("get_sequences_for_gene_clusters: %d of %d gene clusters are missing in the pan database. Not good :/\
                                Here are some of the missing ones; %s" \
                                         % (len(missing_gene_cluster_names), len(gene_cluster_names), ', '.join(missing_gene_cluster_names[0:5])))
 
@@ -968,9 +873,9 @@ class PanSuperclass(object):
         for gene_cluster_name in gene_cluster_names:
             self.progress.update("processing '%s' ..." % gene_cluster_name )
             sequences[gene_cluster_name] = {}
-            for genome_name in gene_clusters_dict[gene_cluster_name]:
+            for genome_name in self.gene_clusters[gene_cluster_name]:
                 sequences[gene_cluster_name][genome_name] = {}
-                for gene_callers_id in gene_clusters_dict[gene_cluster_name][genome_name]:
+                for gene_callers_id in self.gene_clusters[gene_cluster_name][genome_name]:
                     sequence = self.genomes_storage.get_gene_sequence(genome_name, gene_callers_id, report_DNA_sequences=report_DNA_sequences)
 
                     if not skip_alignments and self.gene_clusters_gene_alignments_available:
@@ -984,27 +889,23 @@ class PanSuperclass(object):
         return sequences
 
 
-    def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), \
-                                                  skip_alignments=False, output_file_path=None, report_DNA_sequences=False):
+    def write_sequences_in_gene_clusters_to_file(self, gene_cluster_names=set([]), skip_alignments=False, output_file_path=None, report_DNA_sequences=False):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
-        sequences_dict = self.get_sequences_for_gene_clusters(gene_clusters_dict=gene_clusters_dict,
-                                                              gene_cluster_names=gene_cluster_names,
-                                                              skip_alignments=skip_alignments,
-                                                              report_DNA_sequences=report_DNA_sequences)
+        sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=skip_alignments, report_DNA_sequences=report_DNA_sequences)
 
         self.progress.new('Writing gene cluster seqeunces to file')
         sequence_counter = 0
-        for gene_cluster_name in sequences_dict:
-            for genome_name in sequences_dict[gene_cluster_name]:
-                for gene_callers_id in sequences_dict[gene_cluster_name][genome_name]:
+        for gene_cluster_name in gene_cluster_names:
+            for genome_name in sequences[gene_cluster_name]:
+                for gene_callers_id in sequences[gene_cluster_name][genome_name]:
                         output_file.write('>%08d|gene_cluster:%s|genome_name:%s|gene_callers_id:%d\n' % (sequence_counter,
                                                                                                          gene_cluster_name,
                                                                                                          genome_name,
                                                                                                          gene_callers_id))
-                        output_file.write('%s\n' % sequences_dict[gene_cluster_name][genome_name][gene_callers_id])
+                        output_file.write('%s\n' % sequences[gene_cluster_name][genome_name][gene_callers_id])
                         sequence_counter += 1
                         self.progress.update("processing '%s' ..." % gene_cluster_name)
 
@@ -1012,20 +913,16 @@ class PanSuperclass(object):
         output_file.close()
 
         self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid', mc='green')
-        self.run.info('Num sequences reported', sequence_counter)
         self.run.info('Output FASTA file', output_file_path, mc='green')
 
 
-    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, gene_cluster_names=set([]), \
-                    skip_alignments=False, output_file_path=None, report_DNA_sequences=False, align_with=None):
+    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_cluster_names=set([]), skip_alignments=False, output_file_path=None, skip_multiple_gene_calls=False, report_DNA_sequences=False, align_with=None):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
-        sequences_dict = self.get_sequences_for_gene_clusters(gene_clusters_dict=gene_clusters_dict,
-                                                              gene_cluster_names=gene_cluster_names,
-                                                              skip_alignments=skip_alignments,
-                                                              report_DNA_sequences=report_DNA_sequences)
+        sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=skip_alignments, report_DNA_sequences=report_DNA_sequences)
+
 
         if not self.gene_clusters_gene_alignments_available:
             aligner = aligners.select(align_with)
@@ -1044,51 +941,59 @@ class PanSuperclass(object):
         for genome_name in self.genome_names:
             output_buffer[genome_name] = StringIO()
 
+        skipped_gene_clusters = []
         for gene_cluster_name in gene_cluster_names:
             multiple_gene_calls = False
             multiple_gene_call_genome = None
             sequence_length = None
 
             for genome_name in self.genome_names:
-                if len(sequences_dict[gene_cluster_name][genome_name]) > 1:
+                if len(sequences[gene_cluster_name][genome_name]) > 1:
                     multiple_gene_calls = True
                     multiple_gene_call_genome = genome_name
-                elif self.gene_clusters_gene_alignments_available and len(sequences_dict[gene_cluster_name][genome_name]) == 1:
-                    sequence_length = len(get_first_value(sequences_dict[gene_cluster_name][genome_name]))
+                elif self.gene_clusters_gene_alignments_available and len(sequences[gene_cluster_name][genome_name]) == 1:
+                    sequence_length = len(get_first_value(sequences[gene_cluster_name][genome_name]))
 
             if multiple_gene_calls:
-                raise ConfigError("There are multiple gene calls in '%s' and sample '%s', which is not appropriate for phylogenomic\
-                                   analyses. Please use advanced filters (see help if you are not sure what this means) to remove\
-                                   gene clusters from your analysis if they contain multiple gene calls from any\
-                                   of the genomes in your pan (not to tell you what to do, but '--max-num-genes-from-each-genome 1'\
-                                   would make sure gene clusters that contain multiple genes from a given genome would be removed\
-                                   from your final list)." % (gene_cluster_name, multiple_gene_call_genome))
+                if skip_multiple_gene_calls:
+                    skipped_gene_clusters.append(gene_cluster_name)
+                    continue
+                else:
+                    raise ConfigError("There are multiple gene calls in '%s' and sample '%s', if you want to continue use flag \
+                                        --skip-multiple-gene-calls" % (gene_cluster_name, multiple_gene_call_genome))
 
             if not self.gene_clusters_gene_alignments_available:
                 sequences_to_align = []
                 for genome_name in self.genome_names:
-                    if len(sequences_dict[gene_cluster_name][genome_name]) == 1:
-                        sequences_to_align.append((genome_name, get_first_value(sequences_dict[gene_cluster_name][genome_name])))
+                    if len(sequences[gene_cluster_name][genome_name]) == 1:
+                        sequences_to_align.append((genome_name, get_first_value(sequences[gene_cluster_name][genome_name])))
 
                 progress.update("Processing '" + gene_cluster_name + "'")
 
                 aligned_sequences = aligner(run=silent_run).run_stdin(sequences_list=sequences_to_align)
 
                 for genome_name in aligned_sequences:
-                    gene_caller_id = get_first_key(sequences_dict[gene_cluster_name][genome_name])
-                    sequences_dict[gene_cluster_name][genome_name][gene_caller_id] = aligned_sequences[genome_name]
+                    gene_caller_id = get_first_key(sequences[gene_cluster_name][genome_name])
+                    sequences[gene_cluster_name][genome_name][gene_caller_id] = aligned_sequences[genome_name]
 
                     if not sequence_length:
                         sequence_length = len(aligned_sequences[genome_name])
 
             for genome_name in self.genome_names:
-                if len(sequences_dict[gene_cluster_name][genome_name]) == 1:
-                    output_buffer[genome_name].write(get_first_value(sequences_dict[gene_cluster_name][genome_name]))
+                if len(sequences[gene_cluster_name][genome_name]) == 1:
+                    output_buffer[genome_name].write(get_first_value(sequences[gene_cluster_name][genome_name]))
                 else:
                     output_buffer[genome_name].write("-" * sequence_length)
 
         if not self.gene_clusters_gene_alignments_available:
             progress.end()
+
+        if len(skipped_gene_clusters):
+            self.run.warning("%s of %s gene_clusters contained multiple gene calls, and skipped during concatenation.\n '%s'" \
+                                                        % (pp(len(skipped_gene_clusters)), pp(len(gene_cluster_names)), ", ".join(skipped_gene_clusters)))
+
+        if len(skipped_gene_clusters) == len(gene_cluster_names):
+            raise ConfigError("Well. You have no gene_clusters left.. Bye :/")
 
         for genome_name in self.genome_names:
             output_file.write('>%s\n' % genome_name)
@@ -1103,12 +1008,6 @@ class PanSuperclass(object):
 
 
     def init_gene_clusters_functions(self):
-        if not self.genomes_storage_is_available:
-            self.run.warning("Someone tried to initialize gene cluster functions, but it seems there is no genomes\
-                              storage available to this run. That's OK. But no gene clusters functions for you\
-                              obviously.")
-            return
-
         self.progress.new('Initializing functions for gene clusters')
         self.progress.update('...')
         if not self.gene_clusters:
@@ -1183,330 +1082,8 @@ class PanSuperclass(object):
         self.progress.end()
 
 
-    def get_all_genome_names_in_gene_clusters_dict(self, gene_clusters_dict):
-        """Returns all genome names found in a `gene_clusters_dict`"""
-
-        all_genomes = set([])
-
-        for entry in gene_clusters_dict.values():
-            for genome_name in entry:
-                all_genomes.add(genome_name)
-
-        return all_genomes
-
-
-    def get_gene_clusters_in_genomes_dict(self, gene_clusters_dict):
-        """Goes through the `gene_clusters_dict and returns gene clusters in genomes dict
-           as well as all genome names"""
-
-        all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
-
-        gene_clusters_in_genomes_dict = dict([(genome_name, set([])) for genome_name in all_genomes])
-
-        for genome_name in all_genomes:
-            gene_clusters_in_genomes_dict[genome_name] = set([])
-
-        for gene_cluster_name in gene_clusters_dict:
-            for genome_name in gene_clusters_dict[gene_cluster_name]:
-                if len(gene_clusters_dict[gene_cluster_name][genome_name]):
-                    gene_clusters_in_genomes_dict[genome_name].add(gene_cluster_name)
-
-        return gene_clusters_in_genomes_dict
-
-
-    def get_num_genes_contributed_per_genome_dict(self, gene_clusters_dict):
-        """Get a dictionary of gene cluster names and the number of genes contributed to each per genome"""
-
-
-    def get_basic_gene_clusters_stats(self, gene_clusters_dict):
-        """Returns two dictionaries: a dictionary of gene cluster names and their number of occurrences across all genomes,
-           and a dictionary for number of genes contributed by each genome into each gene cluster"""
-
-        all_gene_clusters = set(list(gene_clusters_dict.keys()))
-        all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
-
-        num_occurrences_accross_genomes = dict([(gene_cluster_name, set([])) for gene_cluster_name in all_gene_clusters])
-        num_genes_contributed_per_genome = dict([(gene_cluster_name, dict()) for gene_cluster_name in all_gene_clusters])
-
-        for gene_cluster_name in num_genes_contributed_per_genome:
-            for genome_name in all_genomes:
-                num_genes_contributed_per_genome[gene_cluster_name][genome_name] = 0
-
-        for gene_cluster_name in gene_clusters_dict:
-            for genome_name in gene_clusters_dict[gene_cluster_name]:
-                if len(gene_clusters_dict[gene_cluster_name][genome_name]):
-                    num_occurrences_accross_genomes[gene_cluster_name].add(genome_name)
-                    num_genes_contributed_per_genome[gene_cluster_name][genome_name] = len(gene_clusters_dict[gene_cluster_name][genome_name])
-
-        for gene_cluster_name in num_occurrences_accross_genomes:
-            num_occurrences_accross_genomes[gene_cluster_name] = len(num_occurrences_accross_genomes[gene_cluster_name])
-
-        return num_occurrences_accross_genomes, num_genes_contributed_per_genome
-
-
-    def get_num_gene_clusters_missing_per_genome_dict(self, gene_clusters_dict):
-        """Get a dictionary of how many gene_clusters each genome is missing"""
-
-        all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
-        gene_clusters_in_genomes_dict = self.get_gene_clusters_in_genomes_dict(gene_clusters_dict)
-
-        gene_cluster_names = set(list(gene_clusters_dict.keys()))
-
-        num_gene_clusters_missing_per_genome = dict([(genome_name, 0) for genome_name in all_genomes])
-
-        for genome_name in all_genomes:
-            for gene_cluster_name in gene_cluster_names:
-                if gene_cluster_name not in gene_clusters_in_genomes_dict[genome_name]:
-                    num_gene_clusters_missing_per_genome[genome_name] += 1
-
-        return num_gene_clusters_missing_per_genome
-
-
-    def filter_gene_clusters_from_gene_clusters_dict(self, gene_clusters_dict, min_num_genomes_gene_cluster_occurs=0,
-             max_num_genomes_gene_cluster_occurs=sys.maxsize, min_num_genes_from_each_genome=0, max_num_genes_from_each_genome=sys.maxsize):
-        """This takes in your `gene_clusters_dict`, and removes gene_clusters based on their occurrences across genomes.
-
-           The `min_num_genomes_gene_cluster_occurs` parameter defines what is the minimum number of genomes you want a gene to
-           be present. It removes all the gene_clusters that do not fit into that criterion. In contrast, `max_num_genomes_gene_cluster_occurs`
-           parameter will remove any gene cluster that occurs in more genomes than what the paramter asks for."""
-
-
-        def check(param, param_pretty):
-            if param is None:
-                raise ConfigError("filter_gene_clusters_from_gene_clusters_dict is speaking: %s is is literally 'None'. It can't be." % param_pretty)
-
-            if not isinstance(param, int):
-                try:
-                    param = int(param)
-                except ValueError:
-                    raise ConfigError("The parameter %s must occur should be of type int :/" % param_pretty)
-
-            return param
-
-
-        min_num_genomes_gene_cluster_occurs = check(min_num_genomes_gene_cluster_occurs, '--min-num-genomes-gene-cluster-occurs')
-        max_num_genomes_gene_cluster_occurs = check(max_num_genomes_gene_cluster_occurs, '--max-num-genomes-gene-cluster-occurs')
-        min_num_genes_from_each_genome = check(min_num_genes_from_each_genome, '--min-num-genes-from-each-genome')
-        max_num_genes_from_each_genome = check(max_num_genes_from_each_genome, '--max-num-genes-from-each-genome')
-
-        if min_num_genomes_gene_cluster_occurs < 0 or max_num_genomes_gene_cluster_occurs < 0:
-            raise ConfigError("When you ask for a negative value for the the minimum or maximum number of genomes a gene cluster is expected\
-                               to be found, you are pushing the boundaries of physics instead of biology. Let's focus on one field of science\
-                               at a time :(")
-
-        if min_num_genes_from_each_genome < 0 or max_num_genes_from_each_genome < 0:
-            raise ConfigError("Nice try. Min or max number of genes from each genome per gene cluster can't be a negative value.")
-
-        if min_num_genomes_gene_cluster_occurs > max_num_genomes_gene_cluster_occurs:
-            raise ConfigError("Min number of genomes a gene cluster should occur can't be larger than the max number of genomes a gene cluster\
-                               should occur. You're making anvi'o come up with the stupidest error messages.")
-
-        if min_num_genes_from_each_genome > max_num_genes_from_each_genome:
-            raise ConfigError("Min number of genes for each gene cluster can't be larger than the .. pfft. Anvi'o refuses to continue with this\
-                               error message. Check your parameters :(")
-
-        all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
-
-        if max_num_genomes_gene_cluster_occurs == sys.maxsize:
-            max_num_genomes_gene_cluster_occurs = len(all_genomes)
-
-        if max_num_genes_from_each_genome == sys.maxsize:
-            max_num_genes_from_each_genome = len(all_genomes)
-
-        if min_num_genomes_gene_cluster_occurs > len(all_genomes):
-            raise ConfigError("You have %d genomes, and you are asking anvi'o to remove any gene cluster that occurs in less than %d of them.\
-                               On the one hand, it is totally OK to make up a number like that. On the other, anvi'o would like to think that\
-                               that is not what you're doing." % (len(all_genomes), min_num_genomes_gene_cluster_occurs))
-
-        gene_cluster_occurrences_accross_genomes, num_genes_contributed_per_genome = self.get_basic_gene_clusters_stats(gene_clusters_dict)
-
-        gene_clusters_to_remove = set([])
-        all_gene_clusters = set(list(gene_cluster_occurrences_accross_genomes.keys()))
-        for gene_cluster_name in all_gene_clusters:
-            num_occurrence = gene_cluster_occurrences_accross_genomes[gene_cluster_name]
-            num_genes_from_genomes = num_genes_contributed_per_genome[gene_cluster_name]
-
-            if num_occurrence < min_num_genomes_gene_cluster_occurs or num_occurrence > max_num_genomes_gene_cluster_occurs:
-                gene_clusters_to_remove.add(gene_cluster_name)
-                continue
-
-            if len([g for g in all_genomes if num_genes_from_genomes[g] < min_num_genes_from_each_genome or num_genes_from_genomes[g] > max_num_genes_from_each_genome]):
-                gene_clusters_to_remove.add(gene_cluster_name)
-                continue
-
-        gene_clusters_to_keep = all_gene_clusters.difference(gene_clusters_to_remove)
-
-        if not len(gene_clusters_to_keep):
-            raise ConfigError("Bad news: the combination of your filters resulted in zero gene clusters :/ These are the filtesr anvi'o used: --min-num-genomes-gene-cluster-occurs %(min_oc)d,\
-                               --max-num-genomes-gene-cluster-occurs %(max_oc)d, --min-num-genes-from-each-genome %(min_g)d, and --max-num-genes-from-each-genome %(max_g)d. None of your \
-                               %(all_gcs)d gene clusters in your %(all_gs)d genomes that were included this analysis matched to this combination (please note that number of genomes\
-                               may be smaller than the actual number of genomes in the original pan genome if other filters were applied to the gene clusters dictionary prior)." % \
-                                            {'min_oc': min_num_genomes_gene_cluster_occurs, 'max_oc': max_num_genomes_gene_cluster_occurs,
-                                             'min_g': min_num_genes_from_each_genome, 'max_g': max_num_genes_from_each_genome,
-                                             'all_gcs': len(all_gene_clusters), 'all_gs': len(all_genomes)})
-
-        msg = "Based on --min-num-genomes-gene-cluster-occurs %d, --max-num-genomes-gene-cluster-occurs %d, \
-               --min-num-genes-from-each-genome %d, and --max-num-genes-from-each-genome %d (some of these \
-               may be default values, no need to panic)." \
-                            % (min_num_genomes_gene_cluster_occurs, max_num_genomes_gene_cluster_occurs,
-                               min_num_genes_from_each_genome, max_num_genes_from_each_genome)
-
-        # Baris Metin: lambda functions are ugly.
-        # Meren Urat : YOU'RE UGLY :(
-        M = lambda l: ', '.join(l) if anvio.DEBUG \
-                else ', '.join(list(l)[0:3] + ['(... %d more (`--debug` will show all))' % (len(l) - 3)]) if len(l) > 3 \
-                   else ', '.join(l)
-
-        self.run.warning(msg, "GENE CLUSTER FILTERS", lc="cyan")
-        self.run.info('All gene clusters (%d)' % len(all_gene_clusters), M(all_gene_clusters))
-        self.run.info('Gene clusters that passed the filter (%d)' % (len(gene_clusters_to_keep)), M(gene_clusters_to_keep), mc='green')
-        self.run.info('Genes clusters that filed the filter (%d)' % (len(gene_clusters_to_remove)), M(gene_clusters_to_remove) if gene_clusters_to_remove else 'None.', nl_after=1, mc='red')
-
-        if len(gene_clusters_to_remove):
-            for gene_cluster_name in gene_clusters_to_remove:
-                gene_clusters_dict.pop(gene_cluster_name)
-
-            return (gene_clusters_dict, gene_clusters_to_remove)
-        else:
-            return (gene_clusters_dict, set([]))
-
-
-    def filter_genomes_from_clusters_dict(self, gene_clusters_dict, max_num_gene_clusters_missing_from_genome=0):
-        """This takes a `gene_clusters_dict`, and goes through every genome to identify genomes that lack more than \
-           `max_num_gene_clusters_missing_from_genome` from a list of gene_clusters.
-
-           Note that it returns a filtered dictionary, AND the genomes that are removed."""
-
-        if not isinstance(max_num_gene_clusters_missing_from_genome, int):
-            try:
-                max_num_gene_clusters_missing_from_genome = int(max_num_gene_clusters_missing_from_genome)
-            except ValueError:
-                raise ConfigError("Well. The parameter max number of gene clusters missing from genome must be of type int.")
-
-        if max_num_gene_clusters_missing_from_genome < 0:
-            raise ConfigError("The parameter max number of gene clusters missing from genome can't be smaller than zero.\
-                               Well, it can be, as it is the case in this particlar instance, but maybe then you should\
-                               try a different platform to analyze your stuff.")
-
-        all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
-        num_gene_clusters_missing_per_genome = self.get_num_gene_clusters_missing_per_genome_dict(gene_clusters_dict)
-
-        genomes_to_remove = set([])
-        for genome_name in num_gene_clusters_missing_per_genome:
-            if num_gene_clusters_missing_per_genome[genome_name] > max_num_gene_clusters_missing_from_genome:
-                genomes_to_remove.add(genome_name)
-
-        genomes_to_keep = all_genomes.difference(genomes_to_remove)
-
-        self.run.warning(None, "FILTER GENOMES (--max-num-gene-clusters-missing-from-genome)", lc="cyan")
-        self.run.info('All genomes found (%d)' % len(all_genomes), ', '.join(all_genomes))
-        self.run.info('Genomes that missed AT MOST %d of the %d gene_clusters (%d)' % (max_num_gene_clusters_missing_from_genome, len(gene_clusters_dict), len(genomes_to_keep)), ', '.join(genomes_to_keep), mc='green')
-        self.run.info('Genomes that are no more in the analysis (%d)' % (len(genomes_to_remove)), ', '.join(genomes_to_remove) if genomes_to_remove else 'None. Lovely.', mc='red', nl_after=1)
-
-        if len(genomes_to_remove) == len(all_genomes):
-            raise ConfigError("Bad news: using --max-num-gene-clusters-missing-from-genome paramter with '%d' removed all of your\
-                               %d genomes from the analysis. This means every genome you have in your pangenome misses at least %d\
-                               of your %d gene clusters. Now you know :/" \
-                                    % (max_num_gene_clusters_missing_from_genome,
-                                       len(all_genomes),
-                                       max_num_gene_clusters_missing_from_genome,
-                                       len(gene_clusters_dict)))
-
-        if len(genomes_to_remove):
-            for gene_cluster_name in gene_clusters_dict:
-                for genome_name in genomes_to_remove:
-                    gene_clusters_dict[gene_cluster_name].pop(genome_name)
-            return (gene_clusters_dict, genomes_to_remove)
-        else:
-            return (gene_clusters_dict, set([]))
-
-
-    def filter_gene_clusters_dict(self, args, gene_clusters_dict=None):
-        """Returns filtered gene clusters dicts, without editing the `self.gene_clusters` dict,
-           UNLESS, it is provided a dictionary for gene clusters.
-
-           WIHTOUT GENE CLUSTERS DICT PARAMTER
-           ========================================================================================
-           This function looks for variables max_num_gene_clusters_missing_from_genome and
-           min_num_genomes_gene_cluster_occurs in args (see the example below), applies filters
-           to a fresh copy of self.gene_clusters, and returns a new dictionary. The reason we
-           avoid operating on the actual dictionary is to (1) allow testing of multiple parameters
-           without having to re-initialize the actual gene clusters dictionary from the database.
-           Although this seems to be a memory-intensive way of doing it, it will offer some
-           flexibility to interface operations.
-
-                >>> 
-                >>> pan = dbops.PanSuperclass(args)
-                >>> pan.init_gene_clusters()
-                >>>
-                >>> args = argparse.Namespace(max_num_gene_clusters_missing_from_genome=5, min_num_genomes_gene_cluster_occurs=10)
-                >>> filtered_gene_clusters = pan.filter_gene_clusters_dict(args)
-                >>>
-
-           WITH GENE CLUSTERS DICT PARAMTER
-           ========================================================================================
-           Does pretty much the same thing above, but it does not generate a fresh copy of the self.gene_clusters
-           and only operates on the incoming dictionary.
-        """
-
-        if not gene_clusters_dict:
-            if not self.gene_clusters_initialized:
-                raise ConfigError("You need to initialize the gene clusters dictionary if you want to apply filters on it.\
-                                   See relevant memeber functions in your instance of PanSuperClass.")
-
-            gene_clusters_dict = copy.deepcopy(self.gene_clusters)
-
-        if not isinstance(gene_clusters_dict, dict):
-            raise ConfigError("Houston, we have a problem. The gene clusters dict seems to be of type %s and not dict :/"\
-                            % type(gene_clusters_dict))
-
-        # let's see what the user wants.
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        max_num_gene_clusters_missing_from_genome = A('max_num_gene_clusters_missing_from_genome')
-        min_num_genomes_gene_cluster_occurs = A('min_num_genomes_gene_cluster_occurs')
-        max_num_genes_from_each_genome = A('max_num_genes_from_each_genome')
-        min_num_genes_from_each_genome = A('min_num_genes_from_each_genome')
-        max_num_genomes_gene_cluster_occurs = A('max_num_genomes_gene_cluster_occurs')
-        add_into_items_additional_data_table = A('add_into_items_additional_data_table')
-        just_do_it = A('just_do_it')
-
-        # remove genomes from the dict if necessary.
-        if max_num_gene_clusters_missing_from_genome:
-            gene_clusters_dict, genomes_removed = self.filter_genomes_from_clusters_dict(gene_clusters_dict, max_num_gene_clusters_missing_from_genome)
-
-        # remove gene clusters from the dict if necessary
-        if min_num_genomes_gene_cluster_occurs or max_num_genomes_gene_cluster_occurs:
-            gene_clusters_dict, gene_clusters_removed = \
-                    self.filter_gene_clusters_from_gene_clusters_dict(gene_clusters_dict,
-                                                                      min_num_genomes_gene_cluster_occurs,
-                                                                      max_num_genomes_gene_cluster_occurs,
-                                                                      min_num_genes_from_each_genome,
-                                                                      max_num_genes_from_each_genome)
-
-        # this is where we add the items in the resulting filtered dict into the items additonal data
-        # table:
-        if add_into_items_additional_data_table:
-            data_key = add_into_items_additional_data_table
-
-            if not self.gene_cluster_names_in_db:
-                self.init_gene_clusters()
-
-            items_additional_data_dict = {}
-
-            for gene_cluster_name in self.gene_cluster_names_in_db:
-                if gene_cluster_name in gene_clusters_dict:
-                    items_additional_data_dict[gene_cluster_name] = {data_key: 'TRUE'}
-                else:
-                    items_additional_data_dict[gene_cluster_name] = {data_key: None}
-
-            items_additional_data_table = TableForItemAdditionalData(argparse.Namespace(pan_db=self.pan_db_path, just_do_it=just_do_it))
-            items_additional_data_table.add(items_additional_data_dict, [data_key])
-
-        return gene_clusters_dict
-
-
-    def init_gene_clusters(self, gene_cluster_ids_to_focus=set([])):
-        """Initializes the gene_clusters dictionary (only for `gene_cluster_ids_to_focus` if necessary).
+    def init_gene_clusters(self):
+        """Initializes the gene_clusters dictionary.
 
            At the end, the structure of this dictionary looks like this:
 
@@ -1530,20 +1107,11 @@ class PanSuperclass(object):
         pan_db = PanDatabase(self.pan_db_path)
 
         gene_clusters_long_list = pan_db.db.get_table_as_dict(t.pan_gene_clusters_table_name)
-        self.gene_cluster_names_in_db = pan_db.db.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id', unique=True)
 
         for entry in list(gene_clusters_long_list.values()):
             genome_name = entry['genome_name']
             gene_callers_id = entry['gene_caller_id']
             gene_cluster_id = entry['gene_cluster_id']
-
-            if genome_name not in self.gene_callers_id_to_gene_cluster:
-                self.gene_callers_id_to_gene_cluster[genome_name] = {}
-
-            self.gene_callers_id_to_gene_cluster[genome_name][gene_callers_id] = gene_cluster_id
-
-            if gene_cluster_ids_to_focus and gene_cluster_id not in gene_cluster_ids_to_focus:
-                continue
 
             if gene_cluster_id not in self.gene_clusters:
                 self.gene_clusters[gene_cluster_id] = {}
@@ -1561,17 +1129,6 @@ class PanSuperclass(object):
         pan_db.disconnect()
         self.progress.end()
 
-        if not len(gene_cluster_ids_to_focus):
-            self.run.info_single("Gene clusters are initialized for all %d gene clusters in the database." % len(self.gene_clusters), nl_before=1, nl_after=1)
-        else:
-            self.run.info_single("A short announcement for the curious: anvi'o found %d gene clusters in the database, attempted to\
-                                  initialize a gene clusters dictionary for %d of them as requested by the user or the programmer, and\
-                                  managed to get back a gene clusters dictionary with %d items. We just hope all these make sense to you." \
-                                % (len(self.gene_cluster_names_in_db), len(gene_cluster_ids_to_focus), len(self.gene_clusters)), nl_after=1, nl_before=1)
-
-        # gene cluster names were set when we first initialized the class, but if we are here, it means the user may have
-        # alrady updated the list of gene clusters. let's keep ourselves up-to-date:
-        self.gene_cluster_names = set(list(self.gene_clusters.keys()))
         self.gene_clusters_initialized = True
 
 
@@ -1658,76 +1215,6 @@ class PanSuperclass(object):
         return collection, bins_info
 
 
-    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False):
-        if not isinstance(search_terms, list):
-            raise ConfigError("Search terms must be of type 'list'")
-
-        #self.check_functional_annotation_sources(requested_sources)
-
-        search_terms = [s.strip() for s in search_terms]
-
-        if len([s.strip().lower() for s in search_terms]) != len(set([s.strip().lower() for s in search_terms])):
-            raise ConfigError("Please do not use the same search term twice :/ Becasue, reasons. You know.")
-
-        for search_term in search_terms:
-            if not len(search_term) >= 3:
-                raise ConfigError("A search term cannot be less than three characters")
-
-        self.run.info('Search terms', '%d found' % (len(search_terms)))
-        gene_clusters = {}
-        full_report = []
-
-        genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
-                                                                       self.p_meta['genomes_storage_hash'],
-                                                                       genome_names_to_focus=self.p_meta['genome_names'],
-                                                                       run=self.run,
-                                                                       progress=self.progress)
-
-        for search_term in search_terms:
-            self.progress.new('Search functions')
-            self.progress.update('Searching for term "%s"' % search_term)
-
-            query = '''select gene_callers_id, source, accession, function, genome_name from ''' + t.genome_gene_function_calls_table_name + ''' where (function LIKE "%%''' \
-                            + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%")'''
-            if requested_sources:
-                query += ''' AND source IN (%s);''' % (', '.join(["'%s'" % s for s in requested_sources]))
-            else:
-                query += ';'
-
-            results = genomes_storage.db._exec(query).fetchall()
-            gene_clusters[search_term] = []
-
-            for result in results:
-                gene_caller_id, source, accession, function, genome_name = result
-                gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
-
-                gene_dict = self.genomes_storage.gene_info[genome_name][gene_caller_id]
-
-                full_report.extend([(gene_caller_id, source, accession, function, search_term, 
-                    gene_cluster_id, gene_dict['dna_sequence'], gene_dict['aa_sequence'])])
-                
-                gene_clusters[search_term].append(gene_cluster_id)
-
-            self.progress.end()
-        genomes_storage.close()
-        self.progress.end()
-
-        return gene_clusters, full_report
-
-
-    def list_function_sources(self):
-        genome_storage = genomestorage.GenomeStorage(self.genomes_storage_path, run=terminal.Run(verbose=False))
-        gene_function_sources = genome_storage.db.get_meta_value('gene_function_sources').split(',')
-        genome_storage.close()
-
-        if not len(gene_function_sources):
-            self.run.info_single('No functional annotations found in this genomes storage :/', nl_before=1, nl_after=1, mc='red')
-        else:
-            self.run.warning('', 'AVAILABLE FUNCTIONS (%d FOUND)' % (len(gene_function_sources)), lc='yellow')
-            for source in gene_function_sources:
-                self.run.info_single('%s' % (source), nl_after = 1 if source == gene_function_sources[-1] else 0)
-
-
 class ProfileSuperclass(object):
     """Fancy super class to deal with profile db stuff.
 
@@ -1742,23 +1229,14 @@ class ProfileSuperclass(object):
        Alternatively, you can include a contigs database path (contigs_db) in args so you have access
        to some functions that would require that.
 
-       Alternatively, you can define a set of split names of interest to gain performance when it is
-       needed. There are two ways to do that, which are mutually exclusive (so you have to grow up and
-       pick one). One way is to explicitly mention which splits are of interest (for control freaks):
+       Alternatively, you can define a set of split names of interest:
 
             >>> args.split_names_of_interest = set([split_names])
             >>> p = ProfileSuperclass(args)
 
-        The second way to initialize ProfileSuper with a subset of splits a profile database contains
-        is to use the collections framework (the elegant way of doing this). For which, you need to
-        set collection name:
-
-            >>> args.collection_name = 'collcetion_name'
-            >>> args.bin_ids = 'bin_1,bin_2,bin_3' # if no bin_ids is provided, all bins will be used
-            >>> p = ProfileSuperClass(args)
-
-
-        The best practice is to set anvi'o programs to put together `args` objectd with these variables.
+       in which case some functions will initialize data only for those splits. This is one way to minimize
+       the resources necessary to initialize gene_coverages if only a subset of bins in a collection is
+       requested.
        """
 
     def __init__(self, args, r=run, p=progress):
@@ -1796,76 +1274,31 @@ class ProfileSuperclass(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
+        self.split_names_of_interest = A('split_names_of_interest')
         init_gene_coverages = A('init_gene_coverages')
         populate_nt_level_coverage = A('populate_nt_level_coverage')
         outliers_threshold = A('outliers_threshold')
-        zeros_are_outliers = A('zeros_are_outliers')
 
-        # early on let's check some ground truth
+        if self.split_names_of_interest and not isinstance(self.split_names_of_interest, type(set([]))):
+            raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set().\
+                               Someone screwed up somewhere :/")
+
         if not self.profile_db_path:
             self.run.warning("ProfileSuper is called with args without member profile_db. Anvi'o will assume\
                               you are a programmer, and will not raise an error. But the init function is returning\
                               prematurely. Just so you know.")
             return
 
-        utils.is_profile_db(self.profile_db_path)
-
-        # Should we initialize the profile super for a specific list of splits? This is where we take care of that.
-        # the user can initialize the profile super two ways: by providing split names of interest explicitly, or
-        # by providing collection name and bin names in args.
-        self.split_names_of_interest = A('split_names_of_interest')
-        self.collection_name = A('collection_name')
-
-        # figure out bin names, if there is one to figure out
-        if A('bin_id') and A('bin_names_list'):
-            raise ConfigError("ProfileSuper says you can't use both `bin_id` and `bin_names_list` as argument. Pick\
-                               one, and stick with it. ProfileSuper is grumpy.")
-        if A('bin_id'):
-            self.bin_names = [A('bin_id')]
-        elif A('bin_names_list'):
-            if isinstance(A('bin_names_list'), list):
-                self.bin_names = A('bin_names_list')
-            elif isinstance(A('bin_names_list'), str):
-                self.bin_names = A('bin_names_list').split(',')
-            else:
-                raise ConfigError("ProfileSuper says `bin_names_list` can either be a string of comma-separated bin\
-                                   names, or a proper Python `list` of bin names. But not %s." % (type(A('bin_names_list'))))
-        else:
-            self.bin_names = None
-
-        if self.split_names_of_interest and not isinstance(self.split_names_of_interest, type(set([]))):
-            raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set().\
-                               Someone screwed up somewhere :/")
-        elif self.split_names_of_interest and self.collection_name:
-            raise ConfigError("ProfileSuper is initialized with args that contain both `split_names_of_interest`,\
-                               and `collection_name`. You can initialize the ProfileSuper with either of those. As\
-                               a programmer if you have no control over incoming `args` and just passing things\
-                               aroung, you might need to implement a workaround to set either of those params to None\
-                               and then reset them back to their original in `args` once you are done with\
-                               ProfileSuper.")
-
-        if self.split_names_of_interest:
-            self.run.warning("ProfileSuperClass is inherited with a set of split names of interest, which means it will be\
-                              initialized using only the %d split names specified" % (len(self.split_names_of_interest)))
-        elif self.collection_name and not utils.is_blank_profile(self.profile_db_path):
-            self.run.warning("ProfileSuperClass found a collection focus, which means it will be initialized using only\
-                              the splits in the profile database that are affiliated with the collection %s and\
-                              %s it describes." % (self.collection_name, \
-                                                   'bins "%s" ' % ', '.join(self.bin_names) if self.bin_names else 'all bins'))
-            self.split_names_of_interest = ccolections.GetSplitNamesInBins(self.args).get_split_names_only()
-
+        is_profile_db(self.profile_db_path)
 
         # we have a contigs db? let's see if it's for real.
         if self.contigs_db_path:
-            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+            is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.progress.new('Initializing the profile database superclass')
 
         self.progress.update('Loading split names')
-        if utils.is_blank_profile(self.profile_db_path) and self.contigs_db_path:
-            self.split_names = utils.get_all_item_names_from_the_database(self.contigs_db_path)
-        else:
-            self.split_names = utils.get_all_item_names_from_the_database(self.profile_db_path)
+        self.split_names = get_split_names_in_profile_db(self.profile_db_path)
 
         if self.split_names == self.split_names_of_interest:
             # the user is being silly. nick that split_names_of_interest
@@ -1874,8 +1307,9 @@ class ProfileSuperclass(object):
         split_names_missing = (self.split_names_of_interest - self.split_names) if self.split_names_of_interest else None
         if self.split_names_of_interest and len(split_names_missing):
             self.progress.end()
-            raise ConfigError("%d of the %d split names of interest does not occur in the profile database. Here is\
-                               an example: '%s'." % (len(split_names_missing), len(self.split_names_of_interest), split_names_missing.pop()))
+            raise ConfigError("You called ProfileSuper with a `split_names_of_interest` argument, yet it contained\
+                               %d split names that does not occur in the profile database. Here is an example: '%s'." % \
+                                                                (len(split_names_missing), split_names_missing.pop()))
 
         self.progress.update('Creating an instance of the profile database')
         profile_db = ProfileDatabase(self.profile_db_path)
@@ -1935,19 +1369,19 @@ class ProfileSuperclass(object):
         else:
             self.auxiliary_profile_data_available = True
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
-                                                                                         self.p_meta['contigs_db_hash'])
+                                                                                           self.p_meta['contigs_db_hash'])
 
         self.progress.end()
 
         if init_gene_coverages:
-            self.init_gene_level_coverage_stats_dicts(outliers_threshold=outliers_threshold, populate_nt_level_coverage=populate_nt_level_coverage, zeros_are_outliers=zeros_are_outliers)
+            self.init_gene_level_coverage_stats_dicts(outliers_threshold=outliers_threshold, populate_nt_level_coverage=populate_nt_level_coverage)
 
         if self.auxiliary_profile_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__auxiliary_data_version__))
 
         if self.split_names_of_interest:
-            self.run.info('Profile Super', 'Initialized with %d of %d splits: %s (v. %s)' % (len(self.split_names_of_interest),
-                                                                                             len(self.split_names),
+            self.run.info('Profile Super', 'Initialized with %d of %d splits: %s (v. %s)' % (len(self.split_names),
+                                                                                             len(self.split_names_of_interest),
                                                                                              self.profile_db_path,
                                                                                              anvio.__profile__version__))
         else:
@@ -1993,7 +1427,7 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
-    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False):
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False):
         """This function will process `self.split_coverage_values_per_nt_dict` to populate
            `self.gene_level_coverage_stats_dict`.
 
@@ -2044,7 +1478,7 @@ class ProfileSuperclass(object):
         num_splits, counter = len(split_names), 1
         # go through all the split names
         for split_name in split_names:
-            if num_splits > 10 and counter % 10 == 0:
+            if num_splits > 100 and counter % 100 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
             # recover split coverage values from the auxiliary data file:
@@ -2072,15 +1506,15 @@ class ProfileSuperclass(object):
                 # the magic happens here:
                 for sample_name in sample_names:
                     # and recover the gene coverage array per position for a given sample:
-                    gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
+                    gene_coverage_per_position = split_coverage[sample_name][gene_start:gene_stop]
 
-                    mean_coverage = numpy.mean(gene_coverage_values_per_nt)
-                    detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
+                    mean_coverage = numpy.mean(gene_coverage_per_position)
+                    detection = numpy.count_nonzero(gene_coverage_per_position) / gene_length
 
                     # findout outlier psitions, and get non-outliers
-                    outliers_bool = get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
+                    outliers_bool = get_list_of_outliers(gene_coverage_per_position, outliers_threshold)
                     non_outlier_positions = numpy.invert(outliers_bool)
-                    non_outliers = gene_coverage_values_per_nt[non_outlier_positions]
+                    non_outliers = gene_coverage_per_position[non_outlier_positions]
 
                     if not(len(non_outliers)):
                         non_outlier_mean_coverage = 0.0
@@ -2090,12 +1524,11 @@ class ProfileSuperclass(object):
                         non_outlier_coverage_std = numpy.std(non_outliers)
 
                     self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': mean_coverage,
-                                                                                         'detection': detection,
-                                                                                         'non_outlier_mean_coverage': non_outlier_mean_coverage,
-                                                                                         'non_outlier_coverage_std':  non_outlier_coverage_std}
-                    # FIXME: these shouldn't be under gene_level_coverage_stats_dict see issue #688
+                                                                                          'detection': detection,
+                                                                                          'non_outlier_mean_coverage': non_outlier_mean_coverage,
+                                                                                          'non_outlier_coverage_std':  non_outlier_coverage_std}
                     if populate_nt_level_coverage == True:
-                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = gene_coverage_values_per_nt
+                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_per_position'] = gene_coverage_per_position
                         self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['non_outlier_positions'] = non_outlier_positions
 
             counter += 1
@@ -2109,7 +1542,7 @@ class ProfileSuperclass(object):
                                 represented in this profile database. Are you sure you are looking for it\
                                 in the right database?" % split_name)
 
-        self.progress.new('Recovering variability information for split')
+        self.progress.new('Recovering variabilit information for split')
         self.progress.update('...')
 
         profile_db = ProfileDatabase(self.profile_db_path)
@@ -2171,10 +1604,6 @@ class ProfileSuperclass(object):
 
         self.progress.new('Initializing the collection profile for "%s" ...' % collection_name)
         for table_name in table_names:
-            # if SNVs are not profiled, skip the `variability` table
-            if table_name == 'variability' and not self.p_meta['SNVs_profiled']:
-                continue
-
             self.progress.update('Populating collection profile for each "view" ... %s' % table_name)
             if self.p_meta['merged']:
                 table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column=True)
@@ -2239,15 +1668,12 @@ class ProfileSuperclass(object):
 
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
 
-        self.progress.new('Loading views%s' % (' for %d items' % len(splits_of_interest) if splits_of_interest else ''))
         for view in views_table:
-            self.progress.update('for %s' % view)
             table_name = views_table[view]['target_table']
             self.views[view] = {'table_name': table_name,
                                 'header': profile_db.db.get_table_structure(table_name)[1:],
                                 'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest, omit_parent_column=omit_parent_column)}
 
-        self.progress.end()
         profile_db.disconnect()
 
 
@@ -2261,7 +1687,7 @@ class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
         filesnpaths.is_file_exists(args.contigs_db)
         filesnpaths.is_file_exists(args.profile_db)
 
-        utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+        is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
         ContigsSuperclass.__init__(self, self.args, self.run, self.progress)
         ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
@@ -2290,14 +1716,12 @@ class ProfileDatabase:
 
     def init(self):
         if os.path.exists(self.db_path):
-            utils.is_profile_db(self.db_path)
+            is_profile_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__profile__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability',
-                        'merged', 'blank', 'contigs_ordered', 'report_variability_full', 'num_contigs',
-                        'num_splits', 'total_length']:
+            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability', 'merged', 'blank', 'contigs_ordered', 'report_variability_full', 'num_contigs', 'num_splits', 'total_length']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
@@ -2330,8 +1754,6 @@ class ProfileDatabase:
         # creating empty default tables
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
         self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
-        self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
-        self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
         self.db.create_table(t.variable_aas_table_name, t.variable_aas_table_structure, t.variable_aas_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
@@ -2376,7 +1798,7 @@ class PanDatabase:
 
     def init(self):
         if os.path.exists(self.db_path):
-            utils.is_pan_db(self.db_path)
+            is_pan_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__pan__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
@@ -2423,8 +1845,6 @@ class PanDatabase:
         # creating empty default tables for standard anvi'o pan dbs
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
         self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
-        self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
-        self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
@@ -2459,7 +1879,7 @@ class ContigsDatabase:
 
     def init(self):
         if os.path.exists(self.db_path):
-            utils.is_contigs_db(self.db_path)
+            is_contigs_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__contigs__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
@@ -2535,6 +1955,7 @@ class ContigsDatabase:
         external_gene_calls = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
+        debug = A('debug')
 
         if external_gene_calls:
             filesnpaths.is_file_exists(external_gene_calls)
@@ -2658,7 +2079,7 @@ class ContigsDatabase:
             # temporarily disconnect to perform gene calls
             self.db.disconnect()
 
-            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug=anvio.DEBUG)
+            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug=debug)
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
             if external_gene_calls:
@@ -2686,8 +2107,8 @@ class ContigsDatabase:
         contigs_kmer_table = KMerTablesForContigsAndSplits('kmer_contigs', k=kmer_size)
         splits_kmer_table = KMerTablesForContigsAndSplits('kmer_splits', k=kmer_size)
         nt_positions_table = TableForNtPositions()
-        contigs_info_table = TableForContigsInfo(split_length)
-        splits_info_table = TableForSplitsInfo()
+        contigs_info_table = InfoTableForContigs(split_length)
+        splits_info_table = InfoTableForSplits()
 
         recovered_split_lengths = []
 
@@ -2827,11 +2248,594 @@ class ContigsDatabase:
         self.db.disconnect()
 
 
+class SamplesInformationDatabase:
+    """To create an empty samples information database and/or access one.
+
+       The purpose of this database is to deal with sample-specific information. Such as
+       how should samples be organized in the interactive interface, or what environmental
+       data available about them?
+    """
+    def __init__(self, db_path, run=run, progress=progress, quiet=True):
+        self.db = None
+        self.db_path = db_path
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.meta = {}
+        self.init()
+
+
+    def init(self):
+        if not self.db_path:
+            raise ConfigError("When SamplesInformationDatabase is called, the db_path parameter cannot be\
+                                'None' type :/")
+
+        if os.path.exists(self.db_path):
+            is_samples_db(self.db_path)
+            self.db = db.DB(self.db_path, anvio.__samples__version__)
+            meta_table = self.db.get_table_as_dict('self')
+            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+            self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
+            self.sample_names_for_order = set([s.strip() for s in self.meta['sample_names_for_order'].split(',')]) \
+                                                if self.meta['sample_names_for_order'] else self.samples
+            self.samples_information_default_layer_order = self.meta['samples_information_default_layer_order'].split(',')
+
+            self.run.info('Samples information database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
+        else:
+            self.db = None
+
+
+    def get_samples_information_and_order_dicts(self):
+        if not self.db:
+            raise ConfigError("The samples database has not been initialized. You are doing something wrong :/")
+
+        samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
+
+        samples_information_dict = samples.recover_samples_information_dict(self.db.get_table_as_dict(t.samples_information_table_name, error_if_no_data=False),
+                                                                            self.db.get_table_as_dict(t.samples_attribute_aliases_table_name, error_if_no_data=False))
+        samples_order_dict = self.db.get_table_as_dict(t.samples_order_table_name)
+
+        return samples_information_dict, samples_order_dict
+
+
+    def get_samples_information_default_layer_order(self):
+        if not self.db:
+            raise ConfigError("The samples database has not been initialized. You are doing something wrong :/")
+
+        return self.samples_information_default_layer_order
+
+
+    def create(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
+        is_db_ok_to_create(self.db_path, 'samples')
+
+        samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
+        samples.populate_from_input_files(samples_information_path, samples_order_path, single_order_path, single_order_name)
+
+        self.db = db.DB(self.db_path, anvio.__samples__version__, new_database=True)
+
+        self.write_samples_to_database(samples)
+
+        self.run.info('Samples information database', 'A new samples information database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info('Number of samples', len(samples.sample_names), quiet=self.quiet)
+        self.run.info('Number of organizations', len(list(samples.samples_order_dict.keys())), quiet=self.quiet)
+
+
+    def export_samples_db_files(self, order_output_path='samples-order.txt', information_output_path='samples-information.txt', output_file_prefix=None):
+        """Export whatever information is stored in a ginve anvi'o samples database"""
+
+        samples_information_dict, samples_order_dict = self.get_samples_information_and_order_dicts()
+
+        if output_file_prefix:
+            order_output_path = output_file_prefix + '-' + order_output_path
+            information_output_path = output_file_prefix + '-' + information_output_path
+
+        filesnpaths.is_output_file_writable(order_output_path)
+        filesnpaths.is_output_file_writable(information_output_path)
+
+        utils.store_dict_as_TAB_delimited_file(samples_order_dict, order_output_path, headers=['attributes', 'basic', 'newick'])
+        utils.store_dict_as_TAB_delimited_file(samples_information_dict, information_output_path, headers=['samples'] + sorted(list(list(samples_information_dict.values())[0].keys())))
+
+        self.run.info('Samples information file', information_output_path, mc='green')
+        self.run.info('Samples order file', order_output_path, mc='green')
+
+
+    def update(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
+        # first recover what is already in the database
+        samples_information_dict, samples_order_dict = self.get_samples_information_and_order_dicts()
+
+        # inherit a samples object and update its member dicts:
+        samples = samplesops.SamplesInformation(run=self.run, progress=self.progress, quiet=self.quiet)
+        samples.samples_order_dict = samples_order_dict
+        samples.samples_information_dict = samples_information_dict
+
+        # add what we have now
+        samples.populate_from_input_files(samples_information_path, samples_order_path, single_order_path, single_order_name)
+
+        self.db = db.DB(self.db_path, anvio.__samples__version__, new_database=False)
+
+        self.write_samples_to_database(samples, update=True)
+
+        self.run.info('Samples information database', 'Samples information database, %s, has been updated.' % (self.db_path), quiet=self.quiet)
+        self.run.info('Number of samples', len(samples.sample_names), quiet=self.quiet)
+        self.run.info('Number of organizations', len(list(samples.samples_order_dict.keys())), quiet=self.quiet)
+
+
+    def write_samples_to_database(self, samples, update=False):
+        if update:
+            self.db.drop_table(t.samples_order_table_name)
+            self.db.drop_table(t.samples_attribute_aliases_table_name)
+            self.db.drop_table(t.samples_information_table_name)
+
+            self.db.remove_meta_key_value_pair('samples')
+            self.db.remove_meta_key_value_pair('available_orders')
+            self.db.remove_meta_key_value_pair('sample_names_for_order')
+            self.db.remove_meta_key_value_pair('samples_information_default_layer_order')
+        else:
+            # know thyself
+            self.db.set_meta_value('db_type', 'samples_information')
+
+            # set some useful meta values:
+            self.db.set_meta_value('creation_date', time.time())
+
+
+        # first create the easy one: the samples_order table.
+        available_orders = list(samples.samples_order_dict.keys())
+        db_entries = [(attribute, samples.samples_order_dict[attribute]['basic'], samples.samples_order_dict[attribute]['newick']) for attribute in samples.samples_order_dict]
+        self.db.create_table(t.samples_order_table_name, t.samples_order_table_structure, t.samples_order_table_types)
+        self.db._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % t.samples_order_table_name, db_entries)
+        self.db.set_meta_value('available_orders', ','.join(available_orders))
+
+        # then create the table that holds aliases for sample attributes:
+        self.db.create_table(t.samples_attribute_aliases_table_name, t.samples_attribute_aliases_table_structure, t.samples_attribute_aliases_table_types)
+        db_entries = sorted([(alias, samples.aliases_to_attributes_dict[alias]) for alias in samples.aliases_to_attributes_dict])
+        self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.samples_attribute_aliases_table_name, db_entries)
+
+        # then, create the harder one: the samples_information table.
+        aliases = sorted(samples.aliases_to_attributes_dict.keys())
+        samples_information_table_structure = ['samples'] + sorted(aliases)
+        samples_information_table_types = ['str'] + ['str'] * len(aliases)
+        self.db.create_table(t.samples_information_table_name, samples_information_table_structure, samples_information_table_types)
+        db_entries = [tuple([sample] + [samples.samples_information_dict[sample][h] for h in samples_information_table_structure[1:]]) for sample in samples.samples_information_dict]
+        self.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.samples_information_table_name, ','.join(['?'] * len(samples_information_table_structure))), db_entries)
+
+        # store samples described into the self table
+        self.db.set_meta_value('samples', ','.join(samples.sample_names) if samples.sample_names else None)
+        self.db.set_meta_value('sample_names_for_order', ','.join(samples.sample_names_in_samples_order_file) if samples.sample_names_in_samples_order_file else None)
+        self.db.set_meta_value('samples_information_default_layer_order', ','.join(samples.samples_information_default_layer_order) if hasattr(samples, 'samples_information_default_layer_order') else None)
+
+        self.disconnect()
+
+    def disconnect(self):
+        self.db.disconnect()
+
+
 ####################################################################################################
 #
 #     TABLES
 #
 ####################################################################################################
+
+
+class InfoTableForContigs:
+    def __init__(self, split_length):
+        self.db_entries = []
+        self.total_nts = 0
+        self.total_contigs = 0
+        self.split_length = split_length
+
+
+    def append(self, seq_id, sequence, gene_start_stops=None):
+        sequence_length = len(sequence)
+        gc_content = utils.get_GC_content_for_sequence(sequence)
+
+        # how many splits will there be?
+        split_start_stops = utils.get_split_start_stops(sequence_length, self.split_length, gene_start_stops)
+
+        self.total_nts += sequence_length
+        self.total_contigs += 1
+        db_entry = tuple([seq_id, sequence_length, gc_content, len(split_start_stops)])
+        self.db_entries.append(db_entry)
+
+        return (sequence_length, split_start_stops, gc_content)
+
+
+    def store(self, db):
+        if len(self.db_entries):
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
+
+class InfoTableForSplits:
+    def __init__(self):
+        self.db_entries = []
+        self.total_splits = 0
+
+
+    def append(self, seq_id, sequence, order, start, end, parent_gc_content, parent):
+        self.total_splits += 1
+        sequence_length = len(sequence)
+        db_entry = tuple([seq_id, order, start, end, sequence_length, utils.get_GC_content_for_sequence(sequence), parent_gc_content, parent])
+        self.db_entries.append(db_entry)
+
+
+    def store(self, db):
+        if len(self.db_entries):
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.splits_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
+
+class KMerTablesForContigsAndSplits:
+    def __init__(self, table_name, k=4):
+        self.table_name = table_name
+        self.kmers_class = kmers.KMers(k)
+        self.kmers = sorted(list(self.kmers_class.kmers[k]))
+
+        self.kmer_dict = {}
+        self.db_entries = []
+
+        self.kmers_table_structure = ['contig'] + self.kmers
+        self.kmers_table_types = ['text'] + ['numeric'] * len(self.kmers)
+
+
+    def get_kmer_freq(self, sequence):
+        return self.kmers_class.get_kmer_frequency(sequence, dist_metric_safe=True)
+
+
+    def append(self, seq_id, sequence, kmer_freq=None):
+        if not kmer_freq:
+            kmer_freq = self.kmers_class.get_kmer_frequency(sequence, dist_metric_safe=True)
+
+        db_entry = tuple([seq_id] + [kmer_freq[kmer] for kmer in self.kmers])
+        self.db_entries.append(db_entry)
+
+
+    def store(self, db):
+        db.create_table(self.table_name, self.kmers_table_structure, self.kmers_table_types)
+        db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.kmers_table_structure)))), self.db_entries)
+
+
+class TableForItemAdditionalData(Table):
+    """Implements the item additional data class.
+
+       This is the class where we maintain the item additional data tables in anvi'o
+       pan and profile databases. Related issue: https://github.com/merenlab/anvio/issues/662.
+    """
+
+    def __init__(self, args, r=run, p=progress, table_name=t.item_additional_data_table_name):
+        self.run = r
+        self.progress = p
+        self.table_name = table_name
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
+        self.just_do_it = A('just_do_it')
+
+        if not self.db_path:
+            raise ConfigError("ItemAdditionalData class is inherited with args object that did not\
+                               contain any database path :/ Even though any of the following would\
+                               have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
+
+        is_pan_or_profile_db(self.db_path)
+        self.db_type = get_db_type(self.db_path)
+        self.db_version = get_required_version_for_db(self.db_path)
+
+        database = db.DB(self.db_path, self.db_version)
+        self.item_additional_data_keys = database.get_single_column_from_table(self.table_name, 'key')
+        database.disconnect()
+
+        Table.__init__(self, self.db_path, self.db_version, self.run, self.progress)
+
+
+    def export(self, output_file_path):
+        filesnpaths.is_output_file_writable(output_file_path)
+
+        keys, data = self.get()
+        utils.store_dict_as_TAB_delimited_file(data, output_file_path, headers=['item'] + keys)
+
+        self.run.info('Output file', output_file_path)
+
+
+    def get(self):
+        """Will return the additional data keys and the dict."""
+
+        self.progress.new('Recovering item additional keys and data')
+        self.progress.update('...')
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        item_additional_data = database.get_table_as_dict(self.table_name)
+        item_additional_data_keys = database.get_single_column_from_table(self.table_name, 'key', unique=True)
+        item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True)
+        database.disconnect()
+
+        if not len(item_names):
+            self.progress.end()
+            return [], {}
+
+        d = {}
+        for item_name in item_names:
+            d[item_name] = {}
+
+        for entry in item_additional_data.values():
+            item_name = entry['item_name']
+            key = entry['key']
+            value = entry['value']
+
+            if entry['type'] in ['int', 'float']:
+                d[item_name][key] = eval(entry['type'])(value)
+            else:
+                d[item_name][key] = value
+
+        for item_name in d:
+            for key in item_additional_data_keys:
+                if key not in d[item_name]:
+                    d[item_name][key] = None
+
+        self.progress.end()
+
+        return item_additional_data_keys, d
+
+
+    def remove(self, keys_list):
+        '''Give this guy a list of key, and watch their demise.'''
+
+        if not isinstance(keys_list, list):
+            raise ConfigError("The remove function in ItemAdditionalData class wants you to watch\
+                               yourself before you wreck yourself. In other words, can you please\
+                               make sure the keys you send is of type `list` thankyouverymuch.")
+
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+
+        item_additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
+
+        if not len(item_additional_data_keys):
+            self.run.info_single('There is nothing to remove --the items additional data table is already empty :(')
+            database.disconnect()
+
+            return
+
+        missing_keys = [k for k in keys_list if k not in item_additional_data_keys]
+        if len(missing_keys) and not self.just_do_it:
+            database.disconnect()
+            raise ConfigError("The following keys you wanted to remove from the items additional data table are\
+                               not really in the table: '%s'. Anvi'o is confused :/" % (', '.join(missing_keys)))
+
+        if keys_list:
+            for key in keys_list:
+                if key not in item_additional_data_keys:
+                    # what the hell, user?
+                    return
+
+                database._exec('''DELETE from %s WHERE key="%s"''' % (self.table_name, key))
+
+            self.run.warning("Data for the following keys removed from the database: '%s'. #SAD." % (', '.join(keys_list)))
+        else:
+            database._exec('''DELETE from %s''' % (self.table_name))
+
+            self.run.warning("All data from the items additional data table is removed (wow).")
+
+        database.disconnect()
+
+
+    def check_item_names(self, data_dict):
+        """Compares item names found in the data dict to the ones in the db"""
+
+        items_in_db = get_all_item_names_from_the_database(self.db_path)
+        items_in_data = set(data_dict.keys())
+
+        items_in_data_but_not_in_db = items_in_data.difference(items_in_db)
+        if len(items_in_data_but_not_in_db):
+            raise ConfigError("Well. %d of %d item names in your additional data are only in your data (which\
+                               that they are not in the %s database you are working with (which means bad news)).\
+                               Since there is no reason to add additional data for items that do not exist in your\
+                               database, anvi'o will stop you right there. Please fix your data and come again. In\
+                               case you want to see a random item that is only in your data, here is one: %s. Stuff\
+                               in your db looks like this: %s." \
+                                    % (len(items_in_data_but_not_in_db), len(items_in_data), self.db_type, \
+                                       items_in_data_but_not_in_db.pop(), items_in_db.pop()))
+
+        items_in_db_but_not_in_data = items_in_db.difference(items_in_data)
+        if len(items_in_db_but_not_in_data):
+            self.run.warning("Your input contains additional data for only %d of %d total number of items in your %s\
+                              database. Just wanted to make sure you know what's up, but we cool." \
+                                % (len(items_in_db) - len(items_in_db_but_not_in_data), len(items_in_db), self.db_type))
+
+
+    def add(self, keys_list, data_dict, skip_check_names=False):
+        """Main function to add data into the item additional data table.
+
+           * `data_dict`: a dictionary that should follow this format:
+
+                d = {
+                        'item_name_01': {'key_01': value,
+                                         'key_02': value,
+                                         'key_03': value
+                                         },
+                        'item_name_02': {'key_01': value,
+                                         'key_03': value,
+                                         },
+                        (...)
+                    }
+
+           * `keys_list`: is a list of keys one or more of which should appear for each item
+                          in `data_dict`.
+        """
+
+        if not isinstance(keys_list, list):
+            raise ConfigError("List of keys must be of type `list`. Go away.")
+
+        if not isinstance(data_dict, dict):
+            raise ConfigError("Nope. Your data must be of type `dict`.")
+
+        self.run.warning(None, 'New additional data...', lc="yellow")
+        key_types = {}
+        for key in keys_list:
+            if '!' in key:
+                predicted_key_type = "stackedbar"
+            else:
+                type_class = utils.get_predicted_type_of_items_in_a_dict(data_dict, key)
+                predicted_key_type = type_class.__name__ if type_class else None
+
+            key_types[key] = predicted_key_type
+            self.run.info('Key "%s"' % key, 'Predicted type: %s' % (key_types[key]), \
+                                            nl_after = 1 if key == keys_list[-1] else 0)
+
+        # we be responsible here.
+        keys_already_in_db = [c for c in keys_list if c in self.item_additional_data_keys]
+        if len(keys_already_in_db):
+            if self.just_do_it:
+                self.run.warning('The following keys in your data dict will replace the ones that are already\
+                                  in your %s database: %s.' % (self.db_type, ', '.join(keys_already_in_db)))
+
+                self.remove(keys_already_in_db)
+            else:
+                run.info('Keys already in the db', ', '.join(keys_already_in_db), nl_before=2, mc='red')
+
+                raise ConfigError("Some of the keys in your new data appear to be in the database already. If you\
+                                   want to replace those in the database with the ones in your new data use the\
+                                   `--just-do-it` flag, and watch anvi'o make an exception just for you and complain\
+                                   about nothin' for this once.")
+
+        if skip_check_names:
+            self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of item names\
+                              between your additional data and the %s database you are attempting to update. So be it.\
+                              Anvi'o will not check anything, but if things don't look the way you expected them to look,\
+                              you will not blame anvi'o for your poorly prepared data, but choose between yourself or\
+                              Obama." % (self.db_type))
+        else:
+            self.check_item_names(data_dict)
+
+        db_entries = []
+        self.set_next_available_id(self.table_name)
+        for item_name in data_dict:
+            for key in data_dict[item_name]:
+                db_entries.append(tuple([self.next_id(self.table_name),
+                                         item_name,
+                                         key,
+                                         data_dict[item_name][key],
+                                         key_types[key]]))
+
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, db_entries)
+        database.disconnect()
+
+        self.run.info('New data added to the db', '%s.' % (', '.join(keys_list)))
+
+
+    def list_keys(self):
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+        item_additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'key', unique=True))
+
+        if not len(item_additional_data_keys):
+            self.run.info_single('There are no item additional data in this database :/', nl_before=1, nl_after=1, mc='red')
+        else:
+            self.run.warning('', 'AVAILABLE DATA KEYS (%d FOUND)' % (len(item_additional_data_keys)), lc='yellow')
+            for key in item_additional_data_keys:
+                rows = database.get_some_rows_from_table_as_dict(self.table_name, 'key="%s"' % key)
+                self.run.info_single('%s (%s, describes %d items)' % (key, list(rows.values())[0]['type'], len(rows)),
+                                     nl_after = 1 if key == item_additional_data_keys[-1] else 0)
+
+        database.disconnect()
+
+
+    def populate_from_file(self, additional_data_file_path, skip_check_names=False):
+        filesnpaths.is_file_tab_delimited(additional_data_file_path)
+
+        keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
+        data = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
+
+        if not len(keys):
+            raise ConfigError("There is something wrong with the additional data file at %s.\
+                               It does not seem to have any additional keys for data :/" \
+                                            % (additional_data_file_path))
+
+        self.add(keys, data, skip_check_names)
+
+
+class TablesForViews(Table):
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
+
+
+    def create_new_view(self, data_dict, table_name, table_structure, table_types, view_name=None, append_mode=False):
+        """Creates a new view table, and adds an entry for it into the 'views' table.
+
+        Entries in 'views' table appear in various places in the interface. However, we also generate
+        view tables to store the type of data we do not wish to display on interfaces, but be able
+        access from various other modules. A good example to this is the item_order recipes. When we
+        profile a sample, we treat every stplit as their own entity with respect to their mean coverage.
+        Although it is great for visualization purposes, it is not useful for item_order purposes since in
+        most cases we wish splits to stay together in item_order output. Hence, we create a mean_coverage_splits
+        table, where each split holds their own coverage, and we create a mean_coverage_contigs table where each
+        split has the coverage of their parent. Clearly the second table is not useful to display. When a table
+        is not added as an entry to the 'views' table, then it only exists in the database for other purposes
+        than displaying it.
+
+        If a new view does not have a 'view_id', it is not added the 'views' table to provide that flexibility.
+        """
+
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
+
+        views_in_db = anvio_db.db.get_table_as_dict(t.views_table_name)
+
+        if not append_mode:
+            if view_name and view_name in views_in_db:
+                raise ConfigError("TablesForViews speaking: Yo yo yo. You already have a view in the db called '%s'.\
+                                    You can't create another one before you get rid of the existing one, because rules."\
+                                                                            % view_name)
+
+            # first create the data table:
+            anvio_db.db.drop_table(table_name)
+
+        try:
+            anvio_db.db.create_table(table_name, table_structure, table_types)
+        except:
+            if not append_mode:
+                raise ConfigError("Table already exists")
+
+        db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
+        anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
+
+        if view_name and view_name not in views_in_db:
+            anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))
+
+        anvio_db.disconnect()
+
+
+    def remove(self, view_name, table_names_to_blank=[]):
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
+        anvio_db.db._exec('''DELETE FROM %s WHERE view_id = "%s"''' % (t.views_table_name, view_name))
+        for table_name in table_names_to_blank:
+            if table_name in anvio_db.db.get_table_names():
+                anvio_db.db._exec('''DELETE FROM %s''' % table_name)
+        anvio_db.disconnect()
+
+
+class TableForVariability(Table):
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+        self.run = run
+        self.progress = progress
+
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run=self.run, progress=self.progress)
+
+        self.num_entries = 0
+        self.db_entries = []
+        self.set_next_available_id(t.variable_nts_table_name)
+
+
+    def append(self, profile, quiet=False):
+        db_entry = tuple([self.next_id(t.variable_nts_table_name)] + [profile[h] for h in t.variable_nts_table_structure[1:]])
+        self.db_entries.append(db_entry)
+        self.num_entries += 1
+        if not quiet and self.num_entries % 100 == 0:
+            self.progress.update('Information for %d SNV sites have been added ...' % self.num_entries)
+
+
+    def store(self):
+        profile_db = ProfileDatabase(self.db_path)
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_nts_table_name, self.db_entries)
+        profile_db.disconnect()
 
 
 class AA_counts(ContigsSuperclass):
@@ -2960,11 +2964,1201 @@ class AA_counts(ContigsSuperclass):
         return self.counts_dict
 
 
+class TableForAAFrequencies(Table):
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+        self.run = run
+        self.progress = progress
+
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run=self.run, progress=self.progress)
+
+        self.num_entries = 0
+        self.db_entries = []
+        self.set_next_available_id(t.variable_aas_table_name)
+
+
+    def append(self, profile):
+        db_entry = tuple([self.next_id(t.variable_aas_table_name)] + [profile[h] for h in t.variable_aas_table_structure[1:]])
+        self.db_entries.append(db_entry)
+        self.num_entries += 1
+        if self.num_entries % 100 == 0:
+            self.progress.update('Information for %d codons have been added ...' % self.num_entries)
+
+
+    def store(self):
+        profile_db = ProfileDatabase(self.db_path)
+        profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.variable_aas_table_name, ','.join(['?'] * len(t.variable_aas_table_structure))), self.db_entries)
+        profile_db.disconnect()
+
+
+class TablesForGeneCalls(Table):
+    def __init__(self, db_path, contigs_fasta=None, run=run, progress=progress, debug=False):
+        self.run = run
+        self.progress = progress
+        self.db_path = db_path
+        self.contigs_fasta = contigs_fasta
+        self.debug = debug
+
+        is_contigs_db(self.db_path)
+
+        if self.contigs_fasta:
+            filesnpaths.is_file_exists(self.contigs_fasta)
+            filesnpaths.is_file_fasta_formatted(self.contigs_fasta)
+
+
+    def check_gene_calls_dict(self, gene_calls_dict):
+        if not isinstance(gene_calls_dict, type({})):
+            raise ConfigError("Gene calls dict must be a dict instance :/")
+
+        try:
+            [int(g) for g in list(gene_calls_dict.keys())]
+        except ValueError:
+            raise ConfigError("Keys of a gene calls dict must be integers!")
+
+        if False in [x['direction'] in ['f', 'r'] for x in list(gene_calls_dict.values())]:
+            raise ConfigError("The values in 'direction' column can't be anything but 'f' (for forward)\
+                                or 'r' (for reverse). You have other stuff, and it is not cool.")
+
+        if False in [x['stop'] > x['start'] for x in list(gene_calls_dict.values())]:
+            raise ConfigError("For each gene call, the stop position must be bigger than the start position.\
+                                Your gene calls dict does not conform to that. If you have reverse gene calls\
+                                you must use the 'direction' column to declare that.")
+
+        if False in [(x['stop'] - float(x['start'])) % 3.0 == 0 for x in list(gene_calls_dict.values())]:
+            raise ConfigError("Something is wrong with your gene calls. For every gene call, the (stop - start)\
+                                should be multiply of 3. It is not the case for all, which is a deal breaker.")
+
+
+    def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path, gene_calls_dict=None, ignore_internal_stop_codons=False):
+        """Add genes to the contigs database.
+
+           Either provide an `input_file_path` for external gene calls, or provide an
+           external gene calls dictionary. The format should follow this:
+
+                {
+                  "1": {
+                      "contig": "contig_name",
+                      "start": 20,
+                      "stop": 1544,
+                      "direction": "f",
+                      "partial": 0,
+                      "source": "source_name",
+                      "version": "unknown"
+                  },
+
+                  "2": {
+                    (...)
+                  },
+
+                (...)
+                }
+
+            If you provide a `gene_calls_dict`, they will be APPENDED to the database. So you
+            need to make sure gene caller ids in your dict does not overlap with the ones in
+            the database.
+
+        """
+
+        # by default we assume that this is a pristine run. but if the user sends a dictionary
+        append_to_the_db = False
+
+        gene_calls_found = False
+        # let's do a rigorous check whether the user provided a gene_calls_dict.
+        if (gene_calls_dict is not None and gene_calls_dict is not False):
+            if not isinstance(gene_calls_dict, dict):
+                raise ConfigError("'Use external gene calls' function received a non-empty gene_calls_dict object,\
+                                    but it is of type '%s', and not '%s'" % (type(gene_calls_dict), type({})))
+
+            # congrats, we have a dict.
+            gene_calls_found = True
+
+            if not len(gene_calls_dict):
+                # but it is empty ... silly user.
+                self.run.info_single("'Use external gene calls' function found an empty gene calls dict, returning\
+                                      prematurely and assuming you know what's up. If you don't, stop here and try to\
+                                      identify what decisions you've made might have led you to this weird point your\
+                                      workflow (or 'life', totally up to you and your mood, but anvi'o thinks you've\
+                                      done great so far.", nl_before=1, nl_after=1)
+                return
+
+
+        if (not input_file_path and not gene_calls_found) or (input_file_path and gene_calls_found):
+            raise ConfigError("You must provide either an input file, or an gene calls dict to process external\
+                               gene calls. You called `use_external_gene_calls_to_populate_genes_in_contigs_table`\
+                               with wrong parameters.")
+
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress, simple=True)
+
+        # take care of gene calls dict
+        if not gene_calls_found:
+            gene_calls_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_path,
+                                                                         expected_fields=t.genes_in_contigs_table_structure,
+                                                                         only_expected_fields=True,
+                                                                         column_mapping=[int, str, int, int, str, int, str, str])
+
+            if not len(gene_calls_dict):
+                raise ConfigError("You provided an external gene calls file, but it returned zero gene calls. Assuming that\
+                                   this is an error, anvi'o will stop here and complain. If this is not an error and you\
+                                   in fact expected this, the proper way of doing this is to use `--skip-gene-calls` flag,\
+                                   instead of providing an emtpy external gene calls file. You don't agree? You need this\
+                                   for some weird step for you weird pipeline? Let us know, and we will consider changing\
+                                   this.")
+
+            self.run.info("External gene calls", "%d gene calls recovered and will be processed." % len(gene_calls_dict))
+        else:
+            # FIXME: we need to make sure the gene caller ids in the incoming directory is not going to
+            #        overwrite an existing gene call. Something like this would have returned the
+            #        current max, which could be cross-checked with what's in the dict:
+            #
+            #            contigs_db = ContigsDatabase(self.db_path)
+            #            next_id = contigs_db.db.get_max_value_in_column('genes_in_contigs', 'gene_callers_id') + 1
+            #            contigs_db.disconnect()
+            append_to_the_db = True
+
+        # recover amino acid sequences. during this operation we are going to have to read all contig sequences
+        # into the damn memory. anvi'o is doing a pretty bad job with memory management :(
+        amino_acid_sequences = {}
+
+        contig_sequences = {}
+        if self.contigs_fasta:
+            fasta = u.SequenceSource(self.contigs_fasta)
+            while next(fasta):
+                contig_sequences[fasta.id] = {'sequence': fasta.seq}
+            fasta.close()
+        else:
+            class Args: None
+            args = Args()
+            args.contigs_db = self.db_path
+            contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False))
+            contigs_db.init_contig_sequences()
+            contig_sequences = contigs_db.contig_sequences
+
+        num_genes_with_internal_stops = 0
+        number_of_impartial_gene_calls = 0
+        for gene_callers_id in gene_calls_dict:
+            gene_call = gene_calls_dict[gene_callers_id]
+            contig_name = gene_call['contig']
+
+            if contig_name not in contig_sequences:
+                # remove the partial contigs database so things don't get screwed later
+                os.remove(self.db_path)
+                raise ConfigError("You are in big trouble :( The contig name '%s' in your external gene callers file\
+                                    does not appear to be in the contigs FASTA file. How did this happen?" % contig_name)
+
+            if gene_call['partial']:
+                amino_acid_sequences[gene_callers_id] = ''
+                number_of_impartial_gene_calls += 1
+                continue
+
+            sequence = contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+            if gene_call['direction'] == 'r':
+                sequence = utils.rev_comp(sequence)
+
+            amino_acid_sequence = utils.get_DNA_sequence_translated(sequence, gene_callers_id)
+
+            # check if there are any internal stops:
+            if amino_acid_sequence.find('*') > -1:
+                if ignore_internal_stop_codons:
+                    amino_acid_sequence = amino_acid_sequence.replace('*', 'X')
+                    num_genes_with_internal_stops += 1
+                else:
+                    os.remove(self.db_path)
+                    raise ConfigError("Oops. Anvi'o run into an amino acid seqeunce (that corresponds to the gene callers id '%s')\
+                                       which had an internal stop codon :/ This usually indicates that your external gene calls\
+                                       have problems. If you still want to continue, you can ask anvi'o to ignore internal stop\
+                                       codons on your own risk. It will probably look very ugly on your screen, but here is the\
+                                       DNA sequence for that gene in case you don't trust anvi'o (which only would be fair since\
+                                       anvi'o does not trust you either): %s" % (str(gene_callers_id), sequence))
+
+            amino_acid_sequences[gene_callers_id] = amino_acid_sequence
+
+        # populate genes_in_contigs, and gene_amino_acid_sequences table in contigs db.
+        self.populate_genes_in_contigs_table(gene_calls_dict, amino_acid_sequences, append_to_the_db=append_to_the_db)
+
+        if num_genes_with_internal_stops:
+            percent_genes_with_internal_stops = num_genes_with_internal_stops * 100.0 / len(gene_calls_dict)
+            self.run.warning("Please read this carefully: Your external gene calls contained open reading frames with internal\
+                              stop codons, and you asked anvi'o to ignore those. Anvi'o replaced internal stop codons with 'X'\
+                              characters, and stored them in the contigs database that way. %d of your genes, which corresponded\
+                              to %.2f%% of the total %d genes, had internal stop codons. We hope you are happy." % \
+                                        (num_genes_with_internal_stops, percent_genes_with_internal_stops, len(gene_calls_dict)))
+
+        if number_of_impartial_gene_calls:
+            self.run.warning('%d of your %d gene calls were impartial, hence the translated amino acid sequences for those\
+                              were not stored in the database.' % (number_of_impartial_gene_calls, len(gene_calls_dict)))
+
+
+    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple=True)
+
+        # get gene calls and amino acid sequences
+        gene_calls_dict, amino_acid_sequences = self.run_gene_caller(gene_caller)
+
+        # make sure the returning gene calls dict is proper
+        self.check_gene_calls_dict(gene_calls_dict)
+
+        # populate genes_in_contigs, and gene_amino_acid_sequences table in contigs db.
+        self.populate_genes_in_contigs_table(gene_calls_dict, amino_acid_sequences)
+
+
+    def run_gene_caller(self, gene_caller='prodigal'):
+        """Runs gene caller, and returns gene_calls_dict, and amino acid sequences."""
+        remove_fasta_after_processing = False
+
+        if not self.contigs_fasta:
+            self.contigs_fasta = self.export_sequences_table_in_db_into_FASTA_file()
+            remove_fasta_after_processing = True
+
+        if self.debug:
+            self.run.info_single('--debug flag is [ON], which means temporary directories generated by\
+                                 this run will not be removed', nl_after=2)
+
+        gene_caller = genecalling.GeneCaller(self.contigs_fasta, gene_caller=gene_caller, debug=self.debug)
+
+        gene_calls_dict, amino_acid_sequences = gene_caller.process()
+
+        if not self.debug and remove_fasta_after_processing:
+            os.remove(self.contigs_fasta)
+
+        return gene_calls_dict, amino_acid_sequences
+
+
+    def populate_genes_in_contigs_table(self, gene_calls_dict, amino_acid_sequences, append_to_the_db=False):
+        contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
+
+        if not append_to_the_db:
+            contigs_db._exec('''DELETE FROM %s''' % (t.genes_in_contigs_table_name))
+            contigs_db._exec('''DELETE FROM %s''' % (t.gene_amino_acid_sequences_table_name))
+        else:
+            # so we are in the append mode. We must remove all the previous entries from genes in contigs
+            # that matches to the incoming sources. otherwhise we may end up with many duplicates in the db.
+            sources = set([v['source'] for v in gene_calls_dict.values()])
+            for source in sources:
+                contigs_db._exec('''DELETE FROM %s WHERE source = "%s"''' % (t.genes_in_contigs_table_name, source))
+
+        self.progress.new('Processing')
+        self.progress.update('Entering %d gene calls into the db ...' % (len(gene_calls_dict)))
+
+        db_entries = [tuple([entry_id] + [gene_calls_dict[entry_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for entry_id in gene_calls_dict]
+        contigs_db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, db_entries)
+
+        db_entries = [tuple([entry_id] + [amino_acid_sequences[entry_id]]) for entry_id in gene_calls_dict]
+        contigs_db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.gene_amino_acid_sequences_table_name, db_entries)
+
+        self.progress.end()
+
+        contigs_db.disconnect()
+
+
+    def populate_genes_in_splits_tables(self):
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
+        self.init_gene_calls_dict()
+
+        genes_in_splits = GenesInSplits()
+        # build a dictionary for fast access to all genes identified within a contig
+        gene_calls_in_contigs_dict = {}
+        for gene_callers_id in self.gene_calls_dict:
+            contig = self.gene_calls_dict[gene_callers_id]['contig']
+            if contig in gene_calls_in_contigs_dict:
+                gene_calls_in_contigs_dict[contig].add(gene_callers_id)
+            else:
+                gene_calls_in_contigs_dict[contig] = set([gene_callers_id])
+
+        contigs_without_any_gene_calls = list(set(self.contigs_info.keys()) - set(gene_calls_in_contigs_dict.keys()))
+        run.info('Contigs with at least one gene call', '%d of %d (%.1f%%)' % (len(gene_calls_in_contigs_dict),
+                                                                               len(self.contigs_info),
+                                                                               len(gene_calls_in_contigs_dict) * 100.0 / len(self.contigs_info)))
+
+        for contig in contigs_without_any_gene_calls:
+            gene_calls_in_contigs_dict[contig] = set([])
+
+        splits_dict = {}
+        for contig in self.contigs_info:
+            for split_name in self.contig_name_to_splits[contig]:
+                start = self.splits_info[split_name]['start']
+                stop = self.splits_info[split_name]['end']
+
+                gene_start_stops = []
+                # here we go through all genes in the contig and identify the all the ones that happen to be in
+                # this particular split to generate summarized info for each split. BUT one important that is done
+                # in the following loop is genes_in_splits.add call, which populates GenesInSplits class.
+                for gene_callers_id in gene_calls_in_contigs_dict[contig]:
+                    if self.gene_calls_dict[gene_callers_id]['stop'] > start and self.gene_calls_dict[gene_callers_id]['start'] < stop:
+                        gene_start_stops.append((self.gene_calls_dict[gene_callers_id]['start'], self.gene_calls_dict[gene_callers_id]['stop']), )
+                        genes_in_splits.add(split_name, start, stop, gene_callers_id, self.gene_calls_dict[gene_callers_id]['start'], self.gene_calls_dict[gene_callers_id]['stop'])
+
+                # here we identify genes that are associated with a split even if one base of the gene spills into
+                # the defined start or stop of a split, which means, split N, will include genes A, B and C in this
+                # scenario:
+                #
+                # contig: (...)------[ gene A ]--------[     gene B    ]----[gene C]---------[    gene D    ]-----(...)
+                #         (...)----------x---------------------------------------x--------------------------------(...)
+                #                        ^ (split N start)                       ^ (split N stop)
+                #                        |                                       |
+                #                        |<-              split N              ->|
+                #
+                # however, when looking at the coding versus non-coding nucleotide ratios in a split, we have to make
+                # sure that only the relevant portion of gene A and gene C is counted:
+                total_coding_nts = 0
+                for gene_start, gene_stop in gene_start_stops:
+                    total_coding_nts += (gene_stop if gene_stop < stop else stop) - (gene_start if gene_start > start else start)
+
+                splits_dict[split_name] = {'num_genes': len(gene_start_stops),
+                                           'avg_gene_length': numpy.mean([(l[1] - l[0]) for l in gene_start_stops]) if len(gene_start_stops) else 0.0,
+                                           'ratio_coding': total_coding_nts * 1.0 / (stop - start),
+                                           }
+
+        # open connection
+        contigs_db = ContigsDatabase(self.db_path)
+        # push raw entries for splits table
+        db_entries = [tuple([split] + [splits_dict[split][h] for h in t.genes_in_splits_summary_table_structure[1:]]) for split in splits_dict]
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.genes_in_splits_summary_table_name, db_entries)
+
+        # push entries for genes in splits table
+        db_entries = [tuple([entry_id] + [genes_in_splits.splits_to_prots[entry_id][h] for h in t.genes_in_splits_table_structure[1:]]) for entry_id in genes_in_splits.splits_to_prots]
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.genes_in_splits_table_name, db_entries)
+        # disconnect
+        contigs_db.disconnect()
+
+
+class TablesForHMMHits(Table):
+    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress):
+        self.num_threads_to_use = num_threads_to_use
+        self.db_path = db_path
+
+        self.debug = False
+
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
+
+        if not self.genes_are_called:
+            raise ConfigError("It seems the contigs database '%s' was created with '--skip-gene-calling' flag.\
+                                Nothing to do here :/" % (self.db_path))
+
+        self.init_gene_calls_dict()
+
+        if not len(self.gene_calls_dict):
+            raise ConfigError("Tables that should contain gene calls are empty. Which probably means the gene\
+                                caller reported no genes for your contigs.")
+
+        self.set_next_available_id(t.hmm_hits_table_name)
+        self.set_next_available_id(t.hmm_hits_splits_table_name)
+
+
+    def populate_search_tables(self, sources={}):
+        # if we end up generating a temporary file for amino acid sequences:
+        if not len(sources):
+            import anvio.data.hmm
+            sources = anvio.data.hmm.sources
+
+        if not sources:
+            return
+
+        target_files_dict = {}
+
+        tmp_directory_path = filesnpaths.get_temp_directory_path()
+
+        # here we will go through targets and populate target_files_dict based on what we find among them.
+        targets = set([s['target'] for s in list(sources.values())])
+        for target in targets:
+
+            alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(target)
+
+            self.run.info('Target found', '%s:%s' % (alphabet, context))
+
+            class Args: pass
+            args = Args()
+            args.contigs_db = self.db_path
+            contigs_db = ContigsSuperclass(args)
+
+            if context == 'GENE':
+                if alphabet == 'AA':
+                    target_files_dict['AA:GENE'] = os.path.join(tmp_directory_path, 'aa_gene_sequences.fa')
+                    self.export_sequences_table_in_db_into_FASTA_file(t.gene_amino_acid_sequences_table_name, output_file_path=target_files_dict['AA:GENE'])
+                else:
+                    target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
+                    contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
+                                                                               simple_headers=True,
+                                                                               rna_alphabet=True if alphabet=='RNA' else False)
+            elif context == 'CONTIG':
+                if alphabet == 'AA':
+                    raise ConfigError("You are somewhere you shouldn't be. You came here because you thought it would be OK\
+                                       to ask for AA sequences in the CONTIG context. The answer to that is 'no, thanks'. If\
+                                       you think this is dumb, please let us know.")
+                else:
+                    target_files_dict['%s:CONTIG' % alphabet] = os.path.join(tmp_directory_path, '%s_contig_sequences.fa' % alphabet)
+                    utils.export_sequences_from_contigs_db(self.db_path,
+                                                           target_files_dict['%s:CONTIG' % alphabet],
+                                                           rna_alphabet=True if alphabet=='RNA' else False)
+
+        commander = HMMer(target_files_dict, num_threads_to_use=self.num_threads_to_use)
+
+        for source in sources:
+            alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(sources[source]['target'])
+
+            kind_of_search = sources[source]['kind']
+            domain = sources[source]['domain']
+            all_genes_searched_against = sources[source]['genes']
+            hmm_model = sources[source]['model']
+            reference = sources[source]['ref']
+
+            hmm_scan_hits_txt = commander.run_hmmscan(source,
+                                                      alphabet,
+                                                      context,
+                                                      kind_of_search,
+                                                      domain,
+                                                      all_genes_searched_against,
+                                                      hmm_model,
+                                                      reference)
+
+            if not hmm_scan_hits_txt:
+                search_results_dict = {}
+            else:
+                parser = parser_modules['search']['hmmscan'](hmm_scan_hits_txt, alphabet=alphabet, context=context)
+                search_results_dict = parser.get_search_results()
+
+            if not len(search_results_dict):
+                run.info_single("The HMM source '%s' returned 0 hits. SAD (but it's stil OK)." % source, nl_before=1)
+
+
+            if context == 'CONTIG':
+                # we are in trouble here. because our search results dictionary contains no gene calls, but contig
+                # names that contain our hits. on the other hand, the rest of the code outside of this if statement
+                # expects a `search_results_dict` with gene callers id in it. so there are two things we need to do
+                # to do. one is to come up with some new gene calls and add them to the contigs database. so things
+                # will go smoothly downstream. two, we will need to update our `search_results_dict` so it looks
+                # like a a dictionary the rest of the code expects with `gene_callers_id` fields. both of these
+                # steps are going to be taken care of in the following function. magic.
+
+                self.run.warning("Alright! You just called an HMM profile that runs on contigs. Because it is not\
+                                 working with anvi'o gene calls directly, the resulting hits will need to be added\
+                                 as 'new gene calls' into the contigs database. This is a new feature, and if it\
+                                 starts screwing things up for you please let us know. Other than that you're pretty\
+                                 much golden. Carry on.",
+                                 header="Psst. Your fancy HMM profile '%s' speaking" % source,
+                                 lc="green")
+
+                num_hits_before = len(search_results_dict)
+                search_results_dict = utils.get_pruned_HMM_hits_dict(search_results_dict)
+                num_hits_after = len(search_results_dict)
+
+                if num_hits_before != num_hits_after:
+                    self.run.info('Pruned', '%d out of %d hits were removed due to redundancy' % (num_hits_before - num_hits_after, num_hits_before))
+
+                search_results_dict = self.add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(kind_of_search, search_results_dict)
+
+            self.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
+
+        if not self.debug:
+            commander.clean_tmp_dirs()
+            for v in list(target_files_dict.values()):
+                os.remove(v)
+
+
+    def add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(self, source, search_results_dict):
+        """Add new gene calls to the contigs database and update the HMM `search_results_dict`.
+
+           When we are looking for HMM hits in the context of CONTIGS, our hits do not
+           related to the gene calls we already have in a given contigs database. One
+           slution is to add additional gene calls for a given set of HMM hits to keep
+           them in the database."""
+
+        # we will first learn the next available id in the gene callers table
+        contigs_db = ContigsDatabase(self.db_path)
+        next_id = contigs_db.db.get_max_value_in_column('genes_in_contigs', 'gene_callers_id') + 1
+        contigs_db.disconnect()
+
+        additional_gene_calls = {}
+        for e in search_results_dict.values():
+            start = e['start']
+            stop = e['stop']
+
+            if stop > start:
+                direction = 'f'
+            else:
+                direction = 'r'
+                stop, start = start, stop
+
+            partial = 0 if ((stop - start) % 3 == 0) else 1
+
+            # add a new gene call in to the dictionary
+            additional_gene_calls[next_id] = {'contig': e['contig_name'],
+                                              'start': start,
+                                              'stop': stop,
+                                              'direction': direction,
+                                              'partial': partial,
+                                              'source': source,
+                                              'version': 'unknown'
+                                            }
+
+            # update the search results dictionary with gene callers id:
+            e['gene_callers_id'] = next_id
+
+            # update the next available gene callers id:
+            next_id += 1
+
+        # update the contigs db with the gene calls in `additional_gene_calls` dict.
+        gene_calls_table = TablesForGeneCalls(self.db_path, run=terminal.Run(verbose=False))
+        gene_calls_table.use_external_gene_calls_to_populate_genes_in_contigs_table(input_file_path=None,
+                                                                                    gene_calls_dict=additional_gene_calls,
+                                                                                    ignore_internal_stop_codons=True)
+        gene_calls_table.populate_genes_in_splits_tables()
+
+        # refresh the gene calls dict
+        self.init_gene_calls_dict()
+
+        self.run.info('Gene calls added to db', '%d (from source "%s")' % (len(additional_gene_calls), source))
+
+        return search_results_dict
+
+
+    def append(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
+        # we want to define unique identifiers for each gene first. this information will be used to track genes that will
+        # break into multiple pieces due to arbitrary split boundaries. while doing that, we will add the 'source' info
+        # into the dictionary, so it perfectly matches to the table structure
+
+        for entry_id in search_results_dict:
+            hit = search_results_dict[entry_id]
+
+            gene_call = self.gene_calls_dict[hit['gene_callers_id']]
+
+            hit['gene_unique_identifier'] = hashlib.sha224('_'.join([gene_call['contig'], hit['gene_name'], str(gene_call['start']), str(gene_call['stop'])]).encode('utf-8')).hexdigest()
+            hit['source'] = source
+
+        self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_table_name, t.hmm_hits_splits_table_name])
+
+        contigs_db = ContigsDatabase(self.db_path)
+
+        # push information about this search result into serach_info table.
+        db_entries = [source, reference, kind_of_search, domain, ', '.join(all_genes)]
+        contigs_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
+
+        # if our search results were empty, we can return from here.
+        if not len(search_results_dict):
+            contigs_db.disconnect()
+            return
+
+        # then populate serach_data table for each contig.
+        db_entries = []
+        for hit in list(search_results_dict.values()):
+            entry_id = self.next_id(t.hmm_hits_table_name)
+            db_entries.append(tuple([entry_id] + [hit[h] for h in t.hmm_hits_table_structure[1:]]))
+            # tiny hack here: for each hit, we are generating a unique id (`entry_id`), and feeding that information
+            #                 back into the dictionary to pass it to processing of splits, so each split-level
+            #                 entry knows who is their parent.
+            hit['hmm_hit_entry_id'] = entry_id
+
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_table_name, db_entries)
+
+        db_entries = self.process_splits(search_results_dict)
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.hmm_hits_splits_table_name, db_entries)
+
+        contigs_db.disconnect()
+
+
+    def process_splits(self, search_results_dict):
+        hits_per_contig = {}
+        for hit in list(search_results_dict.values()):
+            contig_name = self.gene_calls_dict[hit['gene_callers_id']]['contig']
+
+            if contig_name in hits_per_contig:
+                hits_per_contig[contig_name].append(hit)
+            else:
+                hits_per_contig[contig_name] = [hit]
+
+        db_entries_for_splits = []
+
+        for contig in self.contigs_info:
+            if contig not in hits_per_contig:
+                # no hits for this contig. pity!
+                continue
+
+            for split_name in self.contig_name_to_splits[contig]:
+                split_start = self.splits_info[split_name]['start']
+                split_stop = self.splits_info[split_name]['end']
+
+                # FIXME: this really needs some explanation.
+                for hit in hits_per_contig[contig]:
+                    hit_start = self.gene_calls_dict[hit['gene_callers_id']]['start']
+                    hit_stop = self.gene_calls_dict[hit['gene_callers_id']]['stop']
+
+                    if hit_stop > split_start and hit_start < split_stop:
+                        gene_length = hit_stop - hit_start
+                        # if only a part of the gene is in the split:
+                        start_in_split = (split_start if hit_start < split_start else hit_start) - split_start
+                        stop_in_split = (split_stop if hit_stop > split_stop else hit_stop) - split_start
+                        percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
+
+                        db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), hit['hmm_hit_entry_id'], split_name, percentage_in_split, hit['source']])
+                        db_entries_for_splits.append(db_entry)
+
+        return db_entries_for_splits
+
+
+class TablesForCollections(Table):
+    """Populates the collections_* tables, where collections of bins of contigs and splits are kept"""
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
+
+        # set these dudes so we have access to unique IDs:
+        self.set_next_available_id(t.collections_bins_info_table_name)
+        self.set_next_available_id(t.collections_contigs_table_name)
+        self.set_next_available_id(t.collections_splits_table_name)
+
+
+    def delete(self, collection_name):
+        utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
+
+        # remove any pre-existing information for 'collection_name'
+        self.delete_entries_for_key('collection_name', collection_name, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_bins_info_table_name])
+
+
+    def append(self, collection_name, collection_dict, bins_info_dict={}):
+        utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
+
+        if bins_info_dict:
+            if set(collection_dict.keys()) - set(bins_info_dict.keys()):
+                raise ConfigError('Bins in the collection dict do not match to the ones in the bins info dict.\
+                                    They do not have to be identical, but for each bin id, there must be a unique\
+                                    entry in the bins informaiton dict. There is something wrong with your input :/')
+
+        # remove any pre-existing information for 'collection_name'
+        self.delete(collection_name)
+
+        num_splits_in_collection_dict = sum([len(splits) for splits in list(collection_dict.values())])
+        splits_in_collection_dict = set(list(chain.from_iterable(list(collection_dict.values()))))
+        if len(splits_in_collection_dict) != num_splits_in_collection_dict:
+            raise ConfigError("TablesForCollections::append: %d of the split or contig IDs appear more than once in\
+                                your collections input. It is unclear to anvi'o how did you manage to do this, but we\
+                                cannot go anywhere with this :/" % (num_splits_in_collection_dict - len(splits_in_collection_dict)))
+
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
+
+        # how many clusters are defined in 'collection_dict'?
+        bin_names = list(collection_dict.keys())
+
+        # push information about this search result into serach_info table.
+        db_entries = tuple([collection_name, num_splits_in_collection_dict, len(bin_names), ','.join(bin_names)])
+        database._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_info_table_name, db_entries)
+
+        if not bins_info_dict:
+            colors = utils.get_random_colors_dict(bin_names)
+            for bin_name in bin_names:
+                bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': 'UNKNOWN'}
+
+        # populate bins info table.
+        db_entries = [(self.next_id(t.collections_bins_info_table_name), collection_name, b, bins_info_dict[b]['source'], bins_info_dict[b]['html_color']) for b in bin_names]
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.collections_bins_info_table_name, db_entries)
+
+        # populate splits table
+        db_entries = []
+        for bin_name in collection_dict:
+            for split_name in collection_dict[bin_name]:
+                db_entries.append(tuple([self.next_id(t.collections_splits_table_name), collection_name, split_name, bin_name]))
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_splits_table_name, db_entries)
+        num_splits = len(db_entries)
+
+
+        # FIXME: This function can be called to populate the contigs database (via anvi-populate-collections), or
+        # the profile database. when it is contigs database, the superclass Table has the self.splits_info variable
+        # set when it is initialized. however, the Table instance is missing self.splis when it is initialized with
+        # the profile database. hence some special controls for contigs db (note that collections_contigs_table is
+        # only populated in the contigs database):
+        if self.db_type == 'contigs':
+            splits_only_in_collection_dict = [c for c in splits_in_collection_dict if c not in self.splits_info]
+            splits_only_in_db = [c for c in self.splits_info if c not in splits_in_collection_dict]
+
+            if len(splits_only_in_collection_dict):
+                self.run.warning('%d of %d splits found in "%s" results are not in the database. This may be OK,\
+                                          but you must be the judge of it. If this is somewhat surprising, please use caution\
+                                          and make sure all is fine before going forward with you analysis.'\
+                                                % (len(splits_only_in_collection_dict), len(splits_in_collection_dict), collection_name))
+
+            if len(splits_only_in_db):
+                self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
+                                          does not make any sense, please make sure you know why before going any further.'\
+                                                % (len(splits_only_in_db), len(self.splits_info), collection_name))
+
+            # then populate contigs table.
+            db_entries = self.process_contigs(collection_name, collection_dict)
+            database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_contigs_table_name, db_entries)
+
+        database.disconnect()
+
+        self.run.info('Collections', 'The collection "%s" that describes %s splits has been successfully added to the database at "%s".'\
+                                        % (collection_name, pp(num_splits), self.db_path), mc='green')
+
+
+    def process_contigs(self, collection_name, collection_dict):
+        db_entries_for_contigs = []
+
+        split_to_bin_name = {}
+        for bin_name in collection_dict:
+            for split_name in collection_dict[bin_name]:
+                split_to_bin_name[split_name] = bin_name
+
+        contigs_processed = set([])
+        for split_name in split_to_bin_name:
+            if split_name not in self.splits_info:
+                # which means this split only appears in the input file, but not in the database.
+                continue
+
+            contig_name = self.splits_info[split_name]['parent']
+
+            if contig_name in contigs_processed:
+                continue
+            else:
+                contigs_processed.add(contig_name)
+
+            db_entry = tuple([self.next_id(t.collections_contigs_table_name), collection_name, contig_name, split_to_bin_name[split_name]])
+            db_entries_for_contigs.append(db_entry)
+
+        return db_entries_for_contigs
+
+
+class TablesForStates(Table):
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self.states = {}
+
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run, progress)
+
+        self.init()
+
+
+    def init(self):
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
+        self.states = anvio_db.db.get_table_as_dict(t.states_table_name)
+        anvio_db.disconnect()
+
+
+    def list_states(self):
+        state_names = sorted(list(self.states.keys()))
+
+        self.run.warning('', 'AVAILABLE STATES (%d FOUND)' % (len(self.states)), lc='yellow')
+        for state_name in state_names:
+            self.run.info_single('%s (last modified on %s)' % (state_name, self.states[state_name]['last_modified']),
+                                 nl_after = 1 if state_name == state_names[-1] else 0)
+
+
+    def get_state(self, state_id):
+        if state_id not in self.states:
+            return None
+
+        return self.states[state_id]
+
+
+    def store_state(self, state_id, content, last_modified=None):
+        self.remove_state(state_id)
+
+        last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S") if not last_modified else last_modified
+
+        anvio_db = DBClassFactory().get_db_object(self.db_path)
+        anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.states_table_name, (state_id, content, last_modified))
+        self.states = anvio_db.db.get_table_as_dict(t.states_table_name)
+
+        anvio_db.disconnect()
+
+
+    def remove_state(self, state_id):
+        self.delete_entries_for_key('name', state_id, [t.states_table_name])
+
+
+class TablesForTaxonomy(Table):
+    """Populate all tables with taxonomy information.
+
+       Essentially takes in a dictionary of genes and taxon calls, populates three tables: taxon_names,
+       splits_taxonomy, and gene_taxonomy when 'create' is called."""
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+        self.run = run
+        self.progress = progress
+
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
+
+        # this class keeps track of genes that occur in splits, and responsible
+        # for generating the necessary table in the contigs database
+        self.genes_in_splits = GenesInSplits()
+
+
+    def create(self, genes_taxonomy_dict, taxon_names_dict, source='unkown source'):
+        self.source = source
+
+        if not self.genes_are_called:
+            raise ConfigError("Something is wrong. The contigs database says that genes were now called, and here\
+                                you are trying to populate taxonomy tables for genes. No, thanks.")
+
+        self.init_gene_calls_dict()
+
+        self.genes_taxonomy_dict = genes_taxonomy_dict
+        self.taxon_names_dict = taxon_names_dict
+
+        self.sanity_check()
+
+        # oepn connection
+        contigs_db = ContigsDatabase(self.db_path)
+
+        self.splits_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
+
+        # test whether there are already genes tables populated
+        taxonomy_source = contigs_db.meta['taxonomy_source']
+        if taxonomy_source:
+            self.run.warning('Previous taxonomy information from "%s" is being replaced with the incoming data\
+                              through "%s".' % (taxonomy_source, self.source))
+            contigs_db.db._exec('''DELETE FROM %s''' % (t.splits_taxonomy_table_name))
+            contigs_db.db._exec('''DELETE FROM %s''' % (t.taxon_names_table_name))
+            contigs_db.db._exec('''DELETE FROM %s''' % (t.genes_taxonomy_table_name))
+
+        # populate taxon mames table
+        self.populate_taxon_names_table()
+
+        # populate genes taxonomy table
+        self.populate_genes_taxonomy_table()
+
+        # compute and push split taxonomy information.
+        self.populate_splits_taxonomy_table()
+
+        # set the source
+        contigs_db.db.remove_meta_key_value_pair('taxonomy_source')
+        contigs_db.db.set_meta_value('taxonomy_source', self.source)
+
+        # disconnect like a pro.
+        contigs_db.disconnect()
+
+
+    def populate_genes_taxonomy_table(self):
+        # open connection
+        contigs_db = ContigsDatabase(self.db_path)
+
+        # push taxonomy data
+        db_entries = [(gene_callers_id, self.genes_taxonomy_dict[gene_callers_id]) for gene_callers_id in self.genes_taxonomy_dict]
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.genes_taxonomy_table_name, db_entries)
+
+        # disconnect
+        contigs_db.disconnect()
+
+        self.run.info('Genes taxonomy table', 'Taxonomy stored for %d gene calls' % len(db_entries))
+
+
+    def populate_taxon_names_table(self):
+        # open connection
+        contigs_db = ContigsDatabase(self.db_path)
+
+        db_entries = [tuple([t_name_id] + [self.taxon_names_dict[t_name_id][t_level] for t_level in t.taxon_names_table_structure[1:]]) for t_name_id in self.taxon_names_dict]
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.taxon_names_table_name, db_entries)
+
+        contigs_db.disconnect()
+        self.run.info('Taxon names table', 'Updated with %d unique taxon names' % len(db_entries))
+
+
+    def sanity_check(self):
+        """Basic checks to make sure things are in order at least to a minimum extent."""
+
+        self.progress.new('Sanity checking ...')
+        self.progress.update('Comparing gene caller ids in the incoming data and in the contigs database ..')
+        gene_caller_ids_in_database = set(self.gene_calls_dict.keys())
+        gene_caller_ids_in_taxonomy_dict = set(self.genes_taxonomy_dict.keys())
+        gene_caller_ids_missing_in_db = gene_caller_ids_in_taxonomy_dict.difference(gene_caller_ids_in_database)
+        self.progress.end()
+
+        run.info("Num gene caller ids in the db", pp(len(gene_caller_ids_in_database)))
+        run.info("Num gene caller ids in the incoming data", pp(len(gene_caller_ids_in_taxonomy_dict)))
+
+        if gene_caller_ids_missing_in_db:
+            raise ConfigError("Taxonomy information for genes you are trying to import into the database contains\
+                                %s gene caller ids that do not appear to be in the database. This is a step you must\
+                                be very careful to make sure you are not importing annotations for genes that have\
+                                nothing to do with your contigs database. To make sure of that, you should always work\
+                                with `anvi-get-dna-sequences-for-gene-calls` or `anvi-get-aa-sequences-for-gene-calls` programs\
+                                to get the data to annotate. For instance one of the gene caller ids you have in your\
+                                input data that does not appear in the database is this one: '%s'. Anvi'o hopes it makes\
+                                sense to you, because it definitely does not make any sense to anvi'o :("\
+                                                        % (len(gene_caller_ids_missing_in_db), str(gene_caller_ids_missing_in_db.pop())))
+
+        # check whether input matrix dict
+        keys_found =  list(self.taxon_names_dict.values())[0].keys()
+        missing_keys = [key for key in t.taxon_names_table_structure[1:] if key not in keys_found]
+        if len(missing_keys):
+            raise ConfigError("Anvi'o is trying to get ready to create tables for taxonomy, but there is something\
+                                wrong :( The taxonomy names dict (one of the required input dictionaries to the class\
+                                seems to be missing a one or more keys that are necessary to finish the job. Here is \
+                                a list of missing keys: %s. The complete list of input keys should contain these: %s."\
+                                        % (', '.join(missing_keys), ', '.join(t.taxon_names_table_structure[1:])))
+
+        if not len(self.taxon_names_dict):
+            raise ConfigError("Anvi'o is trying to get ready to create tables for taxonomy, but taxonomy names dict\
+                                (one of the required input dictionaries to the class responsible for this task) seems\
+                                to be empty.")
+
+
+    def populate_splits_taxonomy_table(self):
+        """Populate the taxonomy information per split"""
+
+        # build a dictionary for fast access to all genes identified within a contig
+        gene_caller_ids_in_contigs = {}
+        for gene_callers_id in self.genes_taxonomy_dict:
+            contig = self.gene_calls_dict[gene_callers_id]['contig']
+            if contig in gene_caller_ids_in_contigs:
+                gene_caller_ids_in_contigs[contig].add(gene_callers_id)
+            else:
+                gene_caller_ids_in_contigs[contig] = set([gene_callers_id])
+
+        contigs_without_annotation = list(set(self.contigs_info.keys()) - set(gene_caller_ids_in_contigs.keys()))
+
+        for contig in contigs_without_annotation:
+            gene_caller_ids_in_contigs[contig] = set([])
+
+        splits_dict = {}
+
+        num_splits_processed = 0
+        num_splits_with_taxonomy = 0
+
+        for contig in self.contigs_info:
+            for split_name in self.contig_name_to_splits[contig]:
+                num_splits_processed += 1
+
+                splits_dict[split_name] = None
+                start = self.splits_info[split_name]['start']
+                stop = self.splits_info[split_name]['end']
+
+                taxon_name_ids = []
+                for gene_callers_id in gene_caller_ids_in_contigs[contig]:
+                    if self.gene_calls_dict[gene_callers_id]['stop'] > start and self.gene_calls_dict[gene_callers_id]['start'] < stop:
+                        taxon_name_ids.append(self.genes_taxonomy_dict[gene_callers_id])
+
+                if not taxon_name_ids:
+                    continue
+
+                if len(set(taxon_name_ids)) == 1:
+                    splits_dict[split_name] = taxon_name_ids[0]
+                else:
+                    d = Counter()
+                    for taxon_name_id in taxon_name_ids:
+                        d[taxon_name_id] += 1
+
+                    most_frequent_taxon_name_id, occurrence = d.most_common()[0]
+                    splits_dict[split_name] = most_frequent_taxon_name_id
+
+                num_splits_with_taxonomy += 1
+
+        # open connection
+        contigs_db = ContigsDatabase(self.db_path)
+
+        # push taxonomy data
+        db_entries = [(split, splits_dict[split]) for split in splits_dict]
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.splits_taxonomy_table_name, db_entries)
+
+        # disconnect
+        contigs_db.disconnect()
+
+        self.run.info('Splits taxonomy', 'Input data from "%s" annotated %d of %d splits (%.1f%%) with taxonomy.'\
+                                            % (self.source, num_splits_with_taxonomy, num_splits_processed,
+                                               num_splits_with_taxonomy * 100.0 / num_splits_processed))
+
+
+class TableForGeneClusters(Table):
+    """A class to populte gene clusters table in a given pan db.
+
+      Here is an example:
+
+        >>> table = TableForGeneClusters(db_path)
+        >>> for ...:
+        >>>     table.add({'gene_caller_id': gene_caller_id, 'gene_cluster_id': gene_cluster_id, 'genome_name': genome_name})
+        >>> table.store()
+    """
+
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+
+        is_pan_db(db_path)
+
+        self.run = run
+        self.progress = progress
+
+        Table.__init__(self, self.db_path, anvio.__pan__version__, run, progress)
+
+        self.set_next_available_id(t.pan_gene_clusters_table_name)
+
+        self.entries = []
+
+
+    def add(self, entry_dict):
+        self.entries.append([entry_dict[key] for key in t.pan_gene_clusters_table_structure[1:]])
+
+
+    def store(self):
+        self.delete_contents_of_table(t.pan_gene_clusters_table_name, warning=False)
+
+        db_entries = [tuple([self.next_id(t.pan_gene_clusters_table_name)] + entry) for entry in self.entries]
+        pan_db = PanDatabase(self.db_path)
+        pan_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.pan_gene_clusters_table_name, db_entries)
+        pan_db.disconnect()
+
+
+class TableForGeneFunctions(Table):
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+
+        self.run = run
+        self.progress = progress
+
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
+
+        self.set_next_available_id(t.gene_function_calls_table_name)
+
+
+    def create(self, functions_dict, drop_previous_annotations_first = False):
+        self.sanity_check()
+
+        # incoming stuff:
+        gene_function_sources = set([v['source'] for v in list(functions_dict.values())])
+        unique_num_genes = len(set([v['gene_callers_id'] for v in list(functions_dict.values())]))
+
+        # oepn connection
+        contigs_db = ContigsDatabase(self.db_path)
+
+        # are there any previous annotations in the db:
+        gene_function_sources_in_db = set(contigs_db.meta['gene_function_sources'] or [])
+
+        # difference between sources in the db, and incoming sources:
+        gene_function_sources_both_in_db_and_incoming_dict = gene_function_sources.intersection(gene_function_sources_in_db)
+
+        # here we will do some magic. there are mulitple scenarios to consider here based on whether there
+        # are functions already in the database, whether some of them matches to the incoming functions, etc.
+        # let's go case-by-case:
+        if not gene_function_sources_in_db:
+            # set the sources and continue
+            contigs_db.db.remove_meta_key_value_pair('gene_function_sources')
+            contigs_db.db.set_meta_value('gene_function_sources', ','.join(list(gene_function_sources)))
+
+        elif gene_function_sources_in_db and drop_previous_annotations_first:
+            # there are gene calls, but the user wants everything to be dropeped.
+            self.run.warning("As per your request, anvi'o is DROPPING all previous function calls from %d sources\
+                              before adding the incoming data, which contains %d entries originating from %d sources: %s" \
+                                    % (len(gene_function_sources_in_db), len(functions_dict),
+                                       len(gene_function_sources), ', '.join(gene_function_sources)))
+
+            # clean the table and reset the next available ids
+            contigs_db.db._exec('''DELETE FROM %s''' % (t.gene_function_calls_table_name))
+            self.reset_next_available_id_for_table(t.gene_function_calls_table_name)
+
+            # set the sources
+            contigs_db.db.remove_meta_key_value_pair('gene_function_sources')
+            contigs_db.db.set_meta_value('gene_function_sources', ','.join(gene_function_sources))
+
+        elif gene_function_sources_in_db and gene_function_sources_both_in_db_and_incoming_dict:
+            # some of the functions in the incoming dict match to what is already in the db. remove
+            self.run.warning("Some of the annotaiton sources you want to add into the database are already in the db. So\
+                              anvi'o will REPLACE those with the incoming data from these sources: %s" % \
+                                            ', '.join(gene_function_sources_both_in_db_and_incoming_dict))
+
+            # remove those entries for matching sources:
+            for source in gene_function_sources_both_in_db_and_incoming_dict:
+                contigs_db.db._exec('''DELETE FROM %s WHERE source = "%s"''' % (t.gene_function_calls_table_name, source))
+
+            # set the sources
+            contigs_db.db.remove_meta_key_value_pair('gene_function_sources')
+            contigs_db.db.set_meta_value('gene_function_sources', ','.join(list(gene_function_sources_in_db.union(gene_function_sources))))
+
+        else:
+            # fuctions in the db, but none of them match with the incoming annotation sources. totally new stuff.
+            # good then. update sources
+            contigs_db.db.remove_meta_key_value_pair('gene_function_sources')
+            contigs_db.db.set_meta_value('gene_function_sources', ','.join(list(gene_function_sources_in_db.union(gene_function_sources))))
+
+        # push the data
+        db_entries = [tuple([self.next_id(t.gene_function_calls_table_name)] + [functions_dict[v][h] for h in t.gene_function_calls_table_structure[1:]]) for v in functions_dict]
+        contigs_db.db._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.gene_function_calls_table_name, db_entries)
+
+        # disconnect like a pro.
+        contigs_db.disconnect()
+
+        self.run.info('Gene functions', '%d function calls from %d sources for %d unique gene calls has\
+                                        been added to the contigs database.' % \
+                                            (len(functions_dict), len(gene_function_sources), unique_num_genes))
+
+
+    def sanity_check(self):
+        pass
+
+
+class TableForNtPositions(object):
+    def __init__(self, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
+        self.numpy_data_type = 'uint8'
+        self.db_entries = []
+
+
+    def append(self, contig_name, position_info_list):
+        position_info_blob = utils.convert_numpy_array_to_binary_blob(numpy.array(position_info_list, dtype=self.numpy_data_type))
+        self.db_entries.append((contig_name, position_info_blob, ))
+
+
+    def store(self, db):
+        db.insert_many(t.nt_position_info_table_name, entries=self.db_entries)
+        self.db_entries = []
+
+
+class GenesInSplits:
+    def __init__(self):
+        self.entry_id = 0
+        self.splits_to_prots = {}
+
+    def add(self, split_name, split_start, split_end, gene_callers_id, prot_start, prot_end):
+
+        gene_length = prot_end - prot_start
+
+        if gene_length <= 0:
+            raise ConfigError("dbops.py/GeneInSplits: OK. There is something wrong. We have this gene, '%s',\
+                                which starts at position %d and ends at position %d. Well, it doesn't look right,\
+                                does it?" % (gene_callers_id, prot_start, prot_end))
+
+        # if only a part of the gene is in the split:
+        start_in_split = (split_start if prot_start < split_start else prot_start) - split_start
+        stop_in_split = (split_end if prot_end > split_end else prot_end) - split_start
+        percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
+
+        self.splits_to_prots[self.entry_id] = {'split': split_name,
+                                               'gene_callers_id': gene_callers_id,
+                                               'start_in_split': start_in_split,
+                                               'stop_in_split': stop_in_split,
+                                               'percentage_in_split': percentage_in_split}
+        self.entry_id += 1
+
+
 ####################################################################################################
 #
 #     HELPER FUNCTIONS
 #
 ####################################################################################################
+
+def is_contigs_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'contigs':
+        raise ConfigError("'%s' is not an anvi'o contigs database." % db_path)
+
+
+def is_pan_or_profile_db(db_path):
+    if get_db_type(db_path) not in ['pan', 'profile']:
+        raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble." % db_path)
+
+
+def is_profile_db(db_path):
+    if get_db_type(db_path) != 'profile':
+        raise ConfigError("'%s' is not an anvi'o profile database." % db_path)
+
+
+def is_pan_db(db_path):
+    if get_db_type(db_path) != 'pan':
+        raise ConfigError("'%s' is not an anvi'o pan database." % db_path)
+
+
+def is_samples_db(db_path):
+    if get_db_type(db_path) != 'samples_information':
+        raise ConfigError("'%s' is not an anvi'o samples database." % db_path)
+
 
 def is_db_ok_to_create(db_path, db_type):
     if os.path.exists(db_path):
@@ -2975,6 +4169,147 @@ def is_db_ok_to_create(db_path, db_type):
         raise ConfigError("Please make sure the file name for your new %s db has a '.db' extension. Anvi'o developers\
                             apologize for imposing their views on how anvi'o databases should be named, and are\
                             humbled by your cooperation." % db_type)
+
+
+def get_required_version_for_db(db_path):
+    db_type = get_db_type(db_path)
+
+    if db_type not in t.versions_for_db_types:
+        raise ConfigError("Anvi'o was trying to get the version of the -alleged- anvi'o database '%s', but it failed\
+                            because it turns out it doesn't know anything about this '%s' type." % (db_path, db_type))
+
+    return t.versions_for_db_types[db_type]
+
+
+def is_blank_profile(db_path):
+    if get_db_type(db_path) != 'profile':
+        return False
+
+    database = db.DB(db_path, None, ignore_version=True)
+    blank = database.get_meta_value('blank')
+    database.disconnect()
+
+    return blank
+
+
+def get_db_type(db_path):
+    filesnpaths.is_file_exists(db_path)
+
+    try:
+        database = db.DB(db_path, None, ignore_version=True)
+    except:
+        raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
+                            it is not at all..' % db_path)
+
+    tables = database.get_table_names()
+    if 'self' not in tables:
+        database.disconnect()
+        raise ConfigError("'%s' does not seem to be a anvi'o database..." % db_path)
+
+    db_type = database.get_meta_value('db_type')
+    database.disconnect()
+
+    return db_type
+
+
+def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
+    is_contigs_db(contigs_db_path)
+    is_profile_db(profile_db_path)
+
+    contigs_db = ContigsDatabase(contigs_db_path)
+    profile_db = ProfileDatabase(profile_db_path)
+
+    a_hash = contigs_db.meta['contigs_db_hash']
+    p_hash = profile_db.meta['contigs_db_hash']
+    merged = profile_db.meta['merged']
+
+    contigs_db.disconnect()
+    profile_db.disconnect()
+
+    if a_hash != p_hash:
+        raise ConfigError('The contigs database and the profile database does not\
+                           seem to be compatible. More specifically, this contigs\
+                           database is not the one that was used when %s generated\
+                           this profile database (%s != %s).'\
+                               % ('anvi-merge' if merged else 'anvi-profile', a_hash, p_hash))
+
+    return True
+
+
+def is_profile_db_and_samples_db_compatible(profile_db_path, samples_db_path, manual_mode_exception=False):
+    """Check whether every sample name in the profile database is represented in the samples information database"""
+    is_profile_db(profile_db_path)
+    is_samples_db(samples_db_path)
+
+    profile_db = ProfileDatabase(profile_db_path)
+    samples_db = SamplesInformationDatabase(samples_db_path)
+
+    if 'merged' in profile_db.meta and not int(profile_db.meta['merged']):
+        raise ConfigError("Samples databases are only useful if you are working on a merged profile.")
+
+    if manual_mode_exception:
+        # manual mode exception is a funny need. when the user wants to use --manual flag with anvi-interactive,
+        # and provides a blank name for profile.db, sample names for that profile db are automaticalaly populated
+        # from the data matrix file. so far so good. if the data matrix file is a mixed one, i.e., contains both
+        # sample names in the conventional sense with numerical view data, and additional data, then sample names
+        # coming from the first row of the file does not match with the entries in samples database. the best
+        # solution for this is to enforce the use of view_data and additional_data inputs separately. unfortunately
+        # that complicates the anvi-server interface unnecessarily.. so here we will simply pass the following
+        # important tests, and hope that the user did a good job making sure sample names in samples database do match
+        # the samples bit that appears in the data file :( I know, I know...
+        samples_in_samples_db_but_not_in_profile_db = samples_db.samples - profile_db.samples
+        if len(samples_in_samples_db_but_not_in_profile_db):
+            raise ConfigError("Anvi'o is upset with you :/ Please make sure your samples information files (or your\
+                                samples database) contain sample names from your data file. These sample names are in\
+                                your samples information, but not in your data file: '%s'. If this error does not make\
+                                any sense to you, please contact an anvi'o developer." % ', '.join(samples_in_samples_db_but_not_in_profile_db))
+        return
+
+
+    missing_samples = profile_db.samples - samples_db.samples
+    num_represented_samples = len(profile_db.samples) - len(missing_samples)
+
+    if len(missing_samples):
+        how_much_of_the_samples_are_represented_txt = 'none' if len(missing_samples) == len(profile_db.samples) else\
+                                                      'only %d of %d' % (num_represented_samples, len(profile_db.samples))
+
+        raise ConfigError("The samples information database you provided ('%s') does not seem to agree well with the profile\
+                            database ('%s'). More specifically, %s of the samples in the profile database are repesented in\
+                            the samples information database. Names for these missing samples go like this: %s ...,\
+                            while the sample names in the samples information database go like this: %s ... This could be due to\
+                            a simple typo, or you may be using the wrong or outdated samples information database. You may need to\
+                            regenerate the samples information database to fix this problem :/"\
+                                                % (samples_db_path, profile_db_path, how_much_of_the_samples_are_represented_txt,
+                                                   ', '.join(list(missing_samples)[0:3]), ', '.join(list(samples_db.samples)[0:3])))
+
+    if samples_db.sample_names_for_order:
+        missing_samples = samples_db.sample_names_for_order - profile_db.samples
+
+        if len(missing_samples):
+            raise ConfigError("The samples order information in the samples database do not match with the sample names in\
+                                the profile database (or the input data). To be precise, %d sample(s) occur(s) only in the\
+                                samples database, and not found in the profile database (or in the input data). Here is some of\
+                                them: %s ..." % (len(missing_samples), ', '.join(list(missing_samples)[0:3])))
+
+
+def get_split_names_in_profile_db(profile_db_path):
+    is_profile_db(profile_db_path)
+
+    profile_db = ProfileDatabase(profile_db_path)
+
+    if int(profile_db.meta['blank']):
+        run.warning("dbops::get_split_names_in_profile_db is speaking. Someone asked for the split names in a blank profile database.\
+                     Sadly, anvi'o does not keep track of split names in blank profile databases. This function will return an\
+                     empty set as split names to not kill your mojo, but whatever you were trying to do will not work :(")
+        split_names = set([])
+    elif int(profile_db.meta['merged']):
+        split_names = set(profile_db.db.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'contig'))
+    else:
+        split_names = set(profile_db.db.get_single_column_from_table('atomic_data_splits', 'contig'))
+
+    profile_db.disconnect()
+
+    return split_names
 
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):
@@ -3008,7 +4343,7 @@ def update_description_in_db(anvio_db_path, description, run=run):
     if not isinstance(description, str):
         raise ConfigError("Description parameter must be of type `string`.")
 
-    db_type = utils.get_db_type(anvio_db_path)
+    db_type = get_db_type(anvio_db_path)
 
     anvio_db = db.DB(anvio_db_path, None, ignore_version=True)
     anvio_db.remove_meta_key_value_pair('description')
@@ -3022,7 +4357,7 @@ def update_description_in_db(anvio_db_path, description, run=run):
 def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split_names=[], database_paths={}, input_directory=None, default_clustering_config=None, \
                                 distance=constants.distance_metric_default, linkage=constants.linkage_method_default, run=run, progress=progress):
     """This is just an orphan function that computes hierarchical clustering w results
-       and calls the `add_items_order_to_db` function with correct input.
+       and calls the `add_hierarchical_clustering_to_db` function with correct input.
 
        Ugly but useful --yet another one of those moments in which we sacrifice
        important principles for simple conveniences."""
@@ -3044,21 +4379,28 @@ def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split
 
         _, distance, linkage = clustering_name.split(':')
 
-        add_items_order_to_db(anvio_db_path=anvio_db_path,
-                              order_name=config_name,
-                              order_data=newick,
-                              distance=distance,
-                              linkage=linkage,
-                              make_default=config_name == default_clustering_config,
-                              run=run)
+        add_hierarchical_clustering_to_db(anvio_db_path, config_name, newick, distance=distance, linkage=linkage, make_default=config_name == default_clustering_config, run=run)
+
+
+
+def add_hierarchical_clustering_to_db(anvio_db_path, clustering_name, clustering_newick, distance, linkage, make_default=False, run=run):
+    """Backwards compatibility function.
+
+       We can fix all instances of `add_hierarchical_clustering_to_db` everywhere in the code to work
+       with `add_items_order_to_db` function directly, and end this tyranny."""
+
+    add_items_order_to_db(anvio_db_path,
+                          clustering_name,
+                          order_data=clustering_newick,
+                          order_data_type_newick=True,
+                          distance=distance,
+                          linkage=linkage,
+                          make_default=False,
+                          run=run)
 
 
 def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None, linkage=None, make_default=False, run=run):
-    """Adds a new clustering into an anvi'o db
-
-       Here is a FIXME for future, smarter generations. This function should go away,
-       and its function should be handled by a new items_order class in tables/miscdata.
-    """
+    """Adds a new clustering into an anvi'o db"""
 
     if order_data_type_newick and (not distance or not linkage):
         raise ConfigError("You are trying to add a newick-formatted clustering dendrogram to the database without providing\
@@ -3069,7 +4411,7 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
                            clustering dendrogram. But your function call suggests you are not.")
 
     # let's learn who we are dealing with:
-    db_type = utils.get_db_type(anvio_db_path)
+    db_type = get_db_type(anvio_db_path)
 
     # replace clustering id with a text that contains distance and linkage information
     if order_data_type_newick:
@@ -3172,3 +4514,35 @@ def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path, gene_
                                                    item_names=gene_caller_ids)
 
     return output_file_path
+
+
+def get_all_item_names_from_the_database(db_path):
+    """Return all split names or gene cluster names in a given database"""
+
+    all_items = set([])
+
+    database = db.DB(db_path, get_required_version_for_db(db_path))
+    db_type = database.get_meta_value('db_type')
+
+    class Args: pass
+    args = Args()
+
+    if db_type == 'profile':
+        args.profile_db = db_path
+        all_items = set(ProfileSuperclass(args).split_names)
+    elif db_type == 'pan':
+        args.pan_db = db_path
+        all_items = set(PanSuperclass(args).gene_cluster_names)
+    elif db_type == 'contigs':
+        args.contigs_db = db_path
+        all_items = set(ContigsSuperclass(args).splits_basic_info.keys())
+    else:
+        raise ConfigError("You wanted to get all items in the database %s, but no one here knows aobut its type. Seriously,\
+                            what is '%s'?" % (db_path, db_type))
+
+    if not len(all_items):
+        raise ConfigError("dbops::get_all_item_names_from_the_database speaking. Something that should never happen happened :/\
+                            There seems to be nothing in this %s database. Anvi'o is as confused as you are. Please get in touch\
+                            with a developer. They will love this story.")
+
+    return all_items

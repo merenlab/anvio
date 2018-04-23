@@ -15,7 +15,7 @@ import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError, SamplesError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -48,6 +48,7 @@ groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
 groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
 groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+groupA.add_argument(*anvio.A('samples-information-db'), **anvio.K('samples-information-db'))
 groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
 groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
 groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
@@ -59,6 +60,7 @@ groupD.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'
 groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
 groupD.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
 groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+groupE.add_argument(*anvio.A('debug'), **anvio.K('debug'))
 groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
 groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
 groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
@@ -82,7 +84,10 @@ except FilesNPathsError as e:
 except DictIOError as e:
     print(e)
     sys.exit(-3)
+except SamplesError as e:
+    print(e)
+    sys.exit(-4)
 
 
-app = BottleApplication(d)
+app = BottleApplication(d, args)
 app.run_application(args.ip_address, args.port_number)

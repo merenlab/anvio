@@ -1,8 +1,7 @@
 function draw_n_values_plot(container, stats) {
     var svg = d3.select(container)
         .append('svg')
-        .attr('viewBox', '0 50 800 220')
-        .attr('class', 'svgviewbox_big');
+        .attr('viewBox', '0 50 800 220');
 
     var g = svg.append("g")
         .attr("transform", "translate(0, 60)");
@@ -58,7 +57,7 @@ function draw_n_values_plot(container, stats) {
                                             .text('N: ' + (i+1) );
 
                             tooltip_text.append('tspan')
-                                            .text('Num contigs > ' + getCommafiedNumberString(d.length) + ' nts: ' + d.num_contigs + '.')
+                                            .text('Length: ' + getReadableSeqSizeString(d.length) + ' (' + d.num_contigs + ' contigs)')
                                             .attr('x', '10')
                                             .attr('dy', '1.4em');
 
@@ -102,8 +101,7 @@ function draw_n_values_plot(container, stats) {
 function draw_gene_counts_chart(container, gene_counts) {
         var svg = d3.select(container)
             .append('svg')
-            .attr('viewBox', '0 20 800 240')
-            .attr('class', 'svgviewbox_small');
+            .attr('viewBox', '0 20 800 240');
 
         var g = svg.append("g")
             .attr("transform", "translate(0, 60)");

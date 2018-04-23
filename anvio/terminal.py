@@ -72,12 +72,9 @@ class Progress:
             self.terminal_width = 120
 
 
-    def new(self, pid, discard_previous_if_exists=False):
+    def new(self, pid):
         if self.pid:
-            if discard_previous_if_exists:
-                self.end()
-            else:
-                raise TerminalError("Progress.new() can't be called before ending the previous one (Existing: '%s', Competing: '%s')." % (self.pid, pid))
+            raise TerminalError("Progress.new() can't be called before ending the previous one (Existing: '%s', Competing: '%s')." % (self.pid, pid))
 
         if not self.verbose:
             return
@@ -202,17 +199,16 @@ class Run:
         self.write(message_line)
 
 
-    def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False, nl_before=0, nl_after=0):
+    def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False):
         if isinstance(message, str):
             message = remove_spaces(message)
 
         message_line = ''
-        header_line = c("%s\n%s\n%s\n" % (('\n' * nl_before), header,
-                                          '=' * (self.width + 2)), lc)
+        header_line = c("\n%s\n%s\n" % (header, '=' * (self.width + 2)), lc)
         if raw:
-            message_line = c("%s\n\n%s" % ((message), '\n' * nl_after), lc)
+            message_line = c("%s\n\n" % (message), lc)
         else:
-            message_line = c("%s\n\n%s" % (textwrap.fill(str(message), 80), '\n' * nl_after), lc)
+            message_line = c("%s\n\n" % (textwrap.fill(str(message), 80)), lc)
 
         self.write((header_line + message_line) if message else header_line, overwrite_verbose=overwrite_verbose)
 

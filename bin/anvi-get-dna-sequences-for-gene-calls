@@ -5,7 +5,6 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -32,7 +31,26 @@ def main(args):
     output_file_path = args.output_file if args.output_file else 'sequences_for_gene_calls.txt'
     filesnpaths.is_output_file_writable(output_file_path)
 
-    gene_caller_ids = list(utils.get_gene_caller_ids_from_args(args.gene_caller_ids, args.delimiter))
+    gene_caller_ids_is_a_file = False
+    try:
+        filesnpaths.is_file_exists(args.gene_caller_ids)
+        gene_caller_ids_is_a_file = True
+    except:
+        pass
+
+    if gene_caller_ids_is_a_file:
+        try:
+            gene_caller_ids = [int(l.strip()) for l in open(args.gene_caller_ids).readlines()]
+        except:
+            raise ConfigError("The gene caller ids parameter (%s) you used matched a file name in this directory\
+                                however, anvi'o couldn't make much sense of it :/ Anvi'o certainly hopes this\
+                                error makes some sense to you." % args.gene_caller_ids)
+            sys.exit()
+    else:
+        if args.gene_caller_ids:
+            gene_caller_ids = [i.strip().split('\t')[0] for i in args.gene_caller_ids.split(args.delimiter)]
+        else:
+            gene_caller_ids = []
 
     func_kwargs = dict(
         gene_caller_ids_list=gene_caller_ids,
