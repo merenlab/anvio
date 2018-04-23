@@ -78,6 +78,9 @@ class Pangenome(object):
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
 
+        if not self.project_name:
+            raise ConfigError("Please set a project name using .")
+
         # when it is time to organize gene_clusters
         self.linkage = A('linkage') or constants.linkage_method_default
         self.distance = A('distance') or constants.distance_metric_default
@@ -160,17 +163,20 @@ class Pangenome(object):
         utils.is_program_exists('mcl')
 
 
-    def check_params(self):
+    def check_project_name(self):
         # check the project name:
         if not self.project_name:
-            raise ConfigError("Please set a project name, and be prepared to see it around as (1) anvi'o will use\
-                                that name to set the output directory and to name various output files such as the\
-                                databases that will be generated at the end of the process. If you set your own output\
-                                directory name, you can have multiple projects in it and all of those projects can use\
-                                the same intermediate files whenever possible.")
+            raise ConfigError("Please set a project name using the `--project-name` parameter, and be prepared to see\
+                               it around as anvi'o will use it for multiple things, such as setting the output directory\
+                               and naming various output files including the database file that will be generated at the\
+                               end of the process. If you set your own output directory name, you can have multiple\
+                               projects in it and all of those projects can use the same intermediate files whenever\
+                               possible.")
 
         utils.is_this_name_OK_for_database('pan project name', self.project_name, stringent=False)
 
+
+    def check_params(self):
         # if the user did not set a specific output directory name, use the project name
         # for it:
         self.output_dir = self.output_dir if self.output_dir else self.project_name
@@ -617,6 +623,7 @@ class Pangenome(object):
 
 
     def sanity_check(self):
+        self.check_project_name()
         self.check_programs()
 
         if not isinstance(self.mcl_inflation, float):
