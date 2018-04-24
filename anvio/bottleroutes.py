@@ -131,7 +131,7 @@ class BottleApplication(Bottle):
         self.route('/data/search_functions',                   callback=self.search_functions, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
         self.route('/data/get_available_structures',           callback=self.get_available_structures)
-        self.route('/data/get_structure/<requested_path>',     callback=self.get_structure)
+        self.route('/data/get_structure/<gene_callers_id:int>',callback=self.get_structure)
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
 
@@ -1034,12 +1034,8 @@ class BottleApplication(Bottle):
         return json.dumps({'available_structures': self.interactive.get_available_structures() })
 
 
-    def get_structure(self, requested_path):
-        structure_db = structureops.StructureDatabase('STRUCTURE.db', '', ignore_hash=True)
-        tbl = structure_db.db.get_table_as_dict('structures')
-
-        response.content_type = 'application/x-pilot;charset=utf-8'
-        return tbl[int(requested_path[:-4])]['pdb_content']
+    def get_structure(self, gene_callers_id):
+        return json.dumps(self.interactive.get_structure(gene_callers_id))
 
 
     def filter_gene_clusters(self):

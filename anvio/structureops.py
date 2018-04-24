@@ -60,6 +60,10 @@ class StructureDatabase(object):
         else:
             self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
 
+            self.genes_with_structure = [int(x) for x in self.db.get_meta_value('genes_with_structure').split(',') if not x == '']
+            self.genes_without_structure = [int(x) for x in self.db.get_meta_value('genes_without_structure').split(',') if not x == '']
+            self.all_genes = self.genes_with_structure + self.genes_without_structure
+
         if not ignore_hash:
             self.check_hash()
 
@@ -128,6 +132,23 @@ class StructureDatabase(object):
 
         else:
             raise ConfigError("store :: rows_data must be either a list of tuples or a pandas dataframe.")
+
+
+    def get_summary_for_interactive(self, corresponding_gene_call):
+        summary = {}
+
+        print(corresponding_gene_call, self.genes_with_structure)
+        if not corresponding_gene_call in self.genes_with_structure:
+            raise ConfigError('gene call not found.')
+
+        summary['pdb_content'] = self.db.get_single_column_from_table(t.structure_pdb_data_table_name, 
+            'pdb_content', where_clause="corresponding_gene_call = %d" % corresponding_gene_call)[0].decode('utf-8')
+
+        summary['residue_info'] = self.db.get_some_rows_from_table(t.structure_residue_info_table_name, 
+            "corresponding_gene_call = %d" % corresponding_gene_call)
+
+        return summary
+
 
 
     def disconnect(self):

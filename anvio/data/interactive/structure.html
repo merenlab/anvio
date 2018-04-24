@@ -72,39 +72,47 @@
 
         function load_protein(gene_callers_id) {
 
-            // create tooltip element and add to document body
-            var tooltip = document.createElement("div")
-            Object.assign(tooltip.style, {
-                display: "none",
-                position: "fixed",
-                zIndex: 10,
-                pointerEvents: "none",
-                backgroundColor: "rgba( 0, 0, 0, 0.6 )",
-                color: "lightgrey",
-                padding: "8px",
-                fontFamily: "sans-serif"
-            })
-            document.body.appendChild(tooltip)
+            $.ajax({
+                type: 'GET',
+                cache: false,
+                url: '/data/get_structure/' + gene_callers_id,
+                success: function(data) {
+                    // create tooltip element and add to document body
+                    var tooltip = document.createElement("div")
+                    Object.assign(tooltip.style, {
+                        display: "none",
+                        position: "fixed",
+                        zIndex: 10,
+                        pointerEvents: "none",
+                        backgroundColor: "rgba( 0, 0, 0, 0.6 )",
+                        color: "lightgrey",
+                        padding: "8px",
+                        fontFamily: "sans-serif"
+                    })
+                    document.body.appendChild(tooltip)
 
-            stage.removeAllComponents();
-            stage.loadFile( window.location.origin + "/data/get_structure/" + gene_callers_id + ".pdb" ).then( defaultStructureRepresentation ).then();
+                    stage.removeAllComponents();
 
-            // remove default hoverPick mouse action
-            stage.mouseControls.remove("hoverPick")
-            // listen to `hovered` signal to move tooltip around and change its text
-            stage.signals.hovered.add(function (pickingProxy) {
-                if (pickingProxy && (pickingProxy.atom || pickingProxy.bond)) {
-                    var atom = pickingProxy.atom || pickingProxy.closestBondAtom
-                    var mp = pickingProxy.mouse.position
-                    tooltip.innerText = "SAAV: \n" + atom.qualifiedName() + "\nAla:\t19" + "\nIle:\t5"
-                    tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px"
-                    tooltip.style.left = mp.x + 3 + "px"
-                    tooltip.style.display = "block"
-                } else {
-                tooltip.style.display = "none"
-              }
-            })
-
+                    var stringBlob = new Blob( [ data['pdb_content'] ], { type: 'text/plain'} );
+                    stage.loadFile(stringBlob, { ext: "pdb" }).then( defaultStructureRepresentation ).then();
+                    // remove default hoverPick mouse action
+                    stage.mouseControls.remove("hoverPick")
+                    // listen to `hovered` signal to move tooltip around and change its text
+                    stage.signals.hovered.add(function (pickingProxy) {
+                        if (pickingProxy && (pickingProxy.atom || pickingProxy.bond)) {
+                            var atom = pickingProxy.atom || pickingProxy.closestBondAtom
+                            var mp = pickingProxy.mouse.position
+                            tooltip.innerText = "SAAV: \n" + atom.qualifiedName() + "\nAla:\t19" + "\nIle:\t5"
+                            tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px"
+                            tooltip.style.left = mp.x + 3 + "px"
+                            tooltip.style.display = "block"
+                        } else {
+                        tooltip.style.display = "none"
+                      }
+                    })
+                    
+                }
+            });
         }
 
         $( document ).ready(function() {
