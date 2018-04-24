@@ -15,7 +15,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 contigs_db_version = "11"
 profile_db_version = "25"
-pan_db_version = "8"
+pan_db_version = "9"
 auxiliary_data_version = "2"
 genomes_storage_vesion = "6"
 
@@ -119,16 +119,16 @@ item_orders_table_structure         = ['name', 'type', 'data']
 item_orders_table_types             = ['text', 'text', 'text']
 
 item_additional_data_table_name      = 'item_additional_data'
-item_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type']
-item_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ]
+item_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+item_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 layer_orders_table_name              = 'layer_orders'
 layer_orders_table_structure         = ['data_key', 'data_type', 'data_value']
 layer_orders_table_types             = [  'text'  ,    'text'  ,    'text'   ]
 
 layer_additional_data_table_name      = 'layer_additional_data'
-layer_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type']
-layer_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ]
+layer_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+layer_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']
