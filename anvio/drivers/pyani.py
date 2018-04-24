@@ -60,17 +60,27 @@ class PyANI:
             raise ConfigError("PyANI returned with non-zero exit code, there may be some errors. \
                               please check the log file for details.")
 
-        output_table_names = ['alignment_coverage', 'alignment_lengths', 'hadamard', \
-                              'percentage_identity', 'similarity_errors']
+        output_matrix_names = ['alignment_coverage', 'alignment_lengths', 'hadamard', \
+                              'percentage_identity', 'similarity_errors', 'correlations']
 
-        full_table_path = lambda name: os.path.join(input_path, 'output', self.method + '_' + name + '.tab')
+        full_matrix_path = lambda name: os.path.join(input_path, 'output', self.method + '_' + name + '.tab')
 
-        tables = {}
-        for table_name in output_table_names:
-            tables[table_name] = utils.get_TAB_delimited_file_as_dictionary(full_table_path(table_name))
+        matrices = {}
+        for matrix_name in output_matrix_names:
+            output_matrix_path = full_matrix_path(matrix_name)
+            if os.path.exists(output_matrix_path):
+                matrices[matrix_name] = utils.get_TAB_delimited_file_as_dictionary(output_matrix_path)
+
+        if not len(matrices):
+            raise ConfigError("None of the output matrices pyANI was supposed to generate was found in the\
+                               output directory :( You may find some clues in the log file?")
+
+        self.run.info_single("Output matrices for the following items are stored in the output\
+                              directory: %s <success kid meme.png>." % \
+                                        (', '.join(["'%s'" % m.replace('_', ' ') for m in matrices])), nl_before=1, mc='green')
 
         # restore old working directory
         os.chdir(old_wd)
 
-        return tables
+        return matrices
 
