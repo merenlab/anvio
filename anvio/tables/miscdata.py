@@ -665,18 +665,25 @@ class TableForLayerOrders(OrderDataBaseClass):
     def check_names(self, data_dict):
         """Compares layer names found in the data dict to the ones in the db"""
 
-        layers_in_db = sorted(utils.get_all_sample_names_from_the_database(self.db_path))
+        layers_in_db = set(utils.get_all_sample_names_from_the_database(self.db_path))
         layers_in_data = self.get_layer_names(data_dict)
 
         for data_key in data_dict:
-            if sorted(layers_in_data[data_key]) != layers_in_db:
-                raise ConfigError("Layer orders data must match the layer names stored in the %s database :/ But at least one of\
-                                   your layer order data, '%s' (a %s order), tells a different story. It has layer names '%s' while\
-                                   the db has the layers '%s' :/" % (self.db_type,
-                                                                     data_key,
-                                                                     data_dict[data_key]['data_type'],
-                                                                     ', '.join(sorted(layers_in_data[data_key])),
-                                                                     ', '.join(layers_in_db)))
+            layers_in_data_for_key = set(layers_in_data[data_key])
+
+            # TO DO: Fix messages.
+            if len(layers_in_data_for_key.difference(layers_in_db)) > 0:
+                raise ConfigError("Layer orders data contains items that does not match with the database.")
+
+            # TO DO: Fix messages.
+            if len(layers_in_data_for_key) != len(layers_in_db):
+                self.run.warning("Layer orders data does not match the layer names stored in the %s database :/ But at least one of\
+                                 your layer order data, '%s' (a %s order), tells a different story. It has layer names '%s' while\
+                                 the db has the layers '%s' :/" % (self.db_type,
+                                                                    data_key,
+                                                                    data_dict[data_key]['data_type'],
+                                                                    ', '.join(sorted(layers_in_data_for_key)),
+                                                                    ', '.join(layers_in_db)))
 
 
 class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders):
