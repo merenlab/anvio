@@ -16,7 +16,8 @@ import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
 
 from anvio.drivers import pyani
-from anvio.tables.miscdata import TableForItemAdditionalData
+from anvio.tables.miscdata import TableForLayerAdditionalData
+from anvio.tables.miscdata import TableForLayerOrders
 
 from anvio.errors import ConfigError, FilesNPathsError
 import anvio.errors
@@ -110,6 +111,13 @@ def main(args):
                 anvi'o will add the ones that found in database anyway, but here is the list of missing ones: \
                 " + ", ".join(list(found_only_in_db)))
 
+        for report_name in results:
+            layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(pan_db=args.pan_db, just_do_it=args.just_do_it))
+            layer_additional_data_table.add(results[report_name], list(results[report_name].keys()), data_group=report_name)
+
+            TableForLayerOrders(args).add({report_name: {'data_type': 'newick', 'data_value': clusterings[report_name]}})
+
+
     if anvio.DEBUG:
         run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
                      later" % temp_dir, header="Debug")
@@ -139,6 +147,7 @@ if __name__ == '__main__':
                          clustering. The default is "%(default)s".'}))
     parser.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help': 'The linkage method for the hierarchical \
                          clustering. The default is "%(default)s".'}))
+    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 
