@@ -456,7 +456,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         return additional_data_keys, d
 
 
-    def add(self, data_dict, data_keys_list, skip_check_names=False):
+    def add(self, data_dict, data_keys_list, skip_check_names=False, data_group="default"):
         """Function to add data into the item additional data table.
 
            * `data_dict`: a dictionary for items or layers additional should follow this format:
@@ -536,10 +536,11 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                          item_name,
                                          key,
                                          data_dict[item_name][key],
-                                         key_types[key]]))
+                                         key_types[key],
+                                         data_group]))
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
 
         self.run.info('New data added to the db for your %s' % self.target, '%s.' % (', '.join(data_keys_list)), nl_after=1)
