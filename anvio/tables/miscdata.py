@@ -404,9 +404,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         self.progress.update('...')
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-        additional_data_keys_in_db = set([])
-        for key, row in database.get_some_rows_from_table_as_dict(self.table_name, where_clause = """data_group LIKE '%s'""" % data_group).items():
-            additional_data_keys_in_db.add(row['data_key'])
+        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 
+            'data_key', unique=True, where_clause="""'data_group' LIKE '%s'""" % data_group)
 
         if not len(additional_data_keys_requested):
             additional_data_keys = additional_data_keys_in_db
@@ -429,9 +428,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 where_clause = """data_group LIKE '%s' and data_key IN (%s)""" % (data_group, ",".join('"' + key + '"' for key in additional_data_keys_requested)))
             additional_data_keys = additional_data_keys_requested
 
-        additional_data_item_names = set([])
-        for key, row in database.get_some_rows_from_table_as_dict(self.table_name, where_clause = """data_group LIKE '%s'""" % data_group).items():
-            additional_data_item_names.add(row['item_name'])
+        additional_data_item_names = database.get_single_column_from_table(self.table_name, 
+            'item_name', unique=True, where_clause="""'data_group' LIKE '%s'""" % data_group)
 
         database.disconnect()
 
@@ -460,7 +458,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         self.progress.end()
 
-        return list(additional_data_keys), d
+        return additional_data_keys, d
 
 
     def add(self, data_dict, data_keys_list, skip_check_names=False, data_group="default"):
