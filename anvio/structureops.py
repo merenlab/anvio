@@ -453,9 +453,11 @@ class Structure(object):
         residue_annotation = DSSP(model, pdb_filepath, dssp = self.DSSP_executable, acc_array = "Wilke")
 
         if not len(residue_annotation.keys()):
-            raise ConfigError("{} didn't return any meaningful output. You can try running \
-                               {} -i {} -o output.txt to test that dssp is running correctly."
-                               .format(self.DSSP_executable, self.DSSP_executable, pdb_filepath))
+            raise ConfigError("Your executable of DSSP, `{}`, exists but didn't return any meaningful output. This\
+                               is a known issue with certain distributions of DSSP. For information on how to test\
+                               that your version is working correctly, please visit\
+                               http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
+                               .format(self.DSSP_executable, pdb_filepath))
 
         # convert to a digestible format
         return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation)
