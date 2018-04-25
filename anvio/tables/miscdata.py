@@ -408,8 +408,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         self.progress.update('...')
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 
-            'data_key', unique=True, where_clause="""'data_group' LIKE '%s'""" % data_group)
+        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True, \
+                        where_clause="""data_group LIKE '%s'""" % data_group)
 
         if not len(additional_data_keys_requested):
             additional_data_keys = additional_data_keys_in_db
@@ -429,12 +429,12 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                    at '%s' :/ Here is the list of keys you requested: '%s'. And here is the list of keys that anvi'o\
                                    knows about: '%s'." % (self.db_type, self.db_path, ', '.join(additional_data_keys_requested), ', '.join(additional_data_keys_in_db)))
 
-            additional_data = database.get_some_rows_from_table_as_dict(self.table_name, 
-                where_clause = """data_group LIKE '%s' and data_key IN (%s)""" % (data_group, ",".join('"' + key + '"' for key in additional_data_keys_requested)))
+            additional_data = database.get_some_rows_from_table_as_dict(self.table_name,
+                        where_clause = """data_group LIKE '%s' and data_key IN (%s)""" % (data_group, ",".join('"' + key + '"' for key in additional_data_keys_requested)))
             additional_data_keys = additional_data_keys_requested
 
-        additional_data_item_names = database.get_single_column_from_table(self.table_name, 
-            'item_name', unique=True, where_clause="""'data_group' LIKE '%s'""" % data_group)
+        additional_data_item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True,
+                        where_clause="""data_group LIKE '%s'""" % data_group)
 
         database.disconnect()
 
