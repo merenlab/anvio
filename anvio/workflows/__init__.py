@@ -70,6 +70,7 @@ class WorkflowSuperClass:
 
         if self.config_file:
             filesnpaths.is_file_json_formatted(self.config_file)
+            self.config = json.load(open(self.config_file))
 
         self.rules = []
         self.rule_acceptable_params_dict = {}
