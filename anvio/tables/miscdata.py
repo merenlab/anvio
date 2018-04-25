@@ -561,6 +561,15 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         self.run.info('New data added to the db for your %s' % self.target, '%s.' % (', '.join(data_keys_list)), nl_after=1)
 
 
+    def get_all(self):
+        output = {}
+
+        for group_name in self.get_all_groups():
+            output[group_name] = self.get(data_group=group_name)
+
+        return output
+
+
     def get_all_groups(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         groups = database.get_single_column_from_table(self.table_name, 'data_group', unique=True)
