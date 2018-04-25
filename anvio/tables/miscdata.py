@@ -413,7 +413,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         if not len(additional_data_keys_requested):
             additional_data_keys = additional_data_keys_in_db
-            additional_data = database.get_some_rows_from_table_as_dict(self.table_name, where_clause = """data_group LIKE '%s'""" % data_group)
+            additional_data = database.get_some_rows_from_table_as_dict(self.table_name, where_clause = """data_group LIKE '%s'""" % data_group,
+                                                                        error_if_no_data=False)
         else:
             if not len(additional_data_keys_in_db):
                 raise ConfigError("The %s database at %s does not contain any additional data for its %s to return. Usually this\
