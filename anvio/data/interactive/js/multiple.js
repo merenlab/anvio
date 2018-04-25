@@ -26,7 +26,7 @@ $(document).ready(function() {
         }
     });
 
-    $('.picker_multiple, .picker_start_multiple').colpick({
+    $('#picker_multiple, #picker_start_multiple, #picker_multiple_samples, #picker_start_multiple_samples').colpick({
         layout: 'hex',
         submit: 0,
         colorScheme: 'light',
@@ -40,7 +40,7 @@ $(document).ready(function() {
                 function(){
                     var selector = '.colorpicker';
 
-                    if ($(el).hasClass("picker_start_multiple"))
+                    if ($(el).attr('id').startsWith('picker_start'))
                     {
                         selector += ':first';
                     }
