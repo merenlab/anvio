@@ -137,7 +137,6 @@ class StructureDatabase(object):
     def get_summary_for_interactive(self, corresponding_gene_call):
         summary = {}
 
-        print(corresponding_gene_call, self.genes_with_structure)
         if not corresponding_gene_call in self.genes_with_structure:
             raise ConfigError('gene call not found.')
 

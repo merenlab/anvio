@@ -1233,9 +1233,9 @@ class StructureInteractive():
         self.args = args
         self.mode = 'structure'
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-
+        self.has_variability = False
         self.structure_db_path = A('structure_db')
-        
+
 
     def get_available_structures(self):
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
@@ -1246,7 +1246,13 @@ class StructureInteractive():
     def get_structure(self, gene_callers_id):
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
 
-        return structure_db.get_summary_for_interactive(gene_callers_id)
+        summary = structure_db.get_summary_for_interactive(gene_callers_id)
+        
+        if self.has_variability:
+            summary['variability'] = None
+        
+        return summary
+
 
 
 class ContigsInteractive():
