@@ -59,7 +59,7 @@ import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.workflows.metagenomics import MetagenomicsWorkflow
 from anvio.tables.miscdata import TableForLayerAdditionalData
 
