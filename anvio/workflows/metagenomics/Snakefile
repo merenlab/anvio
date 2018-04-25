@@ -103,6 +103,12 @@ if number_of_assemblers_in_config_file > 1:
 samples_txt_file = M.get_param_value_from_config(['samples_txt'])
 # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
 samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
+
+# FIXME: sanity check of every input file should be done in the backend, and not in
+#        the snakemake recipe.
+if 'sample' not in samples_information.columns.values:
+    raise ConfigError("You know what. This '%s' file does not look anything like\
+                       a samples file." % samples_txt_file)
 # get a list of the sample names
 sample_names = list(samples_information['sample'])
 
