@@ -508,7 +508,12 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                             nl_after = 1 if key == data_keys_list[-1] else 0)
 
         # we be responsible here.
-        keys_already_in_db = [c for c in data_keys_list if c in self.additional_data_keys]
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        all_keys_for_group = database.get_single_column_from_table(self.table_name, 
+            'data_key', unique=True, where_clause="""'data_group' LIKE '%s'""" % data_group)
+        database.disconnect()
+
+        keys_already_in_db = [c for c in data_keys_list if c in all_keys_for_group]
         if len(keys_already_in_db):
             if self.just_do_it:
                 self.run.warning('The following keys in your data dict will replace the ones that are already\
