@@ -1230,6 +1230,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 class StructureInteractive():
     def __init__(self, args, run=run, progress=progress):
+        self.args = args
         self.mode = 'structure'
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
@@ -1238,8 +1239,8 @@ class StructureInteractive():
 
     def get_available_structures(self):
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
-        available_structure_names = structure_db.db.get_single_column_from_table('structures', 'gene_id')
-        structure_db.close()
+        available_structure_names = structure_db.db.get_single_column_from_table('structures', 'corresponding_gene_call')
+        structure_db.disconnect()
 
         return available_structure_names
 
