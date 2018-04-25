@@ -9,7 +9,7 @@ import anvio.terminal as terminal
 
 from anvio.parsers import parser_modules
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.tables.taxonomy import TablesForTaxonomy
+from anvio.tables.taxonomy import TablesForGeneLevelTaxonomy
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -51,7 +51,7 @@ def main(args):
                             you should send an e-mail to anvio developers! Sorry for this!" % (args.parser))
 
 
-    tables_for_taxonomy = TablesForTaxonomy(args.contigs_db, run, progress)
+    tables_for_taxonomy = TablesForGeneLevelTaxonomy(args.contigs_db, run, progress)
     tables_for_taxonomy.create(genes_taxonomy_dict, taxon_names_dict, args.parser)
 
 
