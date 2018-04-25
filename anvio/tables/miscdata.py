@@ -396,6 +396,10 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     def get(self, additional_data_keys_requested=[], data_group="default"):
         """Will return the additional data keys and the dict."""
 
+        if not data_group or not isinstance(data_group, str):
+            raise ConfigError("Data group variable must be a name of type `str`. The default is `data_group`, if you\
+                               wish to overwrite that, you will have to do it somehting else.")
+
         if not isinstance(additional_data_keys_requested, list):
             raise ConfigError("The `get` function in AdditionalDataBaseClass is upset with you. You could change that\
                                by making sure you request additional data keys with a variable of type `list`.")
