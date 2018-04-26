@@ -28,14 +28,28 @@ progress = terminal.Progress()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
-    groupA = parser.add_argument_group('DEFAULT INPUTS', "Input files.")
-    groupA.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
-    groupA.add_argument(*anvio.A('variability-profile'), **anvio.K('variability-profile'))
+
+    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
+    groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are two\
+                                                  ways to do it. One, you can give a file path with split names,\
+                                                  or, as an alternative, you can provide a collection id with a\
+                                                  bin name.')
     groupB = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+    groupE = parser.add_argument_group('EXTRAS', 'Extra convenience parameters.')
+
+    groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
+    #groupD.add_argument(*anvio.A('variability-profile'), **anvio.K('variability-profile')) # FIXME decide whether allowable input or not
+    groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db')) # FIXME make profile and contigs database optional
+    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db')) # FIXME make profile and contigs database optional
+    groupS.add_argument(*anvio.A('splits-of-interest'), **anvio.K('splits-of-interest'))
+    groupS.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupS.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupB.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
     groupB.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
     groupB.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
     groupB.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+    groupE.add_argument(*anvio.A('no-variability'), **anvio.K('no-variability'))
+    groupE.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
 
     try:
         args = anvio.get_args(parser)

@@ -28,6 +28,7 @@ from anvio.dbops import get_description_in_db
 from anvio.dbops import get_default_item_order_name
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError
+from anvio.variabilityops import variability_engines
 
 from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders
 from anvio.tables.collections import TablesForCollections
@@ -1233,29 +1234,59 @@ class StructureInteractive():
     def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.mode = 'structure'
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.variability_profile = pd.read_csv(args.variability_profile, sep='\t')
-        self.structure_db_path = A('structure_db')
-        # TO DO: check if structure db
-        # TO DO: check variability profile. is this real pandas df?
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.contig_db_path = A('contigs_db', null)
+        self.profile_db_path = A('profile_db', null)
+        self.structure_db_path = A('structure_db', null)
+        self.no_variability = A('no_variability', bool)
+        self.samples_of_interest = A('samples_of_interest', null)
+
+        self.var = {}
+        self.engines_profiled = []
+
+        if not self.samples_of_interest:
+            profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            self.samples_of_interest = sorted(list(profile_db.samples))
+            profile_db.disconnect()
+
+        if self.no_variability:
+            self.profile_variability_data()
 
 
-    def get_available_structures(self):
+    def profile_variability_data(self, engines = ["AA", "CDN"]):
+        """Variability data is computed on the fly."""
+        if self.no_variability:
+            return
+
+        # if no structure we are not interested
+        self.args.only_if_structure = True
+
+        for engine in engines:
+            self.args.engine = engine
+            self.var[engine] = variability_engines[engine](self.args)
+            self.var[engine].process()
+        self.args.engine = None # this variable is no longer meaningful
+        self.engines_profiled = self.var.keys()
+
+
+    def get_available_genes_and_samples(self):
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
-        
+
         output = {}
         output['available_gene_callers_ids'] = structure_db.genes_with_structure
-        output['available_sample_ids'] = list(sorted(self.variability_profile["sample_id"].unique()))
-        
+        output['available_sample_ids'] = self.samples_of_interest
+
         structure_db.disconnect()
         return output
 
 
-    def get_structure(self, gene_callers_id):
+    def get_queried_structure(self, gene_callers_id):
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
 
         summary = structure_db.get_summary_for_interactive(gene_callers_id)
-        
+
         structure_db.disconnect()
         return summary
 
