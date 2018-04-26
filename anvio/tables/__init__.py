@@ -91,7 +91,7 @@ genes_taxonomy_table_types             = [    'numeric'    ,  'numeric',]
 
 hmm_hits_info_table_name               = 'hmm_hits_info'
 hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'domain', 'genes']
-hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    ,  'text' , 'text' ]       # This one here is the id that apperas in gene_calls table
+hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    ,  'text' , 'text' ]       # This one here is the id that apper as in gene_calls table
                                                                                          #         /
 hmm_hits_table_name                    = 'hmm_hits'                                      # _______|_______
 hmm_hits_table_structure               = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_hmm_id', 'e_value']
