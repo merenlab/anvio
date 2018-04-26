@@ -563,11 +563,11 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
     def get_all(self):
         output = {}
-
+        keys_dict = {}
         for group_name in self.get_all_groups():
-            output[group_name] = self.get(data_group=group_name)
+            keys_dict[group_name], output[group_name] = self.get(data_group=group_name)
 
-        return output
+        return keys_dict, output
 
 
     def get_all_groups(self):
