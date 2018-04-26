@@ -260,6 +260,15 @@ function initData() {
             samples_order_dict = response.layers_order;
             samples_information_dict = response.layers_information;
             let samples_information_default_layer_order = response.layers_information_default_order;
+            let samples_groups = Object.keys(samples_information_dict).sort();
+
+            samples_groups.forEach(function (group_name) {
+                $('#sample_groups_container').append(`
+                    <div style="float: left; padding: 4px 4px;">
+                        <input type="checkbox" id="group_${group_name}" value="${group_name}" ${group_name == 'default' ? 'checked="checked"' : ''}>
+                        <label style="margin-left: 2px;" for="group_${group_name}">${group_name}</label>
+                    </div>`);
+            });
 
             let available_orders = Object.keys(samples_order_dict).sort();
             $('#samples_order').append(new Option('custom'));
