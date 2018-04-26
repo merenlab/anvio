@@ -10,10 +10,12 @@
 #
 # Please read the COPYING file.
 
+import anvio.tables as t
 import anvio.terminal as terminal
 
 from anvio.parsers.base import Parser
 from anvio.parsers.base import TaxonomyHelper
+from anvio.constants import levels_of_taxonomy
 
 
 class DefaultMatrix(Parser):
@@ -25,8 +27,8 @@ class DefaultMatrix(Parser):
         files_expected = {'matrix': matrix_txt}
 
         files_structure = {'matrix':
-                                {'col_names': ['gene_callers_id', 't_phylum', 't_class', 't_order', 't_family', 't_genus', 't_species'],
-                                 'col_mapping': [int, str, str, str, str, str, str],
+                                {'col_names': ['gene_callers_id'] + levels_of_taxonomy,
+                                 'col_mapping': [int] + [str] * len(levels_of_taxonomy),
                                  'only_expected_fields': True,
                                  }
                           }

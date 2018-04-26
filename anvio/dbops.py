@@ -759,8 +759,8 @@ class ContigsSuperclass(object):
     def gen_TAB_delimited_file_for_split_taxonomies(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
 
-        if not self.a_meta['taxonomy_source']:
-            raise ConfigError("There is no taxonomy source in the contigs database :/")
+        if not self.a_meta['gene_level_taxonomy_source']:
+            raise ConfigError("There is no taxonomy source for genes in the contigs database :/")
 
         if not len(self.splits_taxonomy_dict):
             self.init_splits_taxonomy()
@@ -2766,7 +2766,7 @@ class ContigsDatabase:
         self.db.set_meta_value('num_contigs', contigs_info_table.total_contigs)
         self.db.set_meta_value('total_length', contigs_info_table.total_nts)
         self.db.set_meta_value('num_splits', splits_info_table.total_splits)
-        self.db.set_meta_value('taxonomy_source', None)
+        self.db.set_meta_value('gene_level_taxonomy_source', None)
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
