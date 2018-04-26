@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+
+import anvio
+import anvio.tables as t
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.parsers as parsers
+import anvio.terminal as terminal
+
+from anvio.constants import levels_of_taxonomy
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.miscdata import TableForLayerAdditionalData
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    # make sure we have the parser
+    if not args.parser:
+        raise ConfigError("You really need to specify a parser.")
+
+    if not args.input_files:
+        raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the\
+                            parser you chose. Please see the documentation for details.")
+
+    if utils.is_profile_db_merged(args.profile_db):
+        raise ConfigError("This will not work with merged profile databases :(")
+
+
+    parser_obj = parsers.get_parser_obj('taxonomy_layers', args.parser)
+
+    parser = parser_obj(args.input_files, t.splits_taxonomy_table_structure, run=run, progress=progress)
+    taxonomy_dict = parser.process()
+
+    if not len(taxonomy_dict):
+        raise ConfigError("Your parser (%s) returned an empty result for your input file. Something must have gone wrong." % (args.parser))
+
+    # build input for layer additional data tables
+    sample_name = dbops.ProfileDatabase(args.profile_db).meta['sample_id']
+    for level in levels_of_taxonomy:
+        taxonomy_dict_level = taxonomy_dict[level]
+
+        data_keys_list = list(taxonomy_dict_level.keys())
+        data_dict = {sample_name: taxonomy_dict_level}
+
+        TableForLayerAdditionalData(args).add(data_dict, data_keys_list, data_group=level)
+
+
+if __name__ == '__main__':
+
+    parser_names = parsers.get_parser_names('taxonomy_layers')
+
+    parser = argparse.ArgumentParser(description="Import layers-level taxonomy into an anvi'o additional layer data\
+                                                  table in an anvi'o single-profile database.")
+
+    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+
+    parser.add_argument('--parser', default = None,
+                        help = "Parser to make sense of the input files. There are %d parsers readily available: %s." % (len(parser_names), parser_names))
+    parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
+                        help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
+                                process that you generate before running anvio. Please see the documentation for details.')
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
