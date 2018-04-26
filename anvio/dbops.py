@@ -1480,7 +1480,15 @@ class PanSuperclass(object):
         min_num_genes_from_each_genome = A('min_num_genes_from_each_genome')
         max_num_genomes_gene_cluster_occurs = A('max_num_genomes_gene_cluster_occurs')
         add_into_items_additional_data_table = A('add_into_items_additional_data_table')
+        gene_clusters_names_of_interest = A('gene_clusters_names_of_interest')
         just_do_it = A('just_do_it')
+
+        # keep only the names we are interested in.
+        if gene_clusters_names_of_interest:
+            unwanted_keys = set(gene_clusters_dict.keys()) - set(gene_clusters_names_of_interest)
+            for key in unwanted_keys:
+                del gene_clusters_dict[key]
+
 
         # remove genomes from the dict if necessary.
         if max_num_gene_clusters_missing_from_genome:
