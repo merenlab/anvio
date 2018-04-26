@@ -36,7 +36,12 @@ sqlite3 $output_dir/CONTIGS.db '.tables'
 for f in 01 02 03
 do
     INFO "Profiling sample SAMPLE-$f"
-    anvi-profile -i $output_dir/SAMPLE-$f.bam -o $output_dir/SAMPLE-$f -c $output_dir/CONTIGS.db
+    anvi-profile -i $output_dir/SAMPLE-$f.bam -o $output_dir/SAMPLE-$f -c $output_dir/CONTIGS.db --cluster
+
+    INFO "Importing short-read-level taxonomy for SAMPLE-$f"
+    anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \
+                                    -i $files/example_files_for_kraken_hll_taxonomy/SAMPLE-$f.mpa \
+                                    --parser kraken_hll
     echo
 done
 
