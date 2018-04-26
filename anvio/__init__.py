@@ -917,7 +917,15 @@ D = {
                       be careful with this option if you are running your commands on a SGE --if you are clusterizing your runs,\
                       and asking for multiple threads to use, you may deplete your resources very fast."}
                 ),
-
+    'variability-profile': (
+            ['-V', '--variability-profile'],
+            {'metavar': 'VARIABILITY_TABLE',
+             'type': str,
+             'help': "Maximum number of threads to use for multithreading whenever possible. Very conservatively, the default\
+                      is 1. It is a good idea to not exceed the number of CPUs / cores on your system. Plus, please\
+                      be careful with this option if you are running your commands on a SGE --if you are clusterizing your runs,\
+                      and asking for multiple threads to use, you may deplete your resources very fast."}
+                ),
     'min-coverage-in-each-sample': (
             ['--min-coverage-in-each-sample'],
             {'metavar': 'INT',
