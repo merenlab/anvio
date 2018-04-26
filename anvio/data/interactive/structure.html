@@ -9,7 +9,7 @@
     <script type="text/javascript" src="https://cdn.rawgit.com/arose/ngl/v0.10.4/dist/ngl.js"></script>
     <style type="text/css">
         body {
-            background-color: black;
+            background-color: white;
         }
     </style>
 
@@ -118,18 +118,31 @@
         $( document ).ready(function() {
             stage = new NGL.Stage( "viewport" );
 
+            $('#gene_callers_id_list').on('change', function(ev) {
+                load_protein($('#gene_callers_id_list').val())
+            });
+
             $.ajax({
                 type: 'GET',
                 cache: false,
                 url: '/data/get_available_structures?timestamp=' + new Date().getTime(),
                 success: function(data) {
-                    var available_structures = data['available_structures'];
+                    var available_gene_callers_ids = data['available_gene_callers_ids'];
+                    var available_sample_ids = data['available_sample_ids'];
 
-                    available_structures.forEach(function(gene_callers_id) {
-                        $('.available-structures').append('<a href="#" onclick="load_protein(' + gene_callers_id + ');">Gene callers id ' + gene_callers_id + '</a><br/>');
+                    available_gene_callers_ids.forEach(function(gene_callers_id) {
+                        $('#gene_callers_id_list').append(`<option id=${gene_callers_id}>${gene_callers_id}</option>`);
                     });
 
-                    $('.available-structures>a:first').trigger('click');
+                    $('#gene_callers_id_list').trigger('change');
+                    
+                    available_sample_ids.forEach(function(sample_id) {
+
+                        $('#sample_id_list').append(`<input class="form-check-input" type="checkbox" id="sample_${sample_id}" value="${sample_id}"><label class="form-check-label" for="sample_${sample_id}">${sample_id}</label><br />`);
+                    });
+
+                    $('#sample_id_list').trigger('change');
+
                 }
             });
         });
@@ -143,6 +156,13 @@
                 <div id="viewport" style="width:100%; height:100%;"></div>
             </div>
             <div class="col-md-3 available-structures">
+                    GENE CALLERS ID:<br>
+                <select class="form-control" id="gene_callers_id_list">
+
+                </select>
+                <div id="sample_id_list">
+                    SAMPLE NAMES:<br>
+                </div>
             </div>
         </div>
     </div>
