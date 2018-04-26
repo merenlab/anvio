@@ -1905,6 +1905,8 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
         genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names=['gene', 'accession', 'hmmsource'])
 
+        check_gene_names_in_hmm_model(os.path.join(source, 'genes.hmm.gz'), genes)
+
         sources[os.path.basename(source)] = {'ref': ref,
                                              'kind': kind,
                                              'domain': domain,
@@ -1914,6 +1916,24 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                              'model': os.path.join(source, 'genes.hmm.gz')}
 
     return sources
+
+
+def check_gene_names_in_hmm_model(model_path, genes):
+    genes = set(genes)
+    genes_in_model = set([])
+
+    with gzip.open(model_path, 'rt', encoding='utf-8') as f:
+        for line in f:
+            if line.startswith('NAME'):
+                genes_in_model.add(line.split()[1])
+
+    if len(genes.difference(genes_in_model)):
+        raise ConfigError("Some gene names in genes.txt file does not seem to be appear in genes.hmm.gz.\
+                           Here is a list of missing gene names: %s" % ', '.join(list(genes.difference(genes_in_model))))
+
+    if len(genes_in_model.difference(genes)):
+        raise ConfigError("Some gene names in genes.hmm.gz file does not seem to be appear in genes.txt.\
+                           Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
 
 
 def get_missing_programs_for_hmm_analysis():

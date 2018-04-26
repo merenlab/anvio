@@ -6,6 +6,7 @@ import sys
 import copy
 
 import anvio
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -32,6 +33,8 @@ pp = terminal.pretty_print
 
 
 def main(args):
+    utils.is_contigs_db(args.contigs_db)
+
     collections = ccollections.Collections()
     collections.populate_collections_dict(args.contigs_db)
     if args.profile_db:
