@@ -92,7 +92,11 @@ anvi-gen-structure-database -c test-output/one_contig_five_genes.db \
                       --dump-dir test-output/RAW_MODELLER_OUTPUT \
                       --output-db-path test-output/STRUCTURE.db
 
-INFO "anvi-gen-variability-profile"
-anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db -C default -b bin1 --engine AA -o test-output/variability.txt
+INFO "anvi-gen-variability-profile --engine AA"
+anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db -C default -b bin1 --engine AA -o test-output/variability_AA.txt
+
+INFO "anvi-gen-variability-profile --engine CDN"
+anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db -C default -b bin1 --engine CDN -o test-output/variability_CDN.txt
+
 echo
 echo

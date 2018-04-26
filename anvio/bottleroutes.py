@@ -130,8 +130,8 @@ class BottleApplication(Bottle):
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
         self.route('/data/search_functions',                   callback=self.search_functions, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
-        self.route('/data/get_available_structures',           callback=self.get_available_structures)
-        self.route('/data/get_structure/<gene_callers_id:int>',callback=self.get_structure)
+        self.route('/data/get_available_genes_and_samples',    callback=self.get_available_genes_and_samples)
+        self.route('/data/get_queried_structure/<gene_callers_id:int>',callback=self.get_queried_structure)
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
 
@@ -1030,12 +1030,12 @@ class BottleApplication(Bottle):
                            'human_readable_keys': self.interactive.human_readable_keys})
 
 
-    def get_available_structures(self):
-        return json.dumps(self.interactive.get_available_structures())
+    def get_available_genes_and_samples(self):
+        return json.dumps(self.interactive.get_available_genes_and_samples())
 
 
-    def get_structure(self, gene_callers_id):
-        return json.dumps(self.interactive.get_structure(gene_callers_id))
+    def get_queried_structure(self, gene_callers_id):
+        return json.dumps(self.interactive.get_queried_structure(gene_callers_id))
 
 
     def filter_gene_clusters(self):

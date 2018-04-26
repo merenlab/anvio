@@ -80,7 +80,7 @@
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/get_structure/' + gene_callers_id,
+                url: '/data/get_queried_structure/' + gene_callers_id,
                 success: function(data) {
                     // create tooltip element and add to document body
                     var tooltip = document.createElement("div")
@@ -131,7 +131,7 @@
             $.ajax({
                 type: 'GET',
                 cache: false,
-                url: '/data/get_available_structures?timestamp=' + new Date().getTime(),
+                url: '/data/get_available_genes_and_samples?timestamp=' + new Date().getTime(),
                 success: function(data) {
                     var available_gene_callers_ids = data['available_gene_callers_ids'];
                     var available_sample_ids = data['available_sample_ids'];

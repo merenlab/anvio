@@ -1644,6 +1644,13 @@ D = {
              'type': str,
              'help': "The value you wish to set for the self key."}
                 ),
+    'no-variability': (
+            ['--no-variability'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "If provided, no measures of environmental heterogeneity (from short read data) will be accessible\
+                      for display."}
+                ),
 }
 
 # two functions that works with the dictionary above.
