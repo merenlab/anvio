@@ -10,7 +10,6 @@
 #
 # Please read the COPYING file.
 
-import anvio.tables as t
 import anvio.terminal as terminal
 
 from anvio.parsers.base import Parser
