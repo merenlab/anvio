@@ -4,12 +4,17 @@
     <title>Contigs DB Stats</title>
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
     <script type='text/javascript' src='js/utils.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.0.0/bootstrap-slider.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.0.0/css/bootstrap-slider.css" />
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="https://cdn.rawgit.com/arose/ngl/v0.10.4/dist/ngl.js"></script>
     <style type="text/css">
         body {
             background-color: white;
+        }
+        .slider-selection {
+            background-image: linear-gradient(to bottom, #6262b9 0%, #f5f5f5 100%);
         }
     </style>
 
@@ -117,6 +122,7 @@
 
         $( document ).ready(function() {
             stage = new NGL.Stage( "viewport" );
+            stage.setParameters({backgroundColor:"white"} );
 
             $('#gene_callers_id_list').on('change', function(ev) {
                 load_protein($('#gene_callers_id_list').val())
@@ -155,14 +161,23 @@
             <div class="col-md-9">
                 <div id="viewport" style="width:100%; height:100%;"></div>
             </div>
-            <div class="col-md-3 available-structures">
-                    GENE CALLERS ID:<br>
-                <select class="form-control" id="gene_callers_id_list">
+            <div class="col-md-3">
+                    Gene Callers ID:<br>
+                <select class="form-control" serialize="true" id="gene_callers_id_list">
 
                 </select>
                 <div id="sample_id_list">
-                    SAMPLE NAMES:<br>
+                    Sample Names:<br>
                 </div>
+                Departure from consensus: <input
+    type="float"
+    name="somename"
+    data-provide="slider"
+    data-slider-min="0"
+    data-slider-max="1"
+    data-slider-step="0.001"
+    data-slider-value="[0,1]"
+    >
             </div>
         </div>
     </div>

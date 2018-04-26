@@ -1031,7 +1031,7 @@ class BottleApplication(Bottle):
 
 
     def get_available_structures(self):
-        return json.dumps({'available_structures': self.interactive.get_available_structures() })
+        return json.dumps(self.interactive.get_available_structures())
 
 
     def get_structure(self, gene_callers_id):
