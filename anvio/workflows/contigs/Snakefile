@@ -240,7 +240,7 @@ if run_taxonomy_with_centrifuge:
 
 
     rule anvi_import_taxonomy:
-        ''' Run anvi-import-taxonomy'''
+        ''' Run anvi-import-taxonomy-for-genes'''
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_taxonomy.log"
         input:
@@ -255,7 +255,7 @@ if run_taxonomy_with_centrifuge:
         params: parser = "centrifuge"
         threads: M.T('anvi_import_taxonomy')
         resources: nodes = M.T('anvi_import_taxonomy'),
-        shell: "anvi-import-taxonomy -c {input.contigs} -i {input.report} {input.hits} -p {params.parser} >> {log} 2>&1"
+        shell: "anvi-import-taxonomy-for-genes -c {input.contigs} -i {input.report} {input.hits} -p {params.parser} >> {log} 2>&1"
 
 
 if run_anvi_run_hmms:

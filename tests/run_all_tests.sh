@@ -54,7 +54,7 @@ INFO "Exporting contig sequences from the contigs database in 'splits mode'"
 anvi-export-contigs -c $output_dir/CONTIGS.db -o $output_dir/exported_split_seqeunces.fa --splits-mode
 
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
-anvi-import-taxonomy -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/centrifuge_report.tsv $files/example_files_for_centrifuge_taxonomy/centrifuge_hits.tsv
+anvi-import-taxonomy-for-genes -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/centrifuge_report.tsv $files/example_files_for_centrifuge_taxonomy/centrifuge_hits.tsv
 
 INFO "Trying to remove HMM sources from the contigs database (when there are none in it)"
 anvi-delete-hmms -c $output_dir/CONTIGS.db --just-do-it
