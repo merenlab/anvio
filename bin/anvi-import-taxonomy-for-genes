@@ -6,8 +6,8 @@ import sys
 import anvio
 import anvio.tables as t
 import anvio.terminal as terminal
+import anvio.parsers as parsers
 
-from anvio.parsers import parser_modules
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.taxonomy import TablesForGeneLevelTaxonomy
 
@@ -30,18 +30,13 @@ def main(args):
     if not args.parser:
         raise ConfigError("You really need to specify a parser.")
 
-    if args.parser not in parser_modules['taxonomy']:
-        raise ConfigError("Anvi'o does not know what to do with '%s'. You must use one of the available taxonomy\
-                            parsers so anvi'o can make sense of your input data. Here is what anvi'o has to parse\
-                            incoming taxonomy (you should take a look at the documentation if you are not sure\
-                            how to deal with this situation, because it is not that hard, in fact (or, you know\
-                            you can send an e-mail to us)): %s"\
-                                                 % (args.parser, ', '.join(parser_modules['taxonomy'])))
     if not args.input_files:
         raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the\
                             parser you chose. Please see the documentation for details.")
 
-    parser = parser_modules['taxonomy'][args.parser](args.input_files, t.splits_taxonomy_table_structure, run=run, progress=progress)
+    parser_obj = parsers.get_parser_obj('taxonomy_genes', args.parser)
+
+    parser = parser_obj(args.input_files, t.splits_taxonomy_table_structure, run=run, progress=progress)
     genes_taxonomy_dict, taxon_names_dict = parser.process()
 
     if not len(genes_taxonomy_dict):
@@ -58,7 +53,9 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Import taxonomy information into an anvi'o contigs database.")
+    taxonomy_gene_parsers = parsers.get_parser_names('taxonomy_genes')
+
+    parser = argparse.ArgumentParser(description="Import gene-level taxonomy into an anvi'o contigs database.")
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
@@ -69,7 +66,7 @@ if __name__ == '__main__':
                                 for later use. Using a parser will not prevent the analysis of single-copy genes,\
                                 but make anvio more powerful to help you make sense of your results. Please see the\
                                 documentation, or get in touch with the developers if you have any questions\
-                                regarding parsers.' % (len(parser_modules['taxonomy']), list(parser_modules['taxonomy'].keys())))
+                                regarding parsers.' % (len(taxonomy_gene_parsers), taxonomy_gene_parsers))
     parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
                         help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
                                 process that you generate before running anvio. Please see the documentation for details.')

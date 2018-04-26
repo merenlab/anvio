@@ -727,3 +727,9 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .pan-filters input[type='checkbox'] {
     width: 15px;
 }
+
+.clearfix::after {
+    content: "";
+    clear: both;
+    display: table;
+}
