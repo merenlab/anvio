@@ -564,17 +564,18 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     def get_all(self):
         output = {}
 
-        for group_name in self.get_all_groups():
+        for group_name in self.get_group_names():
             output[group_name] = self.get(data_group=group_name)
 
         return output
 
 
-    def get_all_groups(self):
+    def get_group_names(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        groups = database.get_single_column_from_table(self.table_name, 'data_group', unique=True)
+        group_names = database.get_single_column_from_table(self.table_name, 'data_group', unique=True)
         database.disconnect()
-        return groups
+
+        return group_names
 
 
 class TableForItemAdditionalData(AdditionalDataBaseClass):
