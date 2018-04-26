@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
     taxonomy_gene_parsers = parsers.get_parser_names('taxonomy_genes')
 
-    parser = argparse.ArgumentParser(description="Import taxonomy information into an anvi'o contigs database.")
+    parser = argparse.ArgumentParser(description="Import gene-level taxonomy into an anvi'o contigs database.")
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
