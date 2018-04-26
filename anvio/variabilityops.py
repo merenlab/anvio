@@ -180,8 +180,8 @@ class VariabilitySuper(object):
         if not self.contigs_db_path:
             raise ConfigError('You need to provide a contigs database.')
 
-        if self.append_structure_residue_info and self.engine not in ["AA"]:
-            raise ConfigError('You provided a structure database, which is only compatible with --engine AA')
+        if self.append_structure_residue_info and self.engine not in ["AA", "CDN"]:
+            raise ConfigError('You provided a structure database, which is only compatible with --engine AA and --engine CDN')
 
         self.progress.update('Making sure our databases are compatible ..')
         utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
@@ -739,8 +739,7 @@ class VariabilitySuper(object):
         self.progress.new("Comprehensive stats")
         self.progress.update("Those that don't require --quince-mode")
 
-        self.comprehensive_stats_headers = [m + '_weighted' for m in self.substitution_scoring_matrices] + \
-                                           ['entropy', 'kullback_leibler_divergence_raw', 'kullback_leibler_divergence_normalized']
+        self.comprehensive_stats_headers = [m + '_weighted' for m in self.substitution_scoring_matrices] + ['entropy']
 
         # Pandas is fun, but numpy is fast. Here we convert the coverage table information from the DataFrame to a
         # numpy array. The transpose is required because scipy.stats entropy function calculates along an
@@ -827,6 +826,7 @@ class VariabilitySuper(object):
             return
 
         self.progress.update("Those that do require --quince-mode")
+        self.comprehensive_stats_headers.extend(['kullback_leibler_divergence_raw', 'kullback_leibler_divergence_normalized'])
 
         # Due to --quince-mode every unique position identifier has the same number of entries (this screams
         # vectorization). We abuse this to make a 3 dimensional numpy array, coverage_by_pos. The zeroth axis
@@ -998,6 +998,11 @@ class VariabilitySuper(object):
 
         if self.include_split_names_in_output:
             new_structure.append('split_name')
+
+        if self.append_structure_residue_info:
+            redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa']
+            residue_info_columns = [x for x in self.structure_residue_info.columns if x not in redundant_columns]
+            new_structure.extend(residue_info_columns)
 
         # Update entry_id with sequential numbers based on the final ordering of the data:
         self.data.reset_index(drop=True, inplace=True)
