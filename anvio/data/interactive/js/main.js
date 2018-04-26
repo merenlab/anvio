@@ -18,7 +18,7 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
-var VERSION = '0.2.1';
+var VERSION = '2';
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
 var VIEWER_WIDTH;
@@ -2474,10 +2474,22 @@ function loadState()
 }
 
 function processState(state_name, state) {
-    if (!state.hasOwnProperty('version') || (state['version'] !== VERSION))
+    if (!state.hasOwnProperty('version'))
     {
-        toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
+        toastr.error("Interface received a state without version information, it will be not loaded.");
         throw "";
+    }
+
+    if (state['version'] == '0.2.1') {
+        // switch to numerical versioning instead semantic one.
+        state['version'] = '1';
+    }
+
+    if (state['version'] != VERSION) {
+        toastr.info(`Interface received a state at version ${state['version']} but the current version of the
+            interface is ${VERSION}. Anvi'o will try to upgrade it automatically.`);
+
+        state = migrate_state(state);
     }
 
     if (state.hasOwnProperty('layer-order')) {
