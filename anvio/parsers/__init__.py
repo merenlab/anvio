@@ -14,6 +14,7 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
+from anvio.parsers.kraken_hll import KrakenHLL
 from anvio.parsers.defaultmatrix import DefaultMatrix
 from anvio.parsers.centrifuge import Centrifuge
 from anvio.parsers.hmmscan import HMMScan
@@ -22,7 +23,7 @@ from anvio.parsers.interproscan import InterProScan
 
 parser_modules = {}
 parser_modules['taxonomy_genes']  = {"default_matrix": DefaultMatrix, "centrifuge": Centrifuge}
-parser_modules['taxonomy_layers'] = {"default_matrix": DefaultMatrix, "kraken_hll": Centrifuge}
+parser_modules['taxonomy_layers'] = {"kraken_hll": KrakenHLL}
 parser_modules['functions']       = {"interproscan": InterProScan}
 parser_modules['search']          = {"hmmscan": HMMScan}
 parser_modules['collections']     = {"concoct": CONCOCT}
@@ -46,7 +47,7 @@ def get_parser_module(module):
 
 def get_parser_obj(module, parser):
     parser_module = get_parser_module(module)
- 
+
     if parser not in parser_module:
         raise ConfigError("Parser modules speaking: the parser module '%s' does exist (yay),\
                            but there is no parser '%s' in it (boo). It has these instad: '%s'."\
