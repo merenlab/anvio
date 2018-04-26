@@ -125,8 +125,14 @@ class TablesForCollections(Table):
 
         database.disconnect()
 
-        self.run.info('Collections', 'The collection "%s" that describes %s splits has been successfully added to the database at "%s".'\
-                                        % (collection_name, pp(num_splits), self.db_path), mc='green')
+        # FIXME
+        report_bin_names = False
+        bin_name_report = ""
+        if report_bin_names:
+            bin_name_report = " Here is a list for the bin names in this collection: {}".format(",".join(bin_names))
+
+        self.run.info('Collections', 'The collection "%s" that describes %s splits has been successfully added to the database at "%s".%s'\
+                                        % (collection_name, pp(num_splits), self.db_path, bin_name_report), mc='green')
 
 
     def process_contigs(self, collection_name, collection_dict):
