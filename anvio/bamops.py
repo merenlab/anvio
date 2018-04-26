@@ -17,11 +17,11 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
-from anvio.constants import codon_to_AA, codon_to_AA_RC, codon_to_codon_RC
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -42,6 +42,7 @@ __status__ = "Development"
 class CodonFrequencies:
     def __init__(self, run=run):
         self.run = run
+        self.not_reported_items = Counter({})
 
 
     def get_codon_frequencies_dict(self, codon_frequencies):
@@ -72,8 +73,8 @@ class CodonFrequencies:
 
             reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
-            # if concensus sequence contains shitty characters, we will not continue
-            if reference_codon_sequence not in codon_to_AA:
+            # if consensus sequence contains shitty characters, we will not continue
+            if reference_codon_sequence not in constants.codon_to_AA:
                 continue
 
             linkmers.data = []
@@ -96,24 +97,34 @@ class CodonFrequencies:
             # depending on what we want to return item frequencies will contain frequencies for amino acids or
             # codons.
             item_frequencies = Counter({})
-            reference_item = None
 
-            # vat ve vant?
+            # our conversion dicts will differ if the user is asking for codons or AAs, and if the gene is
+            # reverse or forward.
+            conv_dict = None
+            gene_is_reverse = gene_call['direction'] == 'r'
             if return_AA_frequencies_instead:
-                # if the gene is reverse, we want to use the dict for reverse complementary conversions for DNA to AA
-                conv_dict = codon_to_AA_RC if gene_call['direction'] == 'r' else codon_to_AA
-                reference_item = conv_dict[reference_codon_sequence]
-
-                for codon in codon_frequencies:
-                    if conv_dict[codon]: # <-- this check here eliminates any codon that contains anything but [A, T, C, G].
-                        item_frequencies[conv_dict[codon]] += codon_frequencies[codon]
+                if gene_is_reverse:
+                    conv_dict = constants.codon_to_AA_RC
+                else:
+                    conv_dict = constants.codon_to_AA
             else:
-                reference_item = codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence
+                if gene_is_reverse:
+                    conv_dict = constants.codon_to_codon_RC
+                else:
+                    # no conversion is necessary, so this is a mock dictionary that
+                    # resturns the key.
+                    conv_dict = dict(zip(constants.codons, constants.codons))
 
-                for codon in codon_frequencies:
-                    codon = codon_to_codon_RC[codon] if gene_call['direction'] == 'r' else codon
-                    item_frequencies[codon] += codon_frequencies[codon]
+            # the magic happens here:
+            for codon in codon_frequencies:
+                if codon in conv_dict:
+                    item_frequencies[conv_dict[codon]] += codon_frequencies[codon]
+                else:
+                    # so there is a way the programmer can learn that some weird
+                    # stuff did not get reported
+                    self.not_reported_items[codon] += 1
 
+            reference_item = conv_dict[reference_codon_sequence]
             coverage = sum(item_frequencies.values())
 
             if not coverage:
