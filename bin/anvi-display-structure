@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
     groupA = parser.add_argument_group('DEFAULT INPUTS', "Input files.")
     groupA.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
+    groupA.add_argument(*anvio.A('variability-profile'), **anvio.K('variability-profile'))
     groupB = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
     groupB.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
     groupB.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
