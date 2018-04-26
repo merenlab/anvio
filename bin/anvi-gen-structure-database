@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""
-DEVELOPMENT NOTES:
-==================
-sup
-
-"""
 
 import sys
 import anvio
