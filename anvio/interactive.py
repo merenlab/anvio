@@ -7,6 +7,7 @@ import sys
 import numpy
 import nglview
 import textwrap
+import pandas as pd
 from ete3 import Tree
 
 import anvio
@@ -1233,14 +1234,21 @@ class StructureInteractive():
         self.args = args
         self.mode = 'structure'
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.has_variability = False
+        self.variability_profile = pd.read_csv(args.variability_profile, sep='\t')
         self.structure_db_path = A('structure_db')
+        # TO DO: check if structure db
+        # TO DO: check variability profile. is this real pandas df?
 
 
     def get_available_structures(self):
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
         
-        return structure_db.genes_with_structure
+        output = {}
+        output['available_gene_callers_ids'] = structure_db.genes_with_structure
+        output['available_sample_ids'] = list(sorted(self.variability_profile["sample_id"].unique()))
+        
+        structure_db.disconnect()
+        return output
 
 
     def get_structure(self, gene_callers_id):
@@ -1248,10 +1256,13 @@ class StructureInteractive():
 
         summary = structure_db.get_summary_for_interactive(gene_callers_id)
         
-        if self.has_variability:
-            summary['variability'] = None
-        
+        structure_db.disconnect()
         return summary
+
+
+    def get_variability(self, options):
+        # TO DO: filter here.
+        pass
 
 
 
