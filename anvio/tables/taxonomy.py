@@ -87,7 +87,7 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
         self.splits_info = database.get_table_as_dict(t.splits_info_table_name)
 
         # test whether there are already genes tables populated
-        taxonomy_source = database.get_meta_value('taxonomy_source')
+        taxonomy_source = database.get_meta_value('gene_level_taxonomy_source')
         if taxonomy_source:
             self.run.warning('Previous taxonomy information from "%s" is being replaced with the incoming data\
                               through "%s".' % (taxonomy_source, self.source))
@@ -105,8 +105,8 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
         self.populate_splits_taxonomy_table()
 
         # set the source
-        database.remove_meta_key_value_pair('taxonomy_source')
-        database.set_meta_value('taxonomy_source', self.source)
+        database.remove_meta_key_value_pair('gene_level_taxonomy_source')
+        database.set_meta_value('gene_level_taxonomy_source', self.source)
 
         # disconnect like a pro.
         database.disconnect()
