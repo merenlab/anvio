@@ -112,8 +112,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # get additional data for items and layers, and get layer orders data.
         a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_order_data_dict = TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict) if a_db_is_found else {}
+        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
+
+        self.layers_order_data_dict = {}
+        for group_name in self.layers_additional_data_keys:
+            layer_orders = TableForLayerOrders(self.args).get(self.layers_additional_data_keys[group_name], self.layers_additional_data_dict[group_name]) if a_db_is_found else {}
+            for order_name in layer_orders:
+                self.layers_order_data_dict['%s :: %s' % (group_name, order_name)] = layer_orders
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
