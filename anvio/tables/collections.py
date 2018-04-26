@@ -125,14 +125,17 @@ class TablesForCollections(Table):
 
         database.disconnect()
 
-        # FIXME
-        report_bin_names = False
-        bin_name_report = ""
-        if report_bin_names:
-            bin_name_report = " Here is a list for the bin names in this collection: {}".format(",".join(bin_names))
+        num_bins = len(bin_names)
+        num_bins_to_report = 50
+        if num_bins <= num_bins_to_report:
+            bins_to_report = bin_names
+            bin_report_msg = "Here is a full list of the bin names in this collection: {}.".format(",".join(bins_to_report))
+        else:
+            bins_to_report = bin_names[:num_bins_to_report]
+            bin_report_msg = "Here is a list of the first {} bin names in this collection: {}.".format(num_bins_to_report, ",".join(bins_to_report))
 
-        self.run.info('Collections', 'The collection "%s" that describes %s splits has been successfully added to the database at "%s".%s'\
-                                        % (collection_name, pp(num_splits), self.db_path, bin_name_report), mc='green')
+        self.run.info('Collections', 'The collection "%s" that describes %s splits and %s bins has been successfully added to the\
+                                      database at "%s". %s' % (collection_name, pp(num_splits), pp(num_bins), self.db_path, bin_report_msg), mc='green')
 
 
     def process_contigs(self, collection_name, collection_dict):
