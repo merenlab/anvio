@@ -21,13 +21,16 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
-# include statement must come before we get an instance of PangenomicsWorkflow class
-include: w.get_workflow_snake_file_path('contigs')
+slave_mode=(False if 'workflows/pangenomics' in workflow.included[0] else True)
 
-M = PangenomicsWorkflow(argparse.Namespace(config=config, slave_mode=(False if 'workflows/pangenomics' in workflow.included[0] else True)))
-M.init()
-dirs_dict = M.dirs_dict
+if not slave_mode:
+    M = PangenomicsWorkflow(argparse.Namespace(config=config))
+    M.init()
+    dirs_dict = M.dirs_dict
+
+# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
+# include statement must come after we get an instance of PangenomicsWorkflow class
+include: w.get_workflow_snake_file_path('contigs')
 
 project_name = config["project_name"]
 if not project_name:
@@ -147,4 +150,5 @@ rule anvi_gen_genomes_storage:
                                      {params.gene_caller}
         """
 
-M.check_workflow_program_dependencies(workflow)
+if not slave_mode:
+    M.check_workflow_program_dependencies(workflow)
