@@ -74,10 +74,10 @@ class VariabilitySuper(object):
         self.output_file_path = A('output_file', null)
         self.samples_of_interest_path = A('samples_of_interest', null)
         self.genes_of_interest_path = A('genes_of_interest', null)
+        self.gene_caller_ids = A('gene_caller_ids', null)
         self.only_if_structure = A('only_if_structure', null)
         self.include_contig_names_in_output = A('include_contig_names', null)
         self.include_split_names_in_output = A('include_split_names', null)
-        self.gene_caller_id = A('gene_caller_id', null)
 
         self.append_structure_residue_info = True if self.structure_db_path else False
         self.substitution_scoring_matrices = None
@@ -120,19 +120,47 @@ class VariabilitySuper(object):
         else:
             self.samples_of_interest = set([])
 
-        self.progress.update('Any genes of interest?')
-        if self.genes_of_interest_path and self.gene_caller_id:
+        # splits of interest are specified either by providing the splits of interest directly, or
+        # by providing a collection and bin. Alternatively, splits can be inferred from genes of
+        # interest. These three routes for determining splits of interest are mutually exclusive and
+        # we make sure the user/programmer provides parameters for one route only.
+        gene_route  = True if self.genes_of_interest_path or self.gene_caller_ids else False
+        split_route = True if self.splits_of_interest_path or self.splits_of_interest else False
+        bin_route   = True if self.bin_id or self.collection_name else False
+
+        if not any([gene_route, split_route, bin_route]):
+            raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
+                               --genes-of-interest), OR a list of splits (--splits-of-interest), OR\
+                               a collection and bin combo (--collection-name and bin-id). You\
+                               supplied none of these parameters and so anvi'o doesn't know what you\
+                               want. If you are truly interested in everything, you\
+                               should run the script anvi-script-add-default-collection, and then\
+                               supply the collection name 'DEFAULT' and the bin id 'EVERYTHING'.")
+        if sum([gene_route, split_route, bin_route]) > 1:
+            raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
+                               --genes-of-interest), OR a list of splits (--splits-of-interest), OR a\
+                               collection and bin combo (--collection-name and bin-id). You\
+                               supplied too many of these parameters, and now anvi'o doesn't\
+                               know what you want.")
+
+        self.progress.update('Setting up genes of interest')
+        if self.genes_of_interest_path and self.gene_caller_ids:
             self.progress.end()
-            raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids\
-                               as a file at the same time, obviously.")
+            raise ConfigError("You can't provide gene caller ids from the command line, and a list\
+                               of gene caller ids as a file at the same time, obviously.")
 
-        if self.gene_caller_id is not None:
-            try:
-                self.gene_caller_id = int(self.gene_caller_id)
-            except:
-                raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(self.gene_caller_id))
+        if self.gene_caller_ids is not None:
+            if "," in self.gene_caller_ids:
+                self.gene_caller_ids = [g.strip() for g in self.gene_caller_ids.split(",")]
+            else:
+                self.gene_caller_ids = [self.gene_caller_ids]
+            for index, gene_caller_id in enumerate(self.gene_caller_ids):
+                try:
+                    self.gene_caller_ids[index] = int(gene_caller_id)
+                except:
+                    raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % gene_caller_id)
+            self.genes_of_interest = set(self.gene_caller_ids)
 
-            self.genes_of_interest = set([self.gene_caller_id])
         elif self.genes_of_interest_path:
             filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
 
@@ -140,22 +168,26 @@ class VariabilitySuper(object):
                 self.genes_of_interest = set([int(s.strip()) for s in open(self.genes_of_interest_path).readlines()])
             except ValueError:
                 self.progress.end()
-                raise ConfigError("Well. Anvi'o was working on your genes of interest .. and ... those gene IDs did not\
-                                   look like anvi'o gene caller ids :/ Anvi'o is now sad.")
+                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... \
+                                   those gene IDs did not look like anvi'o gene caller ids :/ Anvi'o\
+                                   is now sad.")
+
         else:
+            # looks like no genes were specified
             self.genes_of_interest = set([])
 
-        self.progress.update('Setting up genes of interest data ..')
         if self.genes_of_interest:
             # check for genes that do not appear in the contigs database
             bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.gene_callers_id_to_split_name_dict]
             if bad_gene_caller_ids:
                 self.progress.end()
-                raise ConfigError("The gene caller id you provided is not known to this contigs database. You have only 2 lives\
-                                   left. 2 more mistakes, and anvi'o will automatically uninstall itself. Yes, seriously :(")
-
-            # if we know gene names, we know split names. set split names straight:
-            self.splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
+                some_to_report = bad_gene_caller_ids[:5] if len(bad_gene_caller_ids) <= 5 else bad_gene_caller_ids
+                raise ConfigError("{} of the gene caller ids you provided is not known to this contigs\
+                                   database. {}: {}. You only have 2 lives left. 2 more mistakes, and\
+                                   anvi'o will automatically uninstall itself. Yes, seriously :(".\
+                                   format(len(bad_gene_caller_ids),
+                                          "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
+                                          ", ".join([str(x) for x in some_to_report])))
 
         self.progress.update('Making sure you are not playing games ..')
         if self.engine not in ['NT', 'CDN', 'AA']:
@@ -206,32 +238,26 @@ class VariabilitySuper(object):
                                     However it wasn't found at '%s' :/" % auxiliary_data_file_path)
             self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, None, ignore_hash=True)
 
+        # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
         self.progress.update('Attempting to get our splits of interest sorted ...')
-        if self.collection_name:
-            # the user wants to go with the collection id path. fine. we will get our split names from
-            # the profile database.
-            if not self.bin_id:
-                self.progress.end()
-                raise ConfigError('When you declare a collection id, you must also declare a bin name\
-                                    (from which the split names of interest will be acquired)')
-            if self.collection_name and self.splits_of_interest_path:
-                self.progress.end()
-                raise ConfigError("You declared a collection id and one or more bin names so anvi'o can find out\
-                                    splits of interest, but you also have specified informaiton for split names?\
-                                    This is confusing. You should choose one way or another :/")
+        if gene_route:
+            self.splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
 
+        elif bin_route:
+            if self.collection_name and not self.bin_id:
+                raise ConfigError('When you declare a collection name, you must also declare a bin id\
+                                   (from which the split names of interest will be acquired).')
+            if self.bin_id and not self.collection_name:
+                raise ConfigError("You declared a bin id but anvi'o doesn't know which collection\
+                                   it comes from. Please provide a collection name.")
             self.splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
-        else:
-            # OK. no collection id. we will go oldschool. we hope to find what we are looking for in
-            # self.splits_of_interest_path  at this point (which may have been filled through the command
-            # line client), or in self.splits_of_interest (which may have been filled in by another program)
-            if not self.splits_of_interest:
-                if not self.splits_of_interest_path:
-                    self.progress.end()
-                    raise ConfigError('You did not declare a source for split names. You either should give me\
-                                        a file with split names you are interested in, or a collection id and\
-                                        bin name so I can learn split names from the profile database.')
-                filesnpaths.is_file_exists(self.splits_of_interest_path)
+
+        elif split_route:
+            if self.splits_of_interest:
+                # catches splits of interest being handled programatically elsewhere
+                pass
+            else:
+                filesnpaths.is_file_tab_delimited(self.splits_of_interest_path, expected_number_of_fields=1)
                 self.splits_of_interest = set([c.strip().replace('\r', '') for c in open(self.splits_of_interest_path).readlines()])
 
         self.input_file_path = '/' + '/'.join(os.path.abspath(self.profile_db_path).split('/')[:-1])
