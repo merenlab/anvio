@@ -652,6 +652,10 @@ class ContigsSuperclass(object):
         sequences_dict = {}
 
         self.progress.new('Getting sequences')
+        if include_aa_sequences:
+            aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+        else:
+            aa_sequences_dict = None
         self.progress.update('...')
         for gene_callers_id in gene_caller_ids_list:
             gene_call = self.genes_in_contigs_dict[gene_callers_id]
@@ -676,7 +680,6 @@ class ContigsSuperclass(object):
                                                'length': stop - start}
 
             if include_aa_sequences:
-                aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
                 if gene_callers_id in aa_sequences_dict:
                     sequences_dict[gene_callers_id]['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
                 else:
