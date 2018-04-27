@@ -38,7 +38,7 @@ if __name__ == '__main__':
     groupS.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
+    groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db', {"required": False})))
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt'}))
     groupO.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
     groupO.add_argument(*anvio.A('quince-mode'), **anvio.K('quince-mode'))

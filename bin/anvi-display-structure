@@ -29,27 +29,35 @@ progress = terminal.Progress()
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
 
-    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
-    groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are two\
-                                                  ways to do it. One, you can give a file path with split names,\
-                                                  or, as an alternative, you can provide a collection id with a\
-                                                  bin name.')
-    groupB = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
-    groupE = parser.add_argument_group('EXTRAS', 'Extra convenience parameters.')
+    groupS = parser.add_argument_group("STRUCTURE", "Information related to the structure database, which can be \
+                                                     created with anvi-gen-structure-database.")
+    groupV = parser.add_argument_group("VARIABILITY", "We can overlay codon and amino acid variability in your \
+                                                       metagenomes but we need a data source of this variability. \
+                                                       Most simply, anvi'o can learn this information when you \
+                                                       provide both your profile (-p) and contigs (-c) databases. \
+                                                       Alternatively, you can provide a variability table output \
+                                                       (-V) from the program anvi-gen-variability-profile. \
+                                                       Finally, you can visualize the structures without \
+                                                       overlaying variation by providing the flag --no-variability.")
+    groupR = parser.add_argument_group("REFINING PARAMETERS", "Which samples, genes, and contigs etc. are you \
+                                                               interested in? Define that stuff here.")
+    groupP = parser.add_argument_group("SERVER CONFIGURATION", "For power users.")
 
-    groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
-    #groupD.add_argument(*anvio.A('variability-profile'), **anvio.K('variability-profile')) # FIXME decide whether allowable input or not
-    groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db')) # FIXME make profile and contigs database optional
-    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db')) # FIXME make profile and contigs database optional
-    groupS.add_argument(*anvio.A('splits-of-interest'), **anvio.K('splits-of-interest'))
-    groupS.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupS.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
-    groupB.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-    groupB.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-    groupB.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
-    groupB.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
-    groupE.add_argument(*anvio.A('no-variability'), **anvio.K('no-variability'))
-    groupE.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
+    groupS.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
+    groupV.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {"required": False}))
+    groupV.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {"required": False}))
+    groupV.add_argument(*anvio.A('variability-profile'), **anvio.K('variability-profile')) # FIXME make allowable
+    groupR.add_argument(*anvio.A('no-variability'), **anvio.K('no-variability'))
+    groupR.add_argument(*anvio.A('splits-of-interest'), **anvio.K('splits-of-interest'))
+    groupR.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupR.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupR.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
+    groupR.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
+    groupR.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    groupP.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupP.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupP.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+    groupP.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
     try:
         args = anvio.get_args(parser)
