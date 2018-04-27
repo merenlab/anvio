@@ -24,10 +24,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extract information for variable positions')
 
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
-    groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are two\
-                                                  ways to do it. One, you can give a file path with split names,\
-                                                  or, as an alternative, you can provide a collection id with a\
-                                                  bin name.')
+    groupS = parser.add_argument_group('SPLITS', 'Declaring relevant splits for the analysis. There are three\
+                                                  ways to do it: 1) you can give a file path with split names,\
+                                                  2) you can provide a collection id with a bin name, or 3)\
+                                                  you can give a list or a file path containing gene caller\
+                                                  ids.')
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style')
     groupE = parser.add_argument_group('EXTRAS', 'Parameters that will help you to do a very precise analysis.\
                                                   If you declare nothing from this bunch, you will get "everything"\
@@ -36,9 +37,11 @@ if __name__ == '__main__':
     groupS.add_argument(*anvio.A('splits-of-interest'), **anvio.K('splits-of-interest'))
     groupS.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupS.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupS.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
+    groupS.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
     groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db', {"required": False})))
+    groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db', {"required": False}))
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt'}))
     groupO.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
     groupO.add_argument(*anvio.A('quince-mode'), **anvio.K('quince-mode'))
@@ -53,7 +56,6 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus'))
     groupE.add_argument(*anvio.A('max-departure-from-consensus'), **anvio.K('max-departure-from-consensus'))
     groupE.add_argument(*anvio.A('min-occurrence-of-variable-positions'), **anvio.K('min-occurrence-of-variable-positions'))
-    groupE.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     groupE.add_argument(*anvio.A('only-if-structure'), **anvio.K('only-if-structure'))
 
     args = anvio.get_args(parser)
