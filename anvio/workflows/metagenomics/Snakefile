@@ -207,7 +207,7 @@ rule metagenomics_workflow_target_rule:
         for each group
     '''
     input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=group_names),
-           contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}--annotate_contigs_database.done", group=group_names),
+           contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=group_names),
            qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=group_names)
 
 
