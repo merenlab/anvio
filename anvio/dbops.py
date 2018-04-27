@@ -651,11 +651,12 @@ class ContigsSuperclass(object):
 
         sequences_dict = {}
 
-        self.progress.new('Getting sequences')
         if include_aa_sequences:
             aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
         else:
             aa_sequences_dict = None
+
+        self.progress.new('Working on sequences data structure')
         self.progress.update('...')
         for gene_callers_id in gene_caller_ids_list:
             gene_call = self.genes_in_contigs_dict[gene_callers_id]
@@ -2021,8 +2022,6 @@ class ProfileSuperclass(object):
                               the performance very negatively. If you are seeing this warning, and go like 'crap, this will ruin\
                               everything because I possibly can not recover from this situation', then send us an e-mail, and we will\
                               think about whether we can be less lazy about stuff, and do things better.")
-
-        sample_names = self.p_meta['samples']
 
         if self.split_names_of_interest:
             split_names = self.split_names_of_interest
