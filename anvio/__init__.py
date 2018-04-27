@@ -79,12 +79,8 @@ D = {
     'structure-db': (
             ['-s', '--structure-db'],
             {'metavar': "STRUCTURE_DB",
-             'required': False,
-             'help': "Anvi'o structure database. If supplied for anvi-gen-varability-profile,\
-                      structural information about residues such as solvent accessibility and secondary\
-                      structure are appended to the output as additional columns for entries in genes that have\
-                      modelled protein structures. Note this setting is only\
-                      valid if the `--engine AA` flag is given."}
+             'required': True,
+             'help': "Anvi'o structure database."}
                 ),
     'only-if-structure': (
             ['--only-if-structure'],
@@ -921,6 +917,7 @@ D = {
             ['-V', '--variability-profile'],
             {'metavar': 'VARIABILITY_TABLE',
              'type': str,
+             'required': False,
              'help': "Maximum number of threads to use for multithreading whenever possible. Very conservatively, the default\
                       is 1. It is a good idea to not exceed the number of CPUs / cores on your system. Plus, please\
                       be careful with this option if you are running your commands on a SGE --if you are clusterizing your runs,\
@@ -1648,8 +1645,8 @@ D = {
             ['--no-variability'],
             {'required': False,
              'action': 'store_true',
-             'help': "If provided, no measures of environmental heterogeneity (from short read data) will be accessible\
-                      for display."}
+             'help': "If provided, no measures of sequence heterogeneity (from short read data) will be overlayed\
+                      on structures."}
                 ),
 }
 
