@@ -21,11 +21,13 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-# don't be confused, child. when things come to this point, the variable `config`
-# is already magically filled in by snakemake:
-M = ContigsDBWorkflow(argparse.Namespace(config=config, slave_mode=(False if 'workflows/contigs' in workflow.included[0] else True)))
-M.init()
-dirs_dict = M.dirs_dict
+slave_mode = (False if 'workflows/contigs' in workflow.included[0] else True)
+if not slave_mode
+    # don't be confused, child. when things come to this point, the variable `config`
+    # is already magically filled in by snakemake:
+    M = ContigsDBWorkflow(argparse.Namespace(config=config, slave_mode=slave_mode))
+    M.init()
+    dirs_dict = M.dirs_dict
 
 localrules: annotate_contigs_database
 
@@ -370,7 +372,8 @@ rule annotate_contigs_database:
     shell: "touch {output} >> {log} 2>&1"
 
 
-# check if all program dependencies are met. for this line to be effective,
-# there should be an initial dry run step (which is the default behavior of
-# the `WorkflowSuperClass`, so you are most likely covered).
-M.check_workflow_program_dependencies(workflow)
+if not slave_mode:
+    # check if all program dependencies are met. for this line to be effective,
+    # there should be an initial dry run step (which is the default behavior of
+    # the `WorkflowSuperClass`, so you are most likely covered).
+    M.check_workflow_program_dependencies(workflow)
