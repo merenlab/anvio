@@ -660,7 +660,8 @@ D = {
                 ),
     'gene-caller-ids': (
             ['--gene-caller-ids'],
-            {'type': str,
+            {'metavar': 'GENE_CALLER_IDS',
+             'type': str,
              'help': "Gene caller ids. Multiple of them can be declared separated by a delimiter (the default is a comma).\
                       In anvi-gen-variability-profile, if you declare nothing you will get all genes matching your other\
                       filtering criteria. In other programs, you may get everything, nothing, or an error. It really depends\
