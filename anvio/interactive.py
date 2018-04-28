@@ -527,8 +527,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                              'dict': ad_hoc_dict}
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
-        sample_name = self.title.replace(' ', '_') if self.title else self.views[self.default_view]['header']
-        self.p_meta['samples'] = self.p_meta['sample_id'] = [sample_name]
+        sample_names = [self.title.replace(' ', '_')] if self.title else self.views[self.default_view]['header']
+        self.p_meta['samples'] = self.p_meta['sample_id'] = sample_names
 
         # if we have an input FASTA file, we will set up the split_sequences and splits_basic_info dicts,
         # otherwise we will leave them empty
