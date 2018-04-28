@@ -2011,8 +2011,6 @@ class ProfileSuperclass(object):
                               everything because I possibly can not recover from this situation', then send us an e-mail, and we will\
                               think about whether we can be less lazy about stuff, and do things better.")
 
-        sample_names = self.p_meta['samples']
-
         if self.split_names_of_interest:
             split_names = self.split_names_of_interest
 
