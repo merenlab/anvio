@@ -155,21 +155,62 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
     def list_data_keys(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
-        if not len(additional_data_keys):
-            self.run.info_single('There are no additional data for %s in this database :/' % self.target, nl_before=1, nl_after=1, mc='red')
-        else:
-            self.run.warning('', 'AVAILABLE DATA KEYS FOR %s (%d FOUND)' % (self.target.upper(), len(additional_data_keys)), lc='yellow')
-            for data_key in additional_data_keys:
+        NOPE = lambda: self.run.info_single("There are no additional data for '%s' in this database :/" % self.target, nl_before=1, nl_after=1, mc='red')
+
+        additional_data_keys = {}
+        # here is where things get tricky. if we are dealing with additional data layers or items, we will have
+        # data groups that are not relevant for order data. this will affect the listing of data keys in either
+        # of these table types. hence we get group names first here, and then will do a bunch of if/else checks
+        # based on their availability
+        if self.target in ['layers', 'items']:
+            group_names = AdditionalDataBaseClass.get_group_names(self)
+            for group_name in group_names:
+                additional_data_keys[group_name] = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True, where_clause="data_group = '%s'" % group_name))
+
+            if not len(additional_data_keys):
+                NOPE()
+                database.disconnect()
+                return
+
+        elif self.target in ['layer_orders']:
+            data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
+
+            if not len(data_keys):
+                self.run.info_single("There are no additional data for '%s' in this database :/" % self.target, nl_before=1, nl_after=1, mc='red')
+                database.disconnect()
+                return
+
+            additional_data_keys['default'] = data_keys
+            group_names = ['default']
+
+        self.run.warning('', 'DATA KEYS FOR "%s" in %d DATA GROUP(S)' % (self.target.upper(), len(group_names)), lc='yellow')
+
+        for group_name in group_names:
+            num_keys = len(additional_data_keys[group_name])
+
+            self.run.info_single('DATA GROUP "%s" WITH %d KEYS' % (group_name, num_keys), nl_before = 1)
+
+            if anvio.DEBUG:
+                num_keys_to_display = num_keys
+            else:
+                num_keys_to_display = min([5, num_keys])
+
+            for key_index in range(0, num_keys_to_display):
+                data_key = additional_data_keys[group_name][key_index]
                 rows = database.get_some_rows_from_table_as_dict(self.table_name, 'data_key="%s"' % data_key)
 
                 if self.target == 'layer_orders':
                     self.run.info_single('%s (%s)' % (data_key, list(rows.values())[0]['data_type']),
-                                         nl_after = 1 if data_key == additional_data_keys[-1] else 0)
+                                         nl_after = 1 if data_key == additional_data_keys[group_name][-1] else 0, level=2)
                 else:
                     self.run.info_single('%s (%s, describes %d %s)' % (data_key, list(rows.values())[0]['data_type'], len(rows), self.target),
-                                         nl_after = 1 if data_key == additional_data_keys[-1] else 0)
+                                         nl_after = 1 if data_key == additional_data_keys[group_name][-1] else 0, level=2)
+
+            num_keys_not_displayed = num_keys - num_keys_to_display
+            if num_keys_not_displayed > 0:
+                self.run.info_single('(... %d more; use `--debug` to list all ...)' % \
+                                                                (num_keys_not_displayed), nl_after = 1, mc='cyan', level=3)
 
         database.disconnect()
 
