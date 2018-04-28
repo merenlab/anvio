@@ -527,7 +527,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                              'dict': ad_hoc_dict}
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
-        self.p_meta['samples'] = self.views[self.default_view]['header']
+        sample_name = self.title.replace(' ', '_') if self.title else self.views[self.default_view]['header']
+        self.p_meta['samples'] = self.p_meta['sample_id'] = [sample_name]
 
         # if we have an input FASTA file, we will set up the split_sequences and splits_basic_info dicts,
         # otherwise we will leave them empty
@@ -551,13 +552,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
+            sample_id = ','.join(self.p_meta['samples'])
+
             profile_db = ProfileDatabase(self.profile_db_path)
             profile_db.create({'db_type': 'profile',
                                'blank': True,
                                'merged': True,
                                'contigs_db_hash': None,
                                'contigs_ordered': False,
-                               'samples': ','.join(self.p_meta['samples'])})
+                               'samples': sample_id,
+                               'sample_id': sample_id})
 
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path)
