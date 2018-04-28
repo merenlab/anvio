@@ -38,7 +38,7 @@ def main(args):
         raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the\
                             parser you chose. Please see the documentation for details.")
 
-    if utils.is_profile_db_merged(args.profile_db):
+    if utils.is_profile_db_merged(args.profile_db) and not utils.is_blank_profile(args.profile_db):
         raise ConfigError("This will not work with merged profile databases :(")
 
 
