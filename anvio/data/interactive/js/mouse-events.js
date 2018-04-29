@@ -462,9 +462,15 @@ function mouseMoveHandler(event) {
         for (var i=0; i < last_settings['samples-layer-order'].length; i++)
         {
             var layer_name = last_settings['samples-layer-order'][i]['layer_name'];
+            var group      = last_settings['samples-layer-order'][i]['group'];
+
+            if (!is_sample_group_visible(group)) {
+                continue;
+            }
+
             var pretty_name = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[0] : layer_name;
 
-            if (layer_name == layer_name_hover)
+            if (layer_name == layer_name_hover && group == sample_group)
             {
                 message += '<tr style="background-color: rgb(232, 202, 207);"><td>' + pretty_name + '</td><td>' + samples_information_dict[sample_group][sample_name][layer_name] + '</td></tr>';
                 layer_pos = i;
