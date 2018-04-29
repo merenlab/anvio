@@ -69,11 +69,8 @@ class WorkflowSuperClass:
         self.slave_mode = A('slave_mode')
 
         if self.config_file:
-            try:
-                self.config = json.load(open(self.config_file))
-            except ValueError as e:
-                raise ConfigError("Your config file is not a proper json file. This is\
-                                   what we know: %s" % e)
+            filesnpaths.is_file_json_formatted(self.config_file)
+            self.config = json.load(open(self.config_file))
 
         self.rules = []
         self.rule_acceptable_params_dict = {}
@@ -187,7 +184,13 @@ class WorkflowSuperClass:
         # we can look more decent or whatever):
         if self.save_workflow_graph:
             lines = open(log_file_path, 'rU').readlines()
-            line_of_interest = [line_no for line_no in range(0, len(lines)) if lines[line_no].startswith('digraph')][0]
+
+            try:
+                line_of_interest = [line_no for line_no in range(0, len(lines)) if lines[line_no].startswith('digraph')][0]
+            except IndexError:
+                raise ConfigError("Oh no. Anvi'o was trying to generate a DAG output for you, but something must have\
+                                   gone wrong in a step prior. Something tells anvi'o that if you take a look at the\
+                                   log file here, you may be able to figure it out: '%s'. Sorry!" % log_file_path)
             open(workflow_graph_output_file_path_prefix + '.dot', 'w').write(''.join(lines[line_of_interest:]))
 
             self.run.info('Workflow DOT file', workflow_graph_output_file_path_prefix + '.dot')

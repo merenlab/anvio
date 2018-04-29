@@ -651,7 +651,12 @@ class ContigsSuperclass(object):
 
         sequences_dict = {}
 
-        self.progress.new('Getting sequences')
+        if include_aa_sequences:
+            aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+        else:
+            aa_sequences_dict = None
+
+        self.progress.new('Working on sequences data structure')
         self.progress.update('...')
         for gene_callers_id in gene_caller_ids_list:
             gene_call = self.genes_in_contigs_dict[gene_callers_id]
@@ -676,7 +681,6 @@ class ContigsSuperclass(object):
                                                'length': stop - start}
 
             if include_aa_sequences:
-                aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
                 if gene_callers_id in aa_sequences_dict:
                     sequences_dict[gene_callers_id]['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
                 else:
@@ -1480,7 +1484,15 @@ class PanSuperclass(object):
         min_num_genes_from_each_genome = A('min_num_genes_from_each_genome')
         max_num_genomes_gene_cluster_occurs = A('max_num_genomes_gene_cluster_occurs')
         add_into_items_additional_data_table = A('add_into_items_additional_data_table')
+        gene_clusters_names_of_interest = A('gene_clusters_names_of_interest')
         just_do_it = A('just_do_it')
+
+        # keep only the names we are interested in.
+        if gene_clusters_names_of_interest:
+            unwanted_keys = set(gene_clusters_dict.keys()) - set(gene_clusters_names_of_interest)
+            for key in unwanted_keys:
+                del gene_clusters_dict[key]
+
 
         # remove genomes from the dict if necessary.
         if max_num_gene_clusters_missing_from_genome:
@@ -2010,8 +2022,6 @@ class ProfileSuperclass(object):
                               the performance very negatively. If you are seeing this warning, and go like 'crap, this will ruin\
                               everything because I possibly can not recover from this situation', then send us an e-mail, and we will\
                               think about whether we can be less lazy about stuff, and do things better.")
-
-        sample_names = self.p_meta['samples']
 
         if self.split_names_of_interest:
             split_names = self.split_names_of_interest

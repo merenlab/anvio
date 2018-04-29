@@ -59,7 +59,7 @@ import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.workflows.metagenomics import MetagenomicsWorkflow
 from anvio.tables.miscdata import TableForLayerAdditionalData
 
@@ -103,6 +103,12 @@ if number_of_assemblers_in_config_file > 1:
 samples_txt_file = M.get_param_value_from_config(['samples_txt'])
 # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
 samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
+
+# FIXME: sanity check of every input file should be done in the backend, and not in
+#        the snakemake recipe.
+if 'sample' not in samples_information.columns.values:
+    raise ConfigError("You know what. This '%s' file does not look anything like\
+                       a samples file." % samples_txt_file)
 # get a list of the sample names
 sample_names = list(samples_information['sample'])
 
@@ -201,7 +207,7 @@ rule metagenomics_workflow_target_rule:
         for each group
     '''
     input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=group_names),
-           contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=group_names),
+           contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=group_names),
            qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=group_names)
 
 

@@ -922,7 +922,8 @@ class BottleApplication(Bottle):
 
 
     def generate_tree(self):
-        gene_clusters = set(request.forms.getall('gene_clusters[]'))
+        gene_cluster_names = set(request.forms.getall('gene_clusters[]'))
+        gene_clusters = self.interactive.filter_gene_clusters_dict(argparse.Namespace(gene_clusters_names_of_interest=gene_cluster_names))
         name = request.forms.get('name')
         program = request.forms.get('program')
         aligner = request.forms.get('aligner')
@@ -933,7 +934,7 @@ class BottleApplication(Bottle):
         tree_text = None
 
         try:
-            self.interactive.write_sequences_in_gene_clusters_for_phylogenomics(gene_cluster_names=gene_clusters, output_file_path=temp_fasta_file, align_with=aligner)
+            self.interactive.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=gene_clusters, output_file_path=temp_fasta_file, align_with=aligner)
             drivers.driver_modules['phylogeny'][program]().run_command(temp_fasta_file, temp_tree_file)
             tree_text = open(temp_tree_file,'rb').read().decode()
 
