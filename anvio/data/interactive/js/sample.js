@@ -132,9 +132,11 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
         var short_name = (pretty_name.length > 10) ? pretty_name.slice(0,10) + "..." : pretty_name;
 
         var hasSettings = false;
-        if (typeof(samples_layers) !== 'undefined' && typeof(samples_layers[layer_name]) !== 'undefined') {
-            hasSettings = true;
-            layer_settings = samples_layers[layer_name];
+        if (typeof(samples_layers) !== 'undefined' && 
+            typeof(samples_layers[group]) !== 'undefined' && 
+            typeof(samples_layers[group][layer_name]) !== 'undefined') {
+                hasSettings = true;
+                layer_settings = samples_layers[layer_name];
         }
 
         if (isNumber(samples_information_dict[group][first_sample][layer_name]))
