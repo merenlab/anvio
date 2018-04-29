@@ -1326,7 +1326,13 @@ function serializeSettings(use_layer_names) {
     $('#tbody_samples tr').each(
         function(index, tr) {
             var samples_layer_name = $(tr).attr('samples-layer-name');
-            state['samples-layer-order'].push(samples_layer_name);
+            var samples_group_name = $(tr).attr('samples-group-name');
+
+            state['samples-layer-order'].push({
+                'layer_name': samples_layer_name,
+                'group': samples_group_name
+            });
+
             state['samples-layers'][samples_layer_name] = {
                 'data-type'     : $(tr).attr('data-type'),
                 'height'        : parseFloat($(tr).find('.input-height').val()),
