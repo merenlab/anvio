@@ -354,7 +354,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
 }
 
 function drawSamples() {
-    $('#samples').empty(); 
+    $('#samples').empty();
     drawSamplesLayers(serializeSettings());
     var samples_tree = document.getElementById('samples_tree');
     if (samples_tree)
@@ -363,7 +363,14 @@ function drawSamples() {
     }
 }
 
+
 function drawSamplesLayers(settings) {
+    for (var i = settings['samples-layer-order'].length - 1; i >= 0; i--) {
+        if (!is_sample_group_visible(settings['samples-layer-order'][i]['group'])) {
+            settings['samples-layer-order'].splice(i, 1);
+        }
+    }
+
     var samples_layer_max = {};
     var samples_layer_min = {};
 
@@ -391,8 +398,11 @@ function drawSamplesLayers(settings) {
                     if (typeof samples_layer_max[group] === 'undefined') {
                         samples_layer_max[group] = {};
                     }
+                    if (typeof samples_layer_min[group] === 'undefined') {
+                        samples_layer_min[group] = {};
+                    }
 
-                    if (typeof samples_layer_max[group][layer] === 'undefined' || parseFloat(_samples_information_dict[group][sample][layer]) > samples_layer_max[layer])
+                    if (typeof samples_layer_max[layer] === 'undefined' || parseFloat(_samples_information_dict[group][sample][layer]) > samples_layer_max[group][layer])
                     {
                         samples_layer_max[group][layer] = parseFloat(_samples_information_dict[group][sample][layer]);
                     }
@@ -434,22 +444,17 @@ function drawSamplesLayers(settings) {
 
     // calculate sample information layer boundaries
     var samples_layer_boundaries = [];
-    console.log(samples_layer_min, samples_layer_max);
+
     for (var i=0; i < settings['samples-layer-order'].length; i++)
     {
         var samples_layer_name     = settings['samples-layer-order'][i]['layer_name'];
-        var group = settings['samples-layer-order'][i]['group'];
+        var group                  = settings['samples-layer-order'][i]['group'];
         var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
 
         if (samples_layer_settings['min']['disabled'])
         {
             $('#tbody_samples [samples-layer-name=' + samples_layer_name + '] .input-min').prop('disabled', false);
             $('#tbody_samples [samples-layer-name=' + samples_layer_name + '] .input-max').prop('disabled', false).val(samples_layer_max[group][samples_layer_name])
-            
-            if (typeof samples_layer_min[group] === 'undefined') {
-                samples_layer_min[group] = {};
-            }
-            
             samples_layer_min[group][samples_layer_name] = 0;
         }
         else
@@ -469,6 +474,7 @@ function drawSamplesLayers(settings) {
 
         samples_layer_boundaries.push([start,end]);
     }
+
     var gradient_done = false;
 
     if (settings['tree-type'] == 'phylogram') {
@@ -494,19 +500,6 @@ function drawSamplesLayers(settings) {
             'y': (samples_layer_boundaries.length > 0) ? 0 - samples_layer_boundaries[samples_layer_boundaries.length-1][1] : 0,
         }
 
-        let found = false;
-        for (let group in samples_information_dict) {
-            if (samples_information_dict[group].hasOwnProperty(sample_name)) {
-                found = true;
-                break;
-            }
-        }
-
-        if (!found) {
-            // not a sample, do not waste time.
-            continue;
-        }
-
         // update start once
         if (samples_start == -1)
             samples_start = layer_index;
@@ -521,11 +514,15 @@ function drawSamplesLayers(settings) {
         for (var i=0; i < settings['samples-layer-order'].length; i++)
         {
             var samples_layer_name     = settings['samples-layer-order'][i]['layer_name'];
-            var group = settings['samples-layer-order'][i]['group'];
+            var group                  = settings['samples-layer-order'][i]['group'];
             var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
             var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
 
             if (samples_layer_settings['height'] == 0) {
+                continue;
+            }
+
+            if (!_samples_information_dict[group].hasOwnProperty(sample_name) || !_samples_information_dict[group][sample_name].hasOwnProperty(samples_layer_name)) {
                 continue;
             }
 
@@ -584,7 +581,7 @@ function drawSamplesLayers(settings) {
                 var offset = 0;
                 for (var _i=0; _i < stack_bar_items.length; _i++)
                 {
-                    var color = samples_stack_bar_colors[group][samples_layer_name][_i];
+                    var color = samples_stack_bar_colors[samples_layer_name][_i];
                     var size  = (samples_layer_boundaries[i][1] - samples_layer_boundaries[i][0]) * stack_bar_items[_i];
 
                     var rect = drawPhylogramRectangle('samples',
@@ -598,6 +595,7 @@ function drawSamplesLayers(settings) {
                         true);
 
                     rect.setAttribute('sample-name', sample_name);
+                    rect.setAttribute('sample-group', group);
                     rect.setAttribute('layer-name', samples_layer_name);
 
                     offset = offset + size;
@@ -612,16 +610,16 @@ function drawSamplesLayers(settings) {
                     value == 'None';
                 }
 
-                if (typeof samples_categorical_colors[samples_layer_name] === 'undefined') {
-                    samples_categorical_colors[samples_layer_name] = {};
+                if (typeof samples_categorical_colors[group][samples_layer_name] === 'undefined') {
+                    samples_categorical_colors[group][samples_layer_name] = {};
                 }
 
-                if (typeof samples_categorical_colors[samples_layer_name][value] === 'undefined')
+                if (typeof samples_categorical_colors[group][samples_layer_name][value] === 'undefined')
                 {
-                    samples_categorical_colors[samples_layer_name][value] = randomColor({luminosity: 'dark'});
+                    samples_categorical_colors[group][samples_layer_name][value] = randomColor({luminosity: 'dark'});
                 }
 
-                var color = samples_categorical_colors[samples_layer_name][value];
+                var color = samples_categorical_colors[group][samples_layer_name][value];
                 var size  = samples_layer_boundaries[i][1] - samples_layer_boundaries[i][0];
 
                 var rect = drawPhylogramRectangle('samples',
@@ -635,6 +633,7 @@ function drawSamplesLayers(settings) {
                     true);
 
                 rect.setAttribute('sample-name', sample_name);
+                rect.setAttribute('sample-group', group);
                 rect.setAttribute('layer-name', samples_layer_name);
             }
         }
@@ -646,13 +645,17 @@ function drawSamplesLayers(settings) {
         for (var i=0; i < settings['samples-layer-order'].length; i++)
         {
             var samples_layer_name     = settings['samples-layer-order'][i]['layer_name'];
-            var group =  settings['samples-layer-order'][i]['group'];
+            var group                  = settings['samples-layer-order'][i]['group'];
             var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
             var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
             var min = samples_layer_min[group][samples_layer_name];
             var max = samples_layer_max[group][samples_layer_name];
 
             if (samples_layer_settings['height'] == 0) {
+                continue;
+            }
+
+            if (!_samples_information_dict[group].hasOwnProperty(sample_name) || !_samples_information_dict[group][sample_name].hasOwnProperty(samples_layer_name)) {
                 continue;
             }
 
