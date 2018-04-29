@@ -81,10 +81,15 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     
     for (let group in samples_layer_order) {
         samples_layer_order[group].forEach((layer_name) => {
-            all_information_layers.push({
-                'group': group,
-                'layer_name': layer_name,
-            });
+            if (samples_information_dict.hasOwnProperty(group)) {
+                let first_sample = Object.keys(samples_information_dict[group])[0];
+                if (samples_information_dict[group][first_sample].hasOwnProperty(layer_name)) {
+                    all_information_layers.push({
+                        'group': group,
+                        'layer_name': layer_name,
+                    });
+                }
+            }
         });
     }
 
