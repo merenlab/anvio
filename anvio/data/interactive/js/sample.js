@@ -93,6 +93,27 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
         });
     }
 
+    for (let group in samples_information_dict) {
+        let first_sample = Object.keys(samples_information_dict[group])[0];
+        for (let layer_name in samples_information_dict[group][first_sample]) {
+            let found = false;
+            
+            for (const [index, entry] of all_information_layers.entries()) {
+                if (entry['group'] == group && entry['layer_name'] == layer_name) {
+                    found = true;
+                    break;
+                }
+            };
+
+            if (!found) {
+                all_information_layers.push({
+                    'group': group,
+                    'layer_name': layer_name,
+                });
+            }
+        }
+    }
+
     if (all_information_layers.length == 0) {
         return;
     }
