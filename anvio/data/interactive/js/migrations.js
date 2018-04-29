@@ -3,7 +3,7 @@ function migrate_state(state) {
     let current_version = state['version'];
 
     if (current_version == '1') {
-        if (state.hasownProperty('samples-layers')) {
+        if (state.hasOwnProperty('samples-layers')) {
             let layer_info = $.extend(true, {}, state['samples-layers']);
             delete state['samples-layers']
         }
