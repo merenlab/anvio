@@ -346,58 +346,65 @@ function drawSamplesLayers(settings) {
 
     var _samples_information_dict = jQuery.extend(true, {}, samples_information_dict); // keep original
 
-    for (sample in _samples_information_dict)
+    for (group in _samples_information_dict)
     {
-        for (layer in _samples_information_dict[sample])
+        for (sample in _samples_information_dict[group])
         {
-            if (settings['samples-layers'][layer]['data-type'] == 'numeric') 
+            for (layer in _samples_information_dict[group][sample])
             {
-                var norm = settings['samples-layers'][layer]['normalization'];
+                if (settings['samples-layers'][group][layer]['data-type'] == 'numeric') 
+                {
+                    var norm = settings['samples-layers'][group][layer]['normalization'];
 
-                if (norm == 'sqrt')
-                {
-                    _samples_information_dict[sample][layer] = Math.sqrt(parseFloat(_samples_information_dict[sample][layer]));
-                }
-                else if (norm == 'log')
-                {
-                    _samples_information_dict[sample][layer] = log10(parseFloat(_samples_information_dict[sample][layer]) + 1);
-                }
-
-                if (typeof samples_layer_max[layer] === 'undefined' || parseFloat(_samples_information_dict[sample][layer]) > samples_layer_max[layer])
-                {
-                    samples_layer_max[layer] = parseFloat(_samples_information_dict[sample][layer]);
-                }
-            }
-            else if (settings['samples-layers'][layer]['data-type'] == 'stack-bar') 
-            {
-                var norm = settings['samples-layers'][layer]['normalization'];
-
-                var stack_bar_items = _samples_information_dict[sample][layer].split(';');
-                var _sum = 0;
-                for (var j=0; j < stack_bar_items.length; j++)
-                {
                     if (norm == 'sqrt')
                     {
-                        stack_bar_items[j] = Math.sqrt(parseFloat(stack_bar_items[j]));
+                        _samples_information_dict[group][sample][layer] = Math.sqrt(parseFloat(_samples_information_dict[group][sample][layer]));
                     }
                     else if (norm == 'log')
                     {
-                        stack_bar_items[j] = log10(parseFloat(stack_bar_items[j]) + 1);
+                        _samples_information_dict[group][sample][layer] = log10(parseFloat(_samples_information_dict[group][sample][layer]) + 1);
                     }
-                    else
+
+                    if (typeof samples_layer_max[group] === 'undefined') {
+                        samples_layer_max[group] = {};
+                    }
+
+                    if (typeof samples_layer_max[group][layer] === 'undefined' || parseFloat(_samples_information_dict[group][sample][layer]) > samples_layer_max[layer])
                     {
-                        stack_bar_items[j] = parseFloat(stack_bar_items[j]);
+                        samples_layer_max[group][layer] = parseFloat(_samples_information_dict[group][sample][layer]);
+                    }
+                }
+                else if (settings['samples-layers'][group][layer]['data-type'] == 'stack-bar') 
+                {
+                    var norm = settings['samples-layers'][group][layer]['normalization'];
+
+                    var stack_bar_items = _samples_information_dict[group][sample][layer].split(';');
+                    var _sum = 0;
+                    for (var j=0; j < stack_bar_items.length; j++)
+                    {
+                        if (norm == 'sqrt')
+                        {
+                            stack_bar_items[j] = Math.sqrt(parseFloat(stack_bar_items[j]));
+                        }
+                        else if (norm == 'log')
+                        {
+                            stack_bar_items[j] = log10(parseFloat(stack_bar_items[j]) + 1);
+                        }
+                        else
+                        {
+                            stack_bar_items[j] = parseFloat(stack_bar_items[j]);
+                        }
+
+                        _sum = _sum + stack_bar_items[j];
                     }
 
-                    _sum = _sum + stack_bar_items[j];
-                }
+                    for (var j=0; j < stack_bar_items.length; j++)
+                    {
+                        stack_bar_items[j] = stack_bar_items[j] / _sum;
+                    }
 
-                for (var j=0; j < stack_bar_items.length; j++)
-                {
-                    stack_bar_items[j] = stack_bar_items[j] / _sum;
+                    _samples_information_dict[group][sample][layer] = stack_bar_items;
                 }
-
-                _samples_information_dict[sample][layer] = stack_bar_items;
             }
         }
     }
@@ -407,19 +414,25 @@ function drawSamplesLayers(settings) {
 
     for (var i=0; i < settings['samples-layer-order'].length; i++)
     {
-        var samples_layer_name     = settings['samples-layer-order'][i];
-        var samples_layer_settings = settings['samples-layers'][samples_layer_name];
+        var samples_layer_name     = settings['samples-layer-order'][i]['layer_name'];
+        var group = settings['samples-layer-order'][i]['group'];
+        var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
 
         if (samples_layer_settings['min']['disabled'])
         {
             $('#tbody_samples [samples-layer-name=' + samples_layer_name + '] .input-min').prop('disabled', false);
-            $('#tbody_samples [samples-layer-name=' + samples_layer_name + '] .input-max').prop('disabled', false).val(samples_layer_max[samples_layer_name])
-            samples_layer_min[samples_layer_name] = 0;
+            $('#tbody_samples [samples-layer-name=' + samples_layer_name + '] .input-max').prop('disabled', false).val(samples_layer_max[group][samples_layer_name])
+            
+            if (typeof samples_layer_min[group] === 'undefined') {
+                samples_layer_min[group] = {};
+            }
+            
+            samples_layer_min[group][samples_layer_name] = 0;
         }
         else
         {
-            samples_layer_max[samples_layer_name] = samples_layer_settings['max']['value'];
-            samples_layer_min[samples_layer_name] = samples_layer_settings['min']['value'];
+            samples_layer_max[group][samples_layer_name] = samples_layer_settings['max']['value'];
+            samples_layer_min[group][samples_layer_name] = samples_layer_settings['min']['value'];
         }
 
         var start = (samples_layer_settings['height'] == 0) ? 0 : samples_layer_settings['margin'];
@@ -474,8 +487,10 @@ function drawSamplesLayers(settings) {
 
         for (var i=0; i < settings['samples-layer-order'].length; i++)
         {
-            var samples_layer_name     = settings['samples-layer-order'][i];
-            var samples_layer_settings = settings['samples-layers'][samples_layer_name];
+            var samples_layer_name     = settings['samples-layer-order'][i]['layer_name'];
+            var group = settings['samples-layer-order'][i]['group'];
+
+            var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
             var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
 
             if (samples_layer_settings['height'] == 0) {
@@ -484,9 +499,9 @@ function drawSamplesLayers(settings) {
 
             if (samples_layer_settings['data-type'] == 'numeric') 
             {
-                var value = _samples_information_dict[sample_name][samples_layer_name];
-                var min = samples_layer_min[samples_layer_name];
-                var max = samples_layer_max[samples_layer_name];
+                var value = _samples_information_dict[sample_name][group][samples_layer_name];
+                var min = samples_layer_min[group][samples_layer_name];
+                var max = samples_layer_max[group][samples_layer_name];
                 
                 var ratio;
                 if (value > max) {
@@ -531,7 +546,7 @@ function drawSamplesLayers(settings) {
             }
             else if (samples_layer_settings['data-type'] == 'stack-bar') 
             {
-                var stack_bar_items = _samples_information_dict[sample_name][samples_layer_name];
+                var stack_bar_items = _samples_information_dict[sample_name][group][samples_layer_name];
 
                 var offset = 0;
                 for (var _i=0; _i < stack_bar_items.length; _i++)
@@ -558,7 +573,7 @@ function drawSamplesLayers(settings) {
             else
             {
                 // categorical
-                var value = _samples_information_dict[sample_name][samples_layer_name];
+                var value = _samples_information_dict[sample_name][group][samples_layer_name];
 
                 if (value == null || value == 'null' || value == '') {
                     value == 'None';
@@ -597,11 +612,12 @@ function drawSamplesLayers(settings) {
         // draw sample backgrounds and titles.
         for (var i=0; i < settings['samples-layer-order'].length; i++)
         {
-            var samples_layer_name     = settings['samples-layer-order'][i];
+            var samples_layer_name     = settings['samples-layer-order'][i]['layer_name'];
+            var group =  settings['samples-layer-order'][i]['group'];
             var samples_layer_settings = settings['samples-layers'][samples_layer_name];
             var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
-            var min = samples_layer_min[samples_layer_name];
-            var max = samples_layer_max[samples_layer_name];
+            var min = samples_layer_min[group][samples_layer_name];
+            var max = samples_layer_max[group][samples_layer_name];
 
             if (samples_layer_settings['height'] == 0) {
                 continue;
