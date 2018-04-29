@@ -75,12 +75,11 @@ $(document).ready(function() {
     });
 });
 
-function buildSamplesTable(samples_layer_order, samples_layers) {
-    var order_from_state = true;
-    var all_information_layers = [];
-    
-    for (let group in samples_layer_order) {
-        samples_layer_order[group].forEach((layer_name) => {
+function convert_samples_order_to_array(input_dict) {
+    let all_information_layers = [];
+
+    for (let group in input_dict) {
+        input_dict[group].forEach((layer_name) => {
             if (samples_information_dict.hasOwnProperty(group)) {
                 let first_sample = Object.keys(samples_information_dict[group])[0];
                 if (samples_information_dict[group][first_sample].hasOwnProperty(layer_name)) {
@@ -92,6 +91,13 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             }
         });
     }
+
+    return all_information_layers;
+}
+
+function buildSamplesTable(samples_layer_order, samples_layers) {
+    var order_from_state = true;
+    var all_information_layers = [];
 
     for (let group in samples_information_dict) {
         let first_sample = Object.keys(samples_information_dict[group])[0];
