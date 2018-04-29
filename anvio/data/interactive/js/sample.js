@@ -95,6 +95,23 @@ function convert_samples_order_to_array(input_dict) {
     return all_information_layers;
 }
 
+function is_sample_group_visible(group_name) {
+    return $('input:checkbox#group_' + group_name).is(':checked');
+}
+
+function toggleSampleGroups() {
+    $('#tbody_samples tr').each((index, tr) => {
+        let group = $(tr).attr('samples-group-name');
+
+        if (is_sample_group_visible(group)) {
+            $(tr).show();
+        } else {
+            $(tr).hide();
+        }
+    });
+};
+
+
 function buildSamplesTable(samples_layer_order, samples_layers) {
     var order_from_state = true;
     var all_information_layers = [];
