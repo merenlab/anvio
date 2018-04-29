@@ -1334,7 +1334,11 @@ function serializeSettings(use_layer_names) {
                 'group': samples_group_name
             });
 
-            state['samples-layers'][samples_layer_name] = {
+            if (!state['samples-layers'].hasOwnProperty(samples_group_name)) {
+                state['samples-layers'][samples_group_name] = {};
+            }
+
+            state['samples-layers'][samples_group_name][samples_layer_name] = {
                 'data-type'     : $(tr).attr('data-type'),
                 'height'        : parseFloat($(tr).find('.input-height').val()),
                 'margin'        : parseFloat($(tr).find('.input-margin').val()),
