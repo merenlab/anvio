@@ -265,8 +265,8 @@ function initData() {
             samples_groups.forEach(function (group_name) {
                 $('#sample_groups_container').append(`
                     <div style="float: left; padding: 4px 4px;">
-                        <input type="checkbox" id="group_${group_name}" value="${group_name}" ${group_name == 'default' ? 'checked="checked"' : ''}>
-                        <label style="margin-left: 2px;" for="group_${group_name}">${group_name}</label>
+                        <input type="checkbox" onclick="toggleSampleGroups();" id="group_${group_name}" value="${group_name}" ${group_name == 'default' ? 'checked="checked"' : ''}>
+                        <label style="margin-left: 2px;" onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
                     </div>`);
             });
 
@@ -282,6 +282,7 @@ function initData() {
             });
             
             buildSamplesTable(convert_samples_order_to_array(samples_information_default_layer_order));
+            toggleSampleGroups();
             changeViewData(response.views[1]);
 
             if (response.state[0] && response.state[1]) {
