@@ -477,8 +477,18 @@ function drawSamplesLayers(settings) {
             'y': (samples_layer_boundaries.length > 0) ? 0 - samples_layer_boundaries[samples_layer_boundaries.length-1][1] : 0,
         }
 
-        if (!(sample_name in samples_information_dict)) // skip if not sample
+        let found = false;
+        for (let group in samples_information_dict) {
+            if (samples_information_dict[group].hasOwnProperty(sample_name)) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            // not a sample, do not waste time.
             continue;
+        }
 
         // update start once
         if (samples_start == -1)
