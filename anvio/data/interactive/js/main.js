@@ -502,46 +502,57 @@ function populateColorDicts() {
         }
     }
 
-    var first_sample = Object.keys(samples_information_dict)[0];
+    for (let group in samples_information_dict) {
+        var first_sample = Object.keys(samples_information_dict[group])[0];
 
-    if (typeof first_sample !== 'undefined')
-    {
-        for (let sample_layer_name in samples_information_dict[first_sample])
+        if (typeof first_sample !== 'undefined')
         {
-            if (isNumber(samples_information_dict[first_sample][sample_layer_name]))
+            for (let sample_layer_name in samples_information_dict[group][first_sample])
             {
-                // no color table for numeric
-            }
-            else if (sample_layer_name.indexOf(';') > -1) // stack bar
-            {
-                if (!(sample_layer_name in samples_stack_bar_colors))
+                if (isNumber(samples_information_dict[group][first_sample][sample_layer_name]))
                 {
-                    samples_stack_bar_colors[sample_layer_name] = new Array();
-                    for (var j=0; j < sample_layer_name.split(";").length; j++)
-                    {
-                        samples_stack_bar_colors[sample_layer_name].push(randomColor());
-                    } 
+                    // no color table for numeric
                 }
-            }
-            else // categorical
-            {
-                if (typeof samples_categorical_colors[sample_layer_name] === 'undefined') {
-                    samples_categorical_colors[sample_layer_name] = {};
-                    samples_categorical_stats[sample_layer_name] = {};
+                else if (sample_layer_name.indexOf(';') > -1) // stack bar
+                {
+                    if (typeof samples_stack_bar_colors[group] === 'undefined') {
+                        samples_stack_bar_colors[group] = {};
+                    }
 
-                    for (let _sample in samples_information_dict)
+                    if (!(sample_layer_name in samples_stack_bar_colors[group]))
                     {
-                        var _category_name = samples_information_dict[_sample][sample_layer_name];
-                        if (_category_name == null || _category_name == '' || _category_name == 'null')
-                            _category_name = 'None';
-                        samples_information_dict[_sample][sample_layer_name] = _category_name;
+                        samples_stack_bar_colors[group][sample_layer_name] = new Array();
+                        for (var j=0; j < sample_layer_name.split(";").length; j++)
+                        {
+                            samples_stack_bar_colors[group][sample_layer_name].push(randomColor());
+                        } 
+                    }
+                }
+                else // categorical
+                {
+                    if (typeof samples_categorical_colors[group] === 'undefined') {
+                        samples_categorical_colors[group] = {};
+                        samples_categorical_stats[group] = {};
+                    }
 
-                        if (typeof samples_categorical_colors[sample_layer_name][_category_name] === 'undefined'){
-                            samples_categorical_colors[sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
-                            samples_categorical_stats[sample_layer_name][_category_name] = 0;
+                    if (typeof samples_categorical_colors[group][sample_layer_name] === 'undefined') {
+                        samples_categorical_colors[group][sample_layer_name] = {};
+                        samples_categorical_stats[group][sample_layer_name] = {};
+
+                        for (let _sample in samples_information_dict[group])
+                        {
+                            var _category_name = samples_information_dict[group][_sample][sample_layer_name];
+                            if (_category_name == null || _category_name == '' || _category_name == 'null')
+                                _category_name = 'None';
+                            samples_information_dict[group][_sample][sample_layer_name] = _category_name;
+
+                            if (typeof samples_categorical_colors[group][sample_layer_name][_category_name] === 'undefined'){
+                                samples_categorical_colors[group][sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
+                                samples_categorical_stats[group][sample_layer_name][_category_name] = 0;
+                            }
+
+                            samples_categorical_stats[group][sample_layer_name][_category_name]++;
                         }
-
-                        samples_categorical_stats[sample_layer_name][_category_name]++;
                     }
                 }
             }
