@@ -280,7 +280,8 @@ function initData() {
 
                 $('#samples_order').append(new Option(order_name, order));
             });
-            buildSamplesTable(samples_information_default_layer_order);
+            
+            buildSamplesTable(convert_samples_order_to_array(samples_information_default_layer_order));
             changeViewData(response.views[1]);
 
             if (response.state[0] && response.state[1]) {
