@@ -76,33 +76,30 @@ $(document).ready(function() {
 });
 
 function buildSamplesTable(samples_layer_order, samples_layers) {
-    var first_sample = Object.keys(samples_information_dict)[0];
-
-    if (typeof first_sample === 'undefined')
-    {
-        return;
-    }
-    
     var order_from_state = true;
-    var all_information_layers = Object.keys(samples_information_dict[first_sample]);
-
-    if (typeof(samples_layer_order) === 'undefined') {
-        samples_layer_order = all_information_layers;
-        order_from_state = false;
-    } else {
-        // add missing layers to state order list
-        all_information_layers.forEach(function(_lname) {
-            if (samples_layer_order.indexOf(_lname) == -1) {
-                samples_layer_order.push(_lname);
-            }
+    var all_information_layers = [];
+    
+    for (let group in samples_layer_order) {
+        samples_layer_order[group].forEach((layer_name) => {
+            all_information_layers.push({
+                'group': group,
+                'layer_name': layer_name,
+            });
         });
+    }
+
+    if (all_information_layers.length == 0) {
+        return;
     }
     
     $('#tbody_samples').empty();
 
-    for (var i=0; i < samples_layer_order.length; i++)
+    for (var i=0; i < all_information_layers.length; i++)
     {
-        var layer_name  = samples_layer_order[i];
+        var layer_name = all_information_layers[i]['layer_name'];
+        var group = all_information_layers[i]['group'];
+        var first_sample = Object.keys(samples_information_dict[group])[0];
+
         var pretty_name = getNamedLayerDefaults(layer_name, 'pretty_name', layer_name);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
         
@@ -114,7 +111,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             layer_settings = samples_layers[layer_name];
         }
 
-        if (isNumber(samples_information_dict[first_sample][layer_name]))
+        if (isNumber(samples_information_dict[group][first_sample][layer_name]))
         {
             var data_type = "numeric";
             
@@ -145,7 +142,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 var type         = "bar";
             }
 
-            var template = '<tr samples-layer-name="{name}" data-type="{data-type}">' +
+            var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles">{short-name}</td>' +
                 '<td><div class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
@@ -170,6 +167,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '</tr>';
 
             template = template.replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{group}', 'g'), group)
                                .replace(new RegExp('{data-type}', 'g'), data_type)
                                .replace(new RegExp('{short-name}', 'g'), short_name)
                                .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
@@ -205,7 +203,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 var margin = 15;
             }
 
-            var template = '<tr samples-layer-name="{name}" data-type="{data-type}">' +
+            var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{pretty-name}" class="titles">{short-name}</td>' +
                 '<td>n/a</td>' +
@@ -225,6 +223,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '</tr>';
 
             template = template.replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{group}', 'g'), group)
                                .replace(new RegExp('{data-type}', 'g'), data_type)
                                .replace(new RegExp('{short-name}', 'g'), short_name)
                                .replace(new RegExp('{pretty-name}', 'g'), pretty_name)
@@ -257,7 +256,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 var margin = 15;
             }
 
-            var template = '<tr samples-layer-name="{name}" data-type="{data-type}">' +
+            var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles">{short-name}</td>' +
                 '<td>n/a</td>' +
@@ -271,6 +270,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '</tr>';
 
             template = template.replace(new RegExp('{name}', 'g'), layer_name)
+                               .replace(new RegExp('{group}', 'g'), group)
                                .replace(new RegExp('{data-type}', 'g'), data_type)
                                .replace(new RegExp('{short-name}', 'g'), short_name)
                                .replace(new RegExp('{height}', 'g'), height)
