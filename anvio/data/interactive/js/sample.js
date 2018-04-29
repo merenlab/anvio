@@ -515,7 +515,7 @@ function drawSamplesLayers(settings) {
 
             if (samples_layer_settings['data-type'] == 'numeric') 
             {
-                var value = _samples_information_dict[sample_name][group][samples_layer_name];
+                var value = _samples_information_dict[group][sample_name][samples_layer_name];
                 var min = samples_layer_min[group][samples_layer_name];
                 var max = samples_layer_max[group][samples_layer_name];
                 
@@ -562,12 +562,12 @@ function drawSamplesLayers(settings) {
             }
             else if (samples_layer_settings['data-type'] == 'stack-bar') 
             {
-                var stack_bar_items = _samples_information_dict[sample_name][group][samples_layer_name];
+                var stack_bar_items = _samples_information_dict[group][sample_name][samples_layer_name];
 
                 var offset = 0;
                 for (var _i=0; _i < stack_bar_items.length; _i++)
                 {
-                    var color = samples_stack_bar_colors[samples_layer_name][_i];
+                    var color = samples_stack_bar_colors[group][samples_layer_name][_i];
                     var size  = (samples_layer_boundaries[i][1] - samples_layer_boundaries[i][0]) * stack_bar_items[_i];
 
                     var rect = drawPhylogramRectangle('samples',
@@ -589,7 +589,7 @@ function drawSamplesLayers(settings) {
             else
             {
                 // categorical
-                var value = _samples_information_dict[sample_name][group][samples_layer_name];
+                var value = _samples_information_dict[group][sample_name][samples_layer_name];
 
                 if (value == null || value == 'null' || value == '') {
                     value == 'None';
@@ -630,7 +630,7 @@ function drawSamplesLayers(settings) {
         {
             var samples_layer_name     = settings['samples-layer-order'][i]['layer_name'];
             var group =  settings['samples-layer-order'][i]['group'];
-            var samples_layer_settings = settings['samples-layers'][samples_layer_name];
+            var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
             var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
             var min = samples_layer_min[group][samples_layer_name];
             var max = samples_layer_max[group][samples_layer_name];
