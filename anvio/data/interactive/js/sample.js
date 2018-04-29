@@ -417,7 +417,7 @@ function drawSamplesLayers(settings) {
 
     // calculate sample information layer boundaries
     var samples_layer_boundaries = [];
-
+    console.log(samples_layer_min, samples_layer_max);
     for (var i=0; i < settings['samples-layer-order'].length; i++)
     {
         var samples_layer_name     = settings['samples-layer-order'][i]['layer_name'];
@@ -505,7 +505,6 @@ function drawSamplesLayers(settings) {
         {
             var samples_layer_name     = settings['samples-layer-order'][i]['layer_name'];
             var group = settings['samples-layer-order'][i]['group'];
-
             var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
             var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
 
@@ -558,6 +557,7 @@ function drawSamplesLayers(settings) {
                     true);
 
                 rect.setAttribute('sample-name', sample_name);
+                rect.setAttribute('sample-group', group);
                 rect.setAttribute('layer-name', samples_layer_name);
             }
             else if (samples_layer_settings['data-type'] == 'stack-bar') 
