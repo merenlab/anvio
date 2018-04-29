@@ -614,7 +614,7 @@ function buildLegendTables() {
                 'key': sample,
                 'item_names': names,
                 'item_keys': names,
-                'stats': samples_categorical_stats[sample]
+                'stats': samples_categorical_stats[group][sample]
             });
         }
     }
@@ -748,10 +748,16 @@ function createLegendColorPanel(legend_id) {
     for (var j = 0; j < legend['item_names'].length; j++) {
 
         var _name = legend['item_names'][j];
-        var _color = window[legend['source']][legend['key']][legend['item_keys'][j]]
 
-        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0)
+        if (legend.hasOwnProperty('group')) {
+            var _color = window[legend['source']][legend['group']][legend['key']][legend['item_keys'][j]];
+        } else {
+            var _color = window[legend['source']][legend['key']][legend['item_keys'][j]];
+        }
+
+        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0) {
             continue;
+        }
 
         if (legend.hasOwnProperty('stats')) {
             _name = _name + ' (' + legend['stats'][_name] + ')';
@@ -761,6 +767,7 @@ function createLegendColorPanel(legend_id) {
                                 '<div class="colorpicker legendcolorpicker" color="' + _color + '"' +
                                 'style="margin-right: 5px; background-color: ' + _color + '"' +
                                 'callback_source="' + legend['source'] + '"' +
+                                'callback_group="' + legend['group'] + '"' +
                                 'callback_pindex="' + legend['key'] + '"' +
                                 'callback_name="' + legend['item_keys'][j] + '"' + 
                                '></div>' + _name + '</div>';
@@ -775,7 +782,11 @@ function createLegendColorPanel(legend_id) {
         colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
-            window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+            if (typeof el.getAttribute('callback_group')) {
+                window[el.getAttribute('callback_source')][el.getAttribute('callback_group')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+            } else {
+                window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+            }
         }
     });
 }
