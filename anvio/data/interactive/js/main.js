@@ -602,33 +602,39 @@ function buildLegendTables() {
         });    
     }
 
-    for (let sample in samples_categorical_colors)
-    {
-        var names = Object.keys(samples_categorical_colors[sample]);
+    for (let group in samples_categorical_colors) {
+        for (let sample in samples_categorical_colors[group])
+        {
+            var names = Object.keys(samples_categorical_colors[group][sample]);
 
-        legends.push({
-            'name': getPrettyName(sample),
-            'source': 'samples_categorical_colors',
-            'key': sample,
-            'item_names': names,
-            'item_keys': names,
-            'stats': samples_categorical_stats[sample]
-        });
+            legends.push({
+                'name': group + ' :: ' + getPrettyName(sample),
+                'source': 'samples_categorical_colors',
+                'group': group,
+                'key': sample,
+                'item_names': names,
+                'item_keys': names,
+                'stats': samples_categorical_stats[sample]
+            });
+        }
     }
 
-    for (let sample in samples_stack_bar_colors)
-    {
-        var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
-        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
-        var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
+    for (let group in samples_stack_bar_colors) {
+        for (let sample in samples_stack_bar_colors[group])
+        {
+            var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
+            var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+            var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
-        legends.push({
-            'name': getPrettyName(pretty_name),
-            'source': 'samples_stack_bar_colors',
-            'key': sample,
-            'item_names': names,
-            'item_keys': keys
-        });
+            legends.push({
+                'name': group + ' :: ' + getPrettyName(pretty_name),
+                'source': 'samples_stack_bar_colors',
+                'group': group,
+                'key': sample,
+                'item_names': names,
+                'item_keys': keys
+            });
+        }
     }
 
     for (var i=0; i < legends.length; i++)
