@@ -1278,6 +1278,7 @@ class StructureInteractive():
             self.args.engine = engine
             self.var[engine] = variability_engines[engine](self.args)
             self.var[engine].process()
+            self.engines_profiled.append(engine)
         self.args.engine = None # this variable is no longer meaningful
         self.engines_profiled = self.var.keys()
 
@@ -1288,6 +1289,7 @@ class StructureInteractive():
         output = {}
         output['available_gene_callers_ids'] = structure_db.genes_with_structure
         output['available_sample_ids'] = self.samples_of_interest
+        output['available_engines'] = list(self.engines_profiled)
 
         structure_db.disconnect()
         return output
@@ -1303,8 +1305,7 @@ class StructureInteractive():
 
 
     def get_variability(self, options):
-        # TO DO: filter here.
-        pass
+        print(options['engine'])
 
 
 class ContigsInteractive():

@@ -1,0 +1,6 @@
+body {
+    background-color: white;
+}
+.slider-selection {
+    background-image: linear-gradient(to bottom, #6262b9 0%, #f5f5f5 100%);
+}
