@@ -108,6 +108,13 @@ class VariabilitySuper(object):
             raise ConfigError("The VariabilitySuper class is inherited with an unknown engine.\
                                WTF is '%s'? Anvi'o needs an adult :(" % self.engine)
 
+        if not self.data:
+            if not self.contigs_db_path:
+                raise ConfigError("You need to provide a contigs database.")
+
+            if not self.profile_db_path:
+                raise ConfigError("You need to provide a profile database.")
+
         if self.data and (self.contigs_db_path or self.profile_db_path):
             raise ConfigError("VariabilitySuper was initialized with self.data, which is fine. But\
                                profile and contigs database paths were also provided so that the\
@@ -122,7 +129,7 @@ class VariabilitySuper(object):
 
         if self.data and self.splits_of_interest_path:
             if "split_name" not in self.data.columns:
-                raise ConfigError("self.data does not have a split_names column, and therefore you\
+                raise ConfigError("self.data does not have a split_name column, and therefore you\
                                    cannot provide a splits of interest filepath (self.splits_of_interest_path).")
 
 
@@ -134,6 +141,9 @@ class VariabilitySuper(object):
         if self.samples_of_interest_path:
             filesnpaths.is_file_tab_delimited(self.samples_of_interest_path, expected_number_of_fields=1)
             self.samples_of_interest = set([s.strip() for s in open(self.samples_of_interest_path).readlines()])
+
+        else:
+            self.samples_of_interest = set([])
 
 
     def get_genes_of_interest(self):
