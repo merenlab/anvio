@@ -525,12 +525,36 @@ function drawSamplesLayers(settings) {
             }
             else if (samples_layer_settings['data-type'] == 'stack-bar') 
             {
-/*                var stack_bar_items = _samples_information_dict[group][sample_name][samples_layer_name];
+                var norm = samples_layer_settings['normalization'];
+                var stack_bar_items = _samples_information_dict[group][sample_name][samples_layer_name].split(';');
+                var _sum = 0;
+                for (var _j=0; _j < stack_bar_items.length; _j++)
+                {
+                    if (norm == 'sqrt')
+                    {
+                        stack_bar_items[_j] = Math.sqrt(parseFloat(stack_bar_items[_j]));
+                    }
+                    else if (norm == 'log')
+                    {
+                        stack_bar_items[_j] = log10(parseFloat(stack_bar_items[_j]) + 1);
+                    }
+                    else
+                    {
+                        stack_bar_items[_j] = parseFloat(stack_bar_items[_j]);
+                    }
+
+                    _sum = _sum + stack_bar_items[_j];
+                }
+
+                for (var _j=0; _j < stack_bar_items.length; _j++)
+                {
+                    stack_bar_items[_j] = stack_bar_items[_j] / _sum;
+                }
 
                 var offset = 0;
                 for (var _i=0; _i < stack_bar_items.length; _i++)
                 {
-                    var color = samples_stack_bar_colors[samples_layer_name][_i];
+                    var color = samples_stack_bar_colors[group][samples_layer_name][_i];
                     var size  = (samples_layer_boundaries[i][1] - samples_layer_boundaries[i][0]) * stack_bar_items[_i];
 
                     var rect = drawPhylogramRectangle('samples',
@@ -548,7 +572,7 @@ function drawSamplesLayers(settings) {
                     rect.setAttribute('layer-name', samples_layer_name);
 
                     offset = offset + size;
-                }*/
+                }
             }
             else
             {
