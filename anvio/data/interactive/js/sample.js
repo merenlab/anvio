@@ -112,6 +112,39 @@ function toggleSampleGroups() {
 };
 
 
+function update_samples_layer_min_max(select) {
+    let tr = $(select).closest('tr');
+
+    let group = $(tr).attr('samples-group-name');
+    let sample_name = $(tr).attr('samples-layer-name');
+
+    let norm = $(select).val();
+
+    let max = null;
+
+    for (let lname in samples_information_dict[group]) {
+        if (norm == 'none') {
+            if (max === null || parseFloat(samples_information_dict[group][lname][sample_name]) > max) {
+                max = parseFloat(samples_information_dict[group][lname][sample_name]);
+            }
+        }
+        else if (norm == 'sqrt') {
+            if (max === null || Math.sqrt(parseFloat(samples_information_dict[group][lname][sample_name])) > max) {
+                max = Math.sqrt(parseFloat(samples_information_dict[group][lname][sample_name]));
+            }
+        } 
+        else if (norm == 'log') {
+            if (max === null || log10(parseFloat(samples_information_dict[group][lname][sample_name]) + 1) > max) {
+                max = log10(parseFloat(samples_information_dict[group][lname][sample_name]) + 1);
+            }
+        }
+    }
+
+    $(tr).find('.input-min').val('0');
+    $(tr).find('.input-max').val(max);
+};
+
+
 function buildSamplesTable(samples_layer_order, samples_layers) {
     var order_from_state = true;
     var all_information_layers = [];
@@ -171,8 +204,6 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 var norm         = layer_settings['normalization'];
                 var min          = layer_settings['min']['value'];
                 var max          = layer_settings['max']['value'];
-                var min_disabled = layer_settings['min']['disabled'];
-                var max_disabled = layer_settings['max']['disabled'];
                 var height       = layer_settings['height'];
                 var color        = layer_settings['color'];
                 var margin       = layer_settings['margin'];
@@ -184,8 +215,6 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 var norm         = getNamedLayerDefaults(layer_name, 'norm', 'none');
                 var min          = 0;
                 var max          = 0;
-                var min_disabled = true;
-                var max_disabled = true;
                 var height       = getNamedLayerDefaults(layer_name, 'height', 500);
                 var color        = getNamedLayerDefaults(layer_name, 'color', '#919191');
                 var margin       = 15;
@@ -204,7 +233,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '    </select>' +
                 '</td>' +
                 '<td>' +
-                '    <select onChange="clearMinMax(this);" class="normalization">' +
+                '    <select onChange="update_samples_layer_min_max(this);" class="normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                 '        <option value="log"{option-log}>log</option>' +
@@ -212,8 +241,8 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '</td>' +
                 '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
                 '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
-                '<td><input class="input-min" type="text" size="4" value="{min}"{min-disabled}></input></td>' +
-                '<td><input class="input-max" type="text" size="4" value="{max}"{min-disabled}></input></td>' +
+                '<td><input class="input-min" type="text" size="4" value="{min}"></input></td>' +
+                '<td><input class="input-max" type="text" size="4" value="{max}"></input></td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
@@ -231,8 +260,6 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                                .replace(new RegExp('{height}', 'g'), height)
                                .replace(new RegExp('{min}', 'g'), min)
                                .replace(new RegExp('{max}', 'g'), max)
-                               .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
-                               .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
                                .replace(new RegExp('{margin}', 'g'), margin);
             
             $('#tbody_samples').append(template); 
@@ -260,7 +287,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '<td>n/a</td>' +
                 '<td style="width: 50px;">n/a</td>' +
                 '<td>' +
-                '    <select onChange="clearMinMax(this);" class="normalization">' +
+                '    <select class="normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                 '        <option value="log"{option-log}>log</option>' +
@@ -338,6 +365,10 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
         }  
     }
 
+    $('#tbody_samples .normalization').each((index, select) => {
+        $(select).trigger('change');
+    });
+
     $('.colorpicker').colpick({
         layout: 'hex',
         submit: 0,
@@ -371,76 +402,7 @@ function drawSamplesLayers(settings) {
         }
     }
 
-    var samples_layer_max = {};
-    var samples_layer_min = {};
-
     var _samples_information_dict = jQuery.extend(true, {}, samples_information_dict); // keep original
-
-    for (group in _samples_information_dict)
-    {
-        for (sample in _samples_information_dict[group])
-        {
-            for (layer in _samples_information_dict[group][sample])
-            {
-                if (settings['samples-layers'][group][layer]['data-type'] == 'numeric') 
-                {
-                    var norm = settings['samples-layers'][group][layer]['normalization'];
-
-                    if (norm == 'sqrt')
-                    {
-                        _samples_information_dict[group][sample][layer] = Math.sqrt(parseFloat(_samples_information_dict[group][sample][layer]));
-                    }
-                    else if (norm == 'log')
-                    {
-                        _samples_information_dict[group][sample][layer] = log10(parseFloat(_samples_information_dict[group][sample][layer]) + 1);
-                    }
-
-                    if (typeof samples_layer_max[group] === 'undefined') {
-                        samples_layer_max[group] = {};
-                    }
-                    if (typeof samples_layer_min[group] === 'undefined') {
-                        samples_layer_min[group] = {};
-                    }
-
-                    if (typeof samples_layer_max[layer] === 'undefined' || parseFloat(_samples_information_dict[group][sample][layer]) > samples_layer_max[group][layer])
-                    {
-                        samples_layer_max[group][layer] = parseFloat(_samples_information_dict[group][sample][layer]);
-                    }
-                }
-                else if (settings['samples-layers'][group][layer]['data-type'] == 'stack-bar') 
-                {
-                    var norm = settings['samples-layers'][group][layer]['normalization'];
-
-                    var stack_bar_items = _samples_information_dict[group][sample][layer].split(';');
-                    var _sum = 0;
-                    for (var j=0; j < stack_bar_items.length; j++)
-                    {
-                        if (norm == 'sqrt')
-                        {
-                            stack_bar_items[j] = Math.sqrt(parseFloat(stack_bar_items[j]));
-                        }
-                        else if (norm == 'log')
-                        {
-                            stack_bar_items[j] = log10(parseFloat(stack_bar_items[j]) + 1);
-                        }
-                        else
-                        {
-                            stack_bar_items[j] = parseFloat(stack_bar_items[j]);
-                        }
-
-                        _sum = _sum + stack_bar_items[j];
-                    }
-
-                    for (var j=0; j < stack_bar_items.length; j++)
-                    {
-                        stack_bar_items[j] = stack_bar_items[j] / _sum;
-                    }
-
-                    _samples_information_dict[group][sample][layer] = stack_bar_items;
-                }
-            }
-        }
-    }
 
     // calculate sample information layer boundaries
     var samples_layer_boundaries = [];
@@ -450,18 +412,6 @@ function drawSamplesLayers(settings) {
         var samples_layer_name     = settings['samples-layer-order'][i]['layer_name'];
         var group                  = settings['samples-layer-order'][i]['group'];
         var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
-
-        if (samples_layer_settings['min']['disabled'])
-        {
-            $('#tbody_samples [samples-layer-name=' + samples_layer_name + '] .input-min').prop('disabled', false);
-            $('#tbody_samples [samples-layer-name=' + samples_layer_name + '] .input-max').prop('disabled', false).val(samples_layer_max[group][samples_layer_name])
-            samples_layer_min[group][samples_layer_name] = 0;
-        }
-        else
-        {
-            samples_layer_max[group][samples_layer_name] = samples_layer_settings['max']['value'];
-            samples_layer_min[group][samples_layer_name] = samples_layer_settings['min']['value'];
-        }
 
         var start = (samples_layer_settings['height'] == 0) ? 0 : samples_layer_settings['margin'];
         var end   = start + samples_layer_settings['height'];
@@ -529,9 +479,8 @@ function drawSamplesLayers(settings) {
             if (samples_layer_settings['data-type'] == 'numeric') 
             {
                 var value = _samples_information_dict[group][sample_name][samples_layer_name];
-                var min = samples_layer_min[group][samples_layer_name];
-                var max = samples_layer_max[group][samples_layer_name];
-                
+                var min = parseFloat(samples_layer_settings['min']['value']);
+                var max = parseFloat(samples_layer_settings['max']['value']);
                 var ratio;
                 if (value > max) {
                     ratio = 1;
@@ -576,7 +525,7 @@ function drawSamplesLayers(settings) {
             }
             else if (samples_layer_settings['data-type'] == 'stack-bar') 
             {
-                var stack_bar_items = _samples_information_dict[group][sample_name][samples_layer_name];
+/*                var stack_bar_items = _samples_information_dict[group][sample_name][samples_layer_name];
 
                 var offset = 0;
                 for (var _i=0; _i < stack_bar_items.length; _i++)
@@ -599,7 +548,7 @@ function drawSamplesLayers(settings) {
                     rect.setAttribute('layer-name', samples_layer_name);
 
                     offset = offset + size;
-                }
+                }*/
             }
             else
             {
@@ -648,8 +597,8 @@ function drawSamplesLayers(settings) {
             var group                  = settings['samples-layer-order'][i]['group'];
             var samples_layer_settings = settings['samples-layers'][group][samples_layer_name];
             var samples_pretty_name    = (samples_layer_name.indexOf('!') > -1) ? samples_layer_name.split('!')[0] : samples_layer_name;
-            var min = samples_layer_min[group][samples_layer_name];
-            var max = samples_layer_max[group][samples_layer_name];
+            var min = parseFloat(samples_layer_settings['min']['value']);
+            var max = parseFloat(samples_layer_settings['max']['value']);
 
             if (samples_layer_settings['height'] == 0) {
                 continue;
