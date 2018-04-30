@@ -1393,6 +1393,11 @@ function serializeSettings(use_layer_names) {
         }
     );
 
+    state['samples-groups'] = {};
+    $('#sample_groups_container input:checkbox').each((index, checkbox) => {
+        state['samples-groups'][$(checkbox).val()] = $(checkbox).is(':checked');
+    });
+
     return state;
 }
 
@@ -2731,6 +2736,17 @@ function processState(state_name, state) {
 
     buildLayersTable(layer_order, views[current_view]);
     buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+
+    if (state.hasOwnProperty('samples-groups')) {
+        for (let group_name in state['samples-groups']) {
+            let checkbox = $('input:checkbox#group_' + group_name);
+
+            if (checkbox) {
+                $(checkbox).prop('checked', state['samples-groups'][group_name]);
+            }
+        }
+    }
+
     buildLegendTables();
 
     current_state_name = state_name;
