@@ -193,7 +193,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             typeof(samples_layers[group]) !== 'undefined' && 
             typeof(samples_layers[group][layer_name]) !== 'undefined') {
                 hasSettings = true;
-                layer_settings = samples_layers[layer_name];
+                layer_settings = samples_layers[group][layer_name];
         }
 
         if (isNumber(samples_information_dict[group][first_sample][layer_name]))

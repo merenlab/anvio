@@ -2508,6 +2508,7 @@ function loadState()
                                 changeViewData(response[2]);
                                 processState(state_name, response[0]);
                             }catch(e){
+                                console.error("Exception thrown", e.stack);
                                 toastr.error('Failed to parse state data, ' + e);
                                 defer.reject();
                                 return;
