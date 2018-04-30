@@ -1240,8 +1240,14 @@ class StructureInteractive():
         self.contig_db_path = A('contigs_db', null)
         self.profile_db_path = A('profile_db', null)
         self.structure_db_path = A('structure_db', null)
+        self.variability_table_path = A('variability_profile', null)
         self.no_variability = A('no_variability', bool)
         self.samples_of_interest = A('samples_of_interest', null)
+
+        if self.variability_table_path:
+            raise ConfigError("al;sdjfkjfsadk dsjkdffadskjfadskkj fasd jafksdf")
+            import anvio.variabilityops as vops
+            vops.VariabilityData(args)
 
         self.var = {}
         self.engines_profiled = []
@@ -1251,8 +1257,13 @@ class StructureInteractive():
             self.samples_of_interest = sorted(list(profile_db.samples))
             profile_db.disconnect()
 
-        if self.no_variability:
+        if not self.no_variability:
             self.profile_variability_data()
+
+
+    def sanity_check(self):
+        # sanity should in theory could not be run
+        pass
 
 
     def profile_variability_data(self, engines = ["AA", "CDN"]):
@@ -1294,7 +1305,6 @@ class StructureInteractive():
     def get_variability(self, options):
         # TO DO: filter here.
         pass
-
 
 
 class ContigsInteractive():
