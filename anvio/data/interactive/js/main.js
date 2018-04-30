@@ -725,16 +725,28 @@ function batchColor(legend_id) {
         }
 
         if (rule == 'all') {
-            window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+            if (typeof legend['group'] === 'undefined') {
+                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+            } else {
+                window[legend['source']][legend['group']][legend['key']][legend['item_keys'][i]] = color;
+            }
         }
         else if (rule == 'name') {
             if (legend['item_names'][i].toLowerCase().indexOf($('#name_rule_' + legend_id).val().toLowerCase()) > -1) {
-                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                if (typeof legend['group'] === 'undefined') {
+                    window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                } else {
+                    window[legend['source']][legend['group']][legend['key']][legend['item_keys'][i]] = color;
+                }
             }
         } 
         else if (rule == 'count') {
             if (eval("legend['stats'][legend['item_keys'][i]] " + unescape($('#count_rule_'+legend_id).val()) + " " + parseFloat($('#count_rule_value_'+legend_id).val()))) {
-                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                if (typeof legend['group'] === 'undefined') {
+                    window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                } else {
+                    window[legend['source']][legend['group']][legend['key']][legend['item_keys'][i]] = color;
+                }
             }
         }
     }
@@ -768,7 +780,7 @@ function createLegendColorPanel(legend_id) {
                                 '<div class="colorpicker legendcolorpicker" color="' + _color + '"' +
                                 'style="margin-right: 5px; background-color: ' + _color + '"' +
                                 'callback_source="' + legend['source'] + '"' +
-                                'callback_group="' + legend['group'] + '"' +
+                                'callback_group="' + ((typeof legend['group'] !== 'undefined') ? legend['group'] : '') + '"' +
                                 'callback_pindex="' + legend['key'] + '"' +
                                 'callback_name="' + legend['item_keys'][j] + '"' + 
                                '></div>' + _name + '</div>';
@@ -783,7 +795,7 @@ function createLegendColorPanel(legend_id) {
         colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
-            if (typeof el.getAttribute('callback_group')) {
+            if (el.getAttribute('callback_group') !== '') {
                 window[el.getAttribute('callback_source')][el.getAttribute('callback_group')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
             } else {
                 window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
