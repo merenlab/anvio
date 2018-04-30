@@ -43,7 +43,7 @@ run = terminal.Run(width=62)
 
 
 class VariabilitySuper(object):
-    def __init__(self, args={}, data={}, p=progress, r=run):
+    def __init__(self, args={}, data=pd.DataFrame({}), p=progress, r=run):
         self.args = args
 
         if args.engine not in variability_engines:
@@ -108,26 +108,26 @@ class VariabilitySuper(object):
             raise ConfigError("The VariabilitySuper class is inherited with an unknown engine.\
                                WTF is '%s'? Anvi'o needs an adult :(" % self.engine)
 
-        if not self.data:
+        if self.data.empty:
             if not self.contigs_db_path:
                 raise ConfigError("You need to provide a contigs database.")
 
             if not self.profile_db_path:
                 raise ConfigError("You need to provide a profile database.")
 
-        if self.data and (self.contigs_db_path or self.profile_db_path):
+        if not self.data.empty and (self.contigs_db_path or self.profile_db_path):
             raise ConfigError("VariabilitySuper was initialized with self.data, which is fine. But\
                                profile and contigs database paths were also provided so that the\
                                variability data would be generated on the fly. Since sanity_check()\
                                was ran, I'm complaining.")
 
-        if self.data and (self.collection_name or self.bin_id):
+        if not self.data.empty and (self.collection_name or self.bin_id):
             raise ConfigError("VariabilitySuper was initialized with self.data, which is fine. But\
                                a collection name and/or a bin id were also provided. Unfortunately\
                                self.data knows nothing about bin IDs or collection names. Since\
                                sanity_check() was ran, I'm complaining.")
 
-        if self.data and self.splits_of_interest_path:
+        if not self.data.empty and self.splits_of_interest_path:
             if "split_name" not in self.data.columns:
                 raise ConfigError("self.data does not have a split_name column, and therefore you\
                                    cannot provide a splits of interest filepath (self.splits_of_interest_path).")
@@ -248,34 +248,36 @@ class VariabilitySuper(object):
         self.get_genes_of_interest()
 
         if self.genes_of_interest:
+            genes_available = self.gene_callers_id_to_split_name_dict if self.data.empty else self.data["corresponding_gene_call"].unique()
             # check for genes that do not appear in the contigs database
-            bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.gene_callers_id_to_split_name_dict]
+            bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in genes_available]
             if bad_gene_caller_ids:
                 self.progress.end()
                 some_to_report = bad_gene_caller_ids[:5] if len(bad_gene_caller_ids) <= 5 else bad_gene_caller_ids
-                raise ConfigError("{} of the gene caller ids you provided is not known to this contigs\
-                                   database. {}: {}. You only have 2 lives left. 2 more mistakes, and\
-                                   anvi'o will automatically uninstall itself. Yes, seriously :(".\
+                raise ConfigError("{} of the gene caller ids you provided are not {}. {}: {}. You only have 2 lives left.\
+                                   2 more mistakes, and\ anvi'o will automatically uninstall itself. Yes, seriously :(".\
                                    format(len(bad_gene_caller_ids),
+                                          "in this variability profile" if not self.data.empty else "known to this contigs database",
                                           "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
                                           ", ".join([str(x) for x in some_to_report])))
 
         self.progress.update('Making sure you are not playing games ..')
         if self.engine not in ['NT', 'CDN', 'AA']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
+        self.table_structure = t.variable_nts_table_structure if self.engine ==  'NT' else t.variable_codons_table_structure
 
         # set items of interest
         self.get_items()
         # populate substitution scoring matrices
         self.get_substitution_scoring_matrices()
 
-        if self.data:
-            # we already have our variability data. nothing left to do here
+        if not self.data.empty:
+            # if we already have variability data we are almost done
             self.load_structure_data()
             self.progress.end()
             self.check_if_data_is_empty()
             self.sample_ids = self.data["sample_id"].unique()
-
+            return
 
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
@@ -329,7 +331,6 @@ class VariabilitySuper(object):
         # data is one of them, since they will be read from different tables.
         # another one is the substitution scoring matrices.
         if self.engine == 'NT':
-            self.table_structure = t.variable_nts_table_structure
             self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, table_structure=self.table_structure)
 
         elif self.engine == 'CDN' or self.engine == 'AA':
@@ -338,7 +339,6 @@ class VariabilitySuper(object):
                                    therefore there is nothing to report here for codon or amino acid variability\
                                    profiles :(")
 
-            self.table_structure = t.variable_codons_table_structure
             self.data = profile_db.db.get_table_as_dataframe(t.variable_codons_table_name)
 
             self.check_if_data_is_empty()
@@ -393,7 +393,7 @@ class VariabilitySuper(object):
 
 
     def check_if_data_is_empty(self):
-        if not len(self.data):
+        if self.data.empty:
             self.progress.end()
             self.run.info_single('Nothing left in the variability data to work with. Quitting :/', 'red', 1, 1)
             sys.exit()
@@ -1672,28 +1672,15 @@ class VariabilityData(VariabilitySuper):
         self.load_data()
 
         # init VariabilitySuper
-        args.engine = self.engine
+        self.args.engine = self.engine
+        self.args.contigs_db_path = None
+        self.args.profile_db_path = None
         VariabilitySuper.__init__(self, args, self.data, p=progress, r=run)
 
-        self.get_items()
-        self.get_samples_of_interest()
-        self.check_how_splits_are_found()
-        self.get_splits_of_interest()
-        self.get_genes_of_interest()
-        if self.genes_of_interest:
-            # check for genes that do not appear in the variability table
-            bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.data["corresponding_gene_call"].unique()]
-            if bad_gene_caller_ids:
-                self.progress.end()
-                some_to_report = bad_gene_caller_ids[:5] if len(bad_gene_caller_ids) <= 5 else bad_gene_caller_ids
-                raise ConfigError("{} of the gene caller ids you are interested in are not in {}. {}: {}. You only have\
-                                   2 lives left. 2 more mistakes, and anvi'o will automatically uninstall itself. Yes,\
-                                   seriously :(".format(len(bad_gene_caller_ids),
-                                                        self.variability_table_path,
-                                                        "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
-                                                        ", ".join([str(x) for x in some_to_report])))
-                                   
-        print(self.items)
+        self.init_commons()
+        print(self.items())
+
+
 
 
     def load_data(self):
