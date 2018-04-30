@@ -450,11 +450,6 @@ function drawSamplesLayers(settings) {
             'y': (samples_layer_boundaries.length > 0) ? 0 - samples_layer_boundaries[samples_layer_boundaries.length-1][1] : 0,
         }
 
-        // update start once
-        if (samples_start == -1)
-            samples_start = layer_index;
-        samples_end = layer_index;
-
         if(!gradient_done)
         {
             drawGradientBackground(layer_boundaries[layer_index][0]);
@@ -475,6 +470,13 @@ function drawSamplesLayers(settings) {
             if (!_samples_information_dict[group].hasOwnProperty(sample_name) || !_samples_information_dict[group][sample_name].hasOwnProperty(samples_layer_name)) {
                 continue;
             }
+
+            if (samples_start == -1) {
+                samples_start = layer_index;
+            } else {
+                samples_start = Math.min(samples_start, layer_index);
+            }
+            samples_end = Math.max(layer_index);
 
             if (samples_layer_settings['data-type'] == 'numeric') 
             {
@@ -625,10 +627,6 @@ function drawSamplesLayers(settings) {
             var max = parseFloat(samples_layer_settings['max']['value']);
 
             if (samples_layer_settings['height'] == 0) {
-                continue;
-            }
-
-            if (!_samples_information_dict[group].hasOwnProperty(sample_name) || !_samples_information_dict[group][sample_name].hasOwnProperty(samples_layer_name)) {
                 continue;
             }
 
