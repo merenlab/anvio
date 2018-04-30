@@ -12,9 +12,17 @@ function migrate_state(state) {
             }
 
         });
-        
+
         if (state.hasOwnProperty('samples-layer-order')) {
-            let new_order = convert_samples_order_to_array(state['samples-layer-order']);
+            let new_order = [];
+
+            state['samples-layer-order'].forEach((sample_layer_name) => {
+                new_order.push({
+                    'group': 'default',
+                    'layer_name': sample_layer_name
+                });
+            });
+
             delete state['samples-layer-order'];
             state['samples-layer-order'] = new_order;
         }
