@@ -43,13 +43,13 @@ run = terminal.Run(width=62)
 
 
 class VariabilitySuper(object):
-    def __init__(self, args={}, p=progress, r=run):
+    def __init__(self, args={}, data={}, p=progress, r=run):
         self.args = args
 
         if args.engine not in variability_engines:
             raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
-        self.data = {}
 
+        self.data = data
         self.splits_of_interest = set([])
         self.samples_of_interest = set([])
         self.genes_of_interest = set([])
@@ -152,9 +152,6 @@ class VariabilitySuper(object):
 
 
     def get_splits_of_interest(self):
-        # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
-        self.check_how_splits_are_found()
-
         self.progress.update('Attempting to get our splits of interest sorted ...')
         if self.split_source == "gene_caller_ids":
             self.splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
@@ -212,6 +209,9 @@ class VariabilitySuper(object):
             filesnpaths.is_output_file_writable(self.output_file_path)
 
         self.get_samples_of_interest()
+        # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
+        self.check_how_splits_are_found()
+        self.get_splits_of_interest()
         self.get_genes_of_interest()
 
         if self.genes_of_interest:
@@ -231,8 +231,18 @@ class VariabilitySuper(object):
         if self.engine not in ['NT', 'CDN', 'AA']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
-        # Set items of interest while you are at it. 
+        # set items of interest
         self.get_items()
+        # populate substitution scoring matrices
+        self.get_substitution_scoring_matrices()
+
+        if self.data:
+            # we already have our variability data. nothing left to do here
+            self.load_structure_data()
+            self.progress.end()
+            self.check_if_data_is_empty()
+            self.sample_ids = self.data["sample_id"].unique()
+
 
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
@@ -267,9 +277,6 @@ class VariabilitySuper(object):
                                     However it wasn't found at '%s' :/" % auxiliary_data_file_path)
             self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, None, ignore_hash=True)
 
-        # determine the splits of interest
-        self.get_splits_of_interest()
-
         self.input_file_path = '/' + '/'.join(os.path.abspath(self.profile_db_path).split('/')[:-1])
 
         self.progress.update('Reading the profile database ...')
@@ -282,9 +289,6 @@ class VariabilitySuper(object):
                                 Sorry, there is nothing to report here!")
 
         self.progress.end()
-
-        # populate substitution scoring matrices
-        self.get_substitution_scoring_matrices()
 
         self.progress.new('Init')
 
@@ -318,7 +322,13 @@ class VariabilitySuper(object):
         # we're done here. bye.
         profile_db.disconnect()
 
-        ##################### LOAD STRUCTURE DATA #####################
+        self.load_structure_data()
+
+        # done Init
+        self.progress.end()
+
+
+    def load_structure_data(self):
         # open up residue_info table from structure db, if provided
         if self.append_structure_residue_info:
 
@@ -347,9 +357,6 @@ class VariabilitySuper(object):
 
             # we're done here. bye.
             structure_db.disconnect()
-
-        # done Init
-        self.progress.end()
 
 
     def check_if_data_is_empty(self):
@@ -1615,11 +1622,50 @@ class VariabilityNetwork:
         self.run.info('network_description', self.output_file_path)
 
 
-class VariabilityTable(object):
+class VariabilityData(VariabilitySuper):
     def __init__(self, args={}, p=progress, r=run):
         self.run = r
         self.progress = p
 
-        pass
+        self.args = args
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.variability_table_path = A('variability_profile', null)
+
+        # determine the engine type of the variability table
+        self.engine = utils.get_variability_table_engine_type(self.variability_table_path)
+
+        # load the data
+        self.load_data()
+
+        # init VariabilitySuper
+        args.engine = self.engine
+        VariabilitySuper.__init__(self, args, self.data, p=progress, r=run)
+
+        self.get_items()
+        self.get_samples_of_interest()
+        self.check_how_splits_are_found()
+        self.get_splits_of_interest()
+        self.get_genes_of_interest()
+        if self.genes_of_interest:
+            # check for genes that do not appear in the variability table
+            bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.data["corresponding_gene_call"].unique()]
+            if bad_gene_caller_ids:
+                self.progress.end()
+                some_to_report = bad_gene_caller_ids[:5] if len(bad_gene_caller_ids) <= 5 else bad_gene_caller_ids
+                raise ConfigError("{} of the gene caller ids you are interested in are not in {}. {}: {}. You only have\
+                                   2 lives left. 2 more mistakes, and anvi'o will automatically uninstall itself. Yes,\
+                                   seriously :(".format(len(bad_gene_caller_ids),
+                                                        self.variability_table_path,
+                                                        "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
+                                                        ", ".join([str(x) for x in some_to_report])))
+                                   
+        print(self.items)
+
+
+    def load_data(self):
+        """load the variability data (output of anvi-gen-variabliity-profile)"""
+        self.data = pd.read_csv(self.variability_table_path, sep="\t")
+
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
