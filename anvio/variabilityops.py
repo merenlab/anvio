@@ -52,6 +52,7 @@ class VariabilitySuper(object):
 
         self.splits_of_interest = set([])
         self.samples_of_interest = set([])
+        self.genes_of_interest = set([])
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
@@ -96,54 +97,27 @@ class VariabilitySuper(object):
         self.comprehensive_variability_scores_computed = False
 
         # Initialize the contigs super
-        filesnpaths.is_file_exists(self.contigs_db_path)
-        dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
-        self.init_contig_sequences()
+        if self.contigs_db_path:
+            filesnpaths.is_file_exists(self.contigs_db_path)
+            dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
+            self.init_contig_sequences()
 
 
-    def init_commons(self):
-        self.progress.new('Init')
-
-        if self.only_if_structure and not self.structure_db_path:
-            self.progress.end()
-            raise ConfigError("You can't ask to only include genes with structures \
-                               (--only-if-structure) without providing a structure database.")
-
-        self.progress.update('Checking the output file path ..')
-        if self.output_file_path:
-            filesnpaths.is_output_file_writable(self.output_file_path)
-
+    def get_samples_of_interest(self):
         self.progress.update('Checking the samples of interest ..')
+        if self.samples_of_interest:
+            return
+
         if self.samples_of_interest_path:
             filesnpaths.is_file_tab_delimited(self.samples_of_interest_path, expected_number_of_fields=1)
             self.samples_of_interest = set([s.strip() for s in open(self.samples_of_interest_path).readlines()])
-        else:
-            self.samples_of_interest = set([])
 
-        # splits of interest are specified either by providing the splits of interest directly, or
-        # by providing a collection and bin. Alternatively, splits can be inferred from genes of
-        # interest. These three routes for determining splits of interest are mutually exclusive and
-        # we make sure the user/programmer provides parameters for one route only.
-        gene_route  = True if self.genes_of_interest_path or self.gene_caller_ids else False
-        split_route = True if self.splits_of_interest_path or self.splits_of_interest else False
-        bin_route   = True if self.bin_id or self.collection_name else False
 
-        if not any([gene_route, split_route, bin_route]):
-            raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
-                               --genes-of-interest), OR a list of splits (--splits-of-interest), OR\
-                               a collection and bin combo (--collection-name and bin-id). You\
-                               supplied none of these parameters and so anvi'o doesn't know what you\
-                               want. If you are truly interested in everything, you\
-                               should run the script anvi-script-add-default-collection, and then\
-                               supply the collection name 'DEFAULT' and the bin id 'EVERYTHING'.")
-        if sum([gene_route, split_route, bin_route]) > 1:
-            raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
-                               --genes-of-interest), OR a list of splits (--splits-of-interest), OR a\
-                               collection and bin combo (--collection-name and bin-id). You\
-                               supplied too many of these parameters, and now anvi'o doesn't\
-                               know what you want.")
-
+    def get_genes_of_interest(self):
         self.progress.update('Setting up genes of interest')
+        if self.genes_of_interest:
+            return
+
         if self.genes_of_interest_path and self.gene_caller_ids:
             self.progress.end()
             raise ConfigError("You can't provide gene caller ids from the command line, and a list\
@@ -176,6 +150,70 @@ class VariabilitySuper(object):
             # looks like no genes were specified
             self.genes_of_interest = set([])
 
+
+    def get_splits_of_interest(self):
+        # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
+        self.check_how_splits_are_found()
+
+        self.progress.update('Attempting to get our splits of interest sorted ...')
+        if self.split_source == "gene_caller_ids":
+            self.splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
+
+        elif self.split_source == "bin_id":
+            if self.collection_name and not self.bin_id:
+                raise ConfigError('When you declare a collection name, you must also declare a bin id\
+                                   (from which the split names of interest will be acquired).')
+            if self.bin_id and not self.collection_name:
+                raise ConfigError("You declared a bin id but anvi'o doesn't know which collection\
+                                   it comes from. Please provide a collection name.")
+            self.splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
+
+        elif self.split_source == "split_names":
+            if self.splits_of_interest:
+                # catches splits of interest being handled programatically elsewhere
+                pass
+            else:
+                filesnpaths.is_file_tab_delimited(self.splits_of_interest_path, expected_number_of_fields=1)
+                self.splits_of_interest = set([c.strip().replace('\r', '') for c in open(self.splits_of_interest_path).readlines()])
+
+        else:
+            self.splits_of_interest = set([])
+
+
+    def get_items(self):
+        # Ensure self.items is sorted alphabetically.  This is required for resolving ties in
+        # coverage alphabetically, which is described in the docstring of
+        # self.insert_additional_fields.
+        if self.engine == 'NT':
+            self.items = sorted(constants.nucleotides)
+        elif self.engine == 'CDN':
+            self.items = sorted(constants.codons)
+        elif self.engine == 'AA':
+            self.items = sorted(constants.amino_acids)
+        else:
+            raise ConfigError("https://goo.gl/sx6JHg :(")
+
+
+    def get_substitution_scoring_matrices(self):
+        import anvio.data.SSMs as SSMs
+        self.substitution_scoring_matrices = SSMs.get(self.engine)
+
+
+    def init_commons(self):
+        self.progress.new('Init')
+
+        if self.only_if_structure and not self.structure_db_path:
+            self.progress.end()
+            raise ConfigError("You can't ask to only include genes with structures \
+                               (--only-if-structure) without providing a structure database.")
+
+        self.progress.update('Checking the output file path ..')
+        if self.output_file_path:
+            filesnpaths.is_output_file_writable(self.output_file_path)
+
+        self.get_samples_of_interest()
+        self.get_genes_of_interest()
+
         if self.genes_of_interest:
             # check for genes that do not appear in the contigs database
             bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.gene_callers_id_to_split_name_dict]
@@ -193,17 +231,8 @@ class VariabilitySuper(object):
         if self.engine not in ['NT', 'CDN', 'AA']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
 
-        # Set items of interest while you are at it. Ensure self.items is sorted alphabetically.
-        # This is required for resolving ties in coverage alphabetically, which is described in the
-        # docstring of self.insert_additional_fields.
-        if self.engine == 'NT':
-            self.items = sorted(constants.nucleotides)
-        elif self.engine == 'CDN':
-            self.items = sorted(constants.codons)
-        elif self.engine == 'AA':
-            self.items = sorted(constants.amino_acids)
-        else:
-            raise ConfigError("https://goo.gl/sx6JHg :(")
+        # Set items of interest while you are at it. 
+        self.get_items()
 
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
@@ -238,27 +267,8 @@ class VariabilitySuper(object):
                                     However it wasn't found at '%s' :/" % auxiliary_data_file_path)
             self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, None, ignore_hash=True)
 
-        # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
-        self.progress.update('Attempting to get our splits of interest sorted ...')
-        if gene_route:
-            self.splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
-
-        elif bin_route:
-            if self.collection_name and not self.bin_id:
-                raise ConfigError('When you declare a collection name, you must also declare a bin id\
-                                   (from which the split names of interest will be acquired).')
-            if self.bin_id and not self.collection_name:
-                raise ConfigError("You declared a bin id but anvi'o doesn't know which collection\
-                                   it comes from. Please provide a collection name.")
-            self.splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
-
-        elif split_route:
-            if self.splits_of_interest:
-                # catches splits of interest being handled programatically elsewhere
-                pass
-            else:
-                filesnpaths.is_file_tab_delimited(self.splits_of_interest_path, expected_number_of_fields=1)
-                self.splits_of_interest = set([c.strip().replace('\r', '') for c in open(self.splits_of_interest_path).readlines()])
+        # determine the splits of interest
+        self.get_splits_of_interest()
 
         self.input_file_path = '/' + '/'.join(os.path.abspath(self.profile_db_path).split('/')[:-1])
 
@@ -271,10 +281,11 @@ class VariabilitySuper(object):
             raise ConfigError("Well well well. It seems SNVs were not characterized for this profile database.\
                                 Sorry, there is nothing to report here!")
 
-        # populate substitution scoring matrices
         self.progress.end()
-        import anvio.data.SSMs as SSMs
-        self.substitution_scoring_matrices = SSMs.get(self.engine)
+
+        # populate substitution scoring matrices
+        self.get_substitution_scoring_matrices()
+
         self.progress.new('Init')
 
         ##################### LOAD ENGINE-SPECIFIC DATA #####################
@@ -346,6 +357,45 @@ class VariabilitySuper(object):
             self.progress.end()
             self.run.info_single('Nothing left in the variability data to work with. Quitting :/', 'red', 1, 1)
             sys.exit()
+
+
+    def check_how_splits_are_found(self, dont_raise = False):
+        """splits of interest are specified either by providing the splits of interest directly, or
+           by providing a collection and bin. Alternatively, splits can be inferred from genes of
+           interest. These three routes for determining splits of interest are mutually exclusive and
+           we make sure the user/programmer provides parameters for one route only.
+
+           If dont_raise is True, no error is raised when none of the three routes for determining
+           splits is identified.
+        """
+        requested_split_source = {
+            "gene_caller_ids": True if self.genes_of_interest_path or self.gene_caller_ids or self.genes_of_interest else False,
+            "split_names":     True if self.splits_of_interest_path or self.splits_of_interest else False,
+            "bin_id":          True if self.bin_id or self.collection_name else False
+           }
+
+        if not dont_raise:
+            if not any(list(requested_split_source.values())):
+                raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
+                                   --genes-of-interest), OR a list of splits (--splits-of-interest), OR\
+                                   a collection and bin combo (--collection-name and bin-id). You\
+                                   supplied none of these parameters and so anvi'o doesn't know what you\
+                                   want. If you are truly interested in everything, you\
+                                   should run the script anvi-script-add-default-collection, and then\
+                                   supply the collection name 'DEFAULT' and the bin id 'EVERYTHING'.")
+
+        if sum(list(requested_split_source.values())) > 1:
+            raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
+                               --genes-of-interest), OR a list of splits (--splits-of-interest), OR a\
+                               collection and bin combo (--collection-name and bin-id). You\
+                               supplied too many of these parameters, and now anvi'o doesn't\
+                               know what you want.")
+
+        self.split_source = ""
+        for source in requested_split_source:
+            if requested_split_source[source]:
+                self.split_source = source
+                break
 
 
     def apply_advanced_filters(self):
@@ -1564,5 +1614,12 @@ class VariabilityNetwork:
 
         self.run.info('network_description', self.output_file_path)
 
+
+class VariabilityTable(object):
+    def __init__(self, args={}, p=progress, r=run):
+        self.run = r
+        self.progress = p
+
+        pass
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
