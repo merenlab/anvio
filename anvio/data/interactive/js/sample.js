@@ -107,6 +107,7 @@ function toggleSampleGroups() {
             $(tr).show();
         } else {
             $(tr).hide();
+            $(tr).find('.layer_selectors').prop('checked', false);
         }
     });
 };
