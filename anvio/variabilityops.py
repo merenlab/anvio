@@ -79,6 +79,7 @@ class VariabilitySuper(object):
         self.only_if_structure = A('only_if_structure', null)
         self.include_contig_names_in_output = A('include_contig_names', null)
         self.include_split_names_in_output = A('include_split_names', null)
+        self.skip_sanity_check = A('skip_sanity_check', bool) or False
 
         self.append_structure_residue_info = True if self.structure_db_path else False
         self.substitution_scoring_matrices = None
@@ -89,18 +90,40 @@ class VariabilitySuper(object):
         self.contig_sequences = None
         self.input_file_path = None
 
-        if self.engine not in variability_engines:
-            raise ConfigError("The VariabilitySuper class is inherited with an unknown engine.\
-                               WTF is '%s'? Anvi'o needs an adult :(" % self.engine)
-
         self.comprehensive_stats_headers = []
         self.comprehensive_variability_scores_computed = False
+
+        if not self.skip_sanity_check:
+            self.sanity_check()
 
         # Initialize the contigs super
         if self.contigs_db_path:
             filesnpaths.is_file_exists(self.contigs_db_path)
             dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
             self.init_contig_sequences()
+
+
+    def sanity_check(self):
+        if self.engine not in variability_engines:
+            raise ConfigError("The VariabilitySuper class is inherited with an unknown engine.\
+                               WTF is '%s'? Anvi'o needs an adult :(" % self.engine)
+
+        if self.data and (self.contigs_db_path or self.profile_db_path):
+            raise ConfigError("VariabilitySuper was initialized with self.data, which is fine. But\
+                               profile and contigs database paths were also provided so that the\
+                               variability data would be generated on the fly. Since sanity_check()\
+                               was ran, I'm complaining.")
+
+        if self.data and (self.collection_name or self.bin_id):
+            raise ConfigError("VariabilitySuper was initialized with self.data, which is fine. But\
+                               a collection name and/or a bin id were also provided. Unfortunately\
+                               self.data knows nothing about bin IDs or collection names. Since\
+                               sanity_check() was ran, I'm complaining.")
+
+        if self.data and self.splits_of_interest_path:
+            if "split_name" not in self.data.columns:
+                raise ConfigError("self.data does not have a split_names column, and therefore you\
+                                   cannot provide a splits of interest filepath (self.splits_of_interest_path).")
 
 
     def get_samples_of_interest(self):
