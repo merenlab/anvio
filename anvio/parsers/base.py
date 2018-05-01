@@ -21,7 +21,6 @@ __license__ = "GPL 3.0"
 __version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 class Parser(object):
