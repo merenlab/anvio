@@ -1,21 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-# Copyright (C) 2014, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
-
 from collections import Counter
 
+import anvio
 import anvio.terminal as terminal
 
 from anvio.parsers.base import Parser
 from anvio.parsers.base import TaxonomyHelper
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
 
 
 class Centrifuge(Parser):
@@ -45,7 +46,7 @@ class Centrifuge(Parser):
 
     def process(self):
         """Parse two files, returns two dicts: genes_taxonomy, taxon_names.
-        
+
         the file self.dicts['report'] points should look like this:
 
             name                                     taxID    taxRank  genomeSize  numReads  numUniqueReads  abundance
@@ -55,7 +56,7 @@ class Centrifuge(Parser):
             Clostridium_butyricum                    1492     species  9246221     1         0               0.0
 
         the file self.dicts['hits'] points should look like this:
-        
+
             readID                                                                                                               seqID          taxID    score    2ndBestScore  hitLength  queryLength  numMatches
             0|contig:204_10M_MERGED.PERFECT.gz.keep_contig_878|start:0|stop:933|direction:f|rev_compd:False|length:933           NZ_CP007443.1  1680     842724   0             933        933          1
             1|contig:204_10M_MERGED.PERFECT.gz.keep_contig_878|start:1113|stop:1677|direction:f|rev_compd:False|length:564       NZ_CP010437.1  1680     301401   301401        564        564          3
@@ -123,6 +124,7 @@ class Centrifuge(Parser):
             annotations_dict[gene_callers_id]['t_order'] = None
             annotations_dict[gene_callers_id]['t_class'] = None
             annotations_dict[gene_callers_id]['t_phylum'] = None
+            annotations_dict[gene_callers_id]['t_domain'] = None
 
         self.run.info('Removed due to too many competing hits', removed_due_to_too_many_hits)
         self.run.info('Final num hits', len(annotations_dict))

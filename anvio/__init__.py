@@ -1059,8 +1059,9 @@ D = {
     'log-file': (
             ['--log-file'],
             {'metavar': 'FILE_PATH',
+             'default': None,
              'type': str,
-             'help': "File path to a log output."}
+             'help': "File path to store debug/output messages."}
                 ),
     'output-db-path': (
             ['-o', '--output-db-path'],

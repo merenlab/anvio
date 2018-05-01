@@ -18,7 +18,7 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
-var VERSION = '0.2.1';
+var VERSION = '2';
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
 var VIEWER_WIDTH;
@@ -260,6 +260,15 @@ function initData() {
             samples_order_dict = response.layers_order;
             samples_information_dict = response.layers_information;
             let samples_information_default_layer_order = response.layers_information_default_order;
+            let samples_groups = Object.keys(samples_information_dict).sort();
+
+            samples_groups.forEach(function (group_name) {
+                $('#sample_groups_container').append(`
+                    <div style="float: left; padding: 4px 4px;">
+                        <input type="checkbox" onclick="toggleSampleGroups();" id="group_${group_name}" value="${group_name}" ${group_name == 'default' ? 'checked="checked"' : ''}>
+                        <label style="margin-left: 2px;" onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
+                    </div>`);
+            });
 
             let available_orders = Object.keys(samples_order_dict).sort();
             $('#samples_order').append(new Option('custom'));
@@ -271,7 +280,9 @@ function initData() {
 
                 $('#samples_order').append(new Option(order_name, order));
             });
-            buildSamplesTable(samples_information_default_layer_order);
+            
+            buildSamplesTable(convert_samples_order_to_array(samples_information_default_layer_order));
+            toggleSampleGroups();
             changeViewData(response.views[1]);
 
             if (response.state[0] && response.state[1]) {
@@ -492,46 +503,57 @@ function populateColorDicts() {
         }
     }
 
-    var first_sample = Object.keys(samples_information_dict)[0];
+    for (let group in samples_information_dict) {
+        var first_sample = Object.keys(samples_information_dict[group])[0];
 
-    if (typeof first_sample !== 'undefined')
-    {
-        for (let sample_layer_name in samples_information_dict[first_sample])
+        if (typeof first_sample !== 'undefined')
         {
-            if (isNumber(samples_information_dict[first_sample][sample_layer_name]))
+            for (let sample_layer_name in samples_information_dict[group][first_sample])
             {
-                // no color table for numeric
-            }
-            else if (sample_layer_name.indexOf(';') > -1) // stack bar
-            {
-                if (!(sample_layer_name in samples_stack_bar_colors))
+                if (isNumber(samples_information_dict[group][first_sample][sample_layer_name]))
                 {
-                    samples_stack_bar_colors[sample_layer_name] = new Array();
-                    for (var j=0; j < sample_layer_name.split(";").length; j++)
-                    {
-                        samples_stack_bar_colors[sample_layer_name].push(randomColor());
-                    } 
+                    // no color table for numeric
                 }
-            }
-            else // categorical
-            {
-                if (typeof samples_categorical_colors[sample_layer_name] === 'undefined') {
-                    samples_categorical_colors[sample_layer_name] = {};
-                    samples_categorical_stats[sample_layer_name] = {};
+                else if (sample_layer_name.indexOf(';') > -1) // stack bar
+                {
+                    if (typeof samples_stack_bar_colors[group] === 'undefined') {
+                        samples_stack_bar_colors[group] = {};
+                    }
 
-                    for (let _sample in samples_information_dict)
+                    if (!(sample_layer_name in samples_stack_bar_colors[group]))
                     {
-                        var _category_name = samples_information_dict[_sample][sample_layer_name];
-                        if (_category_name == null || _category_name == '' || _category_name == 'null')
-                            _category_name = 'None';
-                        samples_information_dict[_sample][sample_layer_name] = _category_name;
+                        samples_stack_bar_colors[group][sample_layer_name] = new Array();
+                        for (var j=0; j < sample_layer_name.split(";").length; j++)
+                        {
+                            samples_stack_bar_colors[group][sample_layer_name].push(randomColor());
+                        } 
+                    }
+                }
+                else // categorical
+                {
+                    if (typeof samples_categorical_colors[group] === 'undefined') {
+                        samples_categorical_colors[group] = {};
+                        samples_categorical_stats[group] = {};
+                    }
 
-                        if (typeof samples_categorical_colors[sample_layer_name][_category_name] === 'undefined'){
-                            samples_categorical_colors[sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
-                            samples_categorical_stats[sample_layer_name][_category_name] = 0;
+                    if (typeof samples_categorical_colors[group][sample_layer_name] === 'undefined') {
+                        samples_categorical_colors[group][sample_layer_name] = {};
+                        samples_categorical_stats[group][sample_layer_name] = {};
+
+                        for (let _sample in samples_information_dict[group])
+                        {
+                            var _category_name = samples_information_dict[group][_sample][sample_layer_name];
+                            if (_category_name == null || _category_name == '' || _category_name == 'null')
+                                _category_name = 'None';
+                            samples_information_dict[group][_sample][sample_layer_name] = _category_name;
+
+                            if (typeof samples_categorical_colors[group][sample_layer_name][_category_name] === 'undefined'){
+                                samples_categorical_colors[group][sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
+                                samples_categorical_stats[group][sample_layer_name][_category_name] = 0;
+                            }
+
+                            samples_categorical_stats[group][sample_layer_name][_category_name]++;
                         }
-
-                        samples_categorical_stats[sample_layer_name][_category_name]++;
                     }
                 }
             }
@@ -581,33 +603,39 @@ function buildLegendTables() {
         });    
     }
 
-    for (let sample in samples_categorical_colors)
-    {
-        var names = Object.keys(samples_categorical_colors[sample]);
+    for (let group in samples_categorical_colors) {
+        for (let sample in samples_categorical_colors[group])
+        {
+            var names = Object.keys(samples_categorical_colors[group][sample]);
 
-        legends.push({
-            'name': getPrettyName(sample),
-            'source': 'samples_categorical_colors',
-            'key': sample,
-            'item_names': names,
-            'item_keys': names,
-            'stats': samples_categorical_stats[sample]
-        });
+            legends.push({
+                'name': group + ' :: ' + getPrettyName(sample),
+                'source': 'samples_categorical_colors',
+                'group': group,
+                'key': sample,
+                'item_names': names,
+                'item_keys': names,
+                'stats': samples_categorical_stats[group][sample]
+            });
+        }
     }
 
-    for (let sample in samples_stack_bar_colors)
-    {
-        var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
-        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
-        var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
+    for (let group in samples_stack_bar_colors) {
+        for (let sample in samples_stack_bar_colors[group])
+        {
+            var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
+            var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+            var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
-        legends.push({
-            'name': getPrettyName(pretty_name),
-            'source': 'samples_stack_bar_colors',
-            'key': sample,
-            'item_names': names,
-            'item_keys': keys
-        });
+            legends.push({
+                'name': group + ' :: ' + getPrettyName(pretty_name),
+                'source': 'samples_stack_bar_colors',
+                'group': group,
+                'key': sample,
+                'item_names': names,
+                'item_keys': keys
+            });
+        }
     }
 
     for (var i=0; i < legends.length; i++)
@@ -697,16 +725,28 @@ function batchColor(legend_id) {
         }
 
         if (rule == 'all') {
-            window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+            if (typeof legend['group'] === 'undefined') {
+                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+            } else {
+                window[legend['source']][legend['group']][legend['key']][legend['item_keys'][i]] = color;
+            }
         }
         else if (rule == 'name') {
             if (legend['item_names'][i].toLowerCase().indexOf($('#name_rule_' + legend_id).val().toLowerCase()) > -1) {
-                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                if (typeof legend['group'] === 'undefined') {
+                    window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                } else {
+                    window[legend['source']][legend['group']][legend['key']][legend['item_keys'][i]] = color;
+                }
             }
         } 
         else if (rule == 'count') {
             if (eval("legend['stats'][legend['item_keys'][i]] " + unescape($('#count_rule_'+legend_id).val()) + " " + parseFloat($('#count_rule_value_'+legend_id).val()))) {
-                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                if (typeof legend['group'] === 'undefined') {
+                    window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                } else {
+                    window[legend['source']][legend['group']][legend['key']][legend['item_keys'][i]] = color;
+                }
             }
         }
     }
@@ -721,10 +761,16 @@ function createLegendColorPanel(legend_id) {
     for (var j = 0; j < legend['item_names'].length; j++) {
 
         var _name = legend['item_names'][j];
-        var _color = window[legend['source']][legend['key']][legend['item_keys'][j]]
 
-        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0)
+        if (legend.hasOwnProperty('group')) {
+            var _color = window[legend['source']][legend['group']][legend['key']][legend['item_keys'][j]];
+        } else {
+            var _color = window[legend['source']][legend['key']][legend['item_keys'][j]];
+        }
+
+        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0) {
             continue;
+        }
 
         if (legend.hasOwnProperty('stats')) {
             _name = _name + ' (' + legend['stats'][_name] + ')';
@@ -734,6 +780,7 @@ function createLegendColorPanel(legend_id) {
                                 '<div class="colorpicker legendcolorpicker" color="' + _color + '"' +
                                 'style="margin-right: 5px; background-color: ' + _color + '"' +
                                 'callback_source="' + legend['source'] + '"' +
+                                'callback_group="' + ((typeof legend['group'] !== 'undefined') ? legend['group'] : '') + '"' +
                                 'callback_pindex="' + legend['key'] + '"' +
                                 'callback_name="' + legend['item_keys'][j] + '"' + 
                                '></div>' + _name + '</div>';
@@ -748,7 +795,11 @@ function createLegendColorPanel(legend_id) {
         colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
-            window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+            if (el.getAttribute('callback_group') !== '') {
+                window[el.getAttribute('callback_source')][el.getAttribute('callback_group')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+            } else {
+                window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+            }
         }
     });
 }
@@ -1317,8 +1368,18 @@ function serializeSettings(use_layer_names) {
     $('#tbody_samples tr').each(
         function(index, tr) {
             var samples_layer_name = $(tr).attr('samples-layer-name');
-            state['samples-layer-order'].push(samples_layer_name);
-            state['samples-layers'][samples_layer_name] = {
+            var samples_group_name = $(tr).attr('samples-group-name');
+
+            state['samples-layer-order'].push({
+                'layer_name': samples_layer_name,
+                'group': samples_group_name
+            });
+
+            if (!state['samples-layers'].hasOwnProperty(samples_group_name)) {
+                state['samples-layers'][samples_group_name] = {};
+            }
+
+            state['samples-layers'][samples_group_name][samples_layer_name] = {
                 'data-type'     : $(tr).attr('data-type'),
                 'height'        : parseFloat($(tr).find('.input-height').val()),
                 'margin'        : parseFloat($(tr).find('.input-margin').val()),
@@ -1331,6 +1392,11 @@ function serializeSettings(use_layer_names) {
             };
         }
     );
+
+    state['samples-groups'] = {};
+    $('#sample_groups_container input:checkbox').each((index, checkbox) => {
+        state['samples-groups'][$(checkbox).val()] = $(checkbox).is(':checked');
+    });
 
     return state;
 }
@@ -2459,6 +2525,7 @@ function loadState()
                                 changeViewData(response[2]);
                                 processState(state_name, response[0]);
                             }catch(e){
+                                console.error("Exception thrown", e.stack);
                                 toastr.error('Failed to parse state data, ' + e);
                                 defer.reject();
                                 return;
@@ -2474,10 +2541,22 @@ function loadState()
 }
 
 function processState(state_name, state) {
-    if (!state.hasOwnProperty('version') || (state['version'] !== VERSION))
+    if (!state.hasOwnProperty('version'))
     {
-        toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
+        toastr.error("Interface received a state without version information, it will be not loaded.");
         throw "";
+    }
+
+    if (state['version'] == '0.2.1') {
+        // switch to numerical versioning instead semantic one.
+        state['version'] = '1';
+    }
+
+    if (state['version'] != VERSION) {
+        toastr.info(`Interface received a state at version ${state['version']} but the current version of the
+            interface is ${VERSION}. Anvi'o will try to upgrade it automatically.`);
+
+        state = migrate_state(state);
     }
 
     if (state.hasOwnProperty('layer-order')) {
@@ -2657,6 +2736,17 @@ function processState(state_name, state) {
 
     buildLayersTable(layer_order, views[current_view]);
     buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+
+    if (state.hasOwnProperty('samples-groups')) {
+        for (let group_name in state['samples-groups']) {
+            let checkbox = $('input:checkbox#group_' + group_name);
+
+            if (checkbox) {
+                $(checkbox).prop('checked', state['samples-groups'][group_name]);
+            }
+        }
+    }
+
     buildLegendTables();
 
     current_state_name = state_name;
