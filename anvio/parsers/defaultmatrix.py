@@ -1,19 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-# Copyright (C) 2016, A. Murat Eren
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation; either version 2 of the License, or (at your option)
-# any later version.
-#
-# Please read the COPYING file.
-
+import anvio
 import anvio.terminal as terminal
 
 from anvio.parsers.base import Parser
 from anvio.parsers.base import TaxonomyHelper
+from anvio.constants import levels_of_taxonomy
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
 
 
 class DefaultMatrix(Parser):
@@ -25,8 +27,8 @@ class DefaultMatrix(Parser):
         files_expected = {'matrix': matrix_txt}
 
         files_structure = {'matrix':
-                                {'col_names': ['gene_callers_id', 't_phylum', 't_class', 't_order', 't_family', 't_genus', 't_species'],
-                                 'col_mapping': [int, str, str, str, str, str, str],
+                                {'col_names': ['gene_callers_id'] + levels_of_taxonomy,
+                                 'col_mapping': [int] + [str] * len(levels_of_taxonomy),
                                  'only_expected_fields': True,
                                  }
                           }

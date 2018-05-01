@@ -146,6 +146,10 @@ class Run:
         self.verbose = verbose
         self.width = width
 
+        self.single_line_prefixes = {1: '* ',
+                                     2: '    - ',
+                                     3: '        > '}
+
 
     def log(self, line):
         if not self.log_file_path:
@@ -188,14 +192,17 @@ class Run:
         self.write(info_line, quiet=quiet)
 
 
-    def info_single(self, message, prepend="* ", mc='yellow', nl_before=0, nl_after=0, cut_after=80):
+    def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1):
         if isinstance(message, str):
             message = remove_spaces(message)
 
+        if level not in self.single_line_prefixes:
+            raise TerminalError("the `info_single` function does not know how to deal with a level of %d :/" % level)
+
         if cut_after:
-            message_line = c("%s%s\n" % (prepend, textwrap.fill(str(message), cut_after)), mc)
+            message_line = c("%s%s\n" % (self.single_line_prefixes[level], textwrap.fill(str(message), cut_after)), mc)
         else:
-            message_line = c("%s%s\n" % (prepend, str(message)), mc)
+            message_line = c("%s%s\n" % (self.single_line_prefixes[level], str(message)), mc)
 
         message_line = ('\n' * nl_before) + message_line + ('\n' * nl_after)
 
