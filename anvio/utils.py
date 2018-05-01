@@ -2116,6 +2116,16 @@ def is_pan_db(db_path):
     return True
 
 
+def is_profile_db_merged(profile_db_path):
+    is_profile_db(profile_db_path)
+
+    profile_db = db.DB(profile_db_path, get_required_version_for_db(profile_db_path))
+    merged = int(profile_db.get_meta_value('merged'))
+    profile_db.disconnect()
+
+    return merged
+
+
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     is_profile_db(profile_db_path)
     is_contigs_db(contigs_db_path)

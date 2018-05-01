@@ -87,14 +87,14 @@ class MultipleRuns:
         # these will describe layer additional data common to all profile
         # databases to be merged:
         self.layer_additional_data_dict = {}
-        self.layer_additional_data_keys = []
+        self.layer_additional_data_keys = {}
 
 
         self.merged_profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['merged']
 
-        self.database_paths = {'CONTIGS.db': os.path.abspath(self.contigs_db_path)}
+        self.database_paths = {'CONTIGS.db': os.path.abspath(self.contigs_db_path) if self.contigs_db_path else None}
 
         # we don't know what we are about
         self.description = None
@@ -136,49 +136,118 @@ class MultipleRuns:
         self.input_profile_db_paths = proper
 
 
-    def populate_layer_additional_data_dict(self):
-        self.progress.new('Layer additional data ops')
-        self.progress.update('...')
+    def __populate_layer_additional_data_dict_for_taxonomic_data_groups(self, data_group_names):
+        if data_group_names:
+            self.run.warning("Anvi'o found %d data groups for taxonomy (%s), and will do its best to make sure they\
+                              get worked into the merged profile database. A moment of zero promises but crossed\
+                              fingers (which is the best way to avoid most computational poopsies)." % \
+                                                (len(data_group_names), ', '.join(data_group_names)),
+                              header="GOOD NEWS",
+                              lc="green")
+        else:
+            return
 
         dicts_of_layer_additional_data_dicts = {}
 
+        for data_group_name in data_group_names:
+            self.layer_additional_data_dict[data_group_name] = {}
+            self.layer_additional_data_keys[data_group_name] = []
+
+            all_keys = set([])
+            for p in self.input_profile_db_paths:
+                keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get(data_group=data_group_name)
+                dicts_of_layer_additional_data_dicts[p] = data
+                all_keys.update(set(keys))
+
+            # here we are building a data dict that will make sure every profile has an entry in the dict
+            # for every key in `all_keys` in this data group.
+            layer_additional_data_dict = {}
+            for data in dicts_of_layer_additional_data_dicts.values():
+                for layer_name in data:
+                    for key in all_keys:
+                        if key not in data[layer_name]:
+                            data[layer_name][key] = 0
+
+                    layer_additional_data_dict[layer_name] = data[layer_name]
+
+            self.layer_additional_data_dict[data_group_name] = layer_additional_data_dict
+            self.layer_additional_data_keys[data_group_name] = all_keys
+
+
+    def __populate_layer_additional_data_dict_for_regular_data_groups(self, data_group_names):
+        dicts_of_layer_additional_data_dicts = {}
+
+        for data_group_name in data_group_names:
+            self.layer_additional_data_dict[data_group_name] = {}
+            self.layer_additional_data_keys[data_group_name] = []
+
+            for p in self.input_profile_db_paths:
+                keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get(data_group=data_group_name)
+                dicts_of_layer_additional_data_dicts[p] = {'keys': keys, 'data': data}
+
+            # find common keys to all layer additional data tables:
+            all_keys = [set(e['keys']) for e in dicts_of_layer_additional_data_dicts.values()]
+
+            layer_additional_data_keys = all_keys.pop()
+
+            for key_set in all_keys:
+                layer_additional_data_keys.intersection_update(key_set)
+
+            # if there are no keys that are common to all single profiles, we shall merge nothing of these
+            # tables.
+            if data_group_name == 'default' and 'total_reads_mapped' not in layer_additional_data_keys:
+                self.progress.end()
+                raise ConfigError("While trying to learn everything there is to learn about layer additional data in single\
+                                   profiles to be merged, anvi'o realized that 'total_reads_mapped' is not common to all \
+                                   profile databases :( This is bad, becasue this indicates there is something terribly\
+                                   wrong with one or more of your single profile databases. If you are a programmer trying to\
+                                   mimic anvi'o single profiles, you will have to look at the code of the profiler a bit more\
+                                   carefully. If you are a user, well, you are *really* in trouble... Send us an e-mail or\
+                                   something?")
+
+            # otherwise, let's create a final data dictionary for these assholes in this data group based on
+            # thier common keys.
+            for data in [v['data'] for v in dicts_of_layer_additional_data_dicts.values()]:
+                sample_id = list(data.keys())[0]
+
+                keys_of_no_interest = [k for k in data[sample_id] if k not in layer_additional_data_keys]
+                for key in keys_of_no_interest:
+                    data[sample_id].pop(key)
+
+                self.layer_additional_data_dict[data_group_name][sample_id] = data[sample_id]
+
+            self.layer_additional_data_keys[data_group_name] = layer_additional_data_keys
+
+
+    def populate_layer_additional_data_dict(self, missing_default_data_group_is_OK=False):
+        self.progress.new('Layer additional data ops')
+        self.progress.update('...')
+
+        data_groups_common_to_all_profile_dbs = set([])
+
         for p in self.input_profile_db_paths:
-            self.progress.update(p)
-            keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get()
-            dicts_of_layer_additional_data_dicts[p] = {'keys': keys, 'data': data}
+            if self.input_profile_db_paths.index(p) == 0:
+                data_groups_common_to_all_profile_dbs = set(TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get_group_names())
+            else:
+                data_groups_common_to_all_profile_dbs.intersection_update(set(TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get_group_names()))
 
-        # find common keys to all layer additional data tables:
-        all_keys = [set(e['keys']) for e in dicts_of_layer_additional_data_dicts.values()]
+        if 'default' not in data_groups_common_to_all_profile_dbs:
+            if missing_default_data_group_is_OK:
+                pass
+            else:
+                 raise ConfigError("There is something wrong with your input databases. The group name 'default'\
+                                    should be common to all of them, but it doesn't seem to be the case :/ How did\
+                                    you end up with an anvi'o single profile database that doesn't have the 'default'\
+                                    gropu in its additional layer data table? It is very likely that your profiling\
+                                    step failed for some reason for one or more of your databases :(")
 
-        self.layer_additional_data_keys = all_keys.pop()
-
-        for key_set in all_keys:
-            self.layer_additional_data_keys.intersection_update(key_set)
-
-        # if there are no keys that are common to all single profiles, we shall merge nothing of these
-        # tables.
-        if not 'total_reads_mapped' in self.layer_additional_data_keys:
-            self.progress.end()
-            raise ConfigError("While trying to learn everything there is to learn about layer additional data in single\
-                               profiles to be merged, anvi'o realized that 'total_reads_mapped' is not common to all \
-                               profile databases :( This is bad, becasue this indicates there is something terribly\
-                               wrong with one or more of your single profile databases. If you are a programmer trying to\
-                               mimic anvi'o single profiles, you will have to look at the code of the profiler a bit more\
-                               carefully. If you are a user, well, you are *really* in trouble... Send us an e-mail or\
-                               something?")
-
-        self.progress.update('Finalizing ...')
-        # otherwise, let's create a final data dictionary for these assholes based on common keys.
-        for data in [v['data'] for v in dicts_of_layer_additional_data_dicts.values()]:
-            sample_id = list(data.keys())[0]
-
-            keys_of_no_interest = [k for k in data[sample_id] if k not in self.layer_additional_data_keys]
-            for key in keys_of_no_interest:
-                data[sample_id].pop(key)
-
-            self.layer_additional_data_dict[sample_id] = data[sample_id]
+        taxonomic_data_groups = set(constants.levels_of_taxonomy).intersection(data_groups_common_to_all_profile_dbs)
+        regular_data_groups = data_groups_common_to_all_profile_dbs.difference(taxonomic_data_groups)
 
         self.progress.end()
+
+        self.__populate_layer_additional_data_dict_for_regular_data_groups(regular_data_groups)
+        self.__populate_layer_additional_data_dict_for_taxonomic_data_groups(taxonomic_data_groups)
 
 
     def populate_profile_dbs_info_dict(self):
@@ -396,9 +465,9 @@ class MultipleRuns:
                               to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
                                                                 % pp(self.num_splits))
 
-        self.total_reads_mapped_per_sample = dict([(s, self.layer_additional_data_dict[s]['total_reads_mapped']) for s in self.layer_additional_data_dict])
+        self.total_reads_mapped_per_sample = dict([(s, self.layer_additional_data_dict['default'][s]['total_reads_mapped']) for s in self.layer_additional_data_dict['default']])
 
-        sample_ids_list = ', '.join(sorted(self.sample_ids_found_in_input_dbs)) 
+        sample_ids_list = ', '.join(sorted(self.sample_ids_found_in_input_dbs))
         total_reads_mapped_list = ', '.join([str(self.total_reads_mapped_per_sample[sample_id]) for sample_id in self.sample_ids_found_in_input_dbs])
 
         meta_values = {'db_type': 'profile',
@@ -475,6 +544,8 @@ class MultipleRuns:
 
         self.populate_misc_data_tables()
 
+        self.run.info_single('Happy.', nl_before=1, nl_after=1)
+
         self.run.quit()
 
 
@@ -537,10 +608,21 @@ class MultipleRuns:
                               the clustering in fact worked. Here is the list of stuff that failed: '%s'"\
                               % (', '.join(failed_attempts)))
 
-        TableForLayerOrders(args).add(layer_orders_data_dict)
+        # add the layer orders quietly
+        TableForLayerOrders(args, r=terminal.Run(verbose=False)).add(layer_orders_data_dict)
+        self.run.warning(None, header="Layer orders added", lc='cyan')
+        for layer_order in layer_orders_data_dict:
+            self.run.info_single(layer_order, mc='cyan')
 
         # done with layer orders. let's add our layer additional data and call it a day.
-        TableForLayerAdditionalData(args).add(self.layer_additional_data_dict, list(self.layer_additional_data_keys))
+        for data_group_name in self.layer_additional_data_dict:
+            TableForLayerAdditionalData(args, r=terminal.Run(verbose=False)).add(self.layer_additional_data_dict[data_group_name],
+                                                                                 list(self.layer_additional_data_keys[data_group_name]),
+                                                                                 data_group=data_group_name)
+
+        self.run.warning(None, header="Data groups added", lc='cyan')
+        for data_group in self.layer_additional_data_dict:
+            self.run.info_single('%s (w/%d items)' % (data_group, len(self.layer_additional_data_keys[data_group])), mc='cyan')
 
 
     def gen_view_data_tables_from_atomic_data(self):

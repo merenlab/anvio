@@ -1546,7 +1546,7 @@ class Bin:
         self.bin_info_dict['taxon_calls'] = []
         self.bin_info_dict['taxon'] = 'Unknown'
 
-        if not self.summary.a_meta['taxonomy_source']:
+        if not self.summary.a_meta['gene_level_taxonomy_source']:
             return
 
         taxon_calls_counter = Counter()

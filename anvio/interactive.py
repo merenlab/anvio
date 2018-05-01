@@ -116,8 +116,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # get additional data for items and layers, and get layer orders data.
         a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_order_data_dict = TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict) if a_db_is_found else {}
+        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
+
+        self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
+        for group_name in self.layers_additional_data_keys:
+            layer_orders = TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({}, 
+                self.layers_additional_data_keys[group_name], self.layers_additional_data_dict[group_name]) if a_db_is_found else {}
+            for order_name in layer_orders:
+                self.layers_order_data_dict['%s :: %s' % (group_name, order_name)] = layer_orders[order_name]
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
@@ -526,7 +532,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                              'dict': ad_hoc_dict}
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
-        self.p_meta['samples'] = self.views[self.default_view]['header']
+        sample_names = [self.title.replace(' ', '_')] if self.title else self.views[self.default_view]['header']
+        self.p_meta['samples'] = self.p_meta['sample_id'] = sample_names
 
         # if we have an input FASTA file, we will set up the split_sequences and splits_basic_info dicts,
         # otherwise we will leave them empty
@@ -550,13 +557,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
+            sample_id = ','.join(self.p_meta['samples'])
+
             profile_db = ProfileDatabase(self.profile_db_path)
             profile_db.create({'db_type': 'profile',
                                'blank': True,
                                'merged': True,
                                'contigs_db_hash': None,
                                'contigs_ordered': False,
-                               'samples': ','.join(self.p_meta['samples'])})
+                               'samples': sample_id,
+                               'sample_id': sample_id})
 
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path)
