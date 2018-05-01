@@ -1245,9 +1245,8 @@ class StructureInteractive():
         self.samples_of_interest = A('samples_of_interest', null)
 
         if self.variability_table_path:
-            raise ConfigError("al;sdjfkjfsadk dsjkdffadskjfadskkj fasd jafksdf")
             import anvio.variabilityops as vops
-            vops.VariabilityData(args)
+            var = vops.VariabilityData(args)
 
         self.var = {}
         self.engines_profiled = []

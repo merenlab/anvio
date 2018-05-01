@@ -50,36 +50,42 @@ class VariabilitySuper(object):
             raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
 
         self.data = data
-        self.splits_of_interest = set([])
-        self.samples_of_interest = set([])
-        self.genes_of_interest = set([])
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
+        # splits
         self.bin_id = A('bin_id', null)
         self.collection_name = A('collection_name', null)
+        self.splits_of_interest = A('splits_of_interest_set', set)
         self.splits_of_interest_path = A('splits_of_interest', null)
+        # database
+        self.profile_db_path = A('profile_db', null)
+        self.contigs_db_path = A('contigs_db', null)
+        self.structure_db_path = A('structure_db', null)
+        # genes
+        self.gene_caller_ids = A('gene_caller_ids', null)
+        self.genes_of_interest = A('genes_of_interest_set', set)
+        self.genes_of_interest_path = A('genes_of_interest', null)
+        # samples
+        self.samples_of_interest = A('samples_of_interest_set', set)
+        self.samples_of_interest_path = A('samples_of_interest', null)
+        # filtering
+        self.min_scatter = A('min_scatter', int) or 0
+        self.min_occurrence = A('min_occurrence', int) or 1
+        self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', int) or 0
         self.min_departure_from_reference = A('min_departure_from_reference', float) or 0
         self.max_departure_from_reference = A('max_departure_from_reference', float) or 1
         self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
         self.max_departure_from_consensus = A('max_departure_from_consensus', float) or 1
-        self.min_occurrence = A('min_occurrence', int) or 1
         self.num_positions_from_each_split = A('num_positions_from_each_split', int) or 0
-        self.min_scatter = A('min_scatter', int) or 0
-        self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', int) or 0
-        self.profile_db_path = A('profile_db', null)
-        self.contigs_db_path = A('contigs_db', null)
-        self.structure_db_path = A('structure_db', null)
+        # output
         self.quince_mode = A('quince_mode', bool)
-        self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
         self.output_file_path = A('output_file', null)
-        self.samples_of_interest_path = A('samples_of_interest', null)
-        self.genes_of_interest_path = A('genes_of_interest', null)
-        self.gene_caller_ids = A('gene_caller_ids', null)
         self.only_if_structure = A('only_if_structure', null)
-        self.include_contig_names_in_output = A('include_contig_names', null)
-        self.include_split_names_in_output = A('include_split_names', null)
         self.skip_sanity_check = A('skip_sanity_check', bool) or False
+        self.include_split_names_in_output = A('include_split_names', null)
+        self.include_contig_names_in_output = A('include_contig_names', null)
+        self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
 
         self.append_structure_residue_info = True if self.structure_db_path else False
         self.substitution_scoring_matrices = None
@@ -127,15 +133,41 @@ class VariabilitySuper(object):
                                self.data knows nothing about bin IDs or collection names. Since\
                                sanity_check() was ran, I'm complaining.")
 
-        if not self.data.empty and self.splits_of_interest_path:
+        if not self.data.empty and (self.splits_of_interest_path or self.splits_of_interest):
             if "split_name" not in self.data.columns:
-                raise ConfigError("self.data does not have a split_name column, and therefore you\
-                                   cannot provide a splits of interest filepath (self.splits_of_interest_path).")
+                raise ConfigError("Your variability profile does not have a split_name column, and\
+                                   therefore you cannot provide splits of interest\
+                                   (--splits-of-interest).")
+
+        if self.genes_of_interest and (self.genes_of_interest_path or self.gene_caller_ids):
+            raise ConfigError("VariabilitySuper: you initialized me with self.genes_of_interest\
+                               because you're a programmer and you know what you're doing. But you\
+                               also initialized me with self.genes_of_interest_path and/or\
+                               self.gene_caller_ids. Because you didn't skip sanity_check(), I am\
+                               complaining. If you skip sanity_check, self.genes_of_interest_path\
+                               and self.gene_caller_ids will be ignored.")
+
+        if self.samples_of_interest and self.samples_of_interest_path:
+            raise ConfigError("VariabilitySuper: you initialized me with self.sampes_of_interest\
+                               because you're a programmer and you know what you're doing.  But you\
+                               also initialized me with self.sampes_of_interest_path. Because you\
+                               didn't skip sanity_check(), I am complaining. If you skip\
+                               sanity_check, self.sampes_of_interest_path.")
+
+        if self.splits_of_interest and (self.splits_of_interest_path or self.bin_id or self.collection_name):
+            raise ConfigError("VariabilitySuper: you initialized me with self.splits_of_interest\
+                               because you're a programmer and you know what you're doing. But you\
+                               also initialized me with one/all/some of\
+                               self.splits_of_interest_path, self.bin_id, self.collection_name.\
+                               Because you didn't skip sanity_check(), I am complaining. If you skip\
+                               sanity_check, self.splits_of_interest_path, self.bin_id,\
+                               self.collection_name will all be ignored.")
 
 
     def get_samples_of_interest(self):
         self.progress.update('Checking the samples of interest ..')
         if self.samples_of_interest:
+            # catches cases where self.samples_of_interest was injected into class programatically
             return
 
         if self.samples_of_interest_path:
@@ -149,6 +181,7 @@ class VariabilitySuper(object):
     def get_genes_of_interest(self):
         self.progress.update('Setting up genes of interest')
         if self.genes_of_interest:
+            # catches cases where self.genes_of_interest was injected into class programatically
             return
 
         if self.genes_of_interest_path and self.gene_caller_ids:
@@ -186,7 +219,14 @@ class VariabilitySuper(object):
 
     def get_splits_of_interest(self):
         self.progress.update('Attempting to get our splits of interest sorted ...')
-        if self.split_source == "gene_caller_ids":
+        if self.splits_of_interest:
+            # catches cases where self.splits_of_interest was injected into class programatically
+            return
+
+        if self.split_source == "":
+            self.splits_of_interest = set([])
+
+        elif self.split_source == "gene_caller_ids":
             self.splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
 
         elif self.split_source == "bin_id":
@@ -205,9 +245,6 @@ class VariabilitySuper(object):
             else:
                 filesnpaths.is_file_tab_delimited(self.splits_of_interest_path, expected_number_of_fields=1)
                 self.splits_of_interest = set([c.strip().replace('\r', '') for c in open(self.splits_of_interest_path).readlines()])
-
-        else:
-            self.splits_of_interest = set([])
 
 
     def get_items(self):
@@ -242,9 +279,14 @@ class VariabilitySuper(object):
             filesnpaths.is_output_file_writable(self.output_file_path)
 
         self.get_samples_of_interest()
+
         # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
-        self.check_how_splits_are_found()
+        if not self.data.empty:
+            self.split_source = "split_names" if self.splits_of_interest_path else ""
+        else:
+            self.check_how_splits_are_found()
         self.get_splits_of_interest()
+
         self.get_genes_of_interest()
 
         if self.genes_of_interest:
@@ -254,9 +296,10 @@ class VariabilitySuper(object):
             if bad_gene_caller_ids:
                 self.progress.end()
                 some_to_report = bad_gene_caller_ids[:5] if len(bad_gene_caller_ids) <= 5 else bad_gene_caller_ids
-                raise ConfigError("{} of the gene caller ids you provided are not {}. {}: {}. You only have 2 lives left.\
-                                   2 more mistakes, and\ anvi'o will automatically uninstall itself. Yes, seriously :(".\
+                raise ConfigError("{} of the gene caller ids you provided {} not {}. {}: {}. You only have 2 lives left.\
+                                   2 more mistakes, and anvi'o will automatically uninstall itself. Yes, seriously :(".\
                                    format(len(bad_gene_caller_ids),
+                                          "is" if len(bad_gene_caller_ids) == 1 else "are",
                                           "in this variability profile" if not self.data.empty else "known to this contigs database",
                                           "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
                                           ", ".join([str(x) for x in some_to_report])))
@@ -269,16 +312,19 @@ class VariabilitySuper(object):
         # set items of interest
         self.get_items()
         # populate substitution scoring matrices
+        self.progress.end()
         self.get_substitution_scoring_matrices()
+        self.progress.new('Init')
 
+        # if we already have variability data we are almost done
         if not self.data.empty:
-            # if we already have variability data we are almost done
             self.load_structure_data()
-            self.progress.end()
             self.check_if_data_is_empty()
             self.sample_ids = self.data["sample_id"].unique()
+            self.progress.end()
             return
 
+        # otherwise we have more work to do
         self.progress.update('Making sure our databases are here ..')
         if not self.profile_db_path:
             raise ConfigError('You need to provide a profile database.')
@@ -399,14 +445,11 @@ class VariabilitySuper(object):
             sys.exit()
 
 
-    def check_how_splits_are_found(self, dont_raise = False):
+    def check_how_splits_are_found(self):
         """splits of interest are specified either by providing the splits of interest directly, or
            by providing a collection and bin. Alternatively, splits can be inferred from genes of
            interest. These three routes for determining splits of interest are mutually exclusive and
            we make sure the user/programmer provides parameters for one route only.
-
-           If dont_raise is True, no error is raised when none of the three routes for determining
-           splits is identified.
         """
         requested_split_source = {
             "gene_caller_ids": True if self.genes_of_interest_path or self.gene_caller_ids or self.genes_of_interest else False,
@@ -414,15 +457,14 @@ class VariabilitySuper(object):
             "bin_id":          True if self.bin_id or self.collection_name else False
            }
 
-        if not dont_raise:
-            if not any(list(requested_split_source.values())):
-                raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
-                                   --genes-of-interest), OR a list of splits (--splits-of-interest), OR\
-                                   a collection and bin combo (--collection-name and bin-id). You\
-                                   supplied none of these parameters and so anvi'o doesn't know what you\
-                                   want. If you are truly interested in everything, you\
-                                   should run the script anvi-script-add-default-collection, and then\
-                                   supply the collection name 'DEFAULT' and the bin id 'EVERYTHING'.")
+        if not any(list(requested_split_source.values())):
+            raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
+                               --genes-of-interest), OR a list of splits (--splits-of-interest), OR\
+                               a collection and bin combo (--collection-name and bin-id). You\
+                               supplied none of these parameters and so anvi'o doesn't know what you\
+                               want. If you are truly interested in everything, you\
+                               should run the script anvi-script-add-default-collection, and then\
+                               supply the collection name 'DEFAULT' and the bin id 'EVERYTHING'.")
 
         if sum(list(requested_split_source.values())) > 1:
             raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
@@ -1673,14 +1715,11 @@ class VariabilityData(VariabilitySuper):
 
         # init VariabilitySuper
         self.args.engine = self.engine
-        self.args.contigs_db_path = None
-        self.args.profile_db_path = None
-        VariabilitySuper.__init__(self, args, self.data, p=progress, r=run)
+        self.args.contigs_db = None
+        self.args.profile_db = None
+        VariabilitySuper.__init__(self, self.args, self.data, p=progress, r=run)
 
         self.init_commons()
-        print(self.items())
-
-
 
 
     def load_data(self):
