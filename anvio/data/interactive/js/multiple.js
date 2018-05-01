@@ -5,7 +5,7 @@ $(document).ready(function() {
         var table = $(this).closest('table');
         var layer_name = this.value;
         // clean prior selections
-        $(table).find('.layer_selectors').prop('checked', false);
+        $(table).find('.layer_selectors:visible').prop('checked', false);
 
         if(layer_name){ // if layer_name is empty, there is nothing to select, move on.
             $(table).find('.titles').each(
@@ -36,7 +36,7 @@ $(document).ready(function() {
             if (!bySetColor) $(el).val(hex);
 
             var table = $(el).closest('table');
-            $(table).find('.layer_selectors:checked').each(
+            $(table).find('.layer_selectors:checked:visible').each(
                 function(){
                     var selector = '.colorpicker';
 
@@ -65,7 +65,7 @@ $(document).ready(function() {
         var target_selector = '.' + this.getAttribute('class').replace('-multiple', '') + ':enabled';
         var table = $(this).closest('table');
 
-        $(table).find('.layer_selectors:checked').each(
+        $(table).find('.layer_selectors:checked:visible').each(
             function(){
                 var row = $(this).parent().parent();
                 $(row).find(target_selector).val(new_val).trigger('change');
@@ -80,7 +80,7 @@ $(document).ready(function() {
         var target_selector = '.' + this.getAttribute('class').replace('_multiple', '');
         var table = $(this).closest('table');
 
-        $(table).find('.layer_selectors:checked').each(
+        $(table).find('.layer_selectors:checked:visible').each(
             function(){
                 var row = $(this).parent().parent();
                 var combo = $(row).find(target_selector);
@@ -98,7 +98,7 @@ $(document).ready(function() {
         var new_val = this.checked;
         var table = $(this).closest('table');
 
-        $(table).find('.layer_selectors').each(
+        $(table).find('.layer_selectors:visible').each(
             function() {
                 this.checked = new_val;
             }

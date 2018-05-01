@@ -6,10 +6,10 @@
 import os
 import hashlib
 
-import anvio.tables as t
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.constants import levels_of_taxonomy
 from anvio.utils import get_TAB_delimited_file_as_dictionary as get_dict
 from anvio.utils import get_FASTA_file_as_dictionary as get_dict_f
 
@@ -21,7 +21,6 @@ __license__ = "GPL 3.0"
 __version__ = "1.0.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
 
 
 class Parser(object):
@@ -87,7 +86,7 @@ class TaxonomyHelper(object):
        genes_taxonomy, and taxon names dicts.
 
        annotations dictionary must contain t_species, t_genus,
-       t_family, t_class, t_order, and t_phylum as keys for each
+       t_family, t_class, t_order, t_phylum, t_domain, as keys for each
        gene call:
 
             annotations_dict[gene_call_id]['t_species'] = 'Bifidobacterium longum'
@@ -110,10 +109,8 @@ class TaxonomyHelper(object):
         hash_to_taxon_name_id = {}
         taxon_name_id_counter = 1
 
-        taxon_names = t.taxon_names_table_structure[1:]
-
         for gene_callers_id in self.annotations_dict:
-            t_hash = hashlib.sha224(''.join(self.annotations_dict[gene_callers_id][taxon] or '' for taxon in taxon_names).encode('utf-8')).hexdigest()
+            t_hash = hashlib.sha224(''.join(self.annotations_dict[gene_callers_id][level] or '' for level in levels_of_taxonomy).encode('utf-8')).hexdigest()
 
             if t_hash in hash_to_taxon_name_id:
                 taxon_name_id = hash_to_taxon_name_id[t_hash]
