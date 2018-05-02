@@ -11,6 +11,7 @@ import socket
 import shutil
 import psutil
 import smtplib
+import hashlib
 import textwrap
 import webbrowser
 import subprocess
@@ -2154,6 +2155,16 @@ def download_file(url, output_file_path, progress=progress, run=run):
 
     progress.end()
     run.info('Downloaded succesfully', output_file_path)
+
+
+def get_file_md5(file_path):
+    hash_md5 = hashlib.md5()
+
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    
+    return hash_md5.hexdigest()
 
 
 def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run):
