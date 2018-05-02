@@ -2120,11 +2120,6 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
 
 
 def download_file(url, output_file_path, progress=progress, run=run):
-    """Downloads file.
-
-       We will have to revisit this function when the codebase is Python 3.* compatible.
-    """
-
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
