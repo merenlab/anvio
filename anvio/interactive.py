@@ -1314,7 +1314,16 @@ class StructureInteractive():
 
 
     def get_variability(self, options):
-        print(options['engine'])
+        engine = options['engine']
+        gene_callers_id = options['gene_callers_id']
+        departure_from_consensus = options['departure_from_consensus']
+
+        output = self.var[engine].data
+
+        output = output[output['corresponding_gene_call'] == gene_callers_id]
+        output = output[(output['departure_from_consensus'] >= departure_from_consensus[0]) & (output['departure_from_consensus'] <= departure_from_consensus[1])]
+
+        return output.to_json(orient='index')
 
 
 class ContigsInteractive():

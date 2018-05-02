@@ -1043,8 +1043,12 @@ class BottleApplication(Bottle):
     def get_variability(self):
         options = {}
         options['engine'] = request.forms.get('engine')
+        options['gene_callers_id'] = int(request.forms.get('gene_callers_id'))
+        options['departure_from_consensus'] = list(map(float, request.forms.get('departure_from_consensus').split(',')))
 
-        return json.dumps(self.interactive.get_variability(options))
+        output = self.interactive.get_variability(options)
+
+        return output
 
 
     def filter_gene_clusters(self):
