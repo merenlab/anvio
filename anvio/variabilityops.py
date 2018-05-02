@@ -279,6 +279,7 @@ class VariabilitySuper(object):
             filesnpaths.is_output_file_writable(self.output_file_path)
 
         self.get_samples_of_interest()
+        self.get_genes_of_interest()
 
         # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
         if not self.data.empty:
@@ -287,7 +288,6 @@ class VariabilitySuper(object):
             self.check_how_splits_are_found()
         self.get_splits_of_interest()
 
-        self.get_genes_of_interest()
 
         if self.genes_of_interest:
             genes_available = self.gene_callers_id_to_split_name_dict if self.data.empty else self.data["corresponding_gene_call"].unique()
