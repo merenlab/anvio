@@ -1697,7 +1697,7 @@ class VariabilityNetwork:
         self.run.info('network_description', self.output_file_path)
 
 
-class VariabilityData(VariabilitySuper):
+class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
     def __init__(self, args={}, p=progress, r=run):
         self.run = r
         self.progress = p
@@ -1706,18 +1706,25 @@ class VariabilityData(VariabilitySuper):
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
         self.variability_table_path = A('variability_profile', null)
+        self.profile_db_path = A('profile_db', null)
+        self.contigs_db_path = A('contigs_db', null)
+
+        if self.variability_table_path and (self.contigs_db_path or self.profile_db_path):
+            raise ConfigError("VariabilityData ::  you passed a")
 
         # determine the engine type of the variability table
-        self.engine = utils.get_variability_table_engine_type(self.variability_table_path)
+        inferred_engine = utils.get_variability_table_engine_type(self.variability_table_path)
+        if self.engine != inferred_engine:
+            raise ConfigError("The engine you requested is {}, but the engine inferred from {} is {}.".\
+                               format(self.engine, self.variability_table_path, inferred_engine))
+        self.engine = inferred_engine
 
         # load the data
         self.load_data()
 
-        # init VariabilitySuper
+        # init the appropriate engine
         self.args.engine = self.engine
-        self.args.contigs_db = None
-        self.args.profile_db = None
-        VariabilitySuper.__init__(self, self.args, self.data, p=progress, r=run)
+        variability_engines[self.engine].__init__(self, self.args, self.data, p=progress, r=run)
 
         self.init_commons()
 
@@ -1725,6 +1732,9 @@ class VariabilityData(VariabilitySuper):
     def load_data(self):
         """load the variability data (output of anvi-gen-variabliity-profile)"""
         self.data = pd.read_csv(self.variability_table_path, sep="\t")
+
+            
+
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
