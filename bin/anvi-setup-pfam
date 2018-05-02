@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+import gzip
+import requests
+from io import BytesIO
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Özcan Esen"
+__email__ = "ozcanesen@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+
+
+def read_remote_gzip(url):
+    remote_file = requests.get(url)
+    buf = BytesIO(remote_file.content)
+    fg = gzip.GzipFile(fileobj=buf)
+    return fg.read()
+
+
+class PfamSetup(object):
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+        self.pfam_data_dir = args.pfam_data_dir
+
+        filesnpaths.is_program_exists('hmmpress')
+
+        if not self.pfam_data_dir:
+            self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
+
+        filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=args.reset)
+
+        self.database_url = "http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release"
+        self.files = ['Pfam-A.hmm.gz', 'Pfam-A.hmm.dat.gz', 'Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
+
+
+    def get_remote_version(self):
+        content = read_remote_gzip(self.database_url + '/Pfam.version.gz').decode('utf-8')
+
+        for line in content.strip().split('\n'):
+            k, v = line.split(':')
+            self.run.info('[remote] ' + k.strip(), v.strip())
+
+
+    def get_local_version(self):
+        pass
+
+
+    def download(self):
+        for file_name in self.files:
+            utils.download_file(self.database_url + '/' + file_name, 
+                os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
+
+
+    def confirm_downloaded_files(self):
+        checksums = read_remote_gzip(self.database_url + '/md5_checksums')
+        pass
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Download Pfam data from the EBI')
+    parser.add_argument('--pfam-data-dir', default=None, type=str, help="The directory for COG data to be stored. If you leave it\
+                        as is without specifying anything, the default destination for the data directory will be used to set things\
+                        up. The advantage of it is that everyone will be using a single data directory, but then you may need\
+                        superuser privileges to do it. Using this parameter you can choose the location of the data directory somewhere\
+                        you like. However, when it is time to run Pfam, you will need to remember that path and provide it to the program.")
+    parser.add_argument('--reset', default=False, action="store_true", help="This program by default attempts to use previously\
+                        downloaded files in your Pfam data directory if there are any. If something is wrong for some reason you\
+                        can use this to tell anvi'o to remove everything, and start over.")
+
+    args = anvio.get_args(parser)
+
+    try:
+        setup = PfamSetup(args)
+        setup.get_remote_version()
+        setup.download()
+
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
