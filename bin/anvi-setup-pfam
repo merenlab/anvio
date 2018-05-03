@@ -34,9 +34,9 @@ def read_remote_file(url, is_gzip=True):
     if is_gzip:
         buf = BytesIO(remote_file.content)
         fg = gzip.GzipFile(fileobj=buf)
-        return fg.read()
+        return fg.read().decode('utf-8')
 
-    return remote_file.content
+    return remote_file.content.decode('utf-8')
 
 
 class PfamSetup(object):
@@ -58,7 +58,7 @@ class PfamSetup(object):
 
 
     def get_remote_version(self):
-        content = read_remote_file(self.database_url + '/Pfam.version.gz').decode('utf-8')
+        content = read_remote_file(self.database_url + '/Pfam.version.gz')
 
         for line in content.strip().split('\n'):
             k, v = line.split(':')
@@ -78,7 +78,7 @@ class PfamSetup(object):
 
 
     def confirm_downloaded_files(self):
-        checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).decode('utf-8').strip()
+        checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
         checksums = {}
         
         for line in checksums_file.split('\n'):
