@@ -21,6 +21,7 @@ import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.structureops as structureops
+import anvio.variabilityops as variabilityops
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
@@ -1247,49 +1248,83 @@ class StructureInteractive():
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
-        self.contig_db_path = A('contigs_db', null)
-        self.profile_db_path = A('profile_db', null)
-        self.structure_db_path = A('structure_db', null)
-        self.variability_table_path = A('variability_profile', null)
+        self.contig_db_path = A('contigs_db', str)
+        self.profile_db_path = A('profile_db', str)
+        self.structure_db_path = A('structure_db', str)
+        self.variability_table_path = A('variability_profile', str)
         self.no_variability = A('no_variability', bool)
-        self.samples_of_interest = A('samples_of_interest', null)
+        self.samples_of_interest = A('samples_of_interest', str)
+        self.only_if_structure = A('only_if_structure', bool) or True # can greatly reduce variability size
+
+        # For now, only true if self.variability_table_path. If contigs and profile databases,
+        # variability is profiled on-the-fly for each gene
+        self.store_full_variability_in_memory = True if self.variability_table_path else False
+        self.full_variability = None
+        self.gene_variability = {}
+
+        self.sanity_check()
 
         if self.variability_table_path:
-            import anvio.variabilityops as vops
-            var = vops.VariabilityData(args)
+            self.profile_full_variability_data
 
-        self.var = {}
-        self.engines_profiled = []
-
-        if not self.samples_of_interest:
-            profile_db = dbops.ProfileDatabase(self.profile_db_path)
-            self.samples_of_interest = sorted(list(profile_db.samples))
-            profile_db.disconnect()
-
-        if not self.no_variability:
-            self.profile_variability_data()
+        self.available_engines = [self.full_variability.engine] if self.full_variability else ["AA", "CDN"]
 
 
     def sanity_check(self):
-        # sanity should in theory could not be run
-        pass
+        if not self.structure_db_path:
+            raise ConfigError("Must provide a structure database.")
+        utils.is_structure_db(self.structure_db_path)
 
-
-    def profile_variability_data(self, engines = ["AA", "CDN"]):
-        """Variability data is computed on the fly."""
         if self.no_variability:
-            return
+            run.warning("Wow. Seriously? --no-variability? This is why freedom of speech needs to be\
+                         abolished.")
 
-        # if no structure we are not interested
-        self.args.only_if_structure = True
+        elif self.variability_table_path:
+            run.warning("You opted to work with a variability table previously generated from\
+                         anvi-gen-varability-profile. As a word of caution, keep in mind that any\
+                         filters applied when the table was generated now persist in the\
+                         following visualizations.")
 
-        for engine in engines:
-            self.args.engine = engine
-            self.var[engine] = variability_engines[engine](self.args)
-            self.var[engine].process()
-            self.engines_profiled.append(engine)
-        self.args.engine = None # this variable is no longer meaningful
-        self.engines_profiled = self.var.keys()
+        elif self.profile_db_path or self.contig_db_path:
+            pass
+
+        else:
+            raise ConfigError("You have to provide either a variability table generated from\
+                               anvi-gen-variability-profile, or a profile and contigs database from\
+                               which sequence variability will be computed. Alternatively, you can give\
+                               the --no-variability flag, but anvi'o will be extremely condescending.")
+
+
+    def clear_gene_variability(self):
+        self.gene_variability = {}
+
+
+    def profile_full_variability_data(self):
+        self.full_variability = variabilityops.VariabilityData(self.args, p=progress, r=run)
+
+
+    def profile_gene_variability_data(self, gene_callers_id, engines = ["AA", "CDN"]):
+        """Variability data is computed on the fly if a profile and contigs database is provided.
+           If the variability table is provided, the full table is stored in memory and a gene
+           subset is created.
+        """
+        # New gene, new variability
+        self.clear_gene_variability()
+
+        # if the full variability is in memory, make a deep copy, then filter
+        if self.full_variability_in_memory:
+            var = copy.deepcopy(self.full_variability)
+            var.genes_of_interest = set([gene_callers_id])
+            var.filter_by_genes()
+            self.gene_variability[var.engine] = var
+
+        # if not, we profile from scratch, passing as an argument our gene of interest
+        else:
+            for engine in self.available_engines:
+                self.args.engine = engine
+                self.args.genes_of_interest_set = set([gene_callers_id])
+                self.gene_variability[engine] = variability_engines[engine](self.args)
+                self.gene_variability[engine].process()
 
 
     def get_available_genes_and_samples(self):
@@ -1298,7 +1333,7 @@ class StructureInteractive():
         output = {}
         output['available_gene_callers_ids'] = structure_db.genes_with_structure
         output['available_sample_ids'] = self.samples_of_interest
-        output['available_engines'] = list(self.engines_profiled)
+        output['available_engines'] = self.available_engines
 
         structure_db.disconnect()
         return output
@@ -1318,12 +1353,12 @@ class StructureInteractive():
         gene_callers_id = options['gene_callers_id']
         departure_from_consensus = options['departure_from_consensus']
 
-        output = self.var[engine].data
+        self.variability_for_display = copy.deepcopy(self.gene_variability)
+        self.variability_for_display.min_departure_from_consensus = departure_from_consensus[0]
+        self.variability_for_display.max_departure_from_consensus = departure_from_consensus[1]
+        self.variability_for_display = self.gene_variability[engine].data
 
-        output = output[output['corresponding_gene_call'] == gene_callers_id]
-        output = output[(output['departure_from_consensus'] >= departure_from_consensus[0]) & (output['departure_from_consensus'] <= departure_from_consensus[1])]
-
-        return output.to_json(orient='index')
+        return self.variability_for_display.data.to_json(orient='index')
 
 
 class ContigsInteractive():
