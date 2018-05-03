@@ -1721,18 +1721,19 @@ class PanSuperclass(object):
             results = genomes_storage.db._exec(query).fetchall()
             gene_clusters[search_term] = []
 
+            found_mismatch = False
             for result in results:
                 gene_caller_id, source, accession, function, genome_name = result
 
                 # we're finding gene caller ids in the genomes storage, but they may not end up in any
                 # of the final gene clusters stored in the pan database due to various reasons. for
                 # instance, if the user set a min occurrence parameter, a singleton will not be found
-                # in the pan db yet it will return a functional hit. FIXME: we need to track these and
-                # report them to the user.
-                if gene_caller_id not in self.gene_callers_id_to_gene_cluster[genome_name]:
-                    continue
-
-                gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
+                # in the pan db yet it will return a functional hit.
+                if not gene_caller_id in self.gene_callers_id_to_gene_cluster[genome_name]:
+                    gene_cluster_id = 'n/a'
+                    found_mismatch = True
+                else:
+                    gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
 
                 gene_dict = self.genomes_storage.gene_info[genome_name][gene_caller_id]
 
@@ -1740,10 +1741,17 @@ class PanSuperclass(object):
                     gene_cluster_id, gene_dict['dna_sequence'], gene_dict['aa_sequence'])])
 
                 gene_clusters[search_term].append(gene_cluster_id)
-
             self.progress.end()
+
+            if found_mismatch:
+                self.run.warning("Some of the search results for the term '%s' found in your genomes storage do not seem to \
+                                 belong any gene cluster in your pan database. This may be due to filtering parameters used (ex: --min-occurrence) \
+                                 during the pangenome analysis. Gene cluster ids for these results will appear as 'n/a' in the report." % search_term)
+
         genomes_storage.close()
         self.progress.end()
+
+
 
         return gene_clusters, full_report
 
