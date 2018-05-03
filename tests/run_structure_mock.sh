@@ -2,6 +2,42 @@
 source 00.sh
 set -e
 
+make_structure_db() {
+    anvi-gen-structure-database -c test-output/one_contig_five_genes.db \
+                                --gene-caller-ids 2,4 \
+                                --dump-dir test-output/RAW_MODELLER_OUTPUT \
+                                --output-db-path test-output/STRUCTURE.db
+}
+gen_var_profile1() {
+    anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
+                                 -c test-output/one_contig_five_genes.db \
+                                 -s test-output/STRUCTURE.db \
+                                 -C default \
+                                 -b bin1 \
+                                 --engine AA \
+                                 -o test-output/variability_AA.txt
+}
+gen_var_profile2() {
+    anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
+                                 -c test-output/one_contig_five_genes.db \
+                                 -s test-output/STRUCTURE.db \
+                                 -C default \
+                                 -b bin1 \
+                                 --engine CDN \
+                                 -o test-output/variability_CDN.txt
+}
+display_structure1() {
+    anvi-display-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
+                           -c test-output/one_contig_five_genes.db \
+                           -s test-output/STRUCTURE.db
+                           --gene-caller-ids 2,4
+}
+display_structure2() {
+    anvi-display-structure -V test-output/variability_AA.txt \
+                           -s test-output/STRUCTURE.db
+}
+
+
 if [ $# -eq 0  ]
 then
       echo "\
@@ -58,15 +94,27 @@ then
     INFO "Defining a collection and bin"
     anvi-import-collection mock_data_for_structure/collection.txt -c test-output/one_contig_five_genes.db -p test-output/SAMPLES-MERGED/PROFILE.db -C default
 
+    INFO "anvi-gen-structure-database with DSSP"
+    make_structure_db
+
+    INFO "anvi-gen-variability-profile --engine AA"
+    gen_var_profile1
+
+    INFO "anvi-gen-variability-profile --engine CDN"
+    gen_var_profile2
+
+    INFO "anvi-display-structure with profile and contigs databases"
+    display_structure1
+
+    INFO "anvi-display-structure with variability"
+    display_structure2
+
 
 ####################################################################################
 
-elif [ $1 = "continue"  ]
+elif [ $1 = "make_structure"  ]
 then
     cd sandbox
-
-    rm -rf test-output/STRUCTURE.db
-    rm -rf test-output/RAW_MODELLER_OUTPUT
 
     if [ ! -f "test-output/one_contig_five_genes.db"  ]
     then
@@ -79,24 +127,66 @@ then
     else
         INFO "Attempting to continue with the previously generated files"
     fi
+
+    rm -rf test-output/STRUCTURE.db
+    rm -rf test-output/RAW_MODELLER_OUTPUT
+
+    INFO "anvi-gen-structure-database with DSSP"
+    make_structure_db
+
+    INFO "anvi-gen-variability-profile --engine AA"
+    gen_var_profile1
+
+    INFO "anvi-gen-variability-profile --engine CDN"
+    gen_var_profile2
+
+    INFO "anvi-display-structure with profile and contigs databases"
+    display_structure1
+
+    INFO "anvi-display-structure with variability"
+    display_structure2
+
+    echo
+    echo
+
+elif [ $1 = "display_structure"  ]
+then
+    cd sandbox
+
+    if [ ! -f "test-output/STRUCTURE.db"  ]
+    then
+      echo "
+        You asked to continue with the previously generated files,
+        but the structure database is not there. Maybe you should start
+        from scratch by re-running this script with the parameter 'new'.
+        "
+        exit -1
+    else
+        INFO "Attempting to continue with the previously generated files"
+    fi
+
+    rm -rf test-output/variability_CDN.txt
+    rm -rf test-output/variability_AA.txt
+
+    INFO "anvi-gen-variability-profile --engine AA"
+    gen_var_profile1
+
+    INFO "anvi-gen-variability-profile --engine CDN"
+    gen_var_profile2
+
+    INFO "anvi-display-structure with profile and contigs databases"
+    display_structure1
+
+    INFO "anvi-display-structure with variability"
+    display_structure2
+
+    echo
+    echo
+
 else
       echo "
-        Unknown parameter $1 :/ Try 'new', or 'continue'.
+        Unknown parameter $1 :/ Try 'new', or 'make_structure', or 'display_structure'.
         "
         exit -1
 fi
 
-INFO "anvi-gen-structure-database with DSSP"
-anvi-gen-structure-database -c test-output/one_contig_five_genes.db \
-                      --gene-caller-ids 2,4 \
-                      --dump-dir test-output/RAW_MODELLER_OUTPUT \
-                      --output-db-path test-output/STRUCTURE.db
-
-INFO "anvi-gen-variability-profile --engine AA"
-anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db -C default -b bin1 --engine AA -o test-output/variability_AA.txt
-
-INFO "anvi-gen-variability-profile --engine CDN"
-anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db -C default -b bin1 --engine CDN -o test-output/variability_CDN.txt
-
-echo
-echo
