@@ -75,6 +75,7 @@ class PfamSetup(object):
                 os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
 
         self.confirm_downloaded_files()
+        self.decompress_files()
         self.run_hmmpress()
 
 
@@ -87,7 +88,7 @@ class PfamSetup(object):
             checksums[file_name] = checksum
 
         for file_name in self.files:
-            if filesnpaths.is_file_exists(os.path.join(self.pfam_data_dir, file_name), dont_raise=True):
+            if not filesnpaths.is_file_exists(os.path.join(self.pfam_data_dir, file_name), dont_raise=True):
                  # TO DO: Fix messages :(
                 raise ConfigError("Have missing file %s, please run --reset" % file_name)               
 
@@ -99,9 +100,22 @@ class PfamSetup(object):
                 raise ConfigError("Please run with --reset, one file hash doesn't match. %s" % file_name)
 
 
+    def decompress_files(self):
+        self.progress.new('Decompressing files')
+        
+        for file_name in self.files:
+            self.progress.update(file_name)
+            utils.gzip_decompress_file(os.path.join(self.pfam_data_dir, file_name))
+        
+        self.progress.end()
+
+
     def run_hmmpress(self):
+        log_file = filesnpaths.get_temp_file_path()
+        self.run.info("hmmpress log file", log_file)
         self.progress.new("Running 'hmmpress'")
-        utils.run_command(['hmmpress', os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')], filesnpaths.get_temp_file_path())
+        self.progress.update('...')
+        utils.run_command(['hmmpress', os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')], log_file)
         self.progress.end()
 
 
