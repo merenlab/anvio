@@ -86,6 +86,10 @@ class PfamSetup(object):
             checksums[file_name] = checksum
 
         for file_name in self.files:
+            if filesnpaths.is_file_exists(os.path.join(self.pfam_data_dir, file_name), dont_raise=True):
+                 # TO DO: Fix messages :(
+                raise ConfigError("Have missing file %s, please run --reset" % file_name)               
+
             hash_on_disk = utils.get_file_md5(os.path.join(self.pfam_data_dir, file_name))
             expected_hash = checksums[file_name]
 
