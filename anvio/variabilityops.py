@@ -100,6 +100,20 @@ class VariabilitySuper(object):
         self.comprehensive_stats_headers = []
         self.comprehensive_variability_scores_computed = False
 
+        # f = function called in self.process, c = condition upon which function is called
+        F = lambda f, c = True: (f, c)
+        self.process_functions = [F(self.init_commons),
+                                  F(self.apply_preliminary_filters),
+                                  F(self.set_unique_pos_identification_numbers),
+                                  F(self.filter_by_scattering_factor),
+                                  F(self.filter_by_num_positions_from_each_split),
+                                  F(self.insert_additional_fields),
+                                  F(self.apply_advanced_filters),
+                                  F(self.recover_base_frequencies_for_all_samples, self.quince_mode),
+                                  F(self.filter_by_minimum_coverage_in_each_sample),
+                                  F(self.compute_comprehensive_variability_scores),
+                                  F(self.get_residue_structure_information,)]
+
         if not self.skip_sanity_check:
             self.sanity_check()
 
@@ -1079,28 +1093,9 @@ class VariabilitySuper(object):
 
 
     def process(self):
-        self.init_commons()
-
-        self.apply_preliminary_filters()
-
-        self.set_unique_pos_identification_numbers() # which allows us to track every unique position across samples
-
-        self.filter_by_scattering_factor()
-
-        self.filter_by_num_positions_from_each_split()
-
-        self.insert_additional_fields()
-
-        self.apply_advanced_filters()
-
-        if self.quince_mode: # will be very costly...
-            self.recover_base_frequencies_for_all_samples()
-
-        self.filter_by_minimum_coverage_in_each_sample()
-
-        self.compute_comprehensive_variability_scores()
-
-        self.get_residue_structure_information()
+        for func, condition in self.process_functions:
+            if condition:
+                func()
 
 
     def get_residue_structure_information(self):
@@ -1493,6 +1488,14 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         # Init the quince mode recoverer
         QuinceModeWrapperForFancyEngines.__init__(self)
 
+        # add codon specific functions to self.process
+        F = lambda f, c = True: (f, c)
+        self.process_functions.append(F(self.compute_synonymity))
+
+
+    def compute_synonymity(self):
+        self.run.info("Framework works", True)
+
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
     def __init__(self, args={}, p=progress, r=run):
@@ -1725,10 +1728,8 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         self.args = args
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
-        self.variability_table_path = A('variability_profile', null)
-        self.profile_db_path = A('profile_db', null)
-        self.contigs_db_path = A('contigs_db', null)
-        self.engine = A('engine', null)
+        self.variability_table_path = A('variability_profile', str)
+        self.engine = A('engine', str)
 
         if not self.variability_table_path:
             raise ConfigError("You must declare a variability table filepath.")
