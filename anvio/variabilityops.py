@@ -1,7 +1,7 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 
-"""Classes to make sense of single nucleotide variation"""
+"""Classes to make sense of sequence variation"""
 
 
 import os
@@ -43,16 +43,16 @@ run = terminal.Run(width=62)
 
 
 class VariabilitySuper(object):
-    def __init__(self, args={}, data=pd.DataFrame({}), p=progress, r=run):
+    def __init__(self, args={}, p=progress, r=run):
         self.args = args
 
         if args.engine not in variability_engines:
             raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
 
-        self.data = data
-
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
+        # variability
+        self.data = args.data if 'data' in args.__dict__ else pd.DataFrame({})
         # splits
         self.bin_id = A('bin_id', null)
         self.collection_name = A('collection_name', null)
@@ -88,6 +88,7 @@ class VariabilitySuper(object):
         self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
 
         self.append_structure_residue_info = True if self.structure_db_path else False
+        self.table_provided = False if self.data.empty else True
         self.substitution_scoring_matrices = None
         self.merged_split_coverage_values = None
         self.unique_pos_identifier = 0
@@ -114,26 +115,26 @@ class VariabilitySuper(object):
             raise ConfigError("The VariabilitySuper class is inherited with an unknown engine.\
                                WTF is '%s'? Anvi'o needs an adult :(" % self.engine)
 
-        if self.data.empty:
+        if not self.table_provided:
             if not self.contigs_db_path:
                 raise ConfigError("You need to provide a contigs database.")
 
             if not self.profile_db_path:
                 raise ConfigError("You need to provide a profile database.")
 
-        if not self.data.empty and (self.contigs_db_path or self.profile_db_path):
+        if self.table_provided and (self.contigs_db_path or self.profile_db_path):
             raise ConfigError("VariabilitySuper was initialized with self.data, which is fine. But\
                                profile and contigs database paths were also provided so that the\
                                variability data would be generated on the fly. Since sanity_check()\
                                was ran, I'm complaining.")
 
-        if not self.data.empty and (self.collection_name or self.bin_id):
+        if self.table_provided and (self.collection_name or self.bin_id):
             raise ConfigError("VariabilitySuper was initialized with self.data, which is fine. But\
                                a collection name and/or a bin id were also provided. Unfortunately\
                                self.data knows nothing about bin IDs or collection names. Since\
                                sanity_check() was ran, I'm complaining.")
 
-        if not self.data.empty and (self.splits_of_interest_path or self.splits_of_interest):
+        if self.table_provided and (self.splits_of_interest_path or self.splits_of_interest):
             if "split_name" not in self.data.columns:
                 raise ConfigError("Your variability profile does not have a split_name column, and\
                                    therefore you cannot provide splits of interest\
@@ -282,7 +283,7 @@ class VariabilitySuper(object):
         self.get_genes_of_interest()
 
         # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
-        if not self.data.empty:
+        if self.table_provided:
             self.split_source = "split_names" if self.splits_of_interest_path else ""
         else:
             self.check_how_splits_are_found()
@@ -290,7 +291,7 @@ class VariabilitySuper(object):
 
 
         if self.genes_of_interest:
-            genes_available = self.gene_callers_id_to_split_name_dict if self.data.empty else self.data["corresponding_gene_call"].unique()
+            genes_available = self.gene_callers_id_to_split_name_dict if not self.table_provided else self.data["corresponding_gene_call"].unique()
             # check for genes that do not appear in the contigs database
             bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in genes_available]
             if bad_gene_caller_ids:
@@ -300,7 +301,7 @@ class VariabilitySuper(object):
                                    2 more mistakes, and anvi'o will automatically uninstall itself. Yes, seriously :(".\
                                    format(len(bad_gene_caller_ids),
                                           "is" if len(bad_gene_caller_ids) == 1 else "are",
-                                          "in this variability profile" if not self.data.empty else "known to this contigs database",
+                                          "in this variability profile" if self.table_provided else "known to this contigs database",
                                           "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
                                           ", ".join([str(x) for x in some_to_report])))
 
@@ -317,7 +318,7 @@ class VariabilitySuper(object):
         self.progress.new('Init')
 
         # if we already have variability data we are almost done
-        if not self.data.empty:
+        if self.table_provided:
             self.load_structure_data()
             self.check_if_data_is_empty()
             self.sample_ids = self.data["sample_id"].unique()
@@ -502,17 +503,15 @@ class VariabilitySuper(object):
         self.check_if_data_is_empty()
 
 
-    def apply_preliminary_filters(self):
-        self.run.info('Variability data', '%s entries in %s splits across %s samples'\
-                % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.sample_ids))))
-
-        self.run.info('Samples in the profile db', ', '.join(sorted(self.sample_ids)))
+    def filter_by_samples(self):
+        self.run.info('Samples available', ', '.join(sorted(self.sample_ids)))
         if self.samples_of_interest:
-            samples_missing_from_db = [sample for sample in self.samples_of_interest if sample not in self.sample_ids]
+            samples_missing = [sample for sample in self.samples_of_interest if sample not in self.sample_ids]
 
-            if len(samples_missing_from_db):
+            if len(samples_missing):
                 raise ConfigError('One or more samples you are interested in seem to be missing from\
-                                    the profile database: %s' % ', '.join(samples_missing_from_db))
+                                   the %s: %s' % ('variability table' if self.table_provided else 'profile database',
+                                                  ', '.join(samples_missing)))
 
             self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
             self.sample_ids = sorted(list(self.samples_of_interest))
@@ -523,6 +522,8 @@ class VariabilitySuper(object):
             self.progress.end()
             self.report_change_in_entry_number(entries_before, entries_after, reason="samples of interest")
 
+
+    def filter_by_genes(self):
         if self.genes_of_interest:
             self.run.info('Num genes of interest', pp(len(self.genes_of_interest)))
             self.progress.new('Filtering based on genes of interest')
@@ -532,6 +533,8 @@ class VariabilitySuper(object):
             self.progress.end()
             self.report_change_in_entry_number(entries_before, entries_after, reason="genes of interest")
 
+
+    def filter_by_splits(self):
         if self.splits_of_interest:
             self.run.info('Num splits of interest', pp(len(self.splits_of_interest)))
             self.progress.new('Filtering based on splits of interest')
@@ -541,10 +544,8 @@ class VariabilitySuper(object):
             self.progress.end()
             self.report_change_in_entry_number(entries_before, entries_after, reason="splits of interest")
 
-        # let's report the number of positions reported in each sample before filtering any further:
-        num_positions_each_sample = dict(self.data.sample_id.value_counts())
-        self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample.get(s, 0)) for s in sorted(self.sample_ids)]))
 
+    def filter_by_departure_from_reference(self):
         if self.min_departure_from_reference:
             self.run.info('Min departure from reference', self.min_departure_from_reference)
             self.progress.new('Filtering based on min departure from reference')
@@ -563,16 +564,8 @@ class VariabilitySuper(object):
             self.progress.end()
             self.report_change_in_entry_number(entries_before, entries_after, reason="max departure from reference")
 
-        if self.engine == 'NT':
-            self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
-        elif self.engine == 'CDN' or self.engine == 'AA':
-            self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['corresponding_gene_call'].astype(str) + "_" + self.data['codon_order_in_gene'].astype(str)
-        else:
-            pass
 
-        # this could go anywhere now
-        self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
-
+    def filter_by_occurrence(self):
         if self.min_occurrence == 1:
             return
 
@@ -589,6 +582,33 @@ class VariabilitySuper(object):
         entries_after = len(self.data.index)
         self.progress.end()
         self.report_change_in_entry_number(entries_before, entries_after, reason="min occurrence")
+
+
+    def apply_preliminary_filters(self):
+        self.run.info('Variability data', '%s entries in %s splits across %s samples'\
+                % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.sample_ids))))
+
+        self.filter_by_samples()
+        self.filter_by_genes()
+        self.filter_by_splits()
+
+        # let's report the number of positions reported in each sample before filtering any further:
+        num_positions_each_sample = dict(self.data.sample_id.value_counts())
+        self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample.get(s, 0)) for s in sorted(self.sample_ids)]))
+
+        self.filter_by_departure_from_reference()
+
+        if self.engine == 'NT':
+            self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
+        elif self.engine == 'CDN' or self.engine == 'AA':
+            self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['corresponding_gene_call'].astype(str) + "_" + self.data['codon_order_in_gene'].astype(str)
+        else:
+            pass
+
+        # this could go anywhere now
+        self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
+
+        self.filter_by_occurrence()
 
 
     def set_unique_pos_identification_numbers(self):
@@ -682,7 +702,7 @@ class VariabilitySuper(object):
 
         # the first and second most common items, according to the 2nd convention in the docstring,
         # are now defined for each entry in two pandas Series.
-        items_first_and_second  = self.data.loc[entry_ids, self.items].columns[item_index_order[:,:2]]
+        items_first_and_second = self.data.loc[entry_ids, self.items].columns[item_index_order[:,:2]]
 
         # we also calculate the coverage values for the first and second most common items
         sorted_coverage = np.sort(self.data.loc[entry_ids, self.items].values, axis=1)
@@ -730,7 +750,7 @@ class VariabilitySuper(object):
             self.data.loc[entry_ids, m] = self.data.loc[entry_ids, self.competing_items].apply(lambda x: substitution_scoring_matrix.get(x, None))
 
 
-    def filter_based_on_scattering_factor(self):
+    def filter_by_scattering_factor(self):
         """To remove any unique entry from the variable positions table that describes a variable position
            and yet is not helpful to distinguish samples from eachother."""
 
@@ -796,7 +816,7 @@ class VariabilitySuper(object):
         self.check_if_data_is_empty()
 
 
-    def filter_based_on_minimum_coverage_in_each_sample(self):
+    def filter_by_minimum_coverage_in_each_sample(self):
         """To remove any unique entry from the variable positions table that describes a variable position
            and yet is not helpful to distinguish samples from eachother."""
 
@@ -826,7 +846,7 @@ class VariabilitySuper(object):
         self.report_change_in_entry_number(num_entries_before, num_entries_after, reason="min cov for all samples")
 
 
-    def filter_based_on_num_positions_from_each_split(self):
+    def filter_by_num_positions_from_each_split(self):
         if self.num_positions_from_each_split > 0:
             self.run.info('Num positions to keep from each split', self.num_positions_from_each_split)
         else:
@@ -1065,9 +1085,9 @@ class VariabilitySuper(object):
 
         self.set_unique_pos_identification_numbers() # which allows us to track every unique position across samples
 
-        self.filter_based_on_scattering_factor()
+        self.filter_by_scattering_factor()
 
-        self.filter_based_on_num_positions_from_each_split()
+        self.filter_by_num_positions_from_each_split()
 
         self.insert_additional_fields()
 
@@ -1076,7 +1096,7 @@ class VariabilitySuper(object):
         if self.quince_mode: # will be very costly...
             self.recover_base_frequencies_for_all_samples()
 
-        self.filter_based_on_minimum_coverage_in_each_sample()
+        self.filter_by_minimum_coverage_in_each_sample()
 
         self.compute_comprehensive_variability_scores()
 
@@ -1708,13 +1728,14 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         self.variability_table_path = A('variability_profile', null)
         self.profile_db_path = A('profile_db', null)
         self.contigs_db_path = A('contigs_db', null)
+        self.engine = A('engine', null)
 
-        if self.variability_table_path and (self.contigs_db_path or self.profile_db_path):
-            raise ConfigError("VariabilityData ::  you passed a")
+        if not self.variability_table_path:
+            raise ConfigError("You must declare a variability table filepath.")
 
         # determine the engine type of the variability table
         inferred_engine = utils.get_variability_table_engine_type(self.variability_table_path)
-        if self.engine != inferred_engine:
+        if self.engine and self.engine != inferred_engine:
             raise ConfigError("The engine you requested is {}, but the engine inferred from {} is {}.".\
                                format(self.engine, self.variability_table_path, inferred_engine))
         self.engine = inferred_engine
@@ -1723,8 +1744,9 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         self.load_data()
 
         # init the appropriate engine
+        self.args.data = self.data
         self.args.engine = self.engine
-        variability_engines[self.engine].__init__(self, self.args, self.data, p=progress, r=run)
+        variability_engines[self.engine].__init__(self, self.args, p=self.progress, r=run)
 
         self.init_commons()
 
@@ -1732,9 +1754,6 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
     def load_data(self):
         """load the variability data (output of anvi-gen-variabliity-profile)"""
         self.data = pd.read_csv(self.variability_table_path, sep="\t")
-
-            
-
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
