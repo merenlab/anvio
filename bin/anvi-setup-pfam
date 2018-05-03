@@ -75,6 +75,7 @@ class PfamSetup(object):
                 os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
 
         self.confirm_downloaded_files()
+        self.run_hmmpress()
 
 
     def confirm_downloaded_files(self):
@@ -96,6 +97,13 @@ class PfamSetup(object):
             if not expected_hash == hash_on_disk:
                 # TO DO: Fix messages :(
                 raise ConfigError("Please run with --reset, one file hash doesn't match. %s" % file_name)
+
+
+    def run_hmmpress(self):
+        self.progress.new("Running 'hmmpress'")
+        utils.run_command(['hmmpress', os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')], filesnpaths.get_temp_file_path())
+        self.progress.end()
+
 
 if __name__ == '__main__':
     import argparse
