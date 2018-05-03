@@ -45,23 +45,6 @@ $(document).ready(function() {
 });
 
 
-/*        var SAAVs_array = [5, 43, 22, 30];
-        var atomPair = [[ "22.CA", "5.CA" ], [ "22.CA", "43.CA" ],  [ "22.CA", "30.CA" ]];
-
-        var SAAVs_string = SAAVs_array.join(", ");
-
-        var schemeId = NGL.ColormakerRegistry.addScheme(function (params) {
-          this.atomColor = function (atom) {
-            if (atom.resno == SAAVs_array[0]) {
-              return 0x0000FF  // blue
-            } else if (atom.resno == SAAVs_array[1]) {
-              return 0xFF0000  // red
-            } else {
-              return 0x00FF00  // green
-            }
-          }
-        })*/
-
 function defaultStructureRepresentation( component ){
     // bail out if the component does not contain a structure
     if( component.type !== "structure" ) return;
@@ -111,7 +94,7 @@ function load_protein(gene_callers_id) {
             stage.removeAllComponents();
 
             var stringBlob = new Blob( [ data['pdb_content'] ], { type: 'text/plain'} );
-            stage.loadFile(stringBlob, { ext: "pdb" }).then(defaultStructureRepresentation).then();
+            stage.loadFile(stringBlob, { ext: "pdb", name: gene_callers_id }).then(defaultStructureRepresentation).then();
             // remove default hoverPick mouse action
             stage.mouseControls.remove("hoverPick")
             // listen to `hovered` signal to move tooltip around and change its text
@@ -132,17 +115,41 @@ function load_protein(gene_callers_id) {
 }
 
 function draw_variability() {
+    let gene_callers_id = $('#gene_callers_id_list').val()
     $.ajax({
         type: 'POST',
         cache: false,
         data: {
-            engine: $('[name=engine]:checked').val(),
-            samples_of_interest: $('#sample_id_list input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); }),
-            departure_from_consensus_min_max: $('#departure_from_consensus').val(),
+            'gene_callers_id': gene_callers_id,
+            'engine': $('[name=engine]:checked').val(),
+            'samples_of_interest': $('#sample_id_list input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); }),
+            'departure_from_consensus': $('#departure_from_consensus').val(),
         },
         url: '/data/get_variability',
         success: function(data) {
+            let component = stage.compList[0];
+            let variant_residues = [];
 
+            console.log(data);
+
+            for (let index in data) {
+                variant_residues.push(data[index]['codon_order_in_gene']);
+            }
+
+            component.reprList.forEach((rep) => {
+                if (rep.name == 'spacefill') {
+                    rep.dispose();
+                }
+            });
+
+            component.addRepresentation("spacefill", {
+                sele: "(" + variant_residues.join(', ') + ") and .CA",
+                scale: 1
+            });
+
+        },
+        error: function(request, status, error) {
+            console.log(request, status, error);
         }
     });
 };
