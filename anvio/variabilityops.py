@@ -103,11 +103,13 @@ class VariabilitySuper(object):
         # f = function called in self.process, c = condition upon which function is called
         F = lambda f, c = True: (f, c)
         self.process_functions = [F(self.init_commons),
+                                  F(self.load_variability_data, not self.table_provided),
+                                  F(self.load_structure_data, self.append_structure_residue_info),
                                   F(self.apply_preliminary_filters),
                                   F(self.set_unique_pos_identification_numbers),
                                   F(self.filter_by_scattering_factor),
                                   F(self.filter_by_num_positions_from_each_split),
-                                  F(self.insert_additional_fields),
+                                  F(self.compute_additional_fields),
                                   F(self.apply_advanced_filters),
                                   F(self.recover_base_frequencies_for_all_samples, self.quince_mode),
                                   F(self.filter_by_minimum_coverage_in_each_sample),
@@ -137,16 +139,17 @@ class VariabilitySuper(object):
                 raise ConfigError("You need to provide a profile database.")
 
         if self.table_provided and (self.contigs_db_path or self.profile_db_path):
-            raise ConfigError("VariabilitySuper was initialized with self.data, which is fine. But\
-                               profile and contigs database paths were also provided so that the\
-                               variability data would be generated on the fly. Since sanity_check()\
-                               was ran, I'm complaining.")
+            raise ConfigError("You provided a variability table (--variability-profile), but you\
+                               also provided a contigs database and/or a profile database. You need\
+                               to supply either a variability table, or, both a profile database and\
+                               a contigs database combo.")
 
         if self.table_provided and (self.collection_name or self.bin_id):
-            raise ConfigError("VariabilitySuper was initialized with self.data, which is fine. But\
-                               a collection name and/or a bin id were also provided. Unfortunately\
-                               self.data knows nothing about bin IDs or collection names. Since\
-                               sanity_check() was ran, I'm complaining.")
+            raise ConfigError("You provided a variability table (--variability-profile), but you\
+                               also provided a collection name and/or a bin id, which are parameters\
+                               only used in conjunction with a profile database and a contigs\
+                               database. No big deal, just remove these parameters from your\
+                               command.")
 
         if self.table_provided and (self.splits_of_interest_path or self.splits_of_interest):
             if "split_name" not in self.data.columns:
@@ -265,7 +268,7 @@ class VariabilitySuper(object):
     def get_items(self):
         # Ensure self.items is sorted alphabetically.  This is required for resolving ties in
         # coverage alphabetically, which is described in the docstring of
-        # self.insert_additional_fields.
+        # self.compute_additional_fields.
         if self.engine == 'NT':
             self.items = sorted(constants.nucleotides)
         elif self.engine == 'CDN':
@@ -333,9 +336,8 @@ class VariabilitySuper(object):
 
         # if we already have variability data we are almost done
         if self.table_provided:
-            self.load_structure_data()
             self.check_if_data_is_empty()
-            self.sample_ids = self.data["sample_id"].unique()
+            self.available_sample_ids = self.data["sample_id"].unique()
             self.progress.end()
             return
 
@@ -377,20 +379,24 @@ class VariabilitySuper(object):
 
         self.progress.update('Reading the profile database ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
-        self.sample_ids = sorted(list(profile_db.samples)) # we set this now, but we will overwrite it with args.samples_of_interest if necessary
+        self.available_sample_ids = sorted(list(profile_db.samples))
 
         if not profile_db.meta['SNVs_profiled']:
             self.progress.end()
             raise ConfigError("Well well well. It seems SNVs were not characterized for this profile database.\
                                 Sorry, there is nothing to report here!")
 
+        # done Init
+        profile_db.disconnect()
         self.progress.end()
 
-        self.progress.new('Init')
 
-        ##################### LOAD ENGINE-SPECIFIC DATA #####################
-        # data is one of them, since they will be read from different tables.
-        # another one is the substitution scoring matrices.
+    def load_variability_data(self):
+        """Populates self.data (type pandas.DataFrame) from profile database tables."""
+        self.progress.new('Generating variability')
+        self.progress.update('Reading the profile database ...')
+        profile_db = dbops.ProfileDatabase(self.profile_db_path)
+
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, table_structure=self.table_structure)
 
@@ -415,42 +421,38 @@ class VariabilitySuper(object):
 
         # we're done here. bye.
         profile_db.disconnect()
-
-        self.load_structure_data()
-
-        # done Init
         self.progress.end()
 
 
     def load_structure_data(self):
-        # open up residue_info table from structure db, if provided
-        if self.append_structure_residue_info:
+        # open up residue_info table from structure db
+        self.progress.new('Loading structure information')
+        self.progress.update('Reading the structure database ...')
+        structure_db = structureops.StructureDatabase(self.structure_db_path)
+        self.structure_residue_info = structure_db.db.get_table_as_dataframe(t.structure_residue_info_table_name)
 
-            self.progress.update('Reading the structure database ...')
-            structure_db = structureops.StructureDatabase(self.structure_db_path)
-            self.structure_residue_info = structure_db.db.get_table_as_dataframe(t.structure_residue_info_table_name)
+        self.genes_with_structure = set(self.structure_residue_info["corresponding_gene_call"].unique())
+        # genes_included = genes_of_interest, unless genes_of_interest weren't specified. then
+        # it equals all genes in self.data. I don't overwrite self.genes_of_interest because a
+        # needless gene filtering step will be carried out if self.genes_of_interest is not an
+        # empty set
+        genes_included = self.genes_of_interest if self.genes_of_interest else set(self.data["corresponding_gene_call"].unique())
+        genes_with_var_and_struct = set([g for g in self.genes_with_structure if g in genes_included])
 
-            self.genes_with_structure = set(self.structure_residue_info["corresponding_gene_call"].unique())
-            # genes_included = genes_of_interest, unless genes_of_interest weren't specified. then
-            # it equals all genes in self.data. I don't overwrite self.genes_of_interest because a
-            # needless gene filtering step will be carried out if self.genes_of_interest is not an
-            # empty set
-            genes_included = self.genes_of_interest if self.genes_of_interest else set(self.data["corresponding_gene_call"].unique())
-            genes_with_var_and_struct = set([g for g in self.genes_with_structure if g in genes_included])
+        if not genes_with_var_and_struct:
+            self.progress.end()
+            raise ConfigError("There is no overlap between genes that have structures and genes that have variability.\
+                               Consider changing things upstream in your workflow or do not provide the structure db.\
+                               Here are the genes in your structure database: {}".\
+                               format(", ".join([str(x) for x in self.genes_with_structure])))
 
-            if not genes_with_var_and_struct:
-                self.progress.end()
-                raise ConfigError("There is no overlap between genes that have structures and genes that have variability.\
-                                   Consider changing things upstream in your workflow or do not provide the structure db.\
-                                   Here are the genes in your structure database: {}".\
-                                   format(", ".join([str(x) for x in self.genes_with_structure])))
+        if self.only_if_structure:
+            # subset self.genes_of_interest to those that have structure
+            self.genes_of_interest = genes_with_var_and_struct
 
-            if self.only_if_structure:
-                # subset self.genes_of_interest to those that have structure
-                self.genes_of_interest = genes_with_var_and_struct
-
-            # we're done here. bye.
-            structure_db.disconnect()
+        # we're done here. bye.
+        structure_db.disconnect()
+        self.progress.end()
 
 
     def check_if_data_is_empty(self):
@@ -518,9 +520,9 @@ class VariabilitySuper(object):
 
 
     def filter_by_samples(self):
-        self.run.info('Samples available', ', '.join(sorted(self.sample_ids)))
+        self.run.info('Samples available', ', '.join(sorted(self.available_sample_ids)))
         if self.samples_of_interest:
-            samples_missing = [sample for sample in self.samples_of_interest if sample not in self.sample_ids]
+            samples_missing = [sample for sample in self.samples_of_interest if sample not in self.available_sample_ids]
 
             if len(samples_missing):
                 raise ConfigError('One or more samples you are interested in seem to be missing from\
@@ -528,7 +530,7 @@ class VariabilitySuper(object):
                                                   ', '.join(samples_missing)))
 
             self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
-            self.sample_ids = sorted(list(self.samples_of_interest))
+            self.available_sample_ids = sorted(list(self.samples_of_interest))
             self.progress.new('Filtering based on samples of interest')
             entries_before = len(self.data.index)
             self.data = self.data.loc[self.data["sample_id"].isin(self.samples_of_interest)]
@@ -600,7 +602,7 @@ class VariabilitySuper(object):
 
     def apply_preliminary_filters(self):
         self.run.info('Variability data', '%s entries in %s splits across %s samples'\
-                % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.sample_ids))))
+                % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.available_sample_ids))))
 
         self.filter_by_samples()
         self.filter_by_genes()
@@ -608,7 +610,7 @@ class VariabilitySuper(object):
 
         # let's report the number of positions reported in each sample before filtering any further:
         num_positions_each_sample = dict(self.data.sample_id.value_counts())
-        self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample.get(s, 0)) for s in sorted(self.sample_ids)]))
+        self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample.get(s, 0)) for s in sorted(self.available_sample_ids)]))
 
         self.filter_by_departure_from_reference()
 
@@ -661,7 +663,7 @@ class VariabilitySuper(object):
         self.progress.end()
 
 
-    def insert_additional_fields(self, entry_ids=[]):
+    def compute_additional_fields(self, entry_ids=[]):
         """
         This calculates the following columns: consensus, n2n1 ratio, competing_aas,
         departure_from_consensus, and all substitution scoring matrices.
@@ -776,7 +778,7 @@ class VariabilitySuper(object):
                            what we thought it did. This will be fixed soon. Sorry for \
                            the inconvenience.")
 
-        num_samples = len(self.sample_ids)
+        num_samples = len(self.available_sample_ids)
         if self.min_scatter > num_samples / 2:
             raise ConfigError('Minimum scatter (%d) can not be more than half of the number of samples\
                                 (%d) :/' % (self.min_scatter, num_samples))
@@ -1025,7 +1027,7 @@ class VariabilitySuper(object):
         # indexes the items, the first indexes the unique_pos_identifier, and the second indexes the sample number.
         # This reshaping operation works only because at the start of this function we ordered entries by
         # unique_pos_identifier.
-        numpy_dimension = (len(self.items), self.data["unique_pos_identifier"].nunique(), len(self.sample_ids))
+        numpy_dimension = (len(self.items), self.data["unique_pos_identifier"].nunique(), len(self.available_sample_ids))
         coverage_by_pos = coverage_table.reshape(numpy_dimension)
 
         # We also define a normalized version of coverage_by_pos so that each entries defines the frequency
@@ -1047,8 +1049,8 @@ class VariabilitySuper(object):
         # pseudo-second axis so the final shape is (X,Y,Z). coverage_summed_over_samples is the reference
         # distribution array for the raw Kullback-Leibler divergence and freq_summed_over_samples is for the
         # normalized Kullback-Leibler divergence.
-        coverage_summed_over_samples = np.repeat(np.sum(coverage_by_pos, axis=2)[:,:,np.newaxis], len(self.sample_ids), axis=2)
-        freq_summed_over_samples     = np.repeat(np.sum(freq_by_pos,     axis=2)[:,:,np.newaxis], len(self.sample_ids), axis=2)
+        coverage_summed_over_samples = np.repeat(np.sum(coverage_by_pos, axis=2)[:,:,np.newaxis], len(self.available_sample_ids), axis=2)
+        freq_summed_over_samples     = np.repeat(np.sum(freq_by_pos,     axis=2)[:,:,np.newaxis], len(self.available_sample_ids), axis=2)
 
         # As mentioned in last comment, a 2D array is returned by entropy, which we flatten into 1D.  The flattened
         # array is equal to the length of entries in self.data. Furthermore, the order of entropy values is the same
@@ -1217,7 +1219,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
            variation at nucleotide positions reported in the table"""
         self.progress.new('Recovering NT data')
 
-        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
+        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.available_sample_ids
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
         next_available_entry_id = self.data["entry_id"].max() + 1
 
@@ -1302,7 +1304,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.data = pd.concat([self.data, new_entries])
 
         # fill in additional fields for new entries
-        self.insert_additional_fields(list(new_entries.index))
+        self.compute_additional_fields(list(new_entries.index))
         self.progress.end()
 
 
@@ -1321,7 +1323,7 @@ class QuinceModeWrapperForFancyEngines(object):
     def recover_base_frequencies_for_all_samples(self):
         self.progress.new('[%s] Recovering item variability data' % self.engine)
 
-        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.sample_ids
+        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.available_sample_ids
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
         next_available_entry_id = self.data["entry_id"].max() + 1
 
@@ -1439,10 +1441,10 @@ class QuinceModeWrapperForFancyEngines(object):
         self.data = self.data[column_order]
         entries_after = len(self.data.index)
 
-        # fill in additional fields for new entries. insert_additional_fields takes a list of
+        # fill in additional fields for new entries. compute_additional_fields takes a list of
         # entry_ids to consider for self.data, which here is provided from new_entries (what I'm
         # saying is new_entries is not passed, only the entry_id's in new_entries
-        self.insert_additional_fields(list(new_entries["entry_id"]))
+        self.compute_additional_fields(list(new_entries["entry_id"]))
 
         self.progress.end()
 
