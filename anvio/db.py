@@ -138,7 +138,8 @@ class DB:
         return val
 
 
-    def get_meta_value(self, key):
+    def get_meta_value(self, key, try_as_type_int=True):
+        """if try_as_type_int, value is attempted to be converted to integer. If it fails, no harm no foul."""
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
         rows = response.fetchall()
 
@@ -150,10 +151,11 @@ class DB:
         if isinstance(val, type(None)):
             return None
 
-        try:
-            val = int(val)
-        except ValueError:
-            pass
+        if try_as_type_int:
+            try:
+                val = int(val)
+            except ValueError:
+                pass
 
         return val
 
