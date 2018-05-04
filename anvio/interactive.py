@@ -4,6 +4,7 @@
 
 import os
 import sys
+import copy
 import numpy
 import nglview
 import textwrap
@@ -29,6 +30,7 @@ from anvio.dbops import get_description_in_db
 from anvio.dbops import get_default_item_order_name
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError
+from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 
 from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders
@@ -1241,33 +1243,123 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         pass
 
 
-class StructureInteractive():
+class StructureInteractive(VariabilitySuper):
     def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.mode = 'structure'
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
-        self.contig_db_path = A('contigs_db', str)
-        self.profile_db_path = A('profile_db', str)
-        self.structure_db_path = A('structure_db', str)
-        self.variability_table_path = A('variability_profile', str)
+        # splits
+        self.bin_id = A('bin_id', null)
+        self.collection_name = A('collection_name', null)
+        self.splits_of_interest_path = A('splits_of_interest', null)
+        # database
+        self.profile_db_path = A('profile_db', null)
+        self.contigs_db_path = A('contigs_db', null)
+        self.structure_db_path = A('structure_db', null)
+        # genes
+        self.gene_caller_ids = A('gene_caller_ids', null)
+        self.genes_of_interest_path = A('genes_of_interest', null)
+        self.genes_of_interest = A('genes_of_interest_set', set)
+        # samples
+        self.samples_of_interest_path = A('samples_of_interest', null)
+        self.samples_of_interest = A('samples_of_interest_set', set)
+        # others
+        self.variability_table_path = A('variability_profile', null)
         self.no_variability = A('no_variability', bool)
-        self.samples_of_interest = A('samples_of_interest', str)
         self.only_if_structure = A('only_if_structure', bool) or True # can greatly reduce variability size
 
         # For now, only true if self.variability_table_path. If contigs and profile databases,
         # variability is profiled on-the-fly for each gene
         self.store_full_variability_in_memory = True if self.variability_table_path else False
         self.full_variability = None
-        self.gene_variability = {}
+        self.gene_var = {}
 
         self.sanity_check()
 
         if self.variability_table_path:
-            self.profile_full_variability_data
+            self.profile_full_variability_data()
 
-        self.available_engines = [self.full_variability.engine] if self.full_variability else ["AA", "CDN"]
+        self.available_engines = [self.full_variability.engine] if self.variability_table_path else ["AA", "CDN"]
+
+        self.get_and_check_genes_of_interest()
+
+        # default gene is the first gene of interest
+        self.profile_gene_variability_data(list(self.genes_of_interest)[0])
+
+        self.get_and_check_samples_of_interest()
+
+
+    def get_and_check_genes_of_interest(self):
+        """A method with the same name exists in VariabilitySuper, which is inherited by this
+           class. However, the method is incomplete for the needs of this class. So what this method
+           does is call the VariabilitySuper method, then extend its functionality.
+        """
+        self.get_genes_of_interest() # inherited from VariabilitySuper
+
+        # load in structure to compare genes of interest with those in db
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+
+        if self.genes_of_interest:
+
+            # check for genes that do not appear in the structure database
+            unrecognized_genes = [g for g in self.genes_of_interest if g not in structure_db.all_genes]
+            if unrecognized_genes:
+                some_to_report = unrecognized_genes[:5] if len(unrecognized_genes) <= 5 else unrecognized_genes
+                raise ConfigError("{} of the gene caller ids you provided {} not known to the\
+                                   structure database. {}: {}. They might exist in the contigs\
+                                   database used to generate the structure database, but not all\
+                                   genes in the contigs database exist in the corresponding\
+                                   structure database :(. You can try running\
+                                   anvi-gen-structure-database again, this time with these missing\
+                                   genes included".format(len(unrecognized_genes),
+                                                 "is" if len(unrecognized_genes) == 1 else "are",
+                                                 "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
+                                                 ", ".join([str(x) for x in some_to_report])))
+
+            # check for genes that structures were attempted for, but failed
+            unavailable_genes = [g for g in self.genes_of_interest if g in structure_db.genes_without_structure]
+            if unavailable_genes:
+                some_to_report = unavailable_genes[:5] if len(unavailable_genes) <= 5 else unavailable_genes
+                run.warning("When your structure database was first generated\
+                             (anvi-gen-structure-database), anvi'o attempted--but failed--to predict\
+                             the structures for genes with the following ids: {}. Yet, these genes\
+                             are all included in your genes of interest. This is just a heads up so\
+                             that you're not surprised when these genes don't show up in your\
+                             display.".format(", ".join([str(x) for x in some_to_report])))
+
+        else:
+            self.genes_of_interest = set(structure_db.genes_with_structure)
+
+        structure_db.disconnect()
+
+
+    def get_and_check_samples_of_interest(self):
+        self.get_samples_of_interest() # inherited from VariabilitySuper
+
+        if self.full_variability:
+            available_sample_ids = self.full_variability.data["sample_id"].unique()
+        else:
+            profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            available_sample_ids = sorted(list(profile_db.samples))
+            profile_db.disconnect()
+
+        if self.samples_of_interest:
+
+            # check for samples that do not appear in the structure database
+            unrecognized_samples = [g for g in self.samples_of_interest if g not in available_sample_ids]
+            if unrecognized_samples:
+                raise ConfigError("{} of the sample ids you provided are not in the variability\
+                                   table. Here they are: {}. They may exist in the profile database\
+                                   that generated the variability table\
+                                   (anvi-gen-variability-profile), but were filtered out at some\
+                                   point. Or you made a mistake, but what are the chances of\
+                                   that?".format(len(unrecognized_samples),
+                                                 ", ".join([str(x) for x in unrecognized_samples])))
+
+        else:
+            self.samples_of_interest = set(available_sample_ids)
 
 
     def sanity_check(self):
@@ -1296,14 +1388,14 @@ class StructureInteractive():
 
 
     def clear_gene_variability(self):
-        self.gene_variability = {}
+        self.gene_var = {}
 
 
     def profile_full_variability_data(self):
         self.full_variability = variabilityops.VariabilityData(self.args, p=progress, r=run)
 
 
-    def profile_gene_variability_data(self, gene_callers_id, engines = ["AA", "CDN"]):
+    def profile_gene_variability_data(self, gene_callers_id):
         """Variability data is computed on the fly if a profile and contigs database is provided.
            If the variability table is provided, the full table is stored in memory and a gene
            subset is created.
@@ -1312,34 +1404,31 @@ class StructureInteractive():
         self.clear_gene_variability()
 
         # if the full variability is in memory, make a deep copy, then filter
-        if self.full_variability_in_memory:
+        if self.store_full_variability_in_memory:
             var = copy.deepcopy(self.full_variability)
             var.genes_of_interest = set([gene_callers_id])
             var.filter_by_genes()
-            self.gene_variability[var.engine] = var
+            self.gene_var[var.engine] = var
 
         # if not, we profile from scratch, passing as an argument our gene of interest
         else:
             for engine in self.available_engines:
                 self.args.engine = engine
                 self.args.genes_of_interest_set = set([gene_callers_id])
-                self.gene_variability[engine] = variability_engines[engine](self.args)
-                self.gene_variability[engine].process()
+                self.gene_var[engine] = variability_engines[engine](self.args)
+                self.gene_var[engine].process()
 
 
     def get_available_genes_and_samples(self):
-        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
-
         output = {}
-        output['available_gene_callers_ids'] = structure_db.genes_with_structure
-        output['available_sample_ids'] = self.samples_of_interest
+        output['available_gene_callers_ids'] = list(self.genes_of_interest)
+        output['available_sample_ids'] = list(self.samples_of_interest)
         output['available_engines'] = self.available_engines
 
-        structure_db.disconnect()
         return output
 
 
-    def get_queried_structure(self, gene_callers_id):
+    def get_structure(self, gene_callers_id):
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
 
         summary = structure_db.get_summary_for_interactive(gene_callers_id)
@@ -1349,16 +1438,22 @@ class StructureInteractive():
 
 
     def get_variability(self, options):
-        engine = options['engine']
+        engine_displayed = options['engine']
         gene_callers_id = options['gene_callers_id']
         departure_from_consensus = options['departure_from_consensus']
 
-        self.variability_for_display = copy.deepcopy(self.gene_variability)
-        self.variability_for_display.min_departure_from_consensus = departure_from_consensus[0]
-        self.variability_for_display.max_departure_from_consensus = departure_from_consensus[1]
-        self.variability_for_display = self.gene_variability[engine].data
+        # this is a subset of gene_var satisfying the filter parameters of the user
+        self.var_for_display = copy.deepcopy(self.gene_var)
+        for engine in self.available_engines:
 
-        return self.variability_for_display.data.to_json(orient='index')
+            # define filter criteria
+            self.var_for_display[engine].min_departure_from_consensus = departure_from_consensus[0]
+            self.var_for_display[engine].max_departure_from_consensus = departure_from_consensus[1]
+
+            # filter by criteria
+            self.var_for_display[engine].filter_by_departure_from_consensus()
+
+        return self.var_for_display[engine_displayed].data.to_json(orient='index')
 
 
 class ContigsInteractive():

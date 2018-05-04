@@ -29,7 +29,7 @@ gen_var_profile2() {
 display_structure1() {
     anvi-display-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
                            -c test-output/one_contig_five_genes.db \
-                           -s test-output/STRUCTURE.db
+                           -s test-output/STRUCTURE.db \
                            --gene-caller-ids 2,4
 }
 display_structure2() {

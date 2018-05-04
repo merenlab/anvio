@@ -110,7 +110,7 @@ class VariabilitySuper(object):
                                   F(self.filter_by_scattering_factor),
                                   F(self.filter_by_num_positions_from_each_split),
                                   F(self.compute_additional_fields),
-                                  F(self.apply_advanced_filters),
+                                  F(self.filter_by_departure_from_consensus),
                                   F(self.recover_base_frequencies_for_all_samples, self.quince_mode),
                                   F(self.filter_by_minimum_coverage_in_each_sample),
                                   F(self.compute_comprehensive_variability_scores),
@@ -183,7 +183,6 @@ class VariabilitySuper(object):
 
 
     def get_samples_of_interest(self):
-        self.progress.update('Checking the samples of interest ..')
         if self.samples_of_interest:
             # catches cases where self.samples_of_interest was injected into class programatically
             return
@@ -197,7 +196,6 @@ class VariabilitySuper(object):
 
 
     def get_genes_of_interest(self):
-        self.progress.update('Setting up genes of interest')
         if self.genes_of_interest:
             # catches cases where self.genes_of_interest was injected into class programatically
             return
@@ -236,7 +234,6 @@ class VariabilitySuper(object):
 
 
     def get_splits_of_interest(self):
-        self.progress.update('Attempting to get our splits of interest sorted ...')
         if self.splits_of_interest:
             # catches cases where self.splits_of_interest was injected into class programatically
             return
@@ -296,16 +293,18 @@ class VariabilitySuper(object):
         if self.output_file_path:
             filesnpaths.is_output_file_writable(self.output_file_path)
 
+        self.progress.update('Checking the samples of interest ..')
         self.get_samples_of_interest()
+        self.progress.update('Setting up genes of interest')
         self.get_genes_of_interest()
 
         # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
+        self.progress.update('Attempting to get our splits of interest sorted ...')
         if self.table_provided:
             self.split_source = "split_names" if self.splits_of_interest_path else ""
         else:
             self.check_how_splits_are_found()
         self.get_splits_of_interest()
-
 
         if self.genes_of_interest:
             genes_available = self.gene_callers_id_to_split_name_dict if not self.table_provided else self.data["corresponding_gene_call"].unique()
@@ -318,7 +317,7 @@ class VariabilitySuper(object):
                                    2 more mistakes, and anvi'o will automatically uninstall itself. Yes, seriously :(".\
                                    format(len(bad_gene_caller_ids),
                                           "is" if len(bad_gene_caller_ids) == 1 else "are",
-                                          "in this variability profile" if self.table_provided else "known to this contigs database",
+                                          "in this variability table" if self.table_provided else "known to this contigs database",
                                           "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
                                           ", ".join([str(x) for x in some_to_report])))
 
@@ -497,7 +496,7 @@ class VariabilitySuper(object):
                 break
 
 
-    def apply_advanced_filters(self):
+    def filter_by_departure_from_consensus(self):
         if self.min_departure_from_consensus:
             self.run.info('Min departure from consensus', self.min_departure_from_consensus)
             self.progress.new('Filtering based on min departure from consensus')
