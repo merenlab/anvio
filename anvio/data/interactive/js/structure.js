@@ -75,7 +75,7 @@ function load_protein(gene_callers_id) {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/get_queried_structure/' + gene_callers_id,
+        url: '/data/get_structure/' + gene_callers_id,
         success: function(data) {
             // create tooltip element and add to document body
             var tooltip = document.createElement("div")

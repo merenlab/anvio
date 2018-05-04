@@ -15,7 +15,6 @@ import copy
 import time
 import json
 import random
-import nglview
 import argparse
 import requests
 import datetime
@@ -131,7 +130,7 @@ class BottleApplication(Bottle):
         self.route('/data/search_functions',                   callback=self.search_functions, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
         self.route('/data/get_available_genes_and_samples',    callback=self.get_available_genes_and_samples)
-        self.route('/data/get_queried_structure/<gene_callers_id:int>',callback=self.get_queried_structure)
+        self.route('/data/get_structure/<gene_callers_id:int>',callback=self.get_structure)
         self.route('/data/get_variability',                    callback=self.get_variability, method='POST')
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
@@ -1036,8 +1035,8 @@ class BottleApplication(Bottle):
         return json.dumps(self.interactive.get_available_genes_and_samples())
 
 
-    def get_queried_structure(self, gene_callers_id):
-        return json.dumps(self.interactive.get_queried_structure(gene_callers_id))
+    def get_structure(self, gene_callers_id):
+        return json.dumps(self.interactive.get_structure(gene_callers_id))
 
 
     def get_variability(self):
@@ -1047,7 +1046,6 @@ class BottleApplication(Bottle):
         options['departure_from_consensus'] = list(map(float, request.forms.get('departure_from_consensus').split(',')))
 
         output = self.interactive.get_variability(options)
-
         return output
 
 
