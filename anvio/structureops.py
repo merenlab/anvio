@@ -60,8 +60,8 @@ class StructureDatabase(object):
         else:
             self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
 
-            self.genes_with_structure = [int(x) for x in self.db.get_meta_value('genes_with_structure').split(',') if not x == '']
-            self.genes_without_structure = [int(x) for x in self.db.get_meta_value('genes_without_structure').split(',') if not x == '']
+            self.genes_with_structure = [int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == '']
+            self.genes_without_structure = [int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == '']
             self.all_genes = self.genes_with_structure + self.genes_without_structure
 
         if not ignore_hash:
@@ -138,16 +138,15 @@ class StructureDatabase(object):
         summary = {}
 
         if not corresponding_gene_call in self.genes_with_structure:
-            raise ConfigError('gene call not found.')
+            raise ConfigError('The gene caller id {} was not found in the structure database :('.format(corresponding_gene_call))
 
-        summary['pdb_content'] = self.db.get_single_column_from_table(t.structure_pdb_data_table_name, 
+        summary['pdb_content'] = self.db.get_single_column_from_table(t.structure_pdb_data_table_name,
             'pdb_content', where_clause="corresponding_gene_call = %d" % corresponding_gene_call)[0].decode('utf-8')
 
-        summary['residue_info'] = self.db.get_some_rows_from_table(t.structure_residue_info_table_name, 
+        summary['residue_info'] = self.db.get_some_rows_from_table(t.structure_residue_info_table_name,
             "corresponding_gene_call = %d" % corresponding_gene_call)
 
         return summary
-
 
 
     def disconnect(self):
