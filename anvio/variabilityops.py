@@ -1093,8 +1093,11 @@ class VariabilitySuper(object):
         return unique_positions_and_frequencies_dict
 
 
-    def process(self):
-        for func, condition in self.process_functions:
+    def process(self, process_functions=None):
+        if not process_functions:
+            process_functions = self.process_functions
+
+        for func, condition in process_functions:
             if condition:
                 func()
 
