@@ -1274,7 +1274,7 @@ class StructureInteractive(VariabilitySuper):
         # variability is profiled on-the-fly for each gene
         self.store_full_variability_in_memory = True if self.variability_table_path else False
         self.full_variability = None
-        self.gene_var = {}
+        self.variability_storage = {}
 
         self.sanity_check()
 
@@ -1399,10 +1399,6 @@ class StructureInteractive(VariabilitySuper):
                                the --no-variability flag, but anvi'o will be extremely condescending.")
 
 
-    def clear_gene_variability(self):
-        self.gene_var = {}
-
-
     def profile_full_variability_data(self):
         """Creates self.full_variability, which houses the full variability... well, the full variability of all
         genes with structures in the structure database"""
@@ -1424,23 +1420,29 @@ class StructureInteractive(VariabilitySuper):
            If the variability table is provided, the full table is stored in memory and a gene
            subset is created.
         """
-        # New gene, new variability
-        self.clear_gene_variability()
 
-        # if the full variability is in memory, make a deep copy, then filter
+        if gene_callers_id in self.variability_storage:
+            # already profiled.
+            return
+
+        gene_var = {}
+
         if self.store_full_variability_in_memory:
+            # if the full variability is in memory, make a deep copy, then filter
             var = copy.deepcopy(self.full_variability)
             var.genes_of_interest = set([gene_callers_id])
             var.filter_by_genes()
-            self.gene_var[var.engine] = var
-
-        # if not, we profile from scratch, passing as an argument our gene of interest
+            gene_var[var.engine] = var
         else:
+            # if not, we profile from scratch, passing as an argument our gene of interest
             for engine in self.available_engines:
                 self.args.engine = engine
                 self.args.genes_of_interest_set = set([gene_callers_id])
-                self.gene_var[engine] = variability_engines[engine](self.args)
-                self.gene_var[engine].process()
+                
+                gene_var[engine] = variability_engines[engine](self.args)
+                gene_var[engine].process()
+
+        self.variability_storage[gene_callers_id] = gene_var
 
 
     def get_available_genes_and_samples(self):
@@ -1466,10 +1468,12 @@ class StructureInteractive(VariabilitySuper):
         gene_callers_id = options['gene_callers_id']
         departure_from_consensus = options['departure_from_consensus']
 
-        # this is a subset of gene_var satisfying the filter parameters of the user
-        self.var_for_display = copy.deepcopy(self.gene_var)
-        for engine in self.available_engines:
+        self.profile_gene_variability_data(gene_callers_id)
 
+        # this is a subset of gene_var satisfying the filter parameters of the user
+        self.var_for_display = copy.deepcopy(self.variability_storage[gene_callers_id])
+
+        for engine in self.available_engines:
             # define filter criteria
             self.var_for_display[engine].min_departure_from_consensus = departure_from_consensus[0]
             self.var_for_display[engine].max_departure_from_consensus = departure_from_consensus[1]
