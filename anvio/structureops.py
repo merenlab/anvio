@@ -64,6 +64,11 @@ class StructureDatabase(object):
             self.genes_without_structure = [int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == '']
             self.all_genes = self.genes_with_structure + self.genes_without_structure
 
+            if not len(self.all_genes):
+                raise ConfigError("Interesting...  this structure database has no gene caller ids. I'm\
+                                   not sure how you managed that. please send a report to the\
+                                   developers. Thank you.")
+
         if not ignore_hash:
             self.check_hash()
 

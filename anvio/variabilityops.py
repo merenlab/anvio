@@ -1713,7 +1713,6 @@ class VariabilityNetwork:
 
             samples_dict[sample_id][pos] = float(frequency)
 
-
         self.progress.update('Generating the network file')
         utils.gen_gexf_network_file(sorted(list(self.unique_variable_nt_positions)), samples_dict, self.output_file_path, sample_mapping_dict=self.samples_information_dict)
         self.progress.end()
@@ -1748,7 +1747,12 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         # init the appropriate engine
         self.args.data = self.data
         self.args.engine = self.engine
+        self.args.skip_sanity_check = True
         variability_engines[self.engine].__init__(self, self.args, p=self.progress, r=run)
+
+        # load residue info data
+        if self.append_structure_residue_info:
+            self.load_structure_data()
 
         self.init_commons()
 

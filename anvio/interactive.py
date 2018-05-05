@@ -1261,10 +1261,10 @@ class StructureInteractive(VariabilitySuper):
         # genes
         self.gene_caller_ids = A('gene_caller_ids', null)
         self.genes_of_interest_path = A('genes_of_interest', null)
-        self.genes_of_interest = A('genes_of_interest_set', set)
+        self.genes_of_interest = A('genes_of_interest_set', set) or set([])
         # samples
         self.samples_of_interest_path = A('samples_of_interest', null)
-        self.samples_of_interest = A('samples_of_interest_set', set)
+        self.samples_of_interest = A('samples_of_interest_set', set) or set([])
         # others
         self.variability_table_path = A('variability_profile', null)
         self.no_variability = A('no_variability', bool)
@@ -1278,7 +1278,7 @@ class StructureInteractive(VariabilitySuper):
 
         self.sanity_check()
 
-        if self.variability_table_path:
+        if self.store_full_variability_in_memory:
             self.profile_full_variability_data()
 
         self.available_engines = [self.full_variability.engine] if self.variability_table_path else ["AA", "CDN"]
@@ -1290,6 +1290,8 @@ class StructureInteractive(VariabilitySuper):
 
         self.get_and_check_samples_of_interest()
 
+    def get_genes_of_interest_from_bin_id():
+        pass
 
     def get_and_check_genes_of_interest(self):
         """A method with the same name exists in VariabilitySuper, which is inherited by this
@@ -1333,6 +1335,11 @@ class StructureInteractive(VariabilitySuper):
             self.genes_of_interest = set(structure_db.genes_with_structure)
 
         structure_db.disconnect()
+        # We are done with self.gene_caller_ids and self.genes_of_interest_path, so we set them to
+        # None. Now downstream class instances will not think we need these, or complain that we
+        # pass them AND genes_of_interest.
+        self.args.gene_caller_ids = None
+        self.args.genes_of_interest_path = None
 
 
     def get_and_check_samples_of_interest(self):
@@ -1360,6 +1367,11 @@ class StructureInteractive(VariabilitySuper):
 
         else:
             self.samples_of_interest = set(available_sample_ids)
+
+        # We are done with samples_of_interest_path, so we set it to None. Now downstream class
+        # instances will not think we need samples_of_interest_path, or complain that we have both
+        # samples_of_interest_path AND samples_of_interest.
+        self.args.samples_of_interest_path = None
 
 
     def sanity_check(self):
@@ -1392,7 +1404,19 @@ class StructureInteractive(VariabilitySuper):
 
 
     def profile_full_variability_data(self):
+        """Creates self.full_variability, which houses the full variability... well, the full variability of all
+        genes with structures in the structure database"""
         self.full_variability = variabilityops.VariabilityData(self.args, p=progress, r=run)
+        self.full_variability.init_commons()
+
+        if not self.only_if_structure:
+            raise ConfigError("profile_full_variability_data :: why you do dat?")
+
+        # sets self.full_variability.genes_of_interest to those with structure
+        self.full_variability.load_structure_data()
+
+        # filters by those genes
+        self.full_variability.filter_by_genes()
 
 
     def profile_gene_variability_data(self, gene_callers_id):
