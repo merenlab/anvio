@@ -304,6 +304,7 @@ class VariabilitySuper(object):
             self.split_source = "split_names" if self.splits_of_interest_path else ""
         else:
             self.check_how_splits_are_found()
+
         self.get_splits_of_interest()
 
         if self.genes_of_interest:
@@ -1100,6 +1101,15 @@ class VariabilitySuper(object):
         for func, condition in process_functions:
             if condition:
                 func()
+
+
+    def filter_for_interactive(self):
+        F = lambda f, c = True: (f, c)
+        
+        filtering_functions = [F(self.filter_by_departure_from_consensus),
+                               F(self.filter_by_samples)]
+
+        self.process(process_functions=filtering_functions)
 
 
     def get_residue_structure_information(self):

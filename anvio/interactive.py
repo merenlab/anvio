@@ -1466,22 +1466,23 @@ class StructureInteractive(VariabilitySuper):
     def get_variability(self, options):
         engine_displayed = options['engine']
         gene_callers_id = options['gene_callers_id']
+        selected_samples = options['selected_samples']
         departure_from_consensus = options['departure_from_consensus']
 
         self.profile_gene_variability_data(gene_callers_id)
 
-        # this is a subset of gene_var satisfying the filter parameters of the user
-        self.var_for_display = copy.deepcopy(self.variability_storage[gene_callers_id])
+        # this is a subset of variability_storage for single gene_caller_id
+        # we don't want to modify variability_storage so we use deepcopy
+        # otherwise filtering will be irreversible
+        var = copy.deepcopy(self.variability_storage[gene_callers_id])
 
         for engine in self.available_engines:
-            # define filter criteria
-            self.var_for_display[engine].min_departure_from_consensus = departure_from_consensus[0]
-            self.var_for_display[engine].max_departure_from_consensus = departure_from_consensus[1]
+            var[engine].min_departure_from_consensus = departure_from_consensus[0]
+            var[engine].max_departure_from_consensus = departure_from_consensus[1]
+            var[engine].samples_of_interest = selected_samples
+            var[engine].filter_for_interactive()
 
-            # filter by criteria
-            self.var_for_display[engine].filter_by_departure_from_consensus()
-
-        return self.var_for_display[engine_displayed].data.to_json(orient='index')
+        return var[engine_displayed].data.to_json(orient='index')
 
 
 class ContigsInteractive():

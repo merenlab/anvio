@@ -36,7 +36,7 @@ $(document).ready(function() {
             
             available_sample_ids.forEach(function(sample_id) {
 
-                $('#sample_id_list').append(`<input class="form-check-input" type="checkbox" id="sample_${sample_id}" value="${sample_id}"><label class="form-check-label" for="sample_${sample_id}">${sample_id}</label><br />`);
+                $('#sample_id_list').append(`<input class="form-check-input" type="checkbox" id="sample_${sample_id}" value="${sample_id}" checked="checked"><label class="form-check-label" for="sample_${sample_id}">${sample_id}</label><br />`);
             });
 
             $('#sample_id_list').trigger('change');
@@ -122,7 +122,7 @@ function draw_variability() {
         data: {
             'gene_callers_id': gene_callers_id,
             'engine': $('[name=engine]:checked').val(),
-            'samples_of_interest': $('#sample_id_list input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); }),
+            'selected_samples': $('#sample_id_list input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); }),
             'departure_from_consensus': $('#departure_from_consensus').val(),
         },
         url: '/data/get_variability',
