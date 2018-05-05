@@ -1043,6 +1043,7 @@ class BottleApplication(Bottle):
         options = {}
         options['engine'] = request.forms.get('engine')
         options['gene_callers_id'] = int(request.forms.get('gene_callers_id'))
+        options['selected_samples'] = set(request.forms.getall('selected_samples[]'))
         options['departure_from_consensus'] = list(map(float, request.forms.get('departure_from_consensus').split(',')))
 
         output = self.interactive.get_variability(options)
