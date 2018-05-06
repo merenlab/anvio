@@ -1112,6 +1112,19 @@ class VariabilitySuper(object):
         self.process(process_functions=filtering_functions)
 
 
+    def get_histograms(self, columns=None):
+        if not columns:
+            columns = self.data.columns
+
+        output = {}
+        for column in columns:
+            if pd.api.types.is_numeric_dtype(self.data[column]):
+                values, bins = np.histogram(self.data, bins=20)
+                output[column] = {'values': values, 'bins': bins}
+
+        return output
+
+
     def get_residue_structure_information(self):
         """
         If by the end of all filtering there is no overlap between genes with variability and genes

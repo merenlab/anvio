@@ -1460,6 +1460,13 @@ class StructureInteractive(VariabilitySuper):
         summary = structure_db.get_summary_for_interactive(gene_callers_id)
 
         structure_db.disconnect()
+        
+        self.profile_gene_variability_data(gene_callers_id)
+
+        summary['histograms'] = {}
+        for engine in self.available_engines:
+            summary['histograms'][engine] = self.variability_storage[gene_callers_id][engine].get_histograms()
+
         return summary
 
 
@@ -1468,8 +1475,6 @@ class StructureInteractive(VariabilitySuper):
         gene_callers_id = options['gene_callers_id']
         selected_samples = options['selected_samples']
         departure_from_consensus = options['departure_from_consensus']
-
-        self.profile_gene_variability_data(gene_callers_id)
 
         # this is a subset of variability_storage for single gene_caller_id
         # we don't want to modify variability_storage so we use deepcopy
