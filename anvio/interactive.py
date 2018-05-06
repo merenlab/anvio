@@ -1450,22 +1450,20 @@ class StructureInteractive(VariabilitySuper):
         output['available_gene_callers_ids'] = list(self.genes_of_interest)
         output['available_sample_ids'] = list(self.samples_of_interest)
         output['available_engines'] = self.available_engines
-
         return output
 
 
     def get_structure(self, gene_callers_id):
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
-
         summary = structure_db.get_summary_for_interactive(gene_callers_id)
-
         structure_db.disconnect()
         
         self.profile_gene_variability_data(gene_callers_id)
 
         summary['histograms'] = {}
+        columns_of_interest = ['departure_from_consensus']
         for engine in self.available_engines:
-            summary['histograms'][engine] = self.variability_storage[gene_callers_id][engine].get_histograms()
+            summary['histograms'][engine] = self.variability_storage[gene_callers_id][engine].get_histograms(columns=columns_of_interest)
 
         return summary
 

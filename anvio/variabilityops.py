@@ -1119,8 +1119,8 @@ class VariabilitySuper(object):
         output = {}
         for column in columns:
             if pd.api.types.is_numeric_dtype(self.data[column]):
-                values, bins = np.histogram(self.data, bins=20)
-                output[column] = {'values': values, 'bins': bins}
+                values, bins = np.histogram(self.data[column], bins=20)
+                output[column] = {'values': values.tolist(), 'bins': bins.tolist()}
 
         return output
 
