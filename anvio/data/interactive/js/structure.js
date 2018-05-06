@@ -1,4 +1,5 @@
 var stage;
+var histogram_data;
 
 $(document).ready(function() {
     stage = new NGL.Stage("viewport");
@@ -31,14 +32,13 @@ $(document).ready(function() {
 
             let default_engine = available_engines[0];
             available_engines.forEach(function(engine) {
-                $('#engine_list').append(`<input type="radio" name="engine" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
+                $('#engine_list').append(`<input type="radio" name="engine" onclick="draw_histogram();" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
             });
-            
+                        
             available_sample_ids.forEach(function(sample_id) {
 
                 $('#sample_id_list').append(`<input class="form-check-input" type="checkbox" id="sample_${sample_id}" value="${sample_id}" checked="checked"><label class="form-check-label" for="sample_${sample_id}">${sample_id}</label><br />`);
             });
-
             $('#sample_id_list').trigger('change');
         }
     });
@@ -77,8 +77,11 @@ function load_protein(gene_callers_id) {
         cache: false,
         url: '/data/get_structure/' + gene_callers_id,
         success: function(data) {
+            histogram_data = data['histograms'];
+            draw_histogram();
+
             // create tooltip element and add to document body
-            var tooltip = document.createElement("div")
+            var tooltip = document.createElement("div");
             Object.assign(tooltip.style, {
                 display: "none",
                 position: "fixed",
@@ -152,4 +155,38 @@ function draw_variability() {
             console.log(request, status, error);
         }
     });
+};
+
+
+function draw_histogram() {
+    let engine = $('[name=engine]:checked').val();
+
+    for (let column in histogram_data[engine]) {
+        let canvas = document.getElementById('histogram_' + column);
+        var ctx = canvas.getContext("2d");
+        
+        let width = parseFloat(canvas.width);
+        let height = parseFloat(canvas.height);
+
+        // clear canvas
+        ctx.clearRect(0, 0, width, height);
+
+        let bins = histogram_data[engine][column]['bins'];
+        let values = histogram_data[engine][column]['values'];
+        
+        var max_value = Math.max(...values);
+        values = values.map(v => (v / max_value) * height);
+
+        var max_slider = parseFloat(document.getElementById(column).dataset.sliderMax);
+        bins = bins.map(v => (v / max_slider) * width);
+
+        for (let i=0; i < bins.length - 1; i++) {
+            ctx.fillRect(bins[i],              // x
+                         height - values[i],   // y
+                         bins[i + 1] - bins[i],// width
+                         values[i]);           // height
+            ctx.stroke();
+        }
+
+    }
 };
