@@ -125,8 +125,9 @@ function draw_variability() {
         data: {
             'gene_callers_id': gene_callers_id,
             'engine': $('[name=engine]:checked').val(),
-            'selected_samples': $('#sample_id_list input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); }),
+            'samples_of_interest': $('#sample_id_list input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); }),
             'departure_from_consensus': $('#departure_from_consensus').val(),
+            'departure_from_reference': $('#departure_from_reference').val(),
         },
         url: '/data/get_variability',
         success: function(data) {
