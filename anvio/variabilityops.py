@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from scipy.stats import entropy
+from sklearn.neighbors import KernelDensity
 
 import anvio
 import anvio.tables as t
@@ -1105,7 +1106,7 @@ class VariabilitySuper(object):
 
     def filter_for_interactive(self):
         F = lambda f, c = True: (f, c)
-        
+
         filtering_functions = [F(self.filter_by_departure_from_consensus),
                                F(self.filter_by_samples)]
 
@@ -1119,8 +1120,29 @@ class VariabilitySuper(object):
         output = {}
         for column in columns:
             if pd.api.types.is_numeric_dtype(self.data[column]):
-                values, bins = np.histogram(self.data[column], bins=20)
-                output[column] = {'values': values.tolist(), 'bins': bins.tolist()}
+                output[column] = {}
+
+                # define numpy array; filter infinities and nans
+                column_data = self.data[column].values
+                column_data = column_data[np.isfinite(column_data)]
+
+                # histogram
+                values, bins = np.histogram(self.data[column], bins=10)
+                output[column]['counts'] = values.tolist()
+                output[column]['bins'] = bins.tolist()
+
+                # smooth curve of histogram
+                curve_x = np.linspace(bins[0], bins[-1], 100)
+                # bandwidth determines how wavy the estimation can be. np.max(curve_x) -
+                # np.min(curve_x)) / 20 this means if the data was a mixture of N equally spaced
+                # normal distributions, the curve could trace 95% of each normal if N = 10, or
+                # 66% of each normal if N = 20.
+                bandwith = (np.max(curve_x) - np.min(curve_x)) / 20
+                kde = KernelDensity(bandwidth=bandwith, kernel='gaussian')
+                kde.fit(column_data[:, None])
+                curve_y = np.exp(kde.score_samples(curve_x[:, None]))
+                output[column]['curve_x'] = curve_x.tolist()
+                output[column]['curve_y'] = curve_y.tolist()
 
         return output
 
