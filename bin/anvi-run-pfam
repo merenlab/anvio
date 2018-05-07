@@ -108,7 +108,7 @@ class Pfam(object):
             functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'Pfam',
-                'accession': hmm_hit['gene_name'],
+                'accession': hmm_hit['gene_hmm_id'],
                 'function': self.get_function_from_catalog(hmm_hit['gene_hmm_id']),
                 'e_value': hmm_hit['e_value'],
 
