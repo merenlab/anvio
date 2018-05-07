@@ -1275,6 +1275,7 @@ class StructureInteractive(VariabilitySuper):
         self.store_full_variability_in_memory = True if self.variability_table_path else False
         self.full_variability = None
         self.variability_storage = {}
+        self.current_filter_params = {}
 
         self.sanity_check()
 
@@ -1501,7 +1502,7 @@ class StructureInteractive(VariabilitySuper):
         return summary
 
 
-    def get_variability(self, options, filter_params):
+    def get_variability(self, options, new_filter_params):
         selected_engine = options['engine']
         gene_callers_id = options['gene_callers_id']
 
@@ -1510,12 +1511,18 @@ class StructureInteractive(VariabilitySuper):
         # otherwise filtering is irreversible
         var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine])
 
-        # set filter attributes
-        for param_name, param_value in filter_params.items():
-            setattr(var, param_name, param_value)
+        # set filter attributes if they changed
+        for param_name, param_value in new_filter_params.items():
+            if param_value != self.current_filter_params.get(param_name):
+                setattr(var, param_name, param_value)
+                print(param_name, param_value)
 
         # ʕ•ᴥ•ʔ
         var.filter_for_interactive()
+
+        # update the current filter params
+        self.current_filter_params = new_filter_params
+
         return var.data.to_json(orient='index')
 
 
