@@ -81,7 +81,7 @@ class TableForGeneFunctions(Table):
 
         elif gene_function_sources_in_db and gene_function_sources_both_in_db_and_incoming_dict:
             # some of the functions in the incoming dict match to what is already in the db. remove
-            self.run.warning("Some of the annotaiton sources you want to add into the database are already in the db. So\
+            self.run.warning("Some of the annotation sources you want to add into the database are already in the db. So\
                               anvi'o will REPLACE those with the incoming data from these sources: %s" % \
                                             ', '.join(gene_function_sources_both_in_db_and_incoming_dict))
 
