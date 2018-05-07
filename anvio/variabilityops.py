@@ -183,46 +183,58 @@ class VariabilitySuper(object):
                                self.collection_name will all be ignored.")
 
 
-    def get_samples_of_interest(self):
+    def get_samples_of_interest(self, samples_of_interest_path=None):
         if self.samples_of_interest:
             # catches cases where self.samples_of_interest was injected into class programatically
             return
 
-        if self.samples_of_interest_path:
-            filesnpaths.is_file_tab_delimited(self.samples_of_interest_path, expected_number_of_fields=1)
-            self.samples_of_interest = set([s.strip() for s in open(self.samples_of_interest_path).readlines()])
+        # use class-wide attributes if no parameters are passed
+        if not samples_of_interest_path:
+            samples_of_interest_path = self.samples_of_interest_path
+
+        if samples_of_interest_path:
+            filesnpaths.is_file_tab_delimited(samples_of_interest_path, expected_number_of_fields=1)
+            samples_of_interest = set([s.strip() for s in open(samples_of_interest_path).readlines()])
 
         else:
-            self.samples_of_interest = set([])
+            samples_of_interest = set([])
+
+        return samples_of_interest
 
 
-    def get_genes_of_interest(self):
+    def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None):
         if self.genes_of_interest:
             # catches cases where self.genes_of_interest was injected into class programatically
             return
 
-        if self.genes_of_interest_path and self.gene_caller_ids:
+        # use class-wide attributes if no parameters are passed
+        if not genes_of_interest_path:
+            genes_of_interest_path = self.genes_of_interest_path
+        if not gene_caller_ids:
+            gene_caller_ids = self.gene_caller_ids
+
+        if genes_of_interest_path and gene_caller_ids:
             self.progress.end()
             raise ConfigError("You can't provide gene caller ids from the command line, and a list\
                                of gene caller ids as a file at the same time, obviously.")
 
-        if self.gene_caller_ids is not None:
-            if "," in self.gene_caller_ids:
-                self.gene_caller_ids = [g.strip() for g in self.gene_caller_ids.split(",")]
+        if gene_caller_ids is not None:
+            if "," in gene_caller_ids:
+                gene_caller_ids = [g.strip() for g in gene_caller_ids.split(",")]
             else:
-                self.gene_caller_ids = [self.gene_caller_ids]
-            for index, gene_caller_id in enumerate(self.gene_caller_ids):
+                gene_caller_ids = [gene_caller_ids]
+            for index, gene_caller_id in enumerate(gene_caller_ids):
                 try:
-                    self.gene_caller_ids[index] = int(gene_caller_id)
+                    gene_caller_ids[index] = int(gene_caller_id)
                 except:
                     raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % gene_caller_id)
-            self.genes_of_interest = set(self.gene_caller_ids)
+            genes_of_interest = set(gene_caller_ids)
 
-        elif self.genes_of_interest_path:
-            filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
+        elif genes_of_interest_path:
+            filesnpaths.is_file_tab_delimited(genes_of_interest_path, expected_number_of_fields=1)
 
             try:
-                self.genes_of_interest = set([int(s.strip()) for s in open(self.genes_of_interest_path).readlines()])
+                genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
             except ValueError:
                 self.progress.end()
                 raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... \
@@ -231,36 +243,42 @@ class VariabilitySuper(object):
 
         else:
             # looks like no genes were specified
-            self.genes_of_interest = set([])
+            genes_of_interest = set([])
+
+        return genes_of_interest
 
 
-    def get_splits_of_interest(self):
+    def get_splits_of_interest(self, splits_of_interest_path=None, split_source=None):
         if self.splits_of_interest:
             # catches cases where self.splits_of_interest was injected into class programatically
             return
 
-        if self.split_source == "":
-            self.splits_of_interest = set([])
+        # use class-wide attributes if no parameters are passed
+        if not split_source:
+            split_source = self.split_source
+        if not splits_of_interest_path:
+            splits_of_interest_path = self.splits_of_interest_path
 
-        elif self.split_source == "gene_caller_ids":
-            self.splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
+        if not split_source:
+            splits_of_interest = set([])
 
-        elif self.split_source == "bin_id":
+        elif split_source == "gene_caller_ids":
+            splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
+
+        elif split_source == "bin_id":
             if self.collection_name and not self.bin_id:
                 raise ConfigError('When you declare a collection name, you must also declare a bin id\
                                    (from which the split names of interest will be acquired).')
             if self.bin_id and not self.collection_name:
                 raise ConfigError("You declared a bin id but anvi'o doesn't know which collection\
                                    it comes from. Please provide a collection name.")
-            self.splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
+            splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
 
-        elif self.split_source == "split_names":
-            if self.splits_of_interest:
-                # catches splits of interest being handled programatically elsewhere
-                pass
-            else:
-                filesnpaths.is_file_tab_delimited(self.splits_of_interest_path, expected_number_of_fields=1)
-                self.splits_of_interest = set([c.strip().replace('\r', '') for c in open(self.splits_of_interest_path).readlines()])
+        elif split_source == "split_names":
+            filesnpaths.is_file_tab_delimited(splits_of_interest_path, expected_number_of_fields=1)
+            splits_of_interest = set([c.strip().replace('\r', '') for c in open(splits_of_interest_path).readlines()])
+
+        return splits_of_interest
 
 
     def get_items(self):
@@ -295,9 +313,9 @@ class VariabilitySuper(object):
             filesnpaths.is_output_file_writable(self.output_file_path)
 
         self.progress.update('Checking the samples of interest ..')
-        self.get_samples_of_interest()
+        self.samples_of_interest = self.get_samples_of_interest()
         self.progress.update('Setting up genes of interest')
-        self.get_genes_of_interest()
+        self.genes_of_interest = self.get_genes_of_interest()
 
         # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
         self.progress.update('Attempting to get our splits of interest sorted ...')
@@ -306,7 +324,7 @@ class VariabilitySuper(object):
         else:
             self.check_how_splits_are_found()
 
-        self.get_splits_of_interest()
+        self.splits_of_interest = self.get_splits_of_interest()
 
         if self.genes_of_interest:
             genes_available = self.gene_callers_id_to_split_name_dict if not self.table_provided else self.data["corresponding_gene_call"].unique()
@@ -491,7 +509,7 @@ class VariabilitySuper(object):
                                supplied too many of these parameters, and now anvi'o doesn't\
                                know what you want.")
 
-        self.split_source = ""
+        self.split_source = None
         for source in requested_split_source:
             if requested_split_source[source]:
                 self.split_source = source
