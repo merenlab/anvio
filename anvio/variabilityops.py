@@ -183,13 +183,14 @@ class VariabilitySuper(object):
                                self.collection_name will all be ignored.")
 
 
-    def get_samples_of_interest(self, samples_of_interest_path=None):
-        if self.samples_of_interest:
-            # catches cases where self.samples_of_interest was injected into class programatically
-            return
-
-        # use class-wide attributes if no parameters are passed
-        if not samples_of_interest_path:
+    def get_samples_of_interest(self, samples_of_interest_path=""):
+        """It is essential to note that samples_of_interest_path is "" by default, not None. The
+           programmer can pass None to avoid the argument defaulting to a class-wide attribute
+           (first code block of this method), which may not exist for classes inheriting this
+           method.
+        """
+        # use class-wide attribute if no parameters is passed
+        if samples_of_interest_path is "":
             samples_of_interest_path = self.samples_of_interest_path
 
         if samples_of_interest_path:
@@ -202,15 +203,15 @@ class VariabilitySuper(object):
         return samples_of_interest
 
 
-    def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None):
-        if self.genes_of_interest:
-            # catches cases where self.genes_of_interest was injected into class programatically
-            return
-
+    def get_genes_of_interest(self, genes_of_interest_path="", gene_caller_ids=""):
+        """It is essential to note that genes_of_interest_path and gene_caller_ids are "" by
+           default, not None. The programmer can pass None to avoid the argument defaulting to a
+           class-wide attribute (first code block of this method), which may not exist for classes
+           inheriting this method.
+        """
         # use class-wide attributes if no parameters are passed
-        if not genes_of_interest_path:
+        if genes_of_interest_path is "" and gene_caller_ids is "":
             genes_of_interest_path = self.genes_of_interest_path
-        if not gene_caller_ids:
             gene_caller_ids = self.gene_caller_ids
 
         if genes_of_interest_path and gene_caller_ids:
@@ -218,7 +219,7 @@ class VariabilitySuper(object):
             raise ConfigError("You can't provide gene caller ids from the command line, and a list\
                                of gene caller ids as a file at the same time, obviously.")
 
-        if gene_caller_ids is not None:
+        if gene_caller_ids:
             if "," in gene_caller_ids:
                 gene_caller_ids = [g.strip() for g in gene_caller_ids.split(",")]
             else:
@@ -248,15 +249,15 @@ class VariabilitySuper(object):
         return genes_of_interest
 
 
-    def get_splits_of_interest(self, splits_of_interest_path=None, split_source=None):
-        if self.splits_of_interest:
-            # catches cases where self.splits_of_interest was injected into class programatically
-            return
-
+    def get_splits_of_interest(self, splits_of_interest_path="", split_source=""):
+        """It is essential to note that splits_of_interest_path and split_source are "" by default,
+           not None. The programmer can pass None to avoid the argument defaulting to a class-wide
+           attribute (first code block of this method), which may not exist for classes inheriting
+           this method.
+        """
         # use class-wide attributes if no parameters are passed
-        if not split_source:
+        if split_source is "" and splits_of_interest_path is "":
             split_source = self.split_source
-        if not splits_of_interest_path:
             splits_of_interest_path = self.splits_of_interest_path
 
         if not split_source:
@@ -308,23 +309,30 @@ class VariabilitySuper(object):
             raise ConfigError("You can't ask to only include genes with structures \
                                (--only-if-structure) without providing a structure database.")
 
-        self.progress.update('Checking the output file path ..')
+        self.progress.update('Checking the output file path ...')
         if self.output_file_path:
             filesnpaths.is_output_file_writable(self.output_file_path)
 
-        self.progress.update('Checking the samples of interest ..')
-        self.samples_of_interest = self.get_samples_of_interest()
-        self.progress.update('Setting up genes of interest')
-        self.genes_of_interest = self.get_genes_of_interest()
+        if not self.samples_of_interest:
+            self.progress.update('Setting up samples of interest ...')
+            # self.samples_of_interest can be injected into this class programatically; this
+            # conditional method call prevents overwriting
+            self.samples_of_interest = self.get_samples_of_interest()
+
+        if not self.genes_of_interest:
+            self.progress.update('Setting up genes of interest ...');
+            # self.genes_of_interest can be injected into this class programatically; this
+            # conditional method call prevents overwriting
+            self.genes_of_interest = self.get_genes_of_interest()
 
         # ways to get splits of interest: 1) genes of interest, 2) bin id, 3) directly
-        self.progress.update('Attempting to get our splits of interest sorted ...')
-        if self.table_provided:
-            self.split_source = "split_names" if self.splits_of_interest_path else ""
-        else:
-            self.check_how_splits_are_found()
+        self.progress.update('Setting up splits of interest ...')
+        self.check_how_splits_are_found()
 
-        self.splits_of_interest = self.get_splits_of_interest()
+        if not self.splits_of_interest:
+            # self.splits_of_interest can be injected into this class programatically; this
+            # conditional method call prevents overwriting
+            self.splits_of_interest = self.get_splits_of_interest()
 
         if self.genes_of_interest:
             genes_available = self.gene_callers_id_to_split_name_dict if not self.table_provided else self.data["corresponding_gene_call"].unique()
@@ -487,6 +495,11 @@ class VariabilitySuper(object):
            interest. These three routes for determining splits of interest are mutually exclusive and
            we make sure the user/programmer provides parameters for one route only.
         """
+        if self.table_provided:
+            # splits of interest can still be specified if table was provided
+            self.split_source = "split_names" if self.splits_of_interest_path else None
+            return
+
         requested_split_source = {
             "gene_caller_ids": True if self.genes_of_interest_path or self.gene_caller_ids or self.genes_of_interest else False,
             "split_names":     True if self.splits_of_interest_path or self.splits_of_interest else False,
@@ -1124,8 +1137,8 @@ class VariabilitySuper(object):
 
     def filter_for_interactive(self):
         F = lambda f, c = True: (f, c)
-
         filtering_functions = [F(self.filter_by_departure_from_consensus),
+                               F(self.filter_by_departure_from_reference),
                                F(self.filter_by_samples)]
 
         self.process(process_functions=filtering_functions)

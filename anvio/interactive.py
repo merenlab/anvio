@@ -1259,12 +1259,12 @@ class StructureInteractive(VariabilitySuper):
         self.contigs_db_path = A('contigs_db', null)
         self.structure_db_path = A('structure_db', null)
         # genes
-        self.gene_caller_ids = A('gene_caller_ids', null)
-        self.genes_of_interest_path = A('genes_of_interest', null)
-        self.genes_of_interest = A('genes_of_interest_set', set) or set([])
+        self.available_gene_caller_ids = A('gene_caller_ids', null)
+        self.available_genes_path = A('genes_of_interest', null)
+        self.available_genes = A('available_genes', set) or set([])
         # samples
-        self.samples_of_interest_path = A('samples_of_interest', null)
-        self.samples_of_interest = A('samples_of_interest_set', set) or set([])
+        self.available_samples_path = A('samples_of_interest', null)
+        self.available_samples = A('available_samples', set) or set([])
         # others
         self.variability_table_path = A('variability_profile', null)
         self.no_variability = A('no_variability', bool)
@@ -1283,30 +1283,39 @@ class StructureInteractive(VariabilitySuper):
 
         self.available_engines = [self.full_variability.engine] if self.variability_table_path else ["AA", "CDN"]
 
-        self.get_and_check_genes_of_interest()
+        self.available_genes = self.get_and_check_available_genes()
 
         # default gene is the first gene of interest
-        self.profile_gene_variability_data(list(self.genes_of_interest)[0])
+        self.profile_gene_variability_data(list(self.available_genes)[0])
 
-        self.get_and_check_samples_of_interest()
+        self.available_samples = self.get_and_check_available_samples()
+
 
     def get_genes_of_interest_from_bin_id():
         pass
 
-    def get_and_check_genes_of_interest(self):
-        """A method with the same name exists in VariabilitySuper, which is inherited by this
-           class. However, the method is incomplete for the needs of this class. So what this method
-           does is call the VariabilitySuper method, then extend its functionality.
+
+    def get_and_check_available_genes(self, available_genes_path="", available_gene_caller_ids=""):
+        """It is essential to note that available_genes_path and available_gene_caller_ids are "" by
+           default, not None. The programmer can pass None to avoid the argument defaulting to a
+           class-wide attribute (first code block of this method), which may not exist for classes
+           inheriting this method.
         """
-        self.get_genes_of_interest() # inherited from VariabilitySuper
+        # use class-wide attributes if no parameters are passed
+        if available_gene_caller_ids is "" and available_genes_path is "":
+            available_gene_caller_ids = self.available_gene_caller_ids
+            available_genes_path = self.available_genes_path
+
+        # method inherited from VariabilitySuper
+        requested_available_genes = self.get_genes_of_interest(available_genes_path, available_gene_caller_ids)
 
         # load in structure to compare genes of interest with those in db
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
 
-        if self.genes_of_interest:
+        if requested_available_genes:
 
             # check for genes that do not appear in the structure database
-            unrecognized_genes = [g for g in self.genes_of_interest if g not in structure_db.all_genes]
+            unrecognized_genes = [g for g in requested_available_genes if g not in structure_db.all_genes]
             if unrecognized_genes:
                 some_to_report = unrecognized_genes[:5] if len(unrecognized_genes) <= 5 else unrecognized_genes
                 raise ConfigError("{} of the gene caller ids you provided {} not known to the\
@@ -1321,7 +1330,8 @@ class StructureInteractive(VariabilitySuper):
                                                  ", ".join([str(x) for x in some_to_report])))
 
             # check for genes that structures were attempted for, but failed
-            unavailable_genes = [g for g in self.genes_of_interest if g in structure_db.genes_without_structure]
+            unavailable_genes = [g for g in requested_available_genes if g in structure_db.genes_without_structure]
+            available_genes = [g for g in requested_available_genes if g not in unavailable_genes]
             if unavailable_genes:
                 some_to_report = unavailable_genes[:5] if len(unavailable_genes) <= 5 else unavailable_genes
                 run.warning("When your structure database was first generated\
@@ -1332,30 +1342,49 @@ class StructureInteractive(VariabilitySuper):
                              display.".format(", ".join([str(x) for x in some_to_report])))
 
         else:
-            self.genes_of_interest = set(structure_db.genes_with_structure)
+            available_genes = set(structure_db.genes_with_structure)
 
         structure_db.disconnect()
-        # We are done with self.gene_caller_ids and self.genes_of_interest_path, so we set them to
-        # None. Now downstream class instances will not think we need these, or complain that we
-        # pass them AND genes_of_interest.
+        # We are done with self.args.gene_caller_ids and self.args.genes_of_interest, so we set them
+        # to None. Now downstream class instances initialized with self.args will not process our
+        # already processed gene caller ids or genes of interest path.
         self.args.gene_caller_ids = None
-        self.args.genes_of_interest_path = None
+        self.args.genes_of_interest = None
+
+        return available_genes
 
 
-    def get_and_check_samples_of_interest(self):
-        self.get_samples_of_interest() # inherited from VariabilitySuper
+    def get_and_check_available_samples(self, available_samples_path=""):
+        """There may be confusion within this method regarding the difference between available
+           samples and samples of interest. Available samples refer to those samples which are
+           capable of being displayed, whereas samples of interest refers to a subset of the
+           available samples that have been explicitly selected from within the interactive
+           interface. This is despite the fact that users modify available samples using the flag
+           --samples-of-interest.
+
+           It is essential to note that available_samples_path is "" by default, not None. The
+           programmer can pass None to avoid the argument defaulting to a class-wide attribute
+           (first code block of this method), which may not exist for classes inheriting this
+           method.
+        """
+        # use class-wide attributes if no parameters are passed
+        if available_samples_path is "":
+            available_samples_path = self.available_samples_path
+
+        # method inherited from VariabilitySuper
+        available_samples = self.get_samples_of_interest(available_samples_path)
 
         if self.full_variability:
-            available_sample_ids = self.full_variability.data["sample_id"].unique()
+            all_sample_ids = self.full_variability.data["sample_id"].unique()
         else:
             profile_db = dbops.ProfileDatabase(self.profile_db_path)
-            available_sample_ids = sorted(list(profile_db.samples))
+            all_sample_ids = sorted(list(profile_db.samples))
             profile_db.disconnect()
 
-        if self.samples_of_interest:
+        if available_samples:
 
             # check for samples that do not appear in the structure database
-            unrecognized_samples = [g for g in self.samples_of_interest if g not in available_sample_ids]
+            unrecognized_samples = [g for g in available_samples if g not in all_sample_ids]
             if unrecognized_samples:
                 raise ConfigError("{} of the sample ids you provided are not in the variability\
                                    table. Here they are: {}. They may exist in the profile database\
@@ -1366,12 +1395,14 @@ class StructureInteractive(VariabilitySuper):
                                                  ", ".join([str(x) for x in unrecognized_samples])))
 
         else:
-            self.samples_of_interest = set(available_sample_ids)
+            available_samples = set(all_sample_ids)
 
-        # We are done with samples_of_interest_path, so we set it to None. Now downstream class
-        # instances will not think we need samples_of_interest_path, or complain that we have both
-        # samples_of_interest_path AND samples_of_interest.
-        self.args.samples_of_interest_path = None
+        # We are done with self.args.samples_of_interest, so we set it to None. Now downstream class
+        # instances initialized with self.args will not process our already processed samples of
+        # interest path.
+        self.args.samples_of_interest = None
+
+        return available_samples
 
 
     def sanity_check(self):
@@ -1400,8 +1431,9 @@ class StructureInteractive(VariabilitySuper):
 
 
     def profile_full_variability_data(self):
-        """Creates self.full_variability, which houses the full variability... well, the full variability of all
-        genes with structures in the structure database"""
+        """Creates self.full_variability, which houses the full variability... well, the full
+           variability of all genes with structures in the structure database
+        """
         self.full_variability = variabilityops.VariabilityData(self.args, p=progress, r=run)
         self.full_variability.init_commons()
 
@@ -1420,7 +1452,6 @@ class StructureInteractive(VariabilitySuper):
            If the variability table is provided, the full table is stored in memory and a gene
            subset is created.
         """
-
         if gene_callers_id in self.variability_storage:
             # already profiled.
             return
@@ -1438,17 +1469,17 @@ class StructureInteractive(VariabilitySuper):
             for engine in self.available_engines:
                 self.args.engine = engine
                 self.args.genes_of_interest_set = set([gene_callers_id])
-                
+
                 gene_var[engine] = variability_engines[engine](self.args)
                 gene_var[engine].process()
 
         self.variability_storage[gene_callers_id] = gene_var
 
 
-    def get_available_genes_and_samples(self):
+    def get_available_genes_and_samples(self): # FIXME this name is not accurate
         output = {}
-        output['available_gene_callers_ids'] = list(self.genes_of_interest)
-        output['available_sample_ids'] = list(self.samples_of_interest)
+        output['available_gene_callers_ids'] = list(self.available_genes)
+        output['available_sample_ids'] = list(self.available_samples)
         output['available_engines'] = self.available_engines
         return output
 
@@ -1457,33 +1488,34 @@ class StructureInteractive(VariabilitySuper):
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
         summary = structure_db.get_summary_for_interactive(gene_callers_id)
         structure_db.disconnect()
-        
+
         self.profile_gene_variability_data(gene_callers_id)
 
+        columns_with_sliders = ['departure_from_consensus',
+                                'departure_from_reference']
+
         summary['histograms'] = {}
-        columns_of_interest = ['departure_from_consensus']
         for engine in self.available_engines:
-            summary['histograms'][engine] = self.variability_storage[gene_callers_id][engine].get_histograms(columns=columns_of_interest)
+            summary['histograms'][engine] = self.variability_storage[gene_callers_id][engine].get_histograms(columns=columns_with_sliders)
 
         return summary
 
 
-    def get_variability(self, options):
+    def get_variability(self, options, filter_params):
         selected_engine = options['engine']
         gene_callers_id = options['gene_callers_id']
-        selected_samples = options['selected_samples']
-        departure_from_consensus = options['departure_from_consensus']
 
         # this is a subset of variability_storage for single gene_caller_id
         # we don't want to modify variability_storage so we use deepcopy
-        # otherwise filtering will be irreversible
+        # otherwise filtering is irreversible
         var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine])
 
-        var.min_departure_from_consensus = departure_from_consensus[0]
-        var.max_departure_from_consensus = departure_from_consensus[1]
-        var.samples_of_interest = selected_samples
-        var.filter_for_interactive()
+        # set filter attributes
+        for param_name, param_value in filter_params.items():
+            setattr(var, param_name, param_value)
 
+        # ʕ•ᴥ•ʔ
+        var.filter_for_interactive()
         return var.data.to_json(orient='index')
 
 
