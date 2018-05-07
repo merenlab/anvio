@@ -54,7 +54,7 @@ class PfamSetup(object):
         filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=args.reset)
 
         self.database_url = "http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release"
-        self.files = ['Pfam-A.hmm.gz', 'Pfam-A.hmm.dat.gz', 'Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
+        self.files = ['Pfam-A.hmm.gz', 'Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
 
 
     def get_remote_version(self):
@@ -71,6 +71,7 @@ class PfamSetup(object):
                 os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
 
         self.confirm_downloaded_files()
+        self.decompress_files()
 
 
     def confirm_downloaded_files(self):
@@ -92,6 +93,16 @@ class PfamSetup(object):
             if not expected_hash == hash_on_disk:
                 # TO DO: Fix messages :(
                 raise ConfigError("Please run with --reset, one file hash doesn't match. %s" % file_name)
+
+
+    def decompress_files(self):
+        # Decompressing Pfam-A.hmm.gz is not necessary, HMMer class works with .gz
+        
+        for file_name in ['Pfam.version.gz', 'Pfam-A.clans.tsv.gz']:
+            full_path = os.path.join(self.pfam_data_dir, file_name)
+            
+            utils.gzip_decompress_file(full_path)
+            os.remove(full_path)
 
 
 if __name__ == '__main__':
