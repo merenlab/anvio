@@ -95,7 +95,7 @@ class Pfam(object):
 
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
-        hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, [], hmm_file, None, '--cut_ga')
+        hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
 
         # parse hmmscan output
         parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE')
