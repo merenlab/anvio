@@ -38,8 +38,6 @@ class Pfam(object):
         self.num_threads = args.num_threads
         self.pfam_data_dir = args.pfam_data_dir
 
-        self.is_database_exists()
-
         # load_catalog will populate this
         self.function_catalog = {}
 
@@ -49,19 +47,33 @@ class Pfam(object):
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
 
-        self.run.info('Pfam Database Directory', self.pfam_data_dir)
-        self.run.info('Contigs Database', self.contigs_db_path)
+        self.is_database_exists()
 
+        self.run.info('Pfam database directory', self.pfam_data_dir)
+        
         self.get_version()
         self.load_catalog()
 
 
     def is_database_exists(self):
         if not os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
+            raise ConfigError("It seems you do not have Pfam database installed, please run 'anvi-setup-pfam' to download it.")
 
 
     def get_version(self):
-        pass
+        with open(os.path.join(self.pfam_data_dir, 'Pfam.version')) as f:
+            content = f.read()
+
+        # below we are parsing this, not so elegant.
+        # Pfam release       : 31.0
+        # Pfam-A families    : 16712
+        # Date               : 2017-02
+        # Based on UniProtKB : 2016_10
+
+        version = content.strip().split('\n')[0].split(':')[1].strip()
+        release_date = content.strip().split('\n')[2].split(':')[1].strip()
+
+        self.run.info("Pfam database version", "%s (%s)" % (version, release_date))
 
 
     def load_catalog(self):
