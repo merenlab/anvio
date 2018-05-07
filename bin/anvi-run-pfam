@@ -38,6 +38,9 @@ class Pfam(object):
         self.num_threads = args.num_threads
         self.pfam_data_dir = args.pfam_data_dir
 
+        # load_catalog will populate this
+        self.function_catalog = {}
+
         filesnpaths.is_program_exists('hmmscan')
         utils.is_contigs_db(self.contigs_db_path)
 
@@ -49,6 +52,7 @@ class Pfam(object):
         self.run.info('Contigs Database', self.contigs_db_path)
 
         self.get_version()
+        self.load_catalog()
 
 
     def get_version(self):
@@ -56,11 +60,20 @@ class Pfam(object):
 
 
     def load_catalog(self):
-        pass
+        catalog_path = os.path.join(self.pfam_data_dir, 'Pfam-A.clans.tsv')
+        self.function_catalog = utils.get_TAB_delimited_file_as_dictionary(catalog_path, 
+            column_names=['accession', 'clan', 'unknown_column1', 'unknown_column2', 'function'])
 
 
     def get_function_from_catalog(self, accession):
-        pass
+        if '.' in accession:
+            accession = accession.split('.')[0]
+
+        if not accession in self.function_catalog:
+            # TO DO: messsages
+            raise ConfigError("It seems hmmscan found a accession id that does not exists in Pfam catalog, Id: %s" % accession)
+
+        return self.function_catalog[accession]['function'] # maybe merge other columns too?
 
 
     def process(self):
@@ -96,7 +109,7 @@ class Pfam(object):
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'Pfam',
                 'accession': hmm_hit['gene_name'],
-                'function': "Soon",
+                'function': self.get_function_from_catalog(hmm_hit['gene_hmm_id']),
                 'e_value': hmm_hit['e_value'],
 
             }
