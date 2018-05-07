@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Özcan Esen"
+__email__ = "ozcanesen@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+
+
+class Pfam(object):
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+        self.contigs_db = args.contigs_db
+        self.pfam_data_dir = args.pfam_data_dir
+
+        filesnpaths.is_program_exists('hmmscan')
+        utils.is_contigs_db(self)
+
+        if not self.pfam_data_dir:
+            self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
+
+        self.run.info('Pfam Database Directory', self.pfam_data_dir)
+        self.run.info('Contigs Database', self.contigs_db)
+        self.get_version()
+
+
+    def get_version(self):
+        pass
+
+
+    def run(self):
+        pass
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Run Pfam on Contigs Database.')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('pfam-data-dir'), **anvio.K('pfam-data-dir'))
+    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        pfam = Pfam(args)
+        pfam.run()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
