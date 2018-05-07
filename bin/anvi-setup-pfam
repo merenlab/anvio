@@ -65,10 +65,6 @@ class PfamSetup(object):
             self.run.info('[remote] ' + k.strip(), v.strip())
 
 
-    def get_local_version(self):
-        pass
-
-
     def download(self):
         for file_name in self.files:
             utils.download_file(self.database_url + '/' + file_name, 
