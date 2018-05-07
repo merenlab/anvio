@@ -9,7 +9,9 @@
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/structure.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js"></script>
     <script type="text/javascript" src="https://cdn.rawgit.com/arose/ngl/v0.10.4/dist/ngl.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-interpolate/1.2.0/d3-interpolate.js"></script>
     <script type="text/javascript" src="js/structure.js"></script>
 </head>
 
@@ -31,13 +33,17 @@
                 <div id="sample_id_list">
                     Sample Names:<br>
                 </div>
-                Departure from consensus: 
-                <canvas id="histogram_departure_from_consensus" width="210" height="30" style="position: relative; top: 6;">
-                </canvas>   
+                <br />Departure from consensus:
+                <br />
+                <svg id="histogram_departure_from_consensus" width="210" height="30" style="position: relative; top: 6;">
+
+                </svg>   
                 <input type="float" id="departure_from_consensus" data-provide="slider" data-slider-min="0" data-slider-max="1" data-slider-step="0.001" data-slider-value="[0,1]">
-                Departure from reference: 
-                <canvas id="histogram_departure_from_reference" width="210" height="30" style="position: relative; top: 6;">
-                </canvas>   
+                <br />Departure from reference: 
+                <br />
+                <svg id="histogram_departure_from_reference" width="210" height="30" style="position: relative; top: 6;">
+
+                </svg> 
                 <input type="float" id="departure_from_reference" data-provide="slider" data-slider-min="0" data-slider-max="1" data-slider-step="0.001" data-slider-value="[0,1]">
 
                 <br />

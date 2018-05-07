@@ -163,67 +163,39 @@ function draw_histogram() {
     let engine = $('[name=engine]:checked').val();
 
     for (let column in histogram_data[engine]) {
-        let canvas = document.getElementById('histogram_' + column);
-        var ctx = canvas.getContext("2d");
+        let svg = d3.select('#histogram_' + column);
+        let width = svg.attr('width');
+        let height = svg.attr('height');
 
-        let width = parseFloat(canvas.width);
-        let height = parseFloat(canvas.height);
-
-        // clear canvas
-        ctx.clearRect(0, 0, width, height);
+        // clear existing drawing
+        svg.selectAll('*').remove();
 
         let bins = histogram_data[engine][column]['bins'];
         let counts = histogram_data[engine][column]['counts'];
-        let curve_x = histogram_data[engine][column]['curve_x'];
-        let curve_y = histogram_data[engine][column]['curve_y'];
-
-        // normalize counts and curve_y to pixels so they fit in canvas frame
+        
         var max_count = Math.max(...counts);
-        var max_curve_y = Math.max(...curve_y);
-        counts = counts.map(v => (v / max_count) * height);
-        curve_y = curve_y.map(v => (v / max_curve_y) * height);
-
-        // normalize bins and curve_x to pixels so they fit in canvas frame
         var max_slider = parseFloat(document.getElementById(column).dataset.sliderMax);
         var min_slider = parseFloat(document.getElementById(column).dataset.sliderMin);
-        bins = bins.map(v => (v / max_slider) * width);
-        curve_x = curve_x.map(v => (v / max_slider) * width);
 
-        // draw histogram
-        for (let i=0; i < bins.length - 1; i++) {
-            ctx.fillRect(bins[i],              // x
-                         height - counts[i],   // y
-                         bins[i + 1] - bins[i],// width
-                         counts[i]);           // height
-            ctx.stroke();
+        let normalized_counts = counts.map(v => (v / max_count) * height);
+        let normalized_bins = bins.map(v => (v / max_slider) * width);        
+        
+        let data_points = [];
+
+        for (let i=0; i < normalized_bins.length - 1; i++) {
+            data_points.push({'x': normalized_bins[i], 'y': height - normalized_counts[i]});
         }
 
-        // draw curve
-        ctx.lineWidth=1.0;
-        ctx.beginPath();
-        for (let j=0; j < curve_x.length; j++) {
-            ctx.moveTo(curve_x[j],   height-curve_y[j]);
-            ctx.lineTo(curve_x[j+1], height-curve_y[j+1]);
-            ctx.stroke();
-        }
+        var interpolate = d3.line()
+                            .x(function(d) { return d.x; })
+                            .y(function(d) { return d.y; })
+                            .curve(d3.curveCardinal);
 
-        // draw points outside range over which curve is defined
-        var min_curve_x = Math.min(...curve_x)
-        if (Math.min(...curve_x) > 0) {
-            ctx.moveTo(min_curve_x, height - curve_y[0]);
-            ctx.lineTo(min_curve_x, height)
-            ctx.moveTo(min_curve_x, height);
-            ctx.lineTo(width, height)
-            ctx.stroke();
-        }
-
-        var max_curve_x = Math.max(...curve_x)
-        if (Math.max(...curve_x) < width) {
-            ctx.moveTo(max_curve_x, height - curve_y[curve_y.length - 1]);
-            ctx.lineTo(max_curve_x, height)
-            ctx.moveTo(max_curve_x, height);
-            ctx.lineTo(width, height)
-            ctx.stroke();
-        }
+        var interpolated_line = interpolate(data_points);
+        interpolated_line += `L ${data_points[normalized_bins.length - 2]['x']} ${height} L ${data_points[0]['x']} ${height}`; 
+        
+        svg.append("path")
+            .style("fill","#337ab7")
+            .attr("d",function(d,i){ return interpolated_line; });
     }
 };
