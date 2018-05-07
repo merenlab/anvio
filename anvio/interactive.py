@@ -1513,9 +1513,7 @@ class StructureInteractive(VariabilitySuper):
 
         # set filter attributes if they changed
         for param_name, param_value in new_filter_params.items():
-            if param_value != self.current_filter_params.get(param_name):
-                setattr(var, param_name, param_value)
-                print(param_name, param_value)
+            setattr(var, param_name, param_value)
 
         # ʕ•ᴥ•ʔ
         var.filter_for_interactive()
