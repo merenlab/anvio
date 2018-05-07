@@ -60,12 +60,21 @@ class PfamSetup(object):
     def get_remote_version(self):
         content = read_remote_file(self.database_url + '/Pfam.version.gz')
 
-        for line in content.strip().split('\n'):
-            k, v = line.split(':')
-            self.run.info('[remote] ' + k.strip(), v.strip())
+        # below we are parsing this, not so elegant.
+        # Pfam release       : 31.0
+        # Pfam-A families    : 16712
+        # Date               : 2017-02
+        # Based on UniProtKB : 2016_10
+
+        version = content.strip().split('\n')[0].split(':')[1].strip()
+        release_date = content.strip().split('\n')[2].split(':')[1].strip()
+
+        self.run.info("Current Pfam version on EBI", "%s (%s)" % (version, release_date))
 
 
     def download(self):
+        self.run.info("Database URL", self.database_url)
+
         for file_name in self.files:
             utils.download_file(self.database_url + '/' + file_name, 
                 os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
