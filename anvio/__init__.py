@@ -408,6 +408,13 @@ D = {
              'help': "The directory path for your COG setup. Anvi'o will try to use the default path\
                       if you do not specify anything."}
                 ),
+    'pfam-data-dir': (
+            ['--pfam-data-dir'],
+            {'default': None,
+             'type': str,
+             'help': "The directory path for your Pfam setup. Anvi'o will try to use the default path\
+                      if you do not specify anything."}
+                ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
             {'default': False,
