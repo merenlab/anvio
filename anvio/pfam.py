@@ -58,13 +58,13 @@ class PfamSetup(object):
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
 
-        self.is_database_exists()
+        if not args.reset:
+            self.is_database_exists()
 
         filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=args.reset)
 
         self.database_url = "http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release"
-        self.files = ['Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
-        #self.files = ['Pfam-A.hmm.gz', 'Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
+        self.files = ['Pfam-A.hmm.gz', 'Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
 
 
     def is_database_exists(self):
