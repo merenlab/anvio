@@ -11,7 +11,10 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.drivers.hmmer import HMMer
+from anvio.parsers import parser_modules
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.genefunctions import TableForGeneFunctions
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -31,19 +34,20 @@ class Pfam(object):
         self.args = args
         self.run = run
         self.progress = progress
-        self.db_path = args.contigs_db
+        self.contigs_db_path = args.contigs_db
         self.num_threads = args.num_threads
         self.pfam_data_dir = args.pfam_data_dir
 
         filesnpaths.is_program_exists('hmmscan')
-        utils.is_contigs_db(self.db_path)
+        utils.is_contigs_db(self.contigs_db_path)
 
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
 
 
         self.run.info('Pfam Database Directory', self.pfam_data_dir)
-        self.run.info('Contigs Database', self.db_path)
+        self.run.info('Contigs Database', self.contigs_db_path)
+
         self.get_version()
 
 
@@ -51,23 +55,56 @@ class Pfam(object):
         pass
 
 
+    def load_catalog(self):
+        pass
+
+
+    def get_function_from_catalog(self, accession):
+        pass
+
+
     def process(self):
         hmm_file = os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')
+
+        # initialize contigs database
         class Args: pass
         args = Args()
-        args.contigs_db = self.db_path
+        args.contigs_db = self.contigs_db_path
         contigs_db = dbops.ContigsSuperclass(args)
         tmp_directory_path = filesnpaths.get_temp_directory_path()
 
+        # export AA sequences for genes
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
         contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['AA:GENE'],
                                                                    simple_headers=True,
                                                                    rna_alphabet=False,
                                                                    report_aa_sequences=True)
 
+        # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
-        print(hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, [], hmm_file, None, '--cut_ga'))
+        hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, [], hmm_file, None, '--cut_ga')
 
+        # parse hmmscan output
+        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE')
+        search_results_dict = parser.get_search_results()
+
+        # add functions to database
+        functions_dict = {}
+        counter = 0
+        for hmm_hit in search_results_dict.values():
+            functions_dict[counter] = {
+                'gene_callers_id': hmm_hit['gene_callers_id'],
+                'source': 'Pfam',
+                'accession': hmm_hit['gene_name'],
+                'function': "Soon",
+                'e_value': hmm_hit['e_value'],
+
+            }
+
+            counter += 1
+
+        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+        gene_function_calls_table.create(functions_dict)
 
 
 if __name__ == '__main__':
