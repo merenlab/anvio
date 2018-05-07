@@ -5,9 +5,12 @@ import os
 import sys
 
 import anvio
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
+from anvio.drivers.hmmer import HMMer
 from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -28,17 +31,19 @@ class Pfam(object):
         self.args = args
         self.run = run
         self.progress = progress
-        self.contigs_db = args.contigs_db
+        self.db_path = args.contigs_db
+        self.num_threads = args.num_threads
         self.pfam_data_dir = args.pfam_data_dir
 
         filesnpaths.is_program_exists('hmmscan')
-        utils.is_contigs_db(self)
+        utils.is_contigs_db(self.db_path)
 
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
 
+
         self.run.info('Pfam Database Directory', self.pfam_data_dir)
-        self.run.info('Contigs Database', self.contigs_db)
+        self.run.info('Contigs Database', self.db_path)
         self.get_version()
 
 
@@ -46,8 +51,23 @@ class Pfam(object):
         pass
 
 
-    def run(self):
-        pass
+    def process(self):
+        hmm_file = os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')
+        class Args: pass
+        args = Args()
+        args.contigs_db = self.db_path
+        contigs_db = dbops.ContigsSuperclass(args)
+        tmp_directory_path = filesnpaths.get_temp_directory_path()
+
+        target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
+        contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['AA:GENE'],
+                                                                   simple_headers=True,
+                                                                   rna_alphabet=False,
+                                                                   report_aa_sequences=True)
+
+        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
+        print(hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, [], hmm_file, None, '--cut_ga'))
+
 
 
 if __name__ == '__main__':
@@ -63,7 +83,7 @@ if __name__ == '__main__':
 
     try:
         pfam = Pfam(args)
-        pfam.run()
+        pfam.process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
