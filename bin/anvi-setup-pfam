@@ -76,6 +76,7 @@ class PfamSetup(object):
 
         self.confirm_downloaded_files()
         self.decompress_files()
+        self.delete_compressed_files()
         self.run_hmmpress()
 
 
@@ -106,6 +107,15 @@ class PfamSetup(object):
         for file_name in self.files:
             self.progress.update(file_name)
             utils.gzip_decompress_file(os.path.join(self.pfam_data_dir, file_name))
+        
+        self.progress.end()
+
+
+    def delete_compressed_files(self):
+        self.progress.new('Deleting compressed files')
+        
+        for file_name in self.files:
+            os.remove(os.path.join(self.pfam_data_dir, file_name))
         
         self.progress.end()
 
