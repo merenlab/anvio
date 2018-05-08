@@ -1298,7 +1298,14 @@ class StructureInteractive(VariabilitySuper):
 
         info = [
             {
+                'name': 'sample_id',
+                'title': 'Sample Names',
+                'type': 'checkbox',
+                'choices': ['s01', 's02', 's03'],
+            },
+            {
                 'name': 'departure_from_consensus',
+                'title': 'Departure from consensus',
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1307,6 +1314,7 @@ class StructureInteractive(VariabilitySuper):
             },
             {
                 'name': 'departure_from_reference',
+                'title': 'Departure from reference',
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1315,19 +1323,16 @@ class StructureInteractive(VariabilitySuper):
             },
             {
                 'name': 'coverage',
+                'title': 'Coverage',
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 1,
                 'min': int(FIND_MIN(gene_callers_id, engine, 'coverage')),
                 'max': int(FIND_MAX(gene_callers_id, engine, 'coverage'))
             },
-            #{
-            #    'name': 'sec_struct',
-            #    'controller': 'checkbox',
-            #    'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
-            #},
             {
                 'name': 'rel_solvent_acc',
+                'title': 'Relative solvent accessibility',
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1335,7 +1340,14 @@ class StructureInteractive(VariabilitySuper):
                 'max': 1,
             },
             {
+                'name': 'sec_struct',
+                'title': 'Secondary structure',
+                'controller': 'checkbox',
+                'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
+            },
+            {
                 'name': 'BLOSUM90',
+                'title': 'BLOSUM90',
                 'controller': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1534,7 +1546,6 @@ class StructureInteractive(VariabilitySuper):
     def get_initial_data(self):
         output = {}
         output['available_gene_callers_ids'] = list(self.available_genes)
-        output['available_sample_ids'] = list(self.available_samples)
         output['available_engines'] = self.available_engines
         return output
 
@@ -1556,7 +1567,7 @@ class StructureInteractive(VariabilitySuper):
 
     def get_variability(self, options, new_filter_params):
         selected_engine = options['engine']
-        gene_callers_id = options['gene_callers_id']
+        gene_callers_id = int(options['gene_callers_id'])
 
         # this is a subset of variability_storage for single gene_caller_id
         # we don't want to modify variability_storage so we use deepcopy
