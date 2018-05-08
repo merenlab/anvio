@@ -129,7 +129,8 @@ class BottleApplication(Bottle):
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
         self.route('/data/search_functions',                   callback=self.search_functions, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
-        self.route('/data/get_available_genes_and_samples',    callback=self.get_available_genes_and_samples)
+        self.route('/data/get_initial_data',                   callback=self.get_initial_data)
+        self.route('/data/get_column_info',                    callback=self.get_column_info, method='POST')
         self.route('/data/get_structure/<gene_callers_id:int>',callback=self.get_structure)
         self.route('/data/get_variability',                    callback=self.get_variability, method='POST')
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
@@ -1031,8 +1032,15 @@ class BottleApplication(Bottle):
                            'human_readable_keys': self.interactive.human_readable_keys})
 
 
-    def get_available_genes_and_samples(self):
-        return json.dumps(self.interactive.get_available_genes_and_samples())
+    def get_initial_data(self):
+        return json.dumps(self.interactive.get_initial_data())
+
+
+    def get_column_info(self):
+        gene_callers_id = int(request.forms.get('gene_callers_id'))
+        engine = request.forms.get('engine')
+
+        return json.dumps(self.interactive.get_column_info(gene_callers_id, engine))
 
 
     def get_structure(self, gene_callers_id):
