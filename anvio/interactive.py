@@ -1298,7 +1298,14 @@ class StructureInteractive(VariabilitySuper):
 
         info = [
             {
+                'name': 'samples',
+                'title': 'Sample Names',
+                'type': 'checkbox',
+                'choices': ['s01', 's02', 's03'],
+            },
+            {
                 'name': 'departure_from_consensus',
+                'title': 'Departure from consensus',
                 'type': 'slider',
                 'step': 0.001,
                 'min': 0,
@@ -1306,6 +1313,7 @@ class StructureInteractive(VariabilitySuper):
             },
             {
                 'name': 'departure_from_reference',
+                'title': 'Departure from reference',
                 'type': 'slider',
                 'step': 0.001,
                 'min': 0,
@@ -1313,6 +1321,7 @@ class StructureInteractive(VariabilitySuper):
             },
             {
                 'name': 'coverage',
+                'title': 'Coverage',
                 'type': 'slider',
                 'step': 1,
                 'min': int(FIND_MIN(gene_callers_id, engine, 'coverage')),
@@ -1320,11 +1329,13 @@ class StructureInteractive(VariabilitySuper):
             },
             {
                 'name': 'sec_struct',
+                'title': 'Sec struct',
                 'type': 'checkbox',
                 'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
             },
             {
                 'name': 'rel_solvent_acc',
+                'title': 'Relative solvent accessibility',
                 'type': 'slider',
                 'step': 0.001,
                 'min': 0,
@@ -1332,6 +1343,7 @@ class StructureInteractive(VariabilitySuper):
             },
             {
                 'name': 'BLOSUM90',
+                'title': 'BLOSUM90',
                 'type': 'slider',
                 'step': 1,
                 'min': -6,
