@@ -231,8 +231,8 @@ function create_ui() {
                         <br />${item['title']}
                         <br />
                         ${item['choices'].map((choice) => { return `
-                            <input class="form-check-input" type="checkbox" id="sample_${choice}" value="${choice}" checked="checked">
-                            <label class="form-check-label" for="sample_${choice}">${choice}</label>`; }).join('')}
+                            <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" checked="checked">
+                            <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
                     `);
                 }
             });
