@@ -21,7 +21,6 @@ $(document).ready(function() {
         url: '/data/get_initial_data?timestamp=' + new Date().getTime(),
         success: function(data) {
             let available_gene_callers_ids = data['available_gene_callers_ids'];
-            let available_sample_ids = data['available_sample_ids'];
             let available_engines = data['available_engines']; 
 
             available_gene_callers_ids.forEach(function(gene_callers_id) {
@@ -34,12 +33,6 @@ $(document).ready(function() {
             available_engines.forEach(function(engine) {
                 $('#engine_list').append(`<input type="radio" name="engine" onclick="draw_histogram();" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
             });
-                        
-            available_sample_ids.forEach(function(sample_id) {
-
-                $('#sample_id_list').append(`<input class="form-check-input" type="checkbox" id="sample_${sample_id}" value="${sample_id}" checked="checked"><label class="form-check-label" for="sample_${sample_id}">${sample_id}</label><br />`);
-            });
-            $('#sample_id_list').trigger('change');
 
             create_ui();
         }
