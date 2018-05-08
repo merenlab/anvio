@@ -1144,38 +1144,65 @@ class VariabilitySuper(object):
         self.process(process_functions=filtering_functions)
 
 
-    def get_histograms(self, columns=None):
-        if not columns:
-            columns = self.data.columns
+    def get_histograms_for_interactive(self, column_info_list):
+        # subset info list to columns that occur in self.data
+        column_info_list = [info for info in column_info_list if info["name"] in self.data.columns]
 
         output = {}
-        for column in columns:
-            if pd.api.types.is_numeric_dtype(self.data[column]):
-                output[column] = {}
+        for column_info in column_info_list:
+            column = column_info["name"]
+            output[column] = {}
 
-                # define numpy array; filter infinities and nans
-                column_data = self.data[column].values
-                column_data = column_data[np.isfinite(column_data)]
+            if column_info["controller"] in ["slider"]:
+                # make a number histogram
+                histogram_args = {}
+                histogram_args["range"] = (column_info["min"], column_info["max"])
+                histogram_args["bins"] = 15
+                values, bins = self.get_histogram(column, fix_offset=True, **histogram_args)
 
-                # histogram
-                values, bins = np.histogram(self.data[column], bins=10)
-                output[column]['counts'] = values.tolist()
-                output[column]['bins'] = bins.tolist()
+            elif column_info["controller"] in ["checkbox"]:
+                # make a bar chart (categorical)
+                category_counts_df = self.data[column].value_counts().reset_index()
+                values = category_counts_df[column]
+                bins = category_counts_df["index"]
 
-                # smooth curve of histogram
-                curve_x = np.linspace(bins[0], bins[-1], 100)
-                # bandwidth determines how wavy the estimation can be. np.max(curve_x) -
-                # np.min(curve_x)) / 20 this means if the data was a mixture of N equally spaced
-                # normal distributions, the curve could trace 95% of each normal if N = 10, or
-                # 66% of each normal if N = 20.
-                bandwith = (np.max(curve_x) - np.min(curve_x)) / 20
-                kde = KernelDensity(bandwidth=bandwith, kernel='gaussian')
-                kde.fit(column_data[:, None])
-                curve_y = np.exp(kde.score_samples(curve_x[:, None]))
-                output[column]['curve_x'] = curve_x.tolist()
-                output[column]['curve_y'] = curve_y.tolist()
+            else:
+                raise ConfigError("get_histogram :: %s is not a recognizable controller type" %s (column_info["controller"]))
+
+            output[column]['counts'] = values.tolist()
+            output[column]['bins'] = bins.tolist()
 
         return output
+
+
+    def get_histogram(self, column, fix_offset=False, **kwargs):
+        """
+           fix_offset can be provided if you're interested in returning the centre point of each bin
+           rather than the edges of each bin.
+
+           **kwargs are the optional arguments of np.histogram
+           (https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.histogram.html)
+        """
+        if not pd.api.types.is_numeric_dtype(self.data[column]):
+            raise ConfigError("get_histogram :: %s is not of numeric type" %s (column))
+
+        if fix_offset:
+            range_offset = (kwargs["range"][1] - kwargs["range"][0]) / (kwargs["bins"] - 1) / 2
+            kwargs["range"] = (kwargs["range"][0] - range_offset, kwargs["range"][1] + range_offset)
+
+        # define numpy array; filter infinities and nans
+        column_data = self.data[column].values
+        column_data = column_data[np.isfinite(column_data)]
+
+        # histogram
+        values, bins = np.histogram(self.data[column], **kwargs)
+
+        if fix_offset:
+            bins = bins[:-1] + range_offset
+            # now bins have the same length as values and represent the midpoint of each bin (e.g.
+            # the first bin value is the original minimum value passed to this function
+
+        return values, bins
 
 
     def get_residue_structure_information(self):
