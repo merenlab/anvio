@@ -18,7 +18,7 @@ $(document).ready(function() {
     $.ajax({
         type: 'GET',
         cache: false,
-        url: '/data/get_available_genes_and_samples?timestamp=' + new Date().getTime(),
+        url: '/data/get_initial_data?timestamp=' + new Date().getTime(),
         success: function(data) {
             let available_gene_callers_ids = data['available_gene_callers_ids'];
             let available_sample_ids = data['available_sample_ids'];
@@ -40,6 +40,8 @@ $(document).ready(function() {
                 $('#sample_id_list').append(`<input class="form-check-input" type="checkbox" id="sample_${sample_id}" value="${sample_id}" checked="checked"><label class="form-check-label" for="sample_${sample_id}">${sample_id}</label><br />`);
             });
             $('#sample_id_list').trigger('change');
+
+            create_ui();
         }
     });
 });
@@ -199,3 +201,39 @@ function draw_histogram() {
             .attr("d",function(d,i){ return interpolated_line; });
     }
 };
+
+function create_ui() {
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    let engine = $('[name=engine]:checked').val();
+
+   $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/data/get_column_info',
+        data: {
+            'gene_callers_id': gene_callers_id,
+            'engine': engine
+        },
+        success: function(data) {
+            let container = $('#controls');
+
+            data.forEach((item) => {
+                if (item['type'] == 'slider') {
+                    $(container).append(`
+                        <br />${item['name']}
+                        <br />
+                        <svg id="histogram_${item['name']}" width="210" height="30" style="position: relative; top: 6;"></svg>   
+                        <input id="${item['name']}" 
+                                type="float" 
+                                data-provide="slider" 
+                                data-slider-min="${item['min']}" 
+                                data-slider-max="${item['max']}" 
+                                data-slider-step="${item['step']}" 
+                                data-slider-value="[${item['min']},${item['max']}]">
+                    `);
+                    $(`#${item['name']}`).slider({});
+                }
+            });
+        }
+    });   
+}

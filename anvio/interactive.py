@@ -1292,6 +1292,55 @@ class StructureInteractive(VariabilitySuper):
         self.available_samples = self.get_and_check_available_samples()
 
 
+    def get_column_info(self, gene_callers_id, engine):
+        FIND_MIN = lambda g, e, c: self.variability_storage[g][e].data[c].min()
+        FIND_MAX = lambda g, e, c: self.variability_storage[g][e].data[c].max()
+
+        info = [
+            {
+                'name': 'departure_from_consensus',
+                'type': 'slider',
+                'step': 0.001,
+                'min': 0,
+                'max': 1,
+            },
+            {
+                'name': 'departure_from_reference',
+                'type': 'slider',
+                'step': 0.001,
+                'min': 0,
+                'max': 1,
+            },
+            {
+                'name': 'coverage',
+                'type': 'slider',
+                'step': 1,
+                'min': int(FIND_MIN(gene_callers_id, engine, 'coverage')),
+                'max': int(FIND_MAX(gene_callers_id, engine, 'coverage'))
+            },
+            {
+                'name': 'sec_struct',
+                'type': 'checkbox',
+                'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
+            },
+            {
+                'name': 'rel_solvent_acc',
+                'type': 'slider',
+                'step': 0.001,
+                'min': 0,
+                'max': 1,
+            },
+            {
+                'name': 'BLOSUM90',
+                'type': 'slider',
+                'step': 1,
+                'min': -6,
+                'max': 11,
+            }]
+
+        return info
+
+
     def get_genes_of_interest_from_bin_id():
         pass
 
@@ -1477,7 +1526,7 @@ class StructureInteractive(VariabilitySuper):
         self.variability_storage[gene_callers_id] = gene_var
 
 
-    def get_available_genes_and_samples(self): # FIXME this name is not accurate
+    def get_initial_data(self):
         output = {}
         output['available_gene_callers_ids'] = list(self.available_genes)
         output['available_sample_ids'] = list(self.available_samples)
