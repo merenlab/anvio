@@ -136,7 +136,7 @@ function draw_variability() {
     $.ajax({
         type: 'POST',
         cache: false,
-        data: options,
+        data: {'options': JSON.stringify(options)},
         url: '/data/get_variability',
         success: function(data) {
             let component = stage.compList[0];
