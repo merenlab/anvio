@@ -220,7 +220,7 @@ function create_ui() {
             data.forEach((item) => {
                 if (item['type'] == 'slider') {
                     $(container).append(`
-                        <br />${item['name']}
+                        <br />${item['title']}
                         <br />
                         <svg id="histogram_${item['name']}" width="210" height="30" style="position: relative; top: 6;"></svg>   
                         <input id="${item['name']}" 
