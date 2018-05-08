@@ -34,7 +34,7 @@ $(document).ready(function() {
                 $('#engine_list').append(`<input type="radio" name="engine" onclick="create_ui();" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
             });
 
-            create_ui();
+            //create_ui();
         }
     });
 });
@@ -128,8 +128,6 @@ function draw_variability() {
             let component = stage.compList[0];
             let variant_residues = [];
 
-            console.log(data);
-
             for (let index in data) {
                 variant_residues.push(data[index]['codon_order_in_gene']);
             }
@@ -154,10 +152,6 @@ function draw_variability() {
 
 
 function draw_histogram() {
-    if (!histogram_data) {
-        setTimeout(draw_histogram, 400);
-    }
-
     let engine = $('[name=engine]:checked').val();
 
     for (let column in histogram_data[engine]) {
@@ -218,26 +212,30 @@ function create_ui() {
             data.forEach((item) => {
                 if (item['type'] == 'slider') {
                     $(container).append(`
-                        <br />${item['title']}
-                        <br />
-                        <svg id="histogram_${item['name']}" width="210" height="30" style="position: relative; top: 6;"></svg>   
-                        <input id="${item['name']}" 
-                                type="float" 
-                                data-provide="slider" 
-                                data-slider-min="${item['min']}" 
-                                data-slider-max="${item['max']}" 
-                                data-slider-step="${item['step']}" 
-                                data-slider-value="[${item['min']},${item['max']}]">
+                        <div class="widget" data-column="${item['name']}" data-type="${item['type']}">
+                            <br />${item['title']}
+                            <br />
+                            <svg id="histogram_${item['name']}" width="210" height="30" style="position: relative; top: 6;"></svg>   
+                            <input id="${item['name']}" 
+                                    type="float"
+                                    data-provide="slider"
+                                    data-slider-min="${item['min']}" 
+                                    data-slider-max="${item['max']}" 
+                                    data-slider-step="${item['step']}" 
+                                    data-slider-value="[${item['min']},${item['max']}]">
+                        </div>
                     `);
-                    $(`#${item['name']}`).slider({});
+                    $(`#${item['name']}`).slider({}).on('slideStop', () => { draw_variability(); });
                 }
                 if (item['type'] == 'checkbox') {
                     $(container).append(`
-                        <br />${item['title']}
-                        <br />
-                        ${item['choices'].map((choice) => { return `
-                            <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" checked="checked">
-                            <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
+                        <div class="widget" data-column="${item['name']}" data-type="${item['type']}">
+                            <br />${item['title']}
+                            <br />
+                            ${item['choices'].map((choice) => { return `
+                                <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="draw_variability();" checked="checked">
+                                <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
+                        </div>
                     `);
                 }
             });
