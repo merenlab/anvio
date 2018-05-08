@@ -31,7 +31,7 @@ $(document).ready(function() {
 
             let default_engine = available_engines[0];
             available_engines.forEach(function(engine) {
-                $('#engine_list').append(`<input type="radio" name="engine" onclick="draw_histogram();" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
+                $('#engine_list').append(`<input type="radio" name="engine" onclick="create_ui();" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
             });
 
             create_ui();
@@ -73,7 +73,6 @@ function load_protein(gene_callers_id) {
         url: '/data/get_structure/' + gene_callers_id,
         success: function(data) {
             histogram_data = data['histograms'];
-            draw_histogram();
 
             // create tooltip element and add to document body
             var tooltip = document.createElement("div");
@@ -155,6 +154,10 @@ function draw_variability() {
 
 
 function draw_histogram() {
+    if (!histogram_data) {
+        setTimeout(draw_histogram, 400);
+    }
+
     let engine = $('[name=engine]:checked').val();
 
     for (let column in histogram_data[engine]) {
@@ -210,6 +213,8 @@ function create_ui() {
         success: function(data) {
             let container = $('#controls');
 
+            container.empty();
+
             data.forEach((item) => {
                 if (item['type'] == 'slider') {
                     $(container).append(`
@@ -236,6 +241,8 @@ function create_ui() {
                     `);
                 }
             });
+
+            draw_histogram();
         }
     });   
 }
