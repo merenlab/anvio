@@ -226,6 +226,15 @@ function create_ui() {
                     `);
                     $(`#${item['name']}`).slider({});
                 }
+                if (item['type'] == 'checkbox') {
+                    $(container).append(`
+                        <br />${item['title']}
+                        <br />
+                        ${item['choices'].map((choice) => { return `
+                            <input class="form-check-input" type="checkbox" id="sample_${choice}" value="${choice}" checked="checked">
+                            <label class="form-check-label" for="sample_${choice}">${choice}</label>`; }).join('')}
+                    `);
+                }
             });
         }
     });   
