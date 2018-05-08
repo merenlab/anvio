@@ -174,14 +174,15 @@ function draw_histogram() {
 
         let bins = histogram_data[engine][column]['bins'];
         let counts = histogram_data[engine][column]['counts'];
-        
+
+        var min_count = Math.min(...counts);
         var max_count = Math.max(...counts);
         var max_slider = parseFloat(document.getElementById(column).dataset.sliderMax);
         var min_slider = parseFloat(document.getElementById(column).dataset.sliderMin);
 
         let normalized_counts = counts.map(v => (v / max_count) * height);
-        let normalized_bins = bins.map(v => (v / max_slider) * width);        
-        
+        let normalized_bins = bins.map(v => ((v - min_slider) / (max_slider - min_slider)) * width);
+
         let data_points = [];
 
         for (let i=0; i < normalized_bins.length - 1; i++) {
@@ -194,8 +195,8 @@ function draw_histogram() {
                             .curve(d3.curveCardinal);
 
         var interpolated_line = interpolate(data_points);
-        interpolated_line += `L ${data_points[normalized_bins.length - 2]['x']} ${height} L ${data_points[0]['x']} ${height}`; 
-        
+        interpolated_line += `L ${data_points[normalized_bins.length - 2]['x']} ${height} L ${data_points[0]['x']} ${height}`;
+
         svg.append("path")
             .style("fill","#337ab7")
             .attr("d",function(d,i){ return interpolated_line; });
@@ -218,13 +219,13 @@ function create_ui() {
             let container = $('#controls');
 
             data.forEach((item) => {
-                if (item['type'] == 'slider') {
+                if (item['controller'] == 'slider') {
                     $(container).append(`
                         <br />${item['name']}
                         <br />
                         <svg id="histogram_${item['name']}" width="210" height="30" style="position: relative; top: 6;"></svg>   
                         <input id="${item['name']}" 
-                                type="float" 
+                                type="${item['data_type']}" 
                                 data-provide="slider" 
                                 data-slider-min="${item['min']}" 
                                 data-slider-max="${item['max']}" 

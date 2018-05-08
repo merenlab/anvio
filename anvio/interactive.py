@@ -1299,40 +1299,45 @@ class StructureInteractive(VariabilitySuper):
         info = [
             {
                 'name': 'departure_from_consensus',
-                'type': 'slider',
-                'step': 0.001,
+                'controller': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
                 'min': 0,
                 'max': 1,
             },
             {
                 'name': 'departure_from_reference',
-                'type': 'slider',
-                'step': 0.001,
+                'controller': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
                 'min': 0,
                 'max': 1,
             },
             {
                 'name': 'coverage',
-                'type': 'slider',
+                'controller': 'slider',
+                'data_type': 'float',
                 'step': 1,
                 'min': int(FIND_MIN(gene_callers_id, engine, 'coverage')),
                 'max': int(FIND_MAX(gene_callers_id, engine, 'coverage'))
             },
-            {
-                'name': 'sec_struct',
-                'type': 'checkbox',
-                'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
-            },
+            #{
+            #    'name': 'sec_struct',
+            #    'controller': 'checkbox',
+            #    'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
+            #},
             {
                 'name': 'rel_solvent_acc',
-                'type': 'slider',
-                'step': 0.001,
+                'controller': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
                 'min': 0,
                 'max': 1,
             },
             {
                 'name': 'BLOSUM90',
-                'type': 'slider',
+                'controller': 'slider',
+                'data_type': 'integer',
                 'step': 1,
                 'min': -6,
                 'max': 11,
@@ -1470,7 +1475,7 @@ class StructureInteractive(VariabilitySuper):
                          filters applied when the table was generated now persist in the\
                          following visualizations.")
 
-        elif self.profile_db_path or self.contig_db_path:
+        elif self.profile_db_path or self.contigs_db_path:
             pass
 
         else:
@@ -1541,12 +1546,10 @@ class StructureInteractive(VariabilitySuper):
 
         self.profile_gene_variability_data(gene_callers_id)
 
-        columns_with_sliders = ['departure_from_consensus',
-                                'departure_from_reference']
-
         summary['histograms'] = {}
         for engine in self.available_engines:
-            summary['histograms'][engine] = self.variability_storage[gene_callers_id][engine].get_histograms(columns=columns_with_sliders)
+            column_info_list = self.get_column_info(gene_callers_id, engine)
+            summary['histograms'][engine] = self.variability_storage[gene_callers_id][engine].get_histograms_for_interactive(column_info_list)
 
         return summary
 
