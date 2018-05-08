@@ -1298,7 +1298,7 @@ class StructureInteractive(VariabilitySuper):
 
         info = [
             {
-                'name': 'samples',
+                'name': 'sample_id',
                 'title': 'Sample Names',
                 'type': 'checkbox',
                 'choices': ['s01', 's02', 's03'],
@@ -1564,7 +1564,7 @@ class StructureInteractive(VariabilitySuper):
 
     def get_variability(self, options, new_filter_params):
         selected_engine = options['engine']
-        gene_callers_id = options['gene_callers_id']
+        gene_callers_id = int(options['gene_callers_id'])
 
         # this is a subset of variability_storage for single gene_caller_id
         # we don't want to modify variability_storage so we use deepcopy
