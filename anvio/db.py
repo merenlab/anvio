@@ -397,8 +397,7 @@ class DB:
         if keys_of_interest:
             keys_of_interest = set(keys_of_interest)
 
-        rows = self.get_all_rows_from_table(table_name)
-        results_df = pd.DataFrame(rows, columns=table_structure)
+        results_df = pd.read_sql("select * from '%s'" % table_name, self.conn, columns=table_structure)
 
         if keys_of_interest:
             results_df = results_df.loc[results_df.index.isin(keys_of_interest)]
