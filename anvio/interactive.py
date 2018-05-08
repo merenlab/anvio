@@ -1541,7 +1541,6 @@ class StructureInteractive(VariabilitySuper):
     def get_initial_data(self):
         output = {}
         output['available_gene_callers_ids'] = list(self.available_genes)
-        output['available_sample_ids'] = list(self.available_samples)
         output['available_engines'] = self.available_engines
         return output
 
