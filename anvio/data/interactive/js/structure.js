@@ -123,12 +123,12 @@ function draw_variability() {
 
     $('#controls .widget').each((index, widget) => {
         let column = $(widget).attr('data-column');
-        let type = $(widget).attr('data-type');
+        let controller = $(widget).attr('data-controller');
 
-        if (type == 'slider') {
+        if (controller == 'slider') {
             options[column] = $(widget).find('input').val();
         }
-        else if (type == 'checkbox') {
+        else if (controller == 'checkbox') {
             options[column] = $(widget).find('input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); });
         }
     });
@@ -227,7 +227,7 @@ function create_ui() {
             data.forEach((item) => {
                 if (item['controller'] == 'slider') {
                     $(container).append(`
-                        <div class="widget" data-column="${item['name']}" data-type="${item['type']}">
+                        <div class="widget" data-column="${item['name']}" data-controller="${item['controller']}">
                             <br />${item['title']}
                             <br />
                             <svg id="histogram_${item['name']}" width="210" height="30" style="position: relative; top: 6;"></svg>   
@@ -244,7 +244,7 @@ function create_ui() {
                 }
                 if (item['controller'] == 'checkbox') {
                     $(container).append(`
-                        <div class="widget" data-column="${item['name']}" data-type="${item['type']}">
+                        <div class="widget" data-column="${item['name']}" data-controller="${item['controller']}">
                             <br />${item['title']}
                             <br />
                             ${item['choices'].map((choice) => { return `

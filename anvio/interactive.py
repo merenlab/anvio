@@ -1300,7 +1300,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'sample_id',
                 'title': 'Sample Names',
-                'type': 'checkbox',
+                'controller': 'checkbox',
                 'choices': ['s01', 's02', 's03'],
             },
             {
