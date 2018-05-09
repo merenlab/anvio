@@ -174,6 +174,11 @@ function draw_histogram() {
 
     for (let column in histogram_data[engine]) {
         let svg = d3.select('#histogram_' + column);
+
+        if (svg.empty()) {
+            continue;
+        }
+
         let width = svg.attr('width');
         let height = svg.attr('height');
 
