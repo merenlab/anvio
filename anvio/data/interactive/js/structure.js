@@ -179,8 +179,8 @@ function draw_histogram() {
             continue;
         }
 
-        let width = svg.attr('width');
-        let height = svg.attr('height');
+        let width = 200;
+        let height = 30;
 
         // clear existing drawing
         svg.selectAll('*').remove();
@@ -237,16 +237,16 @@ function create_ui() {
                 if (item['controller'] == 'slider') {
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['controller']}">
-                            <br />${item['title']}
-                            <br />
-                            <svg id="histogram_${item['name']}" width="210" height="30" style="position: relative; top: 6;"></svg>   
+                            ${item['title']}<br />
+                            <svg id="histogram_${item['name']}" width="100%" height="30" style="position: relative; top: 6;" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>   
                             <input id="${item['name']}" 
                                     type="${item['data_type']}" 
                                     data-provide="slider"
                                     data-slider-min="${item['min']}" 
                                     data-slider-max="${item['max']}" 
                                     data-slider-step="${item['step']}" 
-                                    data-slider-value="[${item['min']},${item['max']}]">
+                                    data-slider-value="[${item['min']},${item['max']}]"
+                                    >
                         </div>
                     `);
                     $(`#${item['name']}`).slider({}).on('slideStop', () => { draw_variability(); });
@@ -254,8 +254,7 @@ function create_ui() {
                 if (item['controller'] == 'checkbox') {
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['controller']}">
-                            <br />${item['title']}
-                            <br />
+                            ${item['title']}<br />
                             ${item['choices'].map((choice) => { return `
                                 <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="draw_variability();" checked="checked">
                                 <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
