@@ -198,7 +198,7 @@ function draw_histogram() {
 
         let data_points = [];
 
-        for (let i=0; i < normalized_bins.length - 1; i++) {
+        for (let i=0; i < normalized_bins.length; i++) {
             data_points.push({'x': normalized_bins[i], 'y': height - normalized_counts[i]});
         }
 
@@ -208,7 +208,7 @@ function draw_histogram() {
                             .curve(d3.curveCardinal);
 
         var interpolated_line = interpolate(data_points);
-        interpolated_line += `L ${data_points[normalized_bins.length - 2]['x']} ${height} L ${data_points[0]['x']} ${height}`;
+        interpolated_line += `L ${data_points[normalized_bins.length - 1]['x']} ${height} L ${data_points[0]['x']} ${height}`;
 
         svg.append("path")
             .style("fill","#337ab7")
