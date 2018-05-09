@@ -1301,7 +1301,7 @@ class StructureInteractive(VariabilitySuper):
                 'name': 'sample_id',
                 'title': 'Sample Names',
                 'controller': 'checkbox',
-                'choices': ['s01', 's02', 's03'],
+                'choices': list(self.available_samples),
             },
             {
                 'name': 'departure_from_consensus',
