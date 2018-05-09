@@ -138,7 +138,11 @@ function draw_variability() {
         cache: false,
         data: {'options': JSON.stringify(options)},
         url: '/data/get_variability',
-        success: function(data) {
+        success: function(response) {
+            let data = JSON.parse(response['data']);
+            let total_entries = response['total_entries'];
+            let entries_after_filtering = response['entries_after_filtering'];
+
             let component = stage.compList[0];
             let variant_residues = [];
 
