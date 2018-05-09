@@ -1584,7 +1584,11 @@ class StructureInteractive(VariabilitySuper):
         # update the current filter params
         self.current_filter_params = new_filter_params
 
-        return var.data.to_json(orient='index')
+        return {
+            'data': var.data.to_json(orient='index'),
+            'total_entries': self.variability_storage[gene_callers_id][selected_engine].data.shape[0],
+            'entries_after_filtering': var.data.shape[0]
+        }
 
 
 class ContigsInteractive():
