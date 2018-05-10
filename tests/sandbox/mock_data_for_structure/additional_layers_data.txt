@@ -1,0 +1,4 @@
+samples	avoid1	diet	region	stacked_bar!X;Y;Z
+s01	100	high_fat	A	1;2;3
+s02	200	high_fat	B	2;3;1
+s03	300	low_fat	B	3;1;2
