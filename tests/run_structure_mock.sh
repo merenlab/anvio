@@ -76,7 +76,7 @@ then
     INFO "Generating anvi'o contigs database"
     anvi-gen-contigs-database -f mock_data_for_structure/one_contig_five_genes.fa -o test-output/one_contig_five_genes.db -n "5 genes concatenated"
 
-    for sample in 01 02 03
+    for sample in 01 02 03 04 05
     do
         INFO "Generating short reads for sample $sample"
         anvi-script-gen-short-reads mock_data_for_structure/$sample.ini --output-file-path test-output/$sample.fa
