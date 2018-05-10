@@ -1270,8 +1270,7 @@ class StructureInteractive(VariabilitySuper):
         self.no_variability = A('no_variability', bool)
         self.only_if_structure = A('only_if_structure', bool) or True # can greatly reduce variability size
 
-        # For now, only true if self.variability_table_path. If contigs and profile databases,
-        # variability is profiled on-the-fly for each gene
+        # For now, only true if self.variability_table_path. Otherwise variability is computed on the fly
         self.store_full_variability_in_memory = True if self.variability_table_path else False
         self.full_variability = None
         self.variability_storage = {}
@@ -1376,7 +1375,7 @@ class StructureInteractive(VariabilitySuper):
         # method inherited from VariabilitySuper
         requested_available_genes = self.get_genes_of_interest(available_genes_path, available_gene_caller_ids)
 
-        # load in structure to compare genes of interest with those in db
+        # load in structure to compare genes of interest with those in requested_available_genes
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
 
         if requested_available_genes:
@@ -1481,20 +1480,32 @@ class StructureInteractive(VariabilitySuper):
             run.warning("Wow. Seriously? --no-variability? This is why freedom of speech needs to be\
                          abolished.")
 
-        elif self.variability_table_path:
+        elif not self.profile_db_path and not self.variability_table_path:
+            raise ConfigError("You have to provide either a variability table generated from\
+                               anvi-gen-variability-profile, or a profile and contigs database from\
+                               which sequence variability will be computed. Alternatively, you can give\
+                               the --no-variability flag, but anvi'o will be extremely condescending\
+                               in messages to follow.")
+
+        if self.variability_table_path:
             run.warning("You opted to work with a variability table previously generated from\
                          anvi-gen-varability-profile. As a word of caution, keep in mind that any\
                          filters applied when the table was generated now persist in the\
                          following visualizations.")
+            if not self.profile_db_path:
+                run.warning("Anvi'o offers a nice way to visualize sequence variability for\
+                             user-defined groups of samples, as opposed to individual samples.\
+                             However, these groups are defined as additional layers in the profile\
+                             database used to generate your variability table\
+                             (anvi-gen-variability-profile) which you did not provide. If you\
+                             already have these tables in your profile database, include your\
+                             profile database with the flag `-p`. If you want to create groupings,\
+                             you can read about how to create them here:\
+                             http://merenlab.org/2017/12/11/additional-data-tables/#layers-additional-data-table.")
 
-        elif self.profile_db_path or self.contigs_db_path:
-            pass
-
-        else:
-            raise ConfigError("You have to provide either a variability table generated from\
-                               anvi-gen-variability-profile, or a profile and contigs database from\
-                               which sequence variability will be computed. Alternatively, you can give\
-                               the --no-variability flag, but anvi'o will be extremely condescending.")
+        elif self.profile_db_path and not self.contigs_db_path:
+            raise ConfigError("A contigs database must accompany your profile database. Provide one\
+                               with the flag `-c`.")
 
 
     def profile_full_variability_data(self):
