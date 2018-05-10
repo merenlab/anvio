@@ -282,6 +282,7 @@ class BottleApplication(Bottle):
             collection_dict = None
             if self.interactive.collection_autoload:
                 collection_dict = json.loads(self.get_collection_dict(self.interactive.collection_autoload))
+                autodraw = True
 
             return json.dumps( { "title":                              self.interactive.title,
                                  "description":                        self.interactive.p_meta['description'],

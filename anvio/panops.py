@@ -79,7 +79,7 @@ class Pangenome(object):
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
 
         if not self.project_name:
-            raise ConfigError("Please set a project name using .")
+            raise ConfigError("Please set a project name using --project-name or -n.")
 
         # when it is time to organize gene_clusters
         self.linkage = A('linkage') or constants.linkage_method_default

@@ -117,13 +117,13 @@ class Completeness:
 
         percent_completion = numpy.mean([d[domain][s]['percent_completion'] for s in d[domain]])
         percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
-            
+
         return percent_completion, percent_redundancy
 
 
     def get_best_matching_domain(self, d):
-        """Returns the domain that gives the highest (completion - redundancy) estimate.
-           Along with a confidence value associated with that estimation.
+        """Returns the best matcing domain by using model coverage, and the highest
+           substantive completion ('completion - redundancy') estimate.
 
            Confidence value is simply equals to (completion - redundancy) / 100.0
 
@@ -138,17 +138,14 @@ class Completeness:
             percent_completion = numpy.mean([d[domain][s]['percent_completion'] for s in d[domain]])
             percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
 
-            # so the substantive completion seems to be not working to predict the best matching domain. this is
-            # because the number of single-copy gene hits, whether they contribute to completion or redundancy of a
-            # given bin, will likely be are much smaller for the non-matching domain in most cases. so instead of the
-            # substantive_completion (percent_completion - percent_redundancy), we are going to use the total number
-            # of hits for ordering.
-            total_redundancy_and_completion = percent_completion + percent_redundancy
-            domain_specific_estimates.append((total_redundancy_and_completion, domain, total_redundancy_and_completion / 100.0), )
+            substantive_completion = percent_completion - percent_redundancy
+            model_coverage = numpy.mean([d[domain][s]['model_coverage'] for s in d[domain]])
+
+            domain_specific_estimates.append((model_coverage, substantive_completion, domain, substantive_completion / 100.0), )
 
         domain_specific_estimates.sort(reverse=True)
 
-        best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][1], domain_specific_estimates[0][2]
+        best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][2], domain_specific_estimates[0][3]
 
         return (best_matching_domain, domain_matching_confidence)
 
@@ -163,7 +160,7 @@ class Completeness:
             - And a comprehensive results dictionary that explains each HMM source in each domain,
 
         For your convenience, you can call this function this way:
-        
+
         p_completion, p_redundancy, domain, domain_confidence, results_dict = get_info_for_splits(s)
         """
         hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'split', split_names)
@@ -208,7 +205,13 @@ class Completeness:
 
             genes_count = Counter([v['gene_name'] for v in list(info_dict[source].values())])
 
-            # report results
+            # report num genes in the model and the num of those with hits (note that htis doesn't
+            # care whether those hits are contributing to redundance or not --instad here we are
+            # intrested only in the 'coverage' of the model)
+            results_dict[domain][source]['num_genes_in_model'] = len(self.genes_in_db[source])
+            results_dict[domain][source]['num_genes_in_model_with_hits ']= len(genes_count)
+            results_dict[domain][source]['model_coverage']= len(genes_count) / len(self.genes_in_db[source])
+
             results_dict[domain][source]['percent_completion'] = len(genes_count) * 100.0 / len(self.genes_in_db[source])
 
             # report redundancy:

@@ -328,9 +328,33 @@ function checkBackgroundProcess()
 }
 
 //--------------------------------------------------------------------------------------------------
+// https://stackoverflow.com/questions/154059/how-do-you-check-for-an-empty-string-in-javascript
+
+function isEmpty(data) {
+    if(typeof(data) === 'object'){
+        if(JSON.stringify(data) === '{}' || JSON.stringify(data) === '[]'){
+            return true;
+        }else if(!data){
+            return true;
+        }
+        return false;
+    }else if(typeof(data) === 'string'){
+        if(!data.trim()){
+            return true;
+        }
+        return false;
+    }else if(typeof(data) === 'undefined'){
+        return true;
+    }else{
+        return false;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
 // http://stackoverflow.com/questions/1303646/check-whether-variable-is-number-or-string-in-javascript
 function isNumber (o) {
-  return ! isNaN (o-0);
+  return !isEmpty(o) && !isNaN(o-0);
 }
 
 //--------------------------------------------------------------------------------------------------

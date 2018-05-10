@@ -10,8 +10,9 @@ import snakemake
 
 import anvio
 import anvio.utils as u
-import anvio.filesnpaths as filesnpaths
+import anvio.errors as errors
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
@@ -28,6 +29,7 @@ __status__ = "Development"
 
 run = terminal.Run()
 progress = terminal.Progress()
+r = errors.remove_spaces
 
 
 class WorkflowSuperClass:

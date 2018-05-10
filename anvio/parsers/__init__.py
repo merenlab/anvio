@@ -9,6 +9,7 @@ from anvio.errors import ConfigError
 from anvio.parsers.kraken_hll import KrakenHLL
 from anvio.parsers.defaultmatrix import DefaultMatrix
 from anvio.parsers.centrifuge import Centrifuge
+from anvio.parsers.kaiju import Kaiju
 from anvio.parsers.hmmscan import HMMScan
 from anvio.parsers.concoct import CONCOCT
 from anvio.parsers.interproscan import InterProScan
@@ -24,7 +25,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 parser_modules = {}
-parser_modules['taxonomy_genes']  = {"default_matrix": DefaultMatrix, "centrifuge": Centrifuge}
+parser_modules['taxonomy_genes']  = {"default_matrix": DefaultMatrix, "centrifuge": Centrifuge, 'kaiju': Kaiju}
 parser_modules['taxonomy_layers'] = {"kraken_hll": KrakenHLL}
 parser_modules['functions']       = {"interproscan": InterProScan}
 parser_modules['search']          = {"hmmscan": HMMScan}
