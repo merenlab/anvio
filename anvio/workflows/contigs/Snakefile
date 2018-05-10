@@ -110,12 +110,14 @@ rule anvi_script_reformat_fasta:
         min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
-    shell:
-        """
-            anvi-script-reformat-fasta {input} -o {output.contigs}\
-            -r {output.report} --prefix {params.prefix}\
-            {params.min_len} {params.exclude_ids} {params.keep_ids} {params.simplify_names} >> {log} 2>&1
-        """
+    shell: w.r("""anvi-script-reformat-fasta {input} \
+                                             -o {output.contigs} \
+                                             -r {output.report} \
+                                             --prefix {params.prefix} \
+                                             {params.min_len} \
+                                             {params.exclude_ids} \
+                                             {params.keep_ids} \
+                                             {params.simplify_names} >> {log} 2>&1""")
 
 
 def input_for_run_remove_human_dna_using_centrifuge(wildcards):
@@ -202,12 +204,22 @@ rule anvi_gen_contigs_database:
         kmer_size = M.get_rule_param("anvi_gen_contigs_database", "--kmer-size"),
     threads: M.T('anvi_gen_contigs_database')
     resources: nodes = M.T('anvi_gen_contigs_database'),
-    shell: "anvi-gen-contigs-database -f {input} -o {output.db}\
-                                      {params.ignore_internal_stop_codons} {params.external_gene_calls} {params.skip_gene_calling}\
-                                      {params.skip_mindful_splitting} {params.kmer_size} {params.split_length}\
-                                      {params.description} {params.project_name} {params.contigs_fasta}\
-                                      {params.skip_mindful_splitting} {params.ignore_internal_stop_codons} {params.external_gene_calls}\
-                                      {params.skip_gene_calling} {params.description} >> {log} 2>&1"
+    shell: w.r("anvi-gen-contigs-database -f {input} \
+                                          -o {output.db} \
+                                          {params.ignore_internal_stop_codons} \
+                                          {params.external_gene_calls} \
+                                          {params.skip_gene_calling} \
+                                          {params.skip_mindful_splitting} \
+                                          {params.kmer_size} \
+                                          {params.split_length} \
+                                          {params.description} \
+                                          {params.project_name} \
+                                          {params.contigs_fasta} \
+                                          {params.skip_mindful_splitting} \
+                                          {params.ignore_internal_stop_codons} \
+                                          {params.external_gene_calls} \
+                                          {params.skip_gene_calling} \
+                                          {params.description} >> {log} 2>&1")
 
 if run_taxonomy_with_centrifuge:
     # If the user wants taxonomy to be assigned with centrifuge
@@ -236,7 +248,12 @@ if run_taxonomy_with_centrifuge:
         params: db=config["centrifuge"]['db']
         threads: M.T('centrifuge')
         resources: nodes = M.T('centrifuge'),
-        shell: "centrifuge -f -x {params.db} {input} -S {output.hits} --report-file {output.report} --threads {threads} >> {log} 2>&1"
+        shell: w.r("centrifuge -f \
+                               -x {params.db} \
+                               {input} \
+                               -S {output.hits} \
+                               --report-file {output.report} \
+                               --threads {threads} >> {log} 2>&1")
 
 
     rule anvi_import_taxonomy:
@@ -255,7 +272,9 @@ if run_taxonomy_with_centrifuge:
         params: parser = "centrifuge"
         threads: M.T('anvi_import_taxonomy')
         resources: nodes = M.T('anvi_import_taxonomy'),
-        shell: "anvi-import-taxonomy-for-genes -c {input.contigs} -i {input.report} {input.hits} -p {params.parser} >> {log} 2>&1"
+        shell: w.r("anvi-import-taxonomy-for-genes -c {input.contigs} \
+                                                   -i {input.report} {input.hits} \
+                                                   -p {params.parser} >> {log} 2>&1")
 
 
 if run_anvi_run_hmms:
@@ -273,7 +292,10 @@ if run_anvi_run_hmms:
             hmm_profile_dir = M.get_rule_param("anvi_run_hmms", "--hmm-profile-dir"),
         threads: M.T('anvi_run_hmms')
         resources: nodes = M.T('anvi_run_hmms'),
-        shell: "anvi-run-hmms -c {input} -T {threads} {params.hmm_profile_dir} {params.installed_hmm_profile} >> {log} 2>&1"
+        shell: w.r("anvi-run-hmms -c {input} \
+                                  -T {threads} \
+                                  {params.hmm_profile_dir} \
+                                  {params.installed_hmm_profile} >> {log} 2>&1")
 
 
 w.warning_for_param(config, 'anvi_run_ncbi_cogs', '--temporary-dir-path', '{group}')
@@ -290,12 +312,12 @@ rule anvi_run_ncbi_cogs:
         search_with = M.get_rule_param('anvi_run_ncbi_cogs', '--search-with')
     threads: M.T('anvi_run_ncbi_cogs')
     resources: nodes = M.T('anvi_run_ncbi_cogs'),
-    shell:
-        """
-            anvi-run-ncbi-cogs -c {input} -T {threads}\
-                               {params.cog_data_dir} {params.sensitive} {params.temporary_dir_path}\
-                               {params.search_with} >> {log} 2>&1
-        """
+    shell: w.r("""anvi-run-ncbi-cogs -c {input} \
+                                     -T {threads} \
+                                     {params.cog_data_dir} \
+                                     {params.sensitive} \
+                                     {params.temporary_dir_path} \
+                                     {params.search_with} >> {log} 2>&1""")
 
 
 rule anvi_get_sequences_for_gene_calls:

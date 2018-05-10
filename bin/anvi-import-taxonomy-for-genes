@@ -37,6 +37,8 @@ def main(args):
     parser_obj = parsers.get_parser_obj('taxonomy_genes', args.parser)
 
     parser = parser_obj(args.input_files, t.splits_taxonomy_table_structure, run=run, progress=progress)
+    parser.just_do_it = args.just_do_it
+
     genes_taxonomy_dict, taxon_names_dict = parser.process()
 
     if not len(genes_taxonomy_dict):
@@ -70,6 +72,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
                         help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
                                 process that you generate before running anvio. Please see the documentation for details.')
+    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 
