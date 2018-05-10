@@ -42,8 +42,8 @@ if [ $# -eq 0  ]
 then
       echo "\
 
-        No arguments supplied. You must call this script with one argument: 'new',
-        or 'continue':
+        No arguments supplied. You must call this script with one argument: 'new', 'make_structure',
+        or 'display_structure':
 
         'new'     : generate short reads, map them to the contig, gen contigs.db, run profiling.
         'continue': re-run profiling.
@@ -93,6 +93,9 @@ then
 
     INFO "Defining a collection and bin"
     anvi-import-collection mock_data_for_structure/collection.txt -c test-output/one_contig_five_genes.db -p test-output/SAMPLES-MERGED/PROFILE.db -C default
+
+    INFO "Importing additional layers data"
+    anvi-import-misc-data mock_data_for_structure/additional_layers_data.txt -p test-output/SAMPLES-MERGED/PROFILE.db --target-data-table layers
 
     INFO "anvi-gen-structure-database with DSSP"
     make_structure_db
