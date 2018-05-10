@@ -101,21 +101,20 @@ class AdHocRunGenerator:
 
         self.populate_additional_data(profile_db_path)
 
+        self.run.info_single("Good news, your data is ready.", nl_before=1, mc='green')
+        self.run.info_single("Please run 'anvi-interactive --manual -p %s --tree %s --view-data %s'" % (profile_db_path, tree_path, view_data_path), cut_after=200, nl_after=1, mc='green')
+
 
     def populate_additional_data(self, profile_db_path):
-        layer_newick = clustering.get_newick_tree_data_for_dict(self.view_data, transpose=True, distance = self.distance, linkage=self.linkage)
-        print(layer_newick)
-        
         args = lambda: None
         args.profile_db = profile_db_path
 
         table = t.miscdata.TableForItemAdditionalData(args)
+        table.add(self.additional_view_data, ['Competing NTs', 'Position in codon', 'Gene'], skip_check_names=True)
 
-        print(self.view_data)
-        print(self.additional_view_data)
-        
-        table.add(self.additional_view_data, ['Competing NTs', 'Position in codon', 'Gene'])
-
+        table = t.miscdata.TableForLayerOrders(args)
+        layer_newick = clustering.get_newick_tree_data_for_dict(self.view_data, transpose=True, distance = self.distance, linkage=self.linkage)
+        table.add({'default': {'data_type': 'newick', 'data_value': layer_newick}})
 
 
 
