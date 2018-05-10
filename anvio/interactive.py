@@ -6,7 +6,7 @@ import os
 import sys
 import copy
 import numpy
-import nglview
+import argparse
 import textwrap
 import pandas as pd
 from ete3 import Tree
@@ -1272,6 +1272,7 @@ class StructureInteractive(VariabilitySuper):
 
         # For now, only true if self.variability_table_path. Otherwise variability is computed on the fly
         self.store_full_variability_in_memory = True if self.variability_table_path else False
+        self.sample_groups_provided = True if self.profile_db_path else False
         self.full_variability = None
         self.variability_storage = {}
         self.current_filter_params = {}
@@ -1282,13 +1283,33 @@ class StructureInteractive(VariabilitySuper):
             self.profile_full_variability_data()
 
         self.available_engines = [self.full_variability.engine] if self.variability_table_path else ["AA", "CDN"]
-
-        self.available_genes = self.get_and_check_available_genes()
+        self.available_genes = self.get_available_genes()
 
         # default gene is the first gene of interest
         self.profile_gene_variability_data(list(self.available_genes)[0])
 
-        self.available_samples = self.get_and_check_available_samples()
+        self.available_samples = self.get_available_samples()
+        self.sample_groups = self.create_sample_groups_dict()
+        self.create_sample_groups_dict()
+
+
+    def create_sample_groups_dict(self):
+        if not self.profile_db_path:
+            pass # FIXME
+
+        additional_layer_dict = self.load_additional_layer_data()
+        # FIXME convert additional layer dict into something we can use
+
+
+    def load_additional_layer_data(self, profile_db_path=None):
+        if not profile_db_path:
+            profile_db_path = self.profile_db_path
+
+        x = argparse.Namespace(pan_or_profile_db=profile_db_path, target_data_table="layers")
+        additional_layers_table = TableForLayerAdditionalData(args=x)
+        _, additional_layer_dict = additional_layers_table.get()
+
+        return additional_layer_dict
 
 
     def get_column_info(self, gene_callers_id, engine):
@@ -1361,7 +1382,7 @@ class StructureInteractive(VariabilitySuper):
         pass
 
 
-    def get_and_check_available_genes(self, available_genes_path="", available_gene_caller_ids=""):
+    def get_available_genes(self, available_genes_path="", available_gene_caller_ids=""):
         """It is essential to note that available_genes_path and available_gene_caller_ids are "" by
            default, not None. The programmer can pass None to avoid the argument defaulting to a
            class-wide attribute (first code block of this method), which may not exist for classes
@@ -1420,7 +1441,7 @@ class StructureInteractive(VariabilitySuper):
         return available_genes
 
 
-    def get_and_check_available_samples(self, available_samples_path=""):
+    def get_available_samples(self, available_samples_path=""):
         """There may be confusion within this method regarding the difference between available
            samples and samples of interest. Available samples refer to those samples which are
            capable of being displayed, whereas samples of interest refers to a subset of the
