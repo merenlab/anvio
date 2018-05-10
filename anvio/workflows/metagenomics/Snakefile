@@ -389,18 +389,18 @@ rule fq2fa:
 
         if len(files_that_end_with_gz):
             # uncompress the files before running fq2fa
+            file_1_to_remove = input.r1[0:-3]
+            file_2_to_remove = input.r2[0:-3]
             run.warning("The following fastq files are compressed and will now \
                          be uncompressed using gunzip: %s." % files_that_end_with_gz)
-            shell("gunzip --keep {input.r1} >> {log} 2>&1")
-            shell("gunzip --keep {input.r2} >> {log} 2>&1")
+            shell("gunzip < {input.r1} > %s" % file_1_to_remove)
+            shell("gunzip < {input.r2} > %s" % file_2_to_remove)
 
         # running fq2fa
         shell("fq2fa --merge {input} {output} >> {log} 2>&1")
 
         if len(files_that_end_with_gz):
             # after fq2fa is done we can compress those files again
-            file_1_to_remove = input.r1[0:-3]
-            file_2_to_remove = input.r2[0:-3]
             run.warning("fq2fa is done so we will now remove the uncompressed\
                          version copy of the fastq files: %s." % (file_1_to_remove + ', ' + file_2_to_remove))
             shell("rm %s %s >> {log} 2>&1" % (file_1_to_remove, file_2_to_remove))
