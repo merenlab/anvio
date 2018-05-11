@@ -92,7 +92,6 @@ Node.prototype.IterateChildren = function*() {
     }
 }
 
-
 Node.prototype.SetColor = function(color, width=3) {
     let line = document.getElementById('line' + this.id);
     if (line) {
@@ -360,21 +359,6 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 break;
         }
     }
-};
-
-Tree.prototype.FindNode = function(label) {
-    var n = new NodeIterator(this.root);
-    var q = n.Begin();
-    while (q != null)
-    {
-        if (q.label == label)
-            return q;
-
-        q=n.Next();
-    }
-
-    console.log("Couldn't find item with label '" + label + "'");
-    return null;
 };
 
 
