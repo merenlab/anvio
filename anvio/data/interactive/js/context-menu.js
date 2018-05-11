@@ -74,6 +74,50 @@ ContextMenu = function(options) {
             'action': (node, layer, param) => {
                 this.menu_items['inspect']['action'](node, layer, 'context');
             }
+        },
+        'collapse': {
+            'title': 'Collapse',
+            'action': (node, layer, param) => {
+                new_tree = new Tree();
+                new_tree.Parse(clusteringData.trim(), false);
+                new_tree.nodes[this.node.id].collapsed = true;
+                clusteringData = new_tree.Serialize();
+                $('#tree_modified_warning').show();
+                drawTree();
+            }
+        }, 
+        'rotate': {
+            'title': 'Rotate',
+            'action': (node, layer, param) => {
+                new_tree = new Tree();
+                new_tree.Parse(clusteringData.trim(), false);
+                new_tree.nodes[this.node.id].Rotate();
+                clusteringData = new_tree.Serialize();
+                $('#tree_modified_warning').show();
+                drawTree();
+            }
+        },
+        'reroot': {
+            'title': 'Reroot',
+            'action': (node, layer, param) => {
+                let [left_most, right_most] = this.node.GetBorderNodes();
+
+                $.ajax({
+                    type: 'POST',
+                    cache: false,
+                    url: '/data/reroot_tree',
+                    data: {
+                        'newick': clusteringData,
+                        'left_most': left_most.label,
+                        'right_most': right_most.label  
+                    },
+                    success: function(data) {
+                        clusteringData = data['newick'];
+                        $('#tree_modified_warning').show();
+                        drawTree();
+                    }
+                });
+            }
         }
     }
 }

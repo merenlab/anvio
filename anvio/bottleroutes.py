@@ -1031,12 +1031,15 @@ class BottleApplication(Bottle):
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
 
+
     def reroot_tree(self):
         newick = request.forms.get('newick')
-        branch = request.forms.get('branch')
-
         tree = Tree(newick, format=1)
-        new_root = tree.search_nodes(name=branch)[0]
+
+        left_most = tree.search_nodes(name=request.forms.get('left_most'))[0]
+        right_most = tree.search_nodes(name=request.forms.get('right_most'))[0]
+
+        new_root = tree.get_common_ancestor(left_most, right_most)
         tree.set_outgroup(new_root)
 
         return json.dumps({'newick': tree.write(format=1)})
