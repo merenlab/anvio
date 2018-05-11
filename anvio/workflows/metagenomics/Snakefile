@@ -376,7 +376,7 @@ def input_for_fq2fa(wildcards):
     # this should only happen if QC is not performed in this snakemake session
     # because if QC is performed in this session then the output of iu-filter-quality-minoche
     # is not compressed and snakemake will schedule fq2fa rule before gzip rule
-    files_that_end_with_gz = [f for f in [d['r1'], d['r2']] if f.endswith('.gz')]
+    files_that_end_with_gz = [f for f in [list(d['r1']), list(d['r2'])] if f[0].endswith('.gz')]
     if len(files_that_end_with_gz) == 1:
         raise ConfigError("Something seems very bad: one of the pair fastq files\
                            is compressed and the other one is not. This is the \
