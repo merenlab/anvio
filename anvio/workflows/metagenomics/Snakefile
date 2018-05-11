@@ -384,8 +384,8 @@ def input_for_fq2fa(wildcards):
     elif len(files_that_end_with_gz) == 2:
         run.warning("The following fastq files are compressed and will now \
                      be uncompressed using gunzip: %s." % files_that_end_with_gz)
-        d['r1'] = dirs_dict["QC_DIR"] + "/{sample}.r1.fastq"
-        d['r2'] = dirs_dict["QC_DIR"] + "/{sample}.r2.fastq"
+        d['r1'] = dirs_dict["QC_DIR"] + "/%s.r1.fastq" % wildcards.sample
+        d['r2'] = dirs_dict["QC_DIR"] + "/%s.r2.fastq" % wildcards.sample
 
     return d
 
