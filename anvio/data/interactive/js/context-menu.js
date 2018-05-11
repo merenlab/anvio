@@ -45,7 +45,7 @@ ContextMenu = function(options) {
             }
         },
         'unselect_layer': {
-            'title': 'Select layer',
+            'title': 'Unselect layer',
             'action': (node, layer, param) => {
                 $(`#tbody_layers tr:nth-child(${layer}) input:checkbox`).prop('checked', false);
             }
