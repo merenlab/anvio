@@ -90,31 +90,35 @@ ContextMenu.prototype.BuildMenu = function() {
         menu.push('divider');
         menu.push('select_layer');
         menu.push('unselect_layer');
-/*
+        menu.push('divider');
+
         if (mode == 'gene') {
-            menu.push({'type': 'divider'},
-                      {'type': 'item', 'title': 'Inspect Context', 'action': 'inspect', 'param': 'context'},
-                      {'type': 'item', 'title': 'Inspect Gene'   , 'action': 'inspect', 'param': 'gene'});            
-        }        
+            menu.push('inspect_context');
+            menu.push('inspect_gene');
+        }
         else if (mode == 'pan') {
-            menu.push({'type': 'divider'},
-                      {'type': 'item', 'title': 'Inspect', 'action': 'inspect', 'param': 'geneclusters'});            
-        } else {
-            menu.push({'type': 'divider'},
-                      {'type': 'item', 'title': 'Inspect', 'action': 'inspect', 'param': 'split'}); 
+            menu.push('inspect_geneclusters');
         }
-    } else {
+        else {
+            menu.push('inspect_split');
+        }
+    }
+    else
+    {
         if (this.node.collapsed) {
-            menu.push({'type': 'item', 'title': 'Expand this branch', 'action': 'expand'});
-        } else {
-            menu.push({'type': 'item', 'title': 'Add branch to bin'     , 'action': 'select'},
-                      {'type': 'item', 'title': 'Remove branch from bin', 'action': 'remove'},
-                      {'type': 'divider'},
-                      {'type': 'item', 'title': 'Collapse this branch', 'action': 'collapse'},
-                      {'type': 'item', 'title': 'Rotate this branch'  , 'action': 'rotate'},
-                      {'type': 'item', 'title': 'Reroot tree here'    , 'action': 'reroot'});   
+            menu.push('expand');
         }
-*/    }
+        else {
+            menu.push('select');
+            menu.push('remove');
+
+            menu.push('divider');
+            
+            menu.push('collapse');
+            menu.push('rotate');
+            menu.push('reroot');
+        }
+    }
 
     return menu;
 };
