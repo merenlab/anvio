@@ -1,5 +1,6 @@
 var stage;
 var histogram_data;
+var sample_groups;
 
 $(document).ready(function() {
     stage = new NGL.Stage("viewport");
@@ -15,6 +16,10 @@ $(document).ready(function() {
         load_protein($('#gene_callers_id_list').val());
     });
 
+    $('#sample_groups_list').on('change', function(ev) {
+        load_sample_group_widget($('#sample_groups_list').val())
+    });
+
     $.ajax({
         type: 'GET',
         cache: false,
@@ -22,6 +27,7 @@ $(document).ready(function() {
         success: function(data) {
             let available_gene_callers_ids = data['available_gene_callers_ids'];
             let available_engines = data['available_engines']; 
+            sample_groups = data['sample_groups']; 
 
             available_gene_callers_ids.forEach(function(gene_callers_id) {
                 $('#gene_callers_id_list').append(`<option id=${gene_callers_id}>${gene_callers_id}</option>`);
@@ -34,10 +40,53 @@ $(document).ready(function() {
                 $('#engine_list').append(`<input type="radio" name="engine" onclick="create_ui();" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
             });
 
-            //create_ui();
+            for (let category in sample_groups) {
+                $('#sample_groups_list').append(`<option id=${category}>${category}</option>`);
+            }
+            $('#sample_groups_list').trigger('change');
         }
     });
 });
+
+
+function load_sample_group_widget(category) {
+    $('#sample_groups').empty();
+    tableHtml = '<table>';
+
+    for (let group in sample_groups[category]) {
+        tableHtml += `
+            <tr>
+                <td>
+                    <input class="form-check-input" 
+                        id="${category}_${group}"
+                        type="checkbox" 
+                        data-category="${category}"
+                        data-group="${group}"
+                        value="${group}" 
+                        checked="checked">
+                    <label class="form-check-label" for="${category}_${group}">${group}</label>
+                </td>
+                <td>`;
+        
+        sample_groups[category][group].forEach((sample) => {
+            tableHtml += `
+                <input class="form-check-input" 
+                        id="${category}_${group}_${sample}"
+                        type="checkbox" 
+                        data-category="${category}"
+                        data-group="${group}"
+                        data-sample="${sample}"
+                        value="${sample}" 
+                        checked="checked">
+                <label class="form-check-label" for="${category}_${group}_${sample}">${sample}</label>
+            `;
+        });
+
+
+        tableHtml += '</td></tr>';
+    }
+    $('#sample_groups').append(tableHtml + '</table>');
+}
 
 
 function defaultStructureRepresentation( component ){

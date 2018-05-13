@@ -1305,7 +1305,7 @@ class StructureInteractive(VariabilitySuper):
         temp = pd.DataFrame(additional_layer_dict).T.fillna("NA").reset_index().rename(columns={"index":"samples"})
         # I will refactor for readability, but can you imagine how many lines this would take using
         # native dictionaries?
-        sample_groups = {column:{value:list(temp.loc[temp[column] == value, "samples"]) for value in temp[column].unique()} for column in temp.columns}
+        return {column:{value:list(temp.loc[temp[column] == value, "samples"]) for value in temp[column].unique()} for column in temp.columns}
 
 
     def load_additional_layer_data(self, profile_db_path=None):
@@ -1345,12 +1345,6 @@ class StructureInteractive(VariabilitySuper):
         FIND_MAX = lambda g, e, c: self.variability_storage[g][e].data[c].max()
 
         info = [
-            {
-                'name': 'sample_id',
-                'title': 'Sample Names',
-                'controller': 'checkbox',
-                'choices': list(self.available_samples),
-            },
             {
                 'name': 'departure_from_consensus',
                 'title': 'Departure from consensus',
@@ -1498,7 +1492,7 @@ class StructureInteractive(VariabilitySuper):
 
         if available_samples:
 
-            # check for samples that do not appear in the structure database
+            # check for samples that do not appear in the profile database
             unrecognized_samples = [g for g in available_samples if g not in all_sample_ids]
             if unrecognized_samples:
                 raise ConfigError("{} of the sample ids you provided are not in the variability\
@@ -1607,6 +1601,7 @@ class StructureInteractive(VariabilitySuper):
         output = {}
         output['available_gene_callers_ids'] = list(self.available_genes)
         output['available_engines'] = self.available_engines
+        output['sample_groups'] = self.sample_groups
         return output
 
 
