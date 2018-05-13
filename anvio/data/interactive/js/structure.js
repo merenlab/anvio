@@ -111,6 +111,9 @@ function create_ngl_views() {
                  style="height: ${parseFloat(100 / num_rows)}%; float: left; ">
                  <div class="ngl-group-title">
                     ${group}
+                     <button type="button" class="btn btn-default btn-sm" onclick="stages['${group}'].toggleFullscreen();">
+                        <span class="glyphicon glyphicon-fullscreen"></span>
+                     </button>
                  </div>
                  <div id="ngl_${group}" style="height: 100%; width: 100%;">
 
