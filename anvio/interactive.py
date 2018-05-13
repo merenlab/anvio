@@ -1275,7 +1275,6 @@ class StructureInteractive(VariabilitySuper):
         self.sample_groups_provided = True if self.profile_db_path else False
         self.full_variability = None
         self.variability_storage = {}
-        self.current_filter_params = {}
 
         self.sanity_check()
 
@@ -1635,26 +1634,27 @@ class StructureInteractive(VariabilitySuper):
         selected_engine = options['engine']
         gene_callers_id = int(options['gene_callers_id'])
 
-        # this is a subset of variability_storage for single gene_caller_id
-        # we don't want to modify variability_storage so we use deepcopy
-        # otherwise filtering is irreversible
-        var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine])
+        output = {}
+        for group in options['groups']:
+            # this is a subset of variability_storage for single gene_caller_id
+            # we don't want to modify variability_storage so we use deepcopy
+            # otherwise filtering is irreversible
+            var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine])
+            var.samples_of_interest = set(options['groups'][group])
 
-        # set filter attributes if they changed
-        for param_name, param_value in new_filter_params.items():
-            setattr(var, param_name, param_value)
+            # set filter attributes if they changed
+            for param_name, param_value in new_filter_params.items():
+                setattr(var, param_name, param_value)
 
-        # ʕ•ᴥ•ʔ
-        var.filter_for_interactive()
+            # ʕ•ᴥ•ʔ
+            var.filter_for_interactive()
 
-        # update the current filter params
-        self.current_filter_params = new_filter_params
+            output[group] = {
+                'data': var.data.to_json(orient='index'),
+                'entries_after_filtering': var.data.shape[0]
+            }
 
-        return {
-            'data': var.data.to_json(orient='index'),
-            'total_entries': self.variability_storage[gene_callers_id][selected_engine].data.shape[0],
-            'entries_after_filtering': var.data.shape[0]
-        }
+        return output
 
 
 class ContigsInteractive():

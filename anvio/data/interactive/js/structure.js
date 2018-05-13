@@ -1,4 +1,4 @@
-var stages = [];
+var stages = {};
 var histogram_data;
 var sample_groups;
 var pdb_content;
@@ -62,9 +62,9 @@ function load_sample_group_widget(category) {
                 </td>
                 <td>`;
 
-        if (category != 'samples') {
-            sample_groups[category][group].forEach((sample) => {
-                tableHtml += `
+        sample_groups[category][group].forEach((sample) => {
+            tableHtml += `
+                <div style="${(category == 'samples') ? 'display: none;' : ''}">
                     <input class="form-check-input" 
                             id="${category}_${group}_${sample}"
                             type="checkbox" 
@@ -73,9 +73,9 @@ function load_sample_group_widget(category) {
                             data-sample="${sample}"
                             value="${sample}" 
                             checked="checked">
-                    <label class="form-check-label" for="${category}_${group}_${sample}">${sample}</label>`;
-            });
-        }
+                    <label class="form-check-label" for="${category}_${group}_${sample}">${sample}</label>
+                </div>`;
+        });
 
         tableHtml += '</td></tr>';
     }
@@ -90,8 +90,10 @@ function apply_orientation_matrix_to_all_stages(orientationMatrix) {
 }
 
 function create_ngl_views() {
-    stages.forEach((stage) => { stage.dispose(); });
-    stages = [];
+    for (let stage in stages) {
+        stage.dispose();
+    }
+    stages = {};
 
     $('#ngl-container').empty();
 
@@ -139,15 +141,9 @@ function create_ngl_views() {
         let func = () => {apply_orientation_matrix_to_all_stages(stage.viewerControls.getOrientation()); };
         $(`#ngl_${group}`).mouseup(func);
 
-        stages.push(stage);
+        stages[group] = stage;
     });
 }
-
-function defaultStructureRepresentation( component ){
-    // bail out if the component does not contain a structure
- 
-}
-
 
 function load_protein(gene_callers_id) {
     $.ajax({
@@ -161,6 +157,43 @@ function load_protein(gene_callers_id) {
     });
 }
 
+function serialize_checked_groups() {
+    let output = {};
+
+    let category = $('#sample_groups_list').val();
+    for (let group in sample_groups[category]) {
+        if ($(`input[type=checkbox]#${category}_${group}`).is(':checked')) {
+            output[group] = [];
+
+            sample_groups[category][group].forEach((sample) => {
+                if ($(`input[type=checkbox]#${category}_${group}_${sample}`).is(':checked')) {
+                    output[group].push(sample);
+                }
+            });
+        }
+    }
+
+    return output;
+}
+
+function serialize_filtering_widgets() {
+    let output = {};
+
+    $('#controls .widget').each((index, widget) => {
+        let column = $(widget).attr('data-column');
+        let controller = $(widget).attr('data-controller');
+
+        if (controller == 'slider') {
+            output[column] = $(widget).find('input').val();
+        }
+        else if (controller == 'checkbox') {
+            output[column] = $(widget).find('input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); });
+        }
+    });
+
+    return output;
+}
+
 function draw_variability() {
     let gene_callers_id = $('#gene_callers_id_list').val();
     let engine = $('[name=engine]:checked').val();
@@ -169,48 +202,42 @@ function draw_variability() {
     let options = {
         'gene_callers_id': gene_callers_id,
         'engine': engine,
+        'groups': serialize_checked_groups(),
+        'filter_params': serialize_filtering_widgets()
     };
-
-    $('#controls .widget').each((index, widget) => {
-        let column = $(widget).attr('data-column');
-        let controller = $(widget).attr('data-controller');
-
-        if (controller == 'slider') {
-            options[column] = $(widget).find('input').val();
-        }
-        else if (controller == 'checkbox') {
-            options[column] = $(widget).find('input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); });
-        }
-    });
 
     $.ajax({
         type: 'POST',
         cache: false,
         data: {'options': JSON.stringify(options)},
         url: '/data/get_variability',
-        success: function(response) {
-            let data = JSON.parse(response['data']);
-            let total_entries = response['total_entries'];
-            let entries_after_filtering = response['entries_after_filtering'];
+        success: function(response_all) {
+            for (let group in response_all) {
+                let response = response_all[group];
+                
+                let data = JSON.parse(response['data']);
+                let total_entries = response['total_entries'];
+                let entries_after_filtering = response['entries_after_filtering'];
 
-            let component = stage.compList[0];
-            let variant_residues = [];
+                let component = stages[group].compList[0];
+                let variant_residues = [];
 
-            for (let index in data) {
-                variant_residues.push(data[index]['codon_order_in_gene']);
-            }
-
-            component.reprList.forEach((rep) => {
-                if (rep.name == 'spacefill') {
-                    rep.dispose();
+                for (let index in data) {
+                    variant_residues.push(data[index]['codon_order_in_gene']);
                 }
-            });
 
-            component.addRepresentation("spacefill", {
-                sele: "(" + variant_residues.join(', ') + ") and .CA",
-                scale: 1
-            });
+                component.reprList.forEach((rep) => {
+                    if (rep.name == 'spacefill') {
+                        rep.dispose();
+                    }
+                });
 
+                component.addRepresentation("spacefill", {
+                    sele: "(" + variant_residues.join(', ') + ") and .CA",
+                    scale: 1
+                });
+
+            }
         },
         error: function(request, status, error) {
             console.log(request, status, error);
