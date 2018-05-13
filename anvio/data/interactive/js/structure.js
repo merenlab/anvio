@@ -84,14 +84,14 @@ function load_sample_group_widget(category) {
 }
 
 function apply_orientation_matrix_to_all_stages(orientationMatrix) {
-    stages.forEach((stage) => { 
-        stage.viewerControls.orient(orientationMatrix); 
-    });
+    for (let group in stages) {
+        stages[group].viewerControls.orient(orientationMatrix); 
+    }
 }
 
 function create_ngl_views() {
-    for (let stage in stages) {
-        stage.dispose();
+    for (let group in stages) {
+        stages[group].dispose();
     }
     stages = {};
 
