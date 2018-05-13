@@ -364,7 +364,7 @@ class LinkMers:
 
 class GetReadsFromBAM:
     """This class takes contig names (or a collection ID and bins), and provides
-       access short reads in one or more BAM iles mapping to those contigs
+       access short reads in one or more BAM files mapping to those contigs
        (expanded in #173)."""
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
@@ -471,14 +471,14 @@ class GetReadsFromBAM:
 
 
     def store_short_reads_for_splits(self):
-        short_reds_for_splits_dict = self.get_short_reads_for_splits_dict()
+        short_reads_for_splits_dict = self.get_short_reads_for_splits_dict()
 
         self.progress.new('Storing reads')
         self.progress.update('...')
-        utils.store_dict_as_FASTA_file(short_reds_for_splits_dict, self.output_file_path)
+        utils.store_dict_as_FASTA_file(short_reads_for_splits_dict, self.output_file_path)
         self.progress.end()
 
-        self.run.info('Num reads stored', pp(len(short_reds_for_splits_dict)))
+        self.run.info('Num reads stored', pp(len(short_reads_for_splits_dict)))
         self.run.info('FASTA output', self.output_file_path)
 
 
