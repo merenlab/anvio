@@ -16,3 +16,17 @@ body {
 .slider {
     width: 100% !important;
 }
+
+.ngl-container {
+    overflow-y: scroll; 
+}
+
+.ngl-group-title {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    background: black;
+    color: white;
+    margin: 2px;
+    padding: 4px;
+}
