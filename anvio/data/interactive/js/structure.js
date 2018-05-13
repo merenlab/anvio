@@ -115,12 +115,25 @@ function create_ngl_views() {
         let group = $(element).attr('data-group');
         let grid_size = get_size(selected_groups.length);
 
-        $('#ngl-container').append(`<div id="ngl_${group}" class="col-md-${parseInt(12 / grid_size)}" style="height: ${parseFloat(100 / grid_size)}%; float: left; "></div>`);
+        $('#ngl-container').append(`
+            <div id="ngl_${group}_wrapper" 
+                 class="col-md-${parseInt(12 / grid_size)}" 
+                 style="height: ${parseFloat(100 / grid_size)}%; float: left; ">
+                 <div class="ngl-group-title">
+                    ${group}
+                 </div>
+                 <div id="ngl_${group}" style="height: 100%; width: 100%;">
+
+                 </div> 
+            </div>`);
 
         var stage = new NGL.Stage(`ngl_${group}`);
         stage.loadFile("data://1blu.mmtf").then(function (o) {
           o.addRepresentation("cartoon", { color: "bfactor" })
           o.autoView()
+        });
+        stage.setParameters({
+            backgroundColor:"white"
         });
 
         let func = () => {apply_orientation_matrix_to_all_stages(stage.viewerControls.getOrientation()); };
