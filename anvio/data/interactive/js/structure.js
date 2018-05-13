@@ -1,16 +1,22 @@
-var stage;
+var stages = [];
 var histogram_data;
 var sample_groups;
+var pdb_content;
+
+function get_size(count) {
+    let columns = Math.min(4, Math.ceil(Math.sqrt(count)));
+}
 
 $(document).ready(function() {
-    stage = new NGL.Stage("viewport");
+/*    stage = new NGL.Stage("viewport");
     stage.setParameters({
         backgroundColor:"white"
     });
+*/
 
-    window.addEventListener( "resize", function( event ){
-        stage.handleResize();
-    }, false );
+    NGL.DatasourceRegistry.add(
+        "data", new NGL.StaticDatasource( "https://cdn.rawgit.com/arose/ngl/v0.10.4/data/" )
+    );
 
     $('#gene_callers_id_list').on('change', function(ev) {
         load_protein($('#gene_callers_id_list').val());
@@ -58,6 +64,8 @@ function load_sample_group_widget(category) {
             <tr>
                 <td>
                     <input class="form-check-input" 
+                        onclick="create_ngl_views();"
+                        checkbox-for="group"
                         id="${category}_${group}"
                         type="checkbox" 
                         data-category="${category}"
@@ -67,27 +75,57 @@ function load_sample_group_widget(category) {
                     <label class="form-check-label" for="${category}_${group}">${group}</label>
                 </td>
                 <td>`;
-        
-        sample_groups[category][group].forEach((sample) => {
-            tableHtml += `
-                <input class="form-check-input" 
-                        id="${category}_${group}_${sample}"
-                        type="checkbox" 
-                        data-category="${category}"
-                        data-group="${group}"
-                        data-sample="${sample}"
-                        value="${sample}" 
-                        checked="checked">
-                <label class="form-check-label" for="${category}_${group}_${sample}">${sample}</label>
-            `;
-        });
 
+        if (category != 'samples') {
+            sample_groups[category][group].forEach((sample) => {
+                tableHtml += `
+                    <input class="form-check-input" 
+                            id="${category}_${group}_${sample}"
+                            type="checkbox" 
+                            data-category="${category}"
+                            data-group="${group}"
+                            data-sample="${sample}"
+                            value="${sample}" 
+                            checked="checked">
+                    <label class="form-check-label" for="${category}_${group}_${sample}">${sample}</label>`;
+            });
+        }
 
         tableHtml += '</td></tr>';
     }
+
     $('#sample_groups').append(tableHtml + '</table>');
 }
 
+function apply_orientation_matrix_to_all_stages(orientationMatrix) {
+    stages.forEach((stage) => { 
+        stage.viewerControls.orient(orientationMatrix); 
+    });
+}
+
+function create_ngl_views() {
+    stages.forEach((stage) => { stage.dispose(); });
+    stages = [];
+
+    $('#ngl-container').empty();
+
+    $('[checkbox-for="group"]:checked').each((index, element) => {
+        let group = $(element).attr('data-group');
+
+        $('#ngl-container').append(`<div id="ngl_${group}" style="height: 500px; float: left; "></div>`);
+
+        var stage = new NGL.Stage(`ngl_${group}`);
+        stage.loadFile("data://1blu.mmtf").then(function (o) {
+          o.addRepresentation("cartoon", { color: "bfactor" })
+          o.autoView()
+        });
+
+        let func = () => {apply_orientation_matrix_to_all_stages(stage.viewerControls.getOrientation()); };
+        $(`#ngl_${group}`).mouseup(func);
+
+        stages.push(stage);
+    });
+}
 
 function defaultStructureRepresentation( component ){
     // bail out if the component does not contain a structure
@@ -116,6 +154,7 @@ function defaultStructureRepresentation( component ){
 
 
 function load_protein(gene_callers_id) {
+    return;
     $.ajax({
         type: 'GET',
         cache: false,
