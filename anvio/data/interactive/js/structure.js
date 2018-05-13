@@ -4,7 +4,7 @@ var sample_groups;
 var pdb_content;
 
 function get_size(count) {
-    let columns = Math.min(4, Math.ceil(Math.sqrt(count)));
+    return Math.min(4, Math.ceil(Math.sqrt(count)));
 }
 
 $(document).ready(function() {
@@ -109,10 +109,12 @@ function create_ngl_views() {
 
     $('#ngl-container').empty();
 
-    $('[checkbox-for="group"]:checked').each((index, element) => {
+    let selected_groups = $('[checkbox-for="group"]:checked');
+
+    $(selected_groups).each((index, element) => {
         let group = $(element).attr('data-group');
 
-        $('#ngl-container').append(`<div id="ngl_${group}" style="height: 500px; float: left; "></div>`);
+        $('#ngl-container').append(`<div id="ngl_${group}" class="col-md-${parseInt(12 / get_size(selected_groups.length))}" style="height: 440px; float: left; "></div>`);
 
         var stage = new NGL.Stage(`ngl_${group}`);
         stage.loadFile("data://1blu.mmtf").then(function (o) {
