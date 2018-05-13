@@ -1052,11 +1052,10 @@ class BottleApplication(Bottle):
         options = json.loads(request.forms.get('options'))
 
         filter_params = {}
-        filter_params['samples_of_interest'] = set(options['sample_id'])
         filter_params['min_departure_from_consensus'],\
-        filter_params['max_departure_from_consensus'] = list(map(float, options['departure_from_consensus'].split(',')))
+        filter_params['max_departure_from_consensus'] = list(map(float, options['filter_params']['departure_from_consensus'].split(',')))
         filter_params['min_departure_from_reference'],\
-        filter_params['max_departure_from_reference'] = list(map(float, options['departure_from_reference'].split(',')))
+        filter_params['max_departure_from_reference'] = list(map(float, options['filter_params']['departure_from_reference'].split(',')))
 
         output = self.interactive.get_variability(options, filter_params)
         return output
