@@ -104,7 +104,6 @@ class VariabilitySuper(object):
         # f = function called in self.process, c = condition upon which function is called
         F = lambda f, c = True: (f, c)
         self.process_functions = [F(self.init_commons),
-                                  F(self.load_variability_data, not self.table_provided),
                                   F(self.load_structure_data, self.append_structure_residue_info),
                                   F(self.apply_preliminary_filters),
                                   F(self.set_unique_pos_identification_numbers),
@@ -413,9 +412,10 @@ class VariabilitySuper(object):
             raise ConfigError("Well well well. It seems SNVs were not characterized for this profile database.\
                                 Sorry, there is nothing to report here!")
 
-        # done Init
         profile_db.disconnect()
         self.progress.end()
+
+        self.load_variability_data()
 
 
     def load_variability_data(self):
@@ -483,10 +483,7 @@ class VariabilitySuper(object):
 
 
     def check_if_data_is_empty(self):
-        if self.data.empty:
-            self.progress.end()
-            self.run.info_single('Nothing left in the variability data to work with. Quitting :/', 'red', 1, 1)
-            sys.exit()
+        return True if self.data.empty else False
 
 
     def check_how_splits_are_found(self):
@@ -547,8 +544,6 @@ class VariabilitySuper(object):
             entries_after = len(self.data.index)
             self.progress.end()
             self.report_change_in_entry_number(entries_before, entries_after, reason="max departure from consensus")
-
-        self.check_if_data_is_empty()
 
 
     def filter_by_samples(self):
@@ -841,12 +836,9 @@ class VariabilitySuper(object):
         self.remove_entries_from_data(entry_ids_to_remove, reason="minimum scatter")
 
 
-    def report_change_in_entry_number(self, num_before, num_after, reason="unknown reason", added=False):
-        """
-        Reports how many entries were removed during a filtering step. If added=True, then it
-        reports the number gained (quince mode)
-        """
-        changed = "removed" if not added else "added"
+    def report_change_in_entry_number(self, num_before, num_after, reason="unknown reason"):
+        """Reports how many entries were removed (or added) during a filtering step."""
+        changed = "removed" if num_after < num_before else "added"
 
         genes_remaining = self.data["corresponding_gene_call"].unique()
         if self.append_structure_residue_info:
@@ -860,8 +852,6 @@ class VariabilitySuper(object):
                                                                   len(genes_remaining),
                                                                   extra_msg),
                       mc='green')
-
-        self.check_if_data_is_empty()
 
 
     def filter_by_minimum_coverage_in_each_sample(self):
@@ -1126,13 +1116,28 @@ class VariabilitySuper(object):
         return unique_positions_and_frequencies_dict
 
 
-    def process(self, process_functions=None):
+    def process(self, process_functions=None, exit_if_data_empty=True):
+        """self.data is checked if empty after each function call. if exit_if_data_empty, exists,
+           otherwise returns prematurely."""
         if not process_functions:
             process_functions = self.process_functions
 
         for func, condition in process_functions:
             if condition:
                 func()
+
+                if self.check_if_data_is_empty():
+                    if exit_if_data_empty:
+                        self.end_process()
+                    else:
+                        return
+
+
+    def end_process(self, msg='Nothing left in the variability data to work with. Quitting :/'):
+        raise ConfigError("sdfsd")
+        self.progress.end()
+        self.run.info_single(msg, 'red', 1, 1)
+        sys.exit()
 
 
     def filter_for_interactive(self):
@@ -1141,7 +1146,7 @@ class VariabilitySuper(object):
                                F(self.filter_by_departure_from_reference),
                                F(self.filter_by_samples)]
 
-        self.process(process_functions=filtering_functions)
+        self.process(process_functions=filtering_functions, exit_if_data_empty=False)
 
 
     def get_histograms_for_interactive(self, column_info_list):
@@ -1553,7 +1558,7 @@ class QuinceModeWrapperForFancyEngines(object):
 
         self.progress.end()
 
-        self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode", added=True)
+        self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode")
 
 
 class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperForFancyEngines):
