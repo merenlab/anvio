@@ -232,11 +232,13 @@ function draw_variability() {
                     }
                 });
 
-                component.addRepresentation("spacefill", {
-                    sele: "(" + variant_residues.join(', ') + ") and .CA",
-                    scale: 1
-                });
+                if (variant_residues.length > 0) {
+                    component.addRepresentation("spacefill", {
+                        sele: "(" + variant_residues.join(', ') + ") and .CA",
+                        scale: 1
+                    });
 
+                }
             }
         },
         error: function(request, status, error) {
