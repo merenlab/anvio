@@ -113,8 +113,9 @@ function create_ngl_views() {
 
     $(selected_groups).each((index, element) => {
         let group = $(element).attr('data-group');
+        let grid_size = get_size(selected_groups.length);
 
-        $('#ngl-container').append(`<div id="ngl_${group}" class="col-md-${parseInt(12 / get_size(selected_groups.length))}" style="height: 440px; float: left; "></div>`);
+        $('#ngl-container').append(`<div id="ngl_${group}" class="col-md-${parseInt(12 / grid_size)}" style="height: ${parseFloat(100 / grid_size)}%; float: left; "></div>`);
 
         var stage = new NGL.Stage(`ngl_${group}`);
         stage.loadFile("data://1blu.mmtf").then(function (o) {
