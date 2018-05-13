@@ -1293,19 +1293,30 @@ class StructureInteractive(VariabilitySuper):
 
 
     def create_sample_groups_dict(self):
-        """The native data structure of additional_layer_dict is {sample: {column_name: column_value}}
-           for the purpose of the structure database, it makes much more sense to have the following
-           data structure: {column_name: {column_value: [sample1, sample2, ...]}}"""
+        """This method converts the native data structure of additional_layer_dict:
+
+           {sample1: {"temperature": "hot", "diet": "high-fat", ...},
+            sample2: {"temperature": "hot", "diet": "low-fat", ...}}
+
+           to a data structure designed with the structure interactive interface in mind:
+
+           {"temperature": {"hot":      [sample1, sample2], "cold":    []},
+            "diet":        {"high-fat": [sample1],          "low-fat": [sample2]}}
+        """
         if not self.profile_db_path:
-            pass # FIXME
+            return {"samples": {s:[s] for s in self.available_samples}}
 
         layer_names, additional_layer_dict = self.load_additional_layer_data()
 
-        # data frame operations are easier than dictionary operations
-        temp = pd.DataFrame(additional_layer_dict).T.fillna("NA").reset_index().rename(columns={"index":"samples"})
-        # I will refactor for readability, but can you imagine how many lines this would take using
-        # native dictionaries?
-        return {column:{value:list(temp.loc[temp[column] == value, "samples"]) for value in temp[column].unique()} for column in temp.columns}
+        # filter additional_layer_dict to only include available samples
+        additional_layer_dict = {k: v for k, v in additional_layer_dict.items() if k in self.available_samples}
+
+        # Now begins the horrible process of converting between the two data structures. get ready
+        # for triple-nested `for` loops and an unreadable mess. Or... a cheeky little pandas dataframe
+        # whose only purpose is to enable a dictionary comprehension. Imagine how many lines this
+        # would be using native python.
+        df = pd.DataFrame(additional_layer_dict).T.fillna("NA").reset_index().rename(columns={"index":"samples"})
+        return {col: {val: list(df.loc[df[col]==val, "samples"]) for val in df[col].unique()} for col in df.columns} # V/\
 
 
     def load_additional_layer_data(self, profile_db_path=None):
