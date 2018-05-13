@@ -4,16 +4,6 @@ var sample_groups;
 var pdb_content;
 
 $(document).ready(function() {
-/*    stage = new NGL.Stage("viewport");
-    stage.setParameters({
-        backgroundColor:"white"
-    });
-*/
-
-    NGL.DatasourceRegistry.add(
-        "data", new NGL.StaticDatasource( "https://cdn.rawgit.com/arose/ngl/v0.10.4/data/" )
-    );
-
     $('#gene_callers_id_list').on('change', function(ev) {
         load_protein($('#gene_callers_id_list').val());
     });
@@ -126,10 +116,22 @@ function create_ngl_views() {
             </div>`);
 
         var stage = new NGL.Stage(`ngl_${group}`);
-        stage.loadFile("data://1blu.mmtf").then(function (o) {
-          o.addRepresentation("cartoon", { color: "bfactor" })
-          o.autoView()
-        });
+        var stringBlob = new Blob( [ pdb_content ], { type: 'text/plain'} );
+        
+        stage.loadFile(stringBlob, { ext: "pdb" })
+             .then((component) => {
+                if( component.type !== "structure" ) return;
+
+                component.addRepresentation( "cartoon", {
+                    aspectRatio: 3.0,
+                    scale: 1.5
+                } );
+
+                var pa = component.structure.getPrincipalAxes();     
+                component.setRotation(pa.getRotationQuaternion());
+                stage.autoView();
+             });
+        
         stage.setParameters({
             backgroundColor:"white"
         });
@@ -143,72 +145,18 @@ function create_ngl_views() {
 
 function defaultStructureRepresentation( component ){
     // bail out if the component does not contain a structure
-    if( component.type !== "structure" ) return;
-
-    component.addRepresentation( "cartoon", {
-        aspectRatio: 3.0,
-        scale: 1.5
-    } );
-
-    // add annotation to a protein chain
-    var chainText = {
-    "A": "how do i put gene_caller_id here?",
-    }
-    var ap = component.structure.getAtomProxy()
-    component.structure.eachChain(function (cp) {
-        // annotation is anchored to the residue index equal to half the total number of residues
-        ap.index = cp.atomOffset + Math.floor(cp.atomCount / 2)
-        component.addAnnotation(ap.positionToVector3(), chainText[ cp.chainname ])
-    }, new NGL.Selection("polymer"));
-
-    var pa = component.structure.getPrincipalAxes();
-    stage.animationControls.rotate(pa.getRotationQuaternion(), 1000);
-    stage.autoView();        
+ 
 }
 
 
 function load_protein(gene_callers_id) {
-    return;
     $.ajax({
         type: 'GET',
         cache: false,
         url: '/data/get_structure/' + gene_callers_id,
         success: function(data) {
             histogram_data = data['histograms'];
-
-            // create tooltip element and add to document body
-            var tooltip = document.createElement("div");
-            Object.assign(tooltip.style, {
-                display: "none",
-                position: "fixed",
-                zIndex: 10,
-                pointerEvents: "none",
-                backgroundColor: "rgba( 0, 0, 0, 0.6 )",
-                color: "lightgrey",
-                padding: "8px",
-                fontFamily: "sans-serif"
-            })
-            document.body.appendChild(tooltip)
-
-            stage.removeAllComponents();
-
-            var stringBlob = new Blob( [ data['pdb_content'] ], { type: 'text/plain'} );
-            stage.loadFile(stringBlob, { ext: "pdb", name: gene_callers_id }).then(defaultStructureRepresentation).then();
-            // remove default hoverPick mouse action
-            stage.mouseControls.remove("hoverPick")
-            // listen to `hovered` signal to move tooltip around and change its text
-            stage.signals.hovered.add(function (pickingProxy) {
-                if (pickingProxy && (pickingProxy.atom || pickingProxy.bond)) {
-                    var atom = pickingProxy.atom || pickingProxy.closestBondAtom
-                    var mp = pickingProxy.mouse.position
-                    tooltip.innerText = "SAAV: \n" + atom.qualifiedName() + "\nAla:\t19" + "\nIle:\t5"
-                    tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px"
-                    tooltip.style.left = mp.x + 3 + "px"
-                    tooltip.style.display = "block"
-                } else {
-                tooltip.style.display = "none"
-              }
-            });
+            pdb_content = data['pdb_content'];
         }
     });
 }
