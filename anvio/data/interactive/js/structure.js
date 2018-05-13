@@ -3,10 +3,6 @@ var histogram_data;
 var sample_groups;
 var pdb_content;
 
-function get_size(count) {
-    return Math.min(4, Math.ceil(Math.sqrt(count)));
-}
-
 $(document).ready(function() {
 /*    stage = new NGL.Stage("viewport");
     stage.setParameters({
@@ -113,12 +109,14 @@ function create_ngl_views() {
 
     $(selected_groups).each((index, element) => {
         let group = $(element).attr('data-group');
-        let grid_size = get_size(selected_groups.length);
+        let num_cells = selected_groups.length;
+        let num_columns = Math.min(4, Math.ceil(Math.sqrt(num_cells)));
+        let num_rows = Math.min(4, Math.ceil(num_cells / num_columns));
 
         $('#ngl-container').append(`
             <div id="ngl_${group}_wrapper" 
-                 class="col-md-${parseInt(12 / grid_size)}" 
-                 style="height: ${parseFloat(100 / grid_size)}%; float: left; ">
+                 class="col-md-${parseInt(12 / num_columns)}" 
+                 style="height: ${parseFloat(100 / num_rows)}%; float: left; ">
                  <div class="ngl-group-title">
                     ${group}
                  </div>
