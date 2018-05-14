@@ -39,3 +39,8 @@ body {
     margin-left: 4px;
     margin-right: 12px;
 }
+
+.sidebar {
+    background: url(../images/fractal.jpg) center center scroll;
+    height: 100%;
+}
