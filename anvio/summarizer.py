@@ -44,7 +44,6 @@ import anvio.hmmops as hmmops
 import anvio.sequence as seqlib
 import anvio.terminal as terminal
 import anvio.constants as constants
-import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
