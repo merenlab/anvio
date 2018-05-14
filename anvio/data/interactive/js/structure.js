@@ -43,7 +43,7 @@ $(document).ready(function() {
 
 function load_sample_group_widget(category) {
     $('#sample_groups').empty();
-    tableHtml = '<table>';
+    tableHtml = '<table class="table table-condensed"><tr><td>Groups</td><td>Samples</td></tr>';
 
     for (let group in sample_groups[category]) {
         tableHtml += `
@@ -64,7 +64,7 @@ function load_sample_group_widget(category) {
 
         sample_groups[category][group].forEach((sample) => {
             tableHtml += `
-                <div style="${(category == 'samples') ? 'display: none;' : 'display: inline-block; float: left;'}">
+                <div class="table-group-checkbox" style="${(category == 'samples') ? 'display: none;' : 'display: inline-block; float: left;'}">
                     <input class="form-check-input" 
                             id="${category}_${group}_${sample}"
                             onclick="draw_variability();"
@@ -116,7 +116,7 @@ function create_ngl_views() {
                         <span class="glyphicon glyphicon-fullscreen"></span>
                      </button>
                  </div>
-                 <div id="ngl_${group}" style="height: 100%; width: 100%;">
+                 <div id="ngl_${group}" style="height: calc(100% - 10px); width: 100%; padding-bottom: 10px;">
 
                  </div> 
             </div>`);

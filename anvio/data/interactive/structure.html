@@ -18,8 +18,10 @@
 <body>
     <div class="container-fluid parent-container">
         <div class="row">
-            <div class="col-md-9" id="ngl-container">
+            <div class="col-md-9 ngl-container-wrapper">
+                <div id="ngl-container">
 
+                </div>
             </div>
             <div class="col-md-3 sidebar">
                 <div class="widget">
@@ -40,12 +42,20 @@
                         </div>
                     </div>
                 </div>
-                <br>
-                <select class="form-control" serialize="true" id="sample_groups_list">
+                <div class="widget">
+                    <div class="row">
+                        <div class="col-md-4 form-row-padding">
+                            Category:
+                        </div>
+                        <div class="col-md-8 form-row-padding">
+                            <select class="form-control" serialize="true" id="sample_groups_list">
 
-                </select>
-                <div id="sample_groups">
+                            </select>
+                        </div>
+                    </div>
+                    <div id="sample_groups">
 
+                    </div>
                 </div>
                 <div id="controls">
 

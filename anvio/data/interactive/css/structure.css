@@ -7,24 +7,24 @@ body {
 }
 
 .widget {
-    background-color: #f5f4fd;
+    background-color: #f9f9f99e;
     margin: 5px 0px;
     padding: 8px 15px;
-    box-shadow: 2px 2px 5px 0px rgba(0,0,0,0.35);
+    border: 1px solid #e4e4e4;
 }
 
 .slider {
     width: 100% !important;
 }
 
-.ngl-container {
-    overflow-y: scroll; 
+.ngl-container-wrapper {
+    height: 100%;
+    display: block;
+    overflow-y: scroll;
 }
 
 .ngl-group-title {
     position: absolute;
-    left: 0px;
-    top: 0px;
     background: black;
     color: white;
     margin: 2px;
@@ -43,4 +43,11 @@ body {
 .sidebar {
     background: url(../images/fractal.jpg) center center scroll;
     height: 100%;
+    border-left: 1px solid #D3D3D3;
+    overflow-y: scroll;
+}
+
+.table-group-checkbox {
+    margin-right: 10px;
+    margin-bottom: 4px;
 }
