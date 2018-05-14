@@ -64,9 +64,10 @@ function load_sample_group_widget(category) {
 
         sample_groups[category][group].forEach((sample) => {
             tableHtml += `
-                <div style="${(category == 'samples') ? 'display: none;' : ''}">
+                <div style="${(category == 'samples') ? 'display: none;' : 'display: inline-block; float: left;'}">
                     <input class="form-check-input" 
                             id="${category}_${group}_${sample}"
+                            onclick="draw_variability();"
                             type="checkbox" 
                             data-category="${category}"
                             data-group="${group}"
@@ -108,7 +109,7 @@ function create_ngl_views() {
         $('#ngl-container').append(`
             <div id="ngl_${group}_wrapper" 
                  class="col-md-${parseInt(12 / num_columns)}" 
-                 style="height: ${parseFloat(100 / num_rows)}%; float: left; ">
+                 style="height: ${parseFloat(100 / num_rows)}%; ">
                  <div class="ngl-group-title">
                     ${group}
                      <button type="button" class="btn btn-default btn-sm" onclick="stages['${group}'].toggleFullscreen();">
