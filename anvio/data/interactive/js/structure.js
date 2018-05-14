@@ -9,7 +9,7 @@ $(document).ready(function() {
     });
 
     $('#sample_groups_list').on('change', function(ev) {
-        load_sample_group_widget($('#sample_groups_list').val())
+        load_sample_group_widget($('#sample_groups_list').val());
     });
 
     $.ajax({
@@ -82,6 +82,7 @@ function load_sample_group_widget(category) {
     }
 
     $('#sample_groups').append(tableHtml + '</table>');
+    create_ngl_views();
 }
 
 function apply_orientation_matrix_to_all_stages(orientationMatrix) {
@@ -139,10 +140,12 @@ function create_ngl_views() {
              });
         
         stage.setParameters({
-            backgroundColor:"white"
+            backgroundColor: "white"
         });
 
-        let func = () => {apply_orientation_matrix_to_all_stages(stage.viewerControls.getOrientation()); };
+        let func = () => { apply_orientation_matrix_to_all_stages( stage.viewerControls.getOrientation()); };
+        stage.mouseObserver.signals.scrolled.add(() => { func(); });
+        stage.mouseObserver.signals.dragged.add(() => { func(); });
         $(`#ngl_${group}`).mouseup(func);
 
         stages[group] = stage;
