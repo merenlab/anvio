@@ -104,6 +104,7 @@ class VariabilitySuper(object):
         # f = function called in self.process, c = condition upon which function is called
         F = lambda f, c = True: (f, c)
         self.process_functions = [F(self.init_commons),
+                                  F(self.load_variability_data, not self.table_provided),
                                   F(self.load_structure_data, self.append_structure_residue_info),
                                   F(self.apply_preliminary_filters),
                                   F(self.set_unique_pos_identification_numbers),
@@ -415,8 +416,6 @@ class VariabilitySuper(object):
         profile_db.disconnect()
         self.progress.end()
 
-        self.load_variability_data()
-
 
     def load_variability_data(self):
         """Populates self.data (type pandas.DataFrame) from profile database tables."""
@@ -483,7 +482,8 @@ class VariabilitySuper(object):
 
 
     def check_if_data_is_empty(self):
-        return True if self.data.empty else False
+        if self.data.empty:
+            raise self.EndProcess
 
 
     def check_how_splits_are_found(self):
@@ -853,6 +853,8 @@ class VariabilitySuper(object):
                                                                   extra_msg),
                       mc='green')
 
+        self.check_if_data_is_empty()
+
 
     def filter_by_minimum_coverage_in_each_sample(self):
         """To remove any unique entry from the variable positions table that describes a variable position
@@ -1122,22 +1124,14 @@ class VariabilitySuper(object):
         if not process_functions:
             process_functions = self.process_functions
 
-        for func, condition in process_functions:
-            if condition:
-                func()
+        try:
+            for func, condition in process_functions:
+                if condition:
+                    func()
 
-                if self.check_if_data_is_empty():
-                    if exit_if_data_empty:
-                        self.end_process()
-                    else:
-                        return
-
-
-    def end_process(self, msg='Nothing left in the variability data to work with. Quitting :/'):
-        raise ConfigError("sdfsd")
-        self.progress.end()
-        self.run.info_single(msg, 'red', 1, 1)
-        sys.exit()
+        except self.EndProcess as e:
+            msg = 'Nothing left in the variability data to work with. Quitting :/' if exit_if_data_empty else ''
+            e.end(exit_if_data_empty, msg)
 
 
     def filter_for_interactive(self):
@@ -1303,6 +1297,19 @@ class VariabilitySuper(object):
         self.run.info('Num entries reported', pp(len(self.data.index)))
         self.run.info('Output File', self.output_file_path)
         self.run.info('Num %s positions reported' % self.engine, self.data["unique_pos_identifier"].nunique())
+
+
+    class EndProcess(Exception):
+        def end(self, exit, msg=None):
+            """exit: bool
+                   if True, sys.exit() is called.
+               msg: str (default=None)
+                   message to user
+            """
+            if msg:
+                run.info_single(msg, 'red', 1, 1)
+            if exit:
+                sys.exit()
 
 
 class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
