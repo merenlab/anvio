@@ -30,3 +30,12 @@ body {
     margin: 2px;
     padding: 4px;
 }
+
+.form-row-padding {
+    padding: 8px;
+}
+
+#engine_list label {
+    margin-left: 4px;
+    margin-right: 12px;
+}
