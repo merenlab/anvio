@@ -33,10 +33,10 @@ body {
 
 .ngl-group-title {
     position: absolute;
-    background: black;
-    color: white;
+    color: #337ab7;
     margin: 2px;
     padding: 4px;
+    font-weight: bold;
 }
 
 .ngl-group-fullscreen {

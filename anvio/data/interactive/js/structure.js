@@ -119,7 +119,7 @@ function create_ngl_views() {
                     ${group}
                  </div>
                  <div class="ngl-group-fullscreen">
-                    <button type="button" class="btn btn-default btn-sm" onclick="stages['${group}'].toggleFullscreen();">
+                    <button type="button" class="btn btn-link btn-sm" onclick="stages['${group}'].toggleFullscreen();" title="Fullscreen">
                         <span class="glyphicon glyphicon-fullscreen"></span>
                      </button>
                  </div>
