@@ -39,6 +39,12 @@ body {
     padding: 4px;
 }
 
+.ngl-group-fullscreen {
+    position: absolute;
+    right: 15px;
+    top: 5px;
+}
+
 .form-row-padding {
     padding: 8px;
 }
