@@ -32,10 +32,7 @@ def main(args):
         sys.exit()
 
     if args.list_hmm_sources:
-        for source in info_table:
-            t = info_table[source]
-            run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
-        sys.exit(0)
+        hmmops.SequencesForHMMHits(args.contigs_db).list_available_hmm_sources()
 
     if not args.hmm_source and not args.just_do_it:
         raise ConfigError("But you should give this program an HMM souce to remove from the database :/ If you\

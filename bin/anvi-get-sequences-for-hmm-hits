@@ -112,16 +112,10 @@ def main(args):
                                    knows about :/ Here they are: '%s'" % (', '.join(missing_hmm_sources)))
 
         if args.list_hmm_sources:
-            for source in info_table:
-                t = info_table[source]
-                run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
-            sys.exit(0)
+            hmmops.SequencesForHMMHits(args.contigs_db).list_available_hmm_sources()
 
         if args.list_available_gene_names:
-            for source in hmm_sources or info_table:
-                t = info_table[source]
-                run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
-            sys.exit(0)
+            hmmops.SequencesForHMMHits(args.contigs_db).list_available_gene_names()
 
         if (args.profile_db and not args.collection_name) or (args.collection_name and not args.profile_db):
             raise ConfigError("You can't use this program with a profile database but without a collection name,\
