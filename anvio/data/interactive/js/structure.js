@@ -108,7 +108,7 @@ function create_ngl_views() {
 
         $('#ngl-container').append(`
             <div id="ngl_${group}_wrapper" 
-                 class="col-md-${parseInt(12 / num_columns)}" 
+                 class="col-md-${parseInt(12 / num_columns)} nopadding" 
                  style="height: ${parseFloat(100 / num_rows)}%; ">
                  <div class="ngl-group-title">
                     ${group}
@@ -116,7 +116,7 @@ function create_ngl_views() {
                         <span class="glyphicon glyphicon-fullscreen"></span>
                      </button>
                  </div>
-                 <div id="ngl_${group}" style="height: calc(100% - 10px); width: 100%; padding-bottom: 10px;">
+                 <div id="ngl_${group}" class="ngl-inner">
 
                  </div> 
             </div>`);

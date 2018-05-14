@@ -23,6 +23,13 @@ body {
     overflow-y: scroll;
 }
 
+.ngl-inner {
+    height: calc(100% - 10px);
+    width: calc(100% - 10px);
+    padding-bottom: 10px;
+    padding-right: 10px;
+}
+
 .ngl-group-title {
     position: absolute;
     background: black;
@@ -50,4 +57,9 @@ body {
 .table-group-checkbox {
     margin-right: 10px;
     margin-bottom: 4px;
+}
+
+.nopadding {
+   padding: 0 !important;
+   margin: 0 !important;
 }
