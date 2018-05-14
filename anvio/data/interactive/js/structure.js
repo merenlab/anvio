@@ -5,7 +5,10 @@ var pdb_content;
 
 $(document).ready(function() {
     $('#gene_callers_id_list').on('change', function(ev) {
-        load_protein($('#gene_callers_id_list').val());
+        $.when({}).then(load_protein).then(() => {
+            create_ui();
+            load_sample_group_widget($('#sample_groups_list').val());
+        });
     });
 
     $('#sample_groups_list').on('change', function(ev) {
@@ -25,17 +28,18 @@ $(document).ready(function() {
                 $('#gene_callers_id_list').append(`<option id=${gene_callers_id}>${gene_callers_id}</option>`);
             });
 
-            $('#gene_callers_id_list').trigger('change');
+            $.when({}).then(load_protein).then(() => {
+                let default_engine = available_engines[0];
+                available_engines.forEach(function(engine) {
+                    $('#engine_list').append(`<input type="radio" name="engine" onclick="create_ui();" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
+                });
+                create_ui();
 
-            let default_engine = available_engines[0];
-            available_engines.forEach(function(engine) {
-                $('#engine_list').append(`<input type="radio" name="engine" onclick="create_ui();" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
+                for (let category in sample_groups) {
+                    $('#sample_groups_list').append(`<option id=${category}>${category}</option>`);
+                }
+                $('#sample_groups_list').trigger('change');
             });
-
-            for (let category in sample_groups) {
-                $('#sample_groups_list').append(`<option id=${category}>${category}</option>`);
-            }
-            $('#sample_groups_list').trigger('change');
         }
     });
 });
@@ -64,7 +68,7 @@ function load_sample_group_widget(category) {
 
         sample_groups[category][group].forEach((sample) => {
             tableHtml += `
-                <div class="table-group-checkbox" style="${(category == 'samples') ? 'display: none;' : 'display: inline-block; float: left;'}">
+                <div class="table-group-checkbox" style="display: inline-block; float: left;">
                     <input class="form-check-input" 
                             id="${category}_${group}_${sample}"
                             onclick="draw_variability();"
@@ -152,9 +156,14 @@ function create_ngl_views() {
 
         stages[group] = stage;
     });
+
+    draw_variability();
 }
 
-function load_protein(gene_callers_id) {
+function load_protein() {
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    var defer = $.Deferred();
+    
     $.ajax({
         type: 'GET',
         cache: false,
@@ -162,8 +171,11 @@ function load_protein(gene_callers_id) {
         success: function(data) {
             histogram_data = data['histograms'];
             pdb_content = data['pdb_content'];
+            defer.resolve();
         }
     });
+
+    return defer.promise();
 }
 
 function serialize_checked_groups() {
@@ -352,6 +364,7 @@ function create_ui() {
             });
 
             draw_histogram();
+            draw_variability();
         }
     });   
 }
