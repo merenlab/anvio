@@ -309,7 +309,7 @@ function menu_callback(action, param) {
                 url: '/data/reroot_tree',
                 data: {
                     'newick': clusteringData,
-                    'branch': item_name  
+                    'leaves': item_name  
                 },
                 success: function(data) {
                     clusteringData = data['newick'];
