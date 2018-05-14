@@ -118,7 +118,47 @@ ContextMenu = function(options) {
                     }
                 });
             }
-        }
+        },
+        'get_split_sequence': {
+            'title': 'Get split sequence',
+            'action': (node, layer, param) => {
+                $.ajax({
+                    type: 'GET',
+                    cache: false,
+                    url: '/data/contig/' + node.label,
+                    success: function(data) {
+                        $('#modSplitSequence .modal-title').html('Split Sequence');
+                        $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
+                        $('#modSplitSequence').modal('show');
+                    }
+                });
+            }
+        },
+        'blastn_nr': {
+            'title': ' - blastn @ nr',
+            'action': (node, layer, param) => { 
+                get_sequence_and_blast(node.label, 'blastn', 'nr', (mode == 'gene') ? 'gene' : 'contig');
+             }
+        },
+        'blastx_nr': {
+            'title': ' - blastx @ nr',
+            'action': (node, layer, param) => { 
+                get_sequence_and_blast(node.label, 'blastx', 'nr', (mode == 'gene') ? 'gene' : 'contig');
+             }
+        },
+        'blastn_refseq_genomic': {
+            'title': ' - blastn @ refseq_genomic',
+            'action': (node, layer, param) => { 
+                get_sequence_and_blast(node.label, 'blastn', 'refseq_genomic', (mode == 'gene') ? 'gene' : 'contig');
+             }
+        },
+        'blastx_refseq_protein': {
+            'title': ' - blastx @ refseq_protein',
+            'action': (node, layer, param) => { 
+                get_sequence_and_blast(node.label, 'blastx', 'refseq_protein', (mode == 'gene') ? 'gene' : 'contig');
+             }
+        },
+
     }
 }
 
@@ -146,6 +186,13 @@ ContextMenu.prototype.BuildMenu = function() {
         else {
             menu.push('inspect_split');
         }
+
+        menu.push('divider');
+        menu.push('get_split_sequence');
+        menu.push('blastn_nr');
+        menu.push('blastx_nr');
+        menu.push('blastn_refseq_genomic');
+        menu.push('blastx_refseq_protein');
     }
     else
     {
