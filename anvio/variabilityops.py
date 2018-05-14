@@ -12,7 +12,6 @@ import numpy as np
 import pandas as pd
 
 from scipy.stats import entropy
-from sklearn.neighbors import KernelDensity
 
 import anvio
 import anvio.tables as t
@@ -43,7 +42,64 @@ progress = terminal.Progress()
 run = terminal.Run(width=62)
 
 
-class VariabilitySuper(object):
+class VariabilityFilter:
+    def __init__(self):
+        self.special_filter_requests = [
+            "occurrence"
+            ]
+
+        self.special_filter_function_prefix = "filter_by_"
+        self.scope_of_function_search = self.__class__
+
+    def filter_data(self, request):
+        self.request = request
+        function = self.get_appropriate_filter_function()
+
+    def get_appropriate_filter_function(self):
+        self.request_is_valid = self.is_filter_request_valid()
+
+        if self.request_is_special:
+            return self.get_special_filter_function()
+        else:
+            return lambda x: x # FIXME
+
+    def is_filter_request_valid(self):
+        if self.is_filter_request_special():
+            self.does_special_filter_function_exist()
+        else:
+            self.is_filter_request_a_column_in_dataframe()
+
+    def get_special_filter_function(self):
+        return getattr(self.scope_of_function_search, presumed_function_name)
+
+    def does_special_filter_function_exist(self):
+        presumed_function_name = self.special_filter_function_prefix + self.request
+        if hasattr(self.scope_of_function_search, presumed_function_name):
+            if callable(getattr(self.scope_of_function_search, presumed_function_name)):
+                pass
+        else:
+            raise ConfigError("VariabilityFilter :: The filter request `%s` is considered unique\
+                               because its filtering criteria cannot be easily generalizable. It\
+                               therefore is supposed to have its own dedicated function named `%s`,\
+                               however this was not found within the function scope of the class\
+                               `%s`" % (self.request,
+                                        presumed_function_name,
+                                        self.scope_of_function_search))
+
+    def is_filter_request_special(self):
+        self.request_is_special = True if self.request in self.special_filter_requests else False
+        return self.request_is_special
+
+    def is_filter_request_a_column_in_dataframe(self):
+        if self.request not in self.data.columns:
+            raise ConfigError("VariabilityFilter :: The filter request `%s` does not exist as a column\
+                               in self.data. It should, or, if the filtering criteria are complex, it\
+                               should have its own function called `%s%s`" % (self.request,
+                                                                              self.special_filter_function_prefix,
+                                                                              self.request))
+
+
+class VariabilitySuper(VariabilityFilter, object):
     def __init__(self, args={}, p=progress, r=run):
         self.args = args
 
@@ -100,6 +156,9 @@ class VariabilitySuper(object):
 
         self.comprehensive_stats_headers = []
         self.comprehensive_variability_scores_computed = False
+
+        # VariabilityFilter.__init__(self) # NOTE for testing
+        # self.filter_data("min_occurrence")
 
         # f = function called in self.process, c = condition upon which function is called
         F = lambda f, c = True: (f, c)
@@ -1175,8 +1234,7 @@ class VariabilitySuper(object):
 
 
     def get_histogram(self, column, fix_offset=False, **kwargs):
-        """
-           fix_offset can be provided if you're interested in returning the centre point of each bin
+        """fix_offset can be provided if you're interested in returning the centre point of each bin
            rather than the edges of each bin.
 
            **kwargs are the optional arguments of np.histogram
