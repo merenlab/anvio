@@ -47,12 +47,12 @@ class VariabilityFilter:
     def __init__(self, args={}, p=progress, r=run):
 
         self.unique_filter_function_prefix = "filter_by_"
-        self.scope_of_function_search = self.__class__
         self.stealth = False
 
         self.unique_filter_criteria = [
             "occurrence",
         ]
+
 
     def filter_by_occurrence(self, minimum = None):
         if self.min_occurrence == 1:
@@ -73,20 +73,29 @@ class VariabilityFilter:
         self.report_change_in_entry_number(entries_before, entries_after, reason="min occurrence")
 
 
-
     def filter_data(self, criterion, **kwargs):
+        self.filter_info_log = {}
         self.criterion = criterion
-        function = self.get_filter_function()
-        params = self.get_filter_params(function, **kwargs)
-        print(self.criterion_is_unique)
-        print(params)
-        function(**params)
+        self.append_info_log("criterion", self.criterion)
+
+        try:
+            filter_routine = self.get_filter_function()
+            params = self.get_filter_params(filter_routine, **kwargs)
+            filter_routine(**params)
+
+        except ConfigError as e:
+            header = "Filtering failed. Here is the log:"
+            self.report_filter_info_log(header)
+            print(e)
 
 
     def get_filter_params(self, function, **kwargs):
         if kwargs:
+            self.append_info_log("filter params passed", True)
             return kwargs
-        elif self.criterion_is_unique:
+
+        self.append_info_log("filter params passed", False)
+        if self.criterion_is_unique:
             return {} # cannot be inferred if unique
         else:
             return self.infer_filter_params_from_criterion(function)
@@ -96,36 +105,37 @@ class VariabilityFilter:
         """This function should never be called because the programmer should always provide explicit
            filtering parameters to filter_data. But if none are passed because they are not known,
            this function tries to infer the filtering parameters"""
+        self.append_info_log("attempting filter param inference", True)
+
         if self.criterion_is_unique:
             raise ConfigError("VariabilityFilter :: infer_filter_params_from_criterion will not run\
                                because `%s` is a unique filter criterion with a dedicated function\
                                `%s`. infer_filter_params_from_criterion can only be run for\
                                criteria that do not have dedicated methods." % (self.criterion, function))
 
-        candidate_filter_params = {
-            "minimum": ["min_" + self.criterion],
+        candidate_args = {
+            "minimum": ["min_" + self.criterion], # e.g. ["min_departure_from_consensus"]
             "maximum": ["max_" + self.criterion],
             "of_interest": [self.criterion + "s_of_interest", self.criterion + "_of_interest"],
         }
 
+        candidate_attribute_names = [x for y in candidate_args for x in candidate_args[y]]
+        self.append_info_log("looking for attribute names", ", ".join(candidate_attribute_names))
+
         filter_params = {}
-        for param in candidate_filter_params:
-            for n in candidate_filter_params[param]:
-                if hasattr(self.scope_of_function_search, n):
-                    filter_params[param] = getattr(self.scope_of_function_search, n)
+        arg_val_names_found = []
+        for arg_key in candidate_args:
+            for arg_val_name in candidate_args[arg_key]:
+                if hasattr(self, arg_val_name):
+                    arg_val_names_found.append(arg_val_name)
+                    filter_params[arg_key] = getattr(self, arg_val_name)
                     break
 
+        self.append_info_log("found attribute names", ", ".join(arg_val_names_found))
         if not filter_params:
-            attributes_tried = []
-            for candidates in candidate_filter_params.values():
-                attributes_tried.extend(candidates)
             raise ConfigError("VariabilityFilter :: Explicit parameters were not passed to\
                                filter_data, so anvi'o tried its best to find attributes that made\
-                               sense given your filter criterion `%s`. Specifically, anvi'o looked\
-                               for attribute names within the scope of %s matching to any of\
-                               %s, but could not find these attributes." % (self.criterion,
-                                                                            self.scope_of_function_search,
-                                                                            ", ".join(attributes_tried)))
+                               sense given your filter criterion `%s`, but failed.")
         return filter_params
 
 
@@ -133,20 +143,17 @@ class VariabilityFilter:
         self.is_filter_criterion_valid()
 
         if self.criterion_is_unique:
-            return self.get_unique_filter_function
+            function = self.get_unique_filter_function()
         else:
-            return self.general_serial_filtering
+            function = self.general_serial_filtering
+
+        self.append_info_log("filter function", function)
+        return function
 
 
-    def get_bound_filter_operator(self, extremum_type, inclusive):
-        if extremum_type == 'min' and inclusive:
-            return op.ge
-        if extremum_type == 'min' and not inclusive:
-            return op.gt
-        if extremum_type == 'max' and inclusive:
-            return op.le
-        if extremum_type == 'max' and not inclusive:
-            return op.le
+    def values_of_interest_filter(self, values_of_interest):
+        values_of_interest = self.get_values_of_interest_as_set(values_of_interest)
+        self.data = self.data.loc[self.data[self.criterion].isin(values_of_interest)]
 
 
     def get_values_of_interest_as_set(self, values_of_interest):
@@ -160,11 +167,6 @@ class VariabilityFilter:
                                    convert values_of_interest of type `%s` to a set." % (type(values_of_interest)))
 
 
-    def values_of_interest_filter(self, values_of_interest):
-        values_of_interest = self.get_values_of_interest_as_set(values_of_interest)
-        self.data = self.data.loc[self.data[self.criterion].isin(values_of_interest)]
-
-
     def extremum_filter(self, extremum_value, extremum_type, inclusive = True):
         """extremum_value: float or int
                The value you are using as a cut off.
@@ -173,8 +175,123 @@ class VariabilityFilter:
            inclusive: bool (default True)
                If True, values equal to extremum_value will not be removed"""
         extremum_value = float(extremum_value)
-        op = self.get_bound_filter_operator()
+        op = self.get_bound_filter_operator(extremum_type, inclusive)
         self.data = self.data[op(self.data[self.criterion], extremum_value)]
+
+
+    def get_bound_filter_operator(self, extremum_type, inclusive):
+        if extremum_type == 'min' and inclusive:
+            return op.ge
+        if extremum_type == 'min' and not inclusive:
+            return op.gt
+        if extremum_type == 'max' and inclusive:
+            return op.le
+        if extremum_type == 'max' and not inclusive:
+            return op.le
+
+
+    def filter_wrapper(self, filter_func, descriptor=None, value_of_filter_criterion=None, *filter_args):
+        if self.stealth or not (descriptor and value_of_filter_criterion):
+            filter_func(*filter_args)
+
+        else:
+            key, val = self.generate_message_for_run_info(descriptor, value_of_filter_criterion)
+            self.run.info(key, val)
+            self.progress.new('Filtering based on %s' % (descriptor))
+            entries_before = len(self.data.index)
+            filter_func(*filter_args)
+            entries_after = len(self.data.index)
+            self.progress.end()
+            self.report_change_in_entry_number(entries_before, entries_after, reason=descriptor.lower())
+
+        self.check_if_data_is_empty()
+
+
+    def gen_filter_wrapper_args_for_serial_filtering(self, keyword_name, keyword_value):
+        D = lambda x, y: "{} {}".format(x, y).replace("_", " ").capitalize() if not self.stealth else lambda x, y: None
+        d = {}
+
+        if keyword_name == "minimum":
+            d["filter_function"]           = self.extremum_filter
+            d["descriptor"]                = D("minimum", self.criterion)
+            d["value_of_filter_criterion"] = keyword_value
+            d["filter_args"]               = (keyword_value, "min")
+
+        elif keyword_name == "maximum":
+            d["filter_function"]           = self.extremum_filter
+            d["descriptor"]                = D("maximum", self.criterion)
+            d["value_of_filter_criterion"] = keyword_value
+            d["filter_args"]               = (keyword_value, "max")
+
+        else:
+            d["filter_function"]           = self.values_of_interest_filter
+            d["descriptor"]                = D(self.criterion+"(s)", "of interest")
+            d["value_of_filter_criterion"] = keyword_value
+            d["filter_args"]               = (keyword_value,)
+
+        return d
+
+
+    def general_serial_filtering(self, **kwargs):
+        for kwarg in kwargs:
+            d = self.gen_filter_wrapper_args_for_serial_filtering(kwarg, kwargs[kwarg])
+            self.filter_wrapper( d["filter_function"],
+                                 d["descriptor"],
+                                 d["value_of_filter_criterion"],
+                                *d["filter_args"] )
+
+
+    def get_unique_filter_function(self):
+        return getattr(self, self.unique_filter_function_prefix + self.criterion)
+
+
+    def is_filter_criterion_valid(self):
+        if self.is_filter_criterion_unique():
+            if not self.does_unique_filter_function_exist():
+                raise ConfigError("VariabilityFilter :: The filter criterion `%s` is considered unique\
+                                   because its filtering criteria cannot be easily generalizable. It\
+                                   therefore is supposed to have its own dedicated function, but doesn't." \
+                                       % (self.criterion))
+
+        else:
+            if not self.is_filter_criterion_a_column_in_dataframe():
+                raise ConfigError("VariabilityFilter :: The filter criterion `%s` does not exist as\
+                                   a column in self.data. It should, or, if the filter routine is\
+                                   complex, it should have its own function called `%s%s`" % \
+                                   (self.criterion, self.unique_filter_function_prefix, self.criterion))
+
+
+    def does_unique_filter_function_exist(self):
+        presumed_function_name = self.unique_filter_function_prefix + self.criterion
+        if hasattr(self, presumed_function_name):
+            if callable(getattr(self, presumed_function_name)):
+                self.append_info_log("unique function exists", getattr(self, presumed_function_name))
+                return True
+        else:
+            self.append_info_log("unique function exists", False)
+            return False
+
+
+    def is_filter_criterion_unique(self):
+        self.criterion_is_unique = True if self.criterion in self.unique_filter_criteria else False
+        self.append_info_log("%s in self.unique_filter_criteria" % (self.criterion), self.criterion_is_unique)
+        return self.criterion_is_unique
+
+
+    def is_filter_criterion_a_column_in_dataframe(self):
+        is_column = True if self.criterion in self.data.columns else False
+        self.append_info_log("%s is a column in self.data" % (self.criterion), is_column)
+        return is_column
+
+
+    def append_info_log(self, key, val):
+        self.filter_info_log[key] = val
+
+
+    def report_filter_info_log(self, header="Filter progress log:"):
+        run.info_single(header, nl_before=1, nl_after=0, mc="red")
+        for key, val in self.filter_info_log.items():
+            run.info(key, val)
 
 
     def generate_message_for_run_info(self, descriptor, value):
@@ -190,83 +307,6 @@ class VariabilityFilter:
         except TypeError:
             return descriptor, value
 
-
-    def filter_wrapper(self, filter_func, descriptor=None, *args):
-        if self.stealth or not descriptor:
-            filter_func(*args)
-
-        else:
-            key, val = self.generate_message_for_run_info(descriptor, args[0])
-            self.run.info(key, val)
-            self.progress.new('Filtering based on %s' % (descriptor))
-            entries_before = len(self.data.index)
-            filter_func(*args)
-            entries_after = len(self.data.index)
-            self.progress.end()
-            self.report_change_in_entry_number(entries_before, entries_after, reason=descriptor)
-
-        self.check_if_data_is_empty()
-
-
-    def general_serial_filtering(self, **kwargs):
-        D = lambda x, y: "{} {}".format(x, y).replace("_", " ").capitalize() if not self.stealth else lambda x, y: None
-
-        if "minimum" in kwargs:
-            descriptor = D("minimum", self.criterion)
-            filter_wrapper_args = (kwargs["minimum"], "min")
-            self.filter_wrapper(self.extremum_filter, descriptor, *filter_wrapper_args)
-
-        if "maximum" in kwargs:
-            descriptor = D("maximum", self.criterion)
-            filter_wrapper_args = (kwargs["maximum"], "max")
-            self.filter_wrapper(self.extremum_filter, descriptor, *filter_wrapper_args)
-
-        if "of_interest" in kwargs:
-            descriptor = D(self.criterion+"(s)", "of interest")
-            filter_wrapper_args = (kwargs["of_interest"],)
-            print(filter_wrapper_args)
-            self.filter_wrapper(self.values_of_interest_filter, descriptor, *filter_wrapper_args)
-
-
-    def is_filter_criterion_valid(self):
-        if self.is_filter_criterion_unique():
-            if not self.does_unique_filter_function_exist():
-                raise ConfigError("VariabilityFilter :: The filter criterion `%s` is considered unique\
-                                   because its filtering criteria cannot be easily generalizable. It\
-                                   therefore is supposed to have its own dedicated function named `%s`,\
-                                   however this was not found within the function scope of the class\
-                                   `%s`. It is flagged as a unique filtering criterion because it is\
-                                   an element of self.unique_filter_criteria." % (self.criterion,
-                                                                                  presumed_function_name,
-                                                                                  self.scope_of_function_search))
-        else:
-            if not self.is_filter_criterion_a_column_in_dataframe():
-                raise ConfigError("VariabilityFilter :: The filter criterion `%s` does not exist as\
-                                   a column in self.data. It should, or, if the filter routine is\
-                                   complex, it should have its own function called `%s%s`" % \
-                                   (self.criterion, self.unique_filter_function_prefix, self.criterion))
-
-
-    def get_unique_filter_function(self):
-        return getattr(self.scope_of_function_search, self.unique_filter_function_prefix + self.criterion)
-
-
-    def does_unique_filter_function_exist(self):
-        presumed_function_name = self.unique_filter_function_prefix + self.criterion
-        if hasattr(self.scope_of_function_search, presumed_function_name):
-            if callable(getattr(self.scope_of_function_search, presumed_function_name)):
-                return True
-        else:
-            False
-
-
-    def is_filter_criterion_unique(self):
-        self.criterion_is_unique = True if self.criterion in self.unique_filter_criteria else False
-        return self.criterion_is_unique
-
-
-    def is_filter_criterion_a_column_in_dataframe(self):
-        return True if self.criterion in self.data.columns else False
 
 
 class VariabilitySuper(VariabilityFilter, object):
@@ -840,8 +880,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.run.info('Variability data', '%s entries in %s splits across %s samples'\
                 % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.available_sample_ids))))
 
-        #self.filter_by_samples()
-        self.filter_data('sample_id')
+        self.filter_by_samples()
         self.filter_by_genes()
         self.filter_by_splits()
 
@@ -1055,7 +1094,7 @@ class VariabilitySuper(VariabilityFilter, object):
             structures_remaining = [gene for gene in self.genes_with_structure if gene in genes_remaining]
 
         extra_msg = ", %d with structure" % (len(structures_remaining)) if self.append_structure_residue_info else ""
-        self.run.info('Entries after "%s"' % (reason),
+        self.run.info('Entries after %s filter' % (reason),
                       '%s (%s were %s) [%s genes remaining%s]' % (pp(num_after),
                                                                   pp(abs(num_before - num_after)),
                                                                   changed,
