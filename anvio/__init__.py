@@ -357,6 +357,12 @@ D = {
              'help': "Start the interface with a pre-selected view. To see a list of available views,\
                       use --show-views flag."}
                 ),
+    'category-variable': (
+            ['--category-variable'],
+            {'default': None,
+             'metavar': 'CATEGORY',
+             'help': "The additional layers data variable name that divides layers into multiple categories."}
+                ),
     'table': (
             ['--table'],
             {'metavar': 'TABLE_NAME',
@@ -461,7 +467,7 @@ D = {
             ['-l', '--list-annotation-sources'],
             {'default': False,
              'action': 'store_true',
-             'help': "List available sources for annotation in the contigs database and quit."}
+             'help': "List available functional annotation sources."}
                 ),
     'gene-names': (
             ['--gene-names'],
