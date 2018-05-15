@@ -28,7 +28,7 @@ function lineClickHandler(event) {
     if (event.target.parentNode && event.target.parentNode.id == 'samples_tree')
     {
         var id = event.target.id.match(/\d+/);
-        var node = samples_drawer.tree.nodes[id];
+        var node = samples_id_to_node_map[id[0]];
 
         var _n = new NodeIterator(node);
         var _q = _n.Begin();
@@ -67,21 +67,34 @@ function lineContextMenuHandler(event) {
     if (event.preventDefault) {
         event.preventDefault();
     }
+    if (event.target.parentNode.id == 'samples_tree') {
+        var id = event.target.id.match(/\d+/);
+        var p = samples_id_to_node_map[id[0]];
 
-    let p = getNodeFromEvent(event);
-    let layer_id = event.target.parentNode.id.match(/\d+/);
-
-    if (p.IsLeaf() || IsCtrlPressed(event)) {
         let menu = new ContextMenu({'container': document.body,
                                     'event': event,
                                     'node': p,
-                                    'layer': layer_id});
+                                    'layer': null,
+                                    'isSample': true});
 
         menu.Show();
-    }
-    else
-    {
-        bins.RemoveNode(p);
+    } else {
+        let p = getNodeFromEvent(event);
+        let layer_id = event.target.parentNode.id.match(/\d+/);
+
+        if (p.IsLeaf() || IsCtrlPressed(event)) {
+            let menu = new ContextMenu({'container': document.body,
+                                        'event': event,
+                                        'node': p,
+                                        'layer': layer_id,
+                                        'isSample': false});
+
+            menu.Show();
+        }
+        else
+        {
+            bins.RemoveNode(p);
+        }
     }
 }
 
@@ -167,7 +180,7 @@ function mouseMoveHandler(event) {
     if (event.target.parentNode.id == 'samples_tree')
     {
         var id = event.target.id.match(/\d+/);
-        var node = samples_drawer.tree.nodes[id[0]];
+        var node = samples_id_to_node_map[id[0]];
         var _n = new NodeIterator(node);
         var _q = _n.Begin();
 

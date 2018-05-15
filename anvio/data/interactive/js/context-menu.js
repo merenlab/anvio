@@ -24,6 +24,7 @@ ContextMenu = function(options) {
     this.event = event;
     this.node = options.node;
     this.layer = options.layer;
+    this.isSample = options.isSample;
 
     this.menu_items = {
         'select': {
@@ -78,12 +79,8 @@ ContextMenu = function(options) {
         'collapse': {
             'title': 'Collapse',
             'action': (node, layer, param) => {
-                new_tree = new Tree();
-                new_tree.Parse(clusteringData.trim(), false);
-                new_tree.nodes[this.node.id].collapsed = true;
-                clusteringData = new_tree.Serialize();
                 $('#tree_modified_warning').show();
-                drawTree();
+                drawTree({collapsed_node_id: this.node.id});
             }
         }, 
         'rotate': {
@@ -158,6 +155,39 @@ ContextMenu = function(options) {
                 get_sequence_and_blast(node.label, 'blastx', 'refseq_protein', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
+        'samples_rotate': {
+            'title': 'Rotate',
+            'action': (node, layer, param) => {
+                new_tree = new Tree();
+                new_tree.Parse(samples_order_dict[last_settings['samples-order']]['newick'], false);
+                new_tree.nodes[this.node.id].Rotate();
+                samples_order_dict[last_settings['samples-order']]['newick'] = new_tree.Serialize();
+                $('#samples_order').val(last_settings['samples-order']).trigger('change');
+                drawTree();
+            }
+        },
+        'samples_reroot': {
+            'title': 'Reroot',
+            'action': (node, layer, param) => { 
+                let [left_most, right_most] = this.node.GetBorderNodes();
+
+                $.ajax({
+                    type: 'POST',
+                    cache: false,
+                    url: '/data/reroot_tree',
+                    data: {
+                        'newick': samples_order_dict[last_settings['samples-order']]['newick'],
+                        'left_most': left_most.label,
+                        'right_most': right_most.label  
+                    },
+                    success: function(data) {
+                        samples_order_dict[last_settings['samples-order']]['newick'] = data['newick'];
+                        $('#samples_order').val(last_settings['samples-order']).trigger('change');
+                        drawTree();
+                    }
+                });
+            }
+        }
 
     }
 }
@@ -165,52 +195,60 @@ ContextMenu = function(options) {
 ContextMenu.prototype.BuildMenu = function() {
     var menu = [];
 
-    if (this.node.IsLeaf()) {
-        if (bins.IsNodeMemberOfBin(this.node)) {
-            menu.push('remove');
-        } else {
-            menu.push('select');
-        }
-        menu.push('divider');
-        menu.push('select_layer');
-        menu.push('unselect_layer');
-        menu.push('divider');
-
-        if (mode == 'gene') {
-            menu.push('inspect_context');
-            menu.push('inspect_gene');
-        }
-        else if (mode == 'pan') {
-            menu.push('inspect_geneclusters');
-        }
-        else {
-            menu.push('inspect_split');
-        }
-
-        menu.push('divider');
-        menu.push('get_split_sequence');
-        menu.push('blastn_nr');
-        menu.push('blastx_nr');
-        menu.push('blastn_refseq_genomic');
-        menu.push('blastx_refseq_protein');
+    if (this.isSample) {
+        menu.push('samples_rotate');
+        menu.push('samples_reroot');
     }
     else
     {
-        if (this.node.collapsed) {
-            menu.push('expand');
-        }
-        else {
-            menu.push('select');
-            menu.push('remove');
+        if (this.node.IsLeaf()) {
+            if (bins.IsNodeMemberOfBin(this.node)) {
+                menu.push('remove');
+            } else {
+                menu.push('select');
+            }
+            menu.push('divider');
+            menu.push('select_layer');
+            menu.push('unselect_layer');
+            menu.push('divider');
+
+            if (mode == 'gene') {
+                menu.push('inspect_context');
+                menu.push('inspect_gene');
+            }
+            else if (mode == 'pan') {
+                menu.push('inspect_geneclusters');
+            }
+            else {
+                menu.push('inspect_split');
+            }
 
             menu.push('divider');
-            
-            menu.push('collapse');
-            menu.push('rotate');
-            menu.push('reroot');
+            menu.push('get_split_sequence');
+            menu.push('blastn_nr');
+            menu.push('blastx_nr');
+            menu.push('blastn_refseq_genomic');
+            menu.push('blastx_refseq_protein');
         }
-    }
+        else
+        {
+            if (this.node.collapsed) {
+                menu.push('expand');
+            }
+            else {
+                menu.push('select');
+                menu.push('remove');
 
+                menu.push('divider');
+                
+                menu.push('collapse');
+                menu.push('rotate');
+                menu.push('reroot');
+            }
+        }
+
+    }
+    
     return menu;
 };
 
