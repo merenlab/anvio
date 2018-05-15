@@ -34,6 +34,7 @@ import hashlib
 import mistune
 import argparse
 import textwrap
+import pandas as pd
 
 from collections import Counter
 
@@ -289,7 +290,20 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # this is where we do the enrichment analysis per category:
         print(categories_dict)
-        #print(self.gene_clusters_functions_dict)
+        D = {}
+        for gc in self.gene_clusters_functions_dict:
+            for genome_name in self.gene_clusters_functions_dict[gc]:
+                if genome_name not in D:
+                    D[genome_name] = {}
+                for gene_id in self.gene_clusters_functions_dict[gc][genome_name]:
+                    if functional_annotation_source in self.gene_clusters_functions_dict[gc][genome_name][gene_id]:
+                        annotation_blob = self.gene_clusters_functions_dict[gc][genome_name][gene_id][functional_annotation_source]
+                        accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
+                        for f in annotations:
+                            D[genome_name][f] = True
+
+        DF = pd.DataFrame.from_dict(D, orient='index')
+        print(DF.head())
 
 
     def process(self):
