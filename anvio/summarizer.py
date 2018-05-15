@@ -303,7 +303,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                             D[genome_name][f] = True
 
         DF = pd.DataFrame.from_dict(D, orient='index')
-        print(DF.head())
+        DF['group'] = DF.index.map(lambda x: categories_dict[x][category_variable])
+        print(DF.groupby('group').sum())
 
 
     def process(self):
