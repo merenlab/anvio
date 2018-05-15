@@ -10,6 +10,7 @@ import copy
 import random
 import numpy as np
 import pandas as pd
+import operator as op
 
 from scipy.stats import entropy
 
@@ -43,60 +44,229 @@ run = terminal.Run(width=62)
 
 
 class VariabilityFilter:
-    def __init__(self):
-        self.special_filter_requests = [
-            "occurrence"
-            ]
+    def __init__(self, args={}, p=progress, r=run):
 
-        self.special_filter_function_prefix = "filter_by_"
+        self.unique_filter_function_prefix = "filter_by_"
         self.scope_of_function_search = self.__class__
+        self.stealth = False
 
-    def filter_data(self, request):
-        self.request = request
-        function = self.get_appropriate_filter_function()
+        self.unique_filter_criteria = [
+            "occurrence",
+        ]
 
-    def get_appropriate_filter_function(self):
-        self.request_is_valid = self.is_filter_request_valid()
+    def filter_by_occurrence(self, minimum = None):
+        if self.min_occurrence == 1:
+            return
 
-        if self.request_is_special:
-            return self.get_special_filter_function()
+        if self.min_occurrence > 1:
+            self.run.info('Min occurrence requested', self.min_occurrence)
+
+        self.progress.new('Processing positions further')
+
+        self.progress.update('counting occurrences of each position across samples ...')
+
+        occurrences = self.data["unique_pos_identifier_str"].value_counts()
+        entries_before = len(self.data.index)
+        self.data = self.data[self.data["unique_pos_identifier_str"].isin(occurrences[occurrences >= self.min_occurrence].index)]
+        entries_after = len(self.data.index)
+        self.progress.end()
+        self.report_change_in_entry_number(entries_before, entries_after, reason="min occurrence")
+
+
+
+    def filter_data(self, criterion, **kwargs):
+        self.criterion = criterion
+        function = self.get_filter_function()
+        params = self.get_filter_params(function, **kwargs)
+        print(self.criterion_is_unique)
+        print(params)
+        function(**params)
+
+
+    def get_filter_params(self, function, **kwargs):
+        if kwargs:
+            return kwargs
+        elif self.criterion_is_unique:
+            return {} # cannot be inferred if unique
         else:
-            return lambda x: x # FIXME
+            return self.infer_filter_params_from_criterion(function)
 
-    def is_filter_request_valid(self):
-        if self.is_filter_request_special():
-            self.does_special_filter_function_exist()
+
+    def infer_filter_params_from_criterion(self, function):
+        """This function should never be called because the programmer should always provide explicit
+           filtering parameters to filter_data. But if none are passed because they are not known,
+           this function tries to infer the filtering parameters"""
+        if self.criterion_is_unique:
+            raise ConfigError("VariabilityFilter :: infer_filter_params_from_criterion will not run\
+                               because `%s` is a unique filter criterion with a dedicated function\
+                               `%s`. infer_filter_params_from_criterion can only be run for\
+                               criteria that do not have dedicated methods." % (self.criterion, function))
+
+        candidate_filter_params = {
+            "minimum": ["min_" + self.criterion],
+            "maximum": ["max_" + self.criterion],
+            "of_interest": [self.criterion + "s_of_interest", self.criterion + "_of_interest"],
+        }
+
+        filter_params = {}
+        for param in candidate_filter_params:
+            for n in candidate_filter_params[param]:
+                if hasattr(self.scope_of_function_search, n):
+                    filter_params[param] = getattr(self.scope_of_function_search, n)
+                    break
+
+        if not filter_params:
+            attributes_tried = []
+            for candidates in candidate_filter_params.values():
+                attributes_tried.extend(candidates)
+            raise ConfigError("VariabilityFilter :: Explicit parameters were not passed to\
+                               filter_data, so anvi'o tried its best to find attributes that made\
+                               sense given your filter criterion `%s`. Specifically, anvi'o looked\
+                               for attribute names within the scope of %s matching to any of\
+                               %s, but could not find these attributes." % (self.criterion,
+                                                                            self.scope_of_function_search,
+                                                                            ", ".join(attributes_tried)))
+        return filter_params
+
+
+    def get_filter_function(self):
+        self.is_filter_criterion_valid()
+
+        if self.criterion_is_unique:
+            return self.get_unique_filter_function
         else:
-            self.is_filter_request_a_column_in_dataframe()
+            return self.general_serial_filtering
 
-    def get_special_filter_function(self):
-        return getattr(self.scope_of_function_search, presumed_function_name)
 
-    def does_special_filter_function_exist(self):
-        presumed_function_name = self.special_filter_function_prefix + self.request
+    def get_bound_filter_operator(self, extremum_type, inclusive):
+        if extremum_type == 'min' and inclusive:
+            return op.ge
+        if extremum_type == 'min' and not inclusive:
+            return op.gt
+        if extremum_type == 'max' and inclusive:
+            return op.le
+        if extremum_type == 'max' and not inclusive:
+            return op.le
+
+
+    def get_values_of_interest_as_set(self, values_of_interest):
+        try:
+            return set(values_of_interest)
+        except:
+            try:
+                return set([values_of_interest])
+            except:
+                raise ConfigError("VariabilitySuper :: get_values_of_interest_as_set failed to\
+                                   convert values_of_interest of type `%s` to a set." % (type(values_of_interest)))
+
+
+    def values_of_interest_filter(self, values_of_interest):
+        values_of_interest = self.get_values_of_interest_as_set(values_of_interest)
+        self.data = self.data.loc[self.data[self.criterion].isin(values_of_interest)]
+
+
+    def extremum_filter(self, extremum_value, extremum_type, inclusive = True):
+        """extremum_value: float or int
+               The value you are using as a cut off.
+           extremum_type: str
+               Either 'max' or 'min'.
+           inclusive: bool (default True)
+               If True, values equal to extremum_value will not be removed"""
+        extremum_value = float(extremum_value)
+        op = self.get_bound_filter_operator()
+        self.data = self.data[op(self.data[self.criterion], extremum_value)]
+
+
+    def generate_message_for_run_info(self, descriptor, value):
+        if isinstance(value, str):
+            return descriptor, value
+        try:
+            if not len(value):
+                return descriptor, "None"
+            elif len(value) < 100:
+                return descriptor, ", ".join([str(x) for x in value])
+            else:
+                return "Number of {}".format(descriptor), len(value)
+        except TypeError:
+            return descriptor, value
+
+
+    def filter_wrapper(self, filter_func, descriptor=None, *args):
+        if self.stealth or not descriptor:
+            filter_func(*args)
+
+        else:
+            key, val = self.generate_message_for_run_info(descriptor, args[0])
+            self.run.info(key, val)
+            self.progress.new('Filtering based on %s' % (descriptor))
+            entries_before = len(self.data.index)
+            filter_func(*args)
+            entries_after = len(self.data.index)
+            self.progress.end()
+            self.report_change_in_entry_number(entries_before, entries_after, reason=descriptor)
+
+        self.check_if_data_is_empty()
+
+
+    def general_serial_filtering(self, **kwargs):
+        D = lambda x, y: "{} {}".format(x, y).replace("_", " ").capitalize() if not self.stealth else lambda x, y: None
+
+        if "minimum" in kwargs:
+            descriptor = D("minimum", self.criterion)
+            filter_wrapper_args = (kwargs["minimum"], "min")
+            self.filter_wrapper(self.extremum_filter, descriptor, *filter_wrapper_args)
+
+        if "maximum" in kwargs:
+            descriptor = D("maximum", self.criterion)
+            filter_wrapper_args = (kwargs["maximum"], "max")
+            self.filter_wrapper(self.extremum_filter, descriptor, *filter_wrapper_args)
+
+        if "of_interest" in kwargs:
+            descriptor = D(self.criterion+"(s)", "of interest")
+            filter_wrapper_args = (kwargs["of_interest"],)
+            print(filter_wrapper_args)
+            self.filter_wrapper(self.values_of_interest_filter, descriptor, *filter_wrapper_args)
+
+
+    def is_filter_criterion_valid(self):
+        if self.is_filter_criterion_unique():
+            if not self.does_unique_filter_function_exist():
+                raise ConfigError("VariabilityFilter :: The filter criterion `%s` is considered unique\
+                                   because its filtering criteria cannot be easily generalizable. It\
+                                   therefore is supposed to have its own dedicated function named `%s`,\
+                                   however this was not found within the function scope of the class\
+                                   `%s`. It is flagged as a unique filtering criterion because it is\
+                                   an element of self.unique_filter_criteria." % (self.criterion,
+                                                                                  presumed_function_name,
+                                                                                  self.scope_of_function_search))
+        else:
+            if not self.is_filter_criterion_a_column_in_dataframe():
+                raise ConfigError("VariabilityFilter :: The filter criterion `%s` does not exist as\
+                                   a column in self.data. It should, or, if the filter routine is\
+                                   complex, it should have its own function called `%s%s`" % \
+                                   (self.criterion, self.unique_filter_function_prefix, self.criterion))
+
+
+    def get_unique_filter_function(self):
+        return getattr(self.scope_of_function_search, self.unique_filter_function_prefix + self.criterion)
+
+
+    def does_unique_filter_function_exist(self):
+        presumed_function_name = self.unique_filter_function_prefix + self.criterion
         if hasattr(self.scope_of_function_search, presumed_function_name):
             if callable(getattr(self.scope_of_function_search, presumed_function_name)):
-                pass
+                return True
         else:
-            raise ConfigError("VariabilityFilter :: The filter request `%s` is considered unique\
-                               because its filtering criteria cannot be easily generalizable. It\
-                               therefore is supposed to have its own dedicated function named `%s`,\
-                               however this was not found within the function scope of the class\
-                               `%s`" % (self.request,
-                                        presumed_function_name,
-                                        self.scope_of_function_search))
+            False
 
-    def is_filter_request_special(self):
-        self.request_is_special = True if self.request in self.special_filter_requests else False
-        return self.request_is_special
 
-    def is_filter_request_a_column_in_dataframe(self):
-        if self.request not in self.data.columns:
-            raise ConfigError("VariabilityFilter :: The filter request `%s` does not exist as a column\
-                               in self.data. It should, or, if the filtering criteria are complex, it\
-                               should have its own function called `%s%s`" % (self.request,
-                                                                              self.special_filter_function_prefix,
-                                                                              self.request))
+    def is_filter_criterion_unique(self):
+        self.criterion_is_unique = True if self.criterion in self.unique_filter_criteria else False
+        return self.criterion_is_unique
+
+
+    def is_filter_criterion_a_column_in_dataframe(self):
+        return True if self.criterion in self.data.columns else False
 
 
 class VariabilitySuper(VariabilityFilter, object):
@@ -124,8 +294,8 @@ class VariabilitySuper(VariabilityFilter, object):
         self.genes_of_interest = A('genes_of_interest_set', set)
         self.genes_of_interest_path = A('genes_of_interest', null)
         # samples
-        self.samples_of_interest = A('samples_of_interest_set', set)
-        self.samples_of_interest_path = A('samples_of_interest', null)
+        self.sample_ids_of_interest = A('sample_ids_of_interest_set', set)
+        self.sample_ids_of_interest_path = A('sample_ids_of_interest', null)
         # filtering
         self.min_scatter = A('min_scatter', int) or 0
         self.min_occurrence = A('min_occurrence', int) or 1
@@ -157,8 +327,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.comprehensive_stats_headers = []
         self.comprehensive_variability_scores_computed = False
 
-        # VariabilityFilter.__init__(self) # NOTE for testing
-        # self.filter_data("min_occurrence")
+        VariabilityFilter.__init__(self, self.args, r=self.run, p=self.progress)
 
         # f = function called in self.process, c = condition upon which function is called
         F = lambda f, c = True: (f, c)
@@ -225,7 +394,7 @@ class VariabilitySuper(VariabilityFilter, object):
                                complaining. If you skip sanity_check, self.genes_of_interest_path\
                                and self.gene_caller_ids will be ignored.")
 
-        if self.samples_of_interest and self.samples_of_interest_path:
+        if self.sample_ids_of_interest and self.sample_ids_of_interest_path:
             raise ConfigError("VariabilitySuper: you initialized me with self.sampes_of_interest\
                                because you're a programmer and you know what you're doing.  But you\
                                also initialized me with self.sampes_of_interest_path. Because you\
@@ -242,24 +411,24 @@ class VariabilitySuper(VariabilityFilter, object):
                                self.collection_name will all be ignored.")
 
 
-    def get_samples_of_interest(self, samples_of_interest_path=""):
-        """It is essential to note that samples_of_interest_path is "" by default, not None. The
+    def get_sample_ids_of_interest(self, sample_ids_of_interest_path=""):
+        """It is essential to note that sample_ids_of_interest_path is "" by default, not None. The
            programmer can pass None to avoid the argument defaulting to a class-wide attribute
            (first code block of this method), which may not exist for classes inheriting this
            method.
         """
         # use class-wide attribute if no parameters is passed
-        if samples_of_interest_path is "":
-            samples_of_interest_path = self.samples_of_interest_path
+        if sample_ids_of_interest_path is "":
+            sample_ids_of_interest_path = self.sample_ids_of_interest_path
 
-        if samples_of_interest_path:
-            filesnpaths.is_file_tab_delimited(samples_of_interest_path, expected_number_of_fields=1)
-            samples_of_interest = set([s.strip() for s in open(samples_of_interest_path).readlines()])
+        if sample_ids_of_interest_path:
+            filesnpaths.is_file_tab_delimited(sample_ids_of_interest_path, expected_number_of_fields=1)
+            sample_ids_of_interest = set([s.strip() for s in open(sample_ids_of_interest_path).readlines()])
 
         else:
-            samples_of_interest = set([])
+            sample_ids_of_interest = set([])
 
-        return samples_of_interest
+        return sample_ids_of_interest
 
 
     def get_genes_of_interest(self, genes_of_interest_path="", gene_caller_ids=""):
@@ -372,11 +541,11 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.output_file_path:
             filesnpaths.is_output_file_writable(self.output_file_path)
 
-        if not self.samples_of_interest:
+        if not self.sample_ids_of_interest:
             self.progress.update('Setting up samples of interest ...')
-            # self.samples_of_interest can be injected into this class programatically; this
+            # self.sample_ids_of_interest can be injected into this class programatically; this
             # conditional method call prevents overwriting
-            self.samples_of_interest = self.get_samples_of_interest()
+            self.sample_ids_of_interest = self.get_sample_ids_of_interest()
 
         if not self.genes_of_interest:
             self.progress.update('Setting up genes of interest ...');
@@ -607,19 +776,19 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def filter_by_samples(self):
         self.run.info('Samples available', ', '.join(sorted(self.available_sample_ids)))
-        if self.samples_of_interest:
-            samples_missing = [sample for sample in self.samples_of_interest if sample not in self.available_sample_ids]
+        if self.sample_ids_of_interest:
+            samples_missing = [sample_id for sample_id in self.sample_ids_of_interest if sample_id not in self.available_sample_ids]
 
             if len(samples_missing):
                 raise ConfigError('One or more samples you are interested in seem to be missing from\
                                    the %s: %s' % ('variability table' if self.table_provided else 'profile database',
                                                   ', '.join(samples_missing)))
 
-            self.run.info('Samples of interest', ', '.join(sorted(list(self.samples_of_interest))))
-            self.available_sample_ids = sorted(list(self.samples_of_interest))
+            self.run.info('Samples of interest', ', '.join(sorted(list(self.sample_ids_of_interest))))
+            self.available_sample_ids = sorted(list(self.sample_ids_of_interest))
             self.progress.new('Filtering based on samples of interest')
             entries_before = len(self.data.index)
-            self.data = self.data.loc[self.data["sample_id"].isin(self.samples_of_interest)]
+            self.data = self.data.loc[self.data["sample_id"].isin(self.sample_ids_of_interest)]
             entries_after = len(self.data.index)
             self.progress.end()
             self.report_change_in_entry_number(entries_before, entries_after, reason="samples of interest")
@@ -667,30 +836,12 @@ class VariabilitySuper(VariabilityFilter, object):
             self.report_change_in_entry_number(entries_before, entries_after, reason="max departure from reference")
 
 
-    def filter_by_occurrence(self):
-        if self.min_occurrence == 1:
-            return
-
-        if self.min_occurrence > 1:
-            self.run.info('Min occurrence requested', self.min_occurrence)
-
-        self.progress.new('Processing positions further')
-
-        self.progress.update('counting occurrences of each position across samples ...')
-
-        occurrences = self.data["unique_pos_identifier_str"].value_counts()
-        entries_before = len(self.data.index)
-        self.data = self.data[self.data["unique_pos_identifier_str"].isin(occurrences[occurrences >= self.min_occurrence].index)]
-        entries_after = len(self.data.index)
-        self.progress.end()
-        self.report_change_in_entry_number(entries_before, entries_after, reason="min occurrence")
-
-
     def apply_preliminary_filters(self):
         self.run.info('Variability data', '%s entries in %s splits across %s samples'\
                 % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.available_sample_ids))))
 
-        self.filter_by_samples()
+        #self.filter_by_samples()
+        self.filter_data('sample_id')
         self.filter_by_genes()
         self.filter_by_splits()
 
@@ -917,7 +1068,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def filter_by_minimum_coverage_in_each_sample(self):
         """To remove any unique entry from the variable positions table that describes a variable position
-           and yet is not helpful to distinguish samples from eachother."""
+           and yet is not helpful to distinguish samples from each other."""
 
         if self.min_coverage_in_each_sample < 1:
             return
@@ -1394,7 +1545,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
            variation at nucleotide positions reported in the table"""
         self.progress.new('Recovering NT data')
 
-        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.available_sample_ids
+        samples_wanted = self.sample_ids_of_interest if self.sample_ids_of_interest else self.available_sample_ids
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
         next_available_entry_id = self.data["entry_id"].max() + 1
 
@@ -1446,7 +1597,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
                 in_partial_gene_call, in_complete_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
 
-                for sample in splits_to_consider_dict[split][pos]:
+                for sample_id in splits_to_consider_dict[split][pos]:
                     new_entries[next_available_entry_id] = {'entry_id': next_available_entry_id,
                                                             'contig_name': contig_name_name,
                                                             'departure_from_reference': 0,
@@ -1457,8 +1608,8 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                             'in_partial_gene_call': in_partial_gene_call,
                                                             'in_complete_gene_call': in_complete_gene_call,
                                                             'base_pos_in_codon': base_pos_in_codon,
-                                                            'coverage': split_coverage_across_samples[sample][pos],
-                                                            'sample_id': sample,
+                                                            'coverage': split_coverage_across_samples[sample_id][pos],
+                                                            'sample_id': sample_id,
                                                             'cov_outlier_in_split': 0,
                                                             'cov_outlier_in_contig': 0,
                                                             'competing_nts': base_at_pos + base_at_pos,
@@ -1468,7 +1619,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                             'gene_length': gene_length,
                                                             'codon_order_in_gene': codon_order_in_gene,
                                                             'split_name': split}
-                    new_entries[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample][pos]
+                    new_entries[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample_id][pos]
                     next_available_entry_id += 1
 
         # convert to pandas DataFrame (its much faster to build and convert a dictionary than to build DataFrame row by row)
@@ -1498,7 +1649,7 @@ class QuinceModeWrapperForFancyEngines(object):
     def recover_base_frequencies_for_all_samples(self):
         self.progress.new('[%s] Recovering item variability data' % self.engine)
 
-        samples_wanted = self.samples_of_interest if self.samples_of_interest else self.available_sample_ids
+        samples_wanted = self.sample_ids_of_interest if self.sample_ids_of_interest else self.available_sample_ids
         splits_wanted = self.splits_of_interest if self.splits_of_interest else set(self.splits_basic_info.keys())
         next_available_entry_id = self.data["entry_id"].max() + 1
 
