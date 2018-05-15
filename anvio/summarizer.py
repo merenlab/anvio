@@ -143,7 +143,8 @@ class SummarizerSuperClass(object):
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
         self.delete_output_directory_if_exists = True if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
 
-        self.sanity_check()
+        if not self.lazy_init:
+            self.sanity_check()
 
         if self.output_directory:
             self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
@@ -199,11 +200,12 @@ class SummarizerSuperClass(object):
 
 class PanSummarizer(PanSuperclass, SummarizerSuperClass):
     """Creates a dictionary of summary for anvi'o pan profiles"""
-    def __init__(self, args=None, r=run, p=progress):
+    def __init__(self, args=None, lazy_init=False, r=run, p=progress):
         self.summary_type = 'pan'
         self.debug = False
         self.quick = False
         self.pan_db_path = None
+        self.lazy_init = lazy_init
         self.output_directory = None
         self.genomes_storage_path = None
 
@@ -228,6 +230,60 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # see if COG functions or categories are available
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
+
+
+    def functional_enrichment_stats(self):
+        """Help to be filled"""
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        category_variable = A('category_variable')
+        functional_annotation_source = A('annotation_source')
+        list_functional_annotation_sources = A('list_annotation_sources')
+        
+
+        if not self.functions_initialized:
+            raise ConfigError("For some reason funtions are not initialized for this pan class instance. We\
+                               can't summarize functional enrichment stats without that :/")
+
+        if not len(self.gene_clusters_functions_dict):
+            raise ConfigError("The gene clusters functions dict seems to be empty. We assume this error makes\
+                               zero sense to you, and it probably will not help you to know that it also makes\
+                               zero sense to anvi'o too :/ Maybe you forgot to provide a genomes storage?")
+
+        if not category_variable:
+            raise ConfigError("For this to work, you must provide a category variable .. and it better be in\
+                               the misc additional layer data table, too. If you don't have any idea what is\
+                               available, try `anvi-show-misc-data`.")
+
+        if list_functional_annotation_sources:
+            self.run.info('Available functional annotation sources', ', '.join(self.gene_clusters_function_sources))
+            sys.exit()
+
+        if not functional_annotation_source:
+            raise ConfigError("You haven't provided a functional annotation source to make sense of functional\
+                               enrichment stats as defined by the categorical variable %s. These are the functions\
+                               that are available, so pick one: %s." % (category_variable, ', '.join(self.gene_clusters_function_sources)))
+
+        if functional_annotation_source not in self.gene_clusters_function_sources:
+            raise ConfigError("Your favorite functional annotation source '%s' does not seem to be among one of the sources\
+                               that are available to you. Here are the ones you should choose from: %s." % (functional_annotation_source, ', '.join(self.gene_clusters_function_sources)))
+
+        
+
+        
+        keys, categories_dict = TableForLayerAdditionalData(argparse.Namespace(pan_db=self.pan_db_path)).get(additional_data_keys_requested=[category_variable])
+
+        type_category_variable = type(list(categories_dict.values())[0][category_variable])
+        if type_category_variable != str:
+            raise ConfigError("The variable '%s' does not seem to resemble anything that could be a category.\
+                               Anvi'o expects these variables to be of type string, yet yours is type %s :/\
+                               Do you think this is a mistake on our part? Let us know." % \
+                                                                    (category_variable, type_category_variable))
+
+
+        # this is where we do the enrichment analysis per category:
+        print(categories_dict)
+        #print(self.gene_clusters_functions_dict)
 
 
     def process(self):
