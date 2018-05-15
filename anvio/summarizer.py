@@ -273,7 +273,13 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         
         keys, categories_dict = TableForLayerAdditionalData(argparse.Namespace(pan_db=self.pan_db_path)).get(additional_data_keys_requested=[category_variable])
 
-        type_category_variable = type(list(categories_dict.values())[0][category_variable])
+        values_that_are_not_none = [s for s in categories_dict.values() if s[category_variable] is not None]
+        if not values_that_are_not_none:
+            raise ConfigError("The variable '%s' contains only values of type None,\
+                               this is probably a mistake, surely you didn't mean to provide an empty category.\
+                               Do you think this is a mistake on our part? Let us know." % \
+                                                                    category_variable)
+        type_category_variable = type(values_that_are_not_none[0][category_variable])
         if type_category_variable != str:
             raise ConfigError("The variable '%s' does not seem to resemble anything that could be a category.\
                                Anvi'o expects these variables to be of type string, yet yours is type %s :/\
