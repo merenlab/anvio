@@ -45,10 +45,17 @@ run = terminal.Run(width=62)
 
 class VariabilityFilter:
     def __init__(self, args={}, p=progress, r=run):
+        self.stealth_filtering = False
 
+        self.known_kwargs = [
+            "min_filter", "min_condition",
+            "max_filter", "max_condition",
+            "subset_filter", "subset_condition",
+            "condition"
+        ]
+
+        # filters so complex they do not fit into filtering categories; handled ad hoc
         self.unique_filter_function_prefix = "filter_by_"
-        self.stealth = False
-
         self.unique_filter_criteria = [
             "occurrence",
         ]
@@ -73,15 +80,41 @@ class VariabilityFilter:
         self.report_change_in_entry_number(entries_before, entries_after, reason="min occurrence")
 
 
+    def are_passed_arguments_valid(self, kwargs):
+        self.is_filter_criterion_valid()
+        for kwarg in kwargs:
+            self.append_info_log("filter argument: `%s`" % (kwarg), kwargs[kwarg])
+
+            if kwarg in self.known_kwargs:
+                if kwarg.endswith("_condition") and kwarg.replace("_condition","_filter") not in kwargs:
+                    raise ConfigError("VariabilityFilter :: The argument `%s` takes a True/False value\
+                                       specifying whether or not the data will be filtered by the\
+                                       argument `%s`, which must also be passed." \
+                                           % (kwarg, kwarg.replace("_condition","_filter")))
+
+            else:
+                if self.criterion_is_unique:
+                    pass # we do not know arguments of dedicated function for criterion
+                else:
+                    raise ConfigError("VariabilityFilter :: Argument `%s` was passed to filter_data,\
+                                       but is unknown. Unknown arguments are only allowed if\
+                                       criterion belongs to self.unique_filter_criteria, in which\
+                                       case it will call a one-off function. Here are all known\
+                                       arguments: [%s]" % (kwarg, ", ".join(self.known_kwargs)))
+
+
     def filter_data(self, criterion, **kwargs):
+        """ FIXME """
         self.filter_info_log = {}
         self.criterion = criterion
         self.append_info_log("criterion", self.criterion)
 
         try:
+            self.are_passed_arguments_valid(kwargs)
             filter_routine = self.get_filter_function()
             params = self.get_filter_params(filter_routine, **kwargs)
-            filter_routine(**params)
+            if params:
+                filter_routine(**params)
 
         except ConfigError as e:
             header = "Filtering failed. Here is the log:"
@@ -89,16 +122,39 @@ class VariabilityFilter:
             print(e)
 
 
+    def remove_condition_params(self, params):
+        params_to_remove = [x for x in params.keys() if x.endswith("_condition")]
+        return {k: v for k, v in params.items() if k not in params_to_remove}
+
+
     def get_filter_params(self, function, **kwargs):
-        if kwargs:
-            self.append_info_log("filter params passed", True)
+        if self.criterion_is_unique:
+            self.append_info_log("final filter params", kwargs)
             return kwargs
 
-        self.append_info_log("filter params passed", False)
-        if self.criterion_is_unique:
-            return {} # cannot be inferred if unique
         else:
-            return self.infer_filter_params_from_criterion(function)
+            filter_and_condition_params = kwargs
+            if filter_and_condition_params:
+                filter_and_condition_params = self.remove_filter_params_if_condition_params_are_not_true(filter_and_condition_params)
+                filter_params = self.remove_condition_params(filter_and_condition_params)
+            else:
+                filter_params = self.infer_filter_params_from_criterion(function)
+
+            self.append_info_log("final filter params", filter_params)
+            return filter_params
+
+
+    def remove_filter_params_if_condition_params_are_not_true(self, params):
+        filter_condition_keys = [x for x in params.keys() if x.endswith("_condition")]
+
+        params_to_remove = []
+        for filter_condition in filter_condition_keys:
+            if not params[filter_condition]:
+                filt = filter_condition.replace("_condition", "_filter")
+                params_to_remove.append(filt)
+                self.append_info_log("`%s` was not true. no filter for" % (filter_condition), filt)
+
+        return {k: v for k, v in params.items() if k not in params_to_remove}
 
 
     def infer_filter_params_from_criterion(self, function):
@@ -114,9 +170,9 @@ class VariabilityFilter:
                                criteria that do not have dedicated methods." % (self.criterion, function))
 
         candidate_args = {
-            "minimum": ["min_" + self.criterion], # e.g. ["min_departure_from_consensus"]
-            "maximum": ["max_" + self.criterion],
-            "of_interest": [self.criterion + "s_of_interest", self.criterion + "_of_interest"],
+            "min_filter": ["min_" + self.criterion], # e.g. ["min_departure_from_consensus"]
+            "max_filter": ["max_" + self.criterion],
+            "subset_filter": [self.criterion + "s_of_interest", self.criterion + "_of_interest"],
         }
 
         candidate_attribute_names = [x for y in candidate_args for x in candidate_args[y]]
@@ -151,20 +207,19 @@ class VariabilityFilter:
         return function
 
 
-    def values_of_interest_filter(self, values_of_interest):
-        values_of_interest = self.get_values_of_interest_as_set(values_of_interest)
-        self.data = self.data.loc[self.data[self.criterion].isin(values_of_interest)]
+    def subset_filter(self, subset_values):
+        subset_values = self.get_subset_values_as_set(subset_values)
+        self.data = self.data.loc[self.data[self.criterion].isin(subset_values)]
 
 
-    def get_values_of_interest_as_set(self, values_of_interest):
+    def get_subset_values_as_set(self, subset_values):
         try:
-            return set(values_of_interest)
+            return set(subset_values)
         except:
             try:
-                return set([values_of_interest])
+                return set([subset_values])
             except:
-                raise ConfigError("VariabilitySuper :: get_values_of_interest_as_set failed to\
-                                   convert values_of_interest of type `%s` to a set." % (type(values_of_interest)))
+                raise TypeError
 
 
     def extremum_filter(self, extremum_value, extremum_type, inclusive = True):
@@ -191,7 +246,7 @@ class VariabilityFilter:
 
 
     def filter_wrapper(self, filter_func, descriptor=None, value_of_filter_criterion=None, *filter_args):
-        if self.stealth or not (descriptor and value_of_filter_criterion):
+        if self.stealth_filtering or not (descriptor and value_of_filter_criterion):
             filter_func(*filter_args)
 
         else:
@@ -208,26 +263,29 @@ class VariabilityFilter:
 
 
     def gen_filter_wrapper_args_for_serial_filtering(self, keyword_name, keyword_value):
-        D = lambda x, y: "{} {}".format(x, y).replace("_", " ").capitalize() if not self.stealth else lambda x, y: None
+        D = lambda x, y: "{} {}".format(x, y).replace("_", " ").capitalize() if not self.stealth_filtering else lambda x, y: None
         d = {}
 
-        if keyword_name == "minimum":
+        if keyword_name == "min_filter":
             d["filter_function"]           = self.extremum_filter
             d["descriptor"]                = D("minimum", self.criterion)
             d["value_of_filter_criterion"] = keyword_value
             d["filter_args"]               = (keyword_value, "min")
 
-        elif keyword_name == "maximum":
+        elif keyword_name == "max_filter":
             d["filter_function"]           = self.extremum_filter
             d["descriptor"]                = D("maximum", self.criterion)
             d["value_of_filter_criterion"] = keyword_value
             d["filter_args"]               = (keyword_value, "max")
 
-        else:
-            d["filter_function"]           = self.values_of_interest_filter
+        elif keyword_name == "subset_filter":
+            d["filter_function"]           = self.subset_filter
             d["descriptor"]                = D(self.criterion+"(s)", "of interest")
             d["value_of_filter_criterion"] = keyword_value
             d["filter_args"]               = (keyword_value,)
+
+        else:
+            raise ConfigError("")
 
         return d
 
@@ -815,7 +873,6 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def filter_by_samples(self):
-        self.run.info('Samples available', ', '.join(sorted(self.available_sample_ids)))
         if self.sample_ids_of_interest:
             samples_missing = [sample_id for sample_id in self.sample_ids_of_interest if sample_id not in self.available_sample_ids]
 
@@ -879,16 +936,31 @@ class VariabilitySuper(VariabilityFilter, object):
     def apply_preliminary_filters(self):
         self.run.info('Variability data', '%s entries in %s splits across %s samples'\
                 % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.available_sample_ids))))
+        self.run.info("Samples available", ", ".join(sorted(self.available_sample_ids)))
 
-        self.filter_by_samples()
-        self.filter_by_genes()
-        self.filter_by_splits()
+        self.filter_data(criterion = "sample_id",
+                         subset_filter = self.sample_ids_of_interest,
+                         subset_condition = self.sample_ids_of_interest)
+
+        self.filter_data(criterion = "corresponding_gene_call",
+                         subset_filter = self.genes_of_interest,
+                         subset_condition = self.genes_of_interest)
+
+        self.filter_data(criterion = "split_name",
+                         subset_filter = self.splits_of_interest,
+                         subset_condition = self.splits_of_interest)
 
         # let's report the number of positions reported in each sample before filtering any further:
         num_positions_each_sample = dict(self.data.sample_id.value_counts())
         self.run.info('Total number of variable positions in samples', '; '.join(['%s: %s' % (s, num_positions_each_sample.get(s, 0)) for s in sorted(self.available_sample_ids)]))
 
-        self.filter_by_departure_from_reference()
+        self.filter_data(criterion = "departure_from_reference",
+                         min_filter = self.min_departure_from_reference,
+                         min_condition = self.min_departure_from_reference > 0,
+                         max_filter = self.max_departure_from_reference,
+                         max_condition = self.max_departure_from_reference < 1)
+
+
 
         if self.engine == 'NT':
             self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
@@ -1087,7 +1159,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def report_change_in_entry_number(self, num_before, num_after, reason="unknown reason"):
         """Reports how many entries were removed (or added) during a filtering step."""
-        changed = "removed" if num_after < num_before else "added"
+        changed = "removed" if num_after <= num_before else "added"
 
         genes_remaining = self.data["corresponding_gene_call"].unique()
         if self.append_structure_residue_info:
