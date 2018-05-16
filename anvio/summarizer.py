@@ -320,21 +320,22 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # unique names of categories
         categories = set([categories_dict[g][category_variable] for g in categories_dict.keys() if\
                             categories_dict[g][category_variable] is not None])
+
         categories_to_genomes_dict = {}
         for c in categories:
             categories_to_genomes_dict[c] = set([genome for genome in categories_dict.keys() if categories_dict[genome][category_variable] == c])
         number_of_genomes = len(categories_dict.keys())
 
-        functions_comparrison_dict = {}
+        functions_comparison_dict = {}
         for c in categories:
-            functions_comparrison_dict[c] = {}
+            functions_comparison_dict[c] = {}
             group_size = len(categories_to_genomes_dict[c])
             group_portion = group_size / number_of_genomes
             # see details below
             weighting_normalization_factor = number_of_genomes * (group_portion * math.log2(group_portion)\
                                                 + (1 - group_portion) * math.log2(1 - group_portion))
             for f in functions_names:
-                functions_comparrison_dict[c][f] = {}
+                functions_comparison_dict[c][f] = {}
                 occurence_in_group = functions_in_categories.loc[c, f] / group_size
                 occurence_outside_of_group = (total_occurence_of_functions[f] - functions_in_categories.loc[c, f])\
                                                 / (number_of_genomes - group_size)
@@ -348,10 +349,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 # genomes represent both compared groups, and that's where the entropy comes in.
                 weighted_enrichment = enrichment * weighting_normalization_factor
 
-                functions_comparrison_dict[c][f]["enrichment"] = enrichment
-                functions_comparrison_dict[c][f]["weighted_enrichment"] = weighted_enrichment
-        print(functions_comparrison_dict)
-
+                functions_comparison_dict[c][f]["enrichment"] = enrichment
+                functions_comparison_dict[c][f]["weighted_enrichment"] = weighted_enrichment
 
 
     def process(self):
