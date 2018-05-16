@@ -335,6 +335,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         number_of_genomes = len(categories_dict.keys())
 
         enrichment_dict = {}
+        # we will count the number of records in the output
+        # because it will help us make a pandas dataframe later.
+        # (we could just make the dataframe grow inside the loop, but that's slow (at least, I think so))
+        number_of_records_in_output = 0
         for c in categories:
             self.progress.update("Working on category '%s'" % c)
             group_size = len(categories_to_genomes_dict[c])
@@ -367,17 +371,32 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
                     enrichment_dict[c][f]["enrichment"] = enrichment
                     enrichment_dict[c][f]["weighted_enrichment"] = weighted_enrichment
+                    number_of_records_in_output += 1
 
         if output_file_path:
             self.progress.update('Generating the output file')
-            with open(output_file_path, 'w') as output:
-                output.write('category\tenrichment\tweighted_enrichment\t%s\n' % functional_annotation_source)
-                for c in enrichment_dict:
-                    for f in enrichment_dict[c]:
-                        output.write('%s\t%.2f\t%.2f\t%s\n' % (c,
-                                                               enrichment_dict[c][f]["enrichment"],
-                                                               enrichment_dict[c][f]["weighted_enrichment"],
-                                                               f))
+            # convert dictionary to pandas
+            # we can't use pandas from_dict because it is meant for dict of dicts (i.e. tow levels)
+            # and we have a dict of dicts of dicts (three levels).
+            columns = ['category', 'enrichment', 'weighted_enrichment', functional_annotation_source, 'gene_clusters']
+            dtypes = ['str', 'float64', 'float64', 'str', 'str']
+            # we need to determine columns type otherwise float_format wouldn't work when doing to_csv
+            type_dict = dict(zip(columns, dtypes))
+            enrichment_data_frame = pd.DataFrame(None, index=range(number_of_records_in_output), columns = columns).astype(type_dict)
+            print(enrichment_data_frame)
+            i = 0
+            for c in enrichment_dict:
+                for f in enrichment_dict[c]:
+                    enrichment_data_frame.loc[i, 'category'] = c
+                    enrichment_data_frame.loc[i, functional_annotation_source] = f
+                    for key, value in enrichment_dict[c][f].items():
+                        enrichment_data_frame.loc[i, key] = value
+                    i += 1
+
+            # sort according to enrichment
+            enrichment_data_frame.sort_values(by='enrichment', axis=0, ascending=False, inplace=True)
+
+            enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.2f')
 
         self.progress.end()
 
