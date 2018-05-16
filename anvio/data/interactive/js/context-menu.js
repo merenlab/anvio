@@ -76,11 +76,58 @@ ContextMenu = function(options) {
                 this.menu_items['inspect']['action'](node, layer, 'context');
             }
         },
+        'inspect_gene': {
+            'title': 'Inspect gene',
+            'action': (node, layer, param) => {
+                this.menu_items['inspect']['action'](node, layer, 'gene');
+            }
+        },
+        'get_hmm_sequence': {
+            'title': 'Inspect gene',
+            'action': (node, layer, param) => {
+                $.ajax({
+                    type: 'GET',
+                    cache: false,
+                    url: '/data/hmm/' + node.label + '/' + param,
+                    success: function(data) {
+                        if ('error' in data){
+                            $('#modGenerateSummary').modal('hide');
+                            waitingDialog.hide();
+                            toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                        } else {
+                            $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
+                            $('#modSplitSequence').modal('show');
+                        }
+                    }
+                });
+            }
+        },
+        'get_gene_sequence': {
+            'title': 'Get gene sequence',
+            'action': (node, layer, param) => {
+                $.ajax({
+                    type: 'GET',
+                    cache: false,
+                    url: '/data/gene/' + node.label,
+                    success: function(data) {
+                        $('#modSplitSequence .modal-title').html('Gene Sequence');
+                        $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
+                        $('#modSplitSequence').modal('show');
+                    }
+                });
+            }
+        },
         'collapse': {
             'title': 'Collapse',
             'action': (node, layer, param) => {
                 $('#tree_modified_warning').show();
                 drawTree({collapsed_node_id: this.node.id});
+            }
+        },
+        'collapse': {
+            'title': 'Expand',
+            'action': (node, layer, param) => {
+                // TO DO
             }
         }, 
         'rotate': {
@@ -187,6 +234,25 @@ ContextMenu = function(options) {
                     }
                 });
             }
+        },
+        'get_AA_sequences_for_gene_cluster': {
+            'title': 'Get AA sequences',
+            'action': (node, layer, param) => {
+                $.ajax({
+                    type: 'GET',
+                    cache: false,
+                    url: '/data/get_AA_sequences_for_gene_cluster/' + node.label,
+                    success: function(data) {
+                        var output = '';
+
+                        for (var key in data)
+                            output = output + ">" + key + "\n" + data[key] + "\n";
+
+                        $('#splitSequence').val(output);
+                        $('#modSplitSequence').modal('show');
+                    }
+                });
+            }
         }
 
     }
@@ -224,7 +290,12 @@ ContextMenu.prototype.BuildMenu = function() {
             }
 
             menu.push('divider');
-            menu.push('get_split_sequence');
+            if (mode == 'pan') {
+                menu.push('get_AA_sequences_for_gene_cluster');
+            }
+            else {
+                menu.push('get_split_sequence');
+            }
             menu.push('blastn_nr');
             menu.push('blastx_nr');
             menu.push('blastn_refseq_genomic');
