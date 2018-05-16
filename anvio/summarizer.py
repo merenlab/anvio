@@ -238,10 +238,13 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         """Help to be filled"""
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        output_file_path = A('output_file')
         category_variable = A('category_variable')
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
-        
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
 
         if not self.functions_initialized:
             raise ConfigError("For some reason funtions are not initialized for this pan class instance. We\
@@ -285,8 +288,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                                Do you think this is a mistake on our part? Let us know." % \
                                                                     (category_variable, type_category_variable))
 
+        self.run.info('Category', category_variable)
+        self.run.info('Functional annotation source', functional_annotation_source)
 
-        # this is where we do the enrichment analysis per category:
+        self.progress.new('Functional enrichment analysis')
+        self.progress.update('Creating a dictionary')
 
         # first we create a dictionary with the occurence (boolean) of functions in genomes
         # later, we will convert this dict of dicts to a pandas dataframe
@@ -326,16 +332,17 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             categories_to_genomes_dict[c] = set([genome for genome in categories_dict.keys() if categories_dict[genome][category_variable] == c])
         number_of_genomes = len(categories_dict.keys())
 
-        functions_comparison_dict = {}
+        enrichment_dict = {}
         for c in categories:
-            functions_comparison_dict[c] = {}
+            self.progress.update("Working on category '%s'" % c)
             group_size = len(categories_to_genomes_dict[c])
             group_portion = group_size / number_of_genomes
+
             # see details below
             weighting_normalization_factor = number_of_genomes * (group_portion * math.log2(group_portion)\
                                                 + (1 - group_portion) * math.log2(1 - group_portion))
+
             for f in functions_names:
-                functions_comparison_dict[c][f] = {}
                 occurence_in_group = functions_in_categories.loc[c, f] / group_size
                 occurence_outside_of_group = (total_occurence_of_functions[f] - functions_in_categories.loc[c, f])\
                                                 / (number_of_genomes - group_size)
@@ -349,8 +356,33 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 # genomes represent both compared groups, and that's where the entropy comes in.
                 weighted_enrichment = enrichment * weighting_normalization_factor
 
-                functions_comparison_dict[c][f]["enrichment"] = enrichment
-                functions_comparison_dict[c][f]["weighted_enrichment"] = weighted_enrichment
+                if enrichment > 0:
+                    if c not in enrichment_dict:
+                        enrichment_dict[c] = {}
+
+                    if f not in enrichment_dict[c]:
+                        enrichment_dict[c][f] = {}
+
+                    enrichment_dict[c][f]["enrichment"] = enrichment
+                    enrichment_dict[c][f]["weighted_enrichment"] = weighted_enrichment
+
+        if output_file_path:
+            self.progress.update('Generating the output file')
+            with open(output_file_path, 'w') as output:
+                output.write('category\tenrichment\tweighted_enrichment\t%s\n' % functional_annotation_source)
+                for c in enrichment_dict:
+                    for f in enrichment_dict[c]:
+                        output.write('%s\t%.2f\t%.2f\t%s\n' % (c,
+                                                               enrichment_dict[c][f]["enrichment"],
+                                                               enrichment_dict[c][f]["weighted_enrichment"],
+                                                               f))
+
+        self.progress.end()
+
+        if output_file_path:
+            self.run.info('Functions enrichment summary', output_file_path)
+
+        return enrichment_dict
 
 
     def process(self):
