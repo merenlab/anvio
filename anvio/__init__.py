@@ -363,6 +363,23 @@ D = {
              'metavar': 'CATEGORY',
              'help': "The additional layers data variable name that divides layers into multiple categories."}
                 ),
+    'min-portion-occurence-of-function-in-group': (
+            ['-P', '--min-portion-occurence-of-function-in-group'],
+            {'metavar': 'PORTION',
+             'default': 0,
+             'type': float,
+             'help': "Takes a value between 0 and 1, where 1 means that only functions that occur in all members of\
+                      one of the compared groups will be included in the output. Default is %(default).1f."}
+                ),
+    'min-function-enrichment': (
+            ['-E', '--min-function-enrichment'],
+            {'metavar': 'PORTION',
+             'default': 0,
+             'type': float,
+             'help': "Takes a value between 0 and 1, where 1 means that the output will include only functions\
+                     that occur in all members of one group and in none of the members of the other group.\
+                     Default is %(default).1f."}
+                ),
     'table': (
             ['--table'],
             {'metavar': 'TABLE_NAME',

@@ -242,6 +242,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         category_variable = A('category_variable')
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
+        min_function_enrichment = A('min_function_enrichment')
+        min_portion_occurence_of_function_in_group = A('min_portion_occurence_of_function_in_group')
 
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -356,7 +358,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 # genomes represent both compared groups, and that's where the entropy comes in.
                 weighted_enrichment = enrichment * weighting_normalization_factor
 
-                if enrichment > 0:
+                if abs(enrichment) > min_function_enrichment and max(occurence_outside_of_group, occurence_in_group) > min_portion_occurence_of_function_in_group:
                     if c not in enrichment_dict:
                         enrichment_dict[c] = {}
 
