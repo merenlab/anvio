@@ -55,7 +55,10 @@ class VariabilityFilter:
         ]
 
 
-    def filter_by_occurrence(self, min_occurrence):
+    def filter_by_occurrence(self, min_occurrence=None):
+        if not min_occurrence:
+            min_occurrence = self.min_occurrence
+
         if min_occurrence <= 1:
             return
 
@@ -66,31 +69,38 @@ class VariabilityFilter:
         filter_args = {"criterion": "unique_pos_identifier_str",
                        "subset_values": postions_with_greater_than_min_occurrence}
 
-        self.filter_wrapper(func, descriptor="Minimum occurrence of positions", value_of_filter_criterion=min_occurrence, **filter_args)
+        self.filter_wrapper(func, descriptor="Minimum occurrence of positions", value_for_run_info=min_occurrence, **filter_args)
 
 
-    def filter_by_minimum_coverage_in_each_sample(self, minimum_coverage_in_each_sample):
+    def filter_by_minimum_coverage_in_each_sample(self, min_coverage_in_each_sample=None):
         """To remove any unique entry from the variable positions table that describes a variable position
            and yet is not helpful to distinguish samples from each other."""
+        if not min_coverage_in_each_sample:
+            min_coverage_in_each_sample = self.min_coverage_in_each_sample
 
         if min_coverage_in_each_sample < 1:
             return
 
-        in_cov_each_pos = self.data.groupby("unique_pos_identifier")["coverage"].min()
-        pos_to_keep = list(min_cov_each_pos[min_cov_each_pos >= self.min_coverage_in_each_sample].index)
+        min_cov_each_pos = self.data.groupby("unique_pos_identifier")["coverage"].min()
+        pos_to_keep = list(min_cov_each_pos[min_cov_each_pos >= min_coverage_in_each_sample].index)
 
         func = self.subset_filter
-        filter_args = {"criterion": "unique_pos_identifier_str",
+        filter_args = {"criterion": "unique_pos_identifier",
                        "subset_values": pos_to_keep}
 
-        self.filter_wrapper(func, descriptor="Minimum coverage across all samples", value_of_filter_criterion=minimum_coverage_in_each_sample, **filter_args)
+        self.filter_wrapper(func, descriptor="Minimum coverage across all samples", value_for_run_info=min_coverage_in_each_sample, **filter_args)
 
 
     def are_passed_arguments_valid(self, kwargs):
-        if self.criterion and self.passed_function:
-            raise ConfigError("Pass a filter criterion (criterion=) if you want to apply a standard filter,\
+        if not self.criterion and not self.passed_function:
+            raise ConfigError("VariabilityFilter :: pass a filter criterion (criterion=) if you want to apply a standard filter,\
                                or if you want to apply a special filter, pass a filter function (function=).\
-                               You passed both, which right now isn't allowed.")
+                               You passed neither.")
+
+        if self.criterion and self.passed_function:
+            raise ConfigError("VariabilityFilter :: pass a filter criterion (criterion=) if you want to apply a standard filter,\
+                               or if you want to apply a special filter, pass a filter function (function=).\
+                               You passed both.")
 
         self.is_filter_criterion_valid()
         self.is_passed_function_valid()
@@ -239,12 +249,12 @@ class VariabilityFilter:
             return op.le
 
 
-    def filter_wrapper(self, filter_func, descriptor=None, value_of_filter_criterion=None, **filter_args):
-        if self.stealth_filtering or not (descriptor and value_of_filter_criterion):
+    def filter_wrapper(self, filter_func, descriptor=None, value_for_run_info=None, **filter_args):
+        if self.stealth_filtering or not (descriptor and str(value_for_run_info)):
             filter_func(**filter_args)
 
         else:
-            key, val = self.generate_message_for_run_info(descriptor, value_of_filter_criterion)
+            key, val = self.generate_message_for_run_info(descriptor, value_for_run_info)
             self.run.info(key, val)
             self.progress.new('Filtering based on %s' % (descriptor))
             entries_before = len(self.data.index)
@@ -263,7 +273,7 @@ class VariabilityFilter:
         if keyword_name == "min_filter":
             d["filter_function"]           = self.extremum_filter
             d["descriptor"]                = D("minimum", self.criterion)
-            d["value_of_filter_criterion"] = keyword_value
+            d["value_for_run_info"] = keyword_value
             d["filter_args"]               = {"extremum_value" : keyword_value,
                                               "criterion"      : self.criterion,
                                               "extremum_type"  : "min",
@@ -272,7 +282,7 @@ class VariabilityFilter:
         elif keyword_name == "max_filter":
             d["filter_function"]           = self.extremum_filter
             d["descriptor"]                = D("maximum", self.criterion)
-            d["value_of_filter_criterion"] = keyword_value
+            d["value_for_run_info"] = keyword_value
             d["filter_args"]               = {"extremum_value" : keyword_value,
                                               "criterion"      : self.criterion,
                                               "extremum_type"  : "max",
@@ -281,7 +291,7 @@ class VariabilityFilter:
         elif keyword_name == "subset_filter":
             d["filter_function"]           = self.subset_filter
             d["descriptor"]                = D(self.criterion+"(s)", "of interest")
-            d["value_of_filter_criterion"] = keyword_value
+            d["value_for_run_info"] = keyword_value
             d["filter_args"]               = {"subset_values" : keyword_value,
                                               "criterion"     : self.criterion}
 
@@ -297,7 +307,7 @@ class VariabilityFilter:
             d = self.gen_filter_wrapper_args_for_serial_filtering(param, params[param])
             self.filter_wrapper( d["filter_function"],
                                  d["descriptor"],
-                                 d["value_of_filter_criterion"],
+                                 d["value_for_run_info"],
                                 **d["filter_args"] )
 
     def is_passed_kwargs_compatible_with_passed_function(self, kwargs):
@@ -391,6 +401,10 @@ class VariabilityFilter:
     def generate_message_for_run_info(self, descriptor, value):
         if isinstance(value, str):
             return descriptor, value
+
+        if isinstance(value, float) or isinstance(value, int):
+            return descriptor, str(value)
+
         try:
             if not len(value):
                 return descriptor, "None"
@@ -464,19 +478,17 @@ class VariabilitySuper(VariabilityFilter, object):
         VariabilityFilter.__init__(self, self.args, r=self.run, p=self.progress)
 
         # f = function called in self.process
-        # c = condition upon which function is called
         # **kwargs = parameters passed to function
-        F = lambda f, c = True: (f, c)
+        F = lambda f, **kwargs: (f, kwargs)
         self.process_functions = [F(self.init_commons),
-                                  F(self.load_variability_data, not self.table_provided),
-                                  F(self.load_structure_data, self.append_structure_residue_info),
+                                  F(self.load_variability_data),
+                                  F(self.load_structure_data),
                                   F(self.apply_preliminary_filters),
                                   F(self.set_unique_pos_identification_numbers),
-                                  F(self.filter_by_scattering_factor),
                                   F(self.filter_by_num_positions_from_each_split),
                                   F(self.compute_additional_fields),
-                                  F(self.recover_base_frequencies_for_all_samples, self.quince_mode),
-                                  F(self.filter_by_minimum_coverage_in_each_sample),
+                                  F(self.recover_base_frequencies_for_all_samples),
+                                  F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
                                   F(self.compute_comprehensive_variability_scores),
                                   F(self.get_residue_structure_information,)]
 
@@ -782,6 +794,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def load_variability_data(self):
         """Populates self.data (type pandas.DataFrame) from profile database tables."""
+        if self.table_provided:
+            return
+
         self.progress.new('Generating variability')
         self.progress.update('Reading the profile database ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
@@ -814,6 +829,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def load_structure_data(self):
+        if not self.append_structure_residue_info:
+            return
+
         # open up residue_info table from structure db
         self.progress.new('Loading structure information')
         self.progress.update('Reading the structure database ...')
@@ -933,7 +951,7 @@ class VariabilitySuper(VariabilityFilter, object):
             pass
 
         self.filter_data(function = self.filter_by_occurrence,
-                         min_occurrence = 2, verbose=True)
+                         min_occurrence = self.min_occurrence)
 
         # this could go anywhere now
         self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
@@ -1370,9 +1388,8 @@ class VariabilitySuper(VariabilityFilter, object):
             process_functions = self.process_functions
 
         try:
-            for func, condition in process_functions:
-                if condition:
-                    func()
+            for func, kwargs in process_functions:
+                func(**kwargs)
 
         except self.EndProcess as e:
             msg = 'Nothing left in the variability data to work with. Quitting :/' if exit_if_data_empty else ''
@@ -1380,7 +1397,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def filter_for_interactive(self):
-        F = lambda f, c = True: (f, c)
+        F = lambda f, **kwargs: (f, kwargs)
         filtering_functions = [F(self.filter_by_departure_from_consensus),
                                F(self.filter_by_departure_from_reference),
                                F(self.filter_by_samples)]
@@ -1578,6 +1595,9 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
     def recover_base_frequencies_for_all_samples(self):
         """this function populates variable_nts_table dict with entries from samples that have no
            variation at nucleotide positions reported in the table"""
+        if not self.quince_mode:
+            return
+
         self.progress.new('Recovering NT data')
 
         samples_wanted = self.sample_ids_of_interest if self.sample_ids_of_interest else self.available_sample_ids
@@ -1682,6 +1702,9 @@ class QuinceModeWrapperForFancyEngines(object):
 
 
     def recover_base_frequencies_for_all_samples(self):
+        if not self.quince_mode:
+            return
+
         self.progress.new('[%s] Recovering item variability data' % self.engine)
 
         samples_wanted = self.sample_ids_of_interest if self.sample_ids_of_interest else self.available_sample_ids
@@ -1852,12 +1875,12 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         QuinceModeWrapperForFancyEngines.__init__(self)
 
         # add codon specific functions to self.process
-        F = lambda f, c = True: (f, c)
+        F = lambda f, **kwargs: (f, kwargs)
         self.process_functions.append(F(self.compute_synonymity))
 
 
     def compute_synonymity(self):
-        self.run.info("Framework works", True)
+        pass
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
