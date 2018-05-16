@@ -13,13 +13,13 @@ from anvio.errors import ConfigError
 
 run = terminal.Run()
 
-engines = ['AA', 'NT']
+engines = ['AA', 'CDN', 'NT']
 
 def get(engine):
     data = {}
 
     if engine not in engines:
-        raise ConfigError("Anvi'o was about to populate the SSMs, but it does not now about the engine '%s'." % engine)
+        raise ConfigError("Anvi'o was about to populate the SSMs, but it does not know about the engine '%s'." % engine)
 
     dir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), engine)
     substitution_matrix_paths = [s for s in glob.glob(os.path.join(dir_path, '*')) if s.endswith('.txt')]
@@ -37,9 +37,11 @@ def get(engine):
                                                     % (os.path.basename(matrix_path)))
 
         if engine == 'AA':
-            expected_items = set(list(constants.AA_to_single_letter_code.keys()))
+            expected_items = set(list(constants.amino_acids))
         elif engine == 'NT':
             expected_items = set(list(constants.nucleotides))
+        elif engine == 'CDN':
+            expected_items = set(list(constants.codons))
 
         unexpected_items_in_matrix = [item for item in matrix_columns if item not in expected_items]
         if len(unexpected_items_in_matrix):

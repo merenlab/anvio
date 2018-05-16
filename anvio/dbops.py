@@ -38,6 +38,7 @@ from anvio.tables.states import TablesForStates
 from anvio.tables.genecalls import TablesForGeneCalls
 from anvio.tables.ntpositions import TableForNtPositions
 from anvio.tables.miscdata import TableForItemAdditionalData
+from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
@@ -97,8 +98,6 @@ class ContigsSuperclass(object):
         self.gene_lengths = {}
         self.contig_name_to_genes = {}
         self.genes_in_splits = {} # keys of this dict are NOT gene caller ids. they are ids for each entry.
-        self.genes_in_splits_summary_dict = {}
-        self.genes_in_splits_summary_headers = []
         self.split_name_to_genes_in_splits_entry_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
@@ -165,10 +164,6 @@ class ContigsSuperclass(object):
 
         self.progress.update('Reading genes in splits table')
         self.genes_in_splits = contigs_db.db.get_table_as_dict(t.genes_in_splits_table_name)
-
-        self.progress.update('Reading genes in splits summary table')
-        self.genes_in_splits_summary_dict = contigs_db.db.get_table_as_dict(t.genes_in_splits_summary_table_name)
-        self.genes_in_splits_summary_headers = contigs_db.db.get_table_structure(t.genes_in_splits_summary_table_name)
 
         self.progress.update('Identifying HMM searches for single-copy genes and others')
         self.hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
@@ -656,7 +651,12 @@ class ContigsSuperclass(object):
 
         sequences_dict = {}
 
-        self.progress.new('Getting sequences')
+        if include_aa_sequences:
+            aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+        else:
+            aa_sequences_dict = None
+
+        self.progress.new('Working on sequences data structure')
         self.progress.update('...')
         for gene_callers_id in gene_caller_ids_list:
             gene_call = self.genes_in_contigs_dict[gene_callers_id]
@@ -681,7 +681,6 @@ class ContigsSuperclass(object):
                                                'length': stop - start}
 
             if include_aa_sequences:
-                aa_sequences_dict = ContigsDatabase(self.contigs_db_path).db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
                 if gene_callers_id in aa_sequences_dict:
                     sequences_dict[gene_callers_id]['aa_sequence'] = aa_sequences_dict[gene_callers_id]['sequence']
                 else:
@@ -692,7 +691,7 @@ class ContigsSuperclass(object):
         return (gene_caller_ids_list, sequences_dict)
 
 
-    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
+    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False, report_aa_sequences=False):
         if not output_file_path:
             raise ConfigError("We need an explicit output file path. Anvi'o does not know how you managed to come \
                                here, but please go back and come again.")
@@ -706,7 +705,7 @@ class ContigsSuperclass(object):
         if wrap and wrap <= 20:
             raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
 
-        gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
+        gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list, include_aa_sequences=report_aa_sequences)
 
         output = open(output_file_path, 'w')
 
@@ -720,8 +719,12 @@ class ContigsSuperclass(object):
             else:
                 header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
-            if rna_alphabet:
+            if report_aa_sequences and rna_alphabet:
+                raise ConfigError("You can not request AA sequences repored in RNA alphabet.")
+            elif rna_alphabet:
                 sequence = entry['sequence'].replace('T', 'U')
+            elif report_aa_sequences:
+                sequence = entry['aa_sequence']
             else:
                 sequence = entry['sequence']
 
@@ -760,8 +763,8 @@ class ContigsSuperclass(object):
     def gen_TAB_delimited_file_for_split_taxonomies(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
 
-        if not self.a_meta['taxonomy_source']:
-            raise ConfigError("There is no taxonomy source in the contigs database :/")
+        if not self.a_meta['gene_level_taxonomy_source']:
+            raise ConfigError("There is no taxonomy source for genes in the contigs database :/")
 
         if not len(self.splits_taxonomy_dict):
             self.init_splits_taxonomy()
@@ -1016,14 +1019,17 @@ class PanSuperclass(object):
         self.run.info('Output FASTA file', output_file_path, mc='green')
 
 
-    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, gene_cluster_names=set([]), \
-                    skip_alignments=False, output_file_path=None, report_DNA_sequences=False, align_with=None):
+    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, skip_alignments=False, \
+                                                output_file_path=None, report_DNA_sequences=False, align_with=None, \
+                                                separator=None):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
+        if not separator:
+            separator = 'NNN' if report_DNA_sequences else 'XXX'
+
         output_file = open(output_file_path, 'w')
         sequences_dict = self.get_sequences_for_gene_clusters(gene_clusters_dict=gene_clusters_dict,
-                                                              gene_cluster_names=gene_cluster_names,
                                                               skip_alignments=skip_alignments,
                                                               report_DNA_sequences=report_DNA_sequences)
 
@@ -1033,6 +1039,11 @@ class PanSuperclass(object):
             run.warning("It seems sequences in gene clusters were not aligned during the pangenomic analysis, so we\
                          are going to have do it now .. which may take some time .. and it is totally your fault :/")
             progress.new("Aligning sequences")
+        elif align_with:
+            run.warning("Your gene clusters are already aligned, yet you are asking for them to be aligned with\
+                         '%s' :( If you know what's going on (i.e. you are here because you run a command and\
+                         used the '--align-with' parameter or something), here anvi'o lets you know that it will\
+                         not use '%s' becase things are already aligned." % (align_with, align_with))
 
         get_first_value = lambda x: next(iter(x.values()))
         get_first_key = lambda x: next(iter(x.keys()))
@@ -1044,6 +1055,7 @@ class PanSuperclass(object):
         for genome_name in self.genome_names:
             output_buffer[genome_name] = StringIO()
 
+        gene_cluster_names = list(sequences_dict.keys())
         for gene_cluster_name in gene_cluster_names:
             multiple_gene_calls = False
             multiple_gene_call_genome = None
@@ -1087,11 +1099,15 @@ class PanSuperclass(object):
                 else:
                     output_buffer[genome_name].write("-" * sequence_length)
 
+                if not gene_cluster_name == gene_cluster_names[-1]:
+                    output_buffer[genome_name].write(separator)
+
+
         if not self.gene_clusters_gene_alignments_available:
             progress.end()
 
         for genome_name in self.genome_names:
-            output_file.write('>%s\n' % genome_name)
+            output_file.write('>%s gene_clusters:%s|separator:%s\n' % (genome_name, ','.join(gene_cluster_names), separator))
             output_file.write(output_buffer[genome_name].getvalue())
             output_file.write('\n')
             output_buffer[genome_name].close()
@@ -1468,7 +1484,15 @@ class PanSuperclass(object):
         min_num_genes_from_each_genome = A('min_num_genes_from_each_genome')
         max_num_genomes_gene_cluster_occurs = A('max_num_genomes_gene_cluster_occurs')
         add_into_items_additional_data_table = A('add_into_items_additional_data_table')
+        gene_clusters_names_of_interest = A('gene_clusters_names_of_interest')
         just_do_it = A('just_do_it')
+
+        # keep only the names we are interested in.
+        if gene_clusters_names_of_interest:
+            unwanted_keys = set(gene_clusters_dict.keys()) - set(gene_clusters_names_of_interest)
+            for key in unwanted_keys:
+                del gene_clusters_dict[key]
+
 
         # remove genomes from the dict if necessary.
         if max_num_gene_clusters_missing_from_genome:
@@ -1677,11 +1701,7 @@ class PanSuperclass(object):
         gene_clusters = {}
         full_report = []
 
-        genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
-                                                                       self.p_meta['genomes_storage_hash'],
-                                                                       genome_names_to_focus=self.p_meta['genome_names'],
-                                                                       run=self.run,
-                                                                       progress=self.progress)
+        genomes_db = db.DB(self.genomes_storage_path, anvio.__genomes_storage_version__)
 
         for search_term in search_terms:
             self.progress.new('Search functions')
@@ -1689,28 +1709,48 @@ class PanSuperclass(object):
 
             query = '''select gene_callers_id, source, accession, function, genome_name from ''' + t.genome_gene_function_calls_table_name + ''' where (function LIKE "%%''' \
                             + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%")'''
+
+            query += ''' AND genome_name IN (%s) ''' % (', '.join(["'%s'" % s for s in self.p_meta['genome_names']]))
+
             if requested_sources:
                 query += ''' AND source IN (%s);''' % (', '.join(["'%s'" % s for s in requested_sources]))
             else:
                 query += ';'
 
-            results = genomes_storage.db._exec(query).fetchall()
+            results = genomes_db._exec(query).fetchall()
             gene_clusters[search_term] = []
 
+            found_mismatch = False
             for result in results:
                 gene_caller_id, source, accession, function, genome_name = result
-                gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
+
+                # we're finding gene caller ids in the genomes storage, but they may not end up in any
+                # of the final gene clusters stored in the pan database due to various reasons. for
+                # instance, if the user set a min occurrence parameter, a singleton will not be found
+                # in the pan db yet it will return a functional hit.
+                if not gene_caller_id in self.gene_callers_id_to_gene_cluster[genome_name]:
+                    gene_cluster_id = 'n/a'
+                    found_mismatch = True
+                else:
+                    gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
 
                 gene_dict = self.genomes_storage.gene_info[genome_name][gene_caller_id]
 
-                full_report.extend([(gene_caller_id, source, accession, function, search_term, 
+                full_report.extend([(gene_caller_id, source, accession, function, search_term,
                     gene_cluster_id, gene_dict['dna_sequence'], gene_dict['aa_sequence'])])
-                
-                gene_clusters[search_term].append(gene_cluster_id)
 
+                gene_clusters[search_term].append(gene_cluster_id)
             self.progress.end()
-        genomes_storage.close()
+
+            if found_mismatch:
+                self.run.warning("Some of the search results for the term '%s' found in your genomes storage do not seem to \
+                                 belong any gene cluster in your pan database. This may be due to filtering parameters used (ex: --min-occurrence) \
+                                 during the pangenome analysis. Gene cluster ids for these results will appear as 'n/a' in the report." % search_term)
+
+        genomes_db.disconnect()
         self.progress.end()
+
+
 
         return gene_clusters, full_report
 
@@ -1766,15 +1806,10 @@ class ProfileSuperclass(object):
         self.run = r
         self.progress = p
 
-        # this one is a large dictionary with coverage values for every nucletoide positon in every sample for
-        # every split and initialized by the member function `init_split_coverage_values_per_nt_dict` --unless the
-        # member funciton `init_gene_level_coverage_stats_dicts` is not called first, in which case it is
-        # automatically initialized from within that function.
-        self.split_coverage_values_per_nt_dict = None
-
         # these are initialized by the member function `init_gene_level_coverage_stats_dicts`. but you knew
         # that already becasue you are a smart ass.
         self.gene_level_coverage_stats_dict = {}
+        self.split_coverage_values_per_nt_dict = {}
 
         # this one becomes the object that gives access to the auxiliary data ops for split coverages
         # used heavily in interactive interface to show stuff (see bottle routes and all).
@@ -1928,6 +1963,9 @@ class ProfileSuperclass(object):
 
         profile_db.disconnect()
 
+        self.progress.update('Accessing the layers additional data')
+        self.layers_additional_data_keys, self.layers_additional_data = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).get_all()
+
         self.progress.update('Accessing the auxiliary data file')
         self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
         if not os.path.exists(self.auxiliary_data_path):
@@ -1956,50 +1994,19 @@ class ProfileSuperclass(object):
                                                                                            anvio.__profile__version__))
 
 
-    def init_split_coverage_values_per_nt_dict(self):
-        """This function will fill process the auxiliary data and fill this dictionary:
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False, callback=None, callback_interval=100):
+        """This function will populate both `self.split_coverage_values_per_nt_dict` and
+           `self.gene_level_coverage_stats_dict`.
 
-            - self.split_coverage_values_per_nt_dict
-
-           If this is taking forever and you want to kill Meren, everyone will understand you.
-        """
+           Note: if a `split_names_of_interest` argument is declared at the class level,
+           this function will operate on those splits found in that set.
+           """
 
         if self.p_meta['blank']:
             self.run.warning("Someone asked gene coverages to be initialized when working with a blank profile database.\
                               Anvi'o will pretend nothing happened, and will return nothing. If you don't know what this\
                               is warning you about, just carry on.")
             return
-
-        if not self.auxiliary_profile_data_available:
-            self.run.warning("Gene-level detection and coverage values are always recovered from the auxiliary data files\
-                              associated with profile databases. You don't seem to have one around for this profile database,\
-                              and you shall get NO GENE COVERAGES OR ANYTHING :(")
-            return
-
-        if not self.contigs_db_path:
-            self.run.warning("Someone wants to populate gene coverages data, but they called the profile super class without\
-                              a contigs database path. Anvi'o will pretend nothing happened, but will return nothing back.\
-                              Good luck with your downstream endeavors.")
-            return
-
-        self.progress.new('Initializing split coverage values per nt')
-        self.progress.update('...')
-
-        if self.split_names_of_interest:
-            self.split_coverage_values_per_nt_dict = self.split_coverage_values.get_coverage_for_multiple_splits(self.split_names_of_interest)
-        else:
-            self.split_coverage_values_per_nt_dict = self.split_coverage_values.get_all()
-
-        self.progress.end()
-
-
-    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False):
-        """This function will process `self.split_coverage_values_per_nt_dict` to populate
-           `self.gene_level_coverage_stats_dict`.
-
-           Note: if a `split_names_of_interest` argument is declared at the class level,
-           this function will operate on those splits found in that set.
-           """
 
         if not self.auxiliary_profile_data_available:
             raise ConfigError("Someone is asking gene level coverage stats to be computed, but then there is no auxiliary profile\
@@ -2023,20 +2030,23 @@ class ProfileSuperclass(object):
                               everything because I possibly can not recover from this situation', then send us an e-mail, and we will\
                               think about whether we can be less lazy about stuff, and do things better.")
 
-        sample_names = self.p_meta['samples']
-
-        if not self.split_coverage_values_per_nt_dict:
-            self.init_split_coverage_values_per_nt_dict()
-
         if self.split_names_of_interest:
             split_names = self.split_names_of_interest
 
-            self.run.warning('A subset of genes (%d of %d, to be precise) are requested to initiate gene-level coverage stats for.\
+            self.run.warning('A subset of splits (%d of %d, to be precise) are requested to initiate gene-level coverage stats for.\
                               No need to worry, this is just a warning in case you are as obsessed as wanting to know everything\
                               there is to know.' % (len(self.split_names_of_interest), len(self.split_names)), overwrite_verbose=True)
 
         else:
             split_names = self.split_names
+
+        # we need to pass parameters to sub function as it is.
+        parameters = {
+            'min_cov_for_detection': min_cov_for_detection,
+            'outliers_threshold': outliers_threshold,
+            'populate_nt_level_coverage': populate_nt_level_coverage,
+            'zeros_are_outliers': zeros_are_outliers
+        }
 
         self.progress.new('Computing gene-level coverage stats ...')
         self.progress.update('...')
@@ -2047,60 +2057,76 @@ class ProfileSuperclass(object):
             if num_splits > 10 and counter % 10 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
-            # recover split coverage values from the auxiliary data file:
-            split_coverage = self.split_coverage_values_per_nt_dict[split_name]
+            self.split_coverage_values_per_nt_dict[split_name] = self.split_coverage_values.get(split_name)
+            self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters))
 
-            # identify entry ids for genes in `split_name`
-            genes_in_splits_entries = contigs_db.split_name_to_genes_in_splits_entry_ids[split_name]
-
-            # we have to go back, Kate :(
-            if not genes_in_splits_entries:
-                continue
-
-            # we will go through each gene entry in the split
-            for genes_in_splits_entry in genes_in_splits_entries:
-                e = contigs_db.genes_in_splits[genes_in_splits_entry]
-                gene_callers_id, gene_start, gene_stop = e['gene_callers_id'], e['start_in_split'], e['stop_in_split']
-                gene_length = gene_stop - gene_start
-
-                if gene_length <= 0:
-                    raise ConfigError("What? :( How! The gene with the caller id '%d' has a length of %d :/ We are done\
-                                       here!" % (gene_callers_id, gene_length))
-
-                self.gene_level_coverage_stats_dict[gene_callers_id] = dict([(sample_name, dict([('mean_coverage', 0), ('gene_detection', 0)])) for sample_name in sample_names])
-
-                # the magic happens here:
-                for sample_name in sample_names:
-                    # and recover the gene coverage array per position for a given sample:
-                    gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
-
-                    mean_coverage = numpy.mean(gene_coverage_values_per_nt)
-                    detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
-
-                    # findout outlier psitions, and get non-outliers
-                    outliers_bool = get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
-                    non_outlier_positions = numpy.invert(outliers_bool)
-                    non_outliers = gene_coverage_values_per_nt[non_outlier_positions]
-
-                    if not(len(non_outliers)):
-                        non_outlier_mean_coverage = 0.0
-                        non_outlier_coverage_std = 0.0
-                    else:
-                        non_outlier_mean_coverage = numpy.mean(non_outliers)
-                        non_outlier_coverage_std = numpy.std(non_outliers)
-
-                    self.gene_level_coverage_stats_dict[gene_callers_id][sample_name] = {'mean_coverage': mean_coverage,
-                                                                                         'detection': detection,
-                                                                                         'non_outlier_mean_coverage': non_outlier_mean_coverage,
-                                                                                         'non_outlier_coverage_std':  non_outlier_coverage_std}
-                    # FIXME: these shouldn't be under gene_level_coverage_stats_dict see issue #688
-                    if populate_nt_level_coverage == True:
-                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = gene_coverage_values_per_nt
-                        self.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['non_outlier_positions'] = non_outlier_positions
+            if callback and counter % callback_interval == 0:
+                callback()
 
             counter += 1
 
+        if callback:
+            callback()
+
         self.progress.end()
+
+
+    def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False):
+        # recover split coverage values from the auxiliary data file
+        split_coverage = self.split_coverage_values_per_nt_dict[split_name]
+
+        # identify entry ids for genes in `split_name`
+        genes_in_splits_entries = contigs_db.split_name_to_genes_in_splits_entry_ids[split_name]
+
+        # we have to go back, Kate :(
+        if not genes_in_splits_entries:
+            return {}
+
+        output = {}
+
+        # we will go through each gene entry in the split
+        for genes_in_splits_entry in genes_in_splits_entries:
+            e = contigs_db.genes_in_splits[genes_in_splits_entry]
+            gene_callers_id, gene_start, gene_stop = e['gene_callers_id'], e['start_in_split'], e['stop_in_split']
+            gene_length = gene_stop - gene_start
+
+            if gene_length <= 0:
+                raise ConfigError("What? :( How! The gene with the caller id '%d' has a length of %d :/ We are done\
+                                   here!" % (gene_callers_id, gene_length))
+
+            output[gene_callers_id] = dict([(sample_name, dict([('mean_coverage', 0), ('gene_detection', 0)])) for sample_name in self.p_meta['samples']])
+
+            # the magic happens here:
+            for sample_name in self.p_meta['samples']:
+                # and recover the gene coverage array per position for a given sample:
+                gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
+
+                mean_coverage = numpy.mean(gene_coverage_values_per_nt)
+                detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
+
+                # findout outlier psitions, and get non-outliers
+                outliers_bool = get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
+                non_outlier_positions = numpy.invert(outliers_bool)
+                non_outliers = gene_coverage_values_per_nt[non_outlier_positions]
+
+                if not(len(non_outliers)):
+                    non_outlier_mean_coverage = 0.0
+                    non_outlier_coverage_std = 0.0
+                else:
+                    non_outlier_mean_coverage = numpy.mean(non_outliers)
+                    non_outlier_coverage_std = numpy.std(non_outliers)
+
+                output[gene_callers_id][sample_name] = {'mean_coverage': mean_coverage,
+                                                         'detection': detection,
+                                                         'non_outlier_mean_coverage': non_outlier_mean_coverage,
+                                                         'non_outlier_coverage_std':  non_outlier_coverage_std}
+
+                # FIXME: these shouldn't be under gene_level_coverage_stats_dict see issue #688
+                if populate_nt_level_coverage == True:
+                    output[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = gene_coverage_values_per_nt
+                    output[gene_callers_id][sample_name]['non_outlier_positions'] = non_outlier_positions
+
+        return output
 
 
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
@@ -2295,20 +2321,13 @@ class ProfileDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['min_contig_length', 'SNVs_profiled', 'AA_frequencies_profiled', 'min_coverage_for_variability',
+            for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'min_coverage_for_variability',
                         'merged', 'blank', 'contigs_ordered', 'report_variability_full', 'num_contigs',
                         'num_splits', 'total_length']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
                     pass
-
-            sample_ids_list = [s.strip() for s in self.meta['samples'].split(',')]
-            if 'total_reads_mapped' in self.meta:
-                total_reads_mapped_list = [int(n.strip()) for n in self.meta['total_reads_mapped'].split(',')]
-                self.meta['total_reads_mapped'] = dict([(sample_ids_list[i], total_reads_mapped_list[i]) for i in range(0, len(sample_ids_list))])
-            else:
-                self.meta['total_reads_mapped'] = dict([(sample_ids_list[i], 0) for i in range(0, len(sample_ids_list))])
 
             self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
 
@@ -2333,7 +2352,7 @@ class ProfileDatabase:
         self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
         self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
-        self.db.create_table(t.variable_aas_table_name, t.variable_aas_table_structure, t.variable_aas_table_types)
+        self.db.create_table(t.variable_codons_table_name, t.variable_codons_table_structure, t.variable_codons_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
@@ -2488,7 +2507,7 @@ class ContigsDatabase:
 
 
     def get_hash(self):
-        return '%08x' % random.randrange(16**8)
+        return 'hash' + str('%08x' % random.randrange(16**8))
 
 
     def touch(self):
@@ -2516,7 +2535,6 @@ class ContigsDatabase:
         self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
         self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
         self.db.create_table(t.gene_amino_acid_sequences_table_name, t.gene_amino_acid_sequences_table_structure, t.gene_amino_acid_sequences_table_types)
-        self.db.create_table(t.genes_in_splits_summary_table_name, t.genes_in_splits_summary_table_structure, t.genes_in_splits_summary_table_types)
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
@@ -2750,7 +2768,7 @@ class ContigsDatabase:
         self.db.set_meta_value('num_contigs', contigs_info_table.total_contigs)
         self.db.set_meta_value('total_length', contigs_info_table.total_nts)
         self.db.set_meta_value('num_splits', splits_info_table.total_splits)
-        self.db.set_meta_value('taxonomy_source', None)
+        self.db.set_meta_value('gene_level_taxonomy_source', None)
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))

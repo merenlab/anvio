@@ -55,6 +55,7 @@
     <script type="text/javascript" src="js/context-menu.js"></script>
     <script type="text/javascript" src="js/dialogs/load-collection.js"></script>
     <script type="text/javascript" src="js/dialogs/store-collection.js"></script>
+    <script type="text/javascript" src="js/migrations.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
@@ -326,7 +327,10 @@
                                         <tr>
                                             <td></td>
                                             <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
-                                            <td><div class="colorpicker picker_start_multiple" color="#FFFFFF"></div><div class="colorpicker picker_multiple" color="#FFFFFF"></div></td>
+                                            <td>
+                                                <div id="picker_start_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF"></div>
+                                                <div id="picker_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
+                                            </td>
                                             <td style="width: 50px;">
                                                 <select class="type_multiple" style="width: 50px;" class="type">
                                                     <option value="">Select</option>
@@ -441,7 +445,11 @@
                                         <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
                                     </div>
                             </div>
+                            <span class="settings-header">Layer Groups</span>
+                            <div id="sample_groups_container">
 
+                            </div>
+                            <div class="clearfix"></div>
                             <span class="settings-header">Layers</span>
                             <div id="table_samples_container" style="margin-top: 10px;">
                                 <table id="table_samples">
@@ -468,7 +476,10 @@
                                         <tr>
                                             <td></td>
                                             <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
-                                            <td><div class="colorpicker picker_start_multiple"></div><div class="colorpicker picker_multiple"></div></td>
+                                            <td>
+                                                <div id="picker_start_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF"></div>
+                                                <div id="picker_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
+                                            </td>
                                             <td style="width: 50px;">
                                                 <select class="type_multiple" style="width: 50px;" class="type">
                                                     <option value="bar">Bar</option>

@@ -2,7 +2,7 @@
 # pylint: disable=line-too-long
 """ Table schemas for databases."""
 
-from anvio.constants import codon_to_AA, essential_genome_info
+from anvio.constants import codons, nucleotides, essential_genome_info
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -13,9 +13,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "10"
-profile_db_version = "23"
-pan_db_version = "8"
+contigs_db_version = "12"
+profile_db_version = "26"
+pan_db_version = "9"
 auxiliary_data_version = "2"
 genomes_storage_vesion = "6"
 
@@ -23,7 +23,6 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
                          'pan': pan_db_version,
                          'genomestorage': genomes_storage_vesion}
-
 
 ####################################################################################################
 #
@@ -66,10 +65,6 @@ genes_in_splits_table_name             = 'genes_in_splits'
 genes_in_splits_table_structure        = ['entry_id', 'split', 'gene_callers_id', 'start_in_split', 'stop_in_split', 'percentage_in_split']
 genes_in_splits_table_types            = [ 'numeric',  'text',      'numeric'   ,    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
-genes_in_splits_summary_table_name      = 'genes_in_splits_summary'
-genes_in_splits_summary_table_structure = ['split', 'num_genes', 'avg_gene_length', 'ratio_coding']
-genes_in_splits_summary_table_types     = [ 'text',  'numeric' ,     'numeric'    ,   'numeric'   ]
-
 gene_amino_acid_sequences_table_name      = 'gene_amino_acid_sequences'
 gene_amino_acid_sequences_table_structure = ['gene_callers_id', 'sequence']
 gene_amino_acid_sequences_table_types     = [     'numeric'   ,   'text'  ]
@@ -96,7 +91,7 @@ genes_taxonomy_table_types             = [    'numeric'    ,  'numeric',]
 
 hmm_hits_info_table_name               = 'hmm_hits_info'
 hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'domain', 'genes']
-hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    ,  'text' , 'text' ]       # This one here is the id that apperas in gene_calls table
+hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    ,  'text' , 'text' ]       # This one here is the id that apper as in gene_calls table
                                                                                          #         /
 hmm_hits_table_name                    = 'hmm_hits'                                      # _______|_______
 hmm_hits_table_structure               = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_hmm_id', 'e_value']
@@ -124,28 +119,28 @@ item_orders_table_structure         = ['name', 'type', 'data']
 item_orders_table_types             = ['text', 'text', 'text']
 
 item_additional_data_table_name      = 'item_additional_data'
-item_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type']
-item_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ]
+item_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+item_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 layer_orders_table_name              = 'layer_orders'
 layer_orders_table_structure         = ['data_key', 'data_type', 'data_value']
 layer_orders_table_types             = [  'text'  ,    'text'  ,    'text'   ]
 
 layer_additional_data_table_name      = 'layer_additional_data'
-layer_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type']
-layer_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ]
+layer_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+layer_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']
 states_table_types                   = ['text',  'text'  ,      'text'    ]
 
-variable_aas_table_name              = 'variable_amino_acid_frequencies'
-variable_aas_table_structure         = ['entry_id', 'sample_id', 'corresponding_gene_call', 'codon_order_in_gene', 'reference', 'departure_from_reference', 'coverage'] + sorted(list(set(codon_to_AA.values())))
-variable_aas_table_types             = [ 'numeric',    'text'  ,        'numeric'         ,       'numeric'      ,    'text'  ,          'numeric'        , 'numeric' ] + ['numeric'] * len(list(set(codon_to_AA.values())))
+variable_codons_table_name           = 'variable_codons'
+variable_codons_table_structure      = ['entry_id', 'sample_id', 'corresponding_gene_call', 'codon_order_in_gene', 'reference', 'departure_from_reference', 'coverage'] + codons
+variable_codons_table_types          = [ 'numeric',    'text'  ,        'numeric'         ,       'numeric'      ,    'text'  ,          'numeric'        , 'numeric' ] + ['numeric'] * len(codons)
 
-variable_nts_table_name              = 'variable_nucleotide_positions'
-variable_nts_table_structure         = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'corresponding_gene_call', 'in_partial_gene_call', 'in_complete_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'coverage', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'departure_from_reference', 'competing_nts', 'reference',    'A'   ,    'T'   ,    'C'   ,    'G'   ,    'N'   ]
-variable_nts_table_types             = [ 'numeric',    'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'       ,       'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
+variable_nts_table_name              = 'variable_nucleotides'
+variable_nts_table_structure         = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'corresponding_gene_call', 'in_partial_gene_call', 'in_complete_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'coverage', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'departure_from_reference', 'competing_nts', 'reference'] + nucleotides
+variable_nts_table_types             = [ 'numeric',    'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'       ,       'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  ] + ['numeric'] * len(nucleotides)
 
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
@@ -211,3 +206,5 @@ genome_gene_function_calls_table_name      = 'gene_function_calls'
 genome_gene_function_calls_table_structure = ['genome_name', ] + gene_function_calls_table_structure[:]
 genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_calls_table_types[:]
 
+
+tables_without_unique_entry_ids = [genome_gene_function_calls_table_name]

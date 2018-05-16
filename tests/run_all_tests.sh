@@ -35,6 +35,15 @@ anvi-gen-contigs-database -f $files/contigs.fa \
                           -L 1000 \
                           --project-name "Contigs DB for anvi'o self-tests"
 
+INFO "Displaying the info for the contigs databse"
+anvi-db-info $output_dir/CONTIGS.db
+
+INFO "Setting a new self value in the self table of the contigs databse"
+anvi-db-info $output_dir/CONTIGS.db \
+             --self-key 'a_new_test_key' \
+             --self-value "a new test value" \
+             --just-do-it
+
 INFO "Exporting gene calls from the contigs database"
 anvi-export-gene-calls -c $output_dir/CONTIGS.db -o $output_dir/exported_gene_calls.txt
 
@@ -45,7 +54,7 @@ INFO "Exporting contig sequences from the contigs database in 'splits mode'"
 anvi-export-contigs -c $output_dir/CONTIGS.db -o $output_dir/exported_split_seqeunces.fa --splits-mode
 
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
-anvi-import-taxonomy -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/centrifuge_report.tsv $files/example_files_for_centrifuge_taxonomy/centrifuge_hits.tsv
+anvi-import-taxonomy-for-genes -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/centrifuge_report.tsv $files/example_files_for_centrifuge_taxonomy/centrifuge_hits.tsv
 
 INFO "Trying to remove HMM sources from the contigs database (when there are none in it)"
 anvi-delete-hmms -c $output_dir/CONTIGS.db --just-do-it
@@ -113,8 +122,12 @@ anvi-summarize -c $output_dir/CONTIGS.db -p $output_dir/BLANK-PROFILE/PROFILE.db
 for f in 01 02 03
 do
     INFO "Profiling sample SAMPLE-$f"
-    anvi-profile -i $output_dir/SAMPLE-$f.bam -o $output_dir/SAMPLE-$f -c $output_dir/CONTIGS.db --profile-AA-frequencies
-    echo
+    anvi-profile -i $output_dir/SAMPLE-$f.bam -o $output_dir/SAMPLE-$f -c $output_dir/CONTIGS.db --profile-SCVs
+
+    INFO "Importing short-read-level taxonomy for SAMPLE-$f"
+    anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \
+                                    -i $files/example_files_for_kraken_hll_taxonomy/SAMPLE-$f.mpa \
+                                    --parser kraken_hll
 done
 
 
@@ -224,14 +237,24 @@ anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.d
 INFO "Generate a SNV variabilty profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db -C cmdline_concoct_RENAMED -b PSAMPLES_Bin_00001 -o $output_dir/variability_PSAMPLES_Bin_00001.txt --quince-mode
 
-INFO "Generate a SNV variabilty profile for PSAMPLES_Bin_00001 using split ids and gene ids of interest (after summary)"
+INFO "Generate a SNV profile for PSAMPLES_Bin_00001 using split ids and gene ids of interest (after summary)"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                              --splits-of-interest $output_dir/SAMPLES-MERGED-SUMMARY/bin_by_bin/PSAMPLES_Bin_00001/PSAMPLES_Bin_00001-original_split_names.txt \
                              --genes-of-interest $files/example_genes_of_interest.txt \
-                             -o $output_dir/variability_PSAMPLES_Bin_00001_ALT.txt
+                             -o $output_dir/variability_PSAMPLES_Bin_00001_ALT.txt \
+                             --engine NT
 
-INFO "Generate an AA variabilty profile for PSAMPLES_Bin_00001 using a collection id"
+INFO "Generate a SCV profile for PSAMPLES_Bin_00001 using a collection id"
+anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
+                             -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                             -C cmdline_concoct_RENAMED \
+                             -b PSAMPLES_Bin_00001 \
+                             -o $output_dir/variability_CDN_PSAMPLES_Bin_00001.txt \
+                             --quince-mode \
+                             --engine CDN
+
+INFO "Generate a SAAV profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                              -C cmdline_concoct_RENAMED \
@@ -241,23 +264,26 @@ anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              --engine AA
 
 INFO "Generating amino acid frequencies for gene caller id 3 in SAMPLE-01.bam"
-anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam \
-                        -c $output_dir/CONTIGS.db \
-                        --gene-caller-id 3 \
-                        -o $output_dir/AA_frequencies_for_gene_caller_id_3.txt
+anvi-get-codon-frequencies -i $output_dir/SAMPLE-01.bam \
+                           -c $output_dir/CONTIGS.db \
+                           --gene-caller-id 3 \
+                           -o $output_dir/CODON_frequencies_for_gene_caller_id_3.txt
 
 INFO "Generating amino codon frequencies for gene caller id 3 in SAMPLE-01.bam"
-anvi-get-aa-frequencies -i $output_dir/SAMPLE-01.bam \
-                        -c $output_dir/CONTIGS.db \
-                        --gene-caller-id 3 \
-                        -o $output_dir/CODON_frequencies_for_gene_caller_id_3.txt \
-                        --return-codon-frequencies-instead
+anvi-get-codon-frequencies -i $output_dir/SAMPLE-01.bam \
+                           -c $output_dir/CONTIGS.db \
+                           --gene-caller-id 3 \
+                           -o $output_dir/AA_frequencies_for_gene_caller_id_3.txt \
+                           --return-AA-frequencies-instead
 
 INFO "Getting back the sequence for gene call 3"
-anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
+anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
+
+INFO "Getting back the AA sequence for gene call 3"
+anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 --get-aa-sequences -o $output_dir/AA_sequence_for_gene_caller_id_3.fa
 
 INFO "Getting back the sequence for gene call 3 (export as GFF3)"
-anvi-get-dna-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 --export-gff3 -o $output_dir/Sequence_for_gene_caller_id_3.gff
+anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 --export-gff3 -o $output_dir/Sequence_for_gene_caller_id_3.gff
 
 INFO "Export gene coverage and detection data"
 anvi-export-gene-coverage-and-detection -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MERGED

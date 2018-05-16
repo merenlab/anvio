@@ -288,16 +288,20 @@ class TablesForGeneCalls(Table):
         database.disconnect()
 
 
-    def populate_genes_in_splits_tables(self):
+    def populate_genes_in_splits_tables(self, gene_calls_dict=None):
         utils.is_contigs_db(self.db_path)
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
+        self.set_next_available_id(t.genes_in_splits_table_name)
         self.init_gene_calls_dict()
 
-        genes_in_splits = GenesInSplits()
+        if not gene_calls_dict:
+            gene_calls_dict = self.gene_calls_dict
+
+        genes_in_splits = GenesInSplits(entry_id_start=self.next_id(t.genes_in_splits_table_name))
         # build a dictionary for fast access to all genes identified within a contig
         gene_calls_in_contigs_dict = {}
-        for gene_callers_id in self.gene_calls_dict:
-            contig = self.gene_calls_dict[gene_callers_id]['contig']
+        for gene_callers_id in gene_calls_dict:
+            contig = gene_calls_dict[gene_callers_id]['contig']
             if contig in gene_calls_in_contigs_dict:
                 gene_calls_in_contigs_dict[contig].add(gene_callers_id)
             else:
@@ -322,9 +326,9 @@ class TablesForGeneCalls(Table):
                 # this particular split to generate summarized info for each split. BUT one important that is done
                 # in the following loop is genes_in_splits.add call, which populates GenesInSplits class.
                 for gene_callers_id in gene_calls_in_contigs_dict[contig]:
-                    if self.gene_calls_dict[gene_callers_id]['stop'] > start and self.gene_calls_dict[gene_callers_id]['start'] < stop:
-                        gene_start_stops.append((self.gene_calls_dict[gene_callers_id]['start'], self.gene_calls_dict[gene_callers_id]['stop']), )
-                        genes_in_splits.add(split_name, start, stop, gene_callers_id, self.gene_calls_dict[gene_callers_id]['start'], self.gene_calls_dict[gene_callers_id]['stop'])
+                    if gene_calls_dict[gene_callers_id]['stop'] > start and gene_calls_dict[gene_callers_id]['start'] < stop:
+                        gene_start_stops.append((gene_calls_dict[gene_callers_id]['start'], gene_calls_dict[gene_callers_id]['stop']), )
+                        genes_in_splits.add(split_name, start, stop, gene_callers_id, gene_calls_dict[gene_callers_id]['start'], gene_calls_dict[gene_callers_id]['stop'])
 
                 # here we identify genes that are associated with a split even if one base of the gene spills into
                 # the defined start or stop of a split, which means, split N, will include genes A, B and C in this
@@ -349,9 +353,6 @@ class TablesForGeneCalls(Table):
 
         # open connection
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        # push raw entries for splits table
-        db_entries = [tuple([split] + [splits_dict[split][h] for h in t.genes_in_splits_summary_table_structure[1:]]) for split in splits_dict]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.genes_in_splits_summary_table_name, db_entries)
 
         # push entries for genes in splits table
         db_entries = [tuple([entry_id] + [genes_in_splits.splits_to_prots[entry_id][h] for h in t.genes_in_splits_table_structure[1:]]) for entry_id in genes_in_splits.splits_to_prots]
@@ -362,8 +363,8 @@ class TablesForGeneCalls(Table):
 
 
 class GenesInSplits:
-    def __init__(self):
-        self.entry_id = 0
+    def __init__(self, entry_id_start=0):
+        self.entry_id = entry_id_start
         self.splits_to_prots = {}
 
 

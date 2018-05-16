@@ -30,13 +30,13 @@ done
 
 INFO "Merging profiles"
 # merge samples
-anvi-merge $output_dir/HMP00*/*.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --skip-concoct-binning
+anvi-merge $output_dir/HMP00*/PROFILE.db -o $output_dir/SAMPLES-MERGED -c $output_dir/CONTIGS.db --skip-concoct-binning
 
 INFO "Importing collection"
 anvi-import-collection -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db $files/TEST-COLLECTION.txt -C TEST
 
-INFO "Run anvi-mcg-classifier on PROFILE database"
-anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL
+# INFO "Run anvi-mcg-classifier on PROFILE database"
+# anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/TEST-ALL
 
 ##
 #INFO "Running anvi-mcg-classifier on TAB-delimited files (no PROFILE database)"

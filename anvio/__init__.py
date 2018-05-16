@@ -9,6 +9,8 @@ import copy
 import platform
 import pkg_resources
 
+anvio_codename = 'rosalind'
+
 DEBUG = '--debug' in sys.argv
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
@@ -185,6 +187,14 @@ D = {
                       genes before and n2 genes after the gene that matched the search criteria but the search\
                       hits the end of the contig before finding the number of genes that you asked."}
             ),
+    'never-reverse-complement': (
+            ['--never-reverse-complement'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, if a gene that is found by the search criteria is reverse in it's direction,\
+                      then the sequence of the entire locus is reversed before it is saved to the output.\
+                      If you wish to prevent this behavior then use the flag --never-reverse-complement.",}
+             ),
     'zeros-are-outliers': (
             ['--zeros-are-outliers'],
             {'default': False,
@@ -259,22 +269,23 @@ D = {
                       will instruct profiler to skip that step. Please remember that parameters and flags must be\
                       identical between different profiles using the same contigs database for them to merge properly."}
                 ),
-    'return-codon-frequencies-instead': (
-            ['--return-codon-frequencies-instead'],
+    'return-AA-frequencies-instead': (
+            ['--return-AA-frequencies-instead'],
             {'default': False,
              'action': 'store_true',
-             'help': "By default, anvi'o will return amino acid frequencies here, however, you can ask for codon frequencies\
-                      instead, simply because you always need more data and more stuff. You're lucky this time, but is there\
-                      an end to this? Will you ever be satisfied with what you have? Anvi'o needs answers."}
+             'help': "By default, anvi'o will return codon frequencies (as the name suggests), but you can ask for amino\
+                      acid frequencies instead, simply because you always need more data and more stuff. You're lucky\
+                      this time, but is there an end to this? Will you ever be satisfied with what you have?\
+                      Anvi'o needs answers."}
                 ),
-    'profile-AA-frequencies': (
-            ['--profile-AA-frequencies'],
+    'profile-SCVs': (
+            ['--profile-SCVs'],
             {'default': False,
              'action': 'store_true',
-             'help': "Anvi'o can characterize linkmer frequencies for AA distribution in genes in contigs during\
-                      profiling. However, due to its computational complexity, this feature is by default off. Using\
-                      this flag you can go against the authority, and make anvi'o do it. Please remember that this\
-                      functionality is available only if genes calls are present in contigs database."}
+             'help': "Anvi'o can perform accurate characterization of codon frequencies in genes during profiling. While having\
+                      codon frequencies opens doors to powerful evolutionary insights in downstream analyses, due to its\
+                      computational complexity, this feature comes 'off' by default. Using this flag you can rise against the\
+                      authority as you always should, and make anvi'o profile codons."}
                 ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
@@ -345,6 +356,29 @@ D = {
             {'metavar': 'NAME',
              'help': "Start the interface with a pre-selected view. To see a list of available views,\
                       use --show-views flag."}
+                ),
+    'category-variable': (
+            ['--category-variable'],
+            {'default': None,
+             'metavar': 'CATEGORY',
+             'help': "The additional layers data variable name that divides layers into multiple categories."}
+                ),
+    'min-portion-occurence-of-function-in-group': (
+            ['-P', '--min-portion-occurence-of-function-in-group'],
+            {'metavar': 'PORTION',
+             'default': 0,
+             'type': float,
+             'help': "Takes a value between 0 and 1, where 1 means that only functions that occur in all members of\
+                      one of the compared groups will be included in the output. Default is %(default).1f."}
+                ),
+    'min-function-enrichment': (
+            ['-E', '--min-function-enrichment'],
+            {'metavar': 'PORTION',
+             'default': 0,
+             'type': float,
+             'help': "Takes a value between 0 and 1, where 1 means that the output will include only functions\
+                     that occur in all members of one group and in none of the members of the other group.\
+                     Default is %(default).1f."}
                 ),
     'table': (
             ['--table'],
@@ -450,7 +484,7 @@ D = {
             ['-l', '--list-annotation-sources'],
             {'default': False,
              'action': 'store_true',
-             'help': "List available sources for annotation in the contigs database and quit."}
+             'help': "List available functional annotation sources."}
                 ),
     'gene-names': (
             ['--gene-names'],
@@ -530,7 +564,7 @@ D = {
              'metavar': 'INTEGER',
              'help': "This filter will remove gene clusters from your report. Let's assume you have 100 genomes in your pan\
                       genome analysis. You can use this parameter if you want to work only with gene clusters that occur in\
-                      at most X number of genomes. If you say '--min-num-genomes-gene-cluster-occurs 1', you will get gene\
+                      at most X number of genomes. If you say '--max-num-genomes-gene-cluster-occurs 1', you will get gene\
                       clusters that are singletons. Combining this paramter with --min-num-genomes-gene-cluster-occurs can\
                       give you a very precise way to filter your gene clusters."}
                 ),
@@ -1048,8 +1082,9 @@ D = {
     'log-file': (
             ['--log-file'],
             {'metavar': 'FILE_PATH',
+             'default': None,
              'type': str,
-             'help': "File path to a log output."}
+             'help': "File path to store debug/output messages."}
                 ),
     'output-db-path': (
             ['-o', '--output-db-path'],
@@ -1527,17 +1562,74 @@ D = {
                       to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
                 ),
     'workflow': (
-            ['--workflow'],
+            ['-w', '--workflow'],
             {'required': False,
-             'help': "\
-                      "}
+             'help': "You must specify a workflow name. To see a list of available workflows\
+                      run --list-workflows."}
                 ),
     'list-workflows': (
             ['--list-workflows'],
             {'required': False,
              'action': 'store_true',
-             'help': "\
-                      "}
+             'help': "Print a list of available snakemake workflows"}
+                ),
+    'save-workflow-graph': (
+            ['--save-workflow-graph'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "Save a graph representation of the workflow. If you are using this flag and if your\
+                      system is unable to generate such graph outputs, you will hear anvi'o complaining\
+                      (still, totally worth trying)."}
+                ),
+    'get-default-config': (
+            ['--get-default-config'],
+            {'metavar': 'OUTPUT_FILENAME',
+             'type': str,
+             'help': "Store a json formatted config file with all the default settings of the\
+                      workflow. This is a good draft you could use in order to write your own\
+                      config file. This config file contains all parameters that could be configured\
+                      for this workflow. NOTICE: the config file is provided with default values\
+                      only for parameters that are set by us in the workflow. The values for the rest\
+                      of the parameters are determined by the relevant program."}
+                ),
+    'list-dependencies': (
+            ['--list-dependencies'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "Print a list of the dependencies of this workflow. You must provide a workflow name\
+                      and a config file. snakemake will figure out which rules need to be run according\
+                      to your config file, and according to the files available on your disk. According\
+                      to the rules that need to be run, we will let you know which programs are going to\
+                      be used, so that you can make sure you have all of them installed and loaded."}
+                ),
+    'config-file': (
+            ['-c', '--config-file'],
+            {'required': False,
+             'help': "TBD"}
+                ),
+    'additional-params': (
+            ['-A', '--additional-params'],
+            {'required': False,
+             'nargs':'...', 'type':str,
+             'help': "Additional snakemake parameters to add when running snakemake. NOTICE: --additional-params \
+                      HAS TO BE THE LAST ARGUMENT THAT IS PASSED TO anvi-run-snakemake-workflow, ANYTHING THAT \
+                      FOLLOWS WILL BE CONSIDERED AS PART OF THE ADDITIONAL PARAMETERS THAT ARE PASSED TO SNAKEMAKE. \
+                      Any parameter that is accepted by snakemake should be fair game here, but it is your \
+                      responsibility to make sure that whatever you added makes sense. To see what parameters are \
+                      available please refer to the snakemake documentation. For example, you could use this to set \
+                      up cluster submission using --additional-params --cluster \"YOUR-CLUSTER-SUBMISSION-CMD\""}
+                ),
+    'self-key': (
+            ['--self-key'],
+            {'default': None,
+             'type': str,
+             'help': "The key you wish to set or change."}
+                ),
+    'self-value': (
+            ['--self-value'],
+            {'default': None,
+             'type': str,
+             'help': "The value you wish to set for the self key."}
                 ),
 }
 
@@ -1582,6 +1674,7 @@ def set_version():
             pass
 
     return anvio_version, \
+           anvio_codename, \
            t.contigs_db_version, \
            t.pan_db_version, \
            t.profile_db_version, \
@@ -1589,7 +1682,8 @@ def set_version():
            t.genomes_storage_vesion
 
 def get_version_tuples():
-    return [("Anvi'o version", __version__),
+    return [("Anvi'o version", '%s', __version__),
+            ("Codename", __codename__),
             ("Profile DB version", __profile__version__),
             ("Contigs DB version", __contigs__version__),
             ("Pan DB version", __pan__version__),
@@ -1598,7 +1692,7 @@ def get_version_tuples():
 
 
 def print_version():
-    run.info("Anvi'o version", __version__, mc='green')
+    run.info("Anvi'o version", '%s, "%s"' % (__version__, __codename__), mc='green')
     run.info("Profile DB version", __profile__version__)
     run.info("Contigs DB version", __contigs__version__)
     run.info("Pan DB version", __pan__version__)
@@ -1607,6 +1701,7 @@ def print_version():
 
 
 __version__, \
+__codename__, \
 __contigs__version__, \
 __pan__version__, \
 __profile__version__, \

@@ -61,7 +61,7 @@ class AuxiliaryDataForSplitCoverages(object):
         actual_db_hash = str(self.db.get_meta_value('contigs_db_hash'))
         if self.db_hash != actual_db_hash:
             raise AuxiliaryDataError('The hash value inside Auxiliary Database "%s" does not match with Contigs Database hash "%s",\
-                                      this files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
+                                      these files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
     def append(self, split_name, sample_name, coverage_list):

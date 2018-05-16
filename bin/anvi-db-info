@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+
+import anvio
+import anvio.db as db
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+class DatabaseInfo:
+    """A class to get information about an anvi'o database, and edit some of them"""
+    def __init__(self, args, quiet=False, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.db_path =A("input")
+        self.self_key = A("self_key")
+        self.self_value = A("self_value")
+        self.just_do_it = A("just_do_it")
+
+        filesnpaths.is_file_exists(self.db_path)
+
+        self.get_db_self()
+
+        if self.self_key or self.self_value:
+            if (not self.self_key) or (not self.self_value):
+                raise ConfigError("You must use `--self-key` and `--self-value` together. You can't\
+                                   just use one of them.")
+
+            self.set_key_value()
+            self.get_db_self()
+
+        if not quiet:
+            run.warning(None, "DB Info (no touch)", lc="green")
+            run.info("Database Path", self.db_path)
+            if "description" in self.db_self:
+                desc = self.db_self["description"]["value"]
+                if len(desc) > 30:
+                    run.info("Description", "[Found, and it is %d characters long]" % len(desc))
+                elif not desc:
+                    run.info("Description", "[Not found, but it's OK]", mc="red")
+                else:
+                    run.info("Description", desc)
+            run.info("Type", self.db_type)
+            run.info("Version", self.db_version, nl_after=1)
+
+            run.warning(None, "DB Info (no touch also)", lc="green")
+            for key in [k for k in self.db_self if k not in ["version", "db_type", "description"]]:
+                if key == self.self_key:
+                    run.info('%s [JUST SET]' % key, self.db_self[key]["value"], mc='green', lc='green')
+                else:
+                    run.info(key, self.db_self[key]["value"])
+
+            run.info_single("Please remember that it is never a good idea to change these values. But in\
+                             some cases it may be absolutely necessary to update something here, and a\
+                             programmer may ask you to run this program and do it. But even then, you\
+                             should be very skeptical. For instance, if the programmer asks you to change\
+                             the values for 'num_contigs', or 'kmer_size', it would mean that they likely\
+                             hate you and want you to fail. So please be extremely careful changing any\
+                             of these values.", mc='red', nl_before=1)
+
+    def get_db_self(self):
+        try:
+            database = db.DB(self.db_path, None, ignore_version=True)
+
+            self.db_type = database.get_meta_value("db_type")
+            self.db_version = int(database.get_meta_value("version"))
+            self.db_self = database.get_table_as_dict("self")
+
+            database.disconnect()
+        except:
+            raise ConfigError("Are you sure '%s' is a database file? Because, you know, probably\
+                               it is not at all :(" % self.db_path)
+
+
+    def set_key_value(self):
+        try:
+            database = db.DB(self.db_path, None, ignore_version=True)
+            db_type = database.get_meta_value("db_type")
+            db_self = database.get_table_as_dict("self")
+            database.disconnect()
+        except:
+            raise ConfigError("Are you sure '%s' is a database file? Because, you know, probably\
+                               it is not at all :(" % self.db_path)
+
+
+        if self.self_key in ["version", "db_type", "description"]:
+            raise ConfigError("Well. This is awkward. The key '%s' is one of the 'no touch keys', so\
+                               you can't change them with this program. That said, you are an adult and\
+                               anvi'o can't tell you what to do. If you want to be a rebel, feel free to\
+                               use the sqlite from the command line to create your own Frankenstein." % self.self_key)
+
+        # make sure we did everything we can to avoid user error
+        self.self_key = self.self_key.replace(' ', '_').strip()
+
+        if self.self_key in db_self:
+            self.run.warning("The content of the key '%s' in the self table of your %s database,\
+                              which currently has a value of '%s', will be replaced with '%s'." % \
+                                    (self.self_key, db_type, db_self[self.self_key]['value'], self.self_value))
+        else:
+            self.run.warning("You are about to set a new key, '%s', in the self table of your %s\
+                              database which will hold the value '%s'." % \
+                                    (self.self_key, db_type, self.self_value))
+
+        if not self.just_do_it:
+            self.run.info_single('If you like what you see up there, please use the `--just-do-it`\
+                                  flag to make it happen.')
+            sys.exit(0)
+
+        database = db.DB(self.db_path, None, ignore_version=True)
+        database.remove_meta_key_value_pair(self.self_key)
+        database.set_meta_value(self.self_key, self.self_value)
+        database.disconnect()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Access self tables, display values, or set new ones totally on your own risk.")
+
+    groupA = parser.add_argument_group('Input', "The database path you wish to access.")
+    groupA.add_argument("input", metavar = "DATABASE_PATH", nargs=None, help = "An anvi'o database for pan, profile, contigs, or auxiliary data")
+
+    groupB = parser.add_argument_group('Very dangerous zone', "For power users with extreme self-control and maturity.")
+    # FIXME: Before the next release, make sure the next two params with these:
+    #
+    # groupB.add_argument(*anvio.A('self-key'), **anvio.K('self-key'))
+    # groupB.add_argument(*anvio.A('self-value'), **anvio.K('self-value'))
+    #
+    groupB.add_argument('--self-key', default=None, type=str, help='The key you wish to set or change')
+    groupB.add_argument('--self-value', default=None, type=str, help='The value you wish to set for the self key')
+    groupB.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    args, unknown = parser.parse_known_args()
+
+    try:
+        DatabaseInfo(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)

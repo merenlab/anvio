@@ -1,0 +1,4 @@
+sample	group	r1	r2
+sample_idab_ud_01	G01_idab_ud	three_samples_example/sample-01-R1-for-idba_ud.fastq	three_samples_example/sample-01-R2-for-idba_ud.fastq
+sample_idab_ud_02	G02_idab_ud	three_samples_example/sample-02-R1-for-idba_ud.fastq	three_samples_example/sample-02-R2-for-idba_ud.fastq
+sample_idab_ud_03	G02_idab_ud	three_samples_example/sample-03-R1-for-idba_ud.fastq	three_samples_example/sample-03-R2-for-idba_ud.fastq

@@ -637,6 +637,8 @@ def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expe
 
 
 def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
+    filesnpaths.is_file_exists(file_path)
+
     if include_first_column:
         return open(file_path, 'rU').readline().strip('\n').split('\t')
     else:
@@ -965,6 +967,31 @@ def get_split_start_stops_without_gene_calls(contig_length, split_length):
         chunks.append(last_tuple)
 
     return chunks
+
+
+def get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids):
+    """Takes a set of gene caller ids, returns all split and contig names in a
+       contigs database that are affiliated with them.
+    """
+
+    if not isinstance(gene_caller_ids, set):
+        raise ConfigError("`gene_caller_ids` must be of type `set`.")
+
+    is_contigs_db(contigs_db_path)
+
+    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+
+    where_clause_genes = "gene_callers_id in (%s)" % ', '.join(['%d' % g for g in gene_caller_ids])
+    genes_in_contigs = contigs_db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause_genes)
+    contig_names_of_interest = set([e['contig'] for e in genes_in_contigs.values()])
+
+    where_clause_contigs = "parent in (%s)" % ', '.join(['"%s"' % c for c in contig_names_of_interest])
+    splits_info = contigs_db.get_some_rows_from_table_as_dict(t.splits_info_table_name, where_clause=where_clause_contigs)
+    split_names_of_ineterest = set(splits_info.keys())
+
+    contigs_db.disconnect()
+
+    return (split_names_of_ineterest, contig_names_of_interest)
 
 
 def get_contigs_splits_dict(split_ids, splits_basic_info):
@@ -1830,21 +1857,23 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                 and must not contain any characters but ASCII letters, digits and\
                                 underscore" % os.path.basename(source))
 
-        for f in ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']:
-            f_path = os.path.join(source, f)
-            if not os.path.exists(f_path):
-                raise ConfigError("Each search database directory must contain following files: 'kind.txt', \
-                                   'reference.txt', 'genes.txt', 'target.txt', 'genes.hmm.gz', and\
-                                   'noise_cutoff_terms.txt'. %s does not seem to be a proper source. See\
-                                   this blog post to make sure you are doing it the way it should be done:\
-                                   http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
-                                                os.path.basename(source))
-            if os.stat(f_path).st_size == 0:
-                raise ConfigError("The file '%s' in the HMM source '%s' seems to be empty. Which creates lots of\
-                                   counfusion around these parts of the code. Anvi'o could set some defualts for you,\
-                                   but it would be much better if you set your own defaults explicitly. You're not\
-                                   sure what would make a good default in this context for the %s? Reach out to\
-                                   a developer, and they will help you!" % (f, os.path.basename(source), f))
+        expected_files = ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']
+
+        missing_files = [f for f in expected_files if not os.path.exists(os.path.join(source, f))]
+        if missing_files:
+            raise ConfigError("Each search database directory must contain following files: %s'. Yet, the HMM source '%s' seems to\
+                               be missing the follwoing one(s): %s. See this blog post to make sure you are doing it the way it\
+                               should be done: http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
+                                            (', '.join(expected_files), os.path.basename(source), ', '.join(missing_files)))
+
+        empty_files = [f for f in expected_files if os.stat(os.path.join(source, f)).st_size == 0]
+        if empty_files:
+            raise ConfigError("One or more files for the HMM source '%s' seems to be empty. Which creates lots of\
+                               counfusion around these parts of the code. Anvi'o could set some defualts for you,\
+                               but it would be much better if you set your own defaults explicitly. You're not\
+                               sure what would make a good default for your HMM collection? Reach out to\
+                               a developer, and they will help you! Here are the files that are empty: %s." % \
+                                    (os.path.basename(source), ', '.join(empty_files)))
 
         ref = R('reference.txt')
         kind = R('kind.txt')
@@ -1853,6 +1882,11 @@ def get_HMM_sources_dictionary(source_dirs=[]):
         anvio_hmm_target_term_to_alphabet_and_context(target)
 
         domain = None
+        if kind == 'singlecopy' and kind.count(':') == 0:
+            raise ConfigError("This HMM profile seems to be a collection of single-copy core genes. Great. But for\
+                               this kind, you must also declare a 'domain' in your 'kind.txt' file. It is simple.\
+                               For instance, you could use 'singlecopy:bacteria', or 'singlecopy:archaea', or\
+                               'singlecopy:myspecificbranch'.")
         if kind.count(':') == 1:
             kind, domain = kind.split(':')
 
@@ -1871,6 +1905,8 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
         genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names=['gene', 'accession', 'hmmsource'])
 
+        check_gene_names_in_hmm_model(os.path.join(source, 'genes.hmm.gz'), genes)
+
         sources[os.path.basename(source)] = {'ref': ref,
                                              'kind': kind,
                                              'domain': domain,
@@ -1880,6 +1916,24 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                                              'model': os.path.join(source, 'genes.hmm.gz')}
 
     return sources
+
+
+def check_gene_names_in_hmm_model(model_path, genes):
+    genes = set(genes)
+    genes_in_model = set([])
+
+    with gzip.open(model_path, 'rt', encoding='utf-8') as f:
+        for line in f:
+            if line.startswith('NAME'):
+                genes_in_model.add(line.split()[1])
+
+    if len(genes.difference(genes_in_model)):
+        raise ConfigError("Some gene names in genes.txt file does not seem to be appear in genes.hmm.gz.\
+                           Here is a list of missing gene names: %s" % ', '.join(list(genes.difference(genes_in_model))))
+
+    if len(genes_in_model.difference(genes)):
+        raise ConfigError("Some gene names in genes.hmm.gz file does not seem to be appear in genes.txt.\
+                           Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
 
 
 def get_missing_programs_for_hmm_analysis():
@@ -1965,7 +2019,7 @@ def get_all_item_names_from_the_database(db_path, run=run):
     db_type = database.get_meta_value('db_type')
 
     if db_type == 'profile':
-        if int(database.get_meta_value('blank')):
+        if is_blank_profile(db_path):
             run.warning("Someone asked for the split names in a blank profile database. Sadly, anvi'o does not keep track\
                          of split names in blank profile databases. This function will return an empty set as split names\
                          to not kill your mojo, but whatever you were trying to do will not work :(")
@@ -1980,8 +2034,8 @@ def get_all_item_names_from_the_database(db_path, run=run):
         all_items = set(database.get_single_column_from_table(t.splits_info_table_name, 'split'))
     else:
         database.disconnect()
-        raise ConfigError("You wanted to get all items in the database %s, but no one here knows aobut its type. Seriously,\
-                            what is '%s'?" % (db_path, db_type))
+        raise ConfigError("You wanted to get all items in the database %s, but no one here knows about its type. Seriously,\
+                            what is '%s' anyway?" % (db_path, db_type))
 
     if not len(all_items):
         database.disconnect()
@@ -2018,7 +2072,7 @@ def is_blank_profile(db_path):
         return False
 
     database = db.DB(db_path, None, ignore_version=True)
-    blank = database.get_meta_value('blank')
+    blank = int(database.get_meta_value('blank'))
     database.disconnect()
 
     return True if blank == 1 else False
@@ -2028,6 +2082,16 @@ def is_pan_db(db_path):
     if get_db_type(db_path) != 'pan':
         raise ConfigError("'%s' is not an anvi'o pan database." % db_path)
     return True
+
+
+def is_profile_db_merged(profile_db_path):
+    is_profile_db(profile_db_path)
+
+    profile_db = db.DB(profile_db_path, get_required_version_for_db(profile_db_path))
+    merged = int(profile_db.get_meta_value('merged'))
+    profile_db.disconnect()
+
+    return merged
 
 
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):

@@ -26,32 +26,45 @@ run = terminal.Run()
 
 
 def main(args):
-    # this is how simple it is:
     profile_db = dbops.ProfileSuperclass(args)
-    profile_db.init_gene_level_coverage_stats_dicts()
 
-    print()
+    gene_coverages_path = args.output_file_prefix +  '-GENE-COVERAGES.txt'
+    gene_detection_path = args.output_file_prefix +  '-GENE-DETECTION.txt'
 
-    gene_coverages = {}
-    gene_detection = {}
+    filesnpaths.is_output_file_writable(gene_coverages_path)
+    filesnpaths.is_output_file_writable(gene_detection_path)
 
-    for gene_callers_id in profile_db.gene_level_coverage_stats_dict.keys():
-        gene_coverages[gene_callers_id], gene_detection[gene_callers_id] = {}, {}
+    gene_coverages_file = open(gene_coverages_path, 'w')
+    gene_detection_file = open(gene_detection_path, 'w')
 
-        for sample_name in profile_db.p_meta['samples']:
-            gene_coverages[gene_callers_id][sample_name] = profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['mean_coverage']
-            gene_detection[gene_callers_id][sample_name] = profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['detection']
+    header_coverages = ['key'] + profile_db.p_meta['samples']
+    header_detection = ['key'] + profile_db.p_meta['samples']
 
-    gene_coverages_output = args.output_file_prefix +  '-GENE-COVERAGES.txt'
-    gene_detection_output = args.output_file_prefix +  '-GENE-DETECTION.txt'
+    gene_coverages_file.write('\t'.join(header_coverages) + '\n')
+    gene_detection_file.write('\t'.join(header_detection) + '\n')
 
-    filesnpaths.is_output_file_writable(gene_coverages_output)
+    def write_to_file():
+        for gene_callers_id in profile_db.gene_level_coverage_stats_dict:
+            line_coverages = [gene_callers_id]
+            line_detection = [gene_callers_id]
 
-    utils.store_dict_as_TAB_delimited_file(gene_coverages, gene_coverages_output)
-    utils.store_dict_as_TAB_delimited_file(gene_detection, gene_detection_output)
+            for sample_name in profile_db.p_meta['samples']:
+                line_coverages.append(profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['mean_coverage'])
+                line_detection.append(profile_db.gene_level_coverage_stats_dict[gene_callers_id][sample_name]['detection'])
 
-    run.info('Gene coverages', gene_coverages_output)
-    run.info('Gene detection', gene_detection_output)
+            gene_coverages_file.write('\t'.join(map(str, line_coverages)) + '\n')
+            gene_detection_file.write('\t'.join(map(str, line_detection)) + '\n')
+
+        profile_db.gene_level_coverage_stats_dict = {}
+        profile_db.split_coverage_values_per_nt_dict = {}
+
+    profile_db.init_gene_level_coverage_stats_dicts(callback=write_to_file, callback_interval=1000)
+
+    gene_coverages_file.close()
+    gene_detection_file.close()
+
+    run.info('Gene coverages', gene_coverages_path)
+    run.info('Gene detection', gene_detection_path)
 
 
 if __name__ == '__main__':

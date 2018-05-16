@@ -1,0 +1,37 @@
+{
+    "samples_txt": "samples.txt",
+    "idba_ud": {
+        "--min-contig": 1000,
+        "threads": 11,
+        "run": true,
+        "--mink": "",
+        "--maxk": "",
+        "--step": "",
+        "--inner-mink": "",
+        "--inner-step": "",
+        "--prefix": "",
+        "--min-count": "",
+        "--min-support": "",
+        "--seed-kmer": "",
+        "--similar": "",
+        "--max-mismatch": "",
+        "--min-pairs": "",
+        "--no-bubble": "",
+        "--no-local": "",
+        "--no-coverage": "",
+        "--no-correct": "",
+        "--pre-correction": ""
+    },
+    "iu_filter_quality_minoche": {
+        "run": false
+    },
+    "output_dirs": {
+        "FASTA_DIR": "02_FASTA_idba_ud_no_qc",
+        "CONTIGS_DIR": "03_CONTIGS_idba_ud_no_qc",
+        "QC_DIR": "01_QC_idba_ud_no_qc",
+        "MAPPING_DIR": "04_MAPPING_idba_ud_no_qc",
+        "PROFILE_DIR": "05_ANVIO_PROFILE_idba_ud_no_qc",
+        "MERGE_DIR": "06_MERGED_idba_ud_no_qc",
+        "LOGS_DIR": "00_LOGS_idba_ud_no_qc"
+    }
+}

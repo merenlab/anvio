@@ -201,7 +201,6 @@ class BinSplitter(summarizer.Bin):
                     t.gene_amino_acid_sequences_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.genes_in_contigs_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.genes_in_splits_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    t.genes_in_splits_summary_table_name: ('split', self.split_names),
                     t.genes_taxonomy_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.hmm_hits_table_name: ('gene_callers_id', self.gene_caller_ids),
                     t.hmm_hits_splits_table_name: ('split', self.split_names),
@@ -301,10 +300,10 @@ class BinSplitter(summarizer.Bin):
         # of what the values were, we will set the absolut correct ones.
         if self.skip_variability_tables:
             bin_profile_db.db.update_meta_value('SNVs_profiled', False)
-            bin_profile_db.db.update_meta_value('AA_frequencies_profiled', False)
+            bin_profile_db.db.update_meta_value('SCVs_profiled', False)
         else:
             tables[t.variable_nts_table_name] = ('split_name', self.split_names)
-            tables[t.variable_aas_table_name] = ('corresponding_gene_call', self.gene_caller_ids)
+            tables[t.variable_codons_table_name] = ('corresponding_gene_call', self.gene_caller_ids)
 
         bin_profile_db.disconnect()
 

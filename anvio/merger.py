@@ -20,7 +20,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.tables.variability import TableForVariability
-from anvio.tables.aafrequencies import TableForAAFrequencies
+from anvio.tables.codonfrequencies import TableForCodonFrequencies
 from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalData
 from anvio.tables.views import TablesForViews
 
@@ -77,25 +77,31 @@ class MultipleRuns:
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
+        self.profiles = []
         self.split_names = None
         self.sample_ids_found_in_input_dbs = []
         self.normalization_multiplier = {}
 
         self.profile_dbs_info_dict = {}
-        self.profiles = []
+
+        # these will describe layer additional data common to all profile
+        # databases to be merged:
+        self.layer_additional_data_dict = {}
+        self.layer_additional_data_keys = {}
+
 
         self.merged_profile_db_path = None
 
         self.clustering_configs = constants.clustering_configs['merged']
 
-        self.database_paths = {'CONTIGS.db': os.path.abspath(self.contigs_db_path)}
+        self.database_paths = {'CONTIGS.db': os.path.abspath(self.contigs_db_path) if self.contigs_db_path else None}
 
         # we don't know what we are about
         self.description = None
 
 
-    def populate_profile_dbs_info_dict(self):
-        improper = []
+    def check_dbs_to_be_merged(self):
+        proper, improper = [], []
 
         for p in self.input_profile_db_paths:
             utils.is_profile_db(p)
@@ -105,7 +111,7 @@ class MultipleRuns:
             if profile_db.meta['db_type'] != 'profile' or profile_db.meta['blank'] or profile_db.meta['merged']:
                 improper.append(p)
             else:
-                self.profile_dbs_info_dict[p] = profile_db.meta
+                proper.append(p)
 
         proper = [p for p in self.input_profile_db_paths if p not in improper]
 
@@ -126,6 +132,134 @@ class MultipleRuns:
                               Here are all the paths for excluded databases: %s." \
                                             % (len(self.input_profile_db_paths), len(improper), len(proper), ', '.join(["'%s'" % p for p in improper])))
 
+        # replace input profile database paths with proper paths:
+        self.input_profile_db_paths = proper
+
+
+    def __populate_layer_additional_data_dict_for_taxonomic_data_groups(self, data_group_names):
+        if data_group_names:
+            self.run.warning("Anvi'o found %d data groups for taxonomy (%s), and will do its best to make sure they\
+                              get worked into the merged profile database. A moment of zero promises but crossed\
+                              fingers (which is the best way to avoid most computational poopsies)." % \
+                                                (len(data_group_names), ', '.join(data_group_names)),
+                              header="GOOD NEWS",
+                              lc="green")
+        else:
+            return
+
+        dicts_of_layer_additional_data_dicts = {}
+
+        for data_group_name in data_group_names:
+            self.layer_additional_data_dict[data_group_name] = {}
+            self.layer_additional_data_keys[data_group_name] = []
+
+            all_keys = set([])
+            for p in self.input_profile_db_paths:
+                keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get(data_group=data_group_name)
+                dicts_of_layer_additional_data_dicts[p] = data
+                all_keys.update(set(keys))
+
+            # here we are building a data dict that will make sure every profile has an entry in the dict
+            # for every key in `all_keys` in this data group.
+            layer_additional_data_dict = {}
+            for data in dicts_of_layer_additional_data_dicts.values():
+                for layer_name in data:
+                    for key in all_keys:
+                        if key not in data[layer_name]:
+                            data[layer_name][key] = 0
+
+                    layer_additional_data_dict[layer_name] = data[layer_name]
+
+            self.layer_additional_data_dict[data_group_name] = layer_additional_data_dict
+            self.layer_additional_data_keys[data_group_name] = all_keys
+
+
+    def __populate_layer_additional_data_dict_for_regular_data_groups(self, data_group_names):
+        dicts_of_layer_additional_data_dicts = {}
+
+        for data_group_name in data_group_names:
+            self.layer_additional_data_dict[data_group_name] = {}
+            self.layer_additional_data_keys[data_group_name] = []
+
+            for p in self.input_profile_db_paths:
+                keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get(data_group=data_group_name)
+                dicts_of_layer_additional_data_dicts[p] = {'keys': keys, 'data': data}
+
+            # find common keys to all layer additional data tables:
+            all_keys = [set(e['keys']) for e in dicts_of_layer_additional_data_dicts.values()]
+
+            layer_additional_data_keys = all_keys.pop()
+
+            for key_set in all_keys:
+                layer_additional_data_keys.intersection_update(key_set)
+
+            # if there are no keys that are common to all single profiles, we shall merge nothing of these
+            # tables.
+            if data_group_name == 'default' and 'total_reads_mapped' not in layer_additional_data_keys:
+                self.progress.end()
+                raise ConfigError("While trying to learn everything there is to learn about layer additional data in single\
+                                   profiles to be merged, anvi'o realized that 'total_reads_mapped' is not common to all \
+                                   profile databases :( This is bad, becasue this indicates there is something terribly\
+                                   wrong with one or more of your single profile databases. If you are a programmer trying to\
+                                   mimic anvi'o single profiles, you will have to look at the code of the profiler a bit more\
+                                   carefully. If you are a user, well, you are *really* in trouble... Send us an e-mail or\
+                                   something?")
+
+            # otherwise, let's create a final data dictionary for these assholes in this data group based on
+            # thier common keys.
+            for data in [v['data'] for v in dicts_of_layer_additional_data_dicts.values()]:
+                sample_id = list(data.keys())[0]
+
+                keys_of_no_interest = [k for k in data[sample_id] if k not in layer_additional_data_keys]
+                for key in keys_of_no_interest:
+                    data[sample_id].pop(key)
+
+                self.layer_additional_data_dict[data_group_name][sample_id] = data[sample_id]
+
+            self.layer_additional_data_keys[data_group_name] = layer_additional_data_keys
+
+
+    def populate_layer_additional_data_dict(self, missing_default_data_group_is_OK=False):
+        self.progress.new('Layer additional data ops')
+        self.progress.update('...')
+
+        data_groups_common_to_all_profile_dbs = set([])
+
+        for p in self.input_profile_db_paths:
+            if self.input_profile_db_paths.index(p) == 0:
+                data_groups_common_to_all_profile_dbs = set(TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get_group_names())
+            else:
+                data_groups_common_to_all_profile_dbs.intersection_update(set(TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get_group_names()))
+
+        if 'default' not in data_groups_common_to_all_profile_dbs:
+            if missing_default_data_group_is_OK:
+                pass
+            else:
+                 raise ConfigError("There is something wrong with your input databases. The group name 'default'\
+                                    should be common to all of them, but it doesn't seem to be the case :/ How did\
+                                    you end up with an anvi'o single profile database that doesn't have the 'default'\
+                                    gropu in its additional layer data table? It is very likely that your profiling\
+                                    step failed for some reason for one or more of your databases :(")
+
+        taxonomic_data_groups = set(constants.levels_of_taxonomy).intersection(data_groups_common_to_all_profile_dbs)
+        regular_data_groups = data_groups_common_to_all_profile_dbs.difference(taxonomic_data_groups)
+
+        self.progress.end()
+
+        self.__populate_layer_additional_data_dict_for_regular_data_groups(regular_data_groups)
+        self.__populate_layer_additional_data_dict_for_taxonomic_data_groups(taxonomic_data_groups)
+
+
+    def populate_profile_dbs_info_dict(self):
+        self.progress.new('Reading self tables of each single profile db')
+        self.progress.update('...')
+
+        for p in self.input_profile_db_paths:
+            profile_db = dbops.ProfileDatabase(p)
+            self.profile_dbs_info_dict[p] = profile_db.meta
+
+        self.progress.end()
+
 
     def sanity_check(self):
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.overwrite_output_destinations)
@@ -140,7 +274,11 @@ class MultipleRuns:
             raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
                                 while also asking it to enforce it.")
 
+        self.check_dbs_to_be_merged()
+
         self.populate_profile_dbs_info_dict()
+
+        self.populate_layer_additional_data_dict()
 
         self.sample_ids_found_in_input_dbs = sorted([v['sample_id'] for v in list(self.profile_dbs_info_dict.values())])
         if len(self.profile_dbs_info_dict) != len(set(self.sample_ids_found_in_input_dbs)):
@@ -161,7 +299,7 @@ class MultipleRuns:
                      ('min_contig_length', 'The minimum contig length (-M) values'),
                      ('min_coverage_for_variability', 'The minimum coverage values to report variability (-V)'),
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
-                     ('AA_frequencies_profiled', 'Profile AA frequencies flags (--profile-AA-frequencies)'),
+                     ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
                      ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)')]:
             v = set([r[k] for r in list(self.profile_dbs_info_dict.values())])
             if len(v) > 1:
@@ -225,19 +363,19 @@ class MultipleRuns:
         variable_nts_table.store()
 
 
-    def merge_variable_aas_tables(self):
-        variable_aas_table = TableForAAFrequencies(self.merged_profile_db_path, progress=self.progress)
+    def merge_variable_codons_tables(self):
+        variable_codons_table = TableForCodonFrequencies(self.merged_profile_db_path, progress=self.progress)
 
         for input_profile_db_path in self.profile_dbs_info_dict:
             sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_variable_aas_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_aas_table_name, tables.variable_aas_table_structure)
+            sample_variable_codons_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_codons_table_name, tables.variable_codons_table_structure)
             sample_profile_db.disconnect()
 
-            for tpl in sample_variable_aas_table:
-                entry = tuple([variable_aas_table.next_id(tables.variable_aas_table_name)] + list(tpl[1:]))
-                variable_aas_table.db_entries.append(entry)
+            for tpl in sample_variable_codons_table:
+                entry = tuple([variable_codons_table.next_id(tables.variable_codons_table_name)] + list(tpl[1:]))
+                variable_codons_table.db_entries.append(entry)
 
-        variable_aas_table.store()
+        variable_codons_table.store()
 
 
     def merge_split_coverage_data(self):
@@ -308,7 +446,7 @@ class MultipleRuns:
         self.num_splits = C('num_splits')
         self.min_coverage_for_variability = C('min_coverage_for_variability')
         self.report_variability_full = C('report_variability_full')
-        self.AA_frequencies_profiled = C('AA_frequencies_profiled')
+        self.SCVs_profiled = C('SCVs_profiled')
         self.SNVs_profiled = C('SNVs_profiled')
         self.total_length = C('total_length')
 
@@ -327,9 +465,9 @@ class MultipleRuns:
                               to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
                                                                 % pp(self.num_splits))
 
-        self.total_reads_mapped_per_sample =  dict([(v['sample_id'], int(v['total_reads_mapped'][v['sample_id']])) for v in list(self.profile_dbs_info_dict.values())])
+        self.total_reads_mapped_per_sample = dict([(s, self.layer_additional_data_dict['default'][s]['total_reads_mapped']) for s in self.layer_additional_data_dict['default']])
 
-        sample_ids_list = ', '.join(sorted(self.sample_ids_found_in_input_dbs)) 
+        sample_ids_list = ', '.join(sorted(self.sample_ids_found_in_input_dbs))
         total_reads_mapped_list = ', '.join([str(self.total_reads_mapped_per_sample[sample_id]) for sample_id in self.sample_ids_found_in_input_dbs])
 
         meta_values = {'db_type': 'profile',
@@ -343,7 +481,7 @@ class MultipleRuns:
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
                        'SNVs_profiled': self.SNVs_profiled,
-                       'AA_frequencies_profiled': self.AA_frequencies_profiled,
+                       'SCVs_profiled': self.SCVs_profiled,
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
@@ -367,6 +505,7 @@ class MultipleRuns:
         self.run.info('contigs_db_hash', self.contigs_db_hash)
         self.run.info('num_runs_processed', len(self.sample_ids_found_in_input_dbs))
         self.run.info('merged_sample_ids', sample_ids_list)
+        self.run.info("Common layer additional data keys", ', '.join(self.layer_additional_data_keys))
         self.run.info('total_reads_mapped', total_reads_mapped_list)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('clustering_performed', not self.skip_hierarchical_clustering)
@@ -383,13 +522,13 @@ class MultipleRuns:
         else:
             self.run.warning("SNVs were not profiled, variable nt positions tables will be empty in the merged profile database.")
 
-        if self.AA_frequencies_profiled:
-            self.progress.new('Merging variable AAs tables')
+        if self.SCVs_profiled:
+            self.progress.new('Merging variable codons tables')
             self.progress.update('...')
-            self.merge_variable_aas_tables()
+            self.merge_variable_codons_tables()
             self.progress.end()
         else:
-            self.run.warning("AA frequencies were not profiled, these tables will be empty in the merged profile database.")
+            self.run.warning("Codon frequencies were not profiled, hence, these tables will be empty in the merged profile database.")
 
         # critical part:
         self.gen_view_data_tables_from_atomic_data()
@@ -403,7 +542,9 @@ class MultipleRuns:
         if not self.skip_concoct_binning and __CONCOCT_IS_AVAILABLE__:
             self.bin_contigs_concoct()
 
-        self.populate_layers_additional_data_and_layer_orders()
+        self.populate_misc_data_tables()
+
+        self.run.info_single('Happy.', nl_before=1, nl_after=1)
 
         self.run.quit()
 
@@ -427,7 +568,7 @@ class MultipleRuns:
         return self.normalized_coverages[target][split_name][sample_id] / denominator if denominator else 0
 
 
-    def populate_layers_additional_data_and_layer_orders(self):
+    def populate_misc_data_tables(self):
         self.run.info_single("Additional data and layer orders...", nl_before=1, nl_after=1, mc="blue")
 
         essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
@@ -437,7 +578,7 @@ class MultipleRuns:
         profile_db_super = dbops.ProfileSuperclass(args)
         profile_db_super.load_views(omit_parent_column=True)
 
-        # figure out sample orders dictionary
+        # figure out layer orders dictionary
         layer_orders_data_dict = {}
         failed_attempts = []
         self.progress.new('Working on layer orders')
@@ -467,21 +608,21 @@ class MultipleRuns:
                               the clustering in fact worked. Here is the list of stuff that failed: '%s'"\
                               % (', '.join(failed_attempts)))
 
-        self.progress.new('Working on layer additional data')
-        self.progress.update('...')
+        # add the layer orders quietly
+        TableForLayerOrders(args, r=terminal.Run(verbose=False)).add(layer_orders_data_dict)
+        self.run.warning(None, header="Layer orders added", lc='cyan')
+        for layer_order in layer_orders_data_dict:
+            self.run.info_single(layer_order, mc='cyan')
 
-        layer_additional_data_dict = {}
-        for sample_name in self.sample_ids_found_in_input_dbs:
-            layer_additional_data_dict[sample_name] = {}
+        # done with layer orders. let's add our layer additional data and call it a day.
+        for data_group_name in self.layer_additional_data_dict:
+            TableForLayerAdditionalData(args, r=terminal.Run(verbose=False)).add(self.layer_additional_data_dict[data_group_name],
+                                                                                 list(self.layer_additional_data_keys[data_group_name]),
+                                                                                 data_group=data_group_name)
 
-        # figure out num reads mapped per sample:
-        for sample_name in self.sample_ids_found_in_input_dbs:
-            layer_additional_data_dict[sample_name]['num_mapped_reads'] = self.total_reads_mapped_per_sample[sample_name]
-
-        self.progress.end()
-
-        TableForLayerOrders(args).add(layer_orders_data_dict)
-        TableForLayerAdditionalData(args).add(layer_additional_data_dict, ['num_mapped_reads'])
+        self.run.warning(None, header="Data groups added", lc='cyan')
+        for data_group in self.layer_additional_data_dict:
+            self.run.info_single('%s (w/%d items)' % (data_group, len(self.layer_additional_data_keys[data_group])), mc='cyan')
 
 
     def gen_view_data_tables_from_atomic_data(self):
