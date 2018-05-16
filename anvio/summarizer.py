@@ -378,20 +378,19 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             # convert dictionary to pandas
             # we can't use pandas from_dict because it is meant for dict of dicts (i.e. tow levels)
             # and we have a dict of dicts of dicts (three levels).
-            columns = ['category', 'enrichment', 'weighted_enrichment', functional_annotation_source, 'gene_clusters']
-            dtypes = ['str', 'float64', 'float64', 'str', 'str']
-            # we need to determine columns type otherwise float_format wouldn't work when doing to_csv
-            type_dict = dict(zip(columns, dtypes))
-            enrichment_data_frame = pd.DataFrame(None, index=range(number_of_records_in_output), columns = columns).astype(type_dict)
-            print(enrichment_data_frame)
+            # so we first convert it to a dict of dicts and then convert to pandas
+            # because this is faster than alternatives
             i = 0
+            D = {}
             for c in enrichment_dict:
                 for f in enrichment_dict[c]:
-                    enrichment_data_frame.loc[i, 'category'] = c
-                    enrichment_data_frame.loc[i, functional_annotation_source] = f
+                    D[i] = {}
+                    D[i]['category'] = c
+                    D[i][functional_annotation_source] = f
                     for key, value in enrichment_dict[c][f].items():
-                        enrichment_data_frame.loc[i, key] = value
+                        D[i][key] = value
                     i += 1
+            enrichment_data_frame = pd.DataFrame.from_dict(D, orient='index')
 
             # sort according to enrichment
             enrichment_data_frame.sort_values(by='enrichment', axis=0, ascending=False, inplace=True)
