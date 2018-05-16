@@ -28,6 +28,7 @@ import os
 import sys
 import gzip
 import glob
+import math
 import numpy
 import shutil
 import hashlib
@@ -269,9 +270,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             raise ConfigError("Your favorite functional annotation source '%s' does not seem to be among one of the sources\
                                that are available to you. Here are the ones you should choose from: %s." % (functional_annotation_source, ', '.join(self.gene_clusters_function_sources)))
 
-        
-
-        
         keys, categories_dict = TableForLayerAdditionalData(argparse.Namespace(pan_db=self.pan_db_path)).get(additional_data_keys_requested=[category_variable])
 
         values_that_are_not_none = [s for s in categories_dict.values() if s[category_variable] is not None]
@@ -289,7 +287,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
 
         # this is where we do the enrichment analysis per category:
-        print(categories_dict)
+
+        # first we create a dictionary with the occurence (boolean) of functions in genomes
+        # later, we will convert this dict of dicts to a pandas dataframe
         D = {}
         for gc in self.gene_clusters_functions_dict:
             for genome_name in self.gene_clusters_functions_dict[gc]:
@@ -303,8 +303,55 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                             D[genome_name][f] = True
 
         DF = pd.DataFrame.from_dict(D, orient='index')
-        DF['group'] = DF.index.map(lambda x: categories_dict[x][category_variable])
-        print(DF.groupby('group').sum())
+        DF.fillna(False, inplace=True)
+
+        # get a list of unique function names
+        functions_names = set(DF.columns)
+
+        # add a category column to the dataframe
+        DF['category'] = DF.index.map(lambda x: categories_dict[x][category_variable])
+
+        # the sum of occurences of each function in each category
+        functions_in_categories = DF.groupby('category').sum()
+
+        # the total occurence of functions in all categories
+        total_occurence_of_functions = DF.sum()
+
+        # unique names of categories
+        categories = set([categories_dict[g][category_variable] for g in categories_dict.keys() if\
+                            categories_dict[g][category_variable] is not None])
+        categories_to_genomes_dict = {}
+        for c in categories:
+            categories_to_genomes_dict[c] = set([genome for genome in categories_dict.keys() if categories_dict[genome][category_variable] == c])
+        number_of_genomes = len(categories_dict.keys())
+
+        functions_comparrison_dict = {}
+        for c in categories:
+            functions_comparrison_dict[c] = {}
+            group_size = len(categories_to_genomes_dict[c])
+            group_portion = group_size / number_of_genomes
+            # see details below
+            weighting_normalization_factor = number_of_genomes * (group_portion * math.log2(group_portion)\
+                                                + (1 - group_portion) * math.log2(1 - group_portion))
+            for f in functions_names:
+                functions_comparrison_dict[c][f] = {}
+                occurence_in_group = functions_in_categories.loc[c, f] / group_size
+                occurence_outside_of_group = (total_occurence_of_functions[f] - functions_in_categories.loc[c, f])\
+                                                / (number_of_genomes - group_size)
+                enrichment = occurence_in_group - occurence_outside_of_group
+
+                # the more genomes we have in each group when making the comparisson
+                # the stronger the results are. In order to allow to compare results from
+                # different categories, we also return this weighted score. The normalization
+                # factor is simply the number of genomes multiplied by the entropy of the two compared
+                # groups. the rational is that having more genomes is only helping the comparisson if the
+                # genomes represent both compared groups, and that's where the entropy comes in.
+                weighted_enrichment = enrichment * weighting_normalization_factor
+
+                functions_comparrison_dict[c][f]["enrichment"] = enrichment
+                functions_comparrison_dict[c][f]["weighted_enrichment"] = weighted_enrichment
+        print(functions_comparrison_dict)
+
 
 
     def process(self):
