@@ -60,12 +60,31 @@ class VariabilityFilter:
         if min_occurrence <= 1:
             return
 
-        func = lambda occurrences, min_occurrence: self.data[self.data["unique_pos_identifier_str"].isin(occurrences[occurrences >= min_occurrence].index)]
+        occurrences = self.data["unique_pos_identifier_str"].value_counts()
+        postions_with_greater_than_min_occurrence = occurrences[occurrences >= min_occurrence].index
 
-        filter_args = {"occurrences": self.data["unique_pos_identifier_str"].value_counts(),
-                       "min_occurrence": min_occurrence}
+        func = self.subset_filter
+        filter_args = {"criterion": "unique_pos_identifier_str",
+                       "subset_values": postions_with_greater_than_min_occurrence}
 
         self.filter_wrapper(func, descriptor="Minimum occurrence of positions", value_of_filter_criterion=min_occurrence, **filter_args)
+
+
+    def filter_by_minimum_coverage_in_each_sample(self, minimum_coverage_in_each_sample):
+        """To remove any unique entry from the variable positions table that describes a variable position
+           and yet is not helpful to distinguish samples from each other."""
+
+        if min_coverage_in_each_sample < 1:
+            return
+
+        in_cov_each_pos = self.data.groupby("unique_pos_identifier")["coverage"].min()
+        pos_to_keep = list(min_cov_each_pos[min_cov_each_pos >= self.min_coverage_in_each_sample].index)
+
+        func = self.subset_filter
+        filter_args = {"criterion": "unique_pos_identifier_str",
+                       "subset_values": pos_to_keep}
+
+        self.filter_wrapper(func, descriptor="Minimum coverage across all samples", value_of_filter_criterion=minimum_coverage_in_each_sample, **filter_args)
 
 
     def are_passed_arguments_valid(self, kwargs):
@@ -183,9 +202,9 @@ class VariabilityFilter:
         return function
 
 
-    def subset_filter(self, subset_values):
+    def subset_filter(self, criterion, subset_values):
         subset_values = self.get_subset_values_as_set(subset_values)
-        return self.data.loc[self.data[self.criterion].isin(subset_values)]
+        return self.data.loc[self.data[criterion].isin(subset_values)]
 
 
     def get_subset_values_as_set(self, subset_values):
@@ -198,7 +217,7 @@ class VariabilityFilter:
                 raise TypeError
 
 
-    def extremum_filter(self, extremum_value, extremum_type, inclusive = True):
+    def extremum_filter(self, criterion, extremum_value, extremum_type, inclusive = True):
         """extremum_value: float or int
                The value you are using as a cut off.
            extremum_type: str
@@ -207,7 +226,7 @@ class VariabilityFilter:
                If True, values equal to extremum_value will not be removed"""
         extremum_value = float(extremum_value)
         op = self.get_bound_filter_operator(extremum_type, inclusive)
-        return self.data[op(self.data[self.criterion], extremum_value)]
+        return self.data[op(self.data[criterion], extremum_value)]
 
 
     def get_bound_filter_operator(self, extremum_type, inclusive):
@@ -247,6 +266,7 @@ class VariabilityFilter:
             d["descriptor"]                = D("minimum", self.criterion)
             d["value_of_filter_criterion"] = keyword_value
             d["filter_args"]               = {"extremum_value" : keyword_value,
+                                              "criterion"      : self.criterion,
                                               "extremum_type"  : "min",
                                               "inclusive"      : True}
 
@@ -255,6 +275,7 @@ class VariabilityFilter:
             d["descriptor"]                = D("maximum", self.criterion)
             d["value_of_filter_criterion"] = keyword_value
             d["filter_args"]               = {"extremum_value" : keyword_value,
+                                              "criterion"      : self.criterion,
                                               "extremum_type"  : "max",
                                               "inclusive"      : True}
 
@@ -262,7 +283,8 @@ class VariabilityFilter:
             d["filter_function"]           = self.subset_filter
             d["descriptor"]                = D(self.criterion+"(s)", "of interest")
             d["value_of_filter_criterion"] = keyword_value
-            d["filter_args"]               = {"subset_values": keyword_value}
+            d["filter_args"]               = {"subset_values" : keyword_value,
+                                              "criterion"     : self.criterion}
 
         else:
             raise ConfigError("VariabilitySuper :: `%s` is not a keyword recognized by the built in\
@@ -442,7 +464,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
         VariabilityFilter.__init__(self, self.args, r=self.run, p=self.progress)
 
-        # f = function called in self.process, c = condition upon which function is called
+        # f = function called in self.process
+        # c = condition upon which function is called
+        # **kwargs = parameters passed to function
         F = lambda f, c = True: (f, c)
         self.process_functions = [F(self.init_commons),
                                   F(self.load_variability_data, not self.table_provided),
@@ -452,7 +476,6 @@ class VariabilitySuper(VariabilityFilter, object):
                                   F(self.filter_by_scattering_factor),
                                   F(self.filter_by_num_positions_from_each_split),
                                   F(self.compute_additional_fields),
-                                  F(self.filter_by_departure_from_consensus),
                                   F(self.recover_base_frequencies_for_all_samples, self.quince_mode),
                                   F(self.filter_by_minimum_coverage_in_each_sample),
                                   F(self.compute_comprehensive_variability_scores),
@@ -867,91 +890,19 @@ class VariabilitySuper(VariabilityFilter, object):
                 break
 
 
-    def filter_by_departure_from_consensus(self):
-        if self.min_departure_from_consensus:
-            self.run.info('Min departure from consensus', self.min_departure_from_consensus)
-            self.progress.new('Filtering based on min departure from consensus')
-            entries_before = len(self.data.index)
-            self.data = self.data[self.data['departure_from_consensus'] >= self.min_departure_from_consensus]
-            entries_after = len(self.data.index)
-            self.progress.end()
-            self.report_change_in_entry_number(entries_before, entries_after, reason="min departure from consensus")
+    def apply_preliminary_filters(self):
+        self.run.info('Variability data', '%s entries in %s splits across %s samples'\
+                % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.available_sample_ids))))
+        self.run.info("Samples available", ", ".join(sorted(self.available_sample_ids)))
 
-        if self.max_departure_from_consensus < 1:
-            self.run.info('Max departure from consensus', self.max_departure_from_consensus)
-            self.progress.new('Filtering based on max departure from consensus')
-            entries_before = len(self.data.index)
-            self.data = self.data[self.data['departure_from_consensus'] <= self.max_departure_from_consensus]
-            entries_after = len(self.data.index)
-            self.progress.end()
-            self.report_change_in_entry_number(entries_before, entries_after, reason="max departure from consensus")
-
-
-    def filter_by_samples(self):
         if self.sample_ids_of_interest:
             samples_missing = [sample_id for sample_id in self.sample_ids_of_interest if sample_id not in self.available_sample_ids]
-
             if len(samples_missing):
                 raise ConfigError('One or more samples you are interested in seem to be missing from\
                                    the %s: %s' % ('variability table' if self.table_provided else 'profile database',
                                                   ', '.join(samples_missing)))
 
-            self.run.info('Samples of interest', ', '.join(sorted(list(self.sample_ids_of_interest))))
-            self.available_sample_ids = sorted(list(self.sample_ids_of_interest))
-            self.progress.new('Filtering based on samples of interest')
-            entries_before = len(self.data.index)
-            self.data = self.data.loc[self.data["sample_id"].isin(self.sample_ids_of_interest)]
-            entries_after = len(self.data.index)
-            self.progress.end()
-            self.report_change_in_entry_number(entries_before, entries_after, reason="samples of interest")
-
-
-    def filter_by_genes(self):
-        if self.genes_of_interest:
-            self.run.info('Num genes of interest', pp(len(self.genes_of_interest)))
-            self.progress.new('Filtering based on genes of interest')
-            entries_before = len(self.data.index)
-            self.data = self.data.loc[self.data["corresponding_gene_call"].isin(self.genes_of_interest)]
-            entries_after = len(self.data.index)
-            self.progress.end()
-            self.report_change_in_entry_number(entries_before, entries_after, reason="genes of interest")
-
-
-    def filter_by_splits(self):
-        if self.splits_of_interest:
-            self.run.info('Num splits of interest', pp(len(self.splits_of_interest)))
-            self.progress.new('Filtering based on splits of interest')
-            entries_before = len(self.data.index)
-            self.data = self.data.loc[self.data["split_name"].isin(self.splits_of_interest)]
-            entries_after = len(self.data.index)
-            self.progress.end()
-            self.report_change_in_entry_number(entries_before, entries_after, reason="splits of interest")
-
-
-    def filter_by_departure_from_reference(self):
-        if self.min_departure_from_reference:
-            self.run.info('Min departure from reference', self.min_departure_from_reference)
-            self.progress.new('Filtering based on min departure from reference')
-            entries_before = len(self.data.index)
-            self.data = self.data.loc[self.data["departure_from_reference"] >= self.min_departure_from_reference]
-            entries_after = len(self.data.index)
-            self.progress.end()
-            self.report_change_in_entry_number(entries_before, entries_after, reason="min departure from reference")
-
-        if self.max_departure_from_reference < 1:
-            self.run.info('Max departure from reference', self.max_departure_from_reference)
-            self.progress.new('Filtering based on max departure from reference')
-            entries_before = len(self.data.index)
-            self.data = self.data.loc[self.data["departure_from_reference"] <= self.max_departure_from_reference]
-            entries_after = len(self.data.index)
-            self.progress.end()
-            self.report_change_in_entry_number(entries_before, entries_after, reason="max departure from reference")
-
-
-    def apply_preliminary_filters(self):
-        self.run.info('Variability data', '%s entries in %s splits across %s samples'\
-                % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.available_sample_ids))))
-        self.run.info("Samples available", ", ".join(sorted(self.available_sample_ids)))
+        self.available_sample_ids = sorted(list(self.sample_ids_of_interest))
 
         self.filter_data(criterion = "sample_id",
                          subset_filter = self.sample_ids_of_interest,
@@ -983,7 +934,7 @@ class VariabilitySuper(VariabilityFilter, object):
             pass
 
         self.filter_data(function = self.filter_by_occurrence,
-                         min_occurrence = self.min_occurrence)
+                         min_occurrence = 2, verbose=True)
 
         # this could go anywhere now
         self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
@@ -1095,6 +1046,13 @@ class VariabilitySuper(VariabilityFilter, object):
         self.data.loc[coverage_nonzero, "departure_from_consensus"] = \
                     (self.data.loc[coverage_nonzero, "coverage"] - coverages_first) / self.data.loc[coverage_nonzero, "coverage"]
 
+        # no time wasted. filter departure_from_consensus values
+        self.filter_data(criterion="departure_from_consensus",
+                         min_filter=self.min_departure_from_consensus,
+                         min_condition=self.min_departure_from_consensus > 0,
+                         max_filter=self.max_departure_from_consensus,
+                         max_condition=self.max_departure_from_consensus < 1)
+
         # if the coverage is zero, n2n1ratio = 0
         self.data.loc[coverage_zero, "n2n1ratio"] = 0
         self.data.loc[coverage_nonzero, "n2n1ratio"] = coverages_second[coverage_nonzero] / coverages_first[coverage_nonzero]
@@ -1189,36 +1147,6 @@ class VariabilitySuper(VariabilityFilter, object):
                       mc='green')
 
         self.check_if_data_is_empty()
-
-
-    def filter_by_minimum_coverage_in_each_sample(self):
-        """To remove any unique entry from the variable positions table that describes a variable position
-           and yet is not helpful to distinguish samples from each other."""
-
-        if self.min_coverage_in_each_sample < 1:
-            return
-
-        self.run.info('Min coverage in all samples', '%dX' % self.min_coverage_in_each_sample)
-
-        self.progress.new('Examining coverage of each variable position in each sample')
-        self.progress.update('...')
-
-        num_entries_before = len(self.data.index)
-
-        # get the minimum coverage for each unique_pos_identifier
-        min_cov_each_pos = self.data.groupby("unique_pos_identifier")["coverage"].min()
-
-        # get a list of all unique_pos_identifiers with min cov > self.min_coverage_in_each_sample].index
-        pos_to_keep = list(min_cov_each_pos[min_cov_each_pos >= self.min_coverage_in_each_sample].index)
-
-        # only include entries with unique_pos_identifier in pos_to_keep
-        self.data = self.data[self.data["unique_pos_identifier"].isin(pos_to_keep)]
-
-        num_entries_after = len(self.data.index)
-
-        self.progress.end()
-
-        self.report_change_in_entry_number(num_entries_before, num_entries_after, reason="min cov for all samples")
 
 
     def filter_by_num_positions_from_each_split(self):
