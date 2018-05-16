@@ -252,7 +252,7 @@ function initData() {
             {
                 $('#btn_draw_tree').removeClass('glowing-button');
 
-                $.when({})
+                $.when()
                  .then(drawTree)
                  .then(function() {
                     if (response.collection !== null && mode !== 'refine' && mode !== 'gene')
@@ -1295,7 +1295,7 @@ function serializeSettings(use_layer_names) {
     return state;
 }
 
-function drawTree() {
+function drawTree(collapsed_node_id) {
     var defer = $.Deferred();
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
@@ -1320,6 +1320,10 @@ function drawTree() {
             },
             onShow: function() {
                 drawer = new Drawer(settings);
+                if (typeof collapsed_node_id !== 'undefined') {
+                    drawer.tree.nodes[collapsed_node_id].collaped = true;
+                }
+
                 drawer.draw();
 
                 // last_settings used in export svg for layer information,
@@ -2113,7 +2117,7 @@ function processState(state_name, state) {
 
 
 function restoreOriginalTree() {
-    $.when({})
+    $.when()
      .then(onTreeClusteringChange)
      .then(
         function() {
