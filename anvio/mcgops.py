@@ -48,6 +48,10 @@ class MCGPlots:
         self.samples = set(mcg.gene_presence_absence_in_samples.loc[gene_id, mcg.gene_presence_absence_in_samples.loc[gene_id,]==True].index)
         # taking only the positive samples in which the gene is present
         self.samples = self.samples.intersection(mcg.positive_samples)
+        if not self.samples:
+            # if the gene is not detected in any positive samples then dont save the plot
+            self.save = False
+
         self.x = mcg.samples_coverage_stats_dicts.loc[self.samples,'non_outlier_mean_coverage']
         self.y = mcg.gene_level_coverage_stats_dict_of_dataframes['non_outlier_mean_coverage'].loc[gene_id, self.samples]
         self.std_x = mcg.samples_coverage_stats_dicts.loc[self.samples,'non_outlier_coverage_std']

@@ -112,8 +112,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # get additional data for items and layers, and get layer orders data.
         a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_order_data_dict = TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict) if a_db_is_found else {}
+        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
+
+        self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
+        for group_name in self.layers_additional_data_keys:
+            layer_orders = TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({}, 
+                self.layers_additional_data_keys[group_name], self.layers_additional_data_dict[group_name]) if a_db_is_found else {}
+            for order_name in layer_orders:
+                self.layers_order_data_dict['%s :: %s' % (group_name, order_name)] = layer_orders[order_name]
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
@@ -522,7 +528,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                              'dict': ad_hoc_dict}
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
-        self.p_meta['samples'] = self.views[self.default_view]['header']
+        sample_names = [self.title.replace(' ', '_')] if self.title else self.views[self.default_view]['header']
+        self.p_meta['samples'] = self.p_meta['sample_id'] = sample_names
 
         # if we have an input FASTA file, we will set up the split_sequences and splits_basic_info dicts,
         # otherwise we will leave them empty
@@ -546,13 +553,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
+            sample_id = ','.join(self.p_meta['samples'])
+
             profile_db = ProfileDatabase(self.profile_db_path)
             profile_db.create({'db_type': 'profile',
                                'blank': True,
                                'merged': True,
                                'contigs_db_hash': None,
                                'contigs_ordered': False,
-                               'samples': ','.join(self.p_meta['samples'])})
+                               'samples': sample_id,
+                               'sample_id': sample_id})
 
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path)
@@ -763,7 +773,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.hmm_sources_info = {}
         self.split_sequences = None
         self.splits_taxonomy_dict = {}
-        self.genes_in_splits_summary_dict = {}
         self.displayed_item_names_ordered = sorted(self.views[self.default_view]['dict'].keys())
 
         # set the title:
@@ -836,9 +845,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.p_meta['blank']:
             blank_dict = {}
             for split_name in self.splits_basic_info:
-                blank_dict[split_name] = {'blank_view': 0}
+                blank_dict[split_name] = {'blank_view': 0, '__parent__': self.splits_basic_info[split_name]['parent']}
 
-            self.views['blank_view'] = {'header': ['blank_view'],
+            self.views['blank_view'] = {'header': ['blank_view', '__parent__'],
                                         'dict': blank_dict}
             self.default_view = 'blank_view'
 
@@ -922,8 +931,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.init_functions()
 
         ProfileSuperclass.__init__(self, self.args)
-
-        self.genes_in_splits_summary_dict = {}
 
         self.init_gene_level_coverage_stats_dicts()
 
@@ -1113,27 +1120,23 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             if len(self.splits_taxonomy_dict):
                 json_header.extend(['taxonomy'])
 
-            # (3) then add split summaries from contigs db, if exists
-            if len(self.genes_in_splits_summary_dict):
-                json_header.extend(self.genes_in_splits_summary_headers[1:])
-
-            # (4) then add length and GC content IF we have sequences available
+            # (3) then add length and GC content IF we have sequences available
             if self.splits_basic_info:
                 basic_info_headers = ['length', 'gc_content']
                 json_header.extend(basic_info_headers)
 
-            # (5) then add the view!
+            # (4) then add the view!
             json_header.extend(view_headers)
 
-            # (6) then add 'additional' headers as the outer ring:
+            # (5) then add 'additional' headers as the outer ring:
             if self.items_additional_data_keys:
                 json_header.extend(self.items_additional_data_keys)
 
-            # (7) finally add hmm search results
+            # (6) finally add hmm search results
             if self.hmm_searches_dict:
                 json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
 
-            # (8) and finalize it (yay):
+            # (7) and finalize it (yay):
             json_object.append(json_header)
 
             for split_name in view_dict:
@@ -1148,27 +1151,23 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                         json_entry.extend([None])
 
                 # (3)
-                if self.genes_in_splits_summary_dict:
-                    json_entry.extend([self.genes_in_splits_summary_dict[split_name][header] for header in self.genes_in_splits_summary_headers[1:]])
-
-                # (4)
                 if self.splits_basic_info:
                     json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
 
-                # (5) adding essential data for the view
+                # (4) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
-                # (6) adding additional layers
+                # (5) adding additional layers
                 json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
 
-                # (7) adding hmm stuff
+                # (6) adding hmm stuff
                 if self.hmm_searches_dict:
                     if self.split_hmm_layers:
                         json_entry.extend([self.hmm_searches_dict[split_name][header] if split_name in self.hmm_searches_dict else None for header in [tpl[0] for tpl in self.hmm_searches_header]])
                     else:
                         json_entry.extend([len(self.hmm_searches_dict[split_name][header]) if split_name in self.hmm_searches_dict else 0 for header in [tpl[1] for tpl in self.hmm_searches_header]])
 
-                # (8) send it along!
+                # (7) send it along!
                 json_object.append(json_entry)
 
             self.views[view] = json_object

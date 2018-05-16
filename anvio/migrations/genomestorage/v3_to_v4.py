@@ -2,11 +2,14 @@
 # -*- coding: utf-8
 
 import sys
-import h5py
 import argparse
+
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+
+with terminal.SuppressAllOutput():
+    import h5py
 
 current_version = '3'
 next_version    = '4'

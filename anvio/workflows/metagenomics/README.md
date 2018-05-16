@@ -40,7 +40,7 @@ The pipline includes the following steps:
 2. (Co-)Assembly of metagenomes using [megahit](https://github.com/voutcn/megahit).
 3. Generating an anvi'o CONTIGS database using [anvi-gen-contigs-database](http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-gen-contigs-database).
 4. Running default anvi'o HMM profiles on the CONTIGS database using [anvi-run-hmms](http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-run-hmms) (optional step).
-5. Assigning taxonomy to genes with [centrifuge](https://ccb.jhu.edu/software/centrifuge/) and importing results into the CONTIGS database using [anvi-import-taxonomy](http://merenlab.org/2016/06/18/importing-taxonomy/) (optional step).
+5. Assigning taxonomy to genes with [centrifuge](https://ccb.jhu.edu/software/centrifuge/) and importing results into the CONTIGS database using [anvi-import-taxonomy-for-genes](http://merenlab.org/2016/06/18/importing-taxonomy/) (optional step).
 6. Mapping short reads from metagenomes to the contigs using [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml).
 7. Profiling individual BAM files using [anvi-profile](http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile).
 8. Merging resulting anvi'o profile databases using [anvi-merge](http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-merge).

@@ -24,7 +24,7 @@ clustering_configs = {}
 
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
-blank_default = "tnf-splits"
+blank_default = "tnf"
 single_default = "tnf"
 merged_default = "tnf-cov"
 pan_default = "presence-absence"
@@ -42,6 +42,7 @@ linkage_method_default = 'ward'
 essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_completion', 'percent_redundancy',
                          'genes_are_called', 'avg_gene_length', 'num_genes_per_kb', ]
 
+levels_of_taxonomy = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 
 for run_type_and_default_config_tuples in [('single', single_default), ('merged', merged_default), ('blank', blank_default)]:
     run_type, default_config = run_type_and_default_config_tuples
@@ -62,7 +63,7 @@ allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
 complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
 
-nucleotides = 'ATCGN'
+nucleotides = sorted(list('ATCG')) + ['N']
 
 AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
@@ -114,7 +115,7 @@ AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': '
                                     'Ser': 'S', 'Thr': 'T', 'Trp': 'W', 'Tyr': 'Y',
                                     'Val': 'V'})
 
-amino_acids = list(AA_to_single_letter_code.keys())
+amino_acids = sorted(list(AA_to_single_letter_code.keys()))
 
 codon_to_AA = Counter({'ATA': 'Ile', 'ATC': 'Ile', 'ATT': 'Ile', 'ATG': 'Met',
                        'ACA': 'Thr', 'ACC': 'Thr', 'ACG': 'Thr', 'ACT': 'Thr',
@@ -167,7 +168,7 @@ codon_to_codon_RC = Counter({'AAA': 'TTT', 'AAC': 'GTT', 'AAG': 'CTT', 'AAT': 'A
                              'TGA': 'TCA', 'TGC': 'GCA', 'TGG': 'CCA', 'TGT': 'ACA',
                              'TTA': 'TAA', 'TTC': 'GAA', 'TTG': 'CAA', 'TTT': 'AAA'})
 
-codons = list(codon_to_AA_RC.keys())
+codons = sorted(list(set(codon_to_AA.keys())))
 
 pretty_names = {}
 

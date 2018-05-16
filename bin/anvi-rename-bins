@@ -108,6 +108,21 @@ def main(args):
     collection_dict = collections.get_collection_dict(collection_name_to_read)
     bins_info_dict = collections.get_bins_info_dict(collection_name_to_read)
 
+    if call_MAGs:
+        warning_msg = "Please read carefully. This program is set to call any bin a 'MAG', if the bin is estimated to be\
+                       less than %.0f%% redundant and more than %.0f%% complete. " % (max_redundancy_for_MAG, min_completion_for_MAG)
+
+        if size_for_MAG:
+            warning_msg += "But since you set a value for MAG size, any bin that meets the redundancy criterion and larger\
+                            than %.2f Mbp in size, WILL ALSO be called a MAG regardless of its completion estimate. This is\
+                            a way to not miss refined bins with low completion estimates but large sizes. If this is not what\
+                            you want, set `--size-for-MAG` to 0." % (size_for_MAG)
+        else:
+            warning_msg += "This process will not pay attention to the bin size (Mbp). If you think it should, please see the\
+                            flag `--size-for-MAG` in the help menu."
+
+        run.warning(warning_msg, "A FRIENDLY REMINDER", lc='green')
+
     counter = 0
     MAGs_sorted_by_completion = []
     bins_sorted_by_completion = []
@@ -131,12 +146,17 @@ def main(args):
         substantive_completion = p_completion - p_redundancy
 
         if call_MAGs:
-            if p_redundancy < max_redundancy_for_MAG and (p_completion >= min_completion_for_MAG or size_in_Mbp >= size_for_MAG):
-                MAGs_sorted_by_completion.append((bin_name, substantive_completion, 'MAG'),)
+            if p_redundancy < max_redundancy_for_MAG:
+                if p_completion >= min_completion_for_MAG:
+                    MAGs_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'MAG'),)
+                elif size_for_MAG and size_in_Mbp >= size_for_MAG:
+                    MAGs_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'MAG'),)
+                else:
+                    bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
             else:
-                bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
+                bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
         else:
-            bins_sorted_by_completion.append((bin_name, substantive_completion, 'Bin'),)
+            bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
     MAGs_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
     bins_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
     progress.end()
@@ -146,8 +166,8 @@ def main(args):
 
     counter = 0
     report = open(report_file_path, 'w')
-    report.write('old_bin_name\tnew_bin_name\n')
-    for bin_name, _, bin_type in MAGs_sorted_by_completion + bins_sorted_by_completion:
+    report.write('old_bin_name\tnew_bin_name\tcompletion\tredundancy\tsize_in_Mbp\n')
+    for bin_name, substantive_completion, completion, redundancy, size_in_Mbp, bin_type in MAGs_sorted_by_completion + bins_sorted_by_completion:
         counter += 1
         new_bin_name = '%s_%s_%05d' % (prefix, bin_type, counter)
         new_collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
@@ -155,8 +175,7 @@ def main(args):
         if bin_name in bins_info_dict:
             new_bins_info_dict[new_bin_name] = copy.deepcopy(bins_info_dict[bin_name])
 
-        report.write('%s\t%s\n' % (bin_name, new_bin_name))
-
+        report.write('%s\t%s\t%.2f\t%.2f\t%.2f\n' % (bin_name, new_bin_name, completion, redundancy, size_in_Mbp))
 
     report.close()
     run.info('Report', '%s' % (report_file_path))
@@ -222,10 +241,11 @@ if __name__ == '__main__':
                         help="If --call-MAGs flag is used, call any bin a 'MAG' if their redundancy estimate is\
                               below this (the default is %(default)d) and the completion estimate is above\
                               --min-completion-for-MAG.")
-    groupC.add_argument('--size-for-MAG', default=2, type=float, metavar='0.1-10 Mbp', choices=[x / 10.0 for x in range(1, 101)], \
+    groupC.add_argument('--size-for-MAG', default=0.0, type=float, metavar='MEGABASEPAIRS',\
                         help="If --call-MAGs flag is used, call any bin a 'MAG' if their redundancy estimate\
-                              is less than --max-redundancy-for-MAG, and the size is larger than this (the\
-                              default is %(default)d Mbp), regarldless of the completion.")
+                              is less than --max-redundancy-for-MAG, AND THEIR SIZE IS LARGER THAN THIS VALUE\
+                              REGARDLESS OF THE COMPLETION ESTIMATE. The default behavior is to not care about\
+                              this at all.")
     args = anvio.get_args(parser)
 
     try:

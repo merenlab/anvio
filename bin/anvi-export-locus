@@ -5,7 +5,7 @@
     This program takes a contigs database, and searches for a function or HMM hit. It is useful
     when you want to study which genes are present around a gene of interest. It could be helpful
     when studying genomic loci that tend to some consereved and some variable genes.
-    
+
   You want to play with it? This is how you could quickly test it:
 
   Downloaded the anvi'o data pack for the infant gut data, which is here:
@@ -64,6 +64,7 @@ def main(args):
     else:
         output_file_path = args.output_file_prefix + '_0.fa'
     filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=args.overwrite_output_destinations)
+    reverse_complement_if_necessary = not A("never_reverse_complement")
 
     search_method = [x for x in [A("gene_caller_ids"), A("search_term")] if x is not None]
     if len(search_method) != 1:
@@ -100,7 +101,7 @@ def main(args):
         hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
 
         targets.append('HMMs')
-        # add hmm sources to the list of sources 
+        # add hmm sources to the list of sources
         if hmm_sources:
             sources.extend(hmm_sources)
         else:
@@ -130,10 +131,13 @@ def main(args):
     direction_dict = {'f': 1, 'r': -1}
     for gene_id in matching_genes:
         premature = False
+        reverse_complemented = False
+
         # for each gene hit take the sequence that follows in the direction of transcription
         gene_dict = contigs_db.genes_in_contigs_dict[gene_id]
-        gene_1 = gene_id - num_genes_list[0] * direction_dict[gene_dict['direction']]
-        gene_2 = gene_id + num_genes_list[1] * direction_dict[gene_dict['direction']]
+        direction = gene_dict['direction']
+        gene_1 = gene_id - num_genes_list[0] * direction_dict[direction]
+        gene_2 = gene_id + num_genes_list[1] * direction_dict[direction]
         first_gene_of_the_block = min(gene_1, gene_2)
         last_gene_of_the_block = max(gene_1, gene_2)
         # getting the ids for the first and last genes in the contig
@@ -143,10 +147,11 @@ def main(args):
         first_gene_in_contig = genes_in_contig_sorted[0][0]
 
         if last_gene_of_the_block > last_gene_in_contig:
-            # The requested block exceeds the contig length, then just take
-            # FIXME: there must be a better way to do this. Also need to check with Meren if gene id's are always consecutive.
+            # The requested block exceeds the contig length, then set `last_gene_of_the_block` to `last_gene_in_contig`
+            # FIXME: there must be a better way to do this.
             last_gene_of_the_block = last_gene_in_contig
             premature = True
+
         if first_gene_of_the_block < first_gene_in_contig:
             # take the first gene of the contig. FIXME: also might be a better way to do this
             first_gene_of_the_block = first_gene_in_contig
@@ -155,6 +160,12 @@ def main(args):
         start = contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
         stop = contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
         block_sequence = contigs_db.contig_sequences[gene_dict['contig']]['sequence'][start:stop]
+
+        if direction == 'r' and reverse_complement_if_necessary:
+            block_sequence = utils.rev_comp(block_sequence)
+            reverse_complemented = "True"
+        else:
+            reverse_complemented = "False"
 
         if not (args.remove_partial_hits and premature):
             # don't save if it's a premature result AND the user asked to remove partial hits
@@ -165,7 +176,7 @@ def main(args):
                 f = open(output_file_path, 'w')
             elif entry_id == 1:
                 f = open(output_file_path, 'w')
-            
+
             block_header = contigs_db.a_meta['project_name'] + ' ' +\
                            '|'.join([
                                      'target:%s' % ', '.join(targets),
@@ -175,11 +186,14 @@ def main(args):
                                      'hit_gene_callers_id:%s' % str(gene_id),
                                      'locus:%s,%s' % (str(first_gene_of_the_block), str(last_gene_of_the_block)),
                                      'nt_positions_in_contig:%s:%s' % (str(start), str(stop)),
-                                     'premature:%s' % str(premature)])
+                                     'premature:%s' % str(premature),
+                                     'reverse_complemented:%s' % str(reverse_complemented)])
+
             f.write('>%s\n' % block_header)
             f.write('%s\n' % block_sequence)
+
             if args.separate_fasta:
-            # if separate fasta files are created then need to close it now
+                # if separate fasta files are created then need to close it now
                 f.close()
         else:
             filtered_partial_hits += 1
@@ -231,6 +245,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
     groupE.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupE.add_argument(*anvio.A('remove-partial-hits'), **anvio.K('remove-partial-hits'))
+    groupE.add_argument(*anvio.A('never-reverse-complement'), **anvio.K('never-reverse-complement'))
 
     args = anvio.get_args(parser)
 

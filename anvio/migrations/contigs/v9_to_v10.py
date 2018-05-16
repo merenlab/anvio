@@ -4,7 +4,6 @@
 import os
 import sys
 import gzip
-import h5py
 import argparse
 
 import anvio.db as db
@@ -12,6 +11,9 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+
+with terminal.SuppressAllOutput():
+    import h5py
 
 current_version = "9"
 next_version = "10"

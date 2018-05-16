@@ -1,0 +1,51 @@
+{
+    "fasta_txt": "",
+    "anvi_run_hmms": {
+        "run": false
+    },
+    "anvi_run_ncbi_cogs": {
+        "run": false
+    },
+    "samples_txt": "samples.txt",
+    "megahit": {
+        "--min-contig-len": 1000,
+        "--memory": 0.4,
+        "threads": 11,
+        "run": true,
+        "--min-count": "",
+        "--k-min": "",
+        "--k-max": "",
+        "--k-step": "",
+        "--k-list": "",
+        "--no-mercy": "",
+        "--no-bubble": "",
+        "--merge-level": "",
+        "--prune-level": "",
+        "--prune-depth": "",
+        "--low-local-ratio": "",
+        "--max-tip-len": "",
+        "--no-local": "",
+        "--kmin-1pass": "",
+        "--presets": "",
+        "--mem-flag": "",
+        "--use-gpu": "",
+        "--gpu-mem": "",
+        "--keep-tmp-files": "",
+        "--tmp-dir": "",
+        "--continue": "",
+        "--verbose": ""
+    },
+    "iu_filter_quality_minoche": {
+        "run": false
+    },
+    "all_against_all": true,
+    "output_dirs": {
+        "FASTA_DIR": "02_FASTA_megahit_no_qc",
+        "CONTIGS_DIR": "03_CONTIGS_megahit_no_qc",
+        "QC_DIR": "01_QC_megahit_no_qc",
+        "MAPPING_DIR": "04_MAPPING_megahit_no_qc",
+        "PROFILE_DIR": "05_ANVIO_PROFILE_megahit_no_qc",
+        "MERGE_DIR": "06_MERGED_megahit_no_qc",
+        "LOGS_DIR": "00_LOGS_megahit_no_qc"
+    }
+}

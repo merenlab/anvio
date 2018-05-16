@@ -3,6 +3,7 @@
 
 import sys
 import h5py
+import copy
 import argparse
 
 import anvio
@@ -21,7 +22,7 @@ progress = terminal.Progress()
 class Migrater(object):
     def __init__(self, args):
         self.args = args
-        self.db_path = args.input
+        self.db_path = args.db_path
         self.db_type = None
         self.db_version = None
         self.target_version = None
@@ -102,13 +103,22 @@ class Migrater(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument('input', metavar = 'DATABASE', nargs=None, help = "Anvi'o database for migration")
+    parser.add_argument('input', metavar = 'DATABASE', nargs='+', help = "Anvi'o database for migration")
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     parser.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
     args, unknown = parser.parse_known_args()
 
     try:
-        Migrater(args).process()
+        if len(args.input) > 1 and args.target_version:
+            raise ConfigError("You have to provide single database to use --target-version parameter. You have provided %d databases." % len(args.input))
+
+        for db_path in args.input:
+            args_for_single_db = copy.deepcopy(args)
+            args_for_single_db.db_path = db_path
+
+            Migrater(args_for_single_db).process()
+
+            print("") # put little gap
     except ConfigError as e:
         print(e)
         sys.exit(-1)

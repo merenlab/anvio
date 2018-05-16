@@ -9,6 +9,7 @@ import sqlite3
 import pandas as pd
 
 import anvio
+import anvio.tables as tables
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
@@ -192,8 +193,12 @@ class DB:
         return response.fetchall()
 
 
-    def get_row_counts_from_table(self, table, where_clause):
-        response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table, where_clause))
+    def get_row_counts_from_table(self, table, where_clause=None):
+        if where_clause:
+            response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table, where_clause))
+        else:
+            response = self._exec('''SELECT COUNT(*) FROM %s''' % (table))
+
         return response.fetchall()[0][0]
 
 
@@ -202,8 +207,11 @@ class DB:
         return response.fetchall()
 
 
-    def get_single_column_from_table(self, table, column, unique=False):
-        response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table))
+    def get_single_column_from_table(self, table, column, unique=False, where_clause=None):
+        if where_clause:
+            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table, where_clause))
+        else:
+            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table))
         return [t[0] for t in response.fetchall()]
 
 
@@ -250,6 +258,18 @@ class DB:
         results_dict = {}
 
         rows = self.get_all_rows_from_table(table)
+
+        if table not in tables.tables_without_unique_entry_ids:
+            unique_keys = set([r[0] for r in rows])
+            if len(unique_keys) != len(rows):
+                raise ConfigError("This is one of the core functions of anvi'o you never want to hear from, but there seems\
+                                   to be something wrong with the table '%s' that you are trying to read from. While there\
+                                   are %d items in this table, there are only %d unique keys, which means some of them are\
+                                   going to be overwritten when this function creates a final dictionary of data to return.\
+                                   This may be a programmer error when the data was being inserted into the database, but\
+                                   needs fixin' before we can continue. If you are a user, please get in touch with anvi'o\
+                                   developers about this error. If you are a programmer, you probably did something\
+                                   wrong :(" % (table, len(rows), len(unique_keys)))
 
         for row in rows:
             entry = {}

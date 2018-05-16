@@ -4,7 +4,6 @@
     Classes to define and work with anvi'o pangenomics workflows.
 """
 
-
 import anvio
 import anvio.terminal as terminal
 
@@ -26,16 +25,31 @@ progress = terminal.Progress()
 
 
 class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
-    def __init__(self, config):
-        ContigsDBWorkflow.__init__(self, config)
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        # know thyself.
+        self.name = 'pangenomics'
+
+        # initialize the base class
+        ContigsDBWorkflow.__init__(self)
 
         self.rules.extend(['gen_external_genome_file',
                            'anvi_gen_genomes_storage',
                            'anvi_pan_genome'])
 
-        self.general_params.extend(["project_name", "samples_txt"])
+        self.general_params.extend(["project_name", "fasta_txt"])
 
-        pan_params = ["--project-name", "--output-dir", "--genome-names", "--skip-alignments",\
+        self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
+                               "CONTIGS_DIR": "02_CONTIGS",
+                               "PAN_DIR": "03_PAN"})
+
+        self.default_config.update({"fasta_txt": "fasta.txt",
+                                    "anvi_pan_genome": {"threads": 20}})
+
+        pan_params = ["--project-name", "--genome-names", "--skip-alignments",\
                      "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
                      "--minbit", "--mcl-inflation", "--min-occurrence",\
                      "--min-percent-identity", "--sensitive", "--description",\

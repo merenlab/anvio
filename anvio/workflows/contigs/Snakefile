@@ -1,25 +1,64 @@
-import anvio
+# -*- coding: utf-8
+
+import argparse
 import pandas as pd
+
+import anvio
+import anvio.utils as u
 import anvio.workflows as w
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.workflows.contigs import ContigsDBWorkflow
+
+__author__ = "Alon Shaiber"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Alon Shaiber"
+__email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-dirs_dict = w.get_dir_names(config)
+# don't be confused, child. when things come to this point, the variable `config`
+# is already magically filled in by snakemake:
+M = ContigsDBWorkflow(argparse.Namespace(config=config, slave_mode=(False if 'workflows/contigs' in workflow.included[0] else True)))
+M.init()
+dirs_dict = M.dirs_dict
+
+localrules: annotate_contigs_database
+
+group_names = []
+fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
+
+if fasta_txt_file:
+    filesnpaths.is_file_exists(fasta_txt_file)
+    fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
+    group_names = list(fasta_information.keys())
+    references_mode = True
 
 # setting configuration for optional steps
-run_remove_human_dna_using_centrifuge = w.A(["remove_human_dna_using_centrifuge", "run"], config)
+run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"]) == True
+
 # default is NOT running taxonomy with centrifuge
-run_taxonomy_with_centrifuge = w.A(["centrifuge", "run"], config)
+run_taxonomy_with_centrifuge = M.get_param_value_from_config(["centrifuge", "run"]) == True
+
 # default is running anvi_run_hmms
-run_anvi_run_hmms = w.A(["anvi_run_hmms", "run"], config, default_value=True)
+run_anvi_run_hmms = M.get_param_value_from_config(["anvi_run_hmms", "run"]) == True
+
 # default is running anvi_run_ncbi_cogs
-run_anvi_run_ncbi_cogs = w.A(["anvi_run_ncbi_cogs", "run"], config, default_value=True)
+run_anvi_run_ncbi_cogs = M.get_param_value_from_config(["anvi_run_ncbi_cogs", "run"]) == True
+
+# default is NOT running anvi-script-run-eggnog-mapper
+run_anvi_script_run_eggnog_mapper = M.get_param_value_from_config(["anvi_script_run_eggnog_mapper", "run"]) == True
+
 # sanity check for centrifuge db
 if run_taxonomy_with_centrifuge:
-    if not w.A(["centrifuge", "db"], config):
+    if not M.get_param_value_from_config(["centrifuge", "db"]):
         raise ConfigError("If you plan to run centrifuge, then you must "\
                           "provide a path for the centrifuge db in the "\
+
                           "config file. See documentation for more details.")
 
 def get_raw_fasta(wildcards):
@@ -31,24 +70,21 @@ def get_raw_fasta(wildcards):
         This function also deals with the different cases of "reference mode"
         Vs. "assembly mode".
     '''
-    if 'references_txt' in config:
+    if references_mode:
         # in 'reference mode' the input is the reference fasta
-        references_txt_file = config["references_txt"]
-        filesnpaths.is_file_exists(references_txt_file)
-        references_information = pd.read_csv(references_txt_file, sep='\t', index_col=0).to_dict(orient='index')
-        contigs = references_information[wildcards.group]['path']
+        contigs = fasta_information[wildcards.group]['path']
     else:
         # by default the input fasta is the assembly output
-        contigs = dirs_dict["ASSEMBLY_DIR"] + "/%s/final.contigs.fa" % wildcards.group
+        contigs = dirs_dict["FASTA_DIR"] + "/%s/final.contigs.fa" % wildcards.group
     return contigs
 
 rule generate_and_annotate_contigs_db:
-    input: dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done"
+    input: expand(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done", group=group_names)
 
 rule anvi_script_reformat_fasta:
     '''
         Reformating the headers of the contigs fasta files.
-        
+
         This is required to make sure taht the headers don't contain
         any charachters that anvi'o doesn't like.It give contigs
         meaningful names; so that if the group name is 'MYSAMPLE01', the
@@ -64,22 +100,24 @@ rule anvi_script_reformat_fasta:
         # write protecting the contigs fasta file using protected() because
         # runnig the assembly is probably the most time consuming step and
         # we don't want anyone accidentaly deleting or changing this file.
-        contigs = protected(dirs_dict["ASSEMBLY_DIR"] + "/{group}/{group}-contigs.fa"),
-        report = dirs_dict["ASSEMBLY_DIR"] + "/{group}/{group}-reformat-report.txt"
+        contigs = protected(dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa"),
+        report = dirs_dict["FASTA_DIR"] + "/{group}/{group}-reformat-report.txt"
     params:
         prefix = "{group}",
-        simplify_names = w.B(config, "anvi_script_reformat_fasta", "--simplify-names", True),
-        keep_ids = w.B(config, "anvi_script_reformat_fasta", "--keep-ids"),
-        exclude_ids = w.B(config, "anvi_script_reformat_fasta", "--exclude-ids"),
-        min_len = w.B(config, "anvi_script_reformat_fasta", "--min-len"),
-    threads: w.T(config, 'anvi_script_reformat_fasta')
-    resources: nodes = w.T(config, 'anvi_script_reformat_fasta'),
-    shell:
-        """
-            anvi-script-reformat-fasta {input} -o {output.contigs}\
-            -r {output.report} --prefix {params.prefix}\
-            {params.min_len} {params.exclude_ids} {params.keep_ids} {params.simplify_names} >> {log} 2>&1
-        """
+        simplify_names = M.get_rule_param("anvi_script_reformat_fasta", "--simplify-names"),
+        keep_ids = M.get_rule_param("anvi_script_reformat_fasta", "--keep-ids"),
+        exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids"),
+        min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
+    threads: M.T('anvi_script_reformat_fasta')
+    resources: nodes = M.T('anvi_script_reformat_fasta'),
+    shell: w.r("""anvi-script-reformat-fasta {input} \
+                                             -o {output.contigs} \
+                                             -r {output.report} \
+                                             --prefix {params.prefix} \
+                                             {params.min_len} \
+                                             {params.exclude_ids} \
+                                             {params.keep_ids} \
+                                             {params.simplify_names} >> {log} 2>&1""")
 
 
 def input_for_run_remove_human_dna_using_centrifuge(wildcards):
@@ -87,7 +125,7 @@ def input_for_run_remove_human_dna_using_centrifuge(wildcards):
     # The raw fasta will be used if no formatting is needed
     contigs = get_raw_fasta(wildcards)
 
-    if w.A(['anvi_script_reformat_fasta','run'], config, True):
+    if M.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
         # by default, reformat fasta is ran
         contigs = rules.anvi_script_reformat_fasta.output.contigs
 
@@ -102,9 +140,9 @@ if run_remove_human_dna_using_centrifuge:
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-remove-human-dna-using-centrifuge.log"
         input: input_for_run_remove_human_dna_using_centrifuge
-        output: contigs = dirs_dict["ASSEMBLY_DIR"] + "/{group}/{group}-contigs-filtered.fa"
-        threads: w.T(config, 'remove_human_dna_using_centrifuge')
-        resources: nodes = w.T(config, 'remove_human_dna_using_centrifuge'),
+        output: contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-filtered.fa"
+        threads: M.T('remove_human_dna_using_centrifuge')
+        resources: nodes = M.T('remove_human_dna_using_centrifuge'),
         shell: "touch {output} >> {log} 2>&1"
 
 
@@ -116,7 +154,7 @@ def get_fasta(wildcards):
             output of remove_human_dna_using_centrifuge
             output of anvi_script_reformat_fasta
             raw fasta
-        Meaning that if host contamination removal was done then it's 
+        Meaning that if host contamination removal was done then it's
         output is the input fasta, elif anvi_script_reformat_fasta was ran then it's
         output will be used, otherwise the raw fasta will be used.
     '''
@@ -124,20 +162,20 @@ def get_fasta(wildcards):
     # Then the input will be the same as the one that would have been used
     # by the rule run_remove_human_dna_using_centrifuge
     contigs = input_for_run_remove_human_dna_using_centrifuge(wildcards)
-    
+
     if run_remove_human_dna_using_centrifuge:
         # if host contamination removal is used, then use it's output
         contigs = rules.remove_human_dna_using_centrifuge.output.contigs
 
     return contigs
 
-contigs_project_name = w.A(['anvi_gen_contigs_database', 'project_name'], config)
-if contigs_project_name:
+contigs_project_name = M.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'], repress_default=True)
+if contigs_project_name != M.default_config['anvi_gen_contigs_database']['--project-name'] and contigs_project_name is not None:
     run.warning('You chose to set the "project_name" for your contigs databases\
                  in the config file to %s. You are welcomed to do that, but at your own\
                  risk. Just so you know, by default the project name would match\
                  the name for each contigs file (as defined either in the samples_txt\
-                 or references_txt file that you supplied), by choosing to provide\
+                 or fasta_txt file that you supplied), by choosing to provide\
                  a different name, it means that all your contigs databases would have\
                  the same name, unless you incloded "{group}" in the name you provided\
                  but even then, we did not test that option and we are not sure it would\
@@ -155,37 +193,47 @@ rule anvi_gen_contigs_database:
     output:
         db = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"
     params:
-        description = w.B(config, "anvi_gen_contigs_database", "--description"),
-        skip_gene_calling = w.B(config, "anvi_gen_contigs_database", "--skip-gene-calling"),
-        external_gene_calls = w.B(config, "anvi_gen_contigs_database", "--external-gene-calls"),
-        ignore_internal_stop_codons = w.B(config, "anvi_gen_contigs_database", "--ignore-internal-stop-codons"),
-        skip_mindful_splitting = w.B(config, "anvi_gen_contigs_database", "--skip-mindful-splitting"),
-        contigs_fasta = w.B(config, "anvi_gen_contigs_database", "--contigs-fasta"),
-        project_name = w.B(config, "anvi_gen_contigs_database", "--project-name", "{group}"),
-        split_length = w.B(config, "anvi_gen_contigs_database", "--split-length"),
-        kmer_size = w.B(config, "anvi_gen_contigs_database", "--kmer-size"),
-    threads: w.T(config, 'anvi_gen_contigs_database', 5)
-    resources: nodes = w.T(config, 'anvi_gen_contigs_database', 5),
-    shell: "anvi-gen-contigs-database -f {input} -o {output.db}\
-                                      {params.ignore_internal_stop_codons} {params.external_gene_calls} {params.skip_gene_calling}\
-                                      {params.skip_mindful_splitting} {params.kmer_size} {params.split_length}\
-                                      {params.description} {params.project_name} {params.contigs_fasta}\
-                                      {params.skip_mindful_splitting} {params.ignore_internal_stop_codons} {params.external_gene_calls}\
-                                      {params.skip_gene_calling} {params.description} >> {log} 2>&1"
+        description = M.get_rule_param("anvi_gen_contigs_database", "--description"),
+        skip_gene_calling = M.get_rule_param("anvi_gen_contigs_database", "--skip-gene-calling"),
+        external_gene_calls = M.get_rule_param("anvi_gen_contigs_database", "--external-gene-calls"),
+        ignore_internal_stop_codons = M.get_rule_param("anvi_gen_contigs_database", "--ignore-internal-stop-codons"),
+        skip_mindful_splitting = M.get_rule_param("anvi_gen_contigs_database", "--skip-mindful-splitting"),
+        contigs_fasta = M.get_rule_param("anvi_gen_contigs_database", "--contigs-fasta"),
+        project_name = M.get_rule_param("anvi_gen_contigs_database", "--project-name"),
+        split_length = M.get_rule_param("anvi_gen_contigs_database", "--split-length"),
+        kmer_size = M.get_rule_param("anvi_gen_contigs_database", "--kmer-size"),
+    threads: M.T('anvi_gen_contigs_database')
+    resources: nodes = M.T('anvi_gen_contigs_database'),
+    shell: w.r("anvi-gen-contigs-database -f {input} \
+                                          -o {output.db} \
+                                          {params.ignore_internal_stop_codons} \
+                                          {params.external_gene_calls} \
+                                          {params.skip_gene_calling} \
+                                          {params.skip_mindful_splitting} \
+                                          {params.kmer_size} \
+                                          {params.split_length} \
+                                          {params.description} \
+                                          {params.project_name} \
+                                          {params.contigs_fasta} \
+                                          {params.skip_mindful_splitting} \
+                                          {params.ignore_internal_stop_codons} \
+                                          {params.external_gene_calls} \
+                                          {params.skip_gene_calling} \
+                                          {params.description} >> {log} 2>&1")
 
 if run_taxonomy_with_centrifuge:
     # If the user wants taxonomy to be assigned with centrifuge
     # then these following rules would run.
-    rule export_gene_calls:
+    rule anvi_anvi_export_gene_calls:
         ''' Export gene calls and use for centrifuge'''
         version: 1.0
-        log: dirs_dict["LOGS_DIR"] + "/{group}-export_gene_calls.log"
+        log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_anvi_export_gene_calls.log"
         # marking the input as ancient in order to ignore timestamps.
         input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
         # output is temporary. No need to keep this file.
         output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-gene-calls.fa")
-        threads: w.T(config, 'run_taxonomy_with_centrifuge')
-        resources: nodes = w.T(config, 'run_taxonomy_with_centrifuge'),
+        threads: M.T('run_taxonomy_with_centrifuge')
+        resources: nodes = M.T('run_taxonomy_with_centrifuge'),
         shell: "anvi-get-dna-sequences-for-gene-calls -c {input} -o {output} >> {log} 2>&1"
 
 
@@ -193,18 +241,23 @@ if run_taxonomy_with_centrifuge:
         ''' Run centrifuge on the exported gene calls of the contigs.db'''
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-centrifuge.log"
-        input: rules.export_gene_calls.output
+        input: rules.anvi_anvi_export_gene_calls.output
         output:
             hits = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_hits.tsv",
             report = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_report.tsv"
         params: db=config["centrifuge"]['db']
-        threads: w.T(config, 'centrifuge', 5)
-        resources: nodes = w.T(config, 'centrifuge', 5),
-        shell: "centrifuge -f -x {params.db} {input} -S {output.hits} --report-file {output.report} --threads {threads} >> {log} 2>&1"
+        threads: M.T('centrifuge')
+        resources: nodes = M.T('centrifuge'),
+        shell: w.r("centrifuge -f \
+                               -x {params.db} \
+                               {input} \
+                               -S {output.hits} \
+                               --report-file {output.report} \
+                               --threads {threads} >> {log} 2>&1")
 
 
     rule anvi_import_taxonomy:
-        ''' Run anvi-import-taxonomy'''
+        ''' Run anvi-import-taxonomy-for-genes'''
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_taxonomy.log"
         input:
@@ -217,9 +270,11 @@ if run_taxonomy_with_centrifuge:
         # http://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#flag-files
         output: touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_anvi_import_taxonomy.done")
         params: parser = "centrifuge"
-        threads: w.T(config, 'anvi_import_taxonomy')
-        resources: nodes = w.T(config, 'anvi_import_taxonomy'),
-        shell: "anvi-import-taxonomy -c {input.contigs} -i {input.report} {input.hits} -p {params.parser} >> {log} 2>&1"
+        threads: M.T('anvi_import_taxonomy')
+        resources: nodes = M.T('anvi_import_taxonomy'),
+        shell: w.r("anvi-import-taxonomy-for-genes -c {input.contigs} \
+                                                   -i {input.report} {input.hits} \
+                                                   -p {params.parser} >> {log} 2>&1")
 
 
 if run_anvi_run_hmms:
@@ -233,11 +288,15 @@ if run_anvi_run_hmms:
         # by the rule.
         output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done")
         params:
-            installed_hmm_profile = w.B(config, "anvi_gen_contigs_database", "--installed-hmm-profile"),
-            hmm_profile_dir = w.B(config, "anvi_gen_contigs_database", "--hmm-profile-dir"),
-        threads: w.T(config, 'anvi_run_hmms', 20)
-        resources: nodes = w.T(config, 'anvi_run_hmms', 20),
-        shell: "anvi-run-hmms -c {input} -T {threads} {params.hmm_profile_dir} {params.installed_hmm_profile} >> {log} 2>&1"
+            installed_hmm_profile = M.get_rule_param("anvi_run_hmms", "--installed-hmm-profile"),
+            hmm_profile_dir = M.get_rule_param("anvi_run_hmms", "--hmm-profile-dir"),
+        threads: M.T('anvi_run_hmms')
+        resources: nodes = M.T('anvi_run_hmms'),
+        shell: w.r("anvi-run-hmms -c {input} \
+                                  -T {threads} \
+                                  {params.hmm_profile_dir} \
+                                  {params.installed_hmm_profile} >> {log} 2>&1")
+
 
 w.warning_for_param(config, 'anvi_run_ncbi_cogs', '--temporary-dir-path', '{group}')
 rule anvi_run_ncbi_cogs:
@@ -247,18 +306,68 @@ rule anvi_run_ncbi_cogs:
     output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_ncbi_cogs-{group}.done")
     params:
         # anvi-run-ncbi-cogs params. See anvi-run-ncbi-cogs help menu for more info.
-        cogs_data_dir = w.B(config, 'anvi_run_ncbi_cogs', '--cogs-data-dir'),
-        sensitive = w.B(config, 'anvi_run_ncbi_cogs', '--sensitive'),
-        temporary_dir_path = w.B(config, 'anvi_run_ncbi_cogs', '--temporary-dir-path'),
-        search_with = w.B(config, 'anvi_run_ncbi_cogs', '--search-with')
-    threads: w.T(config, 'anvi_run_ncbi_cogs', 5)
-    resources: nodes = w.T(config, 'anvi_run_ncbi_cogs', 5),
-    shell:
-        """
-            anvi-run-ncbi-cogs -c {input} -T {threads}\
-                               {params.cogs_data_dir} {params.sensitive} {params.temporary_dir_path}\
-                               {params.search_with} >> {log} 2>&1
-        """
+        cog_data_dir = M.get_rule_param('anvi_run_ncbi_cogs', '--cog-data-dir'),
+        sensitive = M.get_rule_param('anvi_run_ncbi_cogs', '--sensitive'),
+        temporary_dir_path = M.get_rule_param('anvi_run_ncbi_cogs', '--temporary-dir-path'),
+        search_with = M.get_rule_param('anvi_run_ncbi_cogs', '--search-with')
+    threads: M.T('anvi_run_ncbi_cogs')
+    resources: nodes = M.T('anvi_run_ncbi_cogs'),
+    shell: w.r("""anvi-run-ncbi-cogs -c {input} \
+                                     -T {threads} \
+                                     {params.cog_data_dir} \
+                                     {params.sensitive} \
+                                     {params.temporary_dir_path} \
+                                     {params.search_with} >> {log} 2>&1""")
+
+
+rule anvi_get_sequences_for_gene_calls:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_get_sequences_for_gene_calls.log"
+    input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+    output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-TM7_NR-contigs-aa-sequences.fa")
+    threads: M.T('anvi_get_sequences_for_gene_calls')
+    resources: nodes = M.T('anvi_get_sequences_for_gene_calls')
+    shell: "anvi-get-sequences-for-gene-calls -c {input} -o {output} --get-aa-sequences >> {log} 2>&1"
+
+
+rule emapper:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-emapper.log"
+    input: rules.anvi_get_sequences_for_gene_calls.output
+    output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.emapper.annotations")
+    # TODO: add other emapper params
+    params:
+        contigs_path_without_extension = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs",
+        path_to_emapper_dir = M.get_param_value_from_config(['emapper', 'path_to_emapper_dir']),
+        database = M.get_rule_param("emapper", "--database"),
+        usemem = M.get_rule_param("emapper", "--usemem"),
+        override = M.get_rule_param("emapper", "--override")
+    threads: M.T('emapper')
+    resources: nodes = M.T('emapper')
+    run:
+        # running emapper
+        shell("python2.7 {params.path_to_emapper_dir}/emapper.py -i {input} --output {params.contigs_path_without_extension} " + \
+                  "--cpu {threads} {params.database} {params.usemem} {params.override} >> {log} 2>&1")
+
+        # Adding a 'g' prefix before every gene id (the anvi'o emapper driver requires this)
+        shell("sed 's/^[0-9]/g&/' {output} > {output}.temp")
+
+        # changing the file name to the final output
+        shell("mv {output}.temp {output}")
+
+
+rule anvi_script_run_eggnog_mapper:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/anvi_script_run_eggnog_mapper.log"
+    input:
+        eggnog_output = rules.emapper.output,
+        contigs = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"
+    output: touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_script_run_eggnog_mapper.done")
+    params:
+        use_version = M.get_rule_param("anvi_script_run_eggnog_mapper", "--use-version")
+    threads: M.T('anvi_script_run_eggnog_mapper')
+    resources: nodes = M.T('anvi_script_run_eggnog_mapper')
+    shell: "anvi-script-run-eggnog-mapper -c {input.contigs} --annotation {input.eggnog_output} {params.use_version}  >> {log} 2>&1"
 
 
 rule annotate_contigs_database:
@@ -270,14 +379,20 @@ rule annotate_contigs_database:
     '''
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-annotate_contigs_database.log"
-    input: 
+    input:
         # this is here just so snakemake would run the taxonomy before running this rule
         taxonomy = rules.anvi_import_taxonomy.output if run_taxonomy_with_centrifuge else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         # this is here just so snakemake would run the hmms before running this rule
         hmms = rules.anvi_run_hmms.output if run_anvi_run_hmms else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         # this is here just so snakemake would run the ncbi cogs before running this rule
         cogs = rules.anvi_run_ncbi_cogs.output if run_anvi_run_ncbi_cogs else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        # I hope that by now, you understand why this is here (hint: it is in order to prevent global warming)
+        eggnog_mapper = rules.anvi_script_run_eggnog_mapper.output if run_anvi_script_run_eggnog_mapper else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
     output: touch(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done")
     shell: "touch {output} >> {log} 2>&1"
 
 
+# check if all program dependencies are met. for this line to be effective,
+# there should be an initial dry run step (which is the default behavior of
+# the `WorkflowSuperClass`, so you are most likely covered).
+M.check_workflow_program_dependencies(workflow)

@@ -441,6 +441,28 @@ td > input[type='checkbox'] {
     margin-bottom:10px;
 }
 
+.colorpicker-base {
+    float: left;
+    display: inline-block;
+    background-color: #FFF;
+    border: 1px solid;
+    border-color: #000;
+    width: 16px;
+    height: 16px;
+    margin: auto;
+}
+
+.btn-group > .colorpicker-base {
+    margin-top: 7px;
+    margin-right: 3px;
+    margin-left: 3px;
+}
+
+.colorpicker-base:hover {
+    border: 2px solid;
+    border-color: #555;
+}
+
 .colorpicker {
     float: left;
     display: inline-block;
@@ -704,4 +726,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .pan-filters input[type='checkbox'] {
     width: 15px;
+}
+
+.clearfix::after {
+    content: "";
+    clear: both;
+    display: table;
 }

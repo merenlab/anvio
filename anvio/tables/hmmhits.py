@@ -84,14 +84,11 @@ class TablesForHMMHits(Table):
             contigs_db = ContigsSuperclass(args)
 
             if context == 'GENE':
-                if alphabet == 'AA':
-                    target_files_dict['AA:GENE'] = os.path.join(tmp_directory_path, 'aa_gene_sequences.fa')
-                    self.export_sequences_table_in_db_into_FASTA_file(t.gene_amino_acid_sequences_table_name, output_file_path=target_files_dict['AA:GENE'])
-                else:
-                    target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
-                    contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
-                                                                               simple_headers=True,
-                                                                               rna_alphabet=True if alphabet=='RNA' else False)
+                target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
+                contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
+                                                                           simple_headers=True,
+                                                                           rna_alphabet=True if alphabet=='RNA' else False,
+                                                                           report_aa_sequences=True if alphabet=='AA' else False)
             elif context == 'CONTIG':
                 if alphabet == 'AA':
                     raise ConfigError("You are somewhere you shouldn't be. You came here because you thought it would be OK\
@@ -215,12 +212,15 @@ class TablesForHMMHits(Table):
             # update the next available gene callers id:
             next_id += 1
 
+        if not len(additional_gene_calls):
+            return search_results_dict
+
         # update the contigs db with the gene calls in `additional_gene_calls` dict.
         gene_calls_table = TablesForGeneCalls(self.db_path, run=terminal.Run(verbose=False))
         gene_calls_table.use_external_gene_calls_to_populate_genes_in_contigs_table(input_file_path=None,
                                                                                     gene_calls_dict=additional_gene_calls,
                                                                                     ignore_internal_stop_codons=True)
-        gene_calls_table.populate_genes_in_splits_tables()
+        gene_calls_table.populate_genes_in_splits_tables(gene_calls_dict=additional_gene_calls)
 
         # refresh the gene calls dict
         self.init_gene_calls_dict()

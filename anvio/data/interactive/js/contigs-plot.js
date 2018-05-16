@@ -30,7 +30,7 @@ function draw_n_values_plot(container, stats) {
 
                             var tooltip_pos = {
                                 'x': Math.max(Math.min(xscale(i) - 100,  600), 120),
-                                'y': yscale(d.length) - 50,
+                                'y': yscale(d.length) - 42,
                                 'width': 200,
                                 'height': 40
                             };

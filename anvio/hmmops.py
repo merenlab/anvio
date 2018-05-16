@@ -4,7 +4,9 @@
     HMM related operations.
 """
 
+import sys
 import textwrap
+
 from scipy import stats
 
 import anvio
@@ -39,24 +41,104 @@ class SequencesForHMMHits:
 
         if contigs_db_path:
             self.init_dicts(contigs_db_path)
+            self.initialized = True
+        else:
+            self.initialized = False
 
 
     def init_dicts(self, contigs_db_path):
-        # take care of contigs db related stuff and move on:
+        """Initialize essential data for HMM stuff.
+
+           This function will do its best to not load any data that will not
+           be used later for HMM related operations. For instance, it will
+           learn which gene caller ids are of interest based on HMM sources,
+           and only recover data for splits and contigs based on that information,
+           not accessing a large fraction of a given contigs database.
+        """
+
         contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
-        self.hmm_hits = contigs_db.get_table_as_dict(t.hmm_hits_table_name)
         self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
-        self.hmm_hits_splits = contigs_db.get_table_as_dict(t.hmm_hits_splits_table_name)
-        self.contig_sequences = contigs_db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
-        self.aa_sequences = contigs_db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
-        self.genes_in_contigs = contigs_db.get_table_as_dict(t.genes_in_contigs_table_name)
-        self.splits_in_contigs = list(contigs_db.get_table_as_dict(t.splits_info_table_name).keys())
-        contigs_db.disconnect()
 
         missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]
         if len(missing_sources):
-            raise ConfigError('Some of the requested sources were not found in the contigs database :/\
-                                Here is a list of the ones that are missing: %s' % ', '.join(missing_sources))
+            contigs_db.disconnect()
+            raise ConfigError("Bad news, Houston :/ The contigs database '%s' is missing one or more HMM sources\
+                               that you wished it didn't: '%s'." % (contigs_db_path, ', '.join(missing_sources)))
+
+        if not self.sources:
+            self.sources = set(list(self.hmm_hits_info.keys()))
+
+        if not self.sources:
+            # there is nothing to initialize..
+            return
+
+        self.progress.new("Recovering sequences for HMM Hits")
+        self.progress.update('...')
+
+        # get data from HMM tables based on sources of interest
+        self.progress.update('Getting data from HMM tables for %d source(s)' % len(self.sources))
+        where_clause_for_sources = "source in (%s)" % ', '.join(['"%s"' % s for s in self.sources])
+        self.hmm_hits = contigs_db.get_some_rows_from_table_as_dict(t.hmm_hits_table_name, \
+                                                                    where_clause=where_clause_for_sources)
+        self.hmm_hits_splits = contigs_db.get_some_rows_from_table_as_dict(t.hmm_hits_splits_table_name, \
+                                                                    where_clause=where_clause_for_sources)
+
+        gene_caller_ids_of_interest = set([e['gene_callers_id'] for e in self.hmm_hits.values()])
+        where_clause_for_genes = "gene_callers_id in (%s)" % ', '.join(['%d' % g for g in gene_caller_ids_of_interest])
+
+        self.progress.update('Recovering split and contig names for %d genes' % (len(gene_caller_ids_of_interest)))
+        split_names_of_ineterest, contig_names_of_interest = utils.get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids_of_interest)
+
+
+        self.progress.update('Recovering contig seqs for %d genes' % (len(gene_caller_ids_of_interest)))
+        where_clause_for_contigs = "contig in (%s)" % ', '.join(['"%s"' % s for s in contig_names_of_interest])
+        self.contig_sequences = contigs_db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, \
+                                                                            string_the_key=True, \
+                                                                            where_clause=where_clause_for_contigs)
+
+        self.progress.update('Recovering amino acid seqs for %d genes' % (len(gene_caller_ids_of_interest)))
+        self.aa_sequences = contigs_db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, \
+                                                                        where_clause=where_clause_for_genes)
+
+        self.genes_in_contigs = contigs_db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, \
+                                                                            where_clause=where_clause_for_genes)
+
+        self.splits_in_contigs = list(split_names_of_ineterest)
+
+        self.progress.end()
+        contigs_db.disconnect()
+
+
+    def check_init(self):
+        if not self.initialized:
+            raise ConfigError("This SequencesForHMMHits instance cannot do what its asked for\
+                               because it is not yet initialized :/ The programmer could call\
+                               `init_dicts` first, but clearly they didn't care.")
+
+    def list_available_hmm_sources(self, dont_quit=False):
+        self.check_init()
+
+        for source in self.hmm_hits_info:
+            t = self.hmm_hits_info[source]
+            run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
+
+        if dont_quit:
+            return
+
+        sys.exit(0)
+
+
+    def list_available_gene_names(self, dont_quit=False):
+        self.check_init()
+ 
+        for source in self.sources:
+            t = self.hmm_hits_info[source]
+            run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
+
+        if dont_quit:
+            return
+
+        sys.exit(0)
 
 
     def get_hmm_hits_in_splits(self, splits_dict):

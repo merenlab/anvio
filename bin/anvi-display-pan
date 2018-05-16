@@ -55,10 +55,7 @@ groupD.add_argument(*anvio.A('collection-autoload'), **anvio.K('collection-autol
 groupD.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
 
 groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
-groupE.add_argument(*anvio.A('show-views'), **anvio.K('show-views'))
 groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
-groupE.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
-groupE.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
 groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
 
 groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))

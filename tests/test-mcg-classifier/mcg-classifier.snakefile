@@ -34,11 +34,7 @@ files_dir = A("files_dir", config, "../sandbox/mock_files_for_alons_classifier")
 samples = ["hmp0041", "hmp0062", "hmp0074", "hmp0075", "hmp0079", "hmp0094"]
 
 rule all:
-    input: "mcg.finished", "mcg-collection.finished"
-#    input:
-#        output_dir + "/index.html",
-#        output_dir + "/index-collection.html"
-
+    input: output_dir + "/mcg.finished"
 
 
 rule gen_contigs_db:
@@ -61,7 +57,7 @@ rule anvi_init_bam:
         bai = output_dir + "/TEST/{sample}.bam.bai"
     shell: "anvi-init-bam {input} -o {output.bam} >> {log} 2>&1"
 
-    
+
 rule profile:
     log: output_dir + "/TEST-{sample}-anvi_profile.log"
     input:
@@ -106,62 +102,7 @@ rule run_mcg_classifier:
     input:
         profile = output_dir + "/TEST/MERGED-SAMPLES/PROFILE.db",
         contigs = output_dir + "/TEST.db"
-    output: touch("mcg.finished")
-        #nt_distribution = dynamic(output_dir + "/TEST-TS-plots/{p_sample}-coverages.pdf")
+    output: touch(output_dir + "/mcg.finished")
     params:
         output_prefix= output_dir + "/TEST"
-    shell: "anvi-mcg-classifier -p {input.profile} -c {input.contigs} -O {params.output_prefix} --outliers_threshold 1.5 --alpha 0.15 --store-gene-detection-and-coverage-tables >> {log} 2>&1"
-
-
-rule run_mcg_classifier_collection:
-    log: output_dir + "/TEST-run_mcg_classifier_collection.log"
-    input:
-        profile = output_dir + "/TEST/MERGED-SAMPLES/PROFILE.db",
-        contigs = output_dir + "/TEST.db",
-        collection = rules.import_collection.output
-    output: touch("mcg-collection.finished")
-        #nt_distribution = dynamic(output_dir + "/TEST-collection-TS-plots/{p_sample_collection}-coverages.pdf")
-    params:
-        output_prefix= output_dir + "/TEST-collection",
-        collection = "TEST"
-    shell: "anvi-mcg-classifier -p {input.profile} -c {input.contigs} -O {params.output_prefix} -C {params.collection} --outliers_threshold 1.5 --alpha 0.15 --store-gene-detection-and-coverage-tables >> {log} 2>&1"
-
-def myreport(test_type):
-    text = """
-        Output for TEST for mcg-classifier for {_test_type}
-        ==================================================================================
-
-        Below you will find the output pdf files of the mcg-classifier test: {_test_type}.
-
-        The current output includes plots only for positive samples.
-        For each positive sample there are two plots (both in one pdf file):\n
-        1. Sorted distribution of the coverage of nucleotides. Outliers are colored in red, and non-outliers are colored in blue.\n
-        2. A histogram of coverage values of the non-outlier nucleotides.
-
-        Results for mcg-classifier test: mcg_out_
-        """.format(_test_type = test_type)
-    return text
-
-
-#rule report:
-#    log: output_dir + "/TEST-report.log"
-#    input:
-#        mcg_out = rules.run_mcg_classifier.output.nt_distribution
-#    output: output_dir + "/index.html"
-#    run:
-#        from snakemake.utils import report
-#        test_type = 'full profile database'
-#        text = myreport(test_type)
-#        report(text, output[0], **input)
-#
-#
-#rule report_collection:
-#    log: output_dir + "/TEST-report_collection.log"
-#    input:
-#        mcg_out = rules.run_mcg_classifier_collection.output.nt_distribution
-#    output: output_dir + "/index-collection.html"
-#    run:
-#        from snakemake.utils import report
-#        test_type = 'collection'
-#        text = myreport(test_type)
-#        report(text, output[0], **input)
+    shell: "anvi-mcg-classifier -p {input.profile} -c {input.contigs} -O {params.output_prefix} --outliers-threshold 1.5 --alpha 0.05 --gen-figures --zeros-are-outliers -C TEST -b Bin_1 -W --debug >> {log} 2>&1"
