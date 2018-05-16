@@ -54,30 +54,25 @@ class VariabilityFilter:
             "condition"
         ]
 
-        # filters so complex they do not fit into filtering categories; handled ad hoc
+        # filters that don't (yet) have generalized filter methds in this class
+        # each criteria in this list has its own dedicated one-off function.
+        # Please do everyone a favour and append new functions only to this class.
         self.unique_filter_function_prefix = "filter_by_"
         self.unique_filter_criteria = [
             "occurrence",
         ]
 
 
-    def filter_by_occurrence(self, minimum = None):
-        if self.min_occurrence == 1:
+    def filter_by_occurrence(self, min_occurrence=1):
+        if min_occurrence <= 1:
             return
 
-        if self.min_occurrence > 1:
-            self.run.info('Min occurrence requested', self.min_occurrence)
-
-        self.progress.new('Processing positions further')
-
-        self.progress.update('counting occurrences of each position across samples ...')
+        descriptor = "Minimum occurrence of positions"
+        value_of_filter_criterion = min_occurrence
+        func = lambda occurrences, min_occurrence: self.data[self.data["unique_pos_identifier_str"].isin(occurrences[occurrences >= min_occurrence].index)]
 
         occurrences = self.data["unique_pos_identifier_str"].value_counts()
-        entries_before = len(self.data.index)
-        self.data = self.data[self.data["unique_pos_identifier_str"].isin(occurrences[occurrences >= self.min_occurrence].index)]
-        entries_after = len(self.data.index)
-        self.progress.end()
-        self.report_change_in_entry_number(entries_before, entries_after, reason="min occurrence")
+        self.filter_wrapper(func, occurrences, min_occurrence, descriptor="Minimum occurrence of positions", value_of_filter_criterion=min_occurrence)
 
 
     def are_passed_arguments_valid(self, kwargs):
@@ -290,9 +285,9 @@ class VariabilityFilter:
         return d
 
 
-    def general_serial_filtering(self, **kwargs):
-        for kwarg in kwargs:
-            d = self.gen_filter_wrapper_args_for_serial_filtering(kwarg, kwargs[kwarg])
+    def general_serial_filtering(self, **params):
+        for param in params:
+            d = self.gen_filter_wrapper_args_for_serial_filtering(param, params[param])
             self.filter_wrapper( d["filter_function"],
                                  d["descriptor"],
                                  d["value_of_filter_criterion"],
