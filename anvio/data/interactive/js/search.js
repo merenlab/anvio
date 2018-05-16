@@ -48,6 +48,8 @@ function searchContigs()
 }
 
 function searchFunctions() {
+    $('#search_functions_button').prop( "disabled", true );
+    $('#search_result_message_functions').html('<img src="images/loading.gif" style="width: 16px;" />');
     $.ajax({
         type: 'POST',
         cache: false,
@@ -90,7 +92,12 @@ function searchFunctions() {
             } else {
                 $('.search-message').show();
                 $('.search-message').html(data['message']);
-            };
+                $('#search_result_message_functions').html('');
+            }
+
+            $('#search_functions_button').prop( "disabled", false );
+        },
+        done: function() {
         }
     });
 }
