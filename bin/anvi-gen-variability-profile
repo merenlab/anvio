@@ -49,7 +49,6 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('include-split-names'), **anvio.K('include-split-names'))
     groupE.add_argument(*anvio.A('engine'), **anvio.K('engine'))
     groupE.add_argument(*anvio.A('num-positions-from-each-split'), **anvio.K('num-positions-from-each-split'))
-    groupE.add_argument(*anvio.A('min-scatter'), **anvio.K('min-scatter'))
     groupE.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
     groupE.add_argument(*anvio.A('min-departure-from-reference'), **anvio.K('min-departure-from-reference'))
     groupE.add_argument(*anvio.A('max-departure-from-reference'), **anvio.K('max-departure-from-reference'))

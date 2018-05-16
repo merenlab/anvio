@@ -52,7 +52,6 @@ class VariabilityFilter:
             "min_filter", "min_condition",
             "max_filter", "max_condition",
             "subset_filter", "subset_condition",
-            "condition"
         ]
 
 
@@ -1087,46 +1086,29 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def filter_by_scattering_factor(self):
-        """To remove any unique entry from the variable positions table that describes a variable position
-           and yet is not helpful to distinguish samples from eachother."""
-
-        if self.min_scatter == 0:
-            return
-
-        # FIXME THIS FUNCTION DOES NOT DO WHAT IT IS SUPPOSED TO.
+        """ this is what filter by scattering factor is supposed to do (it has never done this)
+        Using the --min-scatter parameter you can eliminate some SNV positions based on how they
+        partition samples. This one is a bit tricky, but Meren wants to keep it in the code base. If
+        you skip this you will not lose anything, but for the nerd kind, this is how it goes: If you
+        have N samples in your dataset, a given variable position x in one of your splits can split
+        your N samples into t groups based on the identity of the variation they harbor at position
+        x. For instance, t would have been 1, if all samples had the same type of variation at
+        position x (which would not be very interesting, because in this case position x would have
+        zero contribution to a deeper understanding of how these samples differ based on
+        variability. When t > 1, it would mean that identities at position x across samples do
+        differ. But how much scattering occurs based on position x when t > 1? If t=2, how many
+        samples would end up in each group? Obviously, the even distribution of samples across
+        groups may tell us something different than uneven distribution of samples across groups.
+        So, this parameter filters out any x if ‘the number of samples in the second largest group’
+        (=scatter) is less than the value you choose. Here is an example: lets assume you have 7
+        samples. While 5 of those have AG, 2 of them have TC at position x. This would mean the
+        scatter of x is 2. If you set -m to 2, this position would not be reported in your output
+        matrix. The default value for -m is 0, which means every x found in the database and
+        survived previous filtering criteria will be reported. Naturally, -m can not be more than
+        half of the number of samples.)"""
         raise ConfigError("Woops. The function that handles --min-scatter doesn't do \
-                           what we thought it did. This will be fixed soon. Sorry for \
+                           what we thought it did. This will be fixed maybe. Sorry for \
                            the inconvenience.")
-
-        num_samples = len(self.available_sample_ids)
-        if self.min_scatter > num_samples / 2:
-            raise ConfigError('Minimum scatter (%d) can not be more than half of the number of samples\
-                                (%d) :/' % (self.min_scatter, num_samples))
-
-        self.run.info('Min scatter', self.min_scatter)
-
-        # we need the unique pos_id to entry id dict filled for this function:
-        self.gen_unique_pos_identifier_to_entry_id_dict()
-
-        self.progress.new('Examining scatter')
-        self.progress.update('...')
-
-        entry_ids_to_remove = set([])
-
-        for unique_pos_id in self.unique_pos_id_to_entry_id:
-            entry_ids = self.unique_pos_id_to_entry_id[unique_pos_id]
-
-            # find how many samples it occurs:
-            num_occurrence = len(entry_ids)
-
-            # if the number of samples it occurs more
-            scatter = num_occurrence if num_occurrence < num_samples - num_occurrence else num_samples - num_occurrence
-            if scatter < self.min_scatter:
-                entry_ids_to_remove.update(entry_ids)
-
-        self.progress.end()
-
-        self.remove_entries_from_data(entry_ids_to_remove, reason="minimum scatter")
 
 
     def report_change_in_entry_number(self, num_before, num_after, reason="unknown reason"):
