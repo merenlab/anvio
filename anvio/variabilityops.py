@@ -919,7 +919,7 @@ class VariabilitySuper(VariabilityFilter, object):
                                    the %s: %s' % ('variability table' if self.table_provided else 'profile database',
                                                   ', '.join(samples_missing)))
 
-        self.available_sample_ids = sorted(list(self.sample_ids_of_interest))
+            self.available_sample_ids = sorted(list(self.sample_ids_of_interest))
 
         self.filter_data(criterion = "sample_id",
                          subset_filter = self.sample_ids_of_interest,
