@@ -1065,6 +1065,7 @@ class BottleApplication(Bottle):
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
 
+
     def reroot_tree(self):
         newick = request.forms.get('newick')
         branch = request.forms.get('branch')
