@@ -1636,7 +1636,7 @@ class StructureInteractive(VariabilitySuper):
            variability of all genes with structures in the structure database
         """
         self.full_variability = variabilityops.VariabilityData(self.args, p=progress, r=run)
-        gene_var[engine].stealth_filtering = True
+        self.full_variability.stealth_filtering = True
         self.full_variability.init_commons()
 
         if not self.only_if_structure:
