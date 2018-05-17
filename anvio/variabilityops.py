@@ -246,7 +246,7 @@ class VariabilityFilter:
         if extremum_type == 'max' and inclusive:
             return op.le
         if extremum_type == 'max' and not inclusive:
-            return op.le
+            return op.lt
 
 
     def filter_wrapper(self, filter_func, descriptor=None, value_for_run_info=None, **filter_args):
@@ -1683,6 +1683,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         # no columns exist in new_entries but not in self.data. This is unacceptable, and could have
         # happened if code for new_entries was changed or if the workflow in process() is
         # significantly reworked.
+
         column_order = self.data.columns.tolist()
         if len([x for x in new_entries.columns.tolist() if x not in self.data.columns.tolist()]):
             raise ValueError("Columns found in new_entries exist that aren't in self.data.")
