@@ -1118,6 +1118,69 @@ class PanSuperclass(object):
         self.run.info('Output file for phylogenomics', output_file_path, mc='green')
 
 
+    def get_gene_clusters_functions_summary_dict(self, functional_annotation_source):
+        """ A function to assign functions to gene clusters for an annotation_source
+
+            use an annotation source and choose a function for the gene cluster
+            using a voting approach, i.e. the most commonly annotated function
+            for the genes in the gene cluster will be chosen.
+
+            If multiple functinos have the same number of votes then one will
+            be chosen arbitrarily.
+
+            OUTPUT:
+
+            gene_clusters_functions_summary_dict
+                dictionary with gene_cluster ids as keys
+                the values are dictionaries, where:
+                gene_clusters_functions_summary_dict[gene_cluster_id]['gene_clusters_function'] - contains the chosen function
+
+                If you want to see all the functions and number of votes per function, simply do:
+                for f in gene_clusters_functions_summary_dict[gene_cluster_id]:
+                    print('For gene cluster %s: the number of votes for function %s is %s'\
+                            % (gene_cluster_id, f, gene_clusters_functions_summary_dict[gene_cluster_id][f])
+        """
+
+        if functional_annotation_source not in self.gene_clusters_function_sources:
+            raise ConfigError("Your favorite functional annotation source '%s' does not seem to be among one of the sources\
+                               that are available to you. Here are the ones you should choose from: %s." % (functional_annotation_source, ', '.join(self.gene_clusters_function_sources)))
+
+        if not self.functions_initialized:
+            self.init_gene_clusters_functions()
+
+        if not len(self.gene_clusters_functions_dict):
+            raise ConfigError("The gene clusters functions dict seems to be empty. We assume this error makes\
+                               zero sense to you, and it probably will not help you to know that it also makes\
+                               zero sense to anvi'o too :/ Maybe you forgot to provide a genomes storage?")
+
+        gene_clusters_functions_summary_dict = {}
+        
+        self.progress.new('Summarizing functions for gene clusters')
+        self.progress.update('Creating a dictionary')
+        for gene_cluster in self.gene_clusters_functions_dict:
+            gene_clusters_functions_summary_dict[gene_cluster] = {}
+            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = None 
+            max_votes = 0
+            for genome in self.gene_clusters_functions_dict[gene_cluster]:
+                for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster][genome]:
+                    if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id]:
+                        annotation_blob = self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id][functional_annotation_source]
+                        accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
+                        for f in annotations:
+                            if f not in gene_clusters_functions_summary_dict[gene_cluster]:
+                                gene_clusters_functions_summary_dict[gene_cluster][f] = 0
+
+                            gene_clusters_functions_summary_dict[gene_cluster][f] += 1
+                            if gene_clusters_functions_summary_dict[gene_cluster][f] > max_votes:
+                                # The function has the votes!
+                                max_votes = gene_clusters_functions_summary_dict[gene_cluster][f]
+                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = f 
+
+        self.progress.end()
+
+        return gene_clusters_functions_summary_dict
+
+
     def init_gene_clusters_functions(self):
         if not self.genomes_storage_is_available:
             self.run.warning("Someone tried to initialize gene cluster functions, but it seems there is no genomes\
