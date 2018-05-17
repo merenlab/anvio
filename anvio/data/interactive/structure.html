@@ -24,41 +24,53 @@
                 </div>
             </div>
             <div class="col-md-3 sidebar">
-                <div class="widget">
-                    <div class="row">
-                        <div class="col-md-4 form-row-padding">
-                            Gene Callers ID:
+                <ul class="nav nav-tabs"  role="tablist">
+                  <li role="presentation" class="active"><a href="#tab_main" aria-controls="tab_main" role="tab" data-toggle="tab">Main</a></li>
+                  <li role="presentation"><a href="#tab_filters" aria-controls="tab_filters" role="tab" data-toggle="tab">Filters</a></li>
+                  <li role="presentation"><a href="#tab_perspectives" aria-controls="tab_perspectives" role="tab" data-toggle="tab">Perspectives</a></li>
+                  <li role="presentation"><a href="#tab_summary" aria-controls="tab_summary" role="tab" data-toggle="tab">Generate Summary</a></li>
+                </ul>
+                <div class="tab-content">
+                    <div id="tab_main" role="tabpanel" class="tab-pane fade in active">
+                        <div class="widget">
+                            <div class="row">
+                                <div class="col-md-4 form-row-padding">
+                                    Gene Callers ID:
+                                </div>
+                                <div class="col-md-8 form-row-padding">
+                                    <select class="form-control" serialize="true" id="gene_callers_id_list" style="width: 100%;"></select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 form-row-padding">
+                                    Engine:
+                                </div>
+                                <div class="col-md-8 form-row-padding">
+                                    <div id="engine_list"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-8 form-row-padding">
-                            <select class="form-control" serialize="true" id="gene_callers_id_list" style="width: 100%;"></select>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4 form-row-padding">
-                            Engine:
-                        </div>
-                        <div class="col-md-8 form-row-padding">
-                            <div id="engine_list"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="widget">
-                    <div class="row">
-                        <div class="col-md-4 form-row-padding">
-                            Category:
-                        </div>
-                        <div class="col-md-8 form-row-padding">
-                            <select class="form-control" serialize="true" id="sample_groups_list">
+                        <div class="widget">
+                            <div class="row">
+                                <div class="col-md-4 form-row-padding">
+                                    Category:
+                                </div>
+                                <div class="col-md-8 form-row-padding">
+                                    <select class="form-control" serialize="true" id="sample_groups_list">
 
-                            </select>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="sample_groups">
+
+                            </div>
                         </div>
                     </div>
-                    <div id="sample_groups">
+                    <div id="tab_filters" role="tabpanel" class="tab-pane fade">
+                        <div id="controls">
 
+                        </div>
                     </div>
-                </div>
-                <div id="controls">
-
                 </div>
             </div>
         </div>

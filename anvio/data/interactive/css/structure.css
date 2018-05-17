@@ -71,3 +71,7 @@ body {
    padding: 0 !important;
    margin: 0 !important;
 }
+
+.nav>li>a {
+    padding: 10px 10px;
+}
