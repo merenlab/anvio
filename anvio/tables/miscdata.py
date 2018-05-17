@@ -651,7 +651,8 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
                                case you want to see a random item that is only in your data, here is one: %s. Stuff\
                                in your db looks like this: %s." \
                                     % (len(items_in_data_but_not_in_db), len(items_in_data), self.db_type, \
-                                       items_in_data_but_not_in_db.pop(), items_in_db.pop()))
+                                       items_in_data_but_not_in_db.pop(), 
+                                       items_in_db.pop() if items_in_db else "No entries found in databse"))
 
         items_in_db_but_not_in_data = items_in_db.difference(items_in_data)
         if len(items_in_db_but_not_in_data):

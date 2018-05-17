@@ -1701,11 +1701,7 @@ class PanSuperclass(object):
         gene_clusters = {}
         full_report = []
 
-        genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
-                                                                       self.p_meta['genomes_storage_hash'],
-                                                                       genome_names_to_focus=self.p_meta['genome_names'],
-                                                                       run=self.run,
-                                                                       progress=self.progress)
+        genomes_db = db.DB(self.genomes_storage_path, anvio.__genomes_storage_version__)
 
         for search_term in search_terms:
             self.progress.new('Search functions')
@@ -1713,12 +1709,15 @@ class PanSuperclass(object):
 
             query = '''select gene_callers_id, source, accession, function, genome_name from ''' + t.genome_gene_function_calls_table_name + ''' where (function LIKE "%%''' \
                             + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%")'''
+
+            query += ''' AND genome_name IN (%s) ''' % (', '.join(["'%s'" % s for s in self.p_meta['genome_names']]))
+
             if requested_sources:
                 query += ''' AND source IN (%s);''' % (', '.join(["'%s'" % s for s in requested_sources]))
             else:
                 query += ';'
 
-            results = genomes_storage.db._exec(query).fetchall()
+            results = genomes_db._exec(query).fetchall()
             gene_clusters[search_term] = []
 
             found_mismatch = False
@@ -1748,7 +1747,7 @@ class PanSuperclass(object):
                                  belong any gene cluster in your pan database. This may be due to filtering parameters used (ex: --min-occurrence) \
                                  during the pangenome analysis. Gene cluster ids for these results will appear as 'n/a' in the report." % search_term)
 
-        genomes_storage.close()
+        genomes_db.disconnect()
         self.progress.end()
 
 

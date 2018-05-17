@@ -373,6 +373,29 @@ D = {
              'help': "Start the interface with a pre-selected view. To see a list of available views,\
                       use --show-views flag."}
                 ),
+    'category-variable': (
+            ['--category-variable'],
+            {'default': None,
+             'metavar': 'CATEGORY',
+             'help': "The additional layers data variable name that divides layers into multiple categories."}
+                ),
+    'min-portion-occurence-of-function-in-group': (
+            ['-P', '--min-portion-occurence-of-function-in-group'],
+            {'metavar': 'PORTION',
+             'default': 0,
+             'type': float,
+             'help': "Takes a value between 0 and 1, where 1 means that only functions that occur in all members of\
+                      one of the compared groups will be included in the output. Default is %(default).1f."}
+                ),
+    'min-function-enrichment': (
+            ['-E', '--min-function-enrichment'],
+            {'metavar': 'PORTION',
+             'default': 0,
+             'type': float,
+             'help': "Takes a value between 0 and 1, where 1 means that the output will include only functions\
+                     that occur in all members of one group and in none of the members of the other group.\
+                     Default is %(default).1f."}
+                ),
     'table': (
             ['--table'],
             {'metavar': 'TABLE_NAME',
@@ -477,7 +500,7 @@ D = {
             ['-l', '--list-annotation-sources'],
             {'default': False,
              'action': 'store_true',
-             'help': "List available sources for annotation in the contigs database and quit."}
+             'help': "List available functional annotation sources."}
                 ),
     'gene-names': (
             ['--gene-names'],

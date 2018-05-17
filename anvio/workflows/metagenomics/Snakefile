@@ -350,7 +350,7 @@ rule gen_qc_report:
         u.store_dict_as_TAB_delimited_file(report_dict, output[0], headers= ["sample"] + report_column_headers)
 
 
-def input_for_fq2fa(wildcards):
+def fastq_input_for_fq2fa(wildcards):
     ''' return the pair of uncompressed fastq files for a sample.
 
         See the documentation for get_fastq to understand why we need this.
@@ -369,6 +369,43 @@ def input_for_fq2fa(wildcards):
     return d
 
 
+def input_for_fq2fa(wildcards):
+    ''' this function is just to figure out if we need to gunzip the fastq or not'''
+    d = fastq_input_for_fq2fa(wildcards)
+    # Checking if any of the input files are compressed
+    # this should only happen if QC is not performed in this snakemake session
+    # because if QC is performed in this session then the output of iu-filter-quality-minoche
+    # is not compressed and snakemake will schedule fq2fa rule before gzip rule
+    files_that_end_with_gz = [f for f in [list(d['r1']), list(d['r2'])] if f[0].endswith('.gz')]
+    if len(files_that_end_with_gz) == 1:
+        raise ConfigError("Something seems very bad: one of the pair fastq files\
+                           is compressed and the other one is not. This is the \
+                           compressed one: %s" % files_that_end_with_gz[0])
+    elif len(files_that_end_with_gz) == 2:
+        run.warning("The following fastq files are compressed and will now \
+                     be uncompressed using gunzip: %s." % files_that_end_with_gz)
+        d['r1'] = dirs_dict["QC_DIR"] + "/%s.r1.fastq" % wildcards.sample
+        d['r2'] = dirs_dict["QC_DIR"] + "/%s.r2.fastq" % wildcards.sample
+
+    return d
+
+
+rule gunzip_for_fq2fa:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{sample}-gunzip_for_fq2fa.log"
+    input: unpack(fastq_input_for_fq2fa)
+    output:
+        r1 = temp(dirs_dict["QC_DIR"] + "/{sample}.r1.fastq"),
+        r2 = temp(dirs_dict["QC_DIR"] + "/{sample}.r2.fastq")
+    threads: w.T(config, 'gunzip_for_fq2fa', 1)
+    resources: nodes = w.T(config, 'gunzip_for_fq2fa', 1)
+    shell:
+        """
+            gunzip < {input.r1} > {output.r1}
+            gunzip < {input.r2} > {output.r2}
+        """
+
+
 rule fq2fa:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{sample}-fq2fa.log"
@@ -376,34 +413,7 @@ rule fq2fa:
     output: temp(dirs_dict["QC_DIR"] + "/{sample}-merged-reads.fa")
     threads: M.T('fq2fa')
     resources: nodes = M.T('fq2fa')
-    run:
-        # Checking if any of the input files are compressed
-        # this should only happen if QC is not performed in this snakemake session
-        # because if QC is performed in this session then the output of iu-filter-quality-minoche
-        # is not compressed and snakemake will schedule fq2fa rule before gzip rule
-        files_that_end_with_gz = [f for f in input if f.endswith('.gz')]
-        if len(files_that_end_with_gz) == 1:
-            raise ConfigError("Something seems very bad: one of the pair fastq files\
-                               is compressed and the other one is not. This is the \
-                               compressed one: %s" % files_that_end_with_gz[0])
-
-        if len(files_that_end_with_gz):
-            # uncompress the files before running fq2fa
-            run.warning("The following fastq files are compressed and will now \
-                         be uncompressed using gunzip: %s." % files_that_end_with_gz)
-            shell("gunzip --keep {input.r1} >> {log} 2>&1")
-            shell("gunzip --keep {input.r2} >> {log} 2>&1")
-
-        # running fq2fa
-        shell("fq2fa --merge {input} {output} >> {log} 2>&1")
-
-        if len(files_that_end_with_gz):
-            # after fq2fa is done we can compress those files again
-            file_1_to_remove = input.r1[0:-3]
-            file_2_to_remove = input.r2[0:-3]
-            run.warning("fq2fa is done so we will now remove the uncompressed\
-                         version copy of the fastq files: %s." % (file_1_to_remove + ', ' + file_2_to_remove))
-            shell("rm %s %s >> {log} 2>&1" % (file_1_to_remove, file_2_to_remove))
+    shell: "fq2fa --merge {input} {output} >> {log} 2>&1"
 
 
 rule merge_fastas_for_co_assembly:
@@ -448,21 +458,21 @@ if run_idba_ud == True:
             mink = M.get_rule_param("idba_ud", "--mink"),
             maxk = M.get_rule_param("idba_ud", "--maxk"),
             step = M.get_rule_param("idba_ud", "--step"),
-            inner_mink = M.get_rule_param("idba_ud", "--inner-mink"),
-            inner_step = M.get_rule_param("idba_ud", "--inner-step"),
+            inner_mink = M.get_rule_param("idba_ud", "--inner_mink"),
+            inner_step = M.get_rule_param("idba_ud", "--inner_step"),
             prefix = M.get_rule_param("idba_ud", "--prefix"),
-            min_count = M.get_rule_param("idba_ud", "--min-count"),
-            min_support = M.get_rule_param("idba_ud", "--min-support"),
-            seed_kmer = M.get_rule_param("idba_ud", "--seed-kmer"),
-            min_contig = M.get_rule_param("idba_ud", "--min-contig"),
+            min_count = M.get_rule_param("idba_ud", "--min_count"),
+            min_support = M.get_rule_param("idba_ud", "--min_support"),
+            seed_kmer = M.get_rule_param("idba_ud", "--seed_kmer"),
+            min_contig = M.get_rule_param("idba_ud", "--min_contig"),
             similar = M.get_rule_param("idba_ud", "--similar"),
-            max_mismatch = M.get_rule_param("idba_ud", "--max-mismatch"),
-            min_pairs = M.get_rule_param("idba_ud", "--min-pairs"),
-            no_bubble = M.get_rule_param("idba_ud", "--no-bubble"),
-            no_local = M.get_rule_param("idba_ud", "--no-local"),
-            no_coverage = M.get_rule_param("idba_ud", "--no-coverage"),
-            no_correct = M.get_rule_param("idba_ud", "--no-correct"),
-            pre_correction = M.get_rule_param("idba_ud", "--pre-correction"),
+            max_mismatch = M.get_rule_param("idba_ud", "--max_mismatch"),
+            min_pairs = M.get_rule_param("idba_ud", "--min_pairs"),
+            no_bubble = M.get_rule_param("idba_ud", "--no_bubble"),
+            no_local = M.get_rule_param("idba_ud", "--no_local"),
+            no_coverage = M.get_rule_param("idba_ud", "--no_coverage"),
+            no_correct = M.get_rule_param("idba_ud", "--no_correct"),
+            pre_correction = M.get_rule_param("idba_ud", "--pre_correction"),
         threads: M.T('idba_ud')
         resources: nodes = M.T('idba_ud')
         run:
