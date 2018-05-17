@@ -1303,7 +1303,8 @@ class StructureInteractive(VariabilitySuper):
             "diet":        {"high-fat": [sample1],          "low-fat": [sample2]}}
         """
         if not self.profile_db_path:
-            return {"samples": {s:[s] for s in self.available_samples}}
+            return {"samples" : {s:[s] for s in self.available_samples},
+                    "merged"  : {"all": sorted(list(self.available_samples))}}
 
         layer_names, additional_layer_dict = self.load_additional_layer_data()
 
@@ -1315,7 +1316,11 @@ class StructureInteractive(VariabilitySuper):
         # whose only purpose is to enable a dictionary comprehension. Imagine how many lines this
         # would be using native python.
         df = pd.DataFrame(additional_layer_dict).T.fillna("NA").reset_index().rename(columns={"index":"samples"})
-        return {col: {val: list(df.loc[df[col]==val, "samples"]) for val in df[col].unique()} for col in df.columns} # V/\
+        d = {col: {val: list(df.loc[df[col]==val, "samples"]) for val in df[col].unique()} for col in df.columns} # V/\
+
+        # important merged group (all samples in one group)
+        d["merged"] = {"all": sorted(list(self.available_samples))}
+        return d
 
 
     def load_additional_layer_data(self, profile_db_path=None):
@@ -1351,8 +1356,9 @@ class StructureInteractive(VariabilitySuper):
 
 
     def get_column_info(self, gene_callers_id, engine):
-        FIND_MIN = lambda g, e, c: self.variability_storage[g][e].data[c].min()
-        FIND_MAX = lambda g, e, c: self.variability_storage[g][e].data[c].max()
+        x = self.variability_storage[gene_callers_id][engine]
+        FIND_MIN = lambda c: x.data[c].min()
+        FIND_MAX = lambda c: x.data[c].max()
 
         info = [
             {
@@ -1379,8 +1385,17 @@ class StructureInteractive(VariabilitySuper):
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 1,
-                'min': int(FIND_MIN(gene_callers_id, engine, 'coverage')),
-                'max': int(FIND_MAX(gene_callers_id, engine, 'coverage'))
+                'min': int(FIND_MIN('coverage')),
+                'max': int(FIND_MAX('coverage'))
+            },
+            {
+                'name': 'entropy',
+                'title': 'Entropy',
+                'controller': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': 0,
+                'max': float(FIND_MAX('entropy'))
             },
             {
                 'name': 'rel_solvent_acc',
@@ -1396,6 +1411,24 @@ class StructureInteractive(VariabilitySuper):
                 'title': 'Secondary structure',
                 'controller': 'checkbox',
                 'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
+            },
+            {
+                'name': 'phi',
+                'title': 'Phi',
+                'controller': 'slider',
+                'data_type': 'float',
+                'step': 1,
+                'min': -180,
+                'max': 180,
+            },
+            {
+                'name': 'psi',
+                'title': 'Psi',
+                'controller': 'slider',
+                'data_type': 'float',
+                'step': 1,
+                'min': -180,
+                'max': 180,
             },
             {
                 'name': 'BLOSUM62',
@@ -1414,7 +1447,35 @@ class StructureInteractive(VariabilitySuper):
                 'step': 1,
                 'min': -6,
                 'max': 11,
-            }]
+            },
+            {
+                'name': 'codon_order_in_gene',
+                'title': 'Codon index',
+                'controller': 'slider',
+                'data_type': 'integer',
+                'step': 1,
+                'min': 0,
+                'max': x.data["gene_length"].iloc[0]/3,
+            },
+            {
+                'name': x.competing_items,
+                'title': 'Competing Amino Acids' if engine == "AA" else 'Competing Codons',
+                'controller': 'checkbox',
+                'choices': list(x.data[x.competing_items].value_counts().sort_values(ascending=False).index)
+            },
+            {
+                'name': 'reference',
+                'title': 'Reference',
+                'controller': 'checkbox',
+                'choices': constants.amino_acids if engine == "AA" else constants.codons
+            },
+            {
+                'name': 'consensus',
+                'title': 'Consensus',
+                'controller': 'checkbox',
+                'choices': constants.amino_acids if engine == "AA" else constants.codons
+            },
+            ]
 
         return info
 
