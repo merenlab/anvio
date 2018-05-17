@@ -1278,11 +1278,12 @@ class StructureInteractive(VariabilitySuper):
 
         self.sanity_check()
 
+        self.available_genes = self.get_available_genes()
+
         if self.store_full_variability_in_memory:
             self.profile_full_variability_data()
 
         self.available_engines = [self.full_variability.engine] if self.variability_table_path else ["AA", "CDN"]
-        self.available_genes = self.get_available_genes()
 
         # default gene is the first gene of interest
         self.profile_gene_variability_data(list(self.available_genes)[0])
@@ -1637,7 +1638,6 @@ class StructureInteractive(VariabilitySuper):
         """
         self.full_variability = variabilityops.VariabilityData(self.args, p=progress, r=run)
         self.full_variability.stealth_filtering = True
-        self.full_variability.init_commons()
 
         if not self.only_if_structure:
             raise ConfigError("profile_full_variability_data :: why you do dat?")
@@ -1646,7 +1646,7 @@ class StructureInteractive(VariabilitySuper):
         self.full_variability.load_structure_data()
 
         # filters by those genes
-        goi = self.full_variability.genes_of_interest
+        goi = self.available_genes
         self.full_variability.filter_data(criterion="corresponding_gene_call", subset_filter=goi)
 
 
