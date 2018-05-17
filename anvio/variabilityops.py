@@ -96,10 +96,7 @@ class VariabilityFilter:
             num_positions_from_each_split = self.num_positions_from_each_split
 
         if num_positions_from_each_split <= 0:
-            self.run.info('Num positions to keep from each split', '(all positions)')
             return
-
-            self.run.info('Num positions to keep from each split', num_positions_from_each_split)
 
         subsample_func = lambda x: pd.Series(x.unique()) if len(x.unique()) <= num_positions_from_each_split else\
                                    pd.Series(np.random.choice(x.unique(), size=num_positions_from_each_split, replace=False))
@@ -298,7 +295,7 @@ class VariabilityFilter:
 
     def filter_wrapper(self, filter_func, descriptor=None, value_for_run_info=None, **filter_args):
         if self.stealth_filtering or not (descriptor and str(value_for_run_info)):
-            filter_func(**filter_args)
+            self.data = filter_func(**filter_args)
 
         else:
             key, val = self.generate_message_for_run_info(descriptor, value_for_run_info)
