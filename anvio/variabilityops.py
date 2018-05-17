@@ -108,7 +108,7 @@ class VariabilityFilter:
 
 
     def filter_data(self, criterion=None, function=None, verbose=False, **kwargs):
-        """ FIXME """
+        """ FIXME add example here """
         self.filter_info_log = {}
         self.criterion = criterion
         self.passed_function = function
@@ -1392,15 +1392,6 @@ class VariabilitySuper(VariabilityFilter, object):
         except self.EndProcess as e:
             msg = 'Nothing left in the variability data to work with. Quitting :/' if exit_if_data_empty else ''
             e.end(exit_if_data_empty, msg)
-
-
-    def filter_for_interactive(self):
-        F = lambda f, **kwargs: (f, kwargs)
-        filtering_functions = [F(self.filter_by_departure_from_consensus),
-                               F(self.filter_by_departure_from_reference),
-                               F(self.filter_by_samples)]
-
-        self.process(process_functions=filtering_functions, exit_if_data_empty=False)
 
 
     def get_histograms_for_interactive(self, column_info_list):

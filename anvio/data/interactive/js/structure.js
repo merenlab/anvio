@@ -205,10 +205,13 @@ function serialize_filtering_widgets() {
         let controller = $(widget).attr('data-controller');
 
         if (controller == 'slider') {
-            output[column] = $(widget).find('input').val();
+            output[column] = {}
+            output[column]["min_" + column] = $(widget).find('input').val().split(',')[0];
+            output[column]["max_" + column] = $(widget).find('input').val().split(',')[1];
         }
         else if (controller == 'checkbox') {
-            output[column] = $(widget).find('input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); });
+            output[column] = {}
+            output[column][column + "s_of_interest"] = $(widget).find('input:checkbox:checked').toArray().map((checkbox) => { return $(checkbox).val(); });
         }
     });
 
