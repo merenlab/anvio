@@ -290,6 +290,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                                Do you think this is a mistake on our part? Let us know." % \
                                                                     (category_variable, type_category_variable))
 
+        gene_clusters_functions_summary_dict = self.get_gene_clusters_functions_summary_dict(functional_annotation_source)
+
         self.run.info('Category', category_variable)
         self.run.info('Functional annotation source', functional_annotation_source)
 
