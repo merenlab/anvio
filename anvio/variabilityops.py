@@ -171,9 +171,6 @@ class VariabilityFilter:
             print(e)
             sys.exit()
 
-        except self.EndProcess as e:
-            pass
-
         else:
             if verbose:
                 header = "Filter passed without raising error. Here is the log:"

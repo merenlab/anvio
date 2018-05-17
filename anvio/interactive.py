@@ -1268,7 +1268,6 @@ class StructureInteractive(VariabilitySuper):
         # others
         self.variability_table_path = A('variability_profile', null)
         self.no_variability = A('no_variability', bool)
-        self.only_if_structure = A('only_if_structure', bool) or True # can greatly reduce variability size
 
         # For now, only true if self.variability_table_path. Otherwise variability is computed on the fly
         self.store_full_variability_in_memory = True if self.variability_table_path else False
@@ -1639,15 +1638,12 @@ class StructureInteractive(VariabilitySuper):
         self.full_variability = variabilityops.VariabilityData(self.args, p=progress, r=run)
         self.full_variability.stealth_filtering = True
 
-        if not self.only_if_structure:
-            raise ConfigError("profile_full_variability_data :: why you do dat?")
-
-        # sets self.full_variability.genes_of_interest to those with structure
-        self.full_variability.load_structure_data()
-
-        # filters by those genes
-        goi = self.available_genes
-        self.full_variability.filter_data(criterion="corresponding_gene_call", subset_filter=goi)
+        try:
+            self.full_variability.filter_data(criterion="corresponding_gene_call",
+                                              subset_filter=self.available_genes)
+        except self.EndProcess as e:
+            raise ConfigError("This is really sad. There is no overlap between the gene IDs in your\
+                               structure database and the gene IDs in your variability table.")
 
 
     def profile_gene_variability_data(self, gene_callers_id):
