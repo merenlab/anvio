@@ -171,6 +171,9 @@ class VariabilityFilter:
             print(e)
             sys.exit()
 
+        except self.EndProcess as e:
+            pass
+
         else:
             if verbose:
                 header = "Filter passed without raising error. Here is the log:"
@@ -422,7 +425,7 @@ class VariabilityFilter:
 
         if not self.is_filter_criterion_a_column_in_dataframe():
             raise ConfigError("VariabilityFilter :: The filter criterion `%s` does not exist as\
-                               a column in self.data. It must.")
+                               a column in self.data. It must." % (self.criterion))
 
 
     def is_filter_criterion_a_column_in_dataframe(self):
@@ -2127,6 +2130,15 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
             raise ConfigError("The engine you requested is {}, but the engine inferred from {} is {}.".\
                                format(self.engine, self.variability_table_path, inferred_engine))
         self.engine = inferred_engine
+
+        if self.engine == 'NT':
+            self.competing_items = 'competing_nts'
+        elif self.engine == 'CDN':
+            self.competing_items = 'competing_codons'
+        elif self.engine == 'AA':
+            self.competing_items = 'competing_aas'
+        else:
+            pass
 
         # load the data
         self.load_data()
