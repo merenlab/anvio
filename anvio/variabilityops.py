@@ -91,6 +91,53 @@ class VariabilityFilter:
         self.filter_wrapper(func, descriptor="Minimum coverage across all samples", value_for_run_info=min_coverage_in_each_sample, **filter_args)
 
 
+    def filter_by_num_positions_from_each_split(self, num_positions_from_each_split=None):
+        if not num_positions_from_each_split:
+            num_positions_from_each_split = self.num_positions_from_each_split
+
+        if num_positions_from_each_split <= 0:
+            self.run.info('Num positions to keep from each split', '(all positions)')
+            return
+
+            self.run.info('Num positions to keep from each split', num_positions_from_each_split)
+
+        subsample_func = lambda x: pd.Series(x.unique()) if len(x.unique()) <= num_positions_from_each_split else\
+                                   pd.Series(np.random.choice(x.unique(), size=num_positions_from_each_split, replace=False))
+        unique_positions_to_keep = self.data.groupby('split_name')['unique_pos_identifier'].apply(subsample_func)
+
+        func = self.subset_filter
+        filter_args = {"criterion": "unique_pos_identifier",
+                       "subset_values": unique_positions_to_keep}
+
+        self.filter_wrapper(func, descriptor="Num positions from each split", value_for_run_info=num_positions_from_each_split, **filter_args)
+
+
+    def filter_by_scattering_factor(self):
+        """ this is what filter by scattering factor is supposed to do (it has never done this)
+        Using the --min-scatter parameter you can eliminate some SNV positions based on how they
+        partition samples. This one is a bit tricky, but Meren wants to keep it in the code base. If
+        you skip this you will not lose anything, but for the nerd kind, this is how it goes: If you
+        have N samples in your dataset, a given variable position x in one of your splits can split
+        your N samples into t groups based on the identity of the variation they harbor at position
+        x. For instance, t would have been 1, if all samples had the same type of variation at
+        position x (which would not be very interesting, because in this case position x would have
+        zero contribution to a deeper understanding of how these samples differ based on
+        variability. When t > 1, it would mean that identities at position x across samples do
+        differ. But how much scattering occurs based on position x when t > 1? If t=2, how many
+        samples would end up in each group? Obviously, the even distribution of samples across
+        groups may tell us something different than uneven distribution of samples across groups.
+        So, this parameter filters out any x if ‘the number of samples in the second largest group’
+        (=scatter) is less than the value you choose. Here is an example: lets assume you have 7
+        samples. While 5 of those have AG, 2 of them have TC at position x. This would mean the
+        scatter of x is 2. If you set -m to 2, this position would not be reported in your output
+        matrix. The default value for -m is 0, which means every x found in the database and
+        survived previous filtering criteria will be reported. Naturally, -m can not be more than
+        half of the number of samples.)"""
+        raise ConfigError("Woops. The function that handles --min-scatter doesn't do \
+                           what we thought it did. This will be fixed maybe. Sorry for \
+                           the inconvenience.")
+
+
     def are_passed_arguments_valid(self, kwargs):
         if not self.criterion and not self.passed_function:
             raise ConfigError("VariabilityFilter :: pass a filter criterion (criterion=) if you want to apply a standard filter,\
@@ -485,7 +532,7 @@ class VariabilitySuper(VariabilityFilter, object):
                                   F(self.load_structure_data),
                                   F(self.apply_preliminary_filters),
                                   F(self.set_unique_pos_identification_numbers),
-                                  F(self.filter_by_num_positions_from_each_split),
+                                  F(self.filter_data, function=self.filter_by_num_positions_from_each_split),
                                   F(self.compute_additional_fields),
                                   F(self.filter_data, criterion="departure_from_consensus",
                                                       min_filter=self.min_departure_from_consensus,
@@ -1101,32 +1148,6 @@ class VariabilitySuper(VariabilityFilter, object):
             self.data.loc[entry_ids, m] = self.data.loc[entry_ids, self.competing_items].apply(lambda x: substitution_scoring_matrix.get(x, None))
 
 
-    def filter_by_scattering_factor(self):
-        """ this is what filter by scattering factor is supposed to do (it has never done this)
-        Using the --min-scatter parameter you can eliminate some SNV positions based on how they
-        partition samples. This one is a bit tricky, but Meren wants to keep it in the code base. If
-        you skip this you will not lose anything, but for the nerd kind, this is how it goes: If you
-        have N samples in your dataset, a given variable position x in one of your splits can split
-        your N samples into t groups based on the identity of the variation they harbor at position
-        x. For instance, t would have been 1, if all samples had the same type of variation at
-        position x (which would not be very interesting, because in this case position x would have
-        zero contribution to a deeper understanding of how these samples differ based on
-        variability. When t > 1, it would mean that identities at position x across samples do
-        differ. But how much scattering occurs based on position x when t > 1? If t=2, how many
-        samples would end up in each group? Obviously, the even distribution of samples across
-        groups may tell us something different than uneven distribution of samples across groups.
-        So, this parameter filters out any x if ‘the number of samples in the second largest group’
-        (=scatter) is less than the value you choose. Here is an example: lets assume you have 7
-        samples. While 5 of those have AG, 2 of them have TC at position x. This would mean the
-        scatter of x is 2. If you set -m to 2, this position would not be reported in your output
-        matrix. The default value for -m is 0, which means every x found in the database and
-        survived previous filtering criteria will be reported. Naturally, -m can not be more than
-        half of the number of samples.)"""
-        raise ConfigError("Woops. The function that handles --min-scatter doesn't do \
-                           what we thought it did. This will be fixed maybe. Sorry for \
-                           the inconvenience.")
-
-
     def report_change_in_entry_number(self, num_before, num_after, reason="unknown reason"):
         """Reports how many entries were removed (or added) during a filtering step."""
         changed = "removed" if num_after <= num_before else "added"
@@ -1145,29 +1166,6 @@ class VariabilitySuper(VariabilityFilter, object):
                       mc='green')
 
         self.check_if_data_is_empty()
-
-
-    def filter_by_num_positions_from_each_split(self):
-        if self.num_positions_from_each_split > 0:
-            self.run.info('Num positions to keep from each split', self.num_positions_from_each_split)
-        else:
-            self.run.info('Num positions to keep from each split', '(all positions)')
-            return
-
-        self.progress.new('Filtering based on -n')
-
-        self.progress.update('Randomly subsampling from splits with num positions > %d' % self.num_positions_from_each_split)
-
-        subsample_func = lambda x: pd.Series(x.unique()) if len(x.unique()) <= self.num_positions_from_each_split else\
-                                   pd.Series(np.random.choice(x.unique(), size=self.num_positions_from_each_split, replace=False))
-        unique_positions_to_keep = self.data.groupby('split_name')['unique_pos_identifier'].apply(subsample_func)
-
-        entries_before = len(self.data.index)
-        self.data = self.data[self.data['unique_pos_identifier'].isin(unique_positions_to_keep)]
-        entries_after = len(self.data.index)
-
-        self.progress.end()
-        self.report_change_in_entry_number(entries_before, entries_after, reason="num positions each split")
 
 
     def compute_comprehensive_variability_scores(self):
