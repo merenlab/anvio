@@ -234,6 +234,48 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
 
 
+    def get_occurence_of_functions_in_pangenome(self, gene_clusters_functions_summary_dict):
+        """
+            For each function we will create a fake merged gc, with an occurence vector
+            which is the "or" product of all gcs that match this function.
+
+            We also keep track of all the GCs annotated with the function.
+        """
+        occurence_of_functions_in_pangenome_dict = {}
+
+        self.progress.new('Computing presence absence for functions in genomes')
+        self.progress.update('Creating a dictionary')
+
+        for gene_cluster_id in gene_clusters_functions_summary_dict:
+            gene_cluster_function = gene_clusters_functions_summary_dict[gene_cluster_id]['gene_cluster_function']
+            if gene_cluster_function:
+                if gene_cluster_function not in occurence_of_functions_in_pangenome_dict:
+                    occurence_of_functions_in_pangenome_dict[gene_cluster_function] = {}
+                    occurence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids'] = []
+                    occurence_of_functions_in_pangenome_dict[gene_cluster_function]['occurence'] = None
+                occurence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids'].append(gene_cluster_id)
+
+        self.progress.update('Merging presence/absence of gene clusters with the same function')
+
+        from anvio.dbops import PanDatabase
+        pan_db = PanDatabase(self.pan_db_path)
+
+        gene_cluster_presence_absence_dataframe = pd.DataFrame.from_dict(
+                                                    pan_db.db.get_table_as_dict('gene_cluster_presence_absence'),
+                                                    orient='index')
+
+        for gene_cluster_function in occurence_of_functions_in_pangenome_dict:
+            for gene_cluster_id in occurence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids']:
+                if occurence_of_functions_in_pangenome_dict[gene_cluster_function]['occurence'] is None:
+                    occurence_of_functions_in_pangenome_dict[gene_cluster_function]['occurence'] = gene_cluster_presence_absence_dataframe.loc[gene_cluster_id, ].astype(bool)
+                else:
+                    occurence_of_functions_in_pangenome_dict[gene_cluster_function]['occurence'] = \
+                        numpy.logical_or(gene_cluster_presence_absence_dataframe.loc[gene_cluster_id, ],
+                                         occurence_of_functions_in_pangenome_dict[gene_cluster_function]['occurence'])
+
+        self.progress.end()
+
+
     def functional_enrichment_stats(self):
         """Help to be filled"""
 
@@ -294,6 +336,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         self.run.info('Category', category_variable)
         self.run.info('Functional annotation source', functional_annotation_source)
+
+        self.get_occurence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
 
         self.progress.new('Functional enrichment analysis')
         self.progress.update('Creating a dictionary')
