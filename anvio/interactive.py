@@ -1398,6 +1398,15 @@ class StructureInteractive(VariabilitySuper):
                 'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
             },
             {
+                'name': 'BLOSUM62',
+                'title': 'BLOSUM62',
+                'controller': 'slider',
+                'data_type': 'integer',
+                'step': 1,
+                'min': -6,
+                'max': 11,
+            },
+            {
                 'name': 'BLOSUM90',
                 'title': 'BLOSUM90',
                 'controller': 'slider',
