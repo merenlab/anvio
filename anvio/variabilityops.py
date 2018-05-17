@@ -1675,44 +1675,33 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
                     new_entries[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample_id][pos]
                     next_available_entry_id += 1
 
-        # convert to pandas DataFrame (its much faster to build and convert a dictionary than to build DataFrame row by row)
+        # convert to pandas DataFrame (its faster to build and convert a dictionary than to build
+        # DataFrame row by row).
         new_entries = pd.DataFrame(new_entries).T
-        new_entries.set_index("entry_id", drop=False, inplace=True)
+
+        # before concatenating the new entries, store the self.data column order. Also, check that
+        # no columns exist in new_entries but not in self.data. This is unacceptable, and could have
+        # happened if code for new_entries was changed or if the workflow in process() is
+        # significantly reworked.
+        column_order = self.data.columns.tolist()
+        if len([x for x in new_entries.columns.tolist() if x not in self.data.columns.tolist()]):
+            raise ValueError("Columns found in new_entries exist that aren't in self.data.")
 
         # concatenate new columns to self.data
+        entries_before = len(self.data.index)
         self.data = pd.concat([self.data, new_entries])
+        new_entries.set_index("entry_id", drop=False, inplace=True)
+        self.data = self.data[column_order]
+        entries_after = len(self.data.index)
 
-        # fill in additional fields for new entries
-        self.compute_additional_fields(list(new_entries.index))
+        # fill in additional fields for new entries. compute_additional_fields takes a list of
+        # entry_ids to consider for self.data, which here is provided from new_entries (what I'm
+        # saying is new_entries is not passed, only the entry_id's in new_entries
+        self.compute_additional_fields(list(new_entries["entry_id"]))
+
         self.progress.end()
 
-        ## convert to pandas DataFrame (its faster to build and convert a dictionary than to build
-        ## DataFrame row by row).
-        #new_entries = pd.DataFrame(new_entries).T
-
-        ## before concatenating the new entries, store the self.data column order. Also, check that
-        ## no columns exist in new_entries but not in self.data. This is unacceptable, and could have
-        ## happened if code for new_entries was changed or if the workflow in process() is
-        ## significantly reworked.
-        #column_order = self.data.columns.tolist()
-        #if len([x for x in new_entries.columns.tolist() if x not in self.data.columns.tolist()]):
-        #    raise ValueError("Columns found in new_entries exist that aren't in self.data.")
-
-        ## concatenate new columns to self.data
-        #entries_before = len(self.data.index)
-        #self.data = pd.concat([self.data, new_entries])
-        #new_entries.set_index("entry_id", drop=False, inplace=True)
-        #self.data = self.data[column_order]
-        #entries_after = len(self.data.index)
-
-        ## fill in additional fields for new entries. compute_additional_fields takes a list of
-        ## entry_ids to consider for self.data, which here is provided from new_entries (what I'm
-        ## saying is new_entries is not passed, only the entry_id's in new_entries
-        #self.compute_additional_fields(list(new_entries["entry_id"]))
-
-        #self.progress.end()
-
-        #self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode")
+        self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode")
 
 
 class QuinceModeWrapperForFancyEngines(object):
