@@ -363,15 +363,17 @@ class DB:
         return results_dict
 
 
-    def get_table_as_dataframe(self, table_name, table_structure=None, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
-        """
-        get_table_as_dict() uses the first column as the key in the resulting
-        dictionary. For pandas DataFrames there are two reasonable design
-        approaches. The first mimics this approach and uses the first column as
-        the index of the DataFrame. The approach I take instead is to keep the
-        first column as a column in the DataFrame (it is afterall, a column)
-        and use numerical indices for the DataFrame.
-        """
+    def get_table_as_dataframe(self, table_name,
+                               table_structure  = None, columns_of_interest = None,
+                               keys_of_interest = None, omit_parent_column  = False,
+                               error_if_no_data = True, where_clause        = None):
+        """get_table_as_dict() uses the first column as the key in the resulting
+           dictionary. For pandas DataFrames there are two reasonable design
+           approaches. The first mimics this approach and uses the first column as
+           the index of the DataFrame. The approach I take instead is to keep the
+           first column as a column in the DataFrame (it is afterall, a column)
+           and use numerical indices for the DataFrame."""
+
         if not table_structure:
             table_structure = self.get_table_structure(table_name)
 
@@ -397,7 +399,10 @@ class DB:
         if keys_of_interest:
             keys_of_interest = set(keys_of_interest)
 
-        results_df = pd.read_sql("select * from '%s'" % table_name, self.conn, columns=table_structure)
+        if where_clause:
+            results_df = pd.read_sql('''SELECT * FROM "%s" WHERE %s''' % (table, where_clause), self.conn, columns=table_structure)
+        else:
+            results_df = pd.read_sql('''SELECT * FROM "%s"''' % table_name, self.conn, columns=table_structure)
 
         if keys_of_interest:
             results_df = results_df.loc[results_df.index.isin(keys_of_interest)]
