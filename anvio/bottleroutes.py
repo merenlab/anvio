@@ -1050,15 +1050,7 @@ class BottleApplication(Bottle):
 
     def get_variability(self):
         options = json.loads(request.forms.get('options'))
-
-        filter_params = {}
-        filter_params['min_departure_from_consensus'],\
-        filter_params['max_departure_from_consensus'] = list(map(float, options['filter_params']['departure_from_consensus'].split(',')))
-        filter_params['min_departure_from_reference'],\
-        filter_params['max_departure_from_reference'] = list(map(float, options['filter_params']['departure_from_reference'].split(',')))
-
-        output = self.interactive.get_variability(options, filter_params)
-        return output
+        return self.interactive.get_variability(options)
 
 
     def filter_gene_clusters(self):

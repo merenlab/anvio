@@ -1491,7 +1491,7 @@ class StructureInteractive(VariabilitySuper):
             available_samples_path = self.available_samples_path
 
         # method inherited from VariabilitySuper
-        available_samples = self.get_samples_of_interest(available_samples_path)
+        available_samples = self.get_sample_ids_of_interest(available_samples_path)
 
         if self.full_variability:
             all_sample_ids = self.full_variability.data["sample_id"].unique()
@@ -1575,7 +1575,8 @@ class StructureInteractive(VariabilitySuper):
         self.full_variability.load_structure_data()
 
         # filters by those genes
-        self.full_variability.filter_by_genes()
+        goi = self.full_variability.genes_of_interest
+        self.full_variability.filter_data(criterion="corresponding_gene_call", subset_filter=goi)
 
 
     def profile_gene_variability_data(self, gene_callers_id):
@@ -1592,8 +1593,7 @@ class StructureInteractive(VariabilitySuper):
         if self.store_full_variability_in_memory:
             # if the full variability is in memory, make a deep copy, then filter
             var = copy.deepcopy(self.full_variability)
-            var.genes_of_interest = set([gene_callers_id])
-            var.filter_by_genes()
+            var.filter_data(criterion="corresponding_gene_call", subset_filter=set([gene_callers_id]))
             gene_var[var.engine] = var
         else:
             # if not, we profile from scratch, passing as an argument our gene of interest
@@ -1630,29 +1630,46 @@ class StructureInteractive(VariabilitySuper):
         return summary
 
 
-    def get_variability(self, options, new_filter_params):
+    def get_variability(self, options):
         selected_engine = options['engine']
         gene_callers_id = int(options['gene_callers_id'])
 
         output = {}
-        for group in options['groups']:
-            # this is a subset of variability_storage for single gene_caller_id
-            # we don't want to modify variability_storage so we use deepcopy
-            # otherwise filtering is irreversible
-            var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine])
-            var.samples_of_interest = set(options['groups'][group])
 
-            # set filter attributes if they changed
-            for param_name, param_value in new_filter_params.items():
-                setattr(var, param_name, param_value)
+        if not options["filter_params"]:
+            # FIXME if filter params are initialized in structure.js before get_variability is called
+            # this if statement isn't required. Currently first callback passes empty dict.
+            output[group] = {
+                'data': self.variability_storage[gene_callers_id][selected_engine].data.to_json(orient='index'),
+                'entries_after_filtering': var.data.shape[0]
+            }
+
+        list_of_filter_functions = []
+        F = lambda f, **kwargs: (f, kwargs)
+        for group in options['groups']:
+
+            # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
+            var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine])
+
+            # set group specific filter parameters here
+            var.sample_ids_of_interest = set(options['groups'][group])
+            list_of_filter_functions.append(F(var.filter_data, criterion="sample_id"))
+
+            # now set all other filter parameters
+            for filter_criterion, param_values in options["filter_params"].items():
+                for param_name, param_value in param_values.items():
+                    setattr(var, param_name, param_value)
+                list_of_filter_functions.append(F(var.filter_data, criterion=filter_criterion))
 
             # ʕ•ᴥ•ʔ
-            var.filter_for_interactive()
+            var.process(process_functions=list_of_filter_functions, exit_if_data_empty=False)
 
             output[group] = {
                 'data': var.data.to_json(orient='index'),
                 'entries_after_filtering': var.data.shape[0]
             }
+
+            list_of_filter_functions = []
 
         return output
 
