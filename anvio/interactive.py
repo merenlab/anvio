@@ -1708,13 +1708,14 @@ class StructureInteractive(VariabilitySuper):
 
         output = {}
 
+        # FIXME if filter params are initialized in structure.js before get_variability is called
+        # this if statement isn't required. Currently first callback passes empty dict.
         if not options["filter_params"]:
-            # FIXME if filter params are initialized in structure.js before get_variability is called
-            # this if statement isn't required. Currently first callback passes empty dict.
-            output[group] = {
-                'data': self.variability_storage[gene_callers_id][selected_engine].data.to_json(orient='index'),
-                'entries_after_filtering': var.data.shape[0]
-            }
+            for group in options['groups']:
+                output[group] = {
+                    'data': self.variability_storage[gene_callers_id][selected_engine].data.to_json(orient='index'),
+                    'entries_after_filtering': self.variability_storage[gene_callers_id][selected_engine].data.shape[0]
+                }
 
         list_of_filter_functions = []
         F = lambda f, **kwargs: (f, kwargs)
