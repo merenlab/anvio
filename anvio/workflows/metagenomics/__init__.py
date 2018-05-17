@@ -61,12 +61,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                   "--presets", "--memory", "--mem-flag",
                                                   "--use-gpu", "--gpu-mem", "--keep-tmp-files",
                                                   "--tmp-dir", "--continue", "--verbose"]
-        rule_acceptable_params_dict['idba_ud'] = ["run", "--mink", "--maxk", "--step", "--inner-mink",
-                                                  "--inner-step", "--prefix", "--min-count",
-                                                  "--min-support", "--seed-kmer", "--min-contig",
-                                                  "--similar", "--max-mismatch", "--min-pairs",
-                                                  "--no-bubble", "--no-local", "--no-coverage",
-                                                  "--no-correct", "--pre-correction"]
+        rule_acceptable_params_dict['idba_ud'] = ["run", "--mink", "--maxk", "--step", "--inner_mink",
+                                                  "--inner_step", "--prefix", "--min_count",
+                                                  "--min_support", "--seed_kmer", "--min_contig",
+                                                  "--similar", "--max_mismatch", "--min_pairs",
+                                                  "--no_bubble", "--no_local", "--no_coverage",
+                                                  "--no_correct", "--pre_correction"]
         rule_acceptable_params_dict['bowtie'] = ["additional_params"]
         rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
         rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--sample-name", "--report-variability-full",
@@ -91,7 +91,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         self.default_config.update({'samples_txt': "samples.txt",
                                     'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 11},
-                                    'idba_ud': {"--min-contig": min_contig_length_for_assembly, "threads": 11},
+                                    'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 11},
                                     'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True, "threads": 2},
                                     "gzip_fastqs": {"run": True},
                                     "bowtie_build": {"threads": 10},

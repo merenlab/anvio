@@ -28,12 +28,14 @@ import os
 import sys
 import gzip
 import glob
+import math
 import numpy
 import shutil
 import hashlib
 import mistune
 import argparse
 import textwrap
+import pandas as pd
 
 from collections import Counter
 
@@ -44,7 +46,6 @@ import anvio.hmmops as hmmops
 import anvio.sequence as seqlib
 import anvio.terminal as terminal
 import anvio.constants as constants
-import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
@@ -144,7 +145,8 @@ class SummarizerSuperClass(object):
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
         self.delete_output_directory_if_exists = True if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
 
-        self.sanity_check()
+        if not self.lazy_init:
+            self.sanity_check()
 
         if self.output_directory:
             self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
@@ -200,11 +202,12 @@ class SummarizerSuperClass(object):
 
 class PanSummarizer(PanSuperclass, SummarizerSuperClass):
     """Creates a dictionary of summary for anvi'o pan profiles"""
-    def __init__(self, args=None, r=run, p=progress):
+    def __init__(self, args=None, lazy_init=False, r=run, p=progress):
         self.summary_type = 'pan'
         self.debug = False
         self.quick = False
         self.pan_db_path = None
+        self.lazy_init = lazy_init
         self.output_directory = None
         self.genomes_storage_path = None
 
@@ -229,6 +232,177 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # see if COG functions or categories are available
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
+
+
+    def functional_enrichment_stats(self):
+        """Help to be filled"""
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        output_file_path = A('output_file')
+        category_variable = A('category_variable')
+        functional_annotation_source = A('annotation_source')
+        list_functional_annotation_sources = A('list_annotation_sources')
+        min_function_enrichment = A('min_function_enrichment')
+        min_portion_occurence_of_function_in_group = A('min_portion_occurence_of_function_in_group')
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        if not self.functions_initialized:
+            raise ConfigError("For some reason funtions are not initialized for this pan class instance. We\
+                               can't summarize functional enrichment stats without that :/")
+
+        if not len(self.gene_clusters_functions_dict):
+            raise ConfigError("The gene clusters functions dict seems to be empty. We assume this error makes\
+                               zero sense to you, and it probably will not help you to know that it also makes\
+                               zero sense to anvi'o too :/ Maybe you forgot to provide a genomes storage?")
+
+        if not category_variable:
+            raise ConfigError("For this to work, you must provide a category variable .. and it better be in\
+                               the misc additional layer data table, too. If you don't have any idea what is\
+                               available, try `anvi-show-misc-data`.")
+
+        if list_functional_annotation_sources:
+            self.run.info('Available functional annotation sources', ', '.join(self.gene_clusters_function_sources))
+            sys.exit()
+
+        if not functional_annotation_source:
+            raise ConfigError("You haven't provided a functional annotation source to make sense of functional\
+                               enrichment stats as defined by the categorical variable %s. These are the functions\
+                               that are available, so pick one: %s." % (category_variable, ', '.join(self.gene_clusters_function_sources)))
+
+        if functional_annotation_source not in self.gene_clusters_function_sources:
+            raise ConfigError("Your favorite functional annotation source '%s' does not seem to be among one of the sources\
+                               that are available to you. Here are the ones you should choose from: %s." % (functional_annotation_source, ', '.join(self.gene_clusters_function_sources)))
+
+        keys, categories_dict = TableForLayerAdditionalData(argparse.Namespace(pan_db=self.pan_db_path)).get(additional_data_keys_requested=[category_variable])
+
+        values_that_are_not_none = [s for s in categories_dict.values() if s[category_variable] is not None]
+        if not values_that_are_not_none:
+            raise ConfigError("The variable '%s' contains only values of type None,\
+                               this is probably a mistake, surely you didn't mean to provide an empty category.\
+                               Do you think this is a mistake on our part? Let us know." % \
+                                                                    category_variable)
+        type_category_variable = type(values_that_are_not_none[0][category_variable])
+        if type_category_variable != str:
+            raise ConfigError("The variable '%s' does not seem to resemble anything that could be a category.\
+                               Anvi'o expects these variables to be of type string, yet yours is type %s :/\
+                               Do you think this is a mistake on our part? Let us know." % \
+                                                                    (category_variable, type_category_variable))
+
+        self.run.info('Category', category_variable)
+        self.run.info('Functional annotation source', functional_annotation_source)
+
+        self.progress.new('Functional enrichment analysis')
+        self.progress.update('Creating a dictionary')
+
+        # first we create a dictionary with the occurence (boolean) of functions in genomes
+        # later, we will convert this dict of dicts to a pandas dataframe
+        D = {}
+        for gc in self.gene_clusters_functions_dict:
+            for genome_name in self.gene_clusters_functions_dict[gc]:
+                if genome_name not in D:
+                    D[genome_name] = {}
+                for gene_id in self.gene_clusters_functions_dict[gc][genome_name]:
+                    if functional_annotation_source in self.gene_clusters_functions_dict[gc][genome_name][gene_id]:
+                        annotation_blob = self.gene_clusters_functions_dict[gc][genome_name][gene_id][functional_annotation_source]
+                        accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
+                        for f in annotations:
+                            D[genome_name][f] = True
+
+        DF = pd.DataFrame.from_dict(D, orient='index')
+        DF.fillna(False, inplace=True)
+
+        # get a list of unique function names
+        functions_names = set(DF.columns)
+
+        # add a category column to the dataframe
+        DF['category'] = DF.index.map(lambda x: categories_dict[x][category_variable])
+
+        # the sum of occurences of each function in each category
+        functions_in_categories = DF.groupby('category').sum()
+
+        # the total occurence of functions in all categories
+        total_occurence_of_functions = DF.sum()
+
+        # unique names of categories
+        categories = set([categories_dict[g][category_variable] for g in categories_dict.keys() if\
+                            categories_dict[g][category_variable] is not None])
+
+        categories_to_genomes_dict = {}
+        for c in categories:
+            categories_to_genomes_dict[c] = set([genome for genome in categories_dict.keys() if categories_dict[genome][category_variable] == c])
+        number_of_genomes = len(categories_dict.keys())
+
+        enrichment_dict = {}
+        # we will count the number of records in the output
+        # because it will help us make a pandas dataframe later.
+        # (we could just make the dataframe grow inside the loop, but that's slow (at least, I think so))
+        number_of_records_in_output = 0
+        for c in categories:
+            self.progress.update("Working on category '%s'" % c)
+            group_size = len(categories_to_genomes_dict[c])
+            group_portion = group_size / number_of_genomes
+
+            # see details below
+            weighting_normalization_factor = number_of_genomes * (group_portion * math.log2(group_portion)\
+                                                + (1 - group_portion) * math.log2(1 - group_portion))
+
+            for f in functions_names:
+                occurence_in_group = functions_in_categories.loc[c, f] / group_size
+                occurence_outside_of_group = (total_occurence_of_functions[f] - functions_in_categories.loc[c, f])\
+                                                / (number_of_genomes - group_size)
+                enrichment = occurence_in_group - occurence_outside_of_group
+
+                # the more genomes we have in each group when making the comparisson
+                # the stronger the results are. In order to allow to compare results from
+                # different categories, we also return this weighted score. The normalization
+                # factor is simply the number of genomes multiplied by the entropy of the two compared
+                # groups. the rational is that having more genomes is only helping the comparisson if the
+                # genomes represent both compared groups, and that's where the entropy comes in.
+                weighted_enrichment = enrichment * weighting_normalization_factor
+
+                if abs(enrichment) > min_function_enrichment and max(occurence_outside_of_group, occurence_in_group) > min_portion_occurence_of_function_in_group:
+                    if c not in enrichment_dict:
+                        enrichment_dict[c] = {}
+
+                    if f not in enrichment_dict[c]:
+                        enrichment_dict[c][f] = {}
+
+                    enrichment_dict[c][f]["enrichment"] = enrichment
+                    enrichment_dict[c][f]["weighted_enrichment"] = weighted_enrichment
+                    number_of_records_in_output += 1
+
+        if output_file_path:
+            self.progress.update('Generating the output file')
+            # convert dictionary to pandas
+            # we can't use pandas from_dict because it is meant for dict of dicts (i.e. tow levels)
+            # and we have a dict of dicts of dicts (three levels).
+            # so we first convert it to a dict of dicts and then convert to pandas
+            # because this is faster than alternatives
+            i = 0
+            D = {}
+            for c in enrichment_dict:
+                for f in enrichment_dict[c]:
+                    D[i] = {}
+                    D[i]['category'] = c
+                    D[i][functional_annotation_source] = f
+                    for key, value in enrichment_dict[c][f].items():
+                        D[i][key] = value
+                    i += 1
+            enrichment_data_frame = pd.DataFrame.from_dict(D, orient='index')
+
+            # sort according to enrichment
+            enrichment_data_frame.sort_values(by='enrichment', axis=0, ascending=False, inplace=True)
+
+            enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.2f')
+
+        self.progress.end()
+
+        if output_file_path:
+            self.run.info('Functions enrichment summary', output_file_path)
+
+        return enrichment_dict
 
 
     def process(self):
@@ -1605,142 +1779,3 @@ class Bin:
         output_file_obj.write('%s\n' % content)
         output_file_obj.close()
 
-
-class AdHocRunGenerator:
-    """From a matrix file to full-blown anvi'o interface.
-
-       This is a class to take in a view data matrix at minimum, and create all
-       necessary files for an anvi'o interactive interface call in manual mode."""
-
-    def __init__(self, view_data_path, skip_clustering_view_data=False, run=run, progress=progress):
-        self.run = run
-        self.progress = progress
-
-        self.view_data_path = view_data_path
-
-        self.tree_file_path = None
-        self.matrix_data_for_clustering = None
-        self.additional_view_data_file_path = None
-
-        self.skip_clustering_view_data = skip_clustering_view_data
-
-        self.samples_info_file_path = None
-        self.samples_order_file_path = None
-
-        # for clustering
-        self.distance = None
-        self.linkage = None
-
-        self.output_directory = os.path.abspath('./ad-hoc-anvio-run-directory')
-        self.delete_output_directory_if_exists = False
-
-        self.sanity_checked = False
-
-
-    def sanity_check(self):
-        self.distance = self.distance or constants.distance_metric_default
-        self.linkage = self.linkage or constants.linkage_method_default
-
-        clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
-
-        filesnpaths.is_file_tab_delimited(self.view_data_path)
-        if self.tree_file_path:
-            filesnpaths.is_proper_newick(self.tree_file_path)
-
-        self.check_output_directory()
-
-        new_view_data_path = self.get_output_file_path('view_data.txt')
-        shutil.copyfile(self.view_data_path, new_view_data_path)
-        self.view_data_path = new_view_data_path
-
-        if self.tree_file_path:
-            new_tree_path = self.get_output_file_path('tree.txt')
-            shutil.copyfile(self.tree_file_path, new_tree_path)
-            self.tree_file_path = new_tree_path
-
-        if self.additional_view_data_file_path:
-            new_additional_view_data_file_path = self.get_output_file_path('additional_view_data.txt')
-            shutil.copyfile(self.additional_view_data_file_path, new_additional_view_data_file_path)
-            self.additional_view_data_file_path = new_additional_view_data_file_path
-
-        if self.samples_info_file_path:
-            new_samples_info_file_path = self.get_output_file_path('anvio_samples_info.txt')
-            shutil.copyfile(self.samples_info_file_path, new_samples_info_file_path)
-            self.samples_info_file_path = new_samples_info_file_path
-
-
-        self.sanity_checked = True
-
-
-    def is_good_to_go(self):
-        if not self.sanity_checked:
-            raise ConfigError("AdHocRunGenerator :: You gotta be nice, and run sanity check first :/")
-
-
-    def get_output_file_path(self, file_name):
-        return os.path.join(self.output_directory, file_name)
-
-    def check_output_directory(self):
-        if os.path.exists(self.output_directory) and not self.delete_output_directory_if_exists:
-            raise ConfigError("AdHocRunGenerator will not work with an existing directory. Please provide a new\
-                                path, or use the bool member 'delete_output_directory_if_exists' to overwrite\
-                                any existing directory.")
-
-        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
-
-
-    def generate(self):
-        self.sanity_check()
-
-        if not self.tree_file_path and not self.skip_clustering_view_data:
-            self.gen_clustering_of_view_data()
-
-        self.gen_samples_db()
-
-        self.run.info("Ad hoc anvi'o run files", self.output_directory)
-
-
-    def gen_clustering_of_view_data(self):
-        self.is_good_to_go()
-
-        self.progress.new('Hierarchical clustering')
-        self.progress.update('..')
-
-        self.tree_file_path = self.get_output_file_path('tree.txt')
-
-        data_file_path = self.matrix_data_for_clustering if self.matrix_data_for_clustering else self.view_data_path
-
-        clustering.create_newick_file_from_matrix_file(data_file_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
-
-        self.progress.end()
-
-        self.run.info('Tree', self.tree_file_path)
-
-
-    def gen_samples_order_file(self, data_file_path):
-        self.progress.new('Hierarchical clustering of the (transposed) view data')
-        self.progress.update('..')
-
-        newick = clustering.get_newick_tree_data(data_file_path, transpose=True, distance = self.distance, linkage=self.linkage)
-
-        samples_order_file_path = self.get_output_file_path('anvio-samples-order.txt')
-        samples_order = open(samples_order_file_path, 'w')
-        samples_order.write('attributes\tbasic\tnewick\n')
-        samples_order.write('view_data\t\t%s\n' % newick)
-        samples_order.close()
-
-        self.progress.end()
-
-        self.run.info("Anvi'o samples order", samples_order_file_path)
-
-        return samples_order_file_path
-
-
-    def gen_samples_db(self):
-        # FIXME: THIS WILL NOT WORK.
-        if not self.samples_order_file_path:
-            self.samples_order_file_path = self.gen_samples_order_file(self.view_data_path)
-
-        samples_db_output_path = self.get_output_file_path('samples.db')
-        s = dbops.SamplesInformationDatabase(samples_db_output_path, run=self.run, progress=self.progress, quiet=True)
-        s.create(self.samples_info_file_path, self.samples_order_file_path)
