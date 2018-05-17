@@ -486,8 +486,8 @@ class VariabilitySuper(VariabilityFilter, object):
         self.genes_of_interest = A('genes_of_interest_set', set)
         self.genes_of_interest_path = A('genes_of_interest', null)
         # samples
-        self.sample_ids_of_interest = A('sample_ids_of_interest_set', set)
-        self.sample_ids_of_interest_path = A('sample_ids_of_interest', null)
+        self.sample_ids_of_interest = A('samples_of_interest_set', set)
+        self.sample_ids_of_interest_path = A('samples_of_interest', null)
         # filtering
         self.min_scatter = A('min_scatter', int) or 0
         self.min_occurrence = A('min_occurrence', int) or 1
@@ -508,6 +508,8 @@ class VariabilitySuper(VariabilityFilter, object):
 
         self.append_structure_residue_info = True if self.structure_db_path else False
         self.table_provided = False if self.data.empty else True
+        self.load_all_genes = True
+        self.load_all_samples = True
         self.substitution_scoring_matrices = None
         self.merged_split_coverage_values = None
         self.unique_pos_identifier = 0
@@ -739,8 +741,6 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if not self.sample_ids_of_interest:
             self.progress.update('Setting up samples of interest ...')
-            # self.sample_ids_of_interest can be injected into this class programatically; this
-            # conditional method call prevents overwriting
             self.sample_ids_of_interest = self.get_sample_ids_of_interest()
 
         if not self.genes_of_interest:
@@ -790,6 +790,7 @@ class VariabilitySuper(VariabilityFilter, object):
             self.check_if_data_is_empty()
             self.available_sample_ids = self.data["sample_id"].unique()
             self.progress.end()
+            self.is_available_samples_compatible_with_sample_ids_of_interest()
             return
 
         # otherwise we have more work to do
@@ -831,6 +832,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.update('Reading the profile database ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         self.available_sample_ids = sorted(list(profile_db.samples))
+        self.progress.end(); self.is_available_samples_compatible_with_sample_ids_of_interest(); self.progress.new("Init")
 
         if not profile_db.meta['SNVs_profiled']:
             self.progress.end()
@@ -841,17 +843,44 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.end()
 
 
+    def gen_sqlite_where_clause_for_variability_table(self):
+        """It is impractical to load the entire variability table and then filter it according to our
+           splits_of_interest, sample_ids_of_interest, and genes_of_interest. For example, what if
+           genes_of_interest = set([0]) in a profile database with 50,000 genes? Why is splits of interest
+           not included here? Because split_name is not a column in the variable codon table."""
+        R = lambda x, y: run.info("%s variability will be generated for" % (x.capitalize() if len(y)<200 else "Num "+x), ", ".join([str(z) for z in y]) if len(y)<200 else len(y))
+
+        conditions = {}
+        if self.sample_ids_of_interest:
+            conditions['sample_id'] = ' IN (%s)' % ','.join(['"{}"'.format(x) for x in self.sample_ids_of_interest])
+            R("samples", self.sample_ids_of_interest)
+            self.load_all_samples = False
+        if self.genes_of_interest:
+            conditions['corresponding_gene_call'] = ' IN (%s)' % ','.join(['{}'.format(x) for x in self.genes_of_interest])
+            R("genes", self.genes_of_interest)
+            self.load_all_genes = False
+
+        if not conditions:
+            return ""
+
+        return " AND ".join([col_name + col_condition for col_name, col_condition in conditions.items()])
+
+
     def load_variability_data(self):
         """Populates self.data (type pandas.DataFrame) from profile database tables."""
         if self.table_provided:
             return
+
+        sqlite_where_clause = self.gen_sqlite_where_clause_for_variability_table()
 
         self.progress.new('Generating variability')
         self.progress.update('Reading the profile database ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
         if self.engine == 'NT':
-            self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, table_structure=self.table_structure)
+            self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name,
+                                                             table_structure=self.table_structure,
+                                                             where_clause=sqlite_where_clause)
 
         elif self.engine == 'CDN' or self.engine == 'AA':
             if not profile_db.meta['SCVs_profiled']:
@@ -859,7 +888,8 @@ class VariabilitySuper(VariabilityFilter, object):
                                    therefore there is nothing to report here for codon or amino acid variability\
                                    profiles :(")
 
-            self.data = profile_db.db.get_table_as_dataframe(t.variable_codons_table_name)
+            self.data = profile_db.db.get_table_as_dataframe(t.variable_codons_table_name,
+                                                             where_clause=sqlite_where_clause)
 
             self.check_if_data_is_empty()
 
@@ -956,11 +986,8 @@ class VariabilitySuper(VariabilityFilter, object):
                 break
 
 
-    def apply_preliminary_filters(self):
-        self.run.info('Variability data', '%s entries in %s splits across %s samples'\
-                % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.available_sample_ids))))
+    def is_available_samples_compatible_with_sample_ids_of_interest(self):
         self.run.info("Samples available", ", ".join(sorted(self.available_sample_ids)))
-
         if self.sample_ids_of_interest:
             samples_missing = [sample_id for sample_id in self.sample_ids_of_interest if sample_id not in self.available_sample_ids]
             if len(samples_missing):
@@ -970,13 +997,18 @@ class VariabilitySuper(VariabilityFilter, object):
 
             self.available_sample_ids = sorted(list(self.sample_ids_of_interest))
 
+
+    def apply_preliminary_filters(self):
+        self.run.info('Variability data', '%s entries in %s splits across %s samples'\
+                % (pp(len(self.data)), pp(len(self.splits_basic_info)), pp(len(self.available_sample_ids))))
+
         self.filter_data(criterion = "sample_id",
                          subset_filter = self.sample_ids_of_interest,
-                         subset_condition = self.sample_ids_of_interest)
+                         subset_condition = self.sample_ids_of_interest and self.load_all_samples)
 
         self.filter_data(criterion = "corresponding_gene_call",
                          subset_filter = self.genes_of_interest,
-                         subset_condition = self.genes_of_interest)
+                         subset_condition = self.genes_of_interest and self.load_all_genes)
 
         self.filter_data(criterion = "split_name",
                          subset_filter = self.splits_of_interest,
