@@ -4,6 +4,20 @@ var sample_groups;
 var pdb_content;
 
 $(document).ready(function() {
+    $('.colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
     $('#gene_callers_id_list').on('change', function(ev) {
         $.when({}).then(load_protein).then(() => {
             create_ui();
@@ -244,11 +258,6 @@ function draw_variability() {
                 let entries_after_filtering = response['entries_after_filtering'];
 
                 let component = stages[group].compList[0];
-                let variant_residues = [];
-
-                for (let index in data) {
-                    variant_residues.push(data[index]['codon_order_in_gene']);
-                }
 
                 component.reprList.forEach((rep) => {
                     if (rep.name == 'spacefill') {
@@ -256,12 +265,36 @@ function draw_variability() {
                     }
                 });
 
-                if (variant_residues.length > 0) {
-                    component.addRepresentation("spacefill", {
-                        sele: "(" + variant_residues.join(', ') + ") and .CA",
-                        scale: 1
-                    });
+                if (Object.keys(data).length > 0) {
+                    for (let index in data) {
+                        let spacefill_options = {
+                            sele: data[index]['codon_order_in_gene'] + " and .CA",
+                            scale: 1
+                        }
 
+                        if ($('#enable_color').is(':checked')) {
+                            let column = $('#color_target_column').val();
+                            let min_value = parseFloat($('#color_min').val());
+                            let max_value = parseFloat($('#color_max').val());
+                            let val = Math.abs(parseFloat(data[index][column]) - min_value) / Math.abs(max_value - min_value);
+                            
+                            val = Math.max(0, Math.min(1, val));
+
+                            spacefill_options['color'] = getGradientColor(
+                                $('#color_start').attr('color'),
+                                $('#color_end').attr('color'),
+                                val);
+
+                            spacefill_options['scale'] = 0.4 + val * 1.1
+                            spacefill_options['opacity'] = val;
+                        }
+
+                        if (true) {
+
+                        }
+
+                        component.addRepresentation("spacefill", spacefill_options);
+                    }
                 }
             }
         },
@@ -337,6 +370,8 @@ function create_ui() {
             container.empty();
 
             data.forEach((item) => {
+                $('#color_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
+
                 if (item['controller'] == 'slider') {
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['controller']}">
@@ -371,3 +406,49 @@ function create_ui() {
         }
     });   
 }
+
+
+function getGradientColor(start_color, end_color, percent) {
+   // strip the leading # if it's there
+   start_color = start_color.replace(/^\s*#|\s*$/g, '');
+   end_color = end_color.replace(/^\s*#|\s*$/g, '');
+
+   // convert 3 char codes --> 6, e.g. `E0F` --> `EE00FF`
+   if(start_color.length == 3){
+     start_color = start_color.replace(/(.)/g, '$1$1');
+   }
+
+   if(end_color.length == 3){
+     end_color = end_color.replace(/(.)/g, '$1$1');
+   }
+
+   // get colors
+   var start_red = parseInt(start_color.substr(0, 2), 16),
+       start_green = parseInt(start_color.substr(2, 2), 16),
+       start_blue = parseInt(start_color.substr(4, 2), 16);
+
+   var end_red = parseInt(end_color.substr(0, 2), 16),
+       end_green = parseInt(end_color.substr(2, 2), 16),
+       end_blue = parseInt(end_color.substr(4, 2), 16);
+
+   // calculate new color
+   var diff_red = end_red - start_red;
+   var diff_green = end_green - start_green;
+   var diff_blue = end_blue - start_blue;
+
+   diff_red = Math.abs(( (diff_red * percent) + start_red )).toString(16).split('.')[0];
+   diff_green = Math.abs(( (diff_green * percent) + start_green )).toString(16).split('.')[0];
+   diff_blue = Math.abs(( (diff_blue * percent) + start_blue )).toString(16).split('.')[0];
+
+   // ensure 2 digits by color
+   if( diff_red.length == 1 )
+     diff_red = '0' + diff_red
+
+   if( diff_green.length == 1 )
+     diff_green = '0' + diff_green
+
+   if( diff_blue.length == 1 )
+     diff_blue = '0' + diff_blue
+
+   return '#' + diff_red + diff_green + diff_blue;
+ };
