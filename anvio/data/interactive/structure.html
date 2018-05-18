@@ -7,11 +7,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.0.0/bootstrap-slider.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.0.0/css/bootstrap-slider.css" />
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
     <link rel="stylesheet" href="css/structure.css" />
     <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js"></script>
     <script type="text/javascript" src="https://cdn.rawgit.com/arose/ngl/v0.10.4/dist/ngl.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-interpolate/1.2.0/d3-interpolate.js"></script>
+    <script type="text/javascript" src="lib/colpick/colpick.js"></script>
     <script type="text/javascript" src="js/structure.js"></script>
 </head>
 
@@ -70,6 +72,32 @@
                         <div id="controls">
 
                         </div>
+                    </div>
+                    <div id="tab_perspectives" role="tabpanel" class="tab-pane fade">
+                        <div class="widget">
+                            <input type="checkbox" id="enable_color" checked="checked"><label for="enable_color">Enable color</label>
+                            <table>
+                                <tr>
+                                    <td>Target column:</td>
+                                    <td><select id="color_target_column"></select></td>
+                                </tr>
+                                <tr>
+                                    <td>Start color/value:</td>
+                                    <td><input type="input" id="color_min" value="0"><div class="colorpicker" id="color_start" color="#FFFFFF" style="background-color: #FFFFFF"></div></td>
+                                </tr>
+                                <tr>
+                                    <td>End color/value:</td>
+                                    <td><input type="input" id="color_max" value="1"><div class="colorpicker" id="color_end" color="#000000" style="background-color: #000000"></div></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="widget">
+                            size
+                        </div>
+                        <div class="widget">
+                            transparency
+                        </div>
+
                     </div>
                 </div>
             </div>
