@@ -924,13 +924,14 @@ class SAAVsAndProteinStructuresSummary:
 
 class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
     """Creates an über dictionary of 'summary' for anvi'o profiles."""
-    def __init__(self, args=None, r=run, p=progress):
-        self.summary = {}
+    def __init__(self, args=None, lazy_init=False, r=run, p=progress):
         self.args = args
 
         self.run = r
         self.progress = p
+        self.lazy_init = lazy_init
 
+        self.summary = {}
         self.summary_type = 'profile'
         self.debug = False
         self.quick = False
