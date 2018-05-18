@@ -124,7 +124,7 @@ ContextMenu = function(options) {
                 drawTree({collapsed_node_id: this.node.id});
             }
         },
-        'collapse': {
+        'expand': {
             'title': 'Expand',
             'action': (node, layer, param) => {
                 // TO DO
