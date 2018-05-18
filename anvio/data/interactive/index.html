@@ -55,6 +55,7 @@
     <script type="text/javascript" src="js/context-menu.js"></script>
     <script type="text/javascript" src="js/dialogs/load-collection.js"></script>
     <script type="text/javascript" src="js/dialogs/store-collection.js"></script>
+    <script type="text/javascript" src="js/dialogs/save-tree.js"></script>
     <script type="text/javascript" src="js/migrations.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
@@ -162,7 +163,7 @@
                                         <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
                                             The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
                                             <br />
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="showSaveModifiedTree();">Save tree</button>
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog().Show(); ">Save tree</button>
                                             <button type="button" class="btn btn-xs" onclick="restoreOriginalTree();">Revert changes</button>
                                         </div>
                                     </div>
@@ -993,28 +994,6 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- SAVE MODIFIED TREE WINDOW -->
-    <div class="modal fade" id="saveModifiedTree">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
-                    <h4 class="modal-title">Save Tree</h4>
-                </div>
-
-                <div class="modal-body">
-                    Soon...
-                </div>
-
-                <div class="modal-footer">
-                    <button class="btn btn-primary" data-dismiss="modal" type="button">Save</button>
                     <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
