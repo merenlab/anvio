@@ -255,8 +255,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                     occurence_of_functions_in_pangenome_dict[gene_cluster_function]['occurence'] = None
                 occurence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids'].append(gene_cluster_id)
 
-        self.progress.update('Merging presence/absence of gene clusters with the same function')
-
         from anvio.dbops import PanDatabase
         pan_db = PanDatabase(self.pan_db_path)
 
@@ -264,16 +262,23 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                                                     pan_db.db.get_table_as_dict('gene_cluster_presence_absence'),
                                                     orient='index')
 
+        self.progress.update('Merging presence/absence of gene clusters with the same function')
+
+        D = {}
         for gene_cluster_function in occurence_of_functions_in_pangenome_dict:
+            v = None
             for gene_cluster_id in occurence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids']:
-                if occurence_of_functions_in_pangenome_dict[gene_cluster_function]['occurence'] is None:
-                    occurence_of_functions_in_pangenome_dict[gene_cluster_function]['occurence'] = gene_cluster_presence_absence_dataframe.loc[gene_cluster_id, ].astype(bool)
+                if v is None:
+                    v = gene_cluster_presence_absence_dataframe.loc[gene_cluster_id, ].astype(bool)
                 else:
-                    occurence_of_functions_in_pangenome_dict[gene_cluster_function]['occurence'] = \
-                        numpy.logical_or(gene_cluster_presence_absence_dataframe.loc[gene_cluster_id, ],
-                                         occurence_of_functions_in_pangenome_dict[gene_cluster_function]['occurence'])
+                    v = numpy.logical_or(v, gene_cluster_presence_absence_dataframe.loc[gene_cluster_id, ])
+            D[gene_cluster_function] = {}
+            for genome in v.index:
+                D[gene_cluster_function][genome] = v[genome]
 
         self.progress.end()
+
+        return pd.DataFrame.from_dict(D), occurence_of_functions_in_pangenome_dict
 
 
     def functional_enrichment_stats(self):
@@ -337,39 +342,22 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.run.info('Category', category_variable)
         self.run.info('Functional annotation source', functional_annotation_source)
 
-        self.get_occurence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
+        occurence_of_functions_in_pangenome_dataframe, occurence_of_functions_in_pangenome_dict = self.get_occurence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
 
         self.progress.new('Functional enrichment analysis')
         self.progress.update('Creating a dictionary')
 
-        # first we create a dictionary with the occurence (boolean) of functions in genomes
-        # later, we will convert this dict of dicts to a pandas dataframe
-        D = {}
-        for gc in self.gene_clusters_functions_dict:
-            for genome_name in self.gene_clusters_functions_dict[gc]:
-                if genome_name not in D:
-                    D[genome_name] = {}
-                for gene_id in self.gene_clusters_functions_dict[gc][genome_name]:
-                    if functional_annotation_source in self.gene_clusters_functions_dict[gc][genome_name][gene_id]:
-                        annotation_blob = self.gene_clusters_functions_dict[gc][genome_name][gene_id][functional_annotation_source]
-                        accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
-                        for f in annotations:
-                            D[genome_name][f] = True
-
-        DF = pd.DataFrame.from_dict(D, orient='index')
-        DF.fillna(False, inplace=True)
-
         # get a list of unique function names
-        functions_names = set(DF.columns)
+        functions_names = set(occurence_of_functions_in_pangenome_dataframe.columns)
+
+        # the total occurence of functions in all categories (it is important to this before adding the category column)
+        total_occurence_of_functions = occurence_of_functions_in_pangenome_dataframe.sum()
 
         # add a category column to the dataframe
-        DF['category'] = DF.index.map(lambda x: categories_dict[x][category_variable])
+        occurence_of_functions_in_pangenome_dataframe['category'] = occurence_of_functions_in_pangenome_dataframe.index.map(lambda x: categories_dict[x][category_variable])
 
         # the sum of occurences of each function in each category
-        functions_in_categories = DF.groupby('category').sum()
-
-        # the total occurence of functions in all categories
-        total_occurence_of_functions = DF.sum()
+        functions_in_categories = occurence_of_functions_in_pangenome_dataframe.groupby('category').sum()
 
         # unique names of categories
         categories = set([categories_dict[g][category_variable] for g in categories_dict.keys() if\
@@ -394,6 +382,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             weighting_normalization_factor = number_of_genomes * (group_portion * math.log2(group_portion)\
                                                 + (1 - group_portion) * math.log2(1 - group_portion))
 
+            i=0
             for f in functions_names:
                 occurence_in_group = functions_in_categories.loc[c, f] / group_size
                 occurence_outside_of_group = (total_occurence_of_functions[f] - functions_in_categories.loc[c, f])\
@@ -408,7 +397,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 # genomes represent both compared groups, and that's where the entropy comes in.
                 weighted_enrichment = enrichment * weighting_normalization_factor
 
-                if abs(enrichment) > min_function_enrichment and max(occurence_outside_of_group, occurence_in_group) > min_portion_occurence_of_function_in_group:
+                if (abs(enrichment) >= min_function_enrichment) and (max(occurence_outside_of_group, occurence_in_group) >= min_portion_occurence_of_function_in_group):
                     if c not in enrichment_dict:
                         enrichment_dict[c] = {}
 
