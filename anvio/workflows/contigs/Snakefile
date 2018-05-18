@@ -224,16 +224,16 @@ rule anvi_gen_contigs_database:
 if run_taxonomy_with_centrifuge:
     # If the user wants taxonomy to be assigned with centrifuge
     # then these following rules would run.
-    rule anvi_anvi_export_gene_calls:
+    rule export_gene_calls:
         ''' Export gene calls and use for centrifuge'''
         version: 1.0
-        log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_anvi_export_gene_calls.log"
+        log: dirs_dict["LOGS_DIR"] + "/{group}-export_gene_calls.log"
         # marking the input as ancient in order to ignore timestamps.
         input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
         # output is temporary. No need to keep this file.
         output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-gene-calls.fa")
-        threads: M.T('run_taxonomy_with_centrifuge')
-        resources: nodes = M.T('run_taxonomy_with_centrifuge'),
+        threads: M.T('export_gene_calls')
+        resources: nodes = M.T('export_gene_calls'),
         shell: "anvi-get-dna-sequences-for-gene-calls -c {input} -o {output} >> {log} 2>&1"
 
 
@@ -241,7 +241,7 @@ if run_taxonomy_with_centrifuge:
         ''' Run centrifuge on the exported gene calls of the contigs.db'''
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-centrifuge.log"
-        input: rules.anvi_anvi_export_gene_calls.output
+        input: rules.export_gene_calls.output
         output:
             hits = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_hits.tsv",
             report = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_report.tsv"
