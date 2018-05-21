@@ -129,6 +129,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
+        self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
 
 
     def run_application(self, ip, port):
@@ -331,6 +332,13 @@ class BottleApplication(Bottle):
             return json.dumps(items_order['data'])
 
         return json.dumps("")
+
+
+    def save_tree(self):
+        name = request.forms.get('name')
+        data = request.forms.get('data')
+        print(name, data)
+        pass
 
 
     def state_all(self):

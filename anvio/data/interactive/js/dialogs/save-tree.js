@@ -20,6 +20,8 @@
 
 
 function SaveTreeDialog() {
+    this.current_tree_name = last_settings['order-by'];
+
     this.dialog = document.createElement('div');
     this.dialog.setAttribute('class', 'modal fade in');
 
@@ -32,14 +34,15 @@ function SaveTreeDialog() {
 
                 <div class="modal-body">
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label"><input type="radio" name="overwrite[]" value="no" checked="checked">Create new tree:</label>  
+                        <label class="col-md-4 settings-label"><input type="radio" name="overwrite[]" value="no" checked="checked">Create new tree with name</label>  
                         <div class="col-md-8">
-                            <input type="text" id="tree_name" value="new_tree">
+                            <input type="text" id="tree_name" value="New tree">
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label"><input type="radio" name="overwrite[]" value="yes">Overwrite exists tree:</label>  
+                        <label class="col-md-4 settings-label"><input type="radio" name="overwrite[]" value="yes">Overwrite the current tree</label>  
                         <div class="col-md-8">
+                            ${getClusteringPrettyName(this.current_tree_name)}
                         </div>
                     </div>
                 </div>
@@ -61,38 +64,33 @@ function SaveTreeDialog() {
             }
         })
     });
-};
-
-
-SaveTreeDialog.prototype.Show = async function() {
 
     $(this.dialog).modal('show').on('hidden.bs.modal', () => this.dialog.remove());
 };
 
 
+SaveTreeDialog.prototype.SaveTree = function() {
+    let new_tree_name;
 
-SaveTreeDialog.prototype.LoadCollection = function() {
-    let collection_name = this.dialog.querySelector('.collection-list').value;
-    
-    if (collection_name == "") {
-        toastr.warning('Please select a collection.');
+    if (this.dialog.querySelectorAll('input[type="radio"]')[0].checked) 
+    {  
+        // new tree combo selected
+        let parts = this.current_tree_name.split(':');
+        new_tree_name = this.dialog.querySelector('#tree_name').value + ':' + parts[1] + ':' + parts[2];
+    } else {
+        // overwrite selected
+        new_tree_name = this.current_tree_name;
     }
-
-    if (bins.GetTotalSelectionCount() > 0 && !confirm("You are trying to load a collection but you already have some selections,\
-                                                       you will lose them if they are not stored. Do you want to continue?")) {
-        return;
-    }
-
-    let threshold_value = this.dialog.querySelector('.threshold-value').value;
-    let threshold_base  = this.dialog.querySelector('.threshold-base').value;
-    let threshold = parseInt(threshold_value) * parseInt(threshold_base);
 
     $.ajax({
-        type: 'GET',
+        type: 'POST',
         cache: false,
-        url: '/data/collection/' + collection_name,
+        url: '/data/save_tree',
+        data: {
+            'name': e,
+            'data': clusteringData,
+        },
         success: function(data) {
-            bins.ImportCollection(data, threshold);
             
             $(this.dialog).modal('hide');
             this.dialog.remove();
