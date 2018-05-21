@@ -291,6 +291,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         list_functional_annotation_sources = A('list_annotation_sources')
         min_function_enrichment = A('min_function_enrichment')
         min_portion_occurence_of_function_in_group = A('min_portion_occurence_of_function_in_group')
+        functional_occurence_table_output = A('functional_occurence_table_output')
 
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -343,6 +344,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.run.info('Functional annotation source', functional_annotation_source)
 
         occurence_of_functions_in_pangenome_dataframe, occurence_of_functions_in_pangenome_dict = self.get_occurence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
+
+        if functional_occurence_table_output:
+            occurence_of_functions_in_pangenome_dataframe.astype(int).to_csv(functional_occurence_table_output, sep='\t')
 
         self.progress.new('Functional enrichment analysis')
         self.progress.update('Creating a dictionary')
