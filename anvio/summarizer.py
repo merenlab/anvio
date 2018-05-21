@@ -373,10 +373,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         number_of_genomes = len(categories_dict.keys())
 
         enrichment_dict = {}
-        # we will count the number of records in the output
-        # because it will help us make a pandas dataframe later.
-        # (we could just make the dataframe grow inside the loop, but that's slow (at least, I think so))
-        number_of_records_in_output = 0
         for c in categories:
             self.progress.update("Working on category '%s'" % c)
             group_size = len(categories_to_genomes_dict[c])
@@ -410,7 +406,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                     enrichment_dict[c][f]["enrichment"] = enrichment
                     enrichment_dict[c][f]["weighted_enrichment"] = weighted_enrichment
                     enrichment_dict[c][f]["gene_clusters_ids"] = occurence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
-                    number_of_records_in_output += 1
 
         if output_file_path:
             self.progress.update('Generating the output file')
