@@ -410,6 +410,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
                     enrichment_dict[c][f]["enrichment"] = enrichment
                     enrichment_dict[c][f]["weighted_enrichment"] = weighted_enrichment
+                    enrichment_dict[c][f]["gene_clusters_ids"] = occurence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
                     number_of_records_in_output += 1
 
         if output_file_path:
