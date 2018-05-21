@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from collections import OrderedDict
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, ModellerScriptError
 from Bio.PDB import PDBParser
 from Bio.PDB import DSSP
 
@@ -380,7 +380,11 @@ class Structure(object):
                                                       quiet =True)
 
             # Model structure
+            #try:
             modeller_out = self.run_modeller(corresponding_gene_call)
+            #except ModellerScriptError as e:
+            #    print(e)
+
             has_structure[modeller_out["structure_exists"]].append(str(corresponding_gene_call))
 
             # Annotate residues

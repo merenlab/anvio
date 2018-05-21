@@ -848,7 +848,8 @@ class VariabilitySuper(VariabilityFilter, object):
            splits_of_interest, sample_ids_of_interest, and genes_of_interest. For example, what if
            genes_of_interest = set([0]) in a profile database with 50,000 genes? Why is splits of interest
            not included here? Because split_name is not a column in the variable codon table."""
-        R = lambda x, y: run.info("%s variability will be generated for" % (x.capitalize() if len(y)<200 else "Num "+x), ", ".join([str(z) for z in y]) if len(y)<200 else len(y))
+        R = lambda x, y: run.info("%s that variability data will be generated for" % \
+                        (x.capitalize() if len(y)<200 else "Num "+x), ", ".join([str(z) for z in y]) if len(y)<200 else len(y))
 
         conditions = {}
         if self.sample_ids_of_interest:
@@ -1914,7 +1915,28 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
 
     def compute_synonymity(self):
-        pass
+        is_synonymous = constants.is_synonymous
+        coding_codons = constants.coding_codons
+
+        number_of_pairs = len(coding_codons)*(len(coding_codons)+1)//2
+        array = np.zeros((self.data.shape[0], number_of_pairs))
+
+        array_index = 0
+        s_or_ns = []
+        for i in coding_codons:
+            for j in coding_codons:
+                if j > i:
+                    break
+                array[:, array_index] = self.data.loc[:, i] * self.data.loc[:, j]
+                array_index += 1
+                s_or_ns.append(constants.is_synonymous[i][j])
+
+        # normalize
+        array = array / np.sum(array, axis=1)[:,np.newaxis]
+
+        # each row sums to 1. Synonymity is the sum of those that are synonymous
+        synonymity = np.sum(array[:, s_or_ns], axis=1)
+        self.data["synonymity"] = synonymity
 
 
 class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
