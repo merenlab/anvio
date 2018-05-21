@@ -287,10 +287,8 @@ function draw_variability() {
 
                             spacefill_options['scale'] = 0.4 + val * 1.1
                             spacefill_options['opacity'] = val;
-                        }
-
-                        if (true) {
-
+                        } else {
+                            spacefill_options['color'] = $('#color_static').attr('color');
                         }
 
                         component.addRepresentation("spacefill", spacefill_options);

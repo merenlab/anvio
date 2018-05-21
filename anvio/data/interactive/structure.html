@@ -75,7 +75,12 @@
                     </div>
                     <div id="tab_perspectives" role="tabpanel" class="tab-pane fade">
                         <div class="widget">
-                            <input type="checkbox" id="enable_color" checked="checked"><label for="enable_color">Enable color</label>
+                            <div>
+                                Static Color: <div class="colorpicker" id="color_static" color="#AAAAAA" style="background-color: #AAAAAA;">
+                            </div>
+                            <div>
+                                <input type="checkbox" id="enable_color" onclick="draw_variability();" checked="checked"><label for="enable_color">&nbsp;Dynamic color</label>
+                            </div>
                             <table>
                                 <tr>
                                     <td>Target column:</td>
