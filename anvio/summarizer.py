@@ -386,7 +386,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             weighting_normalization_factor = number_of_genomes * (group_portion * math.log2(group_portion)\
                                                 + (1 - group_portion) * math.log2(1 - group_portion))
 
-            i=0
             for f in functions_names:
                 occurence_in_group = functions_in_categories.loc[c, f] / group_size
                 occurence_outside_of_group = (total_occurence_of_functions[f] - functions_in_categories.loc[c, f])\
@@ -415,22 +414,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         if output_file_path:
             self.progress.update('Generating the output file')
-            # convert dictionary to pandas
-            # we can't use pandas from_dict because it is meant for dict of dicts (i.e. tow levels)
-            # and we have a dict of dicts of dicts (three levels).
-            # so we first convert it to a dict of dicts and then convert to pandas
-            # because this is faster than alternatives
-            i = 0
-            D = {}
-            for c in enrichment_dict:
-                for f in enrichment_dict[c]:
-                    D[i] = {}
-                    D[i]['category'] = c
-                    D[i][functional_annotation_source] = f
-                    for key, value in enrichment_dict[c][f].items():
-                        D[i][key] = value
-                    i += 1
-            enrichment_data_frame = pd.DataFrame.from_dict(D, orient='index')
+            enrichment_data_frame = self.get_enrichment_dict_as_dataframe(enrichment_dict, functional_annotation_source)
 
             # sort according to enrichment
             enrichment_data_frame.sort_values(by='enrichment', axis=0, ascending=False, inplace=True)
@@ -443,6 +427,33 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             self.run.info('Functions enrichment summary', output_file_path)
 
         return enrichment_dict
+
+
+    def get_enrichment_dict_as_dataframe(self, enrichment_dict, functional_annotation_source):
+        # convert dictionary to pandas
+        # we can't use pandas from_dict because it is meant for dict of dicts (i.e. tow levels)
+        # and we have a dict of dicts of dicts (three levels).
+        # so we first convert it to a dict of dicts and then convert to pandas
+        # because this is faster than alternatives
+        i = 0
+        D = {}
+        for c in enrichment_dict:
+            for f in enrichment_dict[c]:
+                D[i] = {}
+                D[i]['category'] = c
+                D[i][functional_annotation_source] = f
+                for key, value in enrichment_dict[c][f].items():
+                    try:
+                        # if there is a sequence of values
+                        # merge them with commas for nicer printing
+                        D[i][key] = ', '.join(iter(value))
+                    except:
+                        # if it is not a sequnce, it is a single value
+                        D[i][key] = value
+                i += 1
+        enrichment_data_frame = pd.DataFrame.from_dict(D, orient='index')
+
+        return enrichment_data_frame
 
 
     def process(self):
