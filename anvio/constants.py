@@ -214,6 +214,16 @@ codon_to_codon_RC = Counter({'AAA': 'TTT', 'AAC': 'GTT', 'AAG': 'CTT', 'AAT': 'A
                              'TTA': 'TAA', 'TTC': 'GAA', 'TTG': 'CAA', 'TTT': 'AAA'})
 
 codons = sorted(list(set(codon_to_AA.keys())))
+coding_codons = [x for x in codons if codon_to_AA[x] != "STP"]
+
+is_synonymous = {}
+for i in coding_codons:
+    is_synonymous[i] = {}
+    for j in coding_codons:
+        if codon_to_AA[i] == codon_to_AA[j]:
+            is_synonymous[i][j] = True
+        else:
+            is_synonymous[i][j] = False
 
 pretty_names = {}
 

@@ -15,7 +15,7 @@ import anvio.fastalib as u
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError, ModellerError
+from anvio.errors import ConfigError, ModellerError, ModellerScriptError
 
 
 __author__ = "A. Murat Eren"
@@ -133,6 +133,9 @@ class MODELLER:
             self.out["structure_exists"] = True
 
         except self.EndModeller as e:
+            print(e)
+
+        except ModellerScriptError as e:
             print(e)
 
         finally:
@@ -638,8 +641,10 @@ class MODELLER:
             else:
                 error = "\n" + "\n".join(error.split('\n'))
                 print(terminal.c(error, color='red'))
-                raise ModellerError("The MODELLER script {} did not execute properly. Hopefully it is clear \
-                                     from the above error message".format(script_name))
+                self.out["structure_exists"] = False
+                raise ModellerScriptError("The MODELLER script {} did not execute properly. Hopefully it is clear \
+                                            from the above error message. No structure is going to be modelled."\
+                                            .format(script_name))
 
         # If we made it this far, the MODELLER script ran to completion. Now check outputs exist
         if check_output:

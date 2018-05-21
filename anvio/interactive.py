@@ -1303,10 +1303,14 @@ class StructureInteractive(VariabilitySuper):
             "diet":        {"high-fat": [sample1],          "low-fat": [sample2]}}
         """
         if not self.profile_db_path:
-            return {"samples" : {s:[s] for s in self.available_samples},
-                    "merged"  : {"all": sorted(list(self.available_samples))}}
+            return {"merged"  : {"all": sorted(list(self.available_samples))},
+                    "samples" : {s:[s] for s in self.available_samples}}
 
         layer_names, additional_layer_dict = self.load_additional_layer_data()
+
+        d = {}
+        # important merged group (all samples in one group)
+        d["merged"] = {"all": sorted(list(self.available_samples))}
 
         # filter additional_layer_dict to only include available samples
         additional_layer_dict = {k: v for k, v in additional_layer_dict.items() if k in self.available_samples}
@@ -1316,10 +1320,8 @@ class StructureInteractive(VariabilitySuper):
         # whose only purpose is to enable a dictionary comprehension. Imagine how many lines this
         # would be using native python.
         df = pd.DataFrame(additional_layer_dict).T.fillna("NA").reset_index().rename(columns={"index":"samples"})
-        d = {col: {val: list(df.loc[df[col]==val, "samples"]) for val in df[col].unique()} for col in df.columns} # V/\
+        d.update({col: {val: list(df.loc[df[col]==val, "samples"]) for val in df[col].unique()} for col in df.columns}) # V/\
 
-        # important merged group (all samples in one group)
-        d["merged"] = {"all": sorted(list(self.available_samples))}
         return d
 
 
@@ -1364,6 +1366,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'departure_from_consensus',
                 'title': 'Departure from consensus',
+                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1373,6 +1376,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'departure_from_reference',
                 'title': 'Departure from reference',
+                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1382,6 +1386,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'coverage',
                 'title': 'Coverage',
+                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1389,8 +1394,19 @@ class StructureInteractive(VariabilitySuper):
                 'max': int(FIND_MAX('coverage'))
             },
             {
+                'name': 'synonymity',
+                'title': 'Synonymity',
+                'engine': ['CDN'],
+                'controller': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': 0,
+                'max': 1,
+            },
+            {
                 'name': 'entropy',
                 'title': 'Entropy',
+                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1400,6 +1416,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'rel_solvent_acc',
                 'title': 'Relative solvent accessibility',
+                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1409,12 +1426,14 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'sec_struct',
                 'title': 'Secondary structure',
+                'engine': ['AA', 'CDN'],
                 'controller': 'checkbox',
                 'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
             },
             {
                 'name': 'phi',
                 'title': 'Phi',
+                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1424,6 +1443,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'psi',
                 'title': 'Psi',
+                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1433,6 +1453,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'BLOSUM62',
                 'title': 'BLOSUM62',
+                'engine': ['AA'],
                 'controller': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1442,6 +1463,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'BLOSUM90',
                 'title': 'BLOSUM90',
+                'engine': ['AA'],
                 'controller': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1451,6 +1473,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'codon_order_in_gene',
                 'title': 'Codon index',
+                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1460,23 +1483,27 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': x.competing_items,
                 'title': 'Competing Amino Acids' if engine == "AA" else 'Competing Codons',
+                'engine': ['AA', 'CDN'],
                 'controller': 'checkbox',
                 'choices': list(x.data[x.competing_items].value_counts().sort_values(ascending=False).index)
             },
             {
                 'name': 'reference',
                 'title': 'Reference',
+                'engine': ['AA', 'CDN'],
                 'controller': 'checkbox',
                 'choices': constants.amino_acids if engine == "AA" else constants.codons
             },
             {
                 'name': 'consensus',
                 'title': 'Consensus',
+                'engine': ['AA', 'CDN'],
                 'controller': 'checkbox',
                 'choices': constants.amino_acids if engine == "AA" else constants.codons
             },
             ]
 
+        info = [v for v in info if engine in v["engine"]]
         return info
 
 
