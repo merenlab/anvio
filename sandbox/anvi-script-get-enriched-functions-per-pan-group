@@ -46,6 +46,7 @@ if __name__ == '__main__':
 
     groupC = parser.add_argument_group('REPORTING', "Output and stuff.")
     groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+    groupC.add_argument(*anvio.A('functional-occurence-table-output'), **anvio.K('functional-occurence-table-output'))
 
     groupD = parser.add_argument_group('OPTIONAL PARAMETERS', "Parameters to help you filter the output.")
     groupD.add_argument(*anvio.A('min-function-enrichment'), **anvio.K('min-function-enrichment'))
