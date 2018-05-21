@@ -285,8 +285,8 @@ function draw_variability() {
                                 $('#color_end').attr('color'),
                                 val);
 
-                            spacefill_options['scale'] = 0.4 + val * 1.1
-                            spacefill_options['opacity'] = val;
+                            // spacefill_options['scale'] = 0.4 + val * 1.1
+                            // spacefill_options['opacity'] = val;
                         } else {
                             spacefill_options['color'] = $('#color_static').attr('color');
                         }
