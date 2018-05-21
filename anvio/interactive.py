@@ -1277,18 +1277,29 @@ class StructureInteractive(VariabilitySuper):
 
         self.sanity_check()
 
-        self.available_genes = self.get_available_genes()
-
         if self.store_full_variability_in_memory:
             self.profile_full_variability_data()
 
+        self.available_genes = self.get_available_genes()
         self.available_engines = [self.full_variability.engine] if self.variability_table_path else ["AA", "CDN"]
+
+        # can save significant memory if available genes is a fraction of genes in full variability
+        self.filter_full_variability_to_available_genes_subset()
 
         # default gene is the first gene of interest
         self.profile_gene_variability_data(list(self.available_genes)[0])
 
         self.available_samples = self.get_available_samples()
         self.sample_groups = self.create_sample_groups_dict()
+
+
+    def filter_full_variability_to_available_genes_subset(self):
+        try:
+            self.full_variability.filter_data(criterion="corresponding_gene_call",
+                                              subset_filter=self.available_genes)
+        except self.EndProcess as e:
+            raise ConfigError("This is really sad. There is no overlap between the gene IDs in your\
+                               structure database and the gene IDs in your variability table.")
 
 
     def create_sample_groups_dict(self):
@@ -1560,6 +1571,11 @@ class StructureInteractive(VariabilitySuper):
         else:
             available_genes = set(structure_db.genes_with_structure)
 
+        # if full variability table is loaded, we further demand variability exists for the genes
+        if self.full_variability:
+            genes_in_variability = self.full_variability.data["corresponding_gene_call"].unique()
+            available_genes = [x for x in available_genes if x in genes_in_variability]
+
         structure_db.disconnect()
         # We are done with self.args.gene_caller_ids and self.args.genes_of_interest, so we set them
         # to None. Now downstream class instances initialized with self.args will not process our
@@ -1665,12 +1681,6 @@ class StructureInteractive(VariabilitySuper):
         self.full_variability = variabilityops.VariabilityData(self.args, p=progress, r=run)
         self.full_variability.stealth_filtering = True
 
-        try:
-            self.full_variability.filter_data(criterion="corresponding_gene_call",
-                                              subset_filter=self.available_genes)
-        except self.EndProcess as e:
-            raise ConfigError("This is really sad. There is no overlap between the gene IDs in your\
-                               structure database and the gene IDs in your variability table.")
 
 
     def profile_gene_variability_data(self, gene_callers_id):
