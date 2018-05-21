@@ -1550,6 +1550,9 @@ class VariabilitySuper(VariabilityFilter, object):
                         [self.competing_items, 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
                         self.comprehensive_stats_headers
 
+        if self.engine == "CDN":
+            new_structure.append("synonymity")
+
         if self.include_contig_names_in_output:
             new_structure.append('contig_name')
 
