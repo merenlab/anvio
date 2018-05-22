@@ -337,17 +337,29 @@ class BottleApplication(Bottle):
 
 
     def save_tree(self):
-        name = request.forms.get('name')
-        data = request.forms.get('data')
-        
-        self.interactive.p_meta['item_orders'][name] = {'type': 'newick', 'data': data}
+        try:
+            overwrite = request.forms.get('overwrite')
+            name = request.forms.get('name')
+            data = request.forms.get('data')
+            
+            self.interactive.p_meta['item_orders'][name] = {'type': 'newick', 'data': data}
 
-        anvio_db = db.DB(self.interactive.pan_db_path or self.interactive.profile_db_path, None, ignore_version=True)
-        anvio_db._exec('''DELETE FROM %s WHERE "name" LIKE ?''' % t.item_orders_table_name, (name, ))
-        anvio_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, (name, 'newick', data))
+            anvio_db = db.DB(self.interactive.pan_db_path or self.interactive.profile_db_path, None, ignore_version=True)
 
-        anvio_db.set_meta_value('available_item_orders', ",".join(anvio_db.get_single_column_from_table(t.item_orders_table_name, 'name')))
-        anvio_db.disconnect()
+            if overwrite:
+                anvio_db._exec('''DELETE FROM %s WHERE "name" LIKE ?''' % t.item_orders_table_name, (name, ))
+                anvio_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, (name, 'newick', data))
+            else:
+                anvio_db._exec('''UPDATE %s SET "data" = ? WHERE "name" LIKE ?''' % t.item_orders_table_name, (data, name))
+
+            anvio_db.set_meta_value('available_item_orders', ",".join(anvio_db.get_single_column_from_table(t.item_orders_table_name, 'name')))
+            anvio_db.disconnect()
+
+            return json.dumps({'status': 0, 'message': 'New order "%s" successfully saved to the database.' % name})
+
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
 
 
     def state_all(self):
