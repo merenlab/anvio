@@ -306,6 +306,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
+        if functional_occurence_table_output:
+            filesnpaths.is_output_file_writable(functional_occurence_table_output)
+
         if not self.functions_initialized:
             raise ConfigError("For some reason funtions are not initialized for this pan class instance. We\
                                can't summarize functional enrichment stats without that :/")
@@ -357,6 +360,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         if functional_occurence_table_output:
             occurence_of_functions_in_pangenome_dataframe.astype(int).to_csv(functional_occurence_table_output, sep='\t')
+            self.run.info('Presence/absence of functions summary:', functional_occurence_table_output)
 
         self.progress.new('Functional enrichment analysis')
         self.progress.update('Creating a dictionary')
