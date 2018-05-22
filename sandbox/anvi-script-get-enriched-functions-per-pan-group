@@ -19,6 +19,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Alon Shaiber"
 __email__ = "alon.shaiber@gmail.com"
+__resources__ = [("An example usage of the program in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/")]
+__tags__ = ["pangenomics", "functions"]
 
 
 run = terminal.Run()
