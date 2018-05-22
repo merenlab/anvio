@@ -428,6 +428,30 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                         if enrichment_dict[c][f]["portion_occurence_outside_of_group"] == 1:
                             enrichment_dict[c][f]["core"] = True
 
+        import scipy
+        import statsmodels.stats.multitest as multitest
+        genome_names = set(self.genome_names)
+        p_values = []
+        for c in categories:
+            self.progress.update("Working on statistics for category '%s'" % c)
+            group_genomes = categories_to_genomes_dict[c]
+            outgroup_genomes = genome_names - group_genomes
+
+            for f in functions_names:
+                x = occurence_of_functions_in_pangenome_dataframe.loc[group_genomes,f].astype(int)
+                y = occurence_of_functions_in_pangenome_dataframe.loc[outgroup_genomes,f].astype(int)
+                wilcoxon = scipy.stats.ranksums(x, y)
+                enrichment_dict[c][f]["wilcoxon_p_value"] = wilcoxon.pvalue
+                p_values.append(wilcoxon.pvalue)
+                enrichment_dict[c][f]["wilcoxon_statistic"] = wilcoxon.statistic
+
+            # correction for multiple comparrisons
+            reject, corrected_p_values, foo1, foo2 = multitest.multipletests(p_values, method='fdr_bh')
+            i = 0
+            for f in functions_names:
+                enrichment_dict[c][f]['wilcoxon_corrected_p_value'] = corrected_p_values[i]
+                i += 1
+
         if output_file_path:
             self.progress.update('Generating the output file')
             enrichment_data_frame = self.get_enrichment_dict_as_dataframe(enrichment_dict, functional_annotation_source)
