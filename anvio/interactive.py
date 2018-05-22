@@ -1284,7 +1284,8 @@ class StructureInteractive(VariabilitySuper):
         self.available_engines = [self.full_variability.engine] if self.variability_table_path else ["AA", "CDN"]
 
         # can save significant memory if available genes is a fraction of genes in full variability
-        self.filter_full_variability_to_available_genes_subset()
+        if self.full_variability:
+            self.filter_full_variability_to_available_genes_subset()
 
         # default gene is the first gene of interest
         self.profile_gene_variability_data(list(self.available_genes)[0])
