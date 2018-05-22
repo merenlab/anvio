@@ -78,7 +78,7 @@
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Type: </label>  
                             <div class="col-md-8">
-                                <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show();  }; draw_variability();">
+                                <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show();  };">
                                     <option>Static</option>
                                     <option>Dynamic</option>
                                 </select>
@@ -117,7 +117,7 @@
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Type: </label>  
                             <div class="col-md-8">
-                                <select id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show();  }; draw_variability();">
+                                <select id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show();  };">
                                     <option>Static</option>
                                     <option>Dynamic</option>
                                 </select>
@@ -152,6 +152,9 @@
                             </div>
                         </div>
                         <div class="clearfix"></div>
+                        <div class="col-md-12" style="margin-top: 80px;">
+                            <button type="button" class="btn btn-primary" onclick="draw_variability();" style="width: 100%;">Apply changes</button>
+                        </div>
                     </div>
                 </div>
             </div>
