@@ -71,15 +71,14 @@ function SaveTreeDialog() {
 
 SaveTreeDialog.prototype.SaveTree = function() {
     let new_tree_name;
+    let overwrite = this.dialog.querySelectorAll('input[type="radio"]')[1].checked;
 
-    if (this.dialog.querySelectorAll('input[type="radio"]')[0].checked) 
-    {  
-        // new tree combo selected
+    if (overwrite) 
+    {
+        new_tree_name = this.current_tree_name;
+    } else {
         let parts = this.current_tree_name.split(':');
         new_tree_name = this.dialog.querySelector('#tree_name').value + ':' + parts[1] + ':' + parts[2];
-    } else {
-        // overwrite selected
-        new_tree_name = this.current_tree_name;
     }
 
     $.ajax({
@@ -87,6 +86,7 @@ SaveTreeDialog.prototype.SaveTree = function() {
         cache: false,
         url: '/data/save_tree',
         data: {
+            'overwrite': overwrite,
             'name': new_tree_name,
             'data': clusteringData,
         },
