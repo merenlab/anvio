@@ -94,6 +94,10 @@ SaveTreeDialog.prototype.SaveTree = function() {
             if (data['status'] == 0) {
                 toastr.success(data['message'], "Server");
 
+                $('#tree_modified_warning').hide();
+                $('#trees_container').append(`<option val="${new_tree_name}">${getClusteringPrettyName(new_tree_name)}</option>`);
+                $('#trees_container').val(getClusteringPrettyName(new_tree_name));
+
                 $(this.dialog).modal('hide');
                 this.dialog.remove();
             } else {
