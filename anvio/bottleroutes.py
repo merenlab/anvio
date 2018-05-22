@@ -25,8 +25,10 @@ from bottle import BaseRequest
 from bottle import redirect, static_file
 
 import anvio
+import anvio.db as db
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.tables as t
 import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -337,8 +339,15 @@ class BottleApplication(Bottle):
     def save_tree(self):
         name = request.forms.get('name')
         data = request.forms.get('data')
-        print(name, data)
-        pass
+        
+        self.interactive.p_meta['item_orders'][name] = {'type': 'newick', 'data': data}
+
+        anvio_db = db.DB(self.interactive.pan_db_path or self.interactive.profile_db_path, None, ignore_version=True)
+        anvio_db._exec('''DELETE FROM %s WHERE "name" LIKE ?''' % t.item_orders_table_name, (name, ))
+        anvio_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, (name, 'newick', data))
+
+        anvio_db.set_meta_value('available_item_orders', ",".join(anvio_db.get_single_column_from_table(t.item_orders_table_name, 'name')))
+        anvio_db.disconnect()
 
 
     def state_all(self):
@@ -1053,5 +1062,3 @@ class BottleApplication(Bottle):
         tree.set_outgroup(new_root)
 
         return json.dumps({'newick': tree.write(format=1)})
-
-
