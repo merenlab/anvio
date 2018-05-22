@@ -420,6 +420,26 @@ function create_ui() {
 }
 
 
+function onTargetColumnChange(element) {
+    // this on change event shared between color_target_column, size_target_column.
+
+    let column = $(element).val();
+    let widget = $('.widget[data-column="' + column + '"]');
+    let controller = $(widget).attr('data-controller');
+
+    // color or size
+    let prefix = element.getAttribute('id').split('_')[0];
+
+    // read the min/max from slider and put into prefixed input in perspective
+    if (controller == 'slider') {
+        let slider = $(widget).find('input');
+
+        $(`#${prefix}_min`).val($(slider).attr('data-slider-min'));
+        $(`#${prefix}_max`).val($(slider).attr('data-slider-max'));
+    }
+}
+
+
 function getGradientColor(start_color, end_color, percent) {
    // strip the leading # if it's there
    start_color = start_color.replace(/^\s*#|\s*$/g, '');
