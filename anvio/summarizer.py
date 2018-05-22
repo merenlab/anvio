@@ -282,7 +282,17 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
 
     def functional_enrichment_stats(self):
-        """Help to be filled"""
+        """
+            Compute the functional enrichment stats for a pangenome
+
+            returns the enrichment_dict, which has the form:
+                value = enrichment_dict[category_name][function_name][value_name]
+
+            If self.args.output_file_path exists then an output file is created.
+
+            To learn more about how this works refer to the docummentation:
+                anvi-script-get-enriched-functions-per-pan-group -h
+        """
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
