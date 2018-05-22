@@ -87,7 +87,7 @@ SaveTreeDialog.prototype.SaveTree = function() {
         cache: false,
         url: '/data/save_tree',
         data: {
-            'name': e,
+            'name': new_tree_name,
             'data': clusteringData,
         },
         success: function(data) {
