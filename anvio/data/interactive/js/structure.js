@@ -259,7 +259,7 @@ function draw_variability() {
 
                 let component = stages[group].compList[0];
 
-                component.reprList.forEach((rep) => {
+                component.reprList.slice(0).forEach((rep) => {
                     if (rep.name == 'spacefill') {
                         rep.dispose();
                     }
