@@ -91,3 +91,13 @@ body {
     height: 16px;
     margin: auto;
 }
+
+
+.settings-header {
+    font-variant: small-caps;
+    font-size: 1.2em;
+    border-bottom: 1px #969696 solid;
+    display: block;
+    margin-bottom: 5px;
+    margin-top: 12px;
+}
