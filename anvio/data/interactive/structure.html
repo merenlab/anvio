@@ -78,7 +78,7 @@
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Type: </label>  
                             <div class="col-md-8">
-                                <select onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show();  }; draw_variability();">
+                                <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show();  }; draw_variability();">
                                     <option>Static</option>
                                     <option>Dynamic</option>
                                 </select>
@@ -105,14 +105,45 @@
                             </div>
                         </div>
                         <div class="clearfix"></div>
-
-                        <div class="widget">
-                            size
+                        <span class="settings-header">Size</span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Type: </label>  
+                            <div class="col-md-8">
+                                <select id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show();  }; draw_variability();">
+                                    <option>Static</option>
+                                    <option>Dynamic</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="widget">
-                            transparency
+                        <div class="static-size">
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Size: </label>  
+                                <div class="col-md-8"><input type="input" id="size_static" value="1"></div>
+                            </div>
                         </div>
-
+                        <div class="dynamic-size" style="display: none;">
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Column: </label>  
+                                <div class="col-md-8"><select id="size_target_column"></select></div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Min Value: </label>  
+                                <div class="col-md-8"><input type="input" id="size_min" value="0"></div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Min Size: </label>  
+                                <div class="col-md-8"><input type="input" id="size_start" value="0.4"></div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Max Value: </label>  
+                                <div class="col-md-8"><input type="input" id="size_max" value="1"></div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Max Size: </label>  
+                                <div class="col-md-8"><input type="input" id="size_end" value="1.4"></div>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
                     </div>
                 </div>
             </div>

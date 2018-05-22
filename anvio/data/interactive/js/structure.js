@@ -272,7 +272,7 @@ function draw_variability() {
                             scale: 1
                         }
 
-                        if ($('#enable_color').is(':checked')) {
+                        if ($('#color_type').val() == 'Dynamic') {
                             let column = $('#color_target_column').val();
                             let min_value = parseFloat($('#color_min').val());
                             let max_value = parseFloat($('#color_max').val());
@@ -284,11 +284,21 @@ function draw_variability() {
                                 $('#color_start').attr('color'),
                                 $('#color_end').attr('color'),
                                 val);
-
-                            // spacefill_options['scale'] = 0.4 + val * 1.1
-                            // spacefill_options['opacity'] = val;
                         } else {
                             spacefill_options['color'] = $('#color_static').attr('color');
+                        }
+
+                        if ($('#size_type').val() == 'Dynamic') {
+                            let column = $('#size_target_column').val();
+                            let min_value = parseFloat($('#size_min').val());
+                            let max_value = parseFloat($('#size_max').val());
+                            let val = Math.abs(parseFloat(data[index][column]) - min_value) / Math.abs(max_value - min_value);
+                            
+                            val = Math.max(0, Math.min(1, val));
+
+                            spacefill_options['scale'] = parseFloat($('#size_start').val()) + (val * Math.abs(parseFloat($('#size_end').val()) - parseFloat($('#size_start').val())));
+                        } else {
+                            spacefill_options['scale'] = parseFloat($('#size_static').val());
                         }
 
                         component.addRepresentation("spacefill", spacefill_options);
@@ -369,6 +379,7 @@ function create_ui() {
 
             data.forEach((item) => {
                 $('#color_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
+                $('#size_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
 
                 if (item['controller'] == 'slider') {
                     $(container).append(`
