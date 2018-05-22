@@ -405,6 +405,9 @@ function create_ui() {
                             ${item['choices'].map((choice) => { return `
                                 <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="draw_variability();" checked="checked">
                                 <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
+                            <br />
+                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true); draw_variability();">Check All</button>
+                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false); draw_variability();">Uncheck All</button>
                         </div>
                     `);
                 }
