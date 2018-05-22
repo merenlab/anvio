@@ -383,10 +383,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                                                 + (1 - group_portion) * math.log2(1 - group_portion))
 
             for f in functions_names:
-                occurence_in_group = functions_in_categories.loc[c, f] / group_size
-                occurence_outside_of_group = (total_occurence_of_functions[f] - functions_in_categories.loc[c, f])\
-                                                / (number_of_genomes - group_size)
-                enrichment = occurence_in_group - occurence_outside_of_group
+                occurence_in_group = functions_in_categories.loc[c, f]
+                occurence_outside_of_group = (total_occurence_of_functions[f] - functions_in_categories.loc[c, f])
+                portion_occurence_in_group = occurence_in_group / group_size
+                portion_occurence_outside_of_group = occurence_outside_of_group / (number_of_genomes - group_size)
+                enrichment = portion_occurence_in_group - portion_occurence_outside_of_group
 
                 # the more genomes we have in each group when making the comparisson
                 # the stronger the results are. In order to allow to compare results from
@@ -394,9 +395,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 # factor is simply the number of genomes multiplied by the entropy of the two compared
                 # groups. the rational is that having more genomes is only helping the comparisson if the
                 # genomes represent both compared groups, and that's where the entropy comes in.
-                weighted_enrichment = enrichment * weighting_normalization_factor
+                weighted_enrichment = -1 * enrichment * weighting_normalization_factor
 
-                if (abs(enrichment) >= min_function_enrichment) and (max(occurence_outside_of_group, occurence_in_group) >= min_portion_occurence_of_function_in_group):
+                if (abs(enrichment) >= min_function_enrichment) and (max(portion_occurence_outside_of_group, portion_occurence_in_group) >= min_portion_occurence_of_function_in_group):
                     if c not in enrichment_dict:
                         enrichment_dict[c] = {}
 
@@ -405,7 +406,17 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
                     enrichment_dict[c][f]["enrichment"] = enrichment
                     enrichment_dict[c][f]["weighted_enrichment"] = weighted_enrichment
+                    enrichment_dict[c][f]["portion_occurence_in_group"] = portion_occurence_in_group
+                    enrichment_dict[c][f]["portion_occurence_outside_of_group"] = portion_occurence_outside_of_group
+                    enrichment_dict[c][f]["occurence_in_group"] = occurence_in_group
+                    enrichment_dict[c][f]["occurence_outside_of_group"] = occurence_outside_of_group
                     enrichment_dict[c][f]["gene_clusters_ids"] = occurence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
+                    enrichment_dict[c][f]["core_in_group"] = False
+                    enrichment_dict[c][f]["core"] = False
+                    if enrichment_dict[c][f]["portion_occurence_in_group"] == 1:
+                        enrichment_dict[c][f]["core_in_group"] = True
+                        if enrichment_dict[c][f]["portion_occurence_outside_of_group"] == 1:
+                            enrichment_dict[c][f]["core"] = True
 
         if output_file_path:
             self.progress.update('Generating the output file')
