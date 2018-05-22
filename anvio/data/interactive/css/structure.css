@@ -77,7 +77,7 @@ body {
 }
 
 
-.colorpicker-base:hover {
+.colorpicker:hover {
     border: 2px solid;
     border-color: #555;
 }
