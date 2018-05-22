@@ -48,7 +48,7 @@ function SaveTreeDialog() {
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-primary" data-dismiss="modal" type="button">Save</button>
+                    <button class="btn btn-primary" type="button">Save</button>
                     <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
@@ -91,9 +91,14 @@ SaveTreeDialog.prototype.SaveTree = function() {
             'data': clusteringData,
         },
         success: function(data) {
-            
-            $(this.dialog).modal('hide');
-            this.dialog.remove();
+            if (data['status'] == 0) {
+                toastr.success(data['message'], "Server");
+
+                $(this.dialog).modal('hide');
+                this.dialog.remove();
+            } else {
+                toastr.warning(data['message'], "Server", { 'timeOut': '0', 'extendedTimeOut': '0' });
+            }
         }.bind(this)
     });
 };

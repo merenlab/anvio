@@ -338,7 +338,7 @@ class BottleApplication(Bottle):
 
     def save_tree(self):
         try:
-            overwrite = request.forms.get('overwrite')
+            overwrite = True if request.forms.get('overwrite') == 'true' else False
             name = request.forms.get('name')
             data = request.forms.get('data')
             
