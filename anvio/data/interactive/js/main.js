@@ -260,6 +260,7 @@ function initData() {
 
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
             bins.NewBin();
+
             if (response.autodraw)
             {
                 $('#btn_draw_tree').removeClass('glowing-button');
@@ -269,18 +270,14 @@ function initData() {
                  .then(function() {
                     if (response.collection !== null && mode !== 'refine' && mode !== 'gene')
                     {
-                        processCollection(response.collection);
+                        bins.ImportCollection(response.collection);
                     }
 
                     if ($('#panel-left').is(':visible')) {
                         setTimeout(toggleLeftPanel, 500);
                     }
                  });
-            }
-
-            if (!response.collection) {
-                newBin();
-            }   
+            } 
         }
     });
 }
