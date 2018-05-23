@@ -380,6 +380,15 @@ D = {
                      that occur in all members of one group and in none of the members of the other group.\
                      Default is %(default).1f."}
                 ),
+    'functional-occurence-table-output': (
+            ['-F', '--functional-occurence-table-output'],
+            {'metavar': 'FILE',
+             'default': None,
+             'type': str,
+             'help': "Saves the presence/absence information for functions in genomes in a TAB-delimited format.\
+                      A file name must be provided. To learn more about how the presence/absence is computed, please\
+                      refer to the tutorial."}
+                ),
     'table': (
             ['--table'],
             {'metavar': 'TABLE_NAME',

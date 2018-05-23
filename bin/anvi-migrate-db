@@ -96,7 +96,7 @@ class Migrater(object):
                 sys.exit(-1)
 
             # special cases #
-            # after this script is done genome storage changes extension from .h5 to .db
+            # after this script is done, genome storage changes extension from .h5 to .db
             if self.db_type == 'genomestorage' and script_name == 'v4_to_v5':
                 self.db_path = self.db_path[:-3] + '.db'
 
