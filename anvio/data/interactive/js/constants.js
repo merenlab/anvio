@@ -388,6 +388,11 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
     }
 
     if (typeof group !== 'undefined' && group.startsWith('ANI_')) {
+        if (group === 'ANI_percentage_identity') {
+            if (attribute == 'min') return 0.7;
+            if (attribute == 'max') return 1;
+        }
+
         if (attribute == 'height') return '180';
         if (attribute == 'color')  return '#FF0000';
         if (attribute == 'type')   return 'intensity';

@@ -223,8 +223,8 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             else
             {
                 var norm         = getNamedLayerDefaults(layer_name, 'norm', 'none', group);
-                var min          = 0;
-                var max          = 0;
+                var min          = getNamedLayerDefaults(layer_name, 'min', null, group);
+                var max          = getNamedLayerDefaults(layer_name, 'max', null, group);
                 var height       = getNamedLayerDefaults(layer_name, 'height', 500, group);
                 var color        = getNamedLayerDefaults(layer_name, 'color', '#919191', group);
                 var margin       = 15;
@@ -376,7 +376,9 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     }
 
     $('#tbody_samples .normalization').each((index, select) => {
-        $(select).trigger('change');
+        if ($(select).closest('tr').find('.input-min').val() == 'null' && $(select).closest('tr').find('.input-max').val() == 'null') {
+            $(select).trigger('change');
+        }
     });
 
     $('.colorpicker').colpick({
