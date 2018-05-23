@@ -188,7 +188,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
     while ((state != 99) && (this.error == 0)) {
         switch (state) {
             case 0:
-                if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
+                if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
                     var order = this.num_leaves++;
                     this.leaves[order] = curnode;
                     this.label_to_leaves[token[i]] = curnode;
@@ -298,7 +298,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 break;
 
             case 3: // finishchildren
-                if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
+                if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
                     curnode.label = token[i];
                     i++;
                 } else {
