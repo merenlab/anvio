@@ -375,7 +375,11 @@ function create_ui() {
         success: function(data) {
             let container = $('#controls');
 
+            // remove widgets
             container.empty();
+
+            $('#color_target_column').empty();
+            $('#size_target_column').empty();
 
             data.forEach((item) => {
                 $('#color_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
