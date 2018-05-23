@@ -381,10 +381,16 @@ function getClusteringPrettyName(name)
     return name_parts[0] + ' (D: ' + name_parts[1] + '; L: ' + name_parts[2] + ')';
 }
 
-function getNamedLayerDefaults(layer, attribute, default_value)
+function getNamedLayerDefaults(layer, attribute, default_value, group)
 {
     if (typeof default_value == "string" && default_value.charAt(0) != '#'){
         default_value = getPrettyName(default_value)
+    }
+
+    if (typeof group !== 'undefined' && group.startsWith('ANI_')) {
+        if (attribute == 'height') return '180';
+        if (attribute == 'color')  return '#FF0000';
+        if (attribute == 'type')   return 'intensity';
     }
 
     /* Some ad-hoc manipulation of special hmmx_ split hmm layers */

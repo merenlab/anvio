@@ -222,14 +222,14 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             }
             else
             {
-                var norm         = getNamedLayerDefaults(layer_name, 'norm', 'none');
+                var norm         = getNamedLayerDefaults(layer_name, 'norm', 'none', group);
                 var min          = 0;
                 var max          = 0;
-                var height       = getNamedLayerDefaults(layer_name, 'height', 500);
-                var color        = getNamedLayerDefaults(layer_name, 'color', '#919191');
+                var height       = getNamedLayerDefaults(layer_name, 'height', 500, group);
+                var color        = getNamedLayerDefaults(layer_name, 'color', '#919191', group);
                 var margin       = 15;
                 var color_start  = "#FFFFFF";
-                var type         = "bar";
+                var type         = getNamedLayerDefaults(layer_name, 'type', 'bar', group);
             }
 
             var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
@@ -286,8 +286,8 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             }
             else
             {
-                var norm   = getNamedLayerDefaults(layer_name, 'norm', 'none');
-                var height = getNamedLayerDefaults(layer_name, 'height', 500);
+                var norm   = getNamedLayerDefaults(layer_name, 'norm', 'none', group);
+                var height = getNamedLayerDefaults(layer_name, 'height', 500, group);
                 var margin = 15;
             }
 
@@ -340,7 +340,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             }
             else
             {
-                var height = getNamedLayerDefaults(layer_name, 'height', 80);
+                var height = getNamedLayerDefaults(layer_name, 'height', 80, group);
                 var margin = 15;
             }
 
