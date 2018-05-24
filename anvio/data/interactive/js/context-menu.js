@@ -253,8 +253,19 @@ ContextMenu = function(options) {
                     }
                 });
             }
+        },
+        'hmm_RecA': {
+            'title': 'RecA',
+            'action': (node, layer, param) => { this.menu_items['get_hmm_sequence']['action'](node, layer, 'RecA'); }
+        },
+        'hmm_Ribosomal_S3_C': {
+            'title': 'Ribosomal S3',
+            'action': (node, layer, param) => { this.menu_items['get_hmm_sequence']['action'](node, layer, 'Ribosomal_S3_C'); }
+        },
+        'hmm_Ribosomal_L10': {
+            'title': 'Ribosomal L10',
+            'action': (node, layer, param) => { this.menu_items['get_hmm_sequence']['action'](node, layer, 'Ribosomal_L10'); }
         }
-
     }
 }
 
@@ -292,6 +303,11 @@ ContextMenu.prototype.BuildMenu = function() {
             menu.push('divider');
             if (mode == 'pan') {
                 menu.push('get_AA_sequences_for_gene_cluster');
+            }
+            else if (mode == 'collection') {
+                menu.push('hmm_RecA');
+                menu.push('hmm_Ribosomal_S3_C');
+                menu.push('hmm_Ribosomal_L10');
             }
             else {
                 menu.push('get_split_sequence');
