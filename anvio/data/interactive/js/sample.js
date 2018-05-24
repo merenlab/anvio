@@ -227,9 +227,9 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 var max          = getNamedLayerDefaults(layer_name, 'max', null, group);
                 var height       = getNamedLayerDefaults(layer_name, 'height', 500, group);
                 var color        = getNamedLayerDefaults(layer_name, 'color', '#919191', group);
-                var margin       = 15;
-                var color_start  = "#FFFFFF";
+                var color_start  = getNamedLayerDefaults(layer_name, 'color-start', '#EFEFEF', group);
                 var type         = getNamedLayerDefaults(layer_name, 'type', 'bar', group);
+                var margin       = 15;
             }
 
             var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
