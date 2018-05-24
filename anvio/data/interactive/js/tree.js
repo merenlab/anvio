@@ -317,7 +317,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                         case ':':
                             i++;
                             if (isNumber(token[i])) {
-                                curnode.original_edge_length = token[i];
+                                curnode.original_edge_length = parseFloat(token[i]);
                                 
                                 // normalization of edge lengths
                                 if (edge_length_norm) {
