@@ -184,6 +184,10 @@ function mouseMoveHandler(event) {
         var _n = new NodeIterator(node);
         var _q = _n.Begin();
 
+        write_mouse_table(`<tr><td>Label</td><td>${node.label ? node.label : 'N/A'}</td></tr>
+                           <tr><td>Support</td><td>${node.branch_support}</td></tr>
+                           <tr><td>Edge length</td><td>${node.original_edge_length}</td></tr>`, 'Layers order branch', 0);
+
         while (_q != null)
         {
             var lineobj = document.getElementById('samples_line' + _q.id);
