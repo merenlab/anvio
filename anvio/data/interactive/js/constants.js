@@ -395,6 +395,7 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
 
         if (attribute == 'height') return '180';
         if (attribute == 'color')  return '#FF0000';
+        if (attribute == 'color-start')  return '#F2F2F2';
         if (attribute == 'type')   return 'intensity';
     }
 
