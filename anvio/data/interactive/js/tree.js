@@ -34,6 +34,7 @@ function Node(label) {
     this.depth = 0;
     this.order = null;
     this.max_child_path = 0;
+    this.branch_support = 1;
 }
 
 
@@ -192,8 +193,14 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                     var order = this.num_leaves++;
                     this.leaves[order] = curnode;
                     this.label_to_leaves[token[i]] = curnode;
-                    curnode.label = token[i];
                     curnode.order = order;
+
+                    if (isNumber(token[i])) {
+                        curnode.branch_support = parseFloat(token[i]);
+                    } else {
+                        curnode.label = token[i];
+                    }
+
                     i++;
                     state = 1;
                 } else {
@@ -299,7 +306,11 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
 
             case 3: // finishchildren
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
-                    curnode.label = token[i];
+                    if (isNumber(token[i])) {
+                        curnode.branch_support = parseFloat(token[i]);
+                    } else {
+                        curnode.label = token[i];
+                    }
                     i++;
                 } else {
                     switch (token[i]) {
