@@ -295,11 +295,11 @@ ContextMenu.prototype.BuildMenu = function() {
             }
             else {
                 menu.push('get_split_sequence');
+                menu.push('blastn_nr');
+                menu.push('blastx_nr');
+                menu.push('blastn_refseq_genomic');
+                menu.push('blastx_refseq_protein');
             }
-            menu.push('blastn_nr');
-            menu.push('blastx_nr');
-            menu.push('blastn_refseq_genomic');
-            menu.push('blastx_refseq_protein');
         }
         else
         {
