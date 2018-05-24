@@ -72,12 +72,14 @@ $(document).ready(function() {
             var layer_id = getLayerId(new_order[i]);
             var detached_row = $('#height' + layer_id).closest('tr').detach();
             $('#tbody_layers').append(detached_row);
+        }
 
             // sort sample layers with new order, but only if they are member of a group starting with "ANI_"
-            for (let group in samples_information_dict) {
-                if (group.startsWith('ANI_')) {
+        for (let group in samples_information_dict) {
+            if (group.startsWith('ANI_')) {
+                for(var i=new_order.length - 1; i >= 0; i--) {
                     let detached_sample_row = $(`tr[samples-group-name='${group}'][samples-layer-name='${new_order[i]}']`);
-                    $('#tbody_samples').prepend(detached_sample_row);
+                    $('#tbody_samples').append(detached_sample_row);
                 }
             }
         }
