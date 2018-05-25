@@ -359,7 +359,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         occurence_of_functions_in_pangenome_dataframe, occurence_of_functions_in_pangenome_dict = self.get_occurence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
 
         if functional_occurence_table_output:
-            occurence_of_functions_in_pangenome_dataframe.astype(int).to_csv(functional_occurence_table_output, sep='\t')
+            occurence_of_functions_in_pangenome_dataframe.astype(int).transpose().to_csv(functional_occurence_table_output, sep='\t')
             self.run.info('Presence/absence of functions summary:', functional_occurence_table_output)
 
         self.progress.new('Functional enrichment analysis')
