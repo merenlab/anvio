@@ -4,6 +4,9 @@ var histogram_data;
 var sample_groups;
 var pdb_content;
 
+var color_legend = {};
+var size_legend = {};
+
 $(document).ready(function() {
     $('.colorpicker').colpick({
         layout: 'hex',
@@ -316,29 +319,48 @@ function draw_variability() {
 
                         if ($('#color_type').val() == 'Dynamic') {
                             let column = $('#color_target_column').val();
-                            let min_value = parseFloat($('#color_min').val());
-                            let max_value = parseFloat($('#color_max').val());
-                            let val = Math.abs(parseFloat(data[index][column]) - min_value) / Math.abs(max_value - min_value);
-                            
-                            val = Math.max(0, Math.min(1, val));
+                            let widget = $('.widget[data-column="' + column + '"]');
+                            let controller = $(widget).attr('data-controller');
+                            let column_value = data[index][column];
 
-                            spacefill_options['color'] = getGradientColor(
-                                $('#color_start').attr('color'),
-                                $('#color_end').attr('color'),
-                                val);
+                            if (controller == 'slider') {
+                                let min_value = parseFloat($('#color_min').val());
+                                let max_value = parseFloat($('#color_max').val());
+                                let val = Math.abs(parseFloat(column_value) - min_value) / Math.abs(max_value - min_value);
+                                
+                                val = Math.max(0, Math.min(1, val));
+
+                                spacefill_options['color'] = getGradientColor(
+                                    $('#color_start').attr('color'),
+                                    $('#color_end').attr('color'),
+                                    val);
+                            }
+                            else
+                            {
+                                spacefill_options['color'] = color_legend[engine][column][column_value];   
+                            }
                         } else {
                             spacefill_options['color'] = $('#color_static').attr('color');
                         }
 
                         if ($('#size_type').val() == 'Dynamic') {
-                            let column = $('#size_target_column').val();
-                            let min_value = parseFloat($('#size_min').val());
-                            let max_value = parseFloat($('#size_max').val());
-                            let val = Math.abs(parseFloat(data[index][column]) - min_value) / Math.abs(max_value - min_value);
-                            
-                            val = Math.max(0, Math.min(1, val));
+                            let column = $('#color_target_column').val();
+                            let widget = $('.widget[data-column="' + column + '"]');
+                            let controller = $(widget).attr('data-controller');
+                            let column_value = data[index][column];
 
-                            spacefill_options['scale'] = parseFloat($('#size_start').val()) + (val * Math.abs(parseFloat($('#size_end').val()) - parseFloat($('#size_start').val())));
+                            if (controller == 'slider') {
+                                let min_value = parseFloat($('#size_min').val());
+                                let max_value = parseFloat($('#size_max').val());
+                                let val = Math.abs(parseFloat(column_value) - min_value) / Math.abs(max_value - min_value);
+                                
+                                val = Math.max(0, Math.min(1, val));
+
+                                spacefill_options['scale'] = parseFloat($('#size_start').val()) + (val * Math.abs(parseFloat($('#size_end').val()) - parseFloat($('#size_start').val())));
+                            }
+                            else {
+                                spacefill_options['scale'] = size_legend[engine][column][column_value];
+                            }
                         } else {
                             spacefill_options['scale'] = parseFloat($('#size_static').val());
                         }
@@ -423,6 +445,14 @@ function create_ui() {
             $('#color_target_column').empty();
             $('#size_target_column').empty();
 
+            if (!color_legend.hasOwnProperty(engine)) {
+                color_legend[engine] = {};
+            }
+
+            if (!size_legend.hasOwnProperty(engine)) {
+                size_legend[engine] = {};
+            }
+
             data.forEach((item) => {
                 $('#color_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
                 $('#size_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
@@ -456,6 +486,22 @@ function create_ui() {
                             <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false); draw_variability();">Uncheck All</button>
                         </div>
                     `);
+
+                    if (!color_legend[engine].hasOwnProperty(item['name'])) {
+                        color_legend[engine][item['name']] = {};
+
+                        item['choices'].forEach((choice) => {
+                            color_legend[engine][item['name']][choice] = '#FF0000';
+                        });
+                    }
+
+                    if (!size_legend[engine].hasOwnProperty(item['name'])) {
+                        size_legend[engine][item['name']] = {};
+
+                        item['choices'].forEach((choice) => {
+                            size_legend[engine][item['name']][choice] = 1;
+                        });
+                    }
                 }
             });
 
@@ -468,7 +514,7 @@ function create_ui() {
 
 function onTargetColumnChange(element) {
     // this on change event shared between color_target_column, size_target_column.
-
+    let engine = $('[name=engine]:checked').val();
     let column = $(element).val();
     let widget = $('.widget[data-column="' + column + '"]');
     let controller = $(widget).attr('data-controller');
@@ -476,13 +522,64 @@ function onTargetColumnChange(element) {
     // color or size
     let prefix = element.getAttribute('id').split('_')[0];
 
+    // show column related panel.
+    // for linear values, show slider panel
+    // for discreete values, show legend panel
     // read the min/max from slider and put into prefixed input in perspective
     if (controller == 'slider') {
+        $(`#${prefix}_slider_panel`).show();
+        $(`#${prefix}_legend_panel`).hide();
         let slider = $(widget).find('input');
 
         $(`#${prefix}_min`).val($(slider).attr('data-slider-min'));
         $(`#${prefix}_max`).val($(slider).attr('data-slider-max'));
+    } 
+    else 
+    {
+        $(`#${prefix}_slider_panel`).hide();
+        $(`#${prefix}_legend_panel`).show();
+
+        // populate color legend.
+        $(`#${prefix}_legend_panel`).empty();
+
+        let legend_items = window[`${prefix}_legend`][engine][column];
+
+        for (let key in legend_items) {
+            let value = legend_items[key];
+
+            if (prefix == 'color') {
+                $(`#color_legend_panel`).append(`<div class="colorpicker colorpicker-legend" 
+                                                          color="${value}"
+                                                          style="background-color:${value}"
+                                                          data-engine="${engine}"
+                                                          data-column="${column}"
+                                                          data-key=${key}>
+                                                     </div>${key}<br/>`);
+            } else {
+                $(`#size_legend_panel`).append(`<input type="text" value="${value}"
+                                                        onblur="size_legend['${engine}']['${column}']['${key}'] = parseFloat(this.value); draw_variability();">
+                                                        ${key}<br/>`);
+            }
+        }
     }
+
+    $('.colorpicker-legend').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+            color_legend[$(el).attr('data-engine')][$(el).attr('data-column')][$(el).attr('data-key')] = '#' + hex;
+            draw_variability();
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
+    draw_variability();
 }
 
 
