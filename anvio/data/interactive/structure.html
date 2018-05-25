@@ -68,6 +68,7 @@
 
                             </div>
                         </div>
+                        <button onclick="export_image();">Take selfie</button>
                     </div>
                     <div id="tab_filters" role="tabpanel" class="tab-pane fade">
                         <div id="controls">
@@ -96,21 +97,27 @@
                                 <label class="col-md-4 settings-label">Column: </label>  
                                 <div class="col-md-8"><select id="color_target_column" onChange="onTargetColumnChange(this);"></select></div>
                             </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Min Value: </label>  
-                                <div class="col-md-8"><input type="input" id="color_min" value="0"></div>
+                            <div id="color_slider_panel">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Min Value: </label>  
+                                    <div class="col-md-8"><input type="input" id="color_min" value="0"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Start Color: </label>  
+                                    <div class="col-md-8"><div class="colorpicker" id="color_start" color="#FFFFFF" style="background-color: #FFFFFF"></div></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Max Value: </label>  
+                                    <div class="col-md-8"><input type="input" id="color_max" value="1"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">End Color: </label>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_end" color="#000000" style="background-color: #000000"></div></div>
+                                </div>
                             </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Start Color: </label>  
-                                <div class="col-md-8"><div class="colorpicker" id="color_start" color="#FFFFFF" style="background-color: #FFFFFF"></div></div>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Max Value: </label>  
-                                <div class="col-md-8"><input type="input" id="color_max" value="1"></div>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">End Color: </label>
-                                <div class="col-md-8"><div class="colorpicker" id="color_end" color="#000000" style="background-color: #000000"></div></div>
+                            <div id="color_legend_panel">
+
+
                             </div>
                         </div>
                         <div class="clearfix"></div>
@@ -135,21 +142,26 @@
                                 <label class="col-md-4 settings-label">Column: </label>  
                                 <div class="col-md-8"><select id="size_target_column" onChange="onTargetColumnChange(this);"></select></div>
                             </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Min Value: </label>  
-                                <div class="col-md-8"><input type="input" id="size_min" value="0"></div>
+                            <div id="size_slider_panel">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Min Value: </label>  
+                                    <div class="col-md-8"><input type="input" id="size_min" value="0"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Size Start: </label>  
+                                    <div class="col-md-8"><input type="input" id="size_start" value="0.4"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Max Value: </label>  
+                                    <div class="col-md-8"><input type="input" id="size_max" value="1"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Size End: </label>  
+                                    <div class="col-md-8"><input type="input" id="size_end" value="1.4"></div>
+                                </div>
                             </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Size Start: </label>  
-                                <div class="col-md-8"><input type="input" id="size_start" value="0.4"></div>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Max Value: </label>  
-                                <div class="col-md-8"><input type="input" id="size_max" value="1"></div>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Size End: </label>  
-                                <div class="col-md-8"><input type="input" id="size_end" value="1.4"></div>
+                            <div id="size_legend_panel">
+
                             </div>
                         </div>
                         <div class="clearfix"></div>
