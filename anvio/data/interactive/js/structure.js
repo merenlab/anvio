@@ -300,7 +300,12 @@ function draw_variability() {
                     }
                 });
 
-                variability[group] = data;
+                let codon_to_variability = {};
+                for (let index in data) {
+                    codon_to_variability[data[index]['codon_order_in_gene']] = data[index];
+                }
+
+                variability[group] = codon_to_variability;
 
                 if (Object.keys(data).length > 0) {
                     for (let index in data) {
