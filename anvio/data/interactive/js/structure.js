@@ -1,4 +1,5 @@
 var stages = {};
+var variability = {};
 var histogram_data;
 var sample_groups;
 var pdb_content;
@@ -163,6 +164,33 @@ function create_ngl_views() {
             backgroundColor: "white"
         });
 
+        // prevent default tooltip
+        stage.mouseControls.remove("hoverPick");
+
+        // add custom tooltip
+        stage.signals.hovered.add(function (pickingProxy) {
+            let tooltip = document.getElementById('ngl-tooltip');
+
+            if (pickingProxy && pickingProxy.atom) {
+                let residue = pickingProxy.atom.resno;
+                let mp = pickingProxy.mouse.position;
+
+                if (variability[group].hasOwnProperty(residue)) {
+                    tooltip.innerHTML = `<table>
+                            <tr><td>Coverage</td><td>${variability[group][residue]['coverage']}</td></tr>
+                            <tr><td>Cove</td><td>${variability[group][residue]['coverage']}</td></tr>
+                            <tr><td>Coverage</td><td>${variability[group][residue]['coverage']}</td></tr>
+                            </table>`;
+                    tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
+                    tooltip.style.left = mp.x + 3 + "px";
+                    tooltip.style.display = "block";
+                }
+            } else {
+                tooltip.style.display = "none";
+            }
+        });
+
+
         let func = () => { apply_orientation_matrix_to_all_stages( stage.viewerControls.getOrientation()); };
         stage.mouseObserver.signals.scrolled.add(() => { func(); });
         stage.mouseObserver.signals.dragged.add(() => { func(); });
@@ -264,6 +292,8 @@ function draw_variability() {
                         rep.dispose();
                     }
                 });
+
+                variability[group] = data;
 
                 if (Object.keys(data).length > 0) {
                     for (let index in data) {

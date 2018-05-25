@@ -101,3 +101,22 @@ body {
     margin-bottom: 5px;
     margin-top: 12px;
 }
+
+.ngl-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    pointer-events: none;
+    background-color: rgba( 0, 0, 0, 0.6 );
+    color: lightgrey;
+    padding: 8px;
+    font-family: sans-serif;
+}
+
+.ngl-tooltip > table {
+    color: white;
+}
+
+.ngl-tooltip > table td {
+    padding: 2px 4px;
+}
