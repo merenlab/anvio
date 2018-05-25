@@ -19,6 +19,12 @@ $(document).ready(function() {
         $(this).colpickSetColor(this.value);
     });
 
+    window.addEventListener( "resize", function( event ){
+        for (let group in stages) {
+            stages[group].handleResize();
+        }
+    }, false );
+
     $('#gene_callers_id_list').on('change', function(ev) {
         $.when({}).then(load_protein).then(() => {
             create_ui();
