@@ -344,7 +344,7 @@ function draw_variability() {
                         }
 
                         if ($('#size_type').val() == 'Dynamic') {
-                            let column = $('#color_target_column').val();
+                            let column = $('#size_target_column').val();
                             let widget = $('.widget[data-column="' + column + '"]');
                             let controller = $(widget).attr('data-controller');
                             let column_value = data[index][column];
