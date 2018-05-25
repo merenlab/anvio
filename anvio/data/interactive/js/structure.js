@@ -284,6 +284,7 @@ function draw_variability() {
         data: {'options': JSON.stringify(options)},
         url: '/data/get_variability',
         success: function(response_all) {
+            variability = {};
             for (let group in response_all) {
                 let response = response_all[group];
                 
