@@ -46,7 +46,6 @@ class StructureDatabase(object):
         self.quiet       = quiet
         self.run         = run
         self.progress    = progress
-        self.table_names = None
 
         if not db_hash and create_new:
             raise ConfigError("You cannot create a Structure DB without supplying a DB hash.")
@@ -56,7 +55,7 @@ class StructureDatabase(object):
         if create_new:
             # structure of the residue info table depend on annotation sources used
             self.residue_info_structure, self.residue_info_types = self.get_residue_info_table_structure(residue_info_structure_extras, residue_info_types_extras)
-            self.table_names = self.create_tables()
+            self.create_tables()
         else:
             self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
 
@@ -109,12 +108,6 @@ class StructureDatabase(object):
         self.db.create_table(t.structure_templates_table_name, t.structure_templates_table_structure, t.structure_templates_table_types)
         self.db.create_table(t.structure_models_table_name, t.structure_models_table_structure, t.structure_models_table_types)
         self.db.create_table(t.structure_residue_info_table_name, self.residue_info_structure, self.residue_info_types)
-
-        table_names = [t.structure_pdb_data_table_name,
-                       t.structure_templates_table_name,
-                       t.structure_models_table_name,
-                       t.structure_residue_info_table_name]
-        return table_names
 
 
     def check_hash(self):
@@ -179,8 +172,8 @@ class Structure(object):
         self.skip_DSSP               = A('skip_DSSP', bool)
         self.DSSP_executable         = None
 
-        contigs_db                   = dbops.ContigsDatabase(self.contigs_db_path)
-        contigs_db_hash              = contigs_db.meta['contigs_db_hash']
+        self.contigs_db              = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash         = self.contigs_db.meta['contigs_db_hash']
 
         # MODELLER params
         self.modeller_database       = A('modeller_database', null)
@@ -192,10 +185,31 @@ class Structure(object):
         self.very_fast               = A('very_fast', bool)
 
         # check outputs are writable
-        filesnpaths.is_output_file_writable(self.output_db_path)
+        filesnpaths.is_output_file_writable(self.output_db_path, ok_if_exists=True)
         if self.full_modeller_output:
             self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=False)
 
+
+    def new_database_init(self):
+        # identify which genes user wants to model structures for
+        self.genes_of_interest = self.get_genes_of_interest(self.gene_caller_ids, self.genes_of_interest_path)
+
+        self.sanity_check()
+
+        # residue annotation
+        self.annotation_sources_info = self.get_annotation_sources_info()
+        self.residue_info_table_structure, self.residue_info_table_types = self.get_residue_info_table_structure()
+        self.res_annotation_df = pd.DataFrame({})
+
+        # initialize StructureDatabase
+        self.structure_db = StructureDatabase(self.output_db_path,
+                                              self.contigs_db_hash,
+                                              residue_info_structure_extras = self.residue_info_table_structure,
+                                              residue_info_types_extras = self.residue_info_table_types,
+                                              create_new=True)
+
+
+    def update_database_init(self):
         # identify which genes user wants to model structures for
         self.get_genes_of_interest()
 
@@ -208,7 +222,7 @@ class Structure(object):
 
         # initialize StructureDatabase
         self.structure_db = StructureDatabase(self.output_db_path,
-                                              contigs_db_hash,
+                                              self.contigs_db_hash,
                                               residue_info_structure_extras = self.residue_info_table_structure,
                                               residue_info_types_extras = self.residue_info_table_types,
                                               create_new=True)
@@ -270,7 +284,7 @@ class Structure(object):
     def sanity_check(self):
 
         # check for genes that do not appear in the contigs database
-        bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_database]
+        bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_contigs_database]
         if bad_gene_caller_ids:
             raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
                                "These gene caller ids you provided are") + " not known to this contigs database: {}.\
@@ -311,53 +325,58 @@ class Structure(object):
                                   % self.DSSP_executable, nl_before=1, nl_after=1)
 
 
-    def get_genes_of_interest(self):
+    def get_genes_of_interest(self, gene_caller_ids=None, genes_of_interest_path=None):
         """
         nabs the genes of interest based on user arguments (self.args)
         """
-        self.genes_of_interest = None
+        genes_of_interest = None
 
         # identify the gene caller ids of all genes available
-        self.genes_in_database = set(dbops.ContigsSuperclass(self.args).genes_in_splits.keys())
+        self.genes_in_contigs_database = set(dbops.ContigsSuperclass(self.args).genes_in_splits.keys())
 
-        if not self.genes_in_database:
+        if not self.genes_in_contigs_database:
             raise ConfigError("This contigs database does not contain any identified genes...")
 
         # settling genes of interest
-        if self.genes_of_interest_path and self.gene_caller_ids:
+        if genes_of_interest_path and gene_caller_ids:
             raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids\
                                as a file at the same time, obviously.")
 
-        if self.gene_caller_ids:
-            self.gene_caller_ids = set([x.strip() for x in self.gene_caller_ids.split(',')])
+        if gene_caller_ids:
+            gene_caller_ids = set([x.strip() for x in gene_caller_ids.split(',')])
 
-            self.genes_of_interest = []
-            for gene in self.gene_caller_ids:
+            genes_of_interest = []
+            for gene in gene_caller_ids:
                 try:
-                    self.genes_of_interest.append(int(gene))
+                    genes_of_interest.append(int(gene))
                 except:
                     raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(gene))
 
-            self.genes_of_interest = set(self.genes_of_interest)
+            genes_of_interest = set(genes_of_interest)
 
-        elif self.genes_of_interest_path:
-            filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
+        elif genes_of_interest_path:
+            filesnpaths.is_file_tab_delimited(genes_of_interest_path, expected_number_of_fields=1)
 
             try:
-                self.genes_of_interest = set([int(s.strip()) for s in open(self.genes_of_interest_path).readlines()])
+                genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
             except ValueError:
                 raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not\
                                    look like anvi'o gene caller ids :/ Anvi'o is now sad.")
 
-        if not self.genes_of_interest:
+        if not genes_of_interest:
             # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
-            self.genes_of_interest = self.genes_in_database
+            genes_of_interest = self.genes_in_contigs_database
             self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
+
+        return genes_of_interest
+
+
+    def process_for_updating_database(self):
+        """Process for updating an existing structure database"""
 
 
     def process(self):
-        """
-        """
+        """Process for generating a new structure database"""
 
         # will be empty if all sources in self.annotation_sources_info have "skip": True
         residue_annotation_methods = [info["method"] for _, info in self.annotation_sources_info.items() if not info["skip"]]
@@ -380,10 +399,7 @@ class Structure(object):
                                                       quiet =True)
 
             # Model structure
-            #try:
             modeller_out = self.run_modeller(corresponding_gene_call)
-            #except ModellerScriptError as e:
-            #    print(e)
 
             has_structure[modeller_out["structure_exists"]].append(str(corresponding_gene_call))
 
@@ -402,7 +418,7 @@ class Structure(object):
 
         if not has_structure[True]:
             raise ConfigError("Well this is really sad. No structures were modelled, and therefore\
-                               there is no structure database to create. Bye :'(")
+                               there is nothing to be done. Bye :'(")
 
         # add metadata
         self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in self.genes_of_interest]))
@@ -415,6 +431,10 @@ class Structure(object):
         self.structure_db.db.set_meta_value('deviation', self.deviation)
 
         self.structure_db.disconnect()
+
+
+    def update_meta_table(self):
+        pass
 
 
     def run_residue_annotation_for_gene(self, residue_annotation_methods, corresponding_gene_call, pdb_filepath):

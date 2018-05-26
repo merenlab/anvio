@@ -27,6 +27,7 @@ progress = terminal.Progress()
 def main(args):
 
     structure = structops.Structure(args)
+    structure.new_database_init()
     structure.process()
 
 
