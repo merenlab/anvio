@@ -36,6 +36,7 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
     groupG = parser.add_argument_group('GENES', 'Specifying which genes you want to be modelled.')
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style.')
+    groupE = parser.add_argument_group('MODELLER EXECUTABLE', 'Which executable program to use for MODELLER, e.g. mod9.19')
 
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
@@ -57,6 +58,9 @@ if __name__ == '__main__':
                            in the file should be a gene caller id.""")
 
     groupO.add_argument(*anvio.A('dump-dir'), **anvio.K('dump-dir'))
+
+    groupE.add_argument("--modeller-executable", type=str, help = \
+                        """ The MODELLER program to use. For example, `mod9.19`. The default is `mod9.19`""")
 
     args = parser.parse_args()
 

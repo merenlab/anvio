@@ -47,6 +47,7 @@ class StructureDatabase(object):
         self.run         = run
         self.progress    = progress
         self.table_names = None
+        self.create_new = create_new
 
         if not db_hash and create_new:
             raise ConfigError("You cannot create a Structure DB without supplying a DB hash.")
@@ -166,30 +167,31 @@ class Structure(object):
         self.progress = progress
 
         # initialize self.arg parameters
-        A                            = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
-        null                         = lambda x: x
-        self.contigs_db_path         = A('contigs_db', null)
-        self.genes_of_interest_path  = A('genes_of_interest', null)
-        self.splits_of_interest_path = A('splits_of_interest', null)
-        self.bin_id                  = A('bin_id', null)
-        self.collection_name         = A('collection_name', null)
-        self.gene_caller_ids         = A('gene_caller_ids', null)
-        self.output_db_path          = A('output_db_path', null)
-        self.full_modeller_output    = A('dump_dir', null)
-        self.skip_DSSP               = A('skip_DSSP', bool)
-        self.DSSP_executable         = None
+        A                             = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
+        null                          = lambda x: x
+        self.contigs_db_path          = A('contigs_db', null)
+        self.genes_of_interest_path   = A('genes_of_interest', null)
+        self.splits_of_interest_path  = A('splits_of_interest', null)
+        self.bin_id                   = A('bin_id', null)
+        self.collection_name          = A('collection_name', null)
+        self.gene_caller_ids          = A('gene_caller_ids', null)
+        self.output_db_path           = A('output_db_path', null)
+        self.full_modeller_output     = A('dump_dir', null)
+        self.skip_DSSP                = A('skip_DSSP', bool)
+        self.modeller_executable      = A('modeller_executable', null)
+        self.DSSP_executable          = None
 
-        contigs_db                   = dbops.ContigsDatabase(self.contigs_db_path)
-        contigs_db_hash              = contigs_db.meta['contigs_db_hash']
+        self.contigs_db                = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash           = self.contigs_db.meta['contigs_db_hash']
 
         # MODELLER params
-        self.modeller_database       = A('modeller_database', null)
-        self.scoring_method          = A('scoring_method', null)
-        self.max_matches             = A('max_number_templates', null)
-        self.min_proper_pident       = A('percent_identical_cutoff', null)
-        self.num_models              = A('num_models', null)
-        self.deviation               = A('deviation', null)
-        self.very_fast               = A('very_fast', bool)
+        self.modeller_database        = A('modeller_database', null)
+        self.scoring_method           = A('scoring_method', null)
+        self.max_number_templates     = A('max_number_templates', null)
+        self.percent_identical_cutoff = A('percent_identical_cutoff', null)
+        self.num_models               = A('num_models', null)
+        self.deviation                = A('deviation', null)
+        self.very_fast                = A('very_fast', bool)
 
         # check outputs are writable
         filesnpaths.is_output_file_writable(self.output_db_path)
@@ -208,7 +210,7 @@ class Structure(object):
 
         # initialize StructureDatabase
         self.structure_db = StructureDatabase(self.output_db_path,
-                                              contigs_db_hash,
+                                              self.contigs_db_hash,
                                               residue_info_structure_extras = self.residue_info_table_structure,
                                               residue_info_types_extras = self.residue_info_table_types,
                                               create_new=True)
@@ -270,7 +272,7 @@ class Structure(object):
     def sanity_check(self):
 
         # check for genes that do not appear in the contigs database
-        bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_database]
+        bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_contigs_database]
         if bad_gene_caller_ids:
             raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
                                "These gene caller ids you provided are") + " not known to this contigs database: {}.\
@@ -284,9 +286,9 @@ class Structure(object):
                               CTRL + C to cancel.".format(len(self.genes_of_interest)))
 
         # if self.percent_identical_cutoff is < 25, you should be careful about accuracy of models
-        if self.min_proper_pident < 25:
+        if self.percent_identical_cutoff < 25:
             self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention \
-                              to the quality of the proteins...".format(self.min_proper_pident))
+                              to the quality of the proteins...".format(self.percent_identical_cutoff))
 
         # check that DSSP exists
         if self.skip_DSSP:
@@ -320,9 +322,9 @@ class Structure(object):
         genes_of_interest = None
 
         # identify the gene caller ids of all genes available
-        self.genes_in_database = set(dbops.ContigsSuperclass(self.args).genes_in_splits.keys())
+        self.genes_in_contigs_database = set(dbops.ContigsSuperclass(self.args).genes_in_splits.keys())
 
-        if not self.genes_in_database:
+        if not self.genes_in_contigs_database:
             raise ConfigError("This contigs database does not contain any identified genes...")
 
         # settling genes of interest
@@ -353,7 +355,7 @@ class Structure(object):
 
         if not genes_of_interest:
             # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
-            genes_of_interest = self.genes_in_database
+            genes_of_interest = self.genes_in_contigs_database
             self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
 
         return genes_of_interest
@@ -381,13 +383,10 @@ class Structure(object):
             dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path,
                                                       self.args.target_fasta_path,
                                                       set([corresponding_gene_call]),
-                                                      quiet =True)
+                                                      quiet = True)
 
             # Model structure
-            #try:
             modeller_out = self.run_modeller(corresponding_gene_call)
-            #except ModellerScriptError as e:
-            #    print(e)
 
             has_structure[modeller_out["structure_exists"]].append(str(corresponding_gene_call))
 
@@ -405,24 +404,37 @@ class Structure(object):
                 self.dump_results_to_full_output()
 
         if not has_structure[True]:
-            raise ConfigError("Well this is really sad. No structures were modelled, and therefore\
-                               there is no structure database to create. Bye :'(")
+            raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
 
         # add metadata
-        self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in self.genes_of_interest]))
-        self.structure_db.db.set_meta_value('genes_with_structure', ",".join(has_structure[True]))
-        self.structure_db.db.set_meta_value('genes_without_structure', ",".join(has_structure[False]))
-        self.structure_db.db.set_meta_value('modeller_database', self.modeller.modeller_database)
-        self.structure_db.db.set_meta_value('scoring_method', self.scoring_method)
-        self.structure_db.db.set_meta_value('min_proper_pident', str(self.min_proper_pident))
-        self.structure_db.db.set_meta_value('very_fast', str(int(self.very_fast)))
-        self.structure_db.db.set_meta_value('deviation', self.deviation)
-        self.structure_db.db.set_meta_value('max_matches', self.max_matches)
-        self.structure_db.db.set_meta_value('num_models', self.num_models)
-        for key, val in self.annotation_sources_info.items():
-            self.structure_db.db.set_meta_value("skip_" + key, str(int(val["skip"])))
+        self.update_structure_database_meta_table(has_structure)
 
         self.structure_db.disconnect()
+
+
+    def update_structure_database_meta_table(self, has_structure):
+        if self.structure_db.create_new:
+            self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in self.genes_of_interest]))
+            self.structure_db.db.set_meta_value('genes_with_structure', ",".join(has_structure[True]))
+            self.structure_db.db.set_meta_value('genes_without_structure', ",".join(has_structure[False]))
+            self.structure_db.db.set_meta_value('modeller_database', self.modeller.modeller_database)
+            self.structure_db.db.set_meta_value('scoring_method', self.scoring_method)
+            self.structure_db.db.set_meta_value('percent_identical_cutoff', str(self.percent_identical_cutoff))
+            self.structure_db.db.set_meta_value('very_fast', str(int(self.very_fast)))
+            self.structure_db.db.set_meta_value('deviation', self.deviation)
+            self.structure_db.db.set_meta_value('max_number_templates', self.max_number_templates)
+            self.structure_db.db.set_meta_value('num_models', self.num_models)
+            for key, val in self.annotation_sources_info.items():
+                self.structure_db.db.set_meta_value("skip_" + key, str(int(val["skip"])))
+
+        else:
+            new_genes_queried = list(self.structure_db.genes_queried) + list(self.genes_of_interest)
+            new_genes_with_structure = list(self.structure_db.genes_with_structure) + has_structure[True]
+            new_genes_without_structure = list(self.structure_db.genes_without_structure) + has_structure[False]
+
+            self.structure_db.db.update_meta_value('genes_queried', ",".join([str(x) for x in new_genes_queried]))
+            self.structure_db.db.update_meta_value('genes_with_structure', ",".join([str(x) for x in new_genes_with_structure]))
+            self.structure_db.db.update_meta_value('genes_without_structure', ",".join([str(x) for x in new_genes_without_structure]))
 
 
     def run_residue_annotation_for_gene(self, residue_annotation_methods, corresponding_gene_call, pdb_filepath):
@@ -601,16 +613,14 @@ class StructureUpdate(Structure):
         self.genes_to_add         = A('genes_to_add', null)
         self.genes_to_add_path    = A('genes_to_add_file', null)
         self.full_modeller_output = A('dump_dir', null)
+        self.modeller_executable  = A('modeller_executable', null)
         self.DSSP_executable      = None
 
-        contigs_db                = dbops.ContigsDatabase(self.contigs_db_path)
-        contigs_db_hash           = contigs_db.meta['contigs_db_hash']
+        self.contigs_db           = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash      = self.contigs_db.meta['contigs_db_hash']
 
-        # initialize StructureDatabase
-        utils.is_structure_db(self.structure_db_path)
-        self.structure_db = StructureDatabase(self.structure_db_path,
-                                              contigs_db_hash,
-                                              create_new=False)
+        if not self.genes_to_remove and not self.genes_to_remove_path:
+            raise ConfigError("Please specify some genes to add or remove to your database.")
 
         if self.genes_to_remove and self.genes_to_remove_path:
             raise ConfigError("Provide either --genes-to-remove or --genes-to-remove-path. You provided both.")
@@ -619,28 +629,42 @@ class StructureUpdate(Structure):
             raise ConfigError("Provide either --genes-to-add or --genes-to-add-path. You provided both.")
 
         if self.genes_to_remove or self.genes_to_remove_path:
+            self.run.warning("Removing genes...", header="Updating %s" % self.structure_db_path, lc='green')
+            self.load_structure_db()
             remove = self.parse_genes(self.genes_to_remove, self.genes_to_remove_path)
             self.remove_genes(remove)
+            self.structure_db.disconnect()
 
         if self.genes_to_add or self.genes_to_add_path:
+            self.run.warning("Adding genes...", header="Updating %s" % self.structure_db_path, lc='green')
+            self.load_structure_db()
             self.add_genes()
 
+
+    def load_structure_db(self):
+        utils.is_structure_db(self.structure_db_path)
+        self.structure_db = StructureDatabase(self.structure_db_path,
+                                              self.contigs_db_hash,
+                                              create_new=False)
+
     def add_genes(self):
+        # identify which genes user wants to model structures for
+        self.genes_of_interest = self.get_genes_of_interest(self.genes_to_add_path, self.genes_to_add)
+        self.run.info("Gene caller ids to be added", ", ".join([str(x) for x in self.genes_of_interest]))
+
         self.get_MODELLER_params_used_when_db_was_created()
 
-        # identify which genes user wants to model structures for
-        self.genes_of_interest = self.get_genes_of_interest(self.genes_to_remove_path, self.genes_to_remove)
-
-        self.sanity_check()
+        self.sanity_check_for_adding_genes()
 
         # residue annotation
         self.annotation_sources_info = self.get_annotation_sources_info()
         self.res_annotation_df = pd.DataFrame({})
 
-
-
         if self.full_modeller_output:
             self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=True)
+
+        self.process()
+        self.run.info_single("Anvi'o attempted to add the requested genes. The above log can inform you which were successful.", nl_after=1, nl_before=1)
 
 
     def remove_genes(self, remove):
@@ -661,7 +685,10 @@ class StructureUpdate(Structure):
 
         remove = set([x for x in remove if x not in bad_ids])
 
-        self.run.info("Genes to be removed", ", ".join([str(x) for x in remove]))
+        if remove == set(self.structure_db.genes_queried):
+            raise ConfigError("You want to remove every gene in your structure database. No.")
+
+        self.run.info("Gene caller ids to be removed", ", ".join([str(x) for x in remove]))
 
         # remove ids from the three meta-keys in which they can appear
         new_genes_queried = [x for x in self.structure_db.genes_queried if x not in remove]
@@ -712,17 +739,68 @@ class StructureUpdate(Structure):
         meta_table_dict = self.structure_db.db.get_table_as_dict("self")
         modeller_params = [('modeller_database', str),
                            ('scoring_method', str),
-                           ('min_proper_pident', float),
+                           ('percent_identical_cutoff', float),
                            ('very_fast', lambda x: bool(int(x))),
                            ('deviation', float),
-                           ('max_matches', int),
+                           ('max_number_templates', int),
                            ('num_models', int),
                            ('skip_DSSP', lambda x: bool(int(x))),
                            ('skip_STRIDE', lambda x: bool(int(x)))]
 
-        self.run.info_single("Previous parameters used for creating the structure database")
+        self.run.info_single("Previous parameters used for creating the structure database", nl_before=1)
         for param, cast_type in modeller_params:
-            setattr(self, param, cast_type(meta_table_dict[param]["value"]))
+            setattr(self, param, cast_type(meta_table_dict[param]["value"])) # set to self
+            setattr(self.args, param, cast_type(meta_table_dict[param]["value"])) # set to self.args (passed to MODELLER)
             self.run.info(param, getattr(self, param))
 
         self.progress.end()
+
+
+    def sanity_check_for_adding_genes(self):
+
+        # check for genes that do not appear in the contigs database
+        bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_contigs_database]
+        if bad_gene_caller_ids:
+            raise ConfigError(("This gene caller id you" if len(bad_gene_caller_ids) == 1 else \
+                               "These gene caller ids you") + " want to add to the structure database\
+                               are not known to the contigs database: {}. You have only 2 lives\
+                               left. 2 more mistakes, and anvi'o will automatically uninstall\
+                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+
+        # check for genes that do already appear in the structure database
+        redundant_gene_caller_ids = [g for g in self.genes_of_interest if g in self.structure_db.genes_queried]
+        if redundant_gene_caller_ids:
+            raise ConfigError(("This gene caller id you" if len(redundant_gene_caller_ids) == 1 else \
+                               "These gene caller ids you") + " want to add to the structure database\
+                               is already in the structure database: {}. If you want to re-do the\
+                               modelling, then first remove it with --genes-to-remove or\
+                               --genes-to-remove-file (you can do it in the same\
+                               anvi-update-genes-in-structure-database command).".\
+                                   format(", ".join([str(x) for x in redundant_gene_caller_ids])))
+
+        # raise warning if number of genes is greater than 20
+        if len(self.genes_of_interest) > 20:
+            self.run.warning("Modelling protein structures is no joke. The number of genes you want\
+                              to append to the structure database is {}, which is a lot (of time!).\
+                              CTRL + C to cancel.".format(len(self.genes_of_interest)))
+
+        if not self.skip_DSSP:
+            if utils.is_program_exists("mkdssp", dont_raise=True): # mkdssp is newer and preferred
+                self.DSSP_executable = "mkdssp"
+
+            if not self.DSSP_executable:
+                if utils.is_program_exists("dssp", dont_raise=True):
+                    self.DSSP_executable = "dssp"
+                else:
+                    raise ConfigError("An anvi'o function needs 'mkdssp' or 'dssp' to be installed on your system, but\
+                                       neither seem to appear in your path :/ If you are certain you have either on your\
+                                       system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal\
+                                       window), you may want to send a detailed bug report. If you want to install DSSP,\
+                                       check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp.\
+                                       If you want to skip secondary structure and solvent accessibility annotation,\
+                                       provide the flag --skip-DSSP.")
+
+            self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
+                                  % self.DSSP_executable, nl_before=1, nl_after=1)
+
+
