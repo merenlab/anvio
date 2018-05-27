@@ -181,6 +181,7 @@ class Structure(object):
         self.modeller_executable      = A('modeller_executable', null)
         self.DSSP_executable          = None
 
+        utils.is_contigs_db(self.contigs_db_path)
         self.contigs_db                = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash           = self.contigs_db.meta['contigs_db_hash']
 
@@ -616,6 +617,7 @@ class StructureUpdate(Structure):
         self.modeller_executable  = A('modeller_executable', null)
         self.DSSP_executable      = None
 
+        utils.is_contigs_db(self.contigs_db_path)
         self.contigs_db           = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash      = self.contigs_db.meta['contigs_db_hash']
 
