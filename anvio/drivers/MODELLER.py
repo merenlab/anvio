@@ -47,13 +47,15 @@ class MODELLER:
         self.run = run
         self.progress = progress
 
+        up_to_date_modeller_exec = "mod9.19" # default exec to use
+
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
         self.scoring_method = A('scoring_method', str)
         self.deviation = A('deviation', float)
         self.directory = A('directory', str)
         self.very_fast = A('very_fast', bool)
-        self.executable = A('modeller_executable', null) or "mod9.19"
+        self.executable = A('modeller_executable', null) or up_to_date_modeller_exec
         self.num_models = A('num_models', int)
         self.target_fasta_path = A('target_fasta_path', str)
         self.modeller_database = A('modeller_database', str) or "pdb_95"
@@ -262,12 +264,15 @@ class MODELLER:
             filesnpaths.gen_output_directory(self.directory)
 
         # check that MODELLER exists
-        utils.is_program_exists(self.executable)
-        if A('executable', null):
-            self.run.warning("As per your request, anvi'o will use %s to run MODELER." % self.executable)
+        if self.args.__dict__['modeller_executable'] if 'modeller_executable' in self.args.__dict__ else None:
+            self.run.info_single("As per your request, anvi'o will use `%s` to run MODELLER." % self.executable,
+                                  nl_before=1)
+            utils.is_program_exists(self.executable)
         else:
-            self.run.info_single("Anvi'o found the default executable for MODELLER, %s, and will\
+            utils.is_program_exists(self.executable)
+            self.run.info_single("Anvi'o found the default executable for MODELLER, `%s`, and will\
                                   use it." % self.executable, nl_before=1)
+        self.is_executable_a_MODELLER_program()
 
         # All MODELLER scripts are housed in self.script_folder
         self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
@@ -581,6 +586,48 @@ class MODELLER:
         shutil.copy2(script_path, self.directory)
 
 
+    def is_executable_a_MODELLER_program(self):
+        test_script = os.path.abspath(J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts/fasta_to_pir.py'))
+        test_input = os.path.abspath(J(os.path.dirname(anvio.__file__), '../tests/sandbox/mock_data_for_structure/proteins.fa'))
+        test_output = filesnpaths.get_temp_file_path()
+
+        command = [self.executable,
+                   test_script,
+                   test_input,
+                   test_output]
+
+        # try and execute the command
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, error = process.communicate()
+
+        if process.returncode:
+            # modeller has failed
+            error = error.decode('utf-8').strip()
+
+            is_licence_key_error = True if error.find('Invalid license key') > -1 else False
+            if is_licence_key_error:
+                # its a valid modeller program with no license key
+                license_target_file = error.split('\n')[-1]
+                raise ConfigError("MODELLER could not find your licence key. Please go to https://salilab.org/modeller/ and \
+                                   get a new license. After you receive an e-mail with your key, please open '%s' \
+                                   and replace 'XXXXX' with your key, save the file and try again. " % license_target_file)
+
+            else:
+                error = "\n" + "\n".join(error.split('\n'))
+                print(terminal.c(error, color='red'))
+                raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that\
+                                   it is a MODELLER program. That was determined by running the command `%s`, which raised the\
+                                   error seen above." % (self.executable, " ".join(command)))
+
+        # no error was raised. now check if output file exists
+        try:
+            filesnpaths.is_file_exists(test_output)
+        except FilesNPathsError:
+            raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that\
+                               it is a MODELLER program. That was determined by running the command `%s`, which did not\
+                               output the file expected." % (self.executable, " ".join(command)))
+
+
     def run_fasta_to_pir(self):
         """
         MODELLER uses their own .pir format for search and alignment instead of .fasta. This script
@@ -631,20 +678,12 @@ class MODELLER:
             self.progress.end()
             error = error.decode('utf-8').strip()
 
-            is_licence_key_error = True if error.find('Invalid license key') > -1 else False            
-
-            if is_licence_key_error:
-                license_target_file = error.split('\n')[-1]
-                raise ModellerError("MODELLER could not find your licence key. Please go to https://salilab.org/modeller/ and \
-                                    get a new license. After you receive an e-mail with your key, please open '%s' \
-                                    and replace 'XXXXX' with your key, save the file and try again. " % license_target_file)
-            else:
-                error = "\n" + "\n".join(error.split('\n'))
-                print(terminal.c(error, color='red'))
-                self.out["structure_exists"] = False
-                raise ModellerScriptError("The MODELLER script {} did not execute properly. Hopefully it is clear \
-                                            from the above error message. No structure is going to be modelled."\
-                                            .format(script_name))
+            error = "\n" + "\n".join(error.split('\n'))
+            print(terminal.c(error, color='red'))
+            self.out["structure_exists"] = False
+            raise ModellerScriptError("The MODELLER script {} did not execute properly. Hopefully it is clear \
+                                       from the above error message. No structure is going to be modelled."\
+                                       .format(script_name))
 
         # If we made it this far, the MODELLER script ran to completion. Now check outputs exist
         if check_output:
