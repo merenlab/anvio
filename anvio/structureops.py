@@ -304,8 +304,10 @@ class Structure(object):
                     raise ConfigError("An anvi'o function needs 'mkdssp' or 'dssp' to be installed on your system, but\
                                        neither seem to appear in your path :/ If you are certain you have either on your\
                                        system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal\
-                                       window), you may want to send a detailed bug report. If you want to skip secondary\
-                                       structure and solvent accessibility annotation, provide the flag --skip-DSSP.")
+                                       window), you may want to send a detailed bug report. If you want to install DSSP,\
+                                       check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp.\
+                                       If you want to skip secondary structure and solvent accessibility annotation,\
+                                       provide the flag --skip-DSSP.")
 
             self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
                                   % self.DSSP_executable, nl_before=1, nl_after=1)
@@ -620,8 +622,21 @@ class StructureUpdate(Structure):
             remove = self.parse_genes(self.genes_to_remove, self.genes_to_remove_path)
             self.remove_genes(remove)
 
+        if self.genes_to_add or self.genes_to_add_path:
+            self.add_genes()
 
-        #############3333
+    def add_genes(self):
+        self.get_MODELLER_params_used_when_db_was_created()
+
+        # identify which genes user wants to model structures for
+        self.genes_of_interest = self.get_genes_of_interest(self.genes_to_remove_path, self.genes_to_remove)
+
+        self.sanity_check()
+
+        # residue annotation
+        self.annotation_sources_info = self.get_annotation_sources_info()
+        self.res_annotation_df = pd.DataFrame({})
+
 
 
         if self.full_modeller_output:
@@ -629,12 +644,24 @@ class StructureUpdate(Structure):
 
 
     def remove_genes(self, remove):
+        self.progress.new("Removing genes from structure database")
 
         bad_ids = [x for x in remove if x not in self.structure_db.genes_queried]
         if len(bad_ids):
+            if len(bad_ids) == len(remove):
+                self.run.warning("All of the gene caller IDs you asked to remove are missing from\
+                                  the structure database, so there's no genes to remove. Here they\
+                                  are: [{}]. Anvi'o's trust in you decreases significantly."\
+                                      .format(",".join([str(x) for x in bad_ids])))
+                self.progress.end()
+                return
+
             self.run.warning("Some of the gene caller ids you asked to remove aren't in the\
-                              structure database. Here they are: [{}]. Anvi'o's trust in you\
-                              decreases slightly.".format(",".join([str(x) for x in bad_ids])))
+                              structure database. Here they are: [{}].".format(",".join([str(x) for x in bad_ids])))
+
+        remove = set([x for x in remove if x not in bad_ids])
+
+        self.run.info("Genes to be removed", ", ".join([str(x) for x in remove]))
 
         # remove ids from the three meta-keys in which they can appear
         new_genes_queried = [x for x in self.structure_db.genes_queried if x not in remove]
@@ -651,6 +678,9 @@ class StructureUpdate(Structure):
         for table_name in self.structure_db.db.get_table_names():
             if 'corresponding_gene_call' in self.structure_db.db.get_table_structure(table_name):
                 self.structure_db.db.remove_some_rows_from_table(table_name, where_clause, im_sure=True)
+
+        self.run.info_single("The requested genes have been successfully removed.", nl_after=1)
+        self.progress.end()
 
 
     def parse_genes(self, comma_delimited_genes=None, genes_filepath=None):
@@ -677,14 +707,22 @@ class StructureUpdate(Structure):
 
 
     def get_MODELLER_params_used_when_db_was_created(self):
-        self.modeller_database       = self.structure_db.db.get_meta_value('modeller_database')
-        self.scoring_method          = self.structure_db.db.get_meta_value('scoring_method')
-        self.min_proper_pident       = self.structure_db.db.get_meta_value('min_proper_pident')
+        self.progress.new("Determining parameters used during structure database creation")
 
+        meta_table_dict = self.structure_db.db.get_table_as_dict("self")
+        modeller_params = [('modeller_database', str),
+                           ('scoring_method', str),
+                           ('min_proper_pident', float),
+                           ('very_fast', lambda x: bool(int(x))),
+                           ('deviation', float),
+                           ('max_matches', int),
+                           ('num_models', int),
+                           ('skip_DSSP', lambda x: bool(int(x))),
+                           ('skip_STRIDE', lambda x: bool(int(x)))]
 
-        self.very_fast               = self.structure_db.db.get_meta_value('very_fast')
-        self.deviation               = self.structure_db.db.get_meta_value('deviation')
-        self.max_matches             = self.structure_db.db.get_meta_value('max_matches')
-        self.num_models              = self.structure_db.db.get_meta_value('num_models')
-        for key, val in self.annotation_sources_info.items():
-            setattr(self, "skip_" + key, str(int(val["skip"])))
+        self.run.info_single("Previous parameters used for creating the structure database")
+        for param, cast_type in modeller_params:
+            setattr(self, param, cast_type(meta_table_dict[param]["value"]))
+            self.run.info(param, getattr(self, param))
+
+        self.progress.end()
