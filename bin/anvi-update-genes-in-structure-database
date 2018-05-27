@@ -25,9 +25,7 @@ progress = terminal.Progress()
 
 
 def main(args):
-
     structure_update = structops.StructureUpdate(args)
-    structure_update.get_structure_meta_values()
 
 
 if __name__ == '__main__':
@@ -42,13 +40,21 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
 
-    groupG.add_argument("--gene-caller-ids-to-remove", "-r", type=str, help = \
+    groupG.add_argument("--genes-to-remove", "-r", type=str, help = \
                         """Gene caller ids to remove from your structure database. Multiple of them \
-                           can be declared separated by a delimiter (the default is a comma).""")
+                           can be declared by separating with comma (e.g. --genes-to-remove 2,4,5,6).""")
 
-    groupG.add_argument("--gene-caller-ids-to-add", "-a", type=str, help = \
-                        """Gene caller ids to add to your structure database. Multiple of them \
-                           can be declared separated by a delimiter (the default is a comma).""")
+    groupG.add_argument("--genes-to-remove-file", "-R", type=str, help = \
+                        """A file of gene caller ids to remove from your structure database. Each line \
+                           in the file should be a gene caller id.""")
+
+    groupG.add_argument("--genes-to-add", "-a", type=str, help = \
+                        """Gene caller ids to remove from your structure database. Multiple of them \
+                           can be declared by separating with comma (e.g. --genes-to-remove 2,4,5,6).""")
+
+    groupG.add_argument("--genes-to-add-file", "-A", type=str, help = \
+                        """A file of gene caller ids to remove from your structure database. Each line \
+                           in the file should be a gene caller id.""")
 
     groupO.add_argument(*anvio.A('dump-dir'), **anvio.K('dump-dir'))
 

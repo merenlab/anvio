@@ -271,6 +271,11 @@ class DB:
         return response.fetchall()[0][0]
 
 
+    def remove_some_rows_from_table(self, table_name, where_clause):
+        self._exec('''DELETE FROM %s WHERE %s''' % (table_name, where_clause))
+        self.commit()
+
+
     def get_some_rows_from_table(self, table_name, where_clause):
         response = self._exec('''SELECT * FROM %s WHERE %s''' % (table_name, where_clause))
         return response.fetchall()
