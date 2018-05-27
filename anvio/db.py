@@ -274,7 +274,7 @@ class DB:
     def remove_some_rows_from_table(self, table_name, where_clause, im_sure=False):
         if not im_sure:
             raise ConfigError("remove_some_rows_from_table :: Wow. You just tried to delete rows\
-                               from %s but you aren't sure. Make sure you are sure.")
+                               from %s but you aren't sure. Make sure you are sure." % table_name)
 
         self._exec('''DELETE FROM %s WHERE %s''' % (table_name, where_clause))
         self.commit()
