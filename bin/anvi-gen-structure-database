@@ -125,6 +125,9 @@ if __name__ == '__main__':
                         accessibility, and hydrogen bonds for each residue in the protein. If for
                         some reason you don't want this, provide this flag.""")
 
+    groupE.add_argument("--modeller-executable", type=str, help = \
+                        """ The MODELLER program to use. For example, `mod9.19`. The default is `mod9.19`""")
+
     args = parser.parse_args()
 
     try:
