@@ -53,12 +53,12 @@ class MODELLER:
         self.deviation = A('deviation', float)
         self.directory = A('directory', str)
         self.very_fast = A('very_fast', bool)
-        self.executable = A('executable', str) or "mod9.19"
+        self.executable = A('modeller_executable', null) or "mod9.19"
         self.num_models = A('num_models', int)
         self.target_fasta_path = A('target_fasta_path', str)
         self.modeller_database = A('modeller_database', str) or "pdb_95"
-        self.max_matches = A('max_number_templates', null)
-        self.min_proper_pident = A('percent_identical_cutoff', null)
+        self.max_number_templates = A('max_number_templates', null)
+        self.percent_identical_cutoff = A('percent_identical_cutoff', null)
         self.deviation = A('deviation', null)
 
         self.alignment_pap_path = None
@@ -85,7 +85,7 @@ class MODELLER:
             "best_model_path"         : None,
             "best_score"              : None,
             "scoring_method"          : self.scoring_method,
-            "min_proper_pident"       : self.min_proper_pident,
+            "percent_identical_cutoff"       : self.percent_identical_cutoff,
             "very_fast"               : self.very_fast,
             "deviation"               : self.deviation,
             }
@@ -172,14 +172,14 @@ class MODELLER:
         """
         Parses search results and filters for best homologs to use as structure templates.
 
-        parameters used :: self.min_proper_pident, self.max_matches
+        parameters used :: self.percent_identical_cutoff, self.max_number_templates
         """
-        if not self.min_proper_pident or not self.max_matches:
-            raise ConfigError("parse_search_results::You initiated this class without providing values for min_proper_pident \
-                               and max_matches, which is required for this function.")
+        if not self.percent_identical_cutoff or not self.max_number_templates:
+            raise ConfigError("parse_search_results::You initiated this class without providing values for percent_identical_cutoff \
+                               and max_number_templates, which is required for this function.")
 
         self.progress.new("PARSE AND FILTER HOMOLOGS")
-        self.progress.update("Finding those with percent identicalness > {}%".format(self.min_proper_pident))
+        self.progress.update("Finding those with percent identicalness > {}%".format(self.percent_identical_cutoff))
 
         # put names to the columns
         column_names = (      "idx"      ,  "code_and_chain"  ,       "type"     ,  "iteration_num"  ,
@@ -203,37 +203,37 @@ class MODELLER:
         search_df["code"] = search_df["code_and_chain"].str[:-1]
         search_df["chain"] = search_df["code_and_chain"].str[-1]
 
-        # filter results by self.min_proper_pident.
+        # filter results by self.percent_identical_cutoff.
         max_pident_found = search_df["proper_pident"].max()
         id_of_max_pident = tuple(search_df.loc[search_df["proper_pident"].idxmax(), ["code", "chain"]].values)
-        search_df = search_df[search_df["proper_pident"] >= self.min_proper_pident]
+        search_df = search_df[search_df["proper_pident"] >= self.percent_identical_cutoff]
 
-        # Order them and take the first self.modeller.max_matches.
+        # Order them and take the first self.modeller.max_number_templates.
         matches_after_filter = len(search_df)
         if not matches_after_filter:
             self.progress.end()
             self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal \
                               to {}%. The best match (ID: {}, chain: {}) was {:.2f}%. No structure will be modelled.".\
                               format(self.corresponding_gene_call,
-                                     self.min_proper_pident,
+                                     self.percent_identical_cutoff,
                                      id_of_max_pident[0],
                                      id_of_max_pident[1],
                                      max_pident_found))
             raise self.EndModeller
 
-        self.progress.update("Keeping top {} matches as the template homologs".format(self.max_matches))
+        self.progress.update("Keeping top {} matches as the template homologs".format(self.max_number_templates))
 
-        # of those filtered, get up to self.modeller.max_matches of those with the highest proper_ident scores.
+        # of those filtered, get up to self.modeller.max_number_templates of those with the highest proper_ident scores.
         search_df = search_df.sort_values("proper_pident", ascending=False)
-        search_df = search_df.iloc[:min([len(search_df), self.max_matches])]
+        search_df = search_df.iloc[:min([len(search_df), self.max_number_templates])]
 
         # Get their chain and 4-letter ids
         self.top_seq_matches = list(zip(search_df["code"], search_df["chain"]))
 
         self.progress.end()
-        self.run.info("Max number of templates allowed", self.max_matches)
+        self.run.info("Max number of templates allowed", self.max_number_templates)
         self.run.info("Number of candidate templates", matches_found)
-        self.run.info("After >{}% identical filter".format(self.min_proper_pident), matches_after_filter)
+        self.run.info("After >{}% identical filter".format(self.percent_identical_cutoff), matches_after_filter)
         self.run.info("Number accepted as templates", len(self.top_seq_matches))
 
         # update user on which templates are used, and write the templates to self.out
@@ -297,7 +297,7 @@ class MODELLER:
             self.run.warning("Since you chose --very-fast, there will be little difference, if at all, between models. You \
                               can potentially save a lot of time by setting --num-models to 1.")
 
-        if self.min_proper_pident <= 20:
+        if self.percent_identical_cutoff <= 20:
             self.run.warning("Two completely unrelated sequences of same length can expect to have around 10% proper \
                               percent identicalness... Having this parameter below 20% is probably a bad idea.")
 
