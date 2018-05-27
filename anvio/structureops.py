@@ -388,6 +388,8 @@ class Structure(object):
 
             # Model structure
             modeller_out = self.run_modeller(corresponding_gene_call)
+            if modeller_out["structure_exists"]:
+                self.run.info_single("Gene successfully modelled!", nl_after=1, mc="green")
 
             has_structure[modeller_out["structure_exists"]].append(str(corresponding_gene_call))
 
@@ -621,7 +623,7 @@ class StructureUpdate(Structure):
         self.contigs_db           = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash      = self.contigs_db.meta['contigs_db_hash']
 
-        if not self.genes_to_remove and not self.genes_to_remove_path:
+        if not any([self.genes_to_remove, self.genes_to_remove_path, self.genes_to_add, self.genes_to_add_path]):
             raise ConfigError("Please specify some genes to add or remove to your database.")
 
         if self.genes_to_remove and self.genes_to_remove_path:
@@ -706,7 +708,7 @@ class StructureUpdate(Structure):
         where_clause = 'corresponding_gene_call IN (%s)' % ','.join(['{}'.format(x) for x in remove])
         for table_name in self.structure_db.db.get_table_names():
             if 'corresponding_gene_call' in self.structure_db.db.get_table_structure(table_name):
-                self.structure_db.db.remove_some_rows_from_table(table_name, where_clause, im_sure=True)
+                self.structure_db.db.remove_some_rows_from_table(table_name, where_clause)
 
         self.run.info_single("The requested genes have been successfully removed.", nl_after=1)
         self.progress.end()
