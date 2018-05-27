@@ -363,8 +363,8 @@ D = {
              'metavar': 'CATEGORY',
              'help': "The additional layers data variable name that divides layers into multiple categories."}
                 ),
-    'min-portion-occurence-of-function-in-group': (
-            ['-P', '--min-portion-occurence-of-function-in-group'],
+    'min-portion-occurrence-of-function-in-group': (
+            ['-P', '--min-portion-occurrence-of-function-in-group'],
             {'metavar': 'PORTION',
              'default': 0,
              'type': float,
@@ -380,8 +380,8 @@ D = {
                      that occur in all members of one group and in none of the members of the other group.\
                      Default is %(default).1f."}
                 ),
-    'functional-occurence-table-output': (
-            ['-F', '--functional-occurence-table-output'],
+    'functional-occurrence-table-output': (
+            ['-F', '--functional-occurrence-table-output'],
             {'metavar': 'FILE',
              'default': None,
              'type': str,
