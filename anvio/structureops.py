@@ -594,8 +594,10 @@ class StructureUpdate(Structure):
         null                      = lambda x: x
         self.contigs_db_path      = A('contigs_db', null)
         self.structure_db_path    = A('structure_db', null)
-        self.genes_to_remove      = A('gene_caller_ids_to_remove', null)
-        self.genes_to_add         = A('gene_caller_ids_to_add', null)
+        self.genes_to_remove      = A('genes_to_remove', null)
+        self.genes_to_remove_path = A('genes_to_remove_file', null)
+        self.genes_to_add         = A('genes_to_add', null)
+        self.genes_to_add_path    = A('genes_to_add_file', null)
         self.full_modeller_output = A('dump_dir', null)
         self.DSSP_executable      = None
 
@@ -608,19 +610,70 @@ class StructureUpdate(Structure):
                                               contigs_db_hash,
                                               create_new=False)
 
-        if self.genes_to_remove:
-            self.parse_genes(self.genes_to_remove)
-            self.remove_genes()
-        else:
-            raise ConfigError("You didn't provide genes to add or remove.")
+        if self.genes_to_remove and self.genes_to_remove_path:
+            raise ConfigError("Provide either --genes-to-remove or --genes-to-remove-path. You provided both.")
+
+        if self.genes_to_add and self.genes_to_add_path:
+            raise ConfigError("Provide either --genes-to-add or --genes-to-add-path. You provided both.")
+
+        if self.genes_to_remove or self.genes_to_remove_path:
+            remove = self.parse_genes(self.genes_to_remove, self.genes_to_remove_path)
+            self.remove_genes(remove)
+
+
+        #############3333
 
 
         if self.full_modeller_output:
             self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=True)
 
 
-    def parse_genes(self):
-        pass
+    def remove_genes(self, remove):
+
+        bad_ids = [x for x in remove if x not in self.structure_db.genes_queried]
+        if len(bad_ids):
+            self.run.warning("Some of the gene caller ids you asked to remove aren't in the\
+                              structure database. Here they are: [{}]. Anvi'o's trust in you\
+                              decreases slightly.".format(",".join([str(x) for x in bad_ids])))
+
+        # remove ids from the three meta-keys in which they can appear
+        new_genes_queried = [x for x in self.structure_db.genes_queried if x not in remove]
+        self.structure_db.db.update_meta_value('genes_queried', ",".join([str(x) for x in new_genes_queried]))
+
+        new_genes_with_structure = [x for x in self.structure_db.genes_with_structure if x not in remove]
+        self.structure_db.db.update_meta_value('genes_with_structure', ",".join([str(x) for x in new_genes_with_structure]))
+
+        new_genes_without_structure = [x for x in self.structure_db.genes_without_structure if x not in remove]
+        self.structure_db.db.update_meta_value('genes_without_structure', ",".join([str(x) for x in new_genes_without_structure]))
+
+        # remove all rows of tables in which corrresponding_gene_call matches the ids to remove
+        where_clause = 'corresponding_gene_call IN (%s)' % ','.join(['{}'.format(x) for x in remove])
+        for table_name in self.structure_db.db.get_table_names():
+            if 'corresponding_gene_call' in self.structure_db.db.get_table_structure(table_name):
+                self.structure_db.db.remove_some_rows_from_table(table_name, where_clause)
+
+
+    def parse_genes(self, comma_delimited_genes=None, genes_filepath=None):
+
+        if comma_delimited_genes:
+            gene_caller_ids = set([x.strip() for x in comma_delimited_genes.split(',')])
+            genes = []
+            for gene in gene_caller_ids:
+                try:
+                    genes.append(int(gene))
+                except:
+                    raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(gene))
+
+        elif genes_filepath:
+            filesnpaths.is_file_tab_delimited(genes_filepath, expected_number_of_fields=1)
+
+            try:
+                genes = set([int(s.strip()) for s in open(genes_filepath).readlines()])
+            except ValueError:
+                raise ConfigError("Well. Anvi'o was working on your genes in `%s` ... and ... those gene IDs did not\
+                                   look like anvi'o gene caller ids :/ Anvi'o is now sad." % genes_filepath)
+
+        return set(genes)
 
 
     def get_MODELLER_params_used_when_db_was_created(self):
