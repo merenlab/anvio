@@ -263,6 +263,12 @@ class MODELLER:
         else:
             filesnpaths.gen_output_directory(self.directory)
 
+        # All MODELLER scripts are housed in self.script_folder
+        self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
+        if utils.filesnpaths.is_dir_empty(self.scripts_folder):
+            raise ConfigError("Anvi'o houses all its MODELLER scripts in {}, but your directory \
+                               contains no scripts. Why you do dat?")
+
         # check that MODELLER exists
         if self.args.__dict__['modeller_executable'] if 'modeller_executable' in self.args.__dict__ else None:
             self.run.info_single("As per your request, anvi'o will use `%s` to run MODELLER." % self.executable,
@@ -273,12 +279,6 @@ class MODELLER:
             self.run.info_single("Anvi'o found the default executable for MODELLER, `%s`, and will\
                                   use it." % self.executable, nl_before=1)
         self.is_executable_a_MODELLER_program()
-
-        # All MODELLER scripts are housed in self.script_folder
-        self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
-        if utils.filesnpaths.is_dir_empty(self.scripts_folder):
-            raise ConfigError("Anvi'o houses all its MODELLER scripts in {}, but your directory \
-                               contains no scripts. Why you do dat?")
 
         # does target_fasta_path point to a fasta file?
         utils.filesnpaths.is_file_fasta_formatted(self.target_fasta_path)
@@ -348,7 +348,7 @@ class MODELLER:
     def abort(self):
         """
         For whatever reason, this gene was not modelled. Make sure we are in the directory we
-        started in and remove any folders and files that just aren't needed anymore.
+        started in.
         """
         os.chdir(self.start_dir)
 
@@ -565,7 +565,7 @@ class MODELLER:
         self.run.info("New database", bin_db_path)
 
 
-    def copy_script_to_directory(self, script_name):
+    def copy_script_to_directory(self, script_name, add_to_scripts_dict=True, directory=None):
         """
         All MODELLER scripts are housed in anvio/data/misc/MODELLER/scripts/. This function checks
         that script_name is in anvio/data/misc/MODELLER/scripts/ and then copies the script into
@@ -573,6 +573,9 @@ class MODELLER:
         file is output in the directory of the script. By copying the script into self.directory,
         the log is written there instead of anvio/data/misc/MODELLER/scripts/. 
         """
+        if not directory:
+            directory = self.directory
+
         script_path = J(self.scripts_folder, script_name)
         try:
             utils.filesnpaths.is_file_exists(script_path)
@@ -580,16 +583,20 @@ class MODELLER:
             raise ConfigError("MODELLER :: The script {} is not in {}".format(script_name, self.scripts_folder))
 
         # add script to scripts dictionary
-        self.scripts[script_name] = J(self.directory, script_name)
+        if add_to_scripts_dict:
+            self.scripts[script_name] = J(directory, script_name)
 
-        # If all is well, copy script to self.directory
-        shutil.copy2(script_path, self.directory)
+        # If all is well, copy script to directory
+        shutil.copy2(script_path, directory)
 
 
     def is_executable_a_MODELLER_program(self):
-        test_script = os.path.abspath(J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts/fasta_to_pir.py'))
+        # temp_dir created because log file outputs to wherever fasta_to_pir.py is
+        temp_dir = filesnpaths.get_temp_directory_path()
+        self.copy_script_to_directory('fasta_to_pir.py', add_to_scripts_dict=False, directory=temp_dir)
+        test_script = J(temp_dir, 'fasta_to_pir.py')
         test_input = os.path.abspath(J(os.path.dirname(anvio.__file__), '../tests/sandbox/mock_data_for_structure/proteins.fa'))
-        test_output = filesnpaths.get_temp_file_path()
+        test_output = J(temp_dir, 'test_out')
 
         command = [self.executable,
                    test_script,
