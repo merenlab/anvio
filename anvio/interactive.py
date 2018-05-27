@@ -1543,7 +1543,7 @@ class StructureInteractive(VariabilitySuper):
         if requested_available_genes:
 
             # check for genes that do not appear in the structure database
-            unrecognized_genes = [g for g in requested_available_genes if g not in structure_db.all_genes]
+            unrecognized_genes = [g for g in requested_available_genes if g not in structure_db.genes_queried]
             if unrecognized_genes:
                 some_to_report = unrecognized_genes[:5] if len(unrecognized_genes) <= 5 else unrecognized_genes
                 raise ConfigError("{} of the gene caller ids you provided {} not known to the\

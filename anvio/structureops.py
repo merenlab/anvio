@@ -62,9 +62,9 @@ class StructureDatabase(object):
 
             self.genes_with_structure = [int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == '']
             self.genes_without_structure = [int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == '']
-            self.all_genes = self.genes_with_structure + self.genes_without_structure
+            self.genes_queried = self.genes_with_structure + self.genes_without_structure
 
-            if not len(self.all_genes):
+            if not len(self.genes_queried):
                 raise ConfigError("Interesting...  this structure database has no gene caller ids. I'm\
                                    not sure how you managed that. please send a report to the\
                                    developers. Thank you.")
@@ -197,7 +197,7 @@ class Structure(object):
             self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=False)
 
         # identify which genes user wants to model structures for
-        self.get_genes_of_interest()
+        self.genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
 
         self.sanity_check()
 
@@ -311,11 +311,11 @@ class Structure(object):
                                   % self.DSSP_executable, nl_before=1, nl_after=1)
 
 
-    def get_genes_of_interest(self):
+    def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None):
         """
         nabs the genes of interest based on user arguments (self.args)
         """
-        self.genes_of_interest = None
+        genes_of_interest = None
 
         # identify the gene caller ids of all genes available
         self.genes_in_database = set(dbops.ContigsSuperclass(self.args).genes_in_splits.keys())
@@ -324,35 +324,37 @@ class Structure(object):
             raise ConfigError("This contigs database does not contain any identified genes...")
 
         # settling genes of interest
-        if self.genes_of_interest_path and self.gene_caller_ids:
+        if genes_of_interest_path and gene_caller_ids:
             raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids\
                                as a file at the same time, obviously.")
 
-        if self.gene_caller_ids:
-            self.gene_caller_ids = set([x.strip() for x in self.gene_caller_ids.split(',')])
+        if gene_caller_ids:
+            gene_caller_ids = set([x.strip() for x in gene_caller_ids.split(',')])
 
-            self.genes_of_interest = []
-            for gene in self.gene_caller_ids:
+            genes_of_interest = []
+            for gene in gene_caller_ids:
                 try:
-                    self.genes_of_interest.append(int(gene))
+                    genes_of_interest.append(int(gene))
                 except:
                     raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(gene))
 
-            self.genes_of_interest = set(self.genes_of_interest)
+            genes_of_interest = set(genes_of_interest)
 
-        elif self.genes_of_interest_path:
-            filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
+        elif genes_of_interest_path:
+            filesnpaths.is_file_tab_delimited(genes_of_interest_path, expected_number_of_fields=1)
 
             try:
-                self.genes_of_interest = set([int(s.strip()) for s in open(self.genes_of_interest_path).readlines()])
+                genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
             except ValueError:
                 raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not\
                                    look like anvi'o gene caller ids :/ Anvi'o is now sad.")
 
-        if not self.genes_of_interest:
+        if not genes_of_interest:
             # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
-            self.genes_of_interest = self.genes_in_database
+            genes_of_interest = self.genes_in_database
             self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
+
+        return genes_of_interest
 
 
     def process(self):
@@ -410,9 +412,13 @@ class Structure(object):
         self.structure_db.db.set_meta_value('genes_without_structure', ",".join(has_structure[False]))
         self.structure_db.db.set_meta_value('modeller_database', self.modeller.modeller_database)
         self.structure_db.db.set_meta_value('scoring_method', self.scoring_method)
-        self.structure_db.db.set_meta_value('min_ppi', str(self.min_proper_pident))
-        self.structure_db.db.set_meta_value('fast_optimization', str(int(self.very_fast)))
+        self.structure_db.db.set_meta_value('min_proper_pident', str(self.min_proper_pident))
+        self.structure_db.db.set_meta_value('very_fast', str(int(self.very_fast)))
         self.structure_db.db.set_meta_value('deviation', self.deviation)
+        self.structure_db.db.set_meta_value('max_matches', self.max_matches)
+        self.structure_db.db.set_meta_value('num_models', self.num_models)
+        for key, val in self.annotation_sources_info.items():
+            self.structure_db.db.set_meta_value("skip_" + key, str(int(val["skip"])))
 
         self.structure_db.disconnect()
 
@@ -577,3 +583,55 @@ class Structure(object):
             self.structure_db.store(t.structure_residue_info_table_name, key="entry_id")
 
 
+class StructureUpdate(Structure):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        # initialize self.arg parameters
+        A                         = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
+        null                      = lambda x: x
+        self.contigs_db_path      = A('contigs_db', null)
+        self.structure_db_path    = A('structure_db', null)
+        self.genes_to_remove      = A('gene_caller_ids_to_remove', null)
+        self.genes_to_add         = A('gene_caller_ids_to_add', null)
+        self.full_modeller_output = A('dump_dir', null)
+        self.DSSP_executable      = None
+
+        contigs_db                = dbops.ContigsDatabase(self.contigs_db_path)
+        contigs_db_hash           = contigs_db.meta['contigs_db_hash']
+
+        # initialize StructureDatabase
+        utils.is_structure_db(self.structure_db_path)
+        self.structure_db = StructureDatabase(self.structure_db_path,
+                                              contigs_db_hash,
+                                              create_new=False)
+
+        if self.genes_to_remove:
+            self.parse_genes(self.genes_to_remove)
+            self.remove_genes()
+        else:
+            raise ConfigError("You didn't provide genes to add or remove.")
+
+
+        if self.full_modeller_output:
+            self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=True)
+
+
+    def parse_genes(self):
+        pass
+
+
+    def get_MODELLER_params_used_when_db_was_created(self):
+        self.modeller_database       = self.structure_db.db.get_meta_value('modeller_database')
+        self.scoring_method          = self.structure_db.db.get_meta_value('scoring_method')
+        self.min_proper_pident       = self.structure_db.db.get_meta_value('min_proper_pident')
+
+
+        self.very_fast               = self.structure_db.db.get_meta_value('very_fast')
+        self.deviation               = self.structure_db.db.get_meta_value('deviation')
+        self.max_matches             = self.structure_db.db.get_meta_value('max_matches')
+        self.num_models              = self.structure_db.db.get_meta_value('num_models')
+        for key, val in self.annotation_sources_info.items():
+            setattr(self, "skip_" + key, str(int(val["skip"])))
