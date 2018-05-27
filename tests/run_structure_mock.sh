@@ -6,7 +6,9 @@ make_structure_db() {
     anvi-gen-structure-database -c test-output/one_contig_five_genes.db \
                                 --gene-caller-ids 2,4 \
                                 --dump-dir test-output/RAW_MODELLER_OUTPUT \
-                                --output-db-path test-output/STRUCTURE.db
+                                --output-db-path test-output/STRUCTURE.db \
+                                --very-fast \
+                                --num-models 1
 }
 gen_var_profile1() {
     anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
@@ -42,11 +44,12 @@ if [ $# -eq 0  ]
 then
       echo "\
 
-        No arguments supplied. You must call this script with one argument: 'new', 'make_structure',
-        or 'display_structure':
+        No arguments supplied. You must call this script with one argument: 'new', 'make',
+        or 'display':
 
-        'new'     : generate short reads, map them to the contig, gen contigs.db, run profiling.
-        'continue': re-run profiling.
+        'new'     : generate short reads, map them to the contig, gen contigs.db, make structure db, profile varability, open interactive.
+        'make'    : make structure db, profile varability, open interactive.
+        'display' : profile varability, open interactive.
         "
         exit -1
 fi
@@ -115,7 +118,7 @@ then
 
 ####################################################################################
 
-elif [ $1 = "make_structure"  ]
+elif [ $1 = "make"  ]
 then
     cd sandbox
 
@@ -152,7 +155,7 @@ then
     echo
     echo
 
-elif [ $1 = "display_structure"  ]
+elif [ $1 = "display"  ]
 then
     cd sandbox
 
@@ -188,7 +191,7 @@ then
 
 else
       echo "
-        Unknown parameter $1 :/ Try 'new', or 'make_structure', or 'display_structure'.
+        Unknown parameter $1 :/ Try 'new', or 'make', or 'display'.
         "
         exit -1
 fi
