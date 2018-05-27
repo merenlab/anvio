@@ -650,7 +650,7 @@ class StructureUpdate(Structure):
         where_clause = 'corresponding_gene_call IN (%s)' % ','.join(['{}'.format(x) for x in remove])
         for table_name in self.structure_db.db.get_table_names():
             if 'corresponding_gene_call' in self.structure_db.db.get_table_structure(table_name):
-                self.structure_db.db.remove_some_rows_from_table(table_name, where_clause)
+                self.structure_db.db.remove_some_rows_from_table(table_name, where_clause, im_sure=True)
 
 
     def parse_genes(self, comma_delimited_genes=None, genes_filepath=None):
