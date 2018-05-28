@@ -745,15 +745,12 @@ D = {
                       your short reads, as well as the length of the gene you are targeting.\
                       The default is %(default)d nts."}
                 ),
-    'split-by-forward-and-reverse': (
-            ['-Q', '--split-by-forward-and-reverse'],
+    'split-R1-and-R2': (
+            ['-Q', '--split-R1-and-R2'],
             {'default': False,
              'action': 'store_true',
-             'help': "When declared, this program outputs 3 FASTA files, one for forward reads,\
-                      one for reverse reads, and one for unpaired reads. This means you need to\
-                      provide 3 output files for the flag `-o` in this order: forward reads,\
-                      reverse reads, and unpaired reads, each separated by a comma (no spaces).\
-                      For example, `-o fwd.fa,rev.fa,unpaired.fa`."}
+             'help': "When declared, this program outputs 3 FASTA files for paired-end reads: one\
+                      for R1, one for R2, and one for unpaired reads."}
                 ),
     'gzip-output': (
             ['-X', '--gzip-output'],
