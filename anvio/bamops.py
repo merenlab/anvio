@@ -364,7 +364,7 @@ class LinkMers:
 
 class GetReadsFromBAM:
     """This class takes contig names (or a collection ID and bins), and provides
-       access short reads in one or more BAM iles mapping to those contigs
+       access short reads in one or more BAM files mapping to those contigs
        (expanded in #173)."""
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
@@ -381,6 +381,8 @@ class GetReadsFromBAM:
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
         self.output_file_path = A('output_file')
+        self.gzip = A('gzip_output')
+        self.split_r1_r2 = A('split_by_forward_and_reverse')
 
         self.bins = set([])
         self.split_names_of_interest = set([])
@@ -404,6 +406,12 @@ class GetReadsFromBAM:
 
     def get_short_reads_for_splits_dict(self):
         short_reads_for_splits_dict = {}
+        if self.split_r1_r2:
+            short_reads_for_splits_dict['R1'] = {}
+            short_reads_for_splits_dict['R2'] = {}
+            short_reads_for_splits_dict['unpaired'] = {}
+        else:
+            short_reads_for_splits_dict['all'] = {}
 
         self.progress.new('Accessing reads')
         self.progress.update('Reading splits info from the contigs database ...')
@@ -443,43 +451,60 @@ class GetReadsFromBAM:
 
             self.progress.update('Creating a dictionary of matching short reads in %s ...' % bam_file_name)
 
-            for contig_id, start, stop in contig_start_stops:
-                for entry in bam_file_object.fetch(contig_id, start, stop):
-                    '''
-                    here's what's available in the entry object:
+            '''here's what's available in the entry objects below:
 
-                    ['aend', 'alen', 'aligned_pairs', 'bin', 'blocks', 'cigar', 'cigarstring', 'cigartuples', 'compare',
-                     'flag', 'get_aligned_pairs', 'get_blocks', 'get_overlap', 'get_reference_positions', 'get_tag',
-                     'get_tags', 'has_tag', 'infer_query_length', 'inferred_length', 'is_duplicate', 'is_paired',
-                     'is_proper_pair', 'is_qcfail', 'is_read1', 'is_read2', 'is_reverse', 'is_secondary', 'is_supplementary',
-                     'is_unmapped', 'isize', 'mapping_quality', 'mapq', 'mate_is_reverse', 'mate_is_unmapped', 'mpos', 'mrnm',
-                     'next_reference_id', 'next_reference_start', 'opt', 'overlap', 'pnext', 'pos', 'positions', 'qend',
-                     'qlen', 'qname', 'qqual', 'qstart', 'qual', 'query', 'query_alignment_end', 'query_alignment_length',
-                     'query_alignment_qualities', 'query_alignment_sequence', 'query_alignment_start', 'query_length',
-                     'query_name', 'query_qualities', 'query_sequence', 'reference_end', 'reference_id', 'reference_length',
-                     'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags', 'template_length', 'tid', 'tlen']'''
+            ['aend', 'alen', 'aligned_pairs', 'bin', 'blocks', 'cigar', 'cigarstring', 'cigartuples', 'compare',
+             'flag', 'get_aligned_pairs', 'get_blocks', 'get_overlap', 'get_reference_positions', 'get_tag',
+             'get_tags', 'has_tag', 'infer_query_length', 'inferred_length', 'is_duplicate', 'is_paired',
+             'is_proper_pair', 'is_qcfail', 'is_read1', 'is_read2', 'is_reverse', 'is_secondary', 'is_supplementary',
+             'is_unmapped', 'isize', 'mapping_quality', 'mapq', 'mate_is_reverse', 'mate_is_unmapped', 'mpos', 'mrnm',
+             'next_reference_id', 'next_reference_start', 'opt', 'overlap', 'pnext', 'pos', 'positions', 'qend',
+             'qlen', 'qname', 'qqual', 'qstart', 'qual', 'query', 'query_alignment_end', 'query_alignment_length',
+             'query_alignment_qualities', 'query_alignment_sequence', 'query_alignment_start', 'query_length',
+             'query_name', 'query_qualities', 'query_sequence', 'reference_end', 'reference_id', 'reference_length',
+             'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags', 
+             'template_length', 'tid', 'tlen']'''
 
-                    # we are doing only for 'single reads', but I think this has to take into account the paired-end case as well.
-                    short_reads_for_splits_dict['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
+            if self.split_r1_r2:
+                for contig_id, start, stop in contig_start_stops:
+                    for entry in bam_file_object.fetch(contig_id, start, stop):
+                        if entry.is_read1:
+                            short_reads_for_splits_dict['R1']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
+                        elif entry.is_read2:
+                            short_reads_for_splits_dict['R2']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
+                        else:
+                            short_reads_for_splits_dict['unpaired']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
+
+            else:
+                for contig_id, start, stop in contig_start_stops:
+                    for entry in bam_file_object.fetch(contig_id, start, stop):
+                        short_reads_for_splits_dict['all']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
 
             bam_file_object.close()
 
         self.progress.end()
 
-
         return short_reads_for_splits_dict
 
 
     def store_short_reads_for_splits(self):
+        if not self.sanity_checked:
+            raise ConfigError("store_short_reads_for_splits :: Cannot be called before running sanity_check")
+
         short_reds_for_splits_dict = self.get_short_reads_for_splits_dict()
 
-        self.progress.new('Storing reads')
-        self.progress.update('...')
-        utils.store_dict_as_FASTA_file(short_reds_for_splits_dict, self.output_file_path)
-        self.progress.end()
+        for i, reads in enumerate(short_reds_for_splits_dict):
+            self.progress.new('Storing reads')
+            self.progress.update(self.output_file_paths[i])
 
-        self.run.info('Num reads stored', pp(len(short_reds_for_splits_dict)))
-        self.run.info('FASTA output', self.output_file_path)
+            utils.store_dict_as_FASTA_file(short_reds_for_splits_dict[reads], self.output_file_paths[i])
+            if self.gzip:
+                utils.gzip_compress_file(self.output_file_paths[i])
+                self.output_file_paths[i] = self.output_file_paths[i] + '.gz'
+
+            self.progress.end()
+            self.run.info('Num %s reads stored' % reads, pp(len(short_reds_for_splits_dict[reads])))
+            self.run.info('FASTA output', self.output_file_paths[i])
 
 
     def sanity_check(self):
@@ -499,9 +524,29 @@ class GetReadsFromBAM:
                                error: "%s"]: %s.' % (error_message, ','.join(bad_bam_files)))
 
         if not self.output_file_path:
-            self.output_file_path = 'short_reads.fa'
+            if self.split_r1_r2:
+                self.output_file_paths = ['short_reads_R1.fa', 'short_reads_R2.fa', 'short_reads_unpaired.fa']
+            else:
+                self.output_file_paths = ['short_reads.fa']
 
-        filesnpaths.is_output_file_writable(self.output_file_path)
+        else:
+            if self.split_r1_r2:
+                self.output_file_paths = [x.strip() for x in self.output_file_path.split(',')]
+                if len(self.output_file_paths) != 3 or not all([len(x) for x in self.output_file_paths]):
+                    raise ConfigError('You provided the --split-by-forward-and-reverse flag because \
+                                       you want forward and reverse reads reported in separate FASTA files.\
+                                       This means you need to provide 3 output files for the flag `-o`\
+                                       in this order: forward reads, reverse reads, and unpaired reads,\
+                                       each separated by a comma (no spaces). For example,\
+                                       `-o fwd.fa,rev.fa,unpaired.fa`. What you provided is `-o %s`.' % \
+                                       self.output_file_path)
+            else:
+                self.output_file_paths = [self.output_file_path]
+
+        for output_file_path in self.output_file_paths:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        self.sanity_checked = True
 
 
 class ReadsMappingToARange:
