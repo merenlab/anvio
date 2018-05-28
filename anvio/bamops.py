@@ -381,16 +381,17 @@ class GetReadsFromBAM:
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
         self.output_file_path = A('output_file')
+        self.output_file_prefix = A('output_file_prefix')
         self.gzip = A('gzip_output')
         self.split_R1_and_R2 = A('split_R1_and_R2')
 
         self.bins = set([])
         self.split_names_of_interest = set([])
 
+        self.initialized = False
+
 
     def init(self):
-        self.sanity_check()
-
         self.run.info('Input BAM file(s)', ', '.join([os.path.basename(f) for f in self.input_bam_files]))
 
         d = ccollections.GetSplitNamesInBins(self.args).get_dict()
@@ -403,13 +404,24 @@ class GetReadsFromBAM:
         self.run.info('Bin(s)', ', '.join(self.bins))
         self.run.info('Number of splits', pp(len(self.split_names_of_interest)))
 
+        self.initialized = True
+
 
     def get_short_reads_for_splits_dict(self):
+        if not self.initialized:
+            raise ConfigError('The `GetReadsFromBAM` class is not initialized :/ Ad hoc use of this class is\
+                               OK, but in that case you should set `self.initialized` to True, and provide\
+                               the split names of interest manually.')
+
+        if not len(self.split_names_of_interest):
+            raise ConfigError("The split names of interest set is empty. This should have never happened. Good\
+                               job.")
+
         short_reads_for_splits_dict = {}
         if self.split_R1_and_R2:
             short_reads_for_splits_dict['R1'] = {}
             short_reads_for_splits_dict['R2'] = {}
-            short_reads_for_splits_dict['unpaired'] = {}
+            short_reads_for_splits_dict['UNPAIRED'] = {}
         else:
             short_reads_for_splits_dict['all'] = {}
 
@@ -462,7 +474,7 @@ class GetReadsFromBAM:
              'qlen', 'qname', 'qqual', 'qstart', 'qual', 'query', 'query_alignment_end', 'query_alignment_length',
              'query_alignment_qualities', 'query_alignment_sequence', 'query_alignment_start', 'query_length',
              'query_name', 'query_qualities', 'query_sequence', 'reference_end', 'reference_id', 'reference_length',
-             'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags', 
+             'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags',
              'template_length', 'tid', 'tlen']'''
 
             if self.split_R1_and_R2:
@@ -473,8 +485,7 @@ class GetReadsFromBAM:
                         elif entry.is_read2:
                             short_reads_for_splits_dict['R2']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
                         else:
-                            short_reads_for_splits_dict['unpaired']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
-
+                            short_reads_for_splits_dict['UNPAIRED']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
             else:
                 for contig_id, start, stop in contig_start_stops:
                     for entry in bam_file_object.fetch(contig_id, start, stop):
@@ -488,23 +499,25 @@ class GetReadsFromBAM:
 
 
     def store_short_reads_for_splits(self):
+        self.sanity_check()
+
         if not self.sanity_checked:
             raise ConfigError("store_short_reads_for_splits :: Cannot be called before running sanity_check")
 
         short_reds_for_splits_dict = self.get_short_reads_for_splits_dict()
 
-        for i, reads in enumerate(short_reds_for_splits_dict):
-            self.progress.new('Storing reads')
-            self.progress.update(self.output_file_paths[i])
-
-            utils.store_dict_as_FASTA_file(short_reds_for_splits_dict[reads], self.output_file_paths[i])
-            if self.gzip:
-                utils.gzip_compress_file(self.output_file_paths[i])
-                self.output_file_paths[i] = self.output_file_paths[i] + '.gz'
-
-            self.progress.end()
-            self.run.info('Num %s reads stored' % reads, pp(len(short_reds_for_splits_dict[reads])))
-            self.run.info('FASTA output', self.output_file_paths[i])
+        if self.split_R1_and_R2:
+            for read_type in sorted(list(short_reds_for_splits_dict.keys())):
+                output_file_path = '%s_%s.fa' % (self.output_file_prefix, read_type)
+                utils.store_dict_as_FASTA_file(short_reds_for_splits_dict[read_type], output_file_path)
+                self.run.info('Output file for %s' % read_type, output_file_path)
+            self.run.info('Num paired-end reads stored',pp(len(short_reds_for_splits_dict['R1'])), mc='green', nl_before=1)
+            self.run.info('Num unpaired reads stored',pp(len(short_reds_for_splits_dict['UNPAIRED'])), mc='green')
+        else:
+            output_file_path = self.output_file_path or 'short_reads.fa'
+            utils.store_dict_as_FASTA_file(short_reds_for_splits_dict['all'], output_file_path)
+            self.run.info('Output file for all short reads',output_file_path)
+            self.run.info('Num reads stored', pp(len(short_reds_for_splits_dict['all'])), mc='green')
 
 
     def sanity_check(self):
@@ -523,28 +536,25 @@ class GetReadsFromBAM:
                                file(s) do not look like proper BAM files [here is the actual\
                                error: "%s"]: %s.' % (error_message, ','.join(bad_bam_files)))
 
-        if not self.output_file_path:
-            if self.split_r1_r2:
-                self.output_file_paths = ['short_reads_R1.fa', 'short_reads_R2.fa', 'short_reads_unpaired.fa']
-            else:
-                self.output_file_paths = ['short_reads.fa']
+        if self.output_file_prefix and self.output_file_path:
+            raise ConfigError("You must either use the parameter output file name, or output file prefix.")
 
+        if self.output_file_prefix and not self.split_R1_and_R2:
+            raise ConfigError("Output file prefix parameter is only relevant when you want to split read ones\
+                               and read twos and so on.")
+
+        if self.split_R1_and_R2 and not self.output_file_prefix:
+            raise ConfigError("If you wish R1 and R2 reads to be reported in separate FASTA files, \
+                               you need to provide an output file prefix so anvi'o can generate\
+                               multiple output files that start with it (i.e., PREFIX_R1.fa, PREFIX_R2.fa\
+                               PREFIX_UNPAIRED.fa).")
+
+        if self.split_R1_and_R2:
+            filesnpaths.is_output_file_writable(self.output_file_prefix + '_R1.fa')
+        elif self.output_file_path:
+            filesnpaths.is_output_file_writable(self.output_file_path)
         else:
-            if self.split_r1_r2:
-                self.output_file_paths = [x.strip() for x in self.output_file_path.split(',')]
-                if len(self.output_file_paths) != 3 or not all([len(x) for x in self.output_file_paths]):
-                    raise ConfigError('You provided the --split-by-forward-and-reverse flag because \
-                                       you want forward and reverse reads reported in separate FASTA files.\
-                                       This means you need to provide 3 output files for the flag `-o`\
-                                       in this order: forward reads, reverse reads, and unpaired reads,\
-                                       each separated by a comma (no spaces). For example,\
-                                       `-o fwd.fa,rev.fa,unpaired.fa`. What you provided is `-o %s`.' % \
-                                       self.output_file_path)
-            else:
-                self.output_file_paths = [self.output_file_path]
-
-        for output_file_path in self.output_file_paths:
-            filesnpaths.is_output_file_writable(output_file_path)
+            filesnpaths.is_output_file_writable('short_reads.fa')
 
         self.sanity_checked = True
 
