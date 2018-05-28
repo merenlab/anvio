@@ -382,7 +382,7 @@ class GetReadsFromBAM:
         self.bin_ids_file_path = A('bin_ids_file')
         self.output_file_path = A('output_file')
         self.gzip = A('gzip_output')
-        self.split_r1_r2 = A('split_by_forward_and_reverse')
+        self.split_R1_and_R2 = A('split_R1_and_R2')
 
         self.bins = set([])
         self.split_names_of_interest = set([])
@@ -406,7 +406,7 @@ class GetReadsFromBAM:
 
     def get_short_reads_for_splits_dict(self):
         short_reads_for_splits_dict = {}
-        if self.split_r1_r2:
+        if self.split_R1_and_R2:
             short_reads_for_splits_dict['R1'] = {}
             short_reads_for_splits_dict['R2'] = {}
             short_reads_for_splits_dict['unpaired'] = {}
@@ -465,7 +465,7 @@ class GetReadsFromBAM:
              'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags', 
              'template_length', 'tid', 'tlen']'''
 
-            if self.split_r1_r2:
+            if self.split_R1_and_R2:
                 for contig_id, start, stop in contig_start_stops:
                     for entry in bam_file_object.fetch(contig_id, start, stop):
                         if entry.is_read1:
