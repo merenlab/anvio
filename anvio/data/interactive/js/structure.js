@@ -365,7 +365,8 @@ function draw_variability() {
                             spacefill_options['scale'] = parseFloat($('#size_static').val());
                         }
 
-                        component.addRepresentation("spacefill", spacefill_options);
+                        let representation = component.addRepresentation("spacefill", spacefill_options);
+                        representation['variability'] = data[index];
                     }
                 }
             }
@@ -639,11 +640,35 @@ async function make_image(group, sample) {
     }
     
     if (typeof sample === 'undefined') {
-        // If no specific sample requested, generate image for merged.
+        // no sample requested, we generate image for merged.
         blob = await stages[group].viewer.makeImage(image_options);
     }
     else {
-        // TO DO
+        // sample requested.
+        let listRepresentations = stages[group].compList[0].reprList.slice(0)
+
+        // hide all representations besides we want.
+        // variability_information dictionary linked during creation of representation
+        // in draw_variability.
+        listRepresentations.forEach((rep) => {
+            if (rep.name == 'spacefill') {
+                if (rep.variability.sample_id != sample) {
+                    rep.setVisibility(false);
+                }
+            }
+        });
+
+        // take the image
+        blob = await stages[group].viewer.makeImage(image_options);
+
+        // restore representations
+        listRepresentations.forEach((rep) => {
+            if (rep.name == 'spacefill') {
+                if (rep.variability.sample_id != sample) {
+                    rep.setVisibility(true);
+                }
+            }
+        });
     }
 
     return blob;
@@ -651,13 +676,17 @@ async function make_image(group, sample) {
 
 
 async function generate_summary() {
+    let serialized_groups = serialize_checked_groups();
     var zip = new JSZip();
 
     for (let group in stages) {
         zip.file(`images/${group}/merged.png`, await make_image(group));
 
         // generate per sample.
-        // TO DO
+        for (let i=0; i < serialized_groups[group].length; i++) {
+            let sample_id = serialized_groups[group][i];
+            zip.file(`images/${group}/${sample_id}.png`, await make_image(group, sample_id));
+        }
     }
 
     let zip_options = {
