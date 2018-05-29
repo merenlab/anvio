@@ -549,13 +549,15 @@ function onTargetColumnChange(element) {
             let value = legend_items[key];
 
             if (prefix == 'color') {
-                $(`#color_legend_panel`).append(`<div class="colorpicker colorpicker-legend" 
-                                                          color="${value}"
-                                                          style="background-color:${value}"
-                                                          data-engine="${engine}"
-                                                          data-column="${column}"
-                                                          data-key=${key}>
-                                                     </div>${key}<br/>`);
+                $(`#color_legend_panel`).append(`<div class="col-md-4">
+                                                 <div class="colorpicker colorpicker-legend" 
+                                                      color="${value}"
+                                                      style="background-color:${value}"
+                                                      data-engine="${engine}"
+                                                      data-column="${column}"
+                                                      data-key=${key}>
+                                                 </div><span style="position: relative; top: -0.4em;">${key}</span>
+                                                 </div>`);
             } else {
                 $(`#size_legend_panel`).append(`<input type="text" value="${value}"
                                                         onblur="size_legend['${engine}']['${column}']['${key}'] = parseFloat(this.value); draw_variability();">
