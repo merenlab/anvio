@@ -559,9 +559,15 @@ function onTargetColumnChange(element) {
                                                  </div><span style="position: relative; top: -0.4em;">${key}</span>
                                                  </div>`);
             } else {
-                $(`#size_legend_panel`).append(`<input type="text" value="${value}"
+                $(`#size_legend_panel`).append(`<div class="col-md-6 row no-gutter" style="padding: 3px;">
+                                                    <div class="col-md-5">
+                                                        <input type="text" value="${value}" class="form-control input-sm"
                                                         onblur="size_legend['${engine}']['${column}']['${key}'] = parseFloat(this.value); draw_variability();">
-                                                        ${key}<br/>`);
+                                                    </div>
+                                                    <div class="col-md-7" style="text-align: left; padding-left: 4px;">
+                                                        ${key}
+                                                    </div>
+                                                </div>`);
             }
         }
     }
