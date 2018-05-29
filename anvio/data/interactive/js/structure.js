@@ -333,7 +333,7 @@ function draw_variability() {
                                     $('#dynamic_color_error').hide();
                                 }
 
-                                let val = Math.abs(parseFloat(column_value) - min_value) / Math.abs(max_value - min_value);
+                                let val = (parseFloat(column_value) - min_value) / (max_value - min_value);
                                 
                                 val = Math.max(0, Math.min(1, val));
 
@@ -366,7 +366,7 @@ function draw_variability() {
                                     $('#dynamic_size_error').hide();
                                 }
 
-                                let val = Math.abs(parseFloat(column_value) - min_value) / Math.abs(max_value - min_value);
+                                let val = (parseFloat(column_value) - min_value) / max_value - min_value;
                                 
                                 val = Math.max(0, Math.min(1, val));
 
@@ -667,7 +667,7 @@ async function make_image(group, sample) {
     }
     else {
         // sample requested.
-        let listRepresentations = stages[group].compList[0].reprList.slice(0)
+        let listRepresentations = stages[group].compList[0].reprList.slice(0);
 
         // hide all representations besides we want.
         // variability_information dictionary linked during creation of representation
