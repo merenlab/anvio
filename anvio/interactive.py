@@ -1490,6 +1490,16 @@ class StructureInteractive(VariabilitySuper):
                 'data_type': 'integer',
                 'step': 1,
                 'min': 0,
+                'max': x.data["gene_length"].iloc[0]/3 - 1,
+            },
+            {
+                'name': 'codon_number',
+                'title': 'Codon number',
+                'engine': ['AA', 'CDN'],
+                'controller': 'slider',
+                'data_type': 'integer',
+                'step': 1,
+                'min': 1,
                 'max': x.data["gene_length"].iloc[0]/3,
             },
             {
