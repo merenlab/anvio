@@ -120,3 +120,8 @@ body {
 .ngl-tooltip > table td {
     padding: 2px 4px;
 }
+
+.no-gutter > [class*='col-'] {
+    padding-right:0;
+    padding-left:0;
+}
