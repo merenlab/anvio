@@ -615,7 +615,7 @@ function getGradientColor(start_color, end_color, percent) {
    diff_green = Math.abs(( (diff_green * percent) + start_green )).toString(16).split('.')[0];
    diff_blue = Math.abs(( (diff_blue * percent) + start_blue )).toString(16).split('.')[0];
 
-   // ensure 2 digits by color
+// ensure 2 digits by color
    if( diff_red.length == 1 )
      diff_red = '0' + diff_red
 
@@ -627,3 +627,38 @@ function getGradientColor(start_color, end_color, percent) {
 
    return '#' + diff_red + diff_green + diff_blue;
  };
+
+
+async function export_image() {
+    let image_options = {
+        'trim': true, 
+        'factor': 1,
+        'transparent': true,
+        'antialias': true
+    }
+    
+    var zip = new JSZip();
+    var images = zip.folder('images');
+
+    for (let group in stages) {
+        // generate merged.
+        let blob = await stages[group].viewer.makeImage(image_options);
+        images.file(`${group}_merged.png`, blob);
+
+        // generate per sample.
+        // TO DO
+    }
+
+    let zip_options = {
+        type: "blob",
+        platform: 'UNIX',
+        compression: "DEFLATE",
+        compressionOptions: {
+           level: 6
+        }
+    }
+
+    zip.generateAsync(zip_options).then(function(content) {
+        saveAs(content, "structure-summary.zip");
+    });
+}
