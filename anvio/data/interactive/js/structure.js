@@ -492,7 +492,7 @@ function create_ui() {
                         color_legend[engine][item['name']] = {};
 
                         item['choices'].forEach((choice) => {
-                            color_legend[engine][item['name']][choice] = '#FF0000';
+                            color_legend[engine][item['name']][choice] = randomColor();
                         });
                     }
 
