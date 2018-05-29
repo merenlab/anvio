@@ -305,7 +305,7 @@ function draw_variability() {
 
                 let codon_to_variability = {};
                 for (let index in data) {
-                    codon_to_variability[data[index]['codon_order_in_gene']] = data[index];
+                    codon_to_variability[data[index]['codon_number']] = data[index];
                 }
 
                 variability[group] = codon_to_variability;
@@ -313,7 +313,7 @@ function draw_variability() {
                 if (Object.keys(data).length > 0) {
                     for (let index in data) {
                         let spacefill_options = {
-                            sele: data[index]['codon_order_in_gene'] + " and .CA",
+                            sele: data[index]['codon_number'] + " and .CA",
                             scale: 1
                         }
 

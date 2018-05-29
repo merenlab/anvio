@@ -900,8 +900,10 @@ class VariabilitySuper(VariabilityFilter, object):
                 self.convert_item_coverages()
                 self.convert_reference_info()
 
-            # append split_name information
+            # FIXME should this be in the variability table to begin with?
             self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
+
+        self.data["codon_number"] = utils.convert_sequence_indexing(self.data["codon_order_in_gene"], source="M0", destination="M1")
 
         # we're done here. bye.
         profile_db.disconnect()
@@ -1545,6 +1547,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
         new_structure = ['entry_id', 'unique_pos_identifier', 'gene_length'] + \
                         structure_subset + \
+                        ['codon_number'] + \
                         self.items + \
                         list(self.substitution_scoring_matrices.keys()) + \
                         [self.competing_items, 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
