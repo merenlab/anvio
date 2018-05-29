@@ -518,10 +518,7 @@ class GetReadsFromBAM:
                     utils.gzip_compress_file(output_file_path)
                     output_file_path = output_file_path + ".gz"
 
-                self.progress.end()
-                self.run.info('Output file for %s' % read_type, output_file_path)
-                self.progress.new("Storing reads")
-                self.progress.update("...")
+                self.run.info('Output file for %s' % read_type, output_file_path, progress=self.progress)
 
             self.progress.end()
             self.run.info('Num paired-end reads stored',pp(len(short_reds_for_splits_dict['R1'])), mc='green', nl_before=1)
