@@ -326,6 +326,13 @@ function draw_variability() {
                             if (controller == 'slider') {
                                 let min_value = parseFloat($('#color_min').val());
                                 let max_value = parseFloat($('#color_max').val());
+
+                                if (min_value >= max_value) {
+                                    $('#dynamic_color_error').show();
+                                } else {
+                                    $('#dynamic_color_error').hide();
+                                }
+
                                 let val = Math.abs(parseFloat(column_value) - min_value) / Math.abs(max_value - min_value);
                                 
                                 val = Math.max(0, Math.min(1, val));
@@ -352,6 +359,13 @@ function draw_variability() {
                             if (controller == 'slider') {
                                 let min_value = parseFloat($('#size_min').val());
                                 let max_value = parseFloat($('#size_max').val());
+
+                                if (min_value >= max_value) {
+                                    $('#dynamic_size_error').show();
+                                } else {
+                                    $('#dynamic_size_error').hide();
+                                }
+
                                 let val = Math.abs(parseFloat(column_value) - min_value) / Math.abs(max_value - min_value);
                                 
                                 val = Math.max(0, Math.min(1, val));
