@@ -629,7 +629,8 @@ function getGradientColor(start_color, end_color, percent) {
  };
 
 
-async function export_image() {
+async function make_image(group, sample) {
+    let blob;
     let image_options = {
         'trim': true, 
         'factor': 1,
@@ -637,13 +638,22 @@ async function export_image() {
         'antialias': true
     }
     
+    if (sample == 'merged') {
+        blob = await stages[group].viewer.makeImage(image_options);
+    }
+    else {
+        // TO DO
+    }
+
+    return blob;
+}
+
+
+async function generate_summary() {
     var zip = new JSZip();
-    var images = zip.folder('images');
 
     for (let group in stages) {
-        // generate merged.
-        let blob = await stages[group].viewer.makeImage(image_options);
-        images.file(`${group}_merged.png`, blob);
+        zip.file(`images/${group}/merged.png`, await make_image(group, 'merged'));
 
         // generate per sample.
         // TO DO
