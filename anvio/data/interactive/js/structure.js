@@ -629,7 +629,7 @@ function getGradientColor(start_color, end_color, percent) {
  };
 
 
-function export_image() {
+async function export_image() {
     let image_options = {
         'trim': true, 
         'factor': 1,
@@ -642,10 +642,8 @@ function export_image() {
 
     for (let group in stages) {
         // generate merged.
-        stages[group].viewer.makeImage(image_options).then((blob) => {
-            console.log(blob);
-            images.file('merged.txt', "asdsadasd");
-        });
+        let blob = await stages[group].viewer.makeImage(image_options);
+        images.file(`${group}_merged.png`, blob);
 
         // generate per sample.
         // TO DO
