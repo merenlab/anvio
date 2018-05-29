@@ -506,16 +506,35 @@ class GetReadsFromBAM:
 
         short_reds_for_splits_dict = self.get_short_reads_for_splits_dict()
 
+        self.progress.new("Storing reads")
+        self.progress.update("...")
+
         if self.split_R1_and_R2:
             for read_type in sorted(list(short_reds_for_splits_dict.keys())):
                 output_file_path = '%s_%s.fa' % (self.output_file_prefix, read_type)
+
                 utils.store_dict_as_FASTA_file(short_reds_for_splits_dict[read_type], output_file_path)
+                if self.gzip:
+                    utils.gzip_compress_file(output_file_path)
+                    output_file_path = output_file_path + ".gz"
+
+                self.progress.end()
                 self.run.info('Output file for %s' % read_type, output_file_path)
+                self.progress.new("Storing reads")
+                self.progress.update("...")
+
+            self.progress.end()
             self.run.info('Num paired-end reads stored',pp(len(short_reds_for_splits_dict['R1'])), mc='green', nl_before=1)
             self.run.info('Num unpaired reads stored',pp(len(short_reds_for_splits_dict['UNPAIRED'])), mc='green')
         else:
             output_file_path = self.output_file_path or 'short_reads.fa'
             utils.store_dict_as_FASTA_file(short_reds_for_splits_dict['all'], output_file_path)
+
+            if self.gzip:
+                utils.gzip_compress_file(output_file_path)
+                output_file_path = output_file_path + ".gz"
+
+            self.progress.end()
             self.run.info('Output file for all short reads',output_file_path)
             self.run.info('Num reads stored', pp(len(short_reds_for_splits_dict['all'])), mc='green')
 
@@ -540,8 +559,8 @@ class GetReadsFromBAM:
             raise ConfigError("You must either use the parameter output file name, or output file prefix.")
 
         if self.output_file_prefix and not self.split_R1_and_R2:
-            raise ConfigError("Output file prefix parameter is only relevant when you want to split read ones\
-                               and read twos and so on.")
+            raise ConfigError("Output file prefix parameter is only relevant when you want to split R1 reads\
+                               from R2 reads and so on.")
 
         if self.split_R1_and_R2 and not self.output_file_prefix:
             raise ConfigError("If you wish R1 and R2 reads to be reported in separate FASTA files, \
