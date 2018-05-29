@@ -745,6 +745,19 @@ D = {
                       your short reads, as well as the length of the gene you are targeting.\
                       The default is %(default)d nts."}
                 ),
+    'split-R1-and-R2': (
+            ['-Q', '--split-R1-and-R2'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, this program outputs 3 FASTA files for paired-end reads: one\
+                      for R1, one for R2, and one for unpaired reads."}
+                ),
+    'gzip-output': (
+            ['-X', '--gzip-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, output file(s) will be gzip compressed and the extension `.gz` will be added."}
+                ),
     'list-contigs': (
             ['--list-contigs'],
             {'default': False,
