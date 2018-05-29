@@ -638,7 +638,8 @@ async function make_image(group, sample) {
         'antialias': true
     }
     
-    if (sample == 'merged') {
+    if (typeof sample === 'undefined') {
+        // If no specific sample requested, generate image for merged.
         blob = await stages[group].viewer.makeImage(image_options);
     }
     else {
@@ -653,7 +654,7 @@ async function generate_summary() {
     var zip = new JSZip();
 
     for (let group in stages) {
-        zip.file(`images/${group}/merged.png`, await make_image(group, 'merged'));
+        zip.file(`images/${group}/merged.png`, await make_image(group));
 
         // generate per sample.
         // TO DO
