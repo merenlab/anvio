@@ -117,7 +117,7 @@ def migrate(db_path):
             functions_path = '/data/genomes/%s/%s/functions' % (genome_name, gene_callers_id)
             if functions_path in fp:
                 for source in fp[functions_path]:
-                    annotation_list = fp['/data/genomes/%s/%s/functions/%s' % (genome_name, gene_callers_id, source)].value.split('|||')
+                    annotation_list = str(fp['/data/genomes/%s/%s/functions/%s' % (genome_name, gene_callers_id, source)].value).split('|||')
 
                     functions_entries.append((genome_name, entry_id_counter, gene_callers_id, source, annotation_list[0], annotation_list[1], 0, ))
                     entry_id_counter += 1
