@@ -88,7 +88,7 @@ function searchFunctions() {
                                                                                   '</br><b>Accession:</b> ' + _accession +
                                                                                   '</br><b>Annotation:</b> ' + _annotation});
                 }
-                $('#search_result_message_functions').html(data['results'].length + " result(s) found.");
+                $('#search_result_message_functions').html(data['results'].length + " result(s) found in " + data['item_count'] + ' unique item(s).');
             } else {
                 $('.search-message').show();
                 $('.search-message').html(data['message']);

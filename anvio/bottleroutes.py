@@ -884,8 +884,13 @@ class BottleApplication(Bottle):
 
     def search_functions(self):
         try:
-            full_report = self.interactive.search_for_functions(request.forms.get('terms'))
-            return json.dumps({'status': 0, 'results': full_report})
+            items, full_report = self.interactive.search_for_functions(request.forms.get('terms'))
+            
+            items_unique = set([])
+            for search_term in items:
+                items_unique = items_unique.union(set(items[search_term]))
+
+            return json.dumps({'status': 0, 'results': full_report, 'item_count': len(items_unique)})
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
