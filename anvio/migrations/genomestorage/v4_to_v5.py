@@ -47,7 +47,7 @@ def migrate(db_path):
 
     fp = h5py.File(db_path, 'r')
 
-    if fp.attrs['version'] != current_version:
+    if int(fp.attrs['version']) != int(current_version):
         fp.close()
         raise ConfigError("Genome storage version is not %s." % current_version)
 
