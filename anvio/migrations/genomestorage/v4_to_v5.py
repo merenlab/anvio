@@ -51,7 +51,7 @@ def migrate(db_path):
         fp.close()
         raise ConfigError("Genome storage version is not %s." % current_version)
 
-    old_storage_hash = fp.attrs['hash']
+    old_storage_hash = str(fp.attrs['hash'])
     functions_are_available = fp.attrs['functions_are_available']
 
     run.info("Outdated genomes storage found (%s)" % old_storage_hash, db_path)
