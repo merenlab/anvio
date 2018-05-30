@@ -656,10 +656,10 @@ function getGradientColor(start_color, end_color, percent) {
 async function make_image(group, sample) {
     let blob;
     let image_options = {
-        'trim': true, 
-        'factor': 1,
-        'transparent': true,
-        'antialias': true
+        'trim': $('#trim').is(':checked'), 
+        'factor': $('#scale').val(),
+        'transparent': $('#transparent').is(':checked'),
+        'antialias': $('#antialias').is(':checked')
     }
     
     if (typeof sample === 'undefined') {
@@ -722,6 +722,6 @@ async function generate_summary() {
     }
 
     zip.generateAsync(zip_options).then(function(content) {
-        saveAs(content, "structure-summary.zip");
+        saveAs(content, $('#zip_name').val());
     });
 }

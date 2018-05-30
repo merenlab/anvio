@@ -173,7 +173,33 @@
                         </div>
                     </div>
                     <div id="tab_summary" role="tabpanel" class="tab-pane fade">
-                        <button type="button" class="btn btn-primary" onclick="generate_summary();" style="width: 100%;">Generate static summary page</button>
+                        <div class="col-md-12" style="margin-top: 10px;">
+                            <span class="settings-header">Output</span>
+                            <div class="col-md-12">
+                                <label class="col-md-5 settings-label" for="scale">File Name</label>  
+                                <div class="col-md-7"><input type="input" id="zip_name" value="structure-summary.zip"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-12" style="margin-top: 10px;">
+                             <span class="settings-header">Image Rendering Options</span>
+                                <div class="col-md-12">
+                                    <label class="col-md-8 settings-label" for="scale">Scale</label>  
+                                    <div class="col-md-4"><input type="input" id="scale" value="5" size="4"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-8 settings-label" for="transparent">Transparent</label>  
+                                    <div class="col-md-4"><input type="checkbox" id="transparent" checked="checked"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-8 settings-label" for="trim">Trim</label>  
+                                    <div class="col-md-4"><input type="checkbox" id="trim" checked="checked"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-8 settings-label" for="antialias">Antialiasing</label>  
+                                    <div class="col-md-4"><input type="checkbox" id="antialias" checked="checked"></div>
+                                </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="generate_summary();" style="width: 100%; margin-top: 10px;">Generate static summary page</button>
                     </div>
                 </div>
             </div>
