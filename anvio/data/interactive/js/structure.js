@@ -161,6 +161,7 @@ function create_ngl_views() {
 
                 component.addRepresentation( "cartoon", {
                     colorScheme: 'residueindex',
+                    metalness: 0.1,
                     aspectRatio: 3.0,
                     scale: 1.5
                 } );
