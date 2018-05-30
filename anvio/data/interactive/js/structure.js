@@ -160,6 +160,7 @@ function create_ngl_views() {
                 if( component.type !== "structure" ) return;
 
                 component.addRepresentation( "cartoon", {
+                    colorScheme: 'residueindex',
                     aspectRatio: 3.0,
                     scale: 1.5
                 } );
