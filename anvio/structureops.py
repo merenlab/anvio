@@ -110,6 +110,7 @@ class StructureDatabase(object):
         self.db.create_table(t.structure_templates_table_name, t.structure_templates_table_structure, t.structure_templates_table_types)
         self.db.create_table(t.structure_models_table_name, t.structure_models_table_structure, t.structure_models_table_types)
         self.db.create_table(t.structure_residue_info_table_name, self.residue_info_structure, self.residue_info_types)
+        self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
 
         table_names = [t.structure_pdb_data_table_name,
                        t.structure_templates_table_name,
