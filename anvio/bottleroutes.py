@@ -277,6 +277,12 @@ class BottleApplication(Bottle):
                 collection_dict = json.loads(self.get_collection_dict(self.interactive.collection_autoload))
                 autodraw = True
 
+            functions_sources = []
+            if self.interactive.mode == 'full':
+                functions_sources = list(self.interactive.gene_function_call_sources)
+            elif self.interactive.mode == 'pan':
+                functions_sources = list(self.interactive.gene_clusters_function_sources)
+
             return json.dumps( { "title":                              self.interactive.title,
                                  "description":                        self.interactive.p_meta['description'],
                                  "item_orders":                        (default_order, self.interactive.p_meta['item_orders'][default_order], list(self.interactive.p_meta['item_orders'].keys())),
@@ -295,6 +301,7 @@ class BottleApplication(Bottle):
                                  "inspection_available":               self.interactive.auxiliary_profile_data_available,
                                  "sequences_available":                True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
                                  "functions_initialized":              self.interactive.gene_function_calls_initiated,
+                                 "functions_sources":                  functions_sources,
                                  "state":                              (self.interactive.state_autoload, state_dict),
                                  "collection":                         collection_dict })
 
@@ -884,7 +891,12 @@ class BottleApplication(Bottle):
 
     def search_functions(self):
         try:
-            items, full_report = self.interactive.search_for_functions(request.forms.get('terms'))
+            requested_sources = request.forms.getall('sources[]')
+
+            if not len(requested_sources):
+                requested_sources = None
+
+            items, full_report = self.interactive.search_for_functions(request.forms.get('terms'), requested_sources)
             
             items_unique = set([])
             for search_term in items:

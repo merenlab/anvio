@@ -280,6 +280,15 @@ function initData() {
 
                 $('#samples_order').append(new Option(order_name, order));
             });
+
+            // Populate function sources checkboxes in search functions panel.
+            if (response.functions_sources_list.length > 0) {
+                $('#functions_sources_list').empty();
+            }
+            
+            response.functions_sources.forEach((source) => {
+                $('#functions_sources_list').append(`<label style="margin: 5px;"><input type="checkbox" value="${source}" checked="checked" style="margin-right: 2px;"/>${source}</label>`);
+            });
             
             buildSamplesTable(convert_samples_order_to_array(samples_information_default_layer_order));
             toggleSampleGroups();
