@@ -282,7 +282,7 @@ function initData() {
             });
 
             // Populate function sources checkboxes in search functions panel.
-            if (response.functions_sources_list.length > 0) {
+            if (response.functions_sources.length > 0) {
                 $('#functions_sources_list').empty();
             }
             
