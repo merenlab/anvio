@@ -50,11 +50,20 @@ function searchContigs()
 function searchFunctions() {
     $('#search_functions_button').prop( "disabled", true );
     $('#search_result_message_functions').html('<img src="images/loading.gif" style="width: 16px;" />');
+
+    let requested_sources = [];
+    $('#functions_sources_list input:checkbox:checked').each((i, v) => {
+        requested_sources.push($(v).val());
+    });
+
     $.ajax({
         type: 'POST',
         cache: false,
         url: '/data/search_functions',
-        data: {terms: $('#searchFunctionsValue').val()},
+        data: {
+            terms: $('#searchFunctionsValue').val(),
+            sources: requested_sources
+        },
         success: function(data) {
             if (data['status'] == 0) {
                 $('.search-message').hide();
