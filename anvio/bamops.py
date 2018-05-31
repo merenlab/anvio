@@ -463,7 +463,7 @@ class GetReadsFromBAM:
 
             self.progress.update('Creating a dictionary of matching short reads in %s ...' % bam_file_name)
 
-            '''here's what's available in the entry objects below:
+            '''here's what's available in the read objects below:
 
             ['aend', 'alen', 'aligned_pairs', 'bin', 'blocks', 'cigar', 'cigarstring', 'cigartuples', 'compare',
              'flag', 'get_aligned_pairs', 'get_blocks', 'get_overlap', 'get_reference_positions', 'get_tag',
@@ -477,20 +477,33 @@ class GetReadsFromBAM:
              'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags',
              'template_length', 'tid', 'tlen']'''
 
+            has_unknown_mate = {}
             if self.split_R1_and_R2:
                 for contig_id, start, stop in contig_start_stops:
-                    for entry in bam_file_object.fetch(contig_id, start, stop):
-                        if entry.is_read1:
-                            short_reads_for_splits_dict['R1']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
-                        elif entry.is_read2:
-                            short_reads_for_splits_dict['R2']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
+                    for read in bam_file_object.fetch(contig_id, start, stop):
+
+                        defline = '_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])
+
+                        if not read.is_paired and not read.is_proper_pair:
+                            short_reads_for_splits_dict['UNPAIRED'][defline] = read.query_sequence
+
+                        elif defline in has_unknown_mate:
+                            # `read`s mate has already been read. so assign the read and the mate
+                            # to their respective 'R1' and 'R2' dictionaries, then remove the mate
+                            # from has_unknown_mate since its mate is now known.
+                            read_DIRECTION = 'R1' if read.is_read1 else 'R2'
+                            mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
+                            short_reads_for_splits_dict[mate_DIRECTION][defline] = has_unknown_mate[defline]
+                            short_reads_for_splits_dict[read_DIRECTION][defline] = read.query_sequence
+                            del has_unknown_mate[defline]
+
                         else:
-                            short_reads_for_splits_dict['UNPAIRED']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
+                            has_unknown_mate[defline] = read.query_sequence
+                short_reads_for_splits_dict['UNPAIRED'].update(has_unknown_mate)
             else:
                 for contig_id, start, stop in contig_start_stops:
-                    for entry in bam_file_object.fetch(contig_id, start, stop):
-                        short_reads_for_splits_dict['all']['_'.join([contig_id, str(start), str(stop), entry.query_name, bam_file_name])] = entry.query_sequence
-
+                    for read in bam_file_object.fetch(contig_id, start, stop):
+                        short_reads_for_splits_dict['all']['_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])] = read.query_sequence
             bam_file_object.close()
 
         self.progress.end()
