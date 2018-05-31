@@ -587,6 +587,10 @@
                                         <td id="functions_sources_list">No source found.</td>
                                     </tr>
                                     <tr>
+                                        <td></td>
+                                        <td><button onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', true);">Check All</button><button onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', false);">Uncheck All</button></td>
+                                    </tr>
+                                    <tr>
                                         <td>&nbsp;</td>
                                         <td style="padding-top: 10px;"><button type="button" class="btn btn-default btn-sm" onclick="searchFunctions();" id="search_functions_button" data-help="search-button" disabled><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search functions</button></td>
                                     </tr>
