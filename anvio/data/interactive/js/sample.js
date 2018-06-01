@@ -68,9 +68,20 @@ $(document).ready(function() {
 
         for(var i=0; i < new_order.length; i++)
         {
+            // sort main layers with new order.
             var layer_id = getLayerId(new_order[i]);
             var detached_row = $('#height' + layer_id).closest('tr').detach();
             $('#tbody_layers').append(detached_row);
+        }
+
+            // sort sample layers with new order, but only if they are member of a group starting with "ANI_"
+        for (let group in samples_information_dict) {
+            if (group.startsWith('ANI_')) {
+                for(var i=new_order.length - 1; i >= 0; i--) {
+                    let detached_sample_row = $(`tr[samples-group-name='${group}'][samples-layer-name='${new_order[i]}']`);
+                    $('#tbody_samples').append(detached_sample_row);
+                }
+            }
         }
     });
 });
@@ -213,14 +224,14 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             }
             else
             {
-                var norm         = getNamedLayerDefaults(layer_name, 'norm', 'none');
-                var min          = 0;
-                var max          = 0;
-                var height       = getNamedLayerDefaults(layer_name, 'height', 500);
-                var color        = getNamedLayerDefaults(layer_name, 'color', '#919191');
+                var norm         = getNamedLayerDefaults(layer_name, 'norm', 'none', group);
+                var min          = getNamedLayerDefaults(layer_name, 'min', null, group);
+                var max          = getNamedLayerDefaults(layer_name, 'max', null, group);
+                var height       = getNamedLayerDefaults(layer_name, 'height', 500, group);
+                var color        = getNamedLayerDefaults(layer_name, 'color', '#919191', group);
+                var color_start  = getNamedLayerDefaults(layer_name, 'color-start', '#EFEFEF', group);
+                var type         = getNamedLayerDefaults(layer_name, 'type', 'bar', group);
                 var margin       = 15;
-                var color_start  = "#FFFFFF";
-                var type         = "bar";
             }
 
             var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
@@ -277,8 +288,8 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             }
             else
             {
-                var norm   = getNamedLayerDefaults(layer_name, 'norm', 'none');
-                var height = getNamedLayerDefaults(layer_name, 'height', 500);
+                var norm   = getNamedLayerDefaults(layer_name, 'norm', 'none', group);
+                var height = getNamedLayerDefaults(layer_name, 'height', 500, group);
                 var margin = 15;
             }
 
@@ -331,7 +342,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             }
             else
             {
-                var height = getNamedLayerDefaults(layer_name, 'height', 80);
+                var height = getNamedLayerDefaults(layer_name, 'height', 80, group);
                 var margin = 15;
             }
 
@@ -367,7 +378,9 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     }
 
     $('#tbody_samples .normalization').each((index, select) => {
-        $(select).trigger('change');
+        if ($(select).closest('tr').find('.input-min').val() == 'null' && $(select).closest('tr').find('.input-max').val() == 'null') {
+            $(select).trigger('change');
+        }
     });
 
     $('.colorpicker').colpick({

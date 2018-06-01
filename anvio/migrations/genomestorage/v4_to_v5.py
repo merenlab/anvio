@@ -47,11 +47,11 @@ def migrate(db_path):
 
     fp = h5py.File(db_path, 'r')
 
-    if fp.attrs['version'] != current_version:
+    if int(fp.attrs['version']) != int(current_version):
         fp.close()
         raise ConfigError("Genome storage version is not %s." % current_version)
 
-    old_storage_hash = fp.attrs['hash']
+    old_storage_hash = str(fp.attrs['hash'])
     functions_are_available = fp.attrs['functions_are_available']
 
     run.info("Outdated genomes storage found (%s)" % old_storage_hash, db_path)
@@ -117,7 +117,7 @@ def migrate(db_path):
             functions_path = '/data/genomes/%s/%s/functions' % (genome_name, gene_callers_id)
             if functions_path in fp:
                 for source in fp[functions_path]:
-                    annotation_list = fp['/data/genomes/%s/%s/functions/%s' % (genome_name, gene_callers_id, source)].value.split('|||')
+                    annotation_list = str(fp['/data/genomes/%s/%s/functions/%s' % (genome_name, gene_callers_id, source)].value).split('|||')
 
                     functions_entries.append((genome_name, entry_id_counter, gene_callers_id, source, annotation_list[0], annotation_list[1], 0, ))
                     entry_id_counter += 1
