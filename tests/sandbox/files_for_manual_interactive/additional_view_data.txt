@@ -1,301 +1,301 @@
-contig	categorical_1	categorical_2	text_layer_01	numerical	bars_main!A;B;C
-backrest	b	y	nmwje	2.78	278;23;1
-backward	b	x	bqmyujr psrd doefhi	2.49	249;52;2
-backwind	b	y	hkfer lchpmzix	2.69	269;32;3
-backyard	b	x	advoe bfkyhmg	2.05	205;96;4
-bacteria	b	x	lqmcwn hywco	2.63	263;38;5
-bacterin	b		vxqdmn	2.98	298;3;6
-baetylus	b	x	fkgpydi owgyhfx xwlpj	2.19	219;82;7
-bagpiped	b	y	ijmnur	2.12	212;89;8
-balconet	b	y	ecizgs	2.89	289;12;9
-balinese	b	y	qmpyce fkp	2.91	291;10;10
-balkiest	b	y	inz wvgmfe aodkpes	2.58	258;43;11
-ballarat	b	y	fbymka jmzklvo pxb	2.86	286;15;12
-banausic	b	y	itsaubxg xjoilk	2.47	247;54;13
-bandaged	b	y	elrhqm hxdqkriw wqjuza	2.25	225;76;14
-bandsman	b		tlfrn rdq	2.21	221;80;15
-banneret	b		sfi	2.87	287;14;16
-banterer	b	x	zjxk fcl brs	2.55	255;46;17
-baptized	b	x	kpeocam	2.68	268;33;18
-bareness	b	y	jwbvt blgkmw	2.75	275;26;19
-barrable	b	y	pwxz hgbzulk	2.61	261;40;20
-barrater	b		sncvtk	2.73	273;28;21
-basanite	b		njarqvio ltkehzgx ycmrwlpi	2.51	251;50;22
-bassetts	b		rbnt	2.95	295;6;23
-bastogne	b	x	uety elpkmhyj xrt	2.96	296;5;24
-batangas	b	y	qaw dyb	3	300;1;25
-beadlike	b	y	jelf ugmlfd	2.28	228;73;26
-beamiest	b		dnl	2.81	281;20;27
-bearable	b		cyz	2.65	265;36;28
-bearbush	b		qkzwxsf npwi	2.26	226;75;29
-bedeguar	b		ymldv tbckeu	2.18	218;83;30
-begabled	b	x	byk ztkb	2.3	230;71;31
-belabour	b	y	owj	2.42	242;59;32
-belittle	b	y	winxrk	2.01	201;100;33
-beltline	b	x	tyrwlid xove xvmh	2.22	222;79;34
-benzoate	b	x	oiubdtpe wzvno	2.71	271;30;35
-bergamot	b	x	aepjh	2.24	224;77;36
-bergre	b	y	aerluq	2.64	264;37;37
-berkeley	b	y	gtycxlo dqkln wydipvj	2.97	297;4;38
-beryline	b		gdi	2.92	292;9;39
-betiding	b	x	otq rkiuse	2.46	246;55;40
-betjeman	b	y	sqcvwd	2.23	223;78;41
-bevatron	b	y	luxepv surqdw	2.5	250;51;42
-bewrayer	b	x	qrbzo kqil qft	2.13	213;88;43
-beyrouth	b	y	yvgc	2.09	209;92;44
-biblical	b	y	cznpl	2.06	206;95;45
-bicepses	b		hbail bzem lxqhwpv	2.32	232;69;46
-bidarkee	b	x	trfw skqjoric ycukps	2.79	279;22;47
-bigamous	b	x	jtrgpk rzinvy tzxjnrhu	2.82	282;19;48
-billfish	b		otaxyh psoch	2.62	262;39;49
-billings	b	x	rwaksbu	2.74	274;27;50
-bimodule	b	y	dsk	2.39	239;62;51
-biocycle	b		pwge pefcha	2.84	284;17;52
-biologic	b		hvqeab lzpvqgkc	2.7	270;31;53
-birdseed	b	x	gwhanpue gqeix mtaehks	2.33	233;68;54
-bisector	b	y	ytsghvkz nfq jynkvld	2.36	236;65;55
-bithynia	b	x	wyh khtoq	2.57	257;44;56
-bitxynia	b	y	grbva zwgeo ybolt	2.56	256;45;57
-biunique	b	y	qxnkg qle	2.17	217;84;58
-blackboy	b	y	udlfhap egdlq omg	2.83	283;18;59
-blantyre	b	x	row cptdbwl ztrkylfg	2.93	293;8;60
-blazonry	b		kniztqu dxqkcybm	2.07	207;94;61
-bloodier	b		zlj rcgt	2.54	254;47;62
-blooding	b	x	hprit	2.16	216;85;63
-bluebell	b	y	xsan zauims ndrqez	2.03	203;98;64
-bluejack	b	x	jusgelt ehzxln	2.99	299;2;65
-blueness	b	x	sncyog bygtk	2.38	238;63;66
-boatload	b		qguowpmf	2.4	240;61;67
-bogalusa	b		mrft	2.59	259;42;68
-bohemian	b	y	yqru ktlprnjz	2.14	214;87;69
-bohuslav	b		obqkh	2.29	229;72;70
-bokharan	b	x	rnewompi tbljih dxqutlnp	2.11	211;90;71
-bonhomie	b	x	kpsjocx osxvrfj knzbe	2.66	266;35;72
-bookless	b	y	mfqtka	2.72	272;29;73
-borating	b	y	adxgq	2.67	267;34;74
-boscobel	b	y	jtr njfmhr msvdf	2.53	253;48;75
-boskiest	b	x	epbvxtr txdvwk	2.27	227;74;76
-bouffant	b	x	hljm yekvorx	2.52	252;49;77
-boughpot	b	x	ujnw rac	2.88	288;13;78
-bouncing	b		ubqejsro	2.1	210;91;79
-bourrit	b	y	pbhrjwc	2.2	220;81;80
-boweries	b	x	hnsp keiyaq	2.85	285;16;81
-brackish	b	x	uwomdr jdntvikg lmuxa	2.41	241;60;82
-brandish	b	y	wlrvfpu wpedxjuh	2.45	245;56;83
-bravoing	b	x	yzufpc rgy dpbuhf	2.77	277;24;84
-breviate	b	y	rcxdnuy zikplbx foaukxe	2.34	234;67;85
-brickish	b		vbeml riml vjdprxo	2.15	215;86;86
-broidery	b	x	sytfkhxp twasvbgx	2.02	202;99;87
-brucella	b	y	qfl	2.94	294;7;88
-buddhism	b	x	ylbjxe mpy vhgdw	2.35	235;66;89
-bughouse	b	x	zdxwbqj kusne	2.08	208;93;90
-bulfinch	b		biqamc rzntgafs	2.76	276;25;91
-bulkiest	b	x	dpveqms nlf mrfspvqy	2.9	290;11;92
-bullpout	b	y	ela jltvci whuizq	2.8	280;21;93
-burliest	b	y	izplsw rezgqakb	2.31	231;70;94
-burnable	b		ukzrgv fidxku reapg	2.48	248;53;95
-bushnell	b		dzul	2.04	204;97;96
-bushveld	b	x	fnmjtoy pbijgc	2.6	260;41;97
-bustling	b		cny fotyc	2.43	243;58;98
-busyness	b	x	moar	2.44	244;57;99
-busywork	b		idjyaq tfio wagpxyob	2.37	237;64;100
-cachucha	c	y	qrf vnkrwchd	0.49	49;252;101
-caesuras	c	y	qgubar apivqlw	0.16	16;285;102
-caftaned	c	y	wlkgi ytsfhezg	0.22	22;279;103
-caingang	c	y	phkuvyn tvbc ulegpyq	0.74	74;227;104
-calebite	c		nxjkvzy	0.5	50;251;105
-calfless	c	y	pagdfxr htszjxuo	0.99	99;202;106
-calibred	c	x	zgktwv qpdnxi	0.13	13;288;107
-callosal	c	x	iajhgyxc	0.32	32;269;108
-campania	c		ngjzi mun hbigvjpr	1	100;201;109
-canceled	c	y	plghq lcsj	0.8	80;221;110
-cancroid	c	y	mpa snaxhlrv ugivo	0.63	63;238;111
-canelike	c	y	jszah arfjmsny	0.88	88;213;112
-canoness	c		jdavr	0.67	67;234;113
-canonize	c	x	dhmfsza	0.51	51;250;114
-carabine	c	x	jgmhzd fuilb zidhju	0.15	15;286;115
-caracara	c	y	ysw	0.85	85;216;116
-carboloy	c	y	gploykcw	0.82	82;219;117
-carboyed	c	x	htwomxvb ydsak	0.48	48;253;118
-carneous	c		ezpunfsi	0.56	56;245;119
-carouser	c		dlckafgu dlx	0.28	28;273;120
-cascaded	c		bvuqxftd	0.03	3;298;121
-caseless	c	x	gakidmn owkechzy	0.73	73;228;122
-castalia	c	y	mgzbsqi	0.14	14;287;123
-catchall	c		jdre szfnuav	0.89	89;212;124
-caterina	c	x	pon mzi qnvrj	0.7	70;231;125
-cathetus	c	x	gwvbe fyr vohbszj	0.01	1;300;126
-cavaedia	c	y	misuqgxd wdrszmxb vfmhoudp	0.3	30;271;127
-cavatina	c		cwjqo tsfjr ykxs	0.64	64;237;128
-caviling	c		oycawum xpmdanl	0.2	20;281;129
-celature	c		juhwe	0.17	17;284;130
-censured	c	y	jpubsec mxkephgy	0.33	33;268;131
-centrist	c	y	smuxcpdt yvawmz wxrktjs	0.02	2;299;132
-cerastes	c	x	swh alwysxh	0.62	62;239;133
-cerotype	c	x	ley hynkbsrw	0.9	90;211;134
-cesarean	c	y	fokxjuza bahgqc	0.44	44;257;135
-challahs	c		pmgyfv	0.72	72;229;136
-chambord	c	x	bruwvkqt qsjxg	0.18	18;283;137
-charango	c	y	hprabge kbz	0.91	91;210;138
-charring	c	x	idfuoh vsyqrk cqbmwv	0.84	84;217;139
-chartist	c	x	ojxbsked	0.81	81;220;140
-chekiang	c	y	ehcvakmp btmasz	0.25	25;276;141
-chellean	c		btglwp	0.97	97;204;142
-chenopod	c	y	nwfsgyq clfpzm hrxlm	0.11	11;290;143
-cheribon	c	x	lho uhqs	0.54	54;247;144
-childbed	c		dfi	0.75	75;226;145
-chilopod	c		lxfiorh kgqau	0.31	31;270;146
-chivying	c	y	wed aqimx	0.55	55;246;147
-chondrus	c	y	xqonmbyl hglk	0.6	60;241;148
-chorioid	c	x	qdnlufe fzwb	0.76	76;225;149
-churlish	c		wyod onkaecm uxn	0.86	86;215;150
-cicatrix	c	x	qrlhx vopa	0.1	10;291;151
-cinchona	c	y	zmyihqbs	0.05	5;296;152
-cindylou	c	x	yqezgavs	0.4	40;261;153
-cinquain	c	x	kvpgq sejnqf	0.35	35;266;154
-cityless	c	y	tzsanl eswdgv	0.71	71;230;155
-claimant	c	x	perilxjb	0.43	43;258;156
-clarinet	c		qvshoty	0.12	12;289;157
-claymore	c	y	amrqdxcl arh	0.93	93;208;158
-cloudlet	c		xwpeu	0.34	34;267;159
-clovered	c	y	cudwk	0.08	8;293;160
-clymenus	c	y	mfchtz uxneayw	0.66	66;235;161
-codpiece	c		rclsod	0.61	61;240;162
-coevally	c	x	kjzoa stod uzx	0.68	68;233;163
-coinable	c	y	rjh xuwadflm	0.38	38;263;164
-colonial	c		rafule hfe	0.53	53;248;165
-colonize	c	x	ibtrsgwo qekyrxh	0.24	24;277;166
-colorful	c	y	fct hdfwtcla	0.36	36;265;167
-comanche	c	y	fujpc oml kleznmuh	0.19	19;282;168
-combated	c		wzgku zsigf	0.83	83;218;169
-comprize	c		lrwvfzu	0.42	42;259;170
-confetti	c		sfyxkavr riqcpzaj rwafgdjt	0.23	23;278;171
-conflict	c	x	nya hczgdsaw	0.29	29;272;172
-congener	c	x	cytgb whoygse	0.57	57;244;173
-conquian	c		wfrbgch ndsf	0.78	78;223;174
-consuelo	c	x	pbz	0.95	95;206;175
-contempt	c		xyor quyhrji	0.09	9;292;176
-converse	c	y	nzp	0.58	58;243;177
-copperas	c	x	iqvum rflezugt ekqyfha	0.79	79;222;178
-corneous	c	x	hbl zlxwj qoz	0.46	46;255;179
-corroded	c	x	tmkzwnbl bre nazbsdei	0.37	37;264;180
-costumer	c	y	sotdclb	0.69	69;232;181
-cotillon	c	x	fzjr	0.98	98;203;182
-cotquean	c		tbiwg jdpohmv lqxgb	0.45	45;256;183
-couchant	c		kecwvh bweaup dcbvf	0.06	6;295;184
-couloirs	c	x	rzuh	0.26	26;275;185
-covertly	c		prbekiw rydohb qldva	0.39	39;262;186
-craftily	c	y	cawp	0.47	47;254;187
-crankpin	c		jozs regxzoqs	0.94	94;207;188
-creviced	c	x	upyst iuf	0.07	7;294;189
-crippler	c	x	kdxmj	0.87	87;214;190
-crocking	c	x	axlnm	0.04	4;297;191
-cudgeled	c	y	bgorij utvlwgrn	0.41	41;260;192
-culinary	c	y	vdwc kdqijzn	0.52	52;249;193
-cultured	c	y	spudyv xhjyuqav ekcr	0.27	27;274;194
-cutpurse	c	x	puk kymaiun afrjuly	0.92	92;209;195
-cuxhaven	c	x	uvogkel kyf	0.59	59;242;196
-cymatium	c	y	sfyqim uovbflps	0.77	77;224;197
-cynewulf	c	x	ohrxqnwd	0.21	21;280;198
-cyrtosis	c	x	xndelgz xtskpm	0.65	65;236;199
-czarevna	c	y	qbsjxrae rxun	0.96	96;205;200
-eastmost	e	y	ohsi	1.15	115;186;201
-eateries	e		hgzsdqyx	1.05	105;196;202
-eatonton	e	x	jvwyeq	1.36	136;165;203
-ecaudate	e	y	loum	1.35	135;166;204
-eckhardt	e	x	migfhu vrncy	1.28	128;173;205
-ecumenic	e	x	fqhxc czv unc	1.45	145;156;206
-edgebone	e	y	svayn hyvmke	1.26	126;175;207
-edgeways	e	y	lsbuqjg kgvmnyz	1.13	113;188;208
-egestion	e		ibgqn rwsl icxnmse	1.22	122;179;209
-einstein	e	x	lrmzki zyqatfo	1.23	123;178;210
-elmhurst	e	x	zxahep znwp	1.5	150;151;211
-eloquent	e		oizpmtnl yheflqj pbx	1.08	108;193;212
-embitter	e	y	kfvb tqycp	1.1	110;191;213
-embracer	e	y	iwqjr fvjxwe xmirj	1.32	132;169;214
-employe	e	x	xfnozrgk ndpgj	1.09	109;192;215
-encaenia	e		jtfgu	1.3	130;171;216
-enchased	e	x	zbk fmxq	1.17	117;184;217
-enfacing	e		tsxyaj	1.16	116;185;218
-enginery	e	y	nxi enucy bfkwna	1.07	107;194;219
-ennobler	e	y	dzoief	1.48	148;153;220
-enplaned	e	x	lqsuxieg jafyvhd fdl	1.34	134;167;221
-enuresis	e	x	zcv xuvo kuqpdgv	1.47	147;154;222
-environs	e	y	jftc	1.29	129;172;223
-epilepsy	e	x	clpim	1.31	131;170;224
-erenburg	e	y	kpyuwa	1.43	143;158;225
-eskimoan	e		nxalqdp djheg lpxtwbhi	1.49	149;152;226
-esoteric	e	y	rpcegfn	1.37	137;164;227
-especial	e	x	boxdwzs	1.01	101;200;228
-estampie	e	y	qwmrglc lrxebogw ishloequ	1.24	124;177;229
-estivate	e		jnd	1.38	138;163;230
-estocada	e	x	hedfwouj	1.14	114;187;231
-etherize	e	x	kuibg mtjavs	1.03	103;198;232
-etruscan	e	y	oynfr xjdkgu vrq	1.21	121;180;233
-eubuleus	e	y	fxgbjuis mynvzl tgdykuo	1.04	104;197;234
-euctemon	e	y	iac dobmps ogxy	1.4	140;161;235
-eulachan	e	x	avwrud blgjx	1.06	106;195;236
-eumolpus	e	x	npfq	1.12	112;189;237
-euplotes	e	x	lun	1.42	142;159;238
-eurasian	e		zerta behvatg	1.33	133;168;239
-eutrophy	e	x	paks ohiau ikpfe	1.2	120;181;240
-everyday	e	y	wgokvy mlcrkhq vhap	1.02	102;199;241
-excircle	e		qetw veungb fyohzgv	1.44	144;157;242
-excusing	e		ftmrugzn nauokh	1.27	127;174;243
-exequial	e	x	ybgajmcv xohdu qxezmfb	1.25	125;176;244
-exoergic	e	y	sgc volwxcqg mfwbcy	1.18	118;183;245
-exorable	e	y	zgovbse	1.46	146;155;246
-expiable	e		bgfuqyl fxenwsp nmqudjb	1.11	111;190;247
-expiator	e	x	qew kdmo	1.39	139;162;248
-exterior	e		zjmx uwt	1.19	119;182;249
-eyeglass	e		qenk pwqr	1.41	141;160;250
-tabbying	t	x	xacmehnq zyvjokgb	1.94	194;107;251
-tailrace	t		tmbaj	1.88	188;113;252
-tallness	t	y	ceozujaq	1.84	184;117;253
-tautonym	t	y	jexpuw cpd tvnr	1.62	162;139;254
-teammate	t	y	goas omxut	1.65	165;136;255
-technics	t	y	aopxvj	1.98	198;103;256
-teetotum	t	x	wunao	1.61	161;140;257
-tegyrius	t		msgxjoal cujex	1.82	182;119;258
-tenpenny	t		lry	1.6	160;141;259
-teosinte	t	x	etchy wqdsox iuqvj	1.69	169;132;260
-terentia	t	x	hsciezax nfogc dki	1.58	158;143;261
-terrapin	t	y	sxhplek ymrw	1.54	154;147;262
-tetracyn	t	x	sibxmk	2	200;101;263
-tetrapod	t	y	ncpgv pczxn	1.9	190;111;264
-thallium	t		jqu ylqif lxjgr	1.71	171;130;265
-thalloid	t	y	yxauv gdczitnf myzbu	1.79	179;122;266
-thankful	t	x	uzbh jbqxdghk vias	1.8	180;121;267
-thiazine	t		swzjl	1.74	174;127;268
-thrombin	t		gmts ajfy	1.96	196;105;269
-tigereye	t	y	hgpzjwn mapkvylz wmh	1.76	176;125;270
-tinnient	t	x	eauyi cqbuytfz sjg	1.89	189;112;271
-tinnitus	t		ztpdsuy uhfty fbm	1.99	199;102;272
-tiresome	t	x	pghe qdxzm utgvoxl	1.83	183;118;273
-titicaca	t	x	ihxdj xmwyg	1.64	164;137;274
-toadfish	t	y	nhk kjsgvb	1.59	159;142;275
-toboggan	t		okz yidwjf nasw	1.63	163;138;276
-tomentum	t	x	kwqs	1.78	178;123;277
-toponymy	t		qodvikh nzbhqd mbgidoap	1.66	166;135;278
-torchier	t	x	trn	1.67	167;134;279
-tortoise	t	y	ofm	1.68	168;133;280
-tovarish	t	y	gjbv nmczo qilbndwt	1.51	151;150;281
-traditor	t	x	ewhftx	1.75	175;126;282
-tragopan	t	y	mcrzfb xok	1.92	192;109;283
-traviata	t	y	ywz	1.95	195;106;284
-trecento	t	x	pjkr	1.97	197;104;285
-tressier	t	y	dsgbmq	1.73	173;128;286
-trevally	t		pxdzkrys stgdule	1.77	177;124;287
-trimeter	t	y	icqmpw	1.57	157;144;288
-trimodal	t	x	riez doc vhm	1.53	153;148;289
-triolein	t	x	wdtjfpri	1.86	186;115;290
-trioxide	t		gprcobtd	1.55	155;146;291
-tripping	t		tpe	1.93	193;108;292
-tristram	t		styep okyuwxzi	1.85	185;116;293
-trotting	t	x	dvnprwj	1.72	172;129;294
-trousers	t	y	pdsvja	1.7	170;131;295
-tucotuco	t		uqskf	1.52	152;149;296
-turanian	t	x	cdv npqxiz	1.56	156;145;297
-tuskless	t	y	wlemkpjt oqkdgj	1.87	187;114;298
-twelvemo	t	x	fsep gocuk	1.91	191;110;299
-tyrtaeus	t	y	umbhqd mqjer znifypes	1.81	181;120;300
+contig	categorical_1	categorical_2	text_layer_01	numerical	bars_main!A	bars_main!B	bars_main!C
+backrest	b	y	nmwje	2.78	278	23	1
+backward	b	x	bqmyujr psrd doefhi	2.49	249	52	2
+backwind	b	y	hkfer lchpmzix	2.69	269	32	3
+backyard	b	x	advoe bfkyhmg	2.05	205	96	4
+bacteria	b	x	lqmcwn hywco	2.63	263	38	5
+bacterin	b		vxqdmn	2.98	298	3	6
+baetylus	b	x	fkgpydi owgyhfx xwlpj	2.19	219	82	7
+bagpiped	b	y	ijmnur	2.12	212	89	8
+balconet	b	y	ecizgs	2.89	289	12	9
+balinese	b	y	qmpyce fkp	2.91	291	10	10
+balkiest	b	y	inz wvgmfe aodkpes	2.58	258	43	11
+ballarat	b	y	fbymka jmzklvo pxb	2.86	286	15	12
+banausic	b	y	itsaubxg xjoilk	2.47	247	54	13
+bandaged	b	y	elrhqm hxdqkriw wqjuza	2.25	225	76	14
+bandsman	b		tlfrn rdq	2.21	221	80	15
+banneret	b		sfi	2.87	287	14	16
+banterer	b	x	zjxk fcl brs	2.55	255	46	17
+baptized	b	x	kpeocam	2.68	268	33	18
+bareness	b	y	jwbvt blgkmw	2.75	275	26	19
+barrable	b	y	pwxz hgbzulk	2.61	261	40	20
+barrater	b		sncvtk	2.73	273	28	21
+basanite	b		njarqvio ltkehzgx ycmrwlpi	2.51	251	50	22
+bassetts	b		rbnt	2.95	295	6	23
+bastogne	b	x	uety elpkmhyj xrt	2.96	296	5	24
+batangas	b	y	qaw dyb	3	300	1	25
+beadlike	b	y	jelf ugmlfd	2.28	228	73	26
+beamiest	b		dnl	2.81	281	20	27
+bearable	b		cyz	2.65	265	36	28
+bearbush	b		qkzwxsf npwi	2.26	226	75	29
+bedeguar	b		ymldv tbckeu	2.18	218	83	30
+begabled	b	x	byk ztkb	2.3	230	71	31
+belabour	b	y	owj	2.42	242	59	32
+belittle	b	y	winxrk	2.01	201	100	33
+beltline	b	x	tyrwlid xove xvmh	2.22	222	79	34
+benzoate	b	x	oiubdtpe wzvno	2.71	271	30	35
+bergamot	b	x	aepjh	2.24	224	77	36
+bergre	b	y	aerluq	2.64	264	37	37
+berkeley	b	y	gtycxlo dqkln wydipvj	2.97	297	4	38
+beryline	b		gdi	2.92	292	9	39
+betiding	b	x	otq rkiuse	2.46	246	55	40
+betjeman	b	y	sqcvwd	2.23	223	78	41
+bevatron	b	y	luxepv surqdw	2.5	250	51	42
+bewrayer	b	x	qrbzo kqil qft	2.13	213	88	43
+beyrouth	b	y	yvgc	2.09	209	92	44
+biblical	b	y	cznpl	2.06	206	95	45
+bicepses	b		hbail bzem lxqhwpv	2.32	232	69	46
+bidarkee	b	x	trfw skqjoric ycukps	2.79	279	22	47
+bigamous	b	x	jtrgpk rzinvy tzxjnrhu	2.82	282	19	48
+billfish	b		otaxyh psoch	2.62	262	39	49
+billings	b	x	rwaksbu	2.74	274	27	50
+bimodule	b	y	dsk	2.39	239	62	51
+biocycle	b		pwge pefcha	2.84	284	17	52
+biologic	b		hvqeab lzpvqgkc	2.7	270	31	53
+birdseed	b	x	gwhanpue gqeix mtaehks	2.33	233	68	54
+bisector	b	y	ytsghvkz nfq jynkvld	2.36	236	65	55
+bithynia	b	x	wyh khtoq	2.57	257	44	56
+bitxynia	b	y	grbva zwgeo ybolt	2.56	256	45	57
+biunique	b	y	qxnkg qle	2.17	217	84	58
+blackboy	b	y	udlfhap egdlq omg	2.83	283	18	59
+blantyre	b	x	row cptdbwl ztrkylfg	2.93	293	8	60
+blazonry	b		kniztqu dxqkcybm	2.07	207	94	61
+bloodier	b		zlj rcgt	2.54	254	47	62
+blooding	b	x	hprit	2.16	216	85	63
+bluebell	b	y	xsan zauims ndrqez	2.03	203	98	64
+bluejack	b	x	jusgelt ehzxln	2.99	299	2	65
+blueness	b	x	sncyog bygtk	2.38	238	63	66
+boatload	b		qguowpmf	2.4	240	61	67
+bogalusa	b		mrft	2.59	259	42	68
+bohemian	b	y	yqru ktlprnjz	2.14	214	87	69
+bohuslav	b		obqkh	2.29	229	72	70
+bokharan	b	x	rnewompi tbljih dxqutlnp	2.11	211	90	71
+bonhomie	b	x	kpsjocx osxvrfj knzbe	2.66	266	35	72
+bookless	b	y	mfqtka	2.72	272	29	73
+borating	b	y	adxgq	2.67	267	34	74
+boscobel	b	y	jtr njfmhr msvdf	2.53	253	48	75
+boskiest	b	x	epbvxtr txdvwk	2.27	227	74	76
+bouffant	b	x	hljm yekvorx	2.52	252	49	77
+boughpot	b	x	ujnw rac	2.88	288	13	78
+bouncing	b		ubqejsro	2.1	210	91	79
+bourrit	b	y	pbhrjwc	2.2	220	81	80
+boweries	b	x	hnsp keiyaq	2.85	285	16	81
+brackish	b	x	uwomdr jdntvikg lmuxa	2.41	241	60	82
+brandish	b	y	wlrvfpu wpedxjuh	2.45	245	56	83
+bravoing	b	x	yzufpc rgy dpbuhf	2.77	277	24	84
+breviate	b	y	rcxdnuy zikplbx foaukxe	2.34	234	67	85
+brickish	b		vbeml riml vjdprxo	2.15	215	86	86
+broidery	b	x	sytfkhxp twasvbgx	2.02	202	99	87
+brucella	b	y	qfl	2.94	294	7	88
+buddhism	b	x	ylbjxe mpy vhgdw	2.35	235	66	89
+bughouse	b	x	zdxwbqj kusne	2.08	208	93	90
+bulfinch	b		biqamc rzntgafs	2.76	276	25	91
+bulkiest	b	x	dpveqms nlf mrfspvqy	2.9	290	11	92
+bullpout	b	y	ela jltvci whuizq	2.8	280	21	93
+burliest	b	y	izplsw rezgqakb	2.31	231	70	94
+burnable	b		ukzrgv fidxku reapg	2.48	248	53	95
+bushnell	b		dzul	2.04	204	97	96
+bushveld	b	x	fnmjtoy pbijgc	2.6	260	41	97
+bustling	b		cny fotyc	2.43	243	58	98
+busyness	b	x	moar	2.44	244	57	99
+busywork	b		idjyaq tfio wagpxyob	2.37	237	64	100
+cachucha	c	y	qrf vnkrwchd	0.49	49	252	101
+caesuras	c	y	qgubar apivqlw	0.16	16	285	102
+caftaned	c	y	wlkgi ytsfhezg	0.22	22	279	103
+caingang	c	y	phkuvyn tvbc ulegpyq	0.74	74	227	104
+calebite	c		nxjkvzy	0.5	50	251	105
+calfless	c	y	pagdfxr htszjxuo	0.99	99	202	106
+calibred	c	x	zgktwv qpdnxi	0.13	13	288	107
+callosal	c	x	iajhgyxc	0.32	32	269	108
+campania	c		ngjzi mun hbigvjpr	1	100	201	109
+canceled	c	y	plghq lcsj	0.8	80	221	110
+cancroid	c	y	mpa snaxhlrv ugivo	0.63	63	238	111
+canelike	c	y	jszah arfjmsny	0.88	88	213	112
+canoness	c		jdavr	0.67	67	234	113
+canonize	c	x	dhmfsza	0.51	51	250	114
+carabine	c	x	jgmhzd fuilb zidhju	0.15	15	286	115
+caracara	c	y	ysw	0.85	85	216	116
+carboloy	c	y	gploykcw	0.82	82	219	117
+carboyed	c	x	htwomxvb ydsak	0.48	48	253	118
+carneous	c		ezpunfsi	0.56	56	245	119
+carouser	c		dlckafgu dlx	0.28	28	273	120
+cascaded	c		bvuqxftd	0.03	3	298	121
+caseless	c	x	gakidmn owkechzy	0.73	73	228	122
+castalia	c	y	mgzbsqi	0.14	14	287	123
+catchall	c		jdre szfnuav	0.89	89	212	124
+caterina	c	x	pon mzi qnvrj	0.7	70	231	125
+cathetus	c	x	gwvbe fyr vohbszj	0.01	1	300	126
+cavaedia	c	y	misuqgxd wdrszmxb vfmhoudp	0.3	30	271	127
+cavatina	c		cwjqo tsfjr ykxs	0.64	64	237	128
+caviling	c		oycawum xpmdanl	0.2	20	281	129
+celature	c		juhwe	0.17	17	284	130
+censured	c	y	jpubsec mxkephgy	0.33	33	268	131
+centrist	c	y	smuxcpdt yvawmz wxrktjs	0.02	2	299	132
+cerastes	c	x	swh alwysxh	0.62	62	239	133
+cerotype	c	x	ley hynkbsrw	0.9	90	211	134
+cesarean	c	y	fokxjuza bahgqc	0.44	44	257	135
+challahs	c		pmgyfv	0.72	72	229	136
+chambord	c	x	bruwvkqt qsjxg	0.18	18	283	137
+charango	c	y	hprabge kbz	0.91	91	210	138
+charring	c	x	idfuoh vsyqrk cqbmwv	0.84	84	217	139
+chartist	c	x	ojxbsked	0.81	81	220	140
+chekiang	c	y	ehcvakmp btmasz	0.25	25	276	141
+chellean	c		btglwp	0.97	97	204	142
+chenopod	c	y	nwfsgyq clfpzm hrxlm	0.11	11	290	143
+cheribon	c	x	lho uhqs	0.54	54	247	144
+childbed	c		dfi	0.75	75	226	145
+chilopod	c		lxfiorh kgqau	0.31	31	270	146
+chivying	c	y	wed aqimx	0.55	55	246	147
+chondrus	c	y	xqonmbyl hglk	0.6	60	241	148
+chorioid	c	x	qdnlufe fzwb	0.76	76	225	149
+churlish	c		wyod onkaecm uxn	0.86	86	215	150
+cicatrix	c	x	qrlhx vopa	0.1	10	291	151
+cinchona	c	y	zmyihqbs	0.05	5	296	152
+cindylou	c	x	yqezgavs	0.4	40	261	153
+cinquain	c	x	kvpgq sejnqf	0.35	35	266	154
+cityless	c	y	tzsanl eswdgv	0.71	71	230	155
+claimant	c	x	perilxjb	0.43	43	258	156
+clarinet	c		qvshoty	0.12	12	289	157
+claymore	c	y	amrqdxcl arh	0.93	93	208	158
+cloudlet	c		xwpeu	0.34	34	267	159
+clovered	c	y	cudwk	0.08	8	293	160
+clymenus	c	y	mfchtz uxneayw	0.66	66	235	161
+codpiece	c		rclsod	0.61	61	240	162
+coevally	c	x	kjzoa stod uzx	0.68	68	233	163
+coinable	c	y	rjh xuwadflm	0.38	38	263	164
+colonial	c		rafule hfe	0.53	53	248	165
+colonize	c	x	ibtrsgwo qekyrxh	0.24	24	277	166
+colorful	c	y	fct hdfwtcla	0.36	36	265	167
+comanche	c	y	fujpc oml kleznmuh	0.19	19	282	168
+combated	c		wzgku zsigf	0.83	83	218	169
+comprize	c		lrwvfzu	0.42	42	259	170
+confetti	c		sfyxkavr riqcpzaj rwafgdjt	0.23	23	278	171
+conflict	c	x	nya hczgdsaw	0.29	29	272	172
+congener	c	x	cytgb whoygse	0.57	57	244	173
+conquian	c		wfrbgch ndsf	0.78	78	223	174
+consuelo	c	x	pbz	0.95	95	206	175
+contempt	c		xyor quyhrji	0.09	9	292	176
+converse	c	y	nzp	0.58	58	243	177
+copperas	c	x	iqvum rflezugt ekqyfha	0.79	79	222	178
+corneous	c	x	hbl zlxwj qoz	0.46	46	255	179
+corroded	c	x	tmkzwnbl bre nazbsdei	0.37	37	264	180
+costumer	c	y	sotdclb	0.69	69	232	181
+cotillon	c	x	fzjr	0.98	98	203	182
+cotquean	c		tbiwg jdpohmv lqxgb	0.45	45	256	183
+couchant	c		kecwvh bweaup dcbvf	0.06	6	295	184
+couloirs	c	x	rzuh	0.26	26	275	185
+covertly	c		prbekiw rydohb qldva	0.39	39	262	186
+craftily	c	y	cawp	0.47	47	254	187
+crankpin	c		jozs regxzoqs	0.94	94	207	188
+creviced	c	x	upyst iuf	0.07	7	294	189
+crippler	c	x	kdxmj	0.87	87	214	190
+crocking	c	x	axlnm	0.04	4	297	191
+cudgeled	c	y	bgorij utvlwgrn	0.41	41	260	192
+culinary	c	y	vdwc kdqijzn	0.52	52	249	193
+cultured	c	y	spudyv xhjyuqav ekcr	0.27	27	274	194
+cutpurse	c	x	puk kymaiun afrjuly	0.92	92	209	195
+cuxhaven	c	x	uvogkel kyf	0.59	59	242	196
+cymatium	c	y	sfyqim uovbflps	0.77	77	224	197
+cynewulf	c	x	ohrxqnwd	0.21	21	280	198
+cyrtosis	c	x	xndelgz xtskpm	0.65	65	236	199
+czarevna	c	y	qbsjxrae rxun	0.96	96	205	200
+eastmost	e	y	ohsi	1.15	115	186	201
+eateries	e		hgzsdqyx	1.05	105	196	202
+eatonton	e	x	jvwyeq	1.36	136	165	203
+ecaudate	e	y	loum	1.35	135	166	204
+eckhardt	e	x	migfhu vrncy	1.28	128	173	205
+ecumenic	e	x	fqhxc czv unc	1.45	145	156	206
+edgebone	e	y	svayn hyvmke	1.26	126	175	207
+edgeways	e	y	lsbuqjg kgvmnyz	1.13	113	188	208
+egestion	e		ibgqn rwsl icxnmse	1.22	122	179	209
+einstein	e	x	lrmzki zyqatfo	1.23	123	178	210
+elmhurst	e	x	zxahep znwp	1.5	150	151	211
+eloquent	e		oizpmtnl yheflqj pbx	1.08	108	193	212
+embitter	e	y	kfvb tqycp	1.1	110	191	213
+embracer	e	y	iwqjr fvjxwe xmirj	1.32	132	169	214
+employe	e	x	xfnozrgk ndpgj	1.09	109	192	215
+encaenia	e		jtfgu	1.3	130	171	216
+enchased	e	x	zbk fmxq	1.17	117	184	217
+enfacing	e		tsxyaj	1.16	116	185	218
+enginery	e	y	nxi enucy bfkwna	1.07	107	194	219
+ennobler	e	y	dzoief	1.48	148	153	220
+enplaned	e	x	lqsuxieg jafyvhd fdl	1.34	134	167	221
+enuresis	e	x	zcv xuvo kuqpdgv	1.47	147	154	222
+environs	e	y	jftc	1.29	129	172	223
+epilepsy	e	x	clpim	1.31	131	170	224
+erenburg	e	y	kpyuwa	1.43	143	158	225
+eskimoan	e		nxalqdp djheg lpxtwbhi	1.49	149	152	226
+esoteric	e	y	rpcegfn	1.37	137	164	227
+especial	e	x	boxdwzs	1.01	101	200	228
+estampie	e	y	qwmrglc lrxebogw ishloequ	1.24	124	177	229
+estivate	e		jnd	1.38	138	163	230
+estocada	e	x	hedfwouj	1.14	114	187	231
+etherize	e	x	kuibg mtjavs	1.03	103	198	232
+etruscan	e	y	oynfr xjdkgu vrq	1.21	121	180	233
+eubuleus	e	y	fxgbjuis mynvzl tgdykuo	1.04	104	197	234
+euctemon	e	y	iac dobmps ogxy	1.4	140	161	235
+eulachan	e	x	avwrud blgjx	1.06	106	195	236
+eumolpus	e	x	npfq	1.12	112	189	237
+euplotes	e	x	lun	1.42	142	159	238
+eurasian	e		zerta behvatg	1.33	133	168	239
+eutrophy	e	x	paks ohiau ikpfe	1.2	120	181	240
+everyday	e	y	wgokvy mlcrkhq vhap	1.02	102	199	241
+excircle	e		qetw veungb fyohzgv	1.44	144	157	242
+excusing	e		ftmrugzn nauokh	1.27	127	174	243
+exequial	e	x	ybgajmcv xohdu qxezmfb	1.25	125	176	244
+exoergic	e	y	sgc volwxcqg mfwbcy	1.18	118	183	245
+exorable	e	y	zgovbse	1.46	146	155	246
+expiable	e		bgfuqyl fxenwsp nmqudjb	1.11	111	190	247
+expiator	e	x	qew kdmo	1.39	139	162	248
+exterior	e		zjmx uwt	1.19	119	182	249
+eyeglass	e		qenk pwqr	1.41	141	160	250
+tabbying	t	x	xacmehnq zyvjokgb	1.94	194	107	251
+tailrace	t		tmbaj	1.88	188	113	252
+tallness	t	y	ceozujaq	1.84	184	117	253
+tautonym	t	y	jexpuw cpd tvnr	1.62	162	139	254
+teammate	t	y	goas omxut	1.65	165	136	255
+technics	t	y	aopxvj	1.98	198	103	256
+teetotum	t	x	wunao	1.61	161	140	257
+tegyrius	t		msgxjoal cujex	1.82	182	119	258
+tenpenny	t		lry	1.6	160	141	259
+teosinte	t	x	etchy wqdsox iuqvj	1.69	169	132	260
+terentia	t	x	hsciezax nfogc dki	1.58	158	143	261
+terrapin	t	y	sxhplek ymrw	1.54	154	147	262
+tetracyn	t	x	sibxmk	2	200	101	263
+tetrapod	t	y	ncpgv pczxn	1.9	190	111	264
+thallium	t		jqu ylqif lxjgr	1.71	171	130	265
+thalloid	t	y	yxauv gdczitnf myzbu	1.79	179	122	266
+thankful	t	x	uzbh jbqxdghk vias	1.8	180	121	267
+thiazine	t		swzjl	1.74	174	127	268
+thrombin	t		gmts ajfy	1.96	196	105	269
+tigereye	t	y	hgpzjwn mapkvylz wmh	1.76	176	125	270
+tinnient	t	x	eauyi cqbuytfz sjg	1.89	189	112	271
+tinnitus	t		ztpdsuy uhfty fbm	1.99	199	102	272
+tiresome	t	x	pghe qdxzm utgvoxl	1.83	183	118	273
+titicaca	t	x	ihxdj xmwyg	1.64	164	137	274
+toadfish	t	y	nhk kjsgvb	1.59	159	142	275
+toboggan	t		okz yidwjf nasw	1.63	163	138	276
+tomentum	t	x	kwqs	1.78	178	123	277
+toponymy	t		qodvikh nzbhqd mbgidoap	1.66	166	135	278
+torchier	t	x	trn	1.67	167	134	279
+tortoise	t	y	ofm	1.68	168	133	280
+tovarish	t	y	gjbv nmczo qilbndwt	1.51	151	150	281
+traditor	t	x	ewhftx	1.75	175	126	282
+tragopan	t	y	mcrzfb xok	1.92	192	109	283
+traviata	t	y	ywz	1.95	195	106	284
+trecento	t	x	pjkr	1.97	197	104	285
+tressier	t	y	dsgbmq	1.73	173	128	286
+trevally	t		pxdzkrys stgdule	1.77	177	124	287
+trimeter	t	y	icqmpw	1.57	157	144	288
+trimodal	t	x	riez doc vhm	1.53	153	148	289
+triolein	t	x	wdtjfpri	1.86	186	115	290
+trioxide	t		gprcobtd	1.55	155	146	291
+tripping	t		tpe	1.93	193	108	292
+tristram	t		styep okyuwxzi	1.85	185	116	293
+trotting	t	x	dvnprwj	1.72	172	129	294
+trousers	t	y	pdsvja	1.7	170	131	295
+tucotuco	t		uqskf	1.52	152	149	296
+turanian	t	x	cdv npqxiz	1.56	156	145	297
+tuskless	t	y	wlemkpjt oqkdgj	1.87	187	114	298
+twelvemo	t	x	fsep gocuk	1.91	191	110	299
+tyrtaeus	t	y	umbhqd mqjer znifypes	1.81	181	120	300
