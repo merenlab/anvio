@@ -459,6 +459,7 @@ function mouseMoveHandler(event) {
 
         var message = "";
         var layer_pos = 0;
+        var layer_counter=0;
         for (var i=0; i < last_settings['samples-layer-order'].length; i++)
         {
             var layer_name = last_settings['samples-layer-order'][i]['layer_name'];
@@ -473,12 +474,15 @@ function mouseMoveHandler(event) {
             if (layer_name == layer_name_hover && group == sample_group)
             {
                 message += '<tr style="background-color: rgb(232, 202, 207);"><td>' + pretty_name + '</td><td>' + samples_information_dict[sample_group][sample_name][layer_name] + '</td></tr>';
-                layer_pos = i;
+                layer_pos = layer_counter;
             }
             else
             {
                 message += '<tr><td>' + pretty_name + '</td><td>' + samples_information_dict[group][sample_name][layer_name] + '</td></tr>';
             }
+
+            // since we skip hidden layer groups, we can not use 'i' to refer layer position.
+            layer_counter++;
         }
 
         write_mouse_table(message, "Layers", layer_pos);
