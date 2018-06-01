@@ -477,7 +477,7 @@ function mouseMoveHandler(event) {
             }
             else
             {
-                message += '<tr><td>' + pretty_name + '</td><td>' + samples_information_dict[sample_group][sample_name][layer_name] + '</td></tr>';
+                message += '<tr><td>' + pretty_name + '</td><td>' + samples_information_dict[group][sample_name][layer_name] + '</td></tr>';
             }
         }
 
