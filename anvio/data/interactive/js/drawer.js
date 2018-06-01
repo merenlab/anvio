@@ -365,9 +365,9 @@ Drawer.prototype.calculate_bar_sizes = function() {
 };
 
 Drawer.prototype.initialize_tree = function() {
+    this.tree = new Tree();
     if (this.has_tree)
     {
-        this.tree = new Tree();
         this.tree.Parse(clusteringData.trim(), this.settings['edge-normalization']);
 
         if (this.tree.error != 0) {
@@ -389,9 +389,10 @@ Drawer.prototype.initialize_tree = function() {
     else
     {
         for (var i = 0; i < clusteringData.length; i++) {
-            var q = new Node(clusteringData[i]);
-            q.id = i + 1;
-            q.order = i;
+            let q = this.tree.NewNode();
+            q.order = this.tree.num_leaves++;
+            q.label = clusteringData[i];
+            this.tree.label_to_leaves[q.label] = q;
         }
     }  
 };
