@@ -55,7 +55,7 @@ ContextMenu = function(options) {
             'title': 'Inspect',
             'action': (node, layer, param) => {
                 localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-                window.open(generate_inspect_link('inspect_' + param, node.label), '_blank'); 
+                window.open(generate_inspect_link({'type': 'inspect_' + param, 'item_name': node.label, 'show_snvs': true}), '_blank'); 
             }
         },
         'inspect_split': {

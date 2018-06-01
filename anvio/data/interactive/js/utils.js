@@ -113,49 +113,48 @@ function fire_up_ncbi_blast(sequence, program, database, target)
 }
 //--------------------------------------------------------------------------------------------------
 
-function generate_inspect_link(type, item_name) {
+function generate_inspect_link(options) {
+    let show_snvs = options.show_snvs;
+    let type = options.type;
+    let item_name = options.item_name;
+
+    let url = window.location.href.split('?')[0];
+    let new_url = "";
+
     if (self == top) {
         // local anvio
-        var url = window.location.href.split('?')[0];
 
         if (url.endsWith('index.html')) {
             // on index page
             if (type == 'inspect_split') {
-                return 'charts.html?id=' + item_name;
+                new_url = 'charts.html?id=' + item_name;
             }
             else if (type == 'inspect_context') {
-                return 'charts.html?id=' + item_name + '&highlight_gene=true';
+                new_url = 'charts.html?id=' + item_name + '&highlight_gene=true';
             }
             else if (type == 'inspect_gene') {
-                return 'charts.html?id=' + item_name + '&highlight_gene=true&gene_mode=true';
+                new_url = 'charts.html?id=' + item_name + '&highlight_gene=true&gene_mode=true';
             } 
             else if (type == 'inspect_geneclusters') {
-                return 'geneclusters.html?id=' + item_name;
+                new_url = 'geneclusters.html?id=' + item_name;
             }
         }
         else
         {
             // on charts or gene cluster page, so changing the ?id= part enough
-            var new_url = "";
             new_url =  url + '?id=' + item_name;
 
             if (type == 'inspect_context') {
-                return new_url + '&highlight_gene=true';
+                new_url = new_url + '&highlight_gene=true';
             }
             else if (type == 'inspect_gene') {
-                return new_url + '&highlight_gene=true&gene_mode=true';
-            }
-            else {
-                return new_url;
+                new_url = new_url + '&highlight_gene=true&gene_mode=true';
             }
         }
     }
     else
     {
         // anvi server
-        var url = window.parent.location.href.split('?')[0];
-        var new_url = "";
-
         if (url.endsWith('/inspect') || url.endsWith('/geneclusters')) {
             // on charts or gene cluster page
             new_url = url;
@@ -172,9 +171,9 @@ function generate_inspect_link(type, item_name) {
         if (view_key != 'no_view_key') {
             new_url = new_url + '&view_key=' + view_key;
         }
-
-        return new_url;
     }
+
+    return new_url;
 }
 
 //--------------------------------------------------------------------------------------------------
