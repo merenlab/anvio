@@ -113,9 +113,9 @@ def main(args):
 
         for report_name in results:
             layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(pan_db=args.pan_db, just_do_it=args.just_do_it))
-            layer_additional_data_table.add(results[report_name], list(results[report_name].keys()), data_group=report_name)
+            layer_additional_data_table.add(results[report_name], list(results[report_name].keys()), data_group='ANI_' + report_name)
 
-            TableForLayerOrders(args).add({report_name: {'data_type': 'newick', 'data_value': clusterings[report_name]}})
+            TableForLayerOrders(args).add({'ANI_' + report_name: {'data_type': 'newick', 'data_value': clusterings[report_name]}})
 
 
     if anvio.DEBUG:

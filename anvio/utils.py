@@ -1575,7 +1575,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                             need to use this flag, you must also be explicit about what fields you expect to\
                             find in the file.")
 
-    filesnpaths.is_file_exists(file_path)
+    filesnpaths.is_file_plain_text(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator=separator)
 
     f = open(file_path, 'rU')

@@ -1004,22 +1004,21 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
 
 
-    def search_for_functions(self, search_terms):
+    def search_for_functions(self, search_terms, requested_sources=None):
         search_terms = [s.strip() for s in search_terms.split(',')]
-        full_report = None
+        item_count, full_report = None, None
 
         if self.mode == 'full' or self.mode == 'gene':
-            _, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
-
+            items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
             if self.mode == 'gene':
                 # otherwise gene mode report functions from other splits are not the bin interactive initialized.
                 full_report = [i for i in full_report if i[5] in self.split_names_of_interest]
         elif self.mode == 'pan':
-            _, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+            items, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
         else:
             raise ConfigError("Searching functions are not supported for this mode.")
 
-        return full_report
+        return items, full_report
 
 
     def check_names_consistency(self):

@@ -363,8 +363,8 @@ D = {
              'metavar': 'CATEGORY',
              'help': "The additional layers data variable name that divides layers into multiple categories."}
                 ),
-    'min-portion-occurence-of-function-in-group': (
-            ['-P', '--min-portion-occurence-of-function-in-group'],
+    'min-portion-occurrence-of-function-in-group': (
+            ['-P', '--min-portion-occurrence-of-function-in-group'],
             {'metavar': 'PORTION',
              'default': 0,
              'type': float,
@@ -380,8 +380,8 @@ D = {
                      that occur in all members of one group and in none of the members of the other group.\
                      Default is %(default).1f."}
                 ),
-    'functional-occurence-table-output': (
-            ['-F', '--functional-occurence-table-output'],
+    'functional-occurrence-table-output': (
+            ['-F', '--functional-occurrence-table-output'],
             {'metavar': 'FILE',
              'default': None,
              'type': str,
@@ -744,6 +744,19 @@ D = {
                       the gene context for it to be reported. You must consider the length of\
                       your short reads, as well as the length of the gene you are targeting.\
                       The default is %(default)d nts."}
+                ),
+    'split-R1-and-R2': (
+            ['-Q', '--split-R1-and-R2'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, this program outputs 3 FASTA files for paired-end reads: one\
+                      for R1, one for R2, and one for unpaired reads."}
+                ),
+    'gzip-output': (
+            ['-X', '--gzip-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, output file(s) will be gzip compressed and the extension `.gz` will be added."}
                 ),
     'list-contigs': (
             ['--list-contigs'],

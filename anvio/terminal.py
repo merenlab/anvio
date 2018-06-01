@@ -128,6 +128,7 @@ class Progress:
             raise TerminalError('Progress with null pid will not update for msg "%s"' % msg)
 
         self.clear()
+        self.msg = msg
         self.write('\r[%s] %s' % (self.pid, msg))
 
 
@@ -172,7 +173,7 @@ class Run:
                 sys.stderr.write(line.encode('utf-8'))
 
 
-    def info(self, key, value, quiet=False, display_only=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow'):
+    def info(self, key, value, quiet=False, display_only=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow', progress=None):
         if not display_only:
             self.info_dict[key] = value
 
@@ -189,7 +190,13 @@ class Run:
                                          '.' * (self.width - len(label)),
                                          c(str(value), mc), '\n' * nl_after)
 
-        self.write(info_line, quiet=quiet)
+        if progress:
+            progress.clear()
+            self.write(info_line, quiet=quiet)
+            progress.update(progress.msg)
+
+        else:
+            self.write(info_line, quiet=quiet)
 
 
     def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1):

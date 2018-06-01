@@ -36,7 +36,19 @@ is_bad_column_name = lambda col: len([char for char in col if char not in allowe
 
 def is_proper_newick(newick_data, dont_raise=False):
     try:
-        return Tree(newick_data, format=1)
+        tree = Tree(newick_data, format=1)
+        
+        seen = set([])
+        duplicates = set([])
+        for leaf in tree.get_leaves():
+            name = leaf.name
+            if name in seen:
+                duplicates.add(name)
+            seen.add(name)
+
+        if len(duplicates):
+            raise Exception("Your newick tree contains duplicate leaves, here is a list of them: %s" % ", ".join(duplicates))
+
     except Exception as e:
         if dont_raise:
             return False
