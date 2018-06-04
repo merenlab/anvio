@@ -405,6 +405,7 @@ function drawSamples() {
     if (samples_tree)
     {
         samples_tree.addEventListener('click', lineClickHandler, false);
+        samples_tree.addEventListener('contextmenu', lineContextMenuHandler, false);
     }
 }
 
