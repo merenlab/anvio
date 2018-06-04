@@ -346,6 +346,18 @@ Bins.prototype.GetBinNodeLabels = function(bin_id) {
 };
 
 
+Bins.prototype.MigrateCollection = function() {
+    // When we redraw tree, tree gets parsed again and object ids change.
+    // we need to migrate exist collection and bind them to newly created objects.
+
+    let collection = this.ExportCollection(use_bin_id=true);
+
+    for (let bin_id of Object.keys(collection['data']).sort()) {
+        this.selections[bin_id] = new Set(collection['data'][bin_id].map((node_label) => drawer.tree.GetLeafByName(node_label)));
+    }
+}
+
+
 Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
     let bins_cleared = false;
 
@@ -394,7 +406,7 @@ Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
 };
 
 
-Bins.prototype.ExportCollection = function() {
+Bins.prototype.ExportCollection = function(use_bin_id=false) {
     let data = {};
     let colors = {};
 
@@ -411,8 +423,15 @@ Bins.prototype.ExportCollection = function() {
         }
 
         if (items.length > 0) {
-            data[bin_name] = items;
-            colors[bin_name] = bin_color;
+            if (use_bin_id) {
+                data[bin_id] = items;
+                colors[bin_id] = bin_color;
+            }
+            else
+            {
+                data[bin_name] = items;
+                colors[bin_name] = bin_color;
+            }
         }
     }
 
