@@ -484,7 +484,7 @@ class GetReadsFromBAM:
 
                         defline = '_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])
 
-                        if not read.is_paired and not read.is_proper_pair:
+                        if not read.is_paired:
                             short_reads_for_splits_dict['UNPAIRED'][defline] = read.query_sequence
 
                         elif defline in has_unknown_mate:
