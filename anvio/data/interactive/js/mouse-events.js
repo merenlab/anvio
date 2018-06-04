@@ -332,7 +332,7 @@ function updateSingleBackgroundGlobals()
 
 function getNodeFromEvent(event)
 {
-    if (event.target.id == 'path_event')
+    if (event.target.id == 'path_event' || event.target.parentNode.id == 'bin')
     {
         if (last_settings['tree-type'] == 'phylogram')
         {

@@ -307,9 +307,12 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('select');
             }
             menu.push('divider');
-            menu.push('select_layer');
-            menu.push('unselect_layer');
-            menu.push('divider');
+
+            if (this.layer) {
+                menu.push('select_layer');
+                menu.push('unselect_layer');
+                menu.push('divider');       
+            }
 
             if (mode == 'gene') {
                 menu.push('inspect_context');

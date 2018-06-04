@@ -531,7 +531,7 @@ Bins.prototype.RedrawBins = function() {
                 (end.angle - start.angle + (start.size / 2) + (end.size / 2) > Math.PI) ? 1 : 0,
                 color,
                 1,
-                false);
+                true);
 
             var align = 'left';
             var angle = (end.angle + end.size / 2 + start.angle - start.size / 2) / 2;
@@ -602,7 +602,7 @@ Bins.prototype.RedrawBins = function() {
                 outer_ring_size,
                 color,
                 1,
-                false);
+                true);
 
             if (show_bin_labels)
             {
@@ -657,7 +657,7 @@ Bins.prototype.RedrawBins = function() {
                 (node.size / 2 > Math.PI) ? 1 : 0,
                 color,
                 1,
-                false);     
+                true);     
         }
         else
         {
@@ -669,7 +669,7 @@ Bins.prototype.RedrawBins = function() {
                 outer_ring_size,
                 color,
                 1,
-                false);
+                true);
         }
     }
 }
