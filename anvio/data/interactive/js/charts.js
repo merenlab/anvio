@@ -33,6 +33,7 @@ var visible_layers;
 var contig_id;
 var highlight_gene;
 var gene_mode;
+var show_snvs;
 
 
 function loadAll() {
@@ -50,6 +51,7 @@ function loadAll() {
     contig_id = getParameterByName('id');
     highlight_gene = getParameterByName('highlight_gene') == 'true';
     gene_mode = getParameterByName('gene_mode') == 'true';
+    show_snvs = getParameterByName('show_snvs') == 'true';
 
     if (typeof localStorage.state === 'undefined')
     {
@@ -120,10 +122,10 @@ function loadAll() {
                     }
 
                     if(next_contig_name)
-                        next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': true}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                        next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': show_snvs}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
                     if(previous_contig_name)
-                        prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': true}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                        prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': show_snvs}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
                     $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
 
@@ -455,76 +457,77 @@ function Chart(options){
                               .style("fill-opacity", "0.5")
                               .attr("d", this.area);
 
-    this.lineContainer.append("path")
-        .data([this.variability_b])
-        .attr("class", "line")
-        .attr("name", "first_pos")
-        .style("fill", '#990000')
-        .attr("d", this.line);
+    if (show_snvs) {
+        this.lineContainer.append("path")
+            .data([this.variability_b])
+            .attr("class", "line")
+            .attr("name", "first_pos")
+            .style("fill", '#990000')
+            .attr("d", this.line);
 
-    this.lineContainer.append("path")
-        .data([this.variability_c])
-        .attr("class", "line")
-        .attr("name", "second_pos")
-        .style("fill", '#990000')
-        .attr("d", this.line);
+        this.lineContainer.append("path")
+            .data([this.variability_c])
+            .attr("class", "line")
+            .attr("name", "second_pos")
+            .style("fill", '#990000')
+            .attr("d", this.line);
 
-    this.lineContainer.append("path")
-        .data([this.variability_d])
-        .attr("class", "line")
-        .attr("name", "third_pos")
-        .style("fill", '#004400')
-        .attr("d", this.line);
+        this.lineContainer.append("path")
+            .data([this.variability_d])
+            .attr("class", "line")
+            .attr("name", "third_pos")
+            .style("fill", '#004400')
+            .attr("d", this.line);
 
-    this.lineContainer.append("path")
-        .data([this.variability_a])
-        .attr("class", "line")
-        .attr("name", "outside_gene")
-        .style("stroke", '#666666')
-        .style("stroke-width", "0.2")
-        .attr("d", this.line);
+        this.lineContainer.append("path")
+            .data([this.variability_a])
+            .attr("class", "line")
+            .attr("name", "outside_gene")
+            .style("stroke", '#666666')
+            .style("stroke-width", "0.2")
+            .attr("d", this.line);
 
-
-    this.textContainer.selectAll("text")
-                            .data(d3.entries(this.competing_nucleotides))
-                            .enter()
-                            .append("text")
-                            .attr("x", function (d) { return xS(d.key); })
-                            .attr("y", function (d) { return 0; })
-                            .attr("writing-mode", "tb")
-                            .attr("font-size", "7px")
-                            .attr("glyph-orientation-vertical", "0")
-                            .attr("style", "cursor:pointer;")
-                            .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
-                            .attr('data-content', function(d) { 
-                                return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
-                                        <h3>Content</h3> \
-                                        <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
-                                            <tr><td>Position in split</td><td>' + d.value['pos'] +'</td></tr> \
-                                            <tr><td>Position in contig</td><td>' + d.value['pos_in_contig'] +'</td></tr> \
-                                            <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
-                                            <tr><td>Consensus</td><td>' + d.value['consensus'] +'</td></tr> \
-                                            <tr><td>Departure from reference</td><td>' + d.value['departure_from_reference'].toFixed(4) +'</td></tr> \
-                                            <tr><td>Departure from consensus</td><td>' + d.value['departure_from_consensus'].toFixed(4) +'</td></tr> \
-                                            <tr><td>Competing nucleotides</td><td>' + d.value['competing_nts'] +'</td></tr> \
-                                            <tr><td>Corresponding gene call</td><td>' + ((d.value['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': d.value['corresponding_gene_call']) +'</td></tr> \
-                                            <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene or in partial gene': d.value['codon_order_in_gene']) +'</td></tr> \
-                                            <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene or in partial gene': d.value['base_pos_in_codon']) +'</td></tr> \
-                                            <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
-                                        </table> \
-                                        <h3>Counts</h3> \
-                                        <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
-                                            <tr><td>A</td><td>' + d.value['A'] +'</td></tr> \
-                                            <tr><td>T</td><td>' + d.value['T'] +'</td></tr> \
-                                            <tr><td>G</td><td>' + d.value['G'] +'</td></tr> \
-                                            <tr><td>C</td><td>' + d.value['C'] +'</td></tr> \
-                                            <tr><td>N</td><td>' + d.value['N'] +'</td></tr> \
-                                        </table>';
-                            })
-                            .attr('data-toggle', 'popover')
-                            .text(function (d) {
-                                return d.value['competing_nts'];
-                            });
+        this.textContainer.selectAll("text")
+                                .data(d3.entries(this.competing_nucleotides))
+                                .enter()
+                                .append("text")
+                                .attr("x", function (d) { return xS(d.key); })
+                                .attr("y", function (d) { return 0; })
+                                .attr("writing-mode", "tb")
+                                .attr("font-size", "7px")
+                                .attr("glyph-orientation-vertical", "0")
+                                .attr("style", "cursor:pointer;")
+                                .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
+                                .attr('data-content', function(d) { 
+                                    return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
+                                            <h3>Content</h3> \
+                                            <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+                                                <tr><td>Position in split</td><td>' + d.value['pos'] +'</td></tr> \
+                                                <tr><td>Position in contig</td><td>' + d.value['pos_in_contig'] +'</td></tr> \
+                                                <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
+                                                <tr><td>Consensus</td><td>' + d.value['consensus'] +'</td></tr> \
+                                                <tr><td>Departure from reference</td><td>' + d.value['departure_from_reference'].toFixed(4) +'</td></tr> \
+                                                <tr><td>Departure from consensus</td><td>' + d.value['departure_from_consensus'].toFixed(4) +'</td></tr> \
+                                                <tr><td>Competing nucleotides</td><td>' + d.value['competing_nts'] +'</td></tr> \
+                                                <tr><td>Corresponding gene call</td><td>' + ((d.value['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': d.value['corresponding_gene_call']) +'</td></tr> \
+                                                <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene or in partial gene': d.value['codon_order_in_gene']) +'</td></tr> \
+                                                <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene or in partial gene': d.value['base_pos_in_codon']) +'</td></tr> \
+                                                <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
+                                            </table> \
+                                            <h3>Counts</h3> \
+                                            <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+                                                <tr><td>A</td><td>' + d.value['A'] +'</td></tr> \
+                                                <tr><td>T</td><td>' + d.value['T'] +'</td></tr> \
+                                                <tr><td>G</td><td>' + d.value['G'] +'</td></tr> \
+                                                <tr><td>C</td><td>' + d.value['C'] +'</td></tr> \
+                                                <tr><td>N</td><td>' + d.value['N'] +'</td></tr> \
+                                            </table>';
+                                })
+                                .attr('data-toggle', 'popover')
+                                .text(function (d) {
+                                    return d.value['competing_nts'];
+                                });
+    }
 
 
     
