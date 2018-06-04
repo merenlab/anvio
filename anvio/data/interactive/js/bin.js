@@ -707,14 +707,14 @@ Bins.prototype.RebuildIntersections = function() {
                     continue;
                 }
 
-                if (this.selections[bin_id].has(parent.id)) {
+                if (this.selections[bin_id].has(parent)) {
                     // parent already in bin
                     continue;
                 }
 
-                if (node.sibling && this.selections[bin_id].has(node.sibling.id)) {
+                if (node.sibling && this.selections[bin_id].has(node.sibling)) {
                     // node and its sibling in same bin, so parent should too.
-                    this.selections[bin_id].add(parent.id);
+                    this.selections[bin_id].add(parent);
                     inserted = true;
                 }
             }
