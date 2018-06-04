@@ -393,6 +393,7 @@ Drawer.prototype.initialize_tree = function() {
             q.order = this.tree.num_leaves++;
             q.label = clusteringData[i];
             this.tree.label_to_leaves[q.label] = q;
+            this.tree.leaves[q.order] = q;
         }
     }  
 };
