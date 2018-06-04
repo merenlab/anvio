@@ -52,7 +52,6 @@ def migrate(db_path):
         if layer_orders[order_name]['data_type'] == 'newick':
             newick = Tree(layer_orders[order_name]['data_value'], format=1)
             newick = newick.write(format=2)
-            print(newick)
             pan_db._exec("""UPDATE %s SET "data_value" = ? WHERE "data_key" LIKE ?""" % layer_orders_table_name, (newick, order_name))
 
     # set the version
