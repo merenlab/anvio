@@ -173,6 +173,11 @@ function generate_inspect_link(options) {
         }
     }
 
+    if (type != 'inspect_geneclusters')
+    {
+        new_url = new_url + '&show_snvs=' + show_snvs;
+    }
+
     return new_url;
 }
 

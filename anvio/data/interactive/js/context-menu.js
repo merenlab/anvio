@@ -53,9 +53,13 @@ ContextMenu = function(options) {
         },
         'inspect': {
             'title': 'Inspect',
-            'action': (node, layer, param) => {
+            'action': (node, layer, param, show_snvs) => {
+                if (typeof show_snvs === 'undefined') {
+                    show_snvs = true;
+                }
+
                 localStorage.state = JSON.stringify(serializeSettings(true), null, 4);
-                window.open(generate_inspect_link({'type': 'inspect_' + param, 'item_name': node.label, 'show_snvs': true}), '_blank'); 
+                window.open(generate_inspect_link({'type': 'inspect_' + param, 'item_name': node.label, 'show_snvs': show_snvs}), '_blank'); 
             }
         },
         'inspect_split': {
@@ -80,6 +84,18 @@ ContextMenu = function(options) {
             'title': 'Inspect gene',
             'action': (node, layer, param) => {
                 this.menu_items['inspect']['action'](node, layer, 'gene');
+            }
+        },
+        'inspect_context_quick': {
+            'title': 'Inspect context (no SNVs)',
+            'action': (node, layer, param) => {
+                this.menu_items['inspect']['action'](node, layer, 'context', false);
+            }
+        },
+        'inspect_gene_quick': {
+            'title': 'Inspect gene (no SNVs)',
+            'action': (node, layer, param) => {
+                this.menu_items['inspect']['action'](node, layer, 'gene', false);
             }
         },
         'get_hmm_sequence': {
@@ -292,6 +308,8 @@ ContextMenu.prototype.BuildMenu = function() {
             if (mode == 'gene') {
                 menu.push('inspect_context');
                 menu.push('inspect_gene');
+                menu.push('inspect_context_quick');
+                menu.push('inspect_gene_quick');
             }
             else if (mode == 'pan') {
                 menu.push('inspect_geneclusters');
