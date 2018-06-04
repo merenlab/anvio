@@ -461,7 +461,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             enrichment_data_frame = self.get_enrichment_dict_as_dataframe(enrichment_dict, functional_annotation_source)
 
             # sort according to enrichment
-            enrichment_data_frame.sort_values(by=['category', 'enrichment'], axis=0, ascending=False, inplace=True)
+            enrichment_data_frame.sort_values(by=['category', 'enrichment_score'], axis=0, ascending=False, inplace=True)
 
             enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.2f')
 
