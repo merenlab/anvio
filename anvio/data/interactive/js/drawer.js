@@ -73,10 +73,6 @@ Drawer.prototype.draw = function() {
         this.settings['angle-max'] = 359.9999999;
     } 
 
-    id_to_node_map = new Array();
-    label_to_node_map = {};
-    order_to_node_map = new Array();
-
     this.initialize_tree();
 
     if (this.has_tree) {
@@ -88,8 +84,6 @@ Drawer.prototype.draw = function() {
     this.generate_tooltips();
     this.normalize_values();
     this.calculate_bar_sizes();
-    
-    this.assign_leaf_order();
     this.calculate_leaf_sizes();
         
     createBin('svg', 'viewport');
@@ -114,7 +108,9 @@ Drawer.prototype.draw = function() {
     this.draw_layer_names();
     this.draw_samples();
     
-    rebuildIntersections();
+    bins.RebuildIntersections();
+    bins.RedrawLineColors();
+
     createBin('tree_bin', 'bin');
     
     this.initialize_tree_observer();
@@ -128,7 +124,7 @@ Drawer.prototype.draw = function() {
     $('svg').svgPan(
         {
             'viewportId': 'viewport', 
-            'onlyPanOnMouseUp': (this.total_object_count > 10000 || order_to_node_map.length > 5000),
+            'onlyPanOnMouseUp': (this.total_object_count > 10000 || this.tree.leaves.length > 5000),
         });
 
     this.bind_tree_events();
@@ -369,9 +365,9 @@ Drawer.prototype.calculate_bar_sizes = function() {
 };
 
 Drawer.prototype.initialize_tree = function() {
+    this.tree = new Tree();
     if (this.has_tree)
     {
-        this.tree = new Tree();
         this.tree.Parse(clusteringData.trim(), this.settings['edge-normalization']);
 
         if (this.tree.error != 0) {
@@ -384,69 +380,21 @@ Drawer.prototype.initialize_tree = function() {
         var q = n.Begin();
         while (q != null)
         {
-            label_to_node_map[q.label] = q;
-            id_to_node_map[q.id] = q;
-            q.size = 1;
-
             if (!this.tree.has_edge_lengths) {
                 q.edge_length = 1;
             }
-
-            var _n = new NodeIterator(q);
-            var _q = _n.Begin();
-
-            q.child_nodes = [];
-            while (_q != null) {
-                q.child_nodes.push(_q.id);
-                _q = _n.Next();
-            }
-
             q=n.Next();
         }
     }
     else
     {
         for (var i = 0; i < clusteringData.length; i++) {
-            var q = new Node(clusteringData[i]);
-
-            q.id = i + 1;
-            q.size = 1;
+            let q = this.tree.NewNode();
+            q.order = this.tree.num_leaves++;
             q.label = clusteringData[i];
-            q.child_nodes = [q.id];
-            id_to_node_map[q.id] = q;
-            label_to_node_map[q.label] = q;
+            this.tree.label_to_leaves[q.label] = q;
         }
     }  
-};
-
-Drawer.prototype.assign_leaf_order = function() {
-    if (this.has_tree) {
-        var n = new NodeIterator(this.tree.root);
-        var q = n.Begin();
-
-        var order_counter = 0;   
-        while (q != null) {
-            if (q.IsLeaf()) {
-                q.order = order_counter++;
-                order_to_node_map[q.order] = q;
-            }
-            q=n.Next();
-        }
-        
-        this.tree.num_leaves = order_counter;
-        leaf_count = this.tree.num_leaves;
-    }
-    else
-    {
-        for (var i = 0; i < clusteringData.length; i++) {
-            var q = label_to_node_map[clusteringData[i]];
-
-            q.order = i;
-            order_to_node_map[i] = q;
-        }
-
-        leaf_count = clusteringData.length;
-    }
 };
 
 Drawer.prototype.collapse_nodes = function(node_list) {
@@ -485,10 +433,7 @@ Drawer.prototype.collapse_nodes = function(node_list) {
 
         cnode.max_child_path = max_edge;
         cnode.size = Math.max(1, sum_size / 4);
-
-        cnode.child_nodes = [];
         cnode.child = null;
-        cnode.collapsed = true;
     }
 };
 
@@ -503,8 +448,8 @@ Drawer.prototype.bind_tree_events = function() {
 Drawer.prototype.calculate_leaf_sizes = function() {
     var total_size = 0;
 
-    for (var i=0; i < order_to_node_map.length; i++) {
-        total_size += order_to_node_map[i].size;
+    for (var i=0; i < this.tree.leaves.length; i++) {
+        total_size += this.tree.leaves[i].size;
     }
 
     var total_width;
@@ -518,8 +463,8 @@ Drawer.prototype.calculate_leaf_sizes = function() {
         var total_width = this.width;
     }
 
-    for (var i=0; i < order_to_node_map.length; i++) {
-        q = order_to_node_map[i];
+    for (var i=0; i < this.tree.leaves.length; i++) {
+        q = this.tree.leaves[i];
         q.size = q.size * (total_width / total_size);
 
         if (typeof this.smallest_leaf_size === 'undefined' || q.size < this.smallest_leaf_size) {
@@ -572,8 +517,8 @@ Drawer.prototype.calculate_tree_coordinates = function() {
     }
     else
     {
-        for (var i=0; i < order_to_node_map.length; i++) {
-            this.calculate_leaf_coordinate(order_to_node_map[i]);
+        for (var i=0; i < this.tree.leaves.length; i++) {
+            this.calculate_leaf_coordinate(this.tree.leaves[i]);
         }
     }
 };
@@ -584,7 +529,7 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
         if (p.order == 0) {
             p.angle = Math.min(Math.toRadians(this.settings['angle-min']), Math.toRadians(this.settings['angle-max'])) + p.size / 2;
         } else {
-            var prev_leaf = order_to_node_map[p.order - 1];
+            var prev_leaf = this.tree.leaves[p.order - 1];
             p.angle = prev_leaf.angle + prev_leaf.size / 2 + p.size / 2;
         }
 
@@ -614,7 +559,7 @@ Drawer.prototype.calculate_leaf_coordinate = function(p) {
         if (p.order == 0) {
             pt['y'] = p.size / 2;
         } else {
-            var prev_leaf = order_to_node_map[p.order - 1];
+            var prev_leaf = this.tree.leaves[p.order - 1];
             pt['y'] = prev_leaf.xy['y'] + prev_leaf.size / 2 + p.size / 2;
         }
 
@@ -715,8 +660,8 @@ Drawer.prototype.draw_tree = function() {
             p = n.Next();
         }
     } else {
-        for (var i=0; i < order_to_node_map.length; i++) {
-            var p = order_to_node_map[i];
+        for (var i=0; i < this.tree.leaves.length; i++) {
+            var p = this.tree.leaves[i];
             p.backarc = p.xy;
             this.draw_leaf(p);
         }
@@ -869,8 +814,8 @@ Drawer.prototype.draw_categorical_layers = function() {
 
         var layer_items = [];
 
-        for (var node_i=0; node_i < order_to_node_map.length; node_i++) {
-            q = order_to_node_map[node_i];
+        for (var node_i=0; node_i < this.tree.leaves.length; node_i++) {
+            q = this.tree.leaves[node_i];
 
             if ((layer.is_categorical && layer.get_visual_attribute('type') == 'color') || layer.is_parent)
             {
@@ -985,8 +930,8 @@ Drawer.prototype.draw_categorical_layers = function() {
                         color = '#666666';
                 }
 
-                var start = order_to_node_map[categorical_item[0]];
-                var end = order_to_node_map[categorical_item[1]];
+                var start = this.tree.leaves[categorical_item[0]];
+                var end = this.tree.leaves[categorical_item[1]];
 
                 if (tree_type == 'circlephylogram')
                 {
@@ -1107,8 +1052,8 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         } 
         else 
         {
-            var _first = order_to_node_map[0];
-            var _last = order_to_node_map[order_to_node_map.length - 1];
+            var _first = this.tree.leaves[0];
+            var _last = this.tree.leaves[this.tree.leaves.length - 1];
             drawPie('event_catcher_' + layer.order,
                 'event',
                 _first.angle - _first.size / 2,
@@ -1155,8 +1100,8 @@ Drawer.prototype.draw_layer_backgrounds = function() {
 
         if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text') || layer.is_stackbar))
         {
-            var _first = order_to_node_map[0];
-            var _last = order_to_node_map[order_to_node_map.length - 1];
+            var _first = this.tree.leaves[0];
+            var _last = this.tree.leaves[this.tree.leaves.length - 1];
 
             drawPie('layer_background_' + layer.order,
                 'all',
@@ -1215,8 +1160,8 @@ Drawer.prototype.draw_numerical_layers = function() {
 
         var previous_non_zero_order = 0;
 
-        for (var i=0; i < order_to_node_map.length; i++) {
-            q = order_to_node_map[i];
+        for (var i=0; i < this.tree.leaves.length; i++) {
+            q = this.tree.leaves[i];
 
             if (this.settings['tree-type'] == 'phylogram') {
                 if (layer.get_visual_attribute('type') == 'intensity') {
@@ -1239,7 +1184,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                     if (this.settings['optimize-speed'] || layer.get_visual_attribute('type') == 'line') {
                         if (this.layerdata_dict[q.label][layer.index] > 0)
                         {
-                            if (q.order == 0 || (q.order > 0 && this.layerdata_dict[order_to_node_map[i-1].label][layer.index] == 0)) {
+                            if (q.order == 0 || (q.order > 0 && this.layerdata_dict[this.tree.leaves[i-1].label][layer.index] == 0)) {
                                 numeric_cache.push(
                                     "M", 
                                     this.layer_boundaries[layer.order][1], 
@@ -1267,7 +1212,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                                     );
                             }
 
-                            if ((q.order == order_to_node_map.length - 1) || (q.order < (order_to_node_map.length - 1) && this.layerdata_dict[order_to_node_map[i+1].label][layer.index] == 0)) {
+                            if ((q.order == this.tree.leaves.length - 1) || (q.order < (this.tree.leaves.length - 1) && this.layerdata_dict[this.tree.leaves[i+1].label][layer.index] == 0)) {
                                 numeric_cache.push(
                                     "L", 
                                     this.layer_boundaries[layer.order][1], 
@@ -1320,7 +1265,7 @@ Drawer.prototype.draw_numerical_layers = function() {
                         var outer_radius = this.layer_boundaries[layer.order][0] + this.layerdata_dict[q.label][layer.index];
 
                         if (this.layerdata_dict[q.label][layer.index] > 0) {
-                            if (q.order == 0 || this.layerdata_dict[order_to_node_map[i-1].label][layer.index] == 0)
+                            if (q.order == 0 || this.layerdata_dict[this.tree.leaves[i-1].label][layer.index] == 0)
                             {
                                 var ax = Math.cos(start_angle) * inner_radius;
                                 var ay = Math.sin(start_angle) * inner_radius;
@@ -1346,12 +1291,12 @@ Drawer.prototype.draw_numerical_layers = function() {
                                 numeric_cache.push("L", bx, by, "A", outer_radius, outer_radius, 0, is_large_angle(start_angle, end_angle), 1, cx, cy);
                             }
 
-                            if ((q.order == order_to_node_map.length - 1) || this.layerdata_dict[order_to_node_map[i+1].label][layer.index] == 0) {
+                            if ((q.order == this.tree.leaves.length - 1) || this.layerdata_dict[this.tree.leaves[i+1].label][layer.index] == 0) {
                                 var dx = Math.cos(end_angle) * inner_radius;
                                 var dy = Math.sin(end_angle) * inner_radius;
 
                                 numeric_cache.push("L", dx, dy);
-                                var first_node = order_to_node_map[previous_non_zero_order];
+                                var first_node = this.tree.leaves[previous_non_zero_order];
                                 var first_node_start_angle = first_node.angle - first_node.size / 2;
 
                                 var ex = Math.cos(first_node_start_angle) * inner_radius;
@@ -1414,8 +1359,8 @@ Drawer.prototype.draw_stack_bar_layers = function() {
 
         var path_cache = [];
 
-        for (var i=0; i < order_to_node_map.length; i++) {
-            q = order_to_node_map[i];
+        for (var i=0; i < this.tree.leaves.length; i++) {
+            q = this.tree.leaves[i];
 
             if (q.collapsed)
                 continue;
@@ -1442,7 +1387,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
                         q.xy['y'] + q.size / 2
                         );
 
-                    if (q.order == (order_to_node_map.length - 1)) {
+                    if (q.order == (this.tree.leaves.length - 1)) {
                         path_cache[j].push(
                             "L", 
                             this.layer_boundaries[layer.order][1], 
@@ -1476,7 +1421,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
 
                     path_cache[j].push("L", bx, by, "A", outer_radius, outer_radius, 0, is_large_angle(start_angle, end_angle), 1, cx, cy);
 
-                    if (q.order == order_to_node_map.length - 1) {
+                    if (q.order == this.tree.leaves.length - 1) {
                         var bx = Math.cos(end_angle) * inner_radius;
                         var by = Math.sin(end_angle) * inner_radius;
 
@@ -1593,12 +1538,12 @@ Drawer.prototype.update_title_panel = function() {
 };
 
 Drawer.prototype.show_drawing_statistics = function() {
-    this.tree_object_count = document.getElementById('tree').getElementsByTagName('*').length + document.getElementById('guide_lines').getElementsByTagName('*').length;
-    this.total_object_count = document.getElementById('svg').getElementsByTagName('*').length;
+    var tree_object_count = document.getElementById('tree').getElementsByTagName('*').length + document.getElementById('guide_lines').getElementsByTagName('*').length;
+    var total_object_count = document.getElementById('svg').getElementsByTagName('*').length;
 
-    $('#draw_delta_time').html(order_to_node_map.length + ' splits and ' + this.total_object_count +' objects drawn in ' + this.timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
+    $('#draw_delta_time').html(this.tree.leaves.length + ' splits and ' + total_object_count +' objects drawn in ' + this.timer.getDeltaSeconds('done')['deltaSecondsStart'] + ' seconds.');
 
-    console.log('[info] Leaf count: ' + order_to_node_map.length);
-    console.log('[info] Object count in tree (with guide lines): ' + this.tree_object_count);
-    console.log('[info] Total objects in SVG: ' + this.total_object_count);
+    console.log('[info] Leaf count: ' + this.tree.leaves.length);
+    console.log('[info] Object count in tree (with guide lines): ' + tree_object_count);
+    console.log('[info] Total objects in SVG: ' + total_object_count);
 };

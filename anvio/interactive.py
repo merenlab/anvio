@@ -201,22 +201,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.p_meta['default_item_order'] and len(self.p_meta['available_item_orders']):
             self.p_meta['default_item_order'] = self.p_meta['available_item_orders'][0]
 
-        # we are going to iterate the newick trees, and make sure that internal nodes have labels
-        for item_order_name in self.p_meta['item_orders']:
-            if self.p_meta['item_orders'][item_order_name]['type'] == 'newick':
-                tree = Tree(self.p_meta['item_orders'][item_order_name]['data'], format=1)
-
-                node_counter = 0
-                for node in tree.traverse():
-                    if node.name == "":
-                        node.name = "Int_%d" % node_counter
-                        node_counter += 1
-
-                if node_counter > 0:
-                    # if we did not changed any branch name there is no need to spend time for
-                    # serialization back to newick
-                    self.p_meta['item_orders'][item_order_name]['data'] = tree.write(format=1)
-
         # if there are any HMM search results in the contigs database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
         # Contigs DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
