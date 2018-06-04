@@ -117,7 +117,7 @@ class TablesForHMMHits(Table):
                                                       context,
                                                       kind_of_search,
                                                       domain,
-                                                      all_genes_searched_against,
+                                                      len(all_genes_searched_against),
                                                       hmm_model,
                                                       reference,
                                                       noise_cutoff_terms)
