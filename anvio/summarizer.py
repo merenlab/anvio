@@ -418,8 +418,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                     if f not in enrichment_dict[c]:
                         enrichment_dict[c][f] = {}
 
-                    enrichment_dict[c][f]["enrichment"] = enrichment
-                    enrichment_dict[c][f]["weighted_enrichment"] = weighted_enrichment
+                    enrichment_dict[c][f]["enrichment_score"] = enrichment
+                    enrichment_dict[c][f]["weighted_enrichment_score"] = weighted_enrichment
                     enrichment_dict[c][f]["portion_occurrence_in_group"] = portion_occurrence_in_group
                     enrichment_dict[c][f]["portion_occurrence_outside_of_group"] = portion_occurrence_outside_of_group
                     enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
