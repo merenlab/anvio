@@ -195,7 +195,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                     this.label_to_leaves[token[i]] = curnode;
                     curnode.order = order;
 
-                    if (isNumber(token[i])) {
+                    if (isNumber(token[i]) && mode != 'gene') {
                         curnode.branch_support = parseFloat(token[i]);
                     } else {
                         curnode.label = token[i];
@@ -316,7 +316,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                     switch (token[i]) {
                         case ':':
                             i++;
-                            if (isNumber(token[i])) {
+                            if (isNumber(token[i]) && mode != 'gene') {
                                 curnode.original_edge_length = parseFloat(token[i]);
                                 
                                 // normalization of edge lengths
