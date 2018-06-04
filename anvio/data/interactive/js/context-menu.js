@@ -68,6 +68,12 @@ ContextMenu = function(options) {
                 this.menu_items['inspect']['action'](node, layer, 'split');
             }
         },
+        'inspect_split_quick': {
+            'title': 'Inspect split (no SNVs)',
+            'action': (node, layer, param) => {
+                this.menu_items['inspect']['action'](node, layer, 'split', false);
+            }
+        },
         'inspect_geneclusters': {
             'title': 'Inspect gene cluster',
             'action': (node, layer, param) => {
@@ -316,6 +322,7 @@ ContextMenu.prototype.BuildMenu = function() {
             }
             else {
                 menu.push('inspect_split');
+                menu.push('inspect_split_quick');
             }
 
             menu.push('divider');
