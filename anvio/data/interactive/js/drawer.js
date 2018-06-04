@@ -108,6 +108,7 @@ Drawer.prototype.draw = function() {
     this.draw_layer_names();
     this.draw_samples();
     
+    bins.MigrateCollection();
     bins.RebuildIntersections();
     bins.RedrawLineColors();
 
