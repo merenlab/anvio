@@ -55,10 +55,10 @@ function draw_n_values_plot(container, stats) {
                                                 .attr('font-size', '12px');
 
                             tooltip_text.append('tspan')
-                                            .text('N: ' + (i+1) );
+                                            .text('N' + (i+1) + ': ' + d.num_contigs + ' contigs');
 
                             tooltip_text.append('tspan')
-                                            .text('Num contigs > ' + getCommafiedNumberString(d.length) + ' nts: ' + d.num_contigs + '.')
+                                            .text('L' + (i+1) + ': ' + getCommafiedNumberString(d.length) + ' nts')
                                             .attr('x', '10')
                                             .attr('dy', '1.4em');
 
