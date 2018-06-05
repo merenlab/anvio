@@ -145,3 +145,19 @@ a{
     float: left;
     display: block;
 }
+
+.colorpicker {
+    float: left;
+    display: inline-block;
+    background-color: #FFF;
+    border: 1px solid;
+    border-color: #000;
+    width: 16px;
+    height: 16px;
+    margin: auto;
+}
+
+.colorpicker:hover {
+    border: 2px solid;
+    border-color: #555;
+}
