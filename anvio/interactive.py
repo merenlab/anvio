@@ -103,6 +103,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     anvi-script-add-default-collection to create a default collection \
                                     with all contigs.")
 
+        if self.collection_name and (not self.gene_mode) and (self.bin_id or self.bin_ids_file_path) and self.mode != 'refine':
+            raise ConfigError("On the one hand you provide a collection name, signaling anvi'o that you wish to\
+                               run the interactive display in collection mode. But then you also provide a bin name\
+                               as if you wish to run the refinement interface. Are you sure you don't want to run\
+                               `anvi-refine` instead? That would really make things much less confusing here :(")
+
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
