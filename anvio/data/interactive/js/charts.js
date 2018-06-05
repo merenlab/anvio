@@ -34,6 +34,7 @@ var contig_id;
 var highlight_gene;
 var gene_mode;
 var show_snvs;
+var sequence;
 
 
 function loadAll() {
@@ -71,6 +72,7 @@ function loadAll() {
                     page_header = contig_data.title;
                     layers = contig_data.layers;
                     coverage = contig_data.coverage;
+                    sequence = contig_data.sequence;
                     variability = [];
 
                     for (var i=0; i<coverage.length; i++) {
@@ -141,6 +143,25 @@ function loadAll() {
             });
     }
     
+}
+
+
+function computeGCContent(window_size) {
+    let gc_array = [];
+
+    for (let i=0; i < sequence.length - window_size; i++) {
+        let gc_count = 0;
+
+        for (let j=i; j < i + window_size; j++) {
+            if (sequence[j] == 'C' || sequence[j] == 'G' || sequence[j] == 'c' || sequence[j] == 'g') {
+                gc_count++;
+            }
+        }
+
+        gc_array.push(gc_count / window_size);
+    }
+
+    return gc_array;
 }
 
 
@@ -385,6 +406,7 @@ function Chart(options){
     this.variability_c = options.variability_c;
     this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
+    this.gc_content = options.gc_content;
     this.width = options.width;
     this.height = options.height;
     this.maxVariability = options.maxVariability;
@@ -418,10 +440,15 @@ function Chart(options){
     this.yScaleLine = d3.scale.linear()
                             .range([this.height, 0])
                             .domain([0, this.maxVariability]);
+
+    this.yScaleGC = d3.scale.linear()
+                            .range([this.height, 0])
+                            .domain([0, 1]);
     
     var xS = this.xScale;
     var yS = this.yScale;
     var ySL = this.yScaleLine;
+    var yGC = this.yScaleGC;
     
     this.area = d3.svg.area()
                             .x(function(d, i) { return xS(i); })
@@ -432,6 +459,10 @@ function Chart(options){
                             .x(function(d, i) { return xS(i); })
                             .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
                             .interpolate('step-before');
+
+    this.gc_line = d3.svg.line()
+                            .x(function(d, i) { return xS(i); })
+                            .y(function(d) { return (yGC(d) < 0) ? 0 : yGC(d); });
 
     /*
         Assign it a class so we can assign a fill color
@@ -449,6 +480,11 @@ function Chart(options){
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
+    this.gcContainer   = this.svg.append("g")
+                        .attr('class',this.name.toLowerCase())
+                        .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+
     /* Add both into the page */
     this.chartContainer.append("path")
                               .data([this.coverage])
@@ -456,6 +492,14 @@ function Chart(options){
                               .style("fill", this.color)
                               .style("fill-opacity", "0.5")
                               .attr("d", this.area);
+
+    this.gcContainer.append("path")
+                      .data([computeGCContent(16)])
+                      .attr("class", "line")
+                      .style("stroke", "#00FF00")
+                      .style("stroke-width", "1")
+                      .style("fill", "none")
+                      .attr("d", this.gc_line);
 
     if (show_snvs) {
         this.lineContainer.append("path")

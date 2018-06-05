@@ -450,6 +450,7 @@ class BottleApplication(Bottle):
         auxiliary_coverages_db.close()
 
         data['coverage'] = [coverages[layer].tolist() for layer in layers]
+        data['sequence'] = self.interactive.split_sequences[split_name]
 
         ## get the variability information dict for split:
         progress.new('Variability', discard_previous_if_exists=True)
