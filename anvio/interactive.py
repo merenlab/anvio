@@ -6,7 +6,6 @@ import os
 import sys
 import numpy
 import textwrap
-from ete3 import Tree
 
 import anvio
 import anvio.utils as utils
