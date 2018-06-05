@@ -542,6 +542,8 @@ class BottleApplication(Bottle):
             # gene -+ 100 gap if possible
             data['coverage'].append(coverage_list[focus_region_start:focus_region_end])
 
+        data['sequence'] = self.interactive.split_sequences[split_name][focus_region_start:focus_region_end]
+
         ## get the variability information dict for split:
         progress.new('Variability')
         progress.update('Collecting info for "%s"' % split_name)
