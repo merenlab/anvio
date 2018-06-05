@@ -151,6 +151,8 @@ class SummarizerSuperClass(object):
         if self.output_directory:
             self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
             filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
+        else:
+            self.output_directory = "SUMMARY"
 
 
     def sanity_check(self):
