@@ -13,12 +13,14 @@
         <link rel="stylesheet" type="text/css" href="css/charts.css" />
         <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
         <link rel="stylesheet" type="text/css" href="css/popover.css" />
+        <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
         <link href='https://fonts.googleapis.com/css?family=Lato:300,700' rel='stylesheet' type='text/css' />
         <!--[if lte IE 8]><style>.main{display:none;} .support-note .note-ie{display:block;}</style><![endif]-->	
          <script type="text/javascript" src="js/utils.js"></script>
         <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
         <script type="text/javascript" src="lib/d3.js/d3.min.js"></script>
         <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="lib/colpick/colpick.js"></script>
         <script type="text/javascript" src="js/charts.js"></script>
         <script type="text/javascript" src="js/inspectionutils.js"></script>
         <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
@@ -53,6 +55,36 @@
                         </div>
                         <div class="modal-footer">
                             <button type="button" onclick="applyMaxValues()" class="btn btn-primary" data-dismiss="modal">Apply</button>
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="GCContentOverlayDialog" role="dialog" style="display: none;">
+                <div class="modal-dialog modal-md">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h3 class="modal-title" style="color: black;"><b>Overlay GC Content</b></h3>
+                        </div>
+                        <div class="modal-body">
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Window Size:</label>  
+                                <div class="col-md-8">
+                                    <input type="text" id="gc_window_size" value="100">
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Color:</label>
+                                <div class="col-md-8">
+                                    <div class="colorpicker" id="gc_overlay_color" color="#008000" style="background-color: #008000"></div>
+                                </div>
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" onclick="overlay_gc_content = true; createCharts(state);" class="btn btn-primary" data-dismiss="modal">Apply</button>
                             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                         </div>
                     </div>

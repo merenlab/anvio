@@ -35,6 +35,7 @@ var highlight_gene;
 var gene_mode;
 var show_snvs;
 var sequence;
+var overlay_gc_content = false;
 
 
 function loadAll() {
@@ -47,6 +48,20 @@ function loadAll() {
             }
         }
         return options;
+    });
+
+    $('.colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
     });
 
     contig_id = getParameterByName('id');
@@ -131,12 +146,16 @@ function loadAll() {
 
                     $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
 
-                    $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px;"> \
+                    $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="$('#GCContentOverlayDialog').modal('show');" class="btn btn-outline-primary">Overlay GC Content</button> \
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="overlay_gc_content = false; createCharts(state);" class="btn btn-outline-primary">Reset overlay</button> \
+                                        </div>`);
+
+                    $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
                                             <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
                                             <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button> \
                                         </div>');
 
-                    
                     createCharts(state);
                     $('.loading-screen').hide();
                 }
@@ -292,6 +311,12 @@ function createCharts(state){
         max_coverage_values = JSON.parse(sessionStorage.max_coverage);
     }
 
+    let gc_content_array = [];
+
+    if (overlay_gc_content) {
+        gc_content_array = computeGCContent(parseInt($('#gc_window_size').val()));
+    }
+
     var j=0;
     for(var i = 0; i < layersCount; i++){
         var layer_index = layers.indexOf(layers_ordered[i]);
@@ -308,6 +333,7 @@ function createCharts(state){
                         variability_c: variability[layer_index][2],
                         variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
+                        gc_content: gc_content_array,
                         id: j++,
                         width: width,
                         height: chartHeight,
@@ -494,10 +520,10 @@ function Chart(options){
                               .attr("d", this.area);
 
     this.gcContainer.append("path")
-                      .data([computeGCContent(16)])
+                      .data([this.gc_content])
                       .attr("class", "line")
-                      .style("stroke", "#00FF00")
-                      .style("stroke-width", "1")
+                      .style("stroke", $('#gc_overlay_color').attr('color'))
+                      .style("stroke-width", "0.5")
                       .style("fill", "none")
                       .attr("d", this.gc_line);
 
