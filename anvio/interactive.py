@@ -1011,7 +1011,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def search_for_functions(self, search_terms, requested_sources=None):
         search_terms = [s.strip() for s in search_terms.split(',')]
-        item_count, full_report = None, None
+        full_report = None
 
         if self.mode == 'full' or self.mode == 'gene':
             items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
