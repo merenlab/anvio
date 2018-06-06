@@ -175,7 +175,7 @@ function computeGCContent(window_size, step_size) {
         for (let j=i; j < i + window_size; j++) {
             let pos = j - padding;
 
-            if (sequence[j] == 'C' || sequence[j] == 'G' || sequence[j] == 'c' || sequence[j] == 'g') {
+            if (sequence[pos] == 'C' || sequence[pos] == 'G' || sequence[pos] == 'c' || sequence[pos] == 'g') {
                 gc_count++;
             }
         }
@@ -528,7 +528,7 @@ function Chart(options){
                       .data([this.gc_content])
                       .attr("class", "line")
                       .style("stroke", $('#gc_overlay_color').attr('color'))
-                      .style("stroke-width", "0.5")
+                      .style("stroke-width", "1")
                       .style("fill", "none")
                       .attr("d", this.gc_line);
 
