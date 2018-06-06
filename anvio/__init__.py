@@ -1721,7 +1721,7 @@ def get_version_tuples():
 
 
 def print_version():
-    run.info("Anvi'o version", '%s, "%s"' % (__version__, __codename__), mc='green')
+    run.info("Anvi'o version", "%s (v%s)" % (__codename__, __version__), mc='green')
     run.info("Profile DB version", __profile__version__)
     run.info("Contigs DB version", __contigs__version__)
     run.info("Pan DB version", __pan__version__)
