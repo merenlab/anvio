@@ -167,11 +167,14 @@ function loadAll() {
 
 function computeGCContent(window_size) {
     let gc_array = [];
+    let padding = parseInt(window_size / 2);
 
-    for (let i=0; i < sequence.length - window_size; i++) {
+    for (let i=padding; i < sequence.length - padding; i++) {
         let gc_count = 0;
 
         for (let j=i; j < i + window_size; j++) {
+            let pos = j - padding;
+
             if (sequence[j] == 'C' || sequence[j] == 'G' || sequence[j] == 'c' || sequence[j] == 'g') {
                 gc_count++;
             }
@@ -180,7 +183,6 @@ function computeGCContent(window_size) {
         gc_array.push(gc_count / window_size);
     }
 
-    let padding = parseInt(window_size / 2);
     let first_element = gc_array[0];
     let last_element = gc_array[gc_array.length - 1];
     
