@@ -462,6 +462,8 @@ function Chart(options){
         this.maxCoverage = this.max_coverage;
     }
 
+    this.maxGCContent = Math.max.apply(null, this.gc_content);
+
     this.yScale = d3.scale.linear()
                             .range([this.height,0])
                             .domain([0,this.maxCoverage]);
@@ -472,7 +474,7 @@ function Chart(options){
 
     this.yScaleGC = d3.scale.linear()
                             .range([this.height, 0])
-                            .domain([0, 1]);
+                            .domain([0, this.maxGCContent]);
     
     var xS = this.xScale;
     var yS = this.yScale;
