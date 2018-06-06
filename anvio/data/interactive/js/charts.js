@@ -317,7 +317,7 @@ function createCharts(state){
     let gc_content_array = [];
 
     if (overlay_gc_content) {
-        gc_content_array = computeGCContent(parseInt($('#gc_window_size').val()), 10);
+        gc_content_array = computeGCContent(parseInt($('#gc_window_size').val()), parseInt($('#gc_step_size').val()));
     }
 
     var j=0;
