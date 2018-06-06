@@ -183,14 +183,6 @@ function computeGCContent(window_size) {
         gc_array.push(gc_count / window_size);
     }
 
-    let first_element = gc_array[0];
-    let last_element = gc_array[gc_array.length - 1];
-    
-    for (let i=0; i < padding; i++) {
-        gc_array.unshift(first_element); // push to beginning
-        gc_array.push(last_element); // push to end
-    } 
-
     return gc_array;
 }
 
@@ -497,8 +489,10 @@ function Chart(options){
                             .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
                             .interpolate('step-before');
 
+
+    // .x() needs to stay as a arrow function, it has reference to scope.
     this.gc_line = d3.svg.line()
-                            .x(function(d, i) { return xS(i); })
+                            .x((d, i) => { return xS((i / this.gc_content.length) * this.coverage.length); })
                             .y(function(d) { return (yGC(d) < 0) ? 0 : yGC(d); });
 
     /*
