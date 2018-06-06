@@ -180,6 +180,15 @@ function computeGCContent(window_size) {
         gc_array.push(gc_count / window_size);
     }
 
+    let padding = parseInt(window_size / 2);
+    let first_element = gc_array[0];
+    let last_element = gc_array[gc_array.length - 1];
+    
+    for (let i=0; i < padding; i++) {
+        gc_array.unshift(first_element); // push to beginning
+        gc_array.push(last_element); // push to end
+    } 
+
     return gc_array;
 }
 
