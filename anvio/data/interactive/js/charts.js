@@ -165,11 +165,11 @@ function loadAll() {
 }
 
 
-function computeGCContent(window_size) {
+function computeGCContent(window_size, step_size) {
     let gc_array = [];
     let padding = parseInt(window_size / 2);
 
-    for (let i=padding; i < sequence.length - padding; i++) {
+    for (let i=padding; i < sequence.length - padding; i = i + step_size) {
         let gc_count = 0;
 
         for (let j=i; j < i + window_size; j++) {
@@ -317,7 +317,7 @@ function createCharts(state){
     let gc_content_array = [];
 
     if (overlay_gc_content) {
-        gc_content_array = computeGCContent(parseInt($('#gc_window_size').val()));
+        gc_content_array = computeGCContent(parseInt($('#gc_window_size').val()), 10);
     }
 
     var j=0;
