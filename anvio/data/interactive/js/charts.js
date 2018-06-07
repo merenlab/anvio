@@ -354,7 +354,6 @@ function createCharts(state){
         let gc_overlay_settings = JSON.parse(sessionStorage.gc_overlay_settings);
         gc_content_array = computeGCContent(parseInt(gc_overlay_settings['gc_window_size']), parseInt(gc_overlay_settings['gc_step_size']));
         gc_overlay_color = gc_overlay_settings['gc_overlay_color'];
-        console.log(gc_content_array);
     }
 
     var j=0;
