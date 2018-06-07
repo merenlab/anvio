@@ -89,18 +89,24 @@ class GenomeDescriptions(object):
     def list_HMM_info_and_quit(self):
         hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes(dont_raise=True)
 
+        # since we know hmm sources in `hmm_sources_in_all_genomes` are common to all genomes,
+        # we could use any of those genomes to learn about the specifics of them. here we take
+        # the first one from `self.genomes`
+        hmm_sources_info = dbops.ContigsDatabase(list(self.genomes.values())[0]['contigs_db_path']).db.get_table_as_dict(t.hmm_hits_info_table_name)
+
         if self.list_hmm_sources:
             self.run.warning(None, 'HMM SOURCES COMMON TO ALL %d GENOMES' % (len(self.genomes)), lc='yellow')
             for source in hmm_sources_in_all_genomes:
-                s = list(self.genomes.values())[0]['hmm_sources_info'][source]
+                s = hmm_sources_info[source]
                 self.run.info_single('%s [type: %s] [num genes: %d]' % (source, s['search_type'], len(s['genes'])))
             sys.exit(0)
 
         if self.list_available_gene_names:
             self.run.warning(None, 'GENES IN HMM SOURCES COMMON TO ALL %d GENOMES' % (len(self.genomes)), lc='yellow')
             for source in hmm_sources_in_all_genomes:
-                s = list(self.genomes.values())[0]['hmm_sources_info'][source]
-                self.run.info_single('%s [type: %s]: %s' % (source, s['search_type'], ', '.join(sorted(s['genes']))), nl_after = 2)
+                s = hmm_sources_info[source]
+                gene_names = ', '.join(sorted([g.strip() for g in s['genes'].split(',')]))
+                self.run.info_single('%s [type: %s]: %s' % (source, s['search_type'], gene_names), nl_after = 2)
             sys.exit(0)
 
 

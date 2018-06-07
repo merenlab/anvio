@@ -6,7 +6,6 @@ import os
 import sys
 import numpy
 import textwrap
-from ete3 import Tree
 
 import anvio
 import anvio.utils as utils
@@ -103,6 +102,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     anvi-script-add-default-collection to create a default collection \
                                     with all contigs.")
 
+        if self.collection_name and (not self.gene_mode) and (self.bin_id or self.bin_ids_file_path) and self.mode != 'refine':
+            raise ConfigError("On the one hand you provide a collection name, signaling anvi'o that you wish to\
+                               run the interactive display in collection mode. But then you also provide a bin name\
+                               as if you wish to run the refinement interface. Are you sure you don't want to run\
+                               `anvi-refine` instead? That would really make things much less confusing here :(")
+
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
@@ -112,8 +117,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # get additional data for items and layers, and get layer orders data.
         a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_order_data_dict = TableForLayerOrders(self.args).get(self.layers_additional_data_keys, self.layers_additional_data_dict) if a_db_is_found else {}
+        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
+
+        self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
+        for group_name in self.layers_additional_data_keys:
+            layer_orders = TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({}, 
+                self.layers_additional_data_keys[group_name], self.layers_additional_data_dict[group_name]) if a_db_is_found else {}
+            for order_name in layer_orders:
+                self.layers_order_data_dict['%s :: %s' % (group_name, order_name)] = layer_orders[order_name]
 
         # make sure the mode will be set properly
         if self.collection_name and self.manual_mode:
@@ -194,22 +205,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.gen_alphabetical_orders_of_items()
         if not self.p_meta['default_item_order'] and len(self.p_meta['available_item_orders']):
             self.p_meta['default_item_order'] = self.p_meta['available_item_orders'][0]
-
-        # we are going to iterate the newick trees, and make sure that internal nodes have labels
-        for item_order_name in self.p_meta['item_orders']:
-            if self.p_meta['item_orders'][item_order_name]['type'] == 'newick':
-                tree = Tree(self.p_meta['item_orders'][item_order_name]['data'], format=1)
-
-                node_counter = 0
-                for node in tree.traverse():
-                    if node.name == "":
-                        node.name = "Int_%d" % node_counter
-                        node_counter += 1
-
-                if node_counter > 0:
-                    # if we did not changed any branch name there is no need to spend time for
-                    # serialization back to newick
-                    self.p_meta['item_orders'][item_order_name]['data'] = tree.write(format=1)
 
         # if there are any HMM search results in the contigs database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
@@ -522,7 +517,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                              'dict': ad_hoc_dict}
 
         # we assume that the sample names are the header of the view data, so we might as well set it up:
-        self.p_meta['samples'] = self.views[self.default_view]['header']
+        sample_names = [self.title.replace(' ', '_')] if self.title else self.views[self.default_view]['header']
+        self.p_meta['samples'] = self.p_meta['sample_id'] = sample_names
 
         # if we have an input FASTA file, we will set up the split_sequences and splits_basic_info dicts,
         # otherwise we will leave them empty
@@ -546,13 +542,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
+            sample_id = ','.join(self.p_meta['samples'])
+
             profile_db = ProfileDatabase(self.profile_db_path)
             profile_db.create({'db_type': 'profile',
                                'blank': True,
                                'merged': True,
                                'contigs_db_hash': None,
                                'contigs_ordered': False,
-                               'samples': ','.join(self.p_meta['samples'])})
+                               'samples': sample_id,
+                               'sample_id': sample_id})
 
         # create an instance of states table
         self.states_table = TablesForStates(self.profile_db_path)
@@ -1010,22 +1009,21 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
 
 
-    def search_for_functions(self, search_terms):
+    def search_for_functions(self, search_terms, requested_sources=None):
         search_terms = [s.strip() for s in search_terms.split(',')]
         full_report = None
 
         if self.mode == 'full' or self.mode == 'gene':
-            _, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
-
+            items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
             if self.mode == 'gene':
                 # otherwise gene mode report functions from other splits are not the bin interactive initialized.
                 full_report = [i for i in full_report if i[5] in self.split_names_of_interest]
         elif self.mode == 'pan':
-            _, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+            items, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
         else:
             raise ConfigError("Searching functions are not supported for this mode.")
 
-        return full_report
+        return items, full_report
 
 
     def check_names_consistency(self):

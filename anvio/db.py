@@ -207,8 +207,11 @@ class DB:
         return response.fetchall()
 
 
-    def get_single_column_from_table(self, table, column, unique=False):
-        response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table))
+    def get_single_column_from_table(self, table, column, unique=False, where_clause=None):
+        if where_clause:
+            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table, where_clause))
+        else:
+            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table))
         return [t[0] for t in response.fetchall()]
 
 
@@ -317,7 +320,7 @@ class DB:
 
         if len(columns_to_return) == 1:
             if error_if_no_data:
-                raise ConfigError("get_table_as_dataframe :: after removing an column that was not mentioned in the columns\
+                raise ConfigError("get_table_as_dataframe :: after removing a column that was not mentioned in the columns\
                                     of interest by the client, nothing was left to return...")
             else:
                 return {}

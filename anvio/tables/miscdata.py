@@ -155,21 +155,62 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
     def list_data_keys(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
-        if not len(additional_data_keys):
-            self.run.info_single('There are no additional data for %s in this database :/' % self.target, nl_before=1, nl_after=1, mc='red')
-        else:
-            self.run.warning('', 'AVAILABLE DATA KEYS FOR %s (%d FOUND)' % (self.target.upper(), len(additional_data_keys)), lc='yellow')
-            for data_key in additional_data_keys:
+        NOPE = lambda: self.run.info_single("There are no additional data for '%s' in this database :/" % self.target, nl_before=1, nl_after=1, mc='red')
+
+        additional_data_keys = {}
+        # here is where things get tricky. if we are dealing with additional data layers or items, we will have
+        # data groups that are not relevant for order data. this will affect the listing of data keys in either
+        # of these table types. hence we get group names first here, and then will do a bunch of if/else checks
+        # based on their availability
+        if self.target in ['layers', 'items']:
+            group_names = AdditionalDataBaseClass.get_group_names(self)
+            for group_name in group_names:
+                additional_data_keys[group_name] = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True, where_clause="data_group = '%s'" % group_name))
+
+            if not len(additional_data_keys):
+                NOPE()
+                database.disconnect()
+                return
+
+        elif self.target in ['layer_orders']:
+            data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
+
+            if not len(data_keys):
+                self.run.info_single("There are no additional data for '%s' in this database :/" % self.target, nl_before=1, nl_after=1, mc='red')
+                database.disconnect()
+                return
+
+            additional_data_keys['default'] = data_keys
+            group_names = ['default']
+
+        self.run.warning('', 'DATA KEYS FOR "%s" in %d DATA GROUP(S)' % (self.target.upper(), len(group_names)), lc='yellow')
+
+        for group_name in group_names:
+            num_keys = len(additional_data_keys[group_name])
+
+            self.run.info_single('DATA GROUP "%s" WITH %d KEYS' % (group_name, num_keys), nl_before = 1)
+
+            if anvio.DEBUG:
+                num_keys_to_display = num_keys
+            else:
+                num_keys_to_display = min([5, num_keys])
+
+            for key_index in range(0, num_keys_to_display):
+                data_key = additional_data_keys[group_name][key_index]
                 rows = database.get_some_rows_from_table_as_dict(self.table_name, 'data_key="%s"' % data_key)
 
                 if self.target == 'layer_orders':
                     self.run.info_single('%s (%s)' % (data_key, list(rows.values())[0]['data_type']),
-                                         nl_after = 1 if data_key == additional_data_keys[-1] else 0)
+                                         nl_after = 1 if data_key == additional_data_keys[group_name][-1] else 0, level=2)
                 else:
                     self.run.info_single('%s (%s, describes %d %s)' % (data_key, list(rows.values())[0]['data_type'], len(rows), self.target),
-                                         nl_after = 1 if data_key == additional_data_keys[-1] else 0)
+                                         nl_after = 1 if data_key == additional_data_keys[group_name][-1] else 0, level=2)
+
+            num_keys_not_displayed = num_keys - num_keys_to_display
+            if num_keys_not_displayed > 0:
+                self.run.info_single('(... %d more; use `--debug` to list all ...)' % \
+                                                                (num_keys_not_displayed), nl_after = 1, mc='cyan', level=3)
 
         database.disconnect()
 
@@ -393,8 +434,12 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         AdditionalAndOrderDataBaseClass.__init__(self, args)
 
 
-    def get(self, additional_data_keys_requested=[]):
+    def get(self, additional_data_keys_requested=[], data_group="default"):
         """Will return the additional data keys and the dict."""
+
+        if not data_group or not isinstance(data_group, str):
+            raise ConfigError("Data group variable must be a name of type `str`. The default is `data_group`, if you\
+                               wish to overwrite that, you will have to do it somehting else.")
 
         if not isinstance(additional_data_keys_requested, list):
             raise ConfigError("The `get` function in AdditionalDataBaseClass is upset with you. You could change that\
@@ -403,11 +448,14 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         self.progress.new('Recovering additional keys and data for %s' % self.target)
         self.progress.update('...')
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True)
+
+        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True, \
+                        where_clause="""data_group LIKE '%s'""" % data_group)
 
         if not len(additional_data_keys_requested):
             additional_data_keys = additional_data_keys_in_db
-            additional_data = database.get_table_as_dict(self.table_name)
+            additional_data = database.get_some_rows_from_table_as_dict(self.table_name, where_clause = """data_group LIKE '%s'""" % data_group,
+                                                                        error_if_no_data=False)
         else:
             if not len(additional_data_keys_in_db):
                 raise ConfigError("The %s database at %s does not contain any additional data for its %s to return. Usually this\
@@ -422,10 +470,13 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                    at '%s' :/ Here is the list of keys you requested: '%s'. And here is the list of keys that anvi'o\
                                    knows about: '%s'." % (self.db_type, self.db_path, ', '.join(additional_data_keys_requested), ', '.join(additional_data_keys_in_db)))
 
-            additional_data = database.get_some_rows_from_table_as_dict(self.table_name, where_clause = """data_key IN (%s)""" % ",".join('"' + key + '"' for key in additional_data_keys_requested))
+            additional_data = database.get_some_rows_from_table_as_dict(self.table_name,
+                        where_clause = """data_group LIKE '%s' and data_key IN (%s)""" % (data_group, ",".join('"' + key + '"' for key in additional_data_keys_requested)))
             additional_data_keys = additional_data_keys_requested
 
-        additional_data_item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True)
+        additional_data_item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True,
+                        where_clause="""data_group LIKE '%s'""" % data_group)
+
         database.disconnect()
 
         if not len(additional_data_item_names):
@@ -456,7 +507,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         return additional_data_keys, d
 
 
-    def add(self, data_dict, data_keys_list, skip_check_names=False):
+    def add(self, data_dict, data_keys_list, skip_check_names=False, data_group="default"):
         """Function to add data into the item additional data table.
 
            * `data_dict`: a dictionary for items or layers additional should follow this format:
@@ -498,7 +549,12 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                             nl_after = 1 if key == data_keys_list[-1] else 0)
 
         # we be responsible here.
-        keys_already_in_db = [c for c in data_keys_list if c in self.additional_data_keys]
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        all_keys_for_group = database.get_single_column_from_table(self.table_name, 
+            'data_key', unique=True, where_clause="""'data_group' LIKE '%s'""" % data_group)
+        database.disconnect()
+
+        keys_already_in_db = [c for c in data_keys_list if c in all_keys_for_group]
         if len(keys_already_in_db):
             if self.just_do_it:
                 self.run.warning('The following keys in your data dict will replace the ones that are already\
@@ -536,13 +592,31 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                          item_name,
                                          key,
                                          data_dict[item_name][key],
-                                         key_types[key]]))
+                                         key_types[key],
+                                         data_group]))
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
 
         self.run.info('New data added to the db for your %s' % self.target, '%s.' % (', '.join(data_keys_list)), nl_after=1)
+
+
+    def get_all(self):
+        keys_dict, data_dict = {}, {}
+
+        for group_name in self.get_group_names():
+            keys_dict[group_name], data_dict[group_name] = self.get(data_group=group_name)
+
+        return keys_dict, data_dict
+
+
+    def get_group_names(self):
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        group_names = database.get_single_column_from_table(self.table_name, 'data_group', unique=True)
+        database.disconnect()
+
+        return group_names
 
 
 class TableForItemAdditionalData(AdditionalDataBaseClass):
@@ -577,7 +651,8 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
                                case you want to see a random item that is only in your data, here is one: %s. Stuff\
                                in your db looks like this: %s." \
                                     % (len(items_in_data_but_not_in_db), len(items_in_data), self.db_type, \
-                                       items_in_data_but_not_in_db.pop(), items_in_db.pop()))
+                                       items_in_data_but_not_in_db.pop(), 
+                                       items_in_db.pop() if items_in_db else "No entries found in databse"))
 
         items_in_db_but_not_in_data = items_in_db.difference(items_in_data)
         if len(items_in_db_but_not_in_data):
@@ -664,18 +739,26 @@ class TableForLayerOrders(OrderDataBaseClass):
     def check_names(self, data_dict):
         """Compares layer names found in the data dict to the ones in the db"""
 
-        layers_in_db = sorted(utils.get_all_sample_names_from_the_database(self.db_path))
+        layers_in_db = set(utils.get_all_sample_names_from_the_database(self.db_path))
         layers_in_data = self.get_layer_names(data_dict)
 
         for data_key in data_dict:
-            if sorted(layers_in_data[data_key]) != layers_in_db:
-                raise ConfigError("Layer orders data must match the layer names stored in the %s database :/ But at least one of\
-                                   your layer order data, '%s' (a %s order), tells a different story. It has layer names '%s' while\
-                                   the db has the layers '%s' :/" % (self.db_type,
-                                                                     data_key,
-                                                                     data_dict[data_key]['data_type'],
-                                                                     ', '.join(sorted(layers_in_data[data_key])),
-                                                                     ', '.join(layers_in_db)))
+            layers_in_data_for_key = set(layers_in_data[data_key])
+
+            if len(layers_in_data_for_key.difference(layers_in_db)) > 0:
+                raise ConfigError("The incoming layer orders data for %s include layer names that do not match the ones in the database :/\
+                                   Here they are: '%s'" % (data_key, ', '.join(list(layers_in_data_for_key.difference(layers_in_db)))))
+
+            if len(layers_in_data_for_key) != len(layers_in_db):
+                self.run.warning("The incoming layer orders data for %s of type %s include layer names your %s database does not know\
+                                  about :/ Anvi'o will let you get away with a warning, but if things go south later on, you know who\
+                                  to blame. For your records, here are the layer names for %s: '%s'. And in contrast, here are the\
+                                  layer names your db recognizes: '%s'. :/" % (data_key,
+                                                                               data_dict[data_key]['data_type'],
+                                                                               self.db_type,
+                                                                               data_key,
+                                                                               ', '.join(sorted(layers_in_data_for_key)),
+                                                                               ', '.join(layers_in_db)))
 
 
 class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders):

@@ -28,12 +28,14 @@ import os
 import sys
 import gzip
 import glob
+import math
 import numpy
 import shutil
 import hashlib
 import mistune
 import argparse
 import textwrap
+import pandas as pd
 
 from collections import Counter
 
@@ -44,7 +46,6 @@ import anvio.hmmops as hmmops
 import anvio.sequence as seqlib
 import anvio.terminal as terminal
 import anvio.constants as constants
-import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
@@ -144,11 +145,14 @@ class SummarizerSuperClass(object):
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
         self.delete_output_directory_if_exists = True if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
 
-        self.sanity_check()
+        if not self.lazy_init:
+            self.sanity_check()
 
         if self.output_directory:
             self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
             filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
+        else:
+            self.output_directory = "SUMMARY"
 
 
     def sanity_check(self):
@@ -200,11 +204,12 @@ class SummarizerSuperClass(object):
 
 class PanSummarizer(PanSuperclass, SummarizerSuperClass):
     """Creates a dictionary of summary for anvi'o pan profiles"""
-    def __init__(self, args=None, r=run, p=progress):
+    def __init__(self, args=None, lazy_init=False, r=run, p=progress):
         self.summary_type = 'pan'
         self.debug = False
         self.quick = False
         self.pan_db_path = None
+        self.lazy_init = lazy_init
         self.output_directory = None
         self.genomes_storage_path = None
 
@@ -229,6 +234,272 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # see if COG functions or categories are available
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
+
+
+    def get_occurrence_of_functions_in_pangenome(self, gene_clusters_functions_summary_dict):
+        """
+            For each function we will create a fake merged gc, with an occurrence vector
+            which is the "or" product of all gcs that match this function.
+
+            We also keep track of all the GCs annotated with the function.
+        """
+        occurrence_of_functions_in_pangenome_dict = {}
+
+        self.progress.new('Computing presence absence for functions in genomes')
+        self.progress.update('Creating a dictionary')
+
+        for gene_cluster_id in gene_clusters_functions_summary_dict:
+            gene_cluster_function = gene_clusters_functions_summary_dict[gene_cluster_id]['gene_cluster_function']
+            if gene_cluster_function:
+                if gene_cluster_function not in occurrence_of_functions_in_pangenome_dict:
+                    occurrence_of_functions_in_pangenome_dict[gene_cluster_function] = {}
+                    occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids'] = []
+                    occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['occurrence'] = None
+                occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids'].append(gene_cluster_id)
+
+        from anvio.dbops import PanDatabase
+        pan_db = PanDatabase(self.pan_db_path)
+
+        gene_cluster_presence_absence_dataframe = pd.DataFrame.from_dict(
+                                                    pan_db.db.get_table_as_dict('gene_cluster_presence_absence'),
+                                                    orient='index')
+
+        self.progress.update('Merging presence/absence of gene clusters with the same function')
+
+        D = {}
+        for gene_cluster_function in occurrence_of_functions_in_pangenome_dict:
+            v = None
+            for gene_cluster_id in occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids']:
+                if v is None:
+                    v = gene_cluster_presence_absence_dataframe.loc[gene_cluster_id, ].astype(bool)
+                else:
+                    v = numpy.logical_or(v, gene_cluster_presence_absence_dataframe.loc[gene_cluster_id, ])
+            D[gene_cluster_function] = {}
+            for genome in v.index:
+                D[gene_cluster_function][genome] = v[genome]
+
+        self.progress.end()
+
+        return pd.DataFrame.from_dict(D), occurrence_of_functions_in_pangenome_dict
+
+
+    def functional_enrichment_stats(self):
+        """
+            Compute the functional enrichment stats for a pangenome
+
+            returns the enrichment_dict, which has the form:
+                value = enrichment_dict[category_name][function_name][value_name]
+
+            If self.args.output_file_path exists then an output file is created.
+
+            To learn more about how this works refer to the docummentation:
+                anvi-script-get-enriched-functions-per-pan-group -h
+        """
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        output_file_path = A('output_file')
+        category_variable = A('category_variable')
+        functional_annotation_source = A('annotation_source')
+        list_functional_annotation_sources = A('list_annotation_sources')
+        min_function_enrichment = A('min_function_enrichment')
+        min_portion_occurrence_of_function_in_group = A('min_portion_occurrence_of_function_in_group')
+        functional_occurrence_table_output = A('functional_occurrence_table_output')
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        if functional_occurrence_table_output:
+            filesnpaths.is_output_file_writable(functional_occurrence_table_output)
+
+        if not self.functions_initialized:
+            raise ConfigError("For some reason funtions are not initialized for this pan class instance. We\
+                               can't summarize functional enrichment stats without that :/")
+
+        if not len(self.gene_clusters_functions_dict):
+            raise ConfigError("The gene clusters functions dict seems to be empty. We assume this error makes\
+                               zero sense to you, and it probably will not help you to know that it also makes\
+                               zero sense to anvi'o too :/ Maybe you forgot to provide a genomes storage?")
+
+        if not category_variable:
+            raise ConfigError("For this to work, you must provide a category variable .. and it better be in\
+                               the misc additional layer data table, too. If you don't have any idea what is\
+                               available, try `anvi-show-misc-data`.")
+
+        if list_functional_annotation_sources:
+            self.run.info('Available functional annotation sources', ', '.join(self.gene_clusters_function_sources))
+            sys.exit()
+
+        if not functional_annotation_source:
+            raise ConfigError("You haven't provided a functional annotation source to make sense of functional\
+                               enrichment stats as defined by the categorical variable %s. These are the functions\
+                               that are available, so pick one: %s." % (category_variable, ', '.join(self.gene_clusters_function_sources)))
+
+        if functional_annotation_source not in self.gene_clusters_function_sources:
+            raise ConfigError("Your favorite functional annotation source '%s' does not seem to be among one of the sources\
+                               that are available to you. Here are the ones you should choose from: %s." % (functional_annotation_source, ', '.join(self.gene_clusters_function_sources)))
+
+        keys, categories_dict = TableForLayerAdditionalData(argparse.Namespace(pan_db=self.pan_db_path)).get(additional_data_keys_requested=[category_variable])
+
+        values_that_are_not_none = [s for s in categories_dict.values() if s[category_variable] is not None]
+        if not values_that_are_not_none:
+            raise ConfigError("The variable '%s' contains only values of type None,\
+                               this is probably a mistake, surely you didn't mean to provide an empty category.\
+                               Do you think this is a mistake on our part? Let us know." % \
+                                                                    category_variable)
+        type_category_variable = type(values_that_are_not_none[0][category_variable])
+        if type_category_variable != str:
+            raise ConfigError("The variable '%s' does not seem to resemble anything that could be a category.\
+                               Anvi'o expects these variables to be of type string, yet yours is type %s :/\
+                               Do you think this is a mistake on our part? Let us know." % \
+                                                                    (category_variable, type_category_variable))
+
+        gene_clusters_functions_summary_dict = self.get_gene_clusters_functions_summary_dict(functional_annotation_source)
+
+        self.run.info('Category', category_variable)
+        self.run.info('Functional annotation source', functional_annotation_source)
+
+        occurrence_of_functions_in_pangenome_dataframe, occurrence_of_functions_in_pangenome_dict = self.get_occurrence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
+
+        if functional_occurrence_table_output:
+            occurrence_of_functions_in_pangenome_dataframe.astype(int).transpose().to_csv(functional_occurrence_table_output, sep='\t')
+            self.run.info('Presence/absence of functions summary:', functional_occurrence_table_output)
+
+        self.progress.new('Functional enrichment analysis')
+        self.progress.update('Creating a dictionary')
+
+        # get a list of unique function names
+        functions_names = set(occurrence_of_functions_in_pangenome_dataframe.columns)
+
+        # the total occurrence of functions in all categories (it is important to this before adding the category column)
+        total_occurrence_of_functions = occurrence_of_functions_in_pangenome_dataframe.sum()
+
+        # add a category column to the dataframe
+        occurrence_of_functions_in_pangenome_dataframe['category'] = occurrence_of_functions_in_pangenome_dataframe.index.map(lambda x: categories_dict[x][category_variable])
+
+        # the sum of occurrences of each function in each category
+        functions_in_categories = occurrence_of_functions_in_pangenome_dataframe.groupby('category').sum()
+
+        # unique names of categories
+        categories = set([categories_dict[g][category_variable] for g in categories_dict.keys() if\
+                            categories_dict[g][category_variable] is not None])
+
+        categories_to_genomes_dict = {}
+        for c in categories:
+            categories_to_genomes_dict[c] = set([genome for genome in categories_dict.keys() if categories_dict[genome][category_variable] == c])
+        number_of_genomes = len(categories_dict.keys())
+
+        enrichment_dict = {}
+        for c in categories:
+            self.progress.update("Working on category '%s'" % c)
+            group_size = len(categories_to_genomes_dict[c])
+            group_portion = group_size / number_of_genomes
+
+            # see details below
+            weighting_normalization_factor = number_of_genomes * (group_portion * math.log2(group_portion)\
+                                                + (1 - group_portion) * math.log2(1 - group_portion))
+
+            for f in functions_names:
+                occurrence_in_group = functions_in_categories.loc[c, f]
+                occurrence_outside_of_group = (total_occurrence_of_functions[f] - functions_in_categories.loc[c, f])
+                portion_occurrence_in_group = occurrence_in_group / group_size
+                portion_occurrence_outside_of_group = occurrence_outside_of_group / (number_of_genomes - group_size)
+                enrichment = portion_occurrence_in_group - portion_occurrence_outside_of_group
+
+                # the more genomes we have in each group when making the comparisson
+                # the stronger the results are. In order to allow to compare results from
+                # different categories, we also return this weighted score. The normalization
+                # factor is simply the number of genomes multiplied by the entropy of the two compared
+                # groups. the rational is that having more genomes is only helping the comparisson if the
+                # genomes represent both compared groups, and that's where the entropy comes in.
+                weighted_enrichment = -1 * enrichment * weighting_normalization_factor
+
+                if (abs(enrichment) >= min_function_enrichment) and (max(portion_occurrence_outside_of_group, portion_occurrence_in_group) >= min_portion_occurrence_of_function_in_group):
+                    if c not in enrichment_dict:
+                        enrichment_dict[c] = {}
+
+                    if f not in enrichment_dict[c]:
+                        enrichment_dict[c][f] = {}
+
+                    enrichment_dict[c][f]["enrichment_score"] = enrichment
+                    enrichment_dict[c][f]["weighted_enrichment_score"] = weighted_enrichment
+                    enrichment_dict[c][f]["portion_occurrence_in_group"] = portion_occurrence_in_group
+                    enrichment_dict[c][f]["portion_occurrence_outside_of_group"] = portion_occurrence_outside_of_group
+                    enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
+                    enrichment_dict[c][f]["occurrence_outside_of_group"] = occurrence_outside_of_group
+                    enrichment_dict[c][f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
+                    enrichment_dict[c][f]["core_in_group"] = False
+                    enrichment_dict[c][f]["core"] = False
+                    if enrichment_dict[c][f]["portion_occurrence_in_group"] == 1:
+                        enrichment_dict[c][f]["core_in_group"] = True
+                        if enrichment_dict[c][f]["portion_occurrence_outside_of_group"] == 1:
+                            enrichment_dict[c][f]["core"] = True
+
+        import scipy
+        import statsmodels.stats.multitest as multitest
+        genome_names = set(self.genome_names)
+        p_values = []
+        for c in categories:
+            self.progress.update("Working on statistics for category '%s'" % c)
+            group_genomes = categories_to_genomes_dict[c]
+            outgroup_genomes = genome_names - group_genomes
+
+            for f in functions_names:
+                x = occurrence_of_functions_in_pangenome_dataframe.loc[group_genomes,f].astype(int)
+                y = occurrence_of_functions_in_pangenome_dataframe.loc[outgroup_genomes,f].astype(int)
+                wilcoxon = scipy.stats.ranksums(x, y)
+                enrichment_dict[c][f]["wilcoxon_p_value"] = wilcoxon.pvalue
+                p_values.append(wilcoxon.pvalue)
+                enrichment_dict[c][f]["wilcoxon_statistic"] = wilcoxon.statistic
+
+            # correction for multiple comparrisons
+            reject, corrected_p_values, foo1, foo2 = multitest.multipletests(p_values, method='fdr_bh')
+            i = 0
+            for f in functions_names:
+                enrichment_dict[c][f]['wilcoxon_corrected_p_value'] = corrected_p_values[i]
+                i += 1
+
+        if output_file_path:
+            self.progress.update('Generating the output file')
+            enrichment_data_frame = self.get_enrichment_dict_as_dataframe(enrichment_dict, functional_annotation_source)
+
+            # sort according to enrichment
+            enrichment_data_frame.sort_values(by=['category', 'enrichment_score'], axis=0, ascending=False, inplace=True)
+
+            enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.2f')
+
+        self.progress.end()
+
+        if output_file_path:
+            self.run.info('Functions enrichment summary', output_file_path)
+
+        return enrichment_dict
+
+
+    def get_enrichment_dict_as_dataframe(self, enrichment_dict, functional_annotation_source):
+        # convert dictionary to pandas
+        # we can't use pandas from_dict because it is meant for dict of dicts (i.e. tow levels)
+        # and we have a dict of dicts of dicts (three levels).
+        # so we first convert it to a dict of dicts and then convert to pandas
+        # because this is faster than alternatives
+        i = 0
+        D = {}
+        for c in enrichment_dict:
+            for f in enrichment_dict[c]:
+                D[i] = {}
+                D[i]['category'] = c
+                D[i][functional_annotation_source] = f
+                for key, value in enrichment_dict[c][f].items():
+                    try:
+                        # if there is a sequence of values
+                        # merge them with commas for nicer printing
+                        D[i][key] = ', '.join(iter(value))
+                    except:
+                        # if it is not a sequnce, it is a single value
+                        D[i][key] = value
+                i += 1
+        enrichment_data_frame = pd.DataFrame.from_dict(D, orient='index')
+
+        return enrichment_data_frame
 
 
     def process(self):
@@ -715,13 +986,14 @@ class SAAVsAndProteinStructuresSummary:
 
 class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
     """Creates an über dictionary of 'summary' for anvi'o profiles."""
-    def __init__(self, args=None, r=run, p=progress):
-        self.summary = {}
+    def __init__(self, args=None, lazy_init=False, r=run, p=progress):
         self.args = args
 
         self.run = r
         self.progress = p
+        self.lazy_init = lazy_init
 
+        self.summary = {}
         self.summary_type = 'profile'
         self.debug = False
         self.quick = False
@@ -1546,7 +1818,7 @@ class Bin:
         self.bin_info_dict['taxon_calls'] = []
         self.bin_info_dict['taxon'] = 'Unknown'
 
-        if not self.summary.a_meta['taxonomy_source']:
+        if not self.summary.a_meta['gene_level_taxonomy_source']:
             return
 
         taxon_calls_counter = Counter()
@@ -1605,142 +1877,3 @@ class Bin:
         output_file_obj.write('%s\n' % content)
         output_file_obj.close()
 
-
-class AdHocRunGenerator:
-    """From a matrix file to full-blown anvi'o interface.
-
-       This is a class to take in a view data matrix at minimum, and create all
-       necessary files for an anvi'o interactive interface call in manual mode."""
-
-    def __init__(self, view_data_path, skip_clustering_view_data=False, run=run, progress=progress):
-        self.run = run
-        self.progress = progress
-
-        self.view_data_path = view_data_path
-
-        self.tree_file_path = None
-        self.matrix_data_for_clustering = None
-        self.additional_view_data_file_path = None
-
-        self.skip_clustering_view_data = skip_clustering_view_data
-
-        self.samples_info_file_path = None
-        self.samples_order_file_path = None
-
-        # for clustering
-        self.distance = None
-        self.linkage = None
-
-        self.output_directory = os.path.abspath('./ad-hoc-anvio-run-directory')
-        self.delete_output_directory_if_exists = False
-
-        self.sanity_checked = False
-
-
-    def sanity_check(self):
-        self.distance = self.distance or constants.distance_metric_default
-        self.linkage = self.linkage or constants.linkage_method_default
-
-        clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
-
-        filesnpaths.is_file_tab_delimited(self.view_data_path)
-        if self.tree_file_path:
-            filesnpaths.is_proper_newick(self.tree_file_path)
-
-        self.check_output_directory()
-
-        new_view_data_path = self.get_output_file_path('view_data.txt')
-        shutil.copyfile(self.view_data_path, new_view_data_path)
-        self.view_data_path = new_view_data_path
-
-        if self.tree_file_path:
-            new_tree_path = self.get_output_file_path('tree.txt')
-            shutil.copyfile(self.tree_file_path, new_tree_path)
-            self.tree_file_path = new_tree_path
-
-        if self.additional_view_data_file_path:
-            new_additional_view_data_file_path = self.get_output_file_path('additional_view_data.txt')
-            shutil.copyfile(self.additional_view_data_file_path, new_additional_view_data_file_path)
-            self.additional_view_data_file_path = new_additional_view_data_file_path
-
-        if self.samples_info_file_path:
-            new_samples_info_file_path = self.get_output_file_path('anvio_samples_info.txt')
-            shutil.copyfile(self.samples_info_file_path, new_samples_info_file_path)
-            self.samples_info_file_path = new_samples_info_file_path
-
-
-        self.sanity_checked = True
-
-
-    def is_good_to_go(self):
-        if not self.sanity_checked:
-            raise ConfigError("AdHocRunGenerator :: You gotta be nice, and run sanity check first :/")
-
-
-    def get_output_file_path(self, file_name):
-        return os.path.join(self.output_directory, file_name)
-
-    def check_output_directory(self):
-        if os.path.exists(self.output_directory) and not self.delete_output_directory_if_exists:
-            raise ConfigError("AdHocRunGenerator will not work with an existing directory. Please provide a new\
-                                path, or use the bool member 'delete_output_directory_if_exists' to overwrite\
-                                any existing directory.")
-
-        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
-
-
-    def generate(self):
-        self.sanity_check()
-
-        if not self.tree_file_path and not self.skip_clustering_view_data:
-            self.gen_clustering_of_view_data()
-
-        self.gen_samples_db()
-
-        self.run.info("Ad hoc anvi'o run files", self.output_directory)
-
-
-    def gen_clustering_of_view_data(self):
-        self.is_good_to_go()
-
-        self.progress.new('Hierarchical clustering')
-        self.progress.update('..')
-
-        self.tree_file_path = self.get_output_file_path('tree.txt')
-
-        data_file_path = self.matrix_data_for_clustering if self.matrix_data_for_clustering else self.view_data_path
-
-        clustering.create_newick_file_from_matrix_file(data_file_path, self.tree_file_path, distance = self.distance, linkage=self.linkage)
-
-        self.progress.end()
-
-        self.run.info('Tree', self.tree_file_path)
-
-
-    def gen_samples_order_file(self, data_file_path):
-        self.progress.new('Hierarchical clustering of the (transposed) view data')
-        self.progress.update('..')
-
-        newick = clustering.get_newick_tree_data(data_file_path, transpose=True, distance = self.distance, linkage=self.linkage)
-
-        samples_order_file_path = self.get_output_file_path('anvio-samples-order.txt')
-        samples_order = open(samples_order_file_path, 'w')
-        samples_order.write('attributes\tbasic\tnewick\n')
-        samples_order.write('view_data\t\t%s\n' % newick)
-        samples_order.close()
-
-        self.progress.end()
-
-        self.run.info("Anvi'o samples order", samples_order_file_path)
-
-        return samples_order_file_path
-
-
-    def gen_samples_db(self):
-        # FIXME: THIS WILL NOT WORK.
-        if not self.samples_order_file_path:
-            self.samples_order_file_path = self.gen_samples_order_file(self.view_data_path)
-
-        samples_db_output_path = self.get_output_file_path('samples.db')
-        s = dbops.SamplesInformationDatabase(samples_db_output_path, run=self.run, progress=self.progress, quiet=True)
-        s.create(self.samples_info_file_path, self.samples_order_file_path)

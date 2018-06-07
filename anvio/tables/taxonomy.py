@@ -29,7 +29,24 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class TablesForTaxonomy(Table):
+class TaxonNamesTable(object):
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db_path = db_path
+        self.run = run
+        self.progress = progress
+
+ 
+    def populate_taxon_names_table(self):
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        db_entries = [tuple([t_name_id] + [self.taxon_names_dict[t_name_id][t_level] for t_level in t.taxon_names_table_structure[1:]]) for t_name_id in self.taxon_names_dict]
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.taxon_names_table_name, db_entries)
+
+        database.disconnect()
+        self.run.info('Taxon names table', 'Updated with %d unique taxon names' % len(db_entries))
+
+
+class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
     """Populate all tables with taxonomy information.
 
        Essentially takes in a dictionary of genes and taxon calls, populates three tables: taxon_names,
@@ -43,6 +60,7 @@ class TablesForTaxonomy(Table):
         utils.is_contigs_db(self.db_path)
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
+        TaxonNamesTable.__init__(self, self.db_path, self.run, self.progress)
 
         # this class keeps track of genes that occur in splits, and responsible
         # for generating the necessary table in the contigs database
@@ -69,7 +87,7 @@ class TablesForTaxonomy(Table):
         self.splits_info = database.get_table_as_dict(t.splits_info_table_name)
 
         # test whether there are already genes tables populated
-        taxonomy_source = database.get_meta_value('taxonomy_source')
+        taxonomy_source = database.get_meta_value('gene_level_taxonomy_source')
         if taxonomy_source:
             self.run.warning('Previous taxonomy information from "%s" is being replaced with the incoming data\
                               through "%s".' % (taxonomy_source, self.source))
@@ -87,8 +105,8 @@ class TablesForTaxonomy(Table):
         self.populate_splits_taxonomy_table()
 
         # set the source
-        database.remove_meta_key_value_pair('taxonomy_source')
-        database.set_meta_value('taxonomy_source', self.source)
+        database.remove_meta_key_value_pair('gene_level_taxonomy_source')
+        database.set_meta_value('gene_level_taxonomy_source', self.source)
 
         # disconnect like a pro.
         database.disconnect()
@@ -106,17 +124,6 @@ class TablesForTaxonomy(Table):
         database.disconnect()
 
         self.run.info('Genes taxonomy table', 'Taxonomy stored for %d gene calls' % len(db_entries))
-
-
-    def populate_taxon_names_table(self):
-        # open connection
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-
-        db_entries = [tuple([t_name_id] + [self.taxon_names_dict[t_name_id][t_level] for t_level in t.taxon_names_table_structure[1:]]) for t_name_id in self.taxon_names_dict]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.taxon_names_table_name, db_entries)
-
-        database.disconnect()
-        self.run.info('Taxon names table', 'Updated with %d unique taxon names' % len(db_entries))
 
 
     def sanity_check(self):
@@ -224,3 +231,6 @@ class TablesForTaxonomy(Table):
                                                num_splits_with_taxonomy * 100.0 / num_splits_processed))
 
 
+
+
+        

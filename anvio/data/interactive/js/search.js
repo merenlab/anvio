@@ -9,7 +9,7 @@ function searchContigs()
         return;
     }
     var column = $('#searchLayerList').val();
-    search_column = layerdata[0][column];
+    search_column = (column == 0) ? 'Item Name' : layerdata[0][column];
     var operator = $('#searchOperator').val();
     
     if (operator < 6)
@@ -48,11 +48,22 @@ function searchContigs()
 }
 
 function searchFunctions() {
+    $('#search_functions_button').prop( "disabled", true );
+    $('#search_result_message_functions').html('<img src="images/loading.gif" style="width: 16px;" />');
+
+    let requested_sources = [];
+    $('#functions_sources_list input:checkbox:checked').each((i, v) => {
+        requested_sources.push($(v).val());
+    });
+
     $.ajax({
         type: 'POST',
         cache: false,
         url: '/data/search_functions',
-        data: {terms: $('#searchFunctionsValue').val()},
+        data: {
+            terms: $('#searchFunctionsValue').val(),
+            sources: requested_sources
+        },
         success: function(data) {
             if (data['status'] == 0) {
                 $('.search-message').hide();
@@ -86,11 +97,16 @@ function searchFunctions() {
                                                                                   '</br><b>Accession:</b> ' + _accession +
                                                                                   '</br><b>Annotation:</b> ' + _annotation});
                 }
-                $('#search_result_message_functions').html(data['results'].length + " result(s) found.");
+                $('#search_result_message_functions').html(data['results'].length + " result(s) found in " + data['item_count'] + ' unique item(s).');
             } else {
                 $('.search-message').show();
                 $('.search-message').html(data['message']);
-            };
+                $('#search_result_message_functions').html('');
+            }
+
+            $('#search_functions_button').prop( "disabled", false );
+        },
+        done: function() {
         }
     });
 }
@@ -157,100 +173,39 @@ function showSearchResult() {
 
 function highlightResult() {
     // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
+    if (!drawer) {
         alert('Draw tree first.');
         return;
     }
 
     highlighted_splits = [];
-
     for (var i=0; i < search_results.length; i++) {
-        var _contig_name = search_results[i]['split'];
-        highlighted_splits.push(_contig_name);
+        highlighted_splits.push(search_results[i]['split']);
     }
 
-    redrawBins(); 
+    bins.HighlightItems(highlighted_splits); 
 }
 
 function highlightSplit(name) {
-    // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
-        alert('Draw tree first.');
-        return;
-    }
-
-    highlighted_splits = [name];
-    redrawBins();
+    bins.HighlightItems(name); 
 }
 
 function appendResult() {
-    // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
-        alert('Draw tree first.');
-        return;
+    let node_list = [];
+    for (const result of search_results) {
+        let node = drawer.tree.GetLeafByName(result['split']);
+        node_list.push(node);
     }
 
-    var bin_id = getBinId();
-
-    if (bin_id === 'undefined')
-        return;
-
-    var bins_to_update = [];
-    var _len = search_results.length;
-    for (var i=0; i < _len; i++) {
-        _contig_name = search_results[i]['split'];
-        if (SELECTED[bin_id].indexOf(_contig_name) == -1) {
-            SELECTED[bin_id].push(_contig_name);
-
-            if (bins_to_update.indexOf(bin_id) == -1)
-                bins_to_update.push(bin_id);
-        }
-
-        for (var bid = 1; bid <= bin_counter; bid++) {
-            // don't remove nodes from current bin
-            if (bid == bin_id)
-                continue;
-
-            var pos = SELECTED[bid].indexOf(_contig_name);
-            if (pos > -1) {
-                SELECTED[bid].splice(pos, 1);
-
-                if (bins_to_update.indexOf(bid) == -1)
-                    bins_to_update.push(bid);
-            }
-        }
-    }
-
-    updateBinsWindow(bins_to_update);
-    redrawBins();
+    bins.AppendNode(node_list);
 }
 
 function removeResult() {
-    // check if tree exists
-    if ($.isEmptyObject(label_to_node_map)) {
-        alert('Draw tree first.');
-        return;
+    let node_list = [];
+    for (const result of search_results) {
+        let node = drawer.tree.GetLeafByName(result['split']);
+        node_list.push(node);
     }
 
-    var bin_id = getBinId();
-
-    if (bin_id === 'undefined')
-        return;
-
-    var bins_to_update = [];
-    var _len = search_results.length;
-    for (var i=0; i < _len; i++) {
-        _contig_name = search_results[i]['split'];
-
-        var pos = SELECTED[bin_id].indexOf(_contig_name);
-        if (pos > -1) {
-            SELECTED[bin_id].splice(pos, 1);
-            
-            if (bins_to_update.indexOf(bin_id) == -1)
-                bins_to_update.push(bin_id);
-        }
-    }
-
-    updateBinsWindow(bins_to_update);
-    redrawBins();
+    bins.RemoveNode(node_list);
 }

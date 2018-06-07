@@ -4,7 +4,9 @@
     HMM related operations.
 """
 
+import sys
 import textwrap
+
 from scipy import stats
 
 import anvio
@@ -39,6 +41,9 @@ class SequencesForHMMHits:
 
         if contigs_db_path:
             self.init_dicts(contigs_db_path)
+            self.initialized = True
+        else:
+            self.initialized = False
 
 
     def init_dicts(self, contigs_db_path):
@@ -57,8 +62,8 @@ class SequencesForHMMHits:
         missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]
         if len(missing_sources):
             contigs_db.disconnect()
-            raise ConfigError('Some of the requested sources were not found in the contigs database :/\
-                                Here is a list of the ones that are missing: %s' % ', '.join(missing_sources))
+            raise ConfigError("Bad news, Houston :/ The contigs database '%s' is missing one or more HMM sources\
+                               that you wished it didn't: '%s'." % (contigs_db_path, ', '.join(missing_sources)))
 
         if not self.sources:
             self.sources = set(list(self.hmm_hits_info.keys()))
@@ -102,6 +107,38 @@ class SequencesForHMMHits:
 
         self.progress.end()
         contigs_db.disconnect()
+
+
+    def check_init(self):
+        if not self.initialized:
+            raise ConfigError("This SequencesForHMMHits instance cannot do what its asked for\
+                               because it is not yet initialized :/ The programmer could call\
+                               `init_dicts` first, but clearly they didn't care.")
+
+    def list_available_hmm_sources(self, dont_quit=False):
+        self.check_init()
+
+        for source in self.hmm_hits_info:
+            t = self.hmm_hits_info[source]
+            run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
+
+        if dont_quit:
+            return
+
+        sys.exit(0)
+
+
+    def list_available_gene_names(self, dont_quit=False):
+        self.check_init()
+ 
+        for source in self.sources:
+            t = self.hmm_hits_info[source]
+            run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
+
+        if dont_quit:
+            return
+
+        sys.exit(0)
 
 
     def get_hmm_hits_in_splits(self, splits_dict):
