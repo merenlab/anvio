@@ -418,6 +418,25 @@ Tree.prototype.ComputeDepths = function() {
 };
 
 
+Tree.prototype.FindLowestCommonAncestor = function(p1, p2) {
+    let ancestors = new Set([]);
+
+    while (p1) {
+        ancestors.add(p1);
+        p1 = p1.ancestor;
+    }
+
+    while (p2) {
+        if (ancestors.has(p2)) {
+            return p2;
+        }
+        p2 = p2.ancestor;
+    }
+
+    return null;
+}
+
+
 function NodeIterator(root)
 {
     this.root = root;
