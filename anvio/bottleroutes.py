@@ -450,6 +450,7 @@ class BottleApplication(Bottle):
         auxiliary_coverages_db.close()
 
         data['coverage'] = [coverages[layer].tolist() for layer in layers]
+        data['sequence'] = self.interactive.split_sequences[split_name]
 
         ## get the variability information dict for split:
         progress.new('Variability', discard_previous_if_exists=True)
@@ -540,6 +541,8 @@ class BottleApplication(Bottle):
             coverage_list = coverages[layer].tolist()
             # gene -+ 100 gap if possible
             data['coverage'].append(coverage_list[focus_region_start:focus_region_end])
+
+        data['sequence'] = self.interactive.split_sequences[split_name][focus_region_start:focus_region_end]
 
         ## get the variability information dict for split:
         progress.new('Variability')
