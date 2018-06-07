@@ -22,7 +22,7 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 
 slave_mode = False if 'workflows/contigs' in workflow.included[0] else True
-if not slave_mode
+if not slave_mode:
     # don't be confused, child. when things come to this point, the variable `config`
     # is already magically filled in by snakemake:
     M = ContigsDBWorkflow(argparse.Namespace(config=config, slave_mode=slave_mode))
