@@ -35,7 +35,6 @@ var highlight_gene;
 var gene_mode;
 var show_snvs;
 var sequence;
-var overlay_gc_content = false;
 
 
 function loadAll() {
@@ -147,8 +146,8 @@ function loadAll() {
                     $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
 
                     $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="$('#GCContentOverlayDialog').modal('show');" class="btn btn-outline-primary">Overlay GC Content</button> \
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="overlay_gc_content = false; createCharts(state);" class="btn btn-outline-primary">Reset overlay</button> \
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button> \
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button> \
                                         </div>`);
 
                     $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
@@ -184,6 +183,40 @@ function computeGCContent(window_size, step_size) {
     }
 
     return gc_array;
+}
+
+
+function showOverlayGCContentDialog() {
+    if (typeof sessionStorage.gc_overlay_settings !== 'undefined') {
+        let gc_overlay_settings = JSON.parse(sessionStorage.gc_overlay_settings);
+
+        $('#gc_window_size').val(gc_overlay_settings['gc_window_size']);
+        $('#gc_step_size').val(gc_overlay_settings['gc_step_size']);
+
+        $('#gc_overlay_color').attr('color', gc_overlay_settings['gc_overlay_color']);
+        $('#gc_overlay_color').css('background-color', gc_overlay_color['gc_overlay_color']);
+
+    }
+
+    $('#GCContentOverlayDialog').modal('show');
+}
+
+
+function applyOverlayGCContent() {
+    let gc_overlay_settings = {
+        'gc_window_size': $('#gc_window_size').val(),
+        'gc_step_size': $('#gc_step_size').val(),
+        'gc_overlay_color': $('#gc_overlay_color').attr('color')
+    }
+
+    sessionStorage.gc_overlay_settings = JSON.stringify(gc_overlay_settings);
+    createCharts(state);
+}
+
+
+function resetOverlayGCContent() {
+    delete sessionStorage.gc_overlay_settings;
+    createCharts(state);
 }
 
 
@@ -315,9 +348,13 @@ function createCharts(state){
     }
 
     let gc_content_array = [];
+    let gc_overlay_color = '#00FF00';
 
-    if (overlay_gc_content) {
-        gc_content_array = computeGCContent(parseInt($('#gc_window_size').val()), parseInt($('#gc_step_size').val()));
+    if (typeof sessionStorage.gc_overlay_settings !== 'undefined') {
+        let gc_overlay_settings = JSON.parse(sessionStorage.gc_overlay_settings);
+        gc_content_array = computeGCContent(parseInt(gc_overlay_settings['gc_window_size']), parseInt(gc_overlay_settings['gc_step_size']));
+        gc_overlay_color = gc_overlay_settings['gc_overlay_color'];
+        console.log(gc_content_array);
     }
 
     var j=0;
@@ -337,6 +374,7 @@ function createCharts(state){
                         variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
                         gc_content: gc_content_array,
+                        'gc_overlay_color': gc_overlay_color,
                         id: j++,
                         width: width,
                         height: chartHeight,
@@ -436,6 +474,7 @@ function Chart(options){
     this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
     this.gc_content = options.gc_content;
+    this.gc_overlay_color = options.gc_overlay_color;
     this.width = options.width;
     this.height = options.height;
     this.maxVariability = options.maxVariability;
@@ -529,7 +568,7 @@ function Chart(options){
     this.gcContainer.append("path")
                       .data([this.gc_content])
                       .attr("class", "line")
-                      .style("stroke", $('#gc_overlay_color').attr('color'))
+                      .style("stroke", this.gc_overlay_color)
                       .style("stroke-width", "1")
                       .style("fill", "none")
                       .attr("d", this.gc_line);
