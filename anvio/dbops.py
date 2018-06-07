@@ -763,8 +763,8 @@ class ContigsSuperclass(object):
     def gen_TAB_delimited_file_for_split_taxonomies(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
 
-        if not self.a_meta['taxonomy_source']:
-            raise ConfigError("There is no taxonomy source in the contigs database :/")
+        if not self.a_meta['gene_level_taxonomy_source']:
+            raise ConfigError("There is no taxonomy source for genes in the contigs database :/")
 
         if not len(self.splits_taxonomy_dict):
             self.init_splits_taxonomy()
@@ -1116,6 +1116,69 @@ class PanSuperclass(object):
 
         self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid', mc='green')
         self.run.info('Output file for phylogenomics', output_file_path, mc='green')
+
+
+    def get_gene_clusters_functions_summary_dict(self, functional_annotation_source):
+        """ A function to assign functions to gene clusters for an annotation_source
+
+            use an annotation source and choose a function for the gene cluster
+            using a voting approach, i.e. the most commonly annotated function
+            for the genes in the gene cluster will be chosen.
+
+            If multiple functinos have the same number of votes then one will
+            be chosen arbitrarily.
+
+            OUTPUT:
+
+            gene_clusters_functions_summary_dict
+                dictionary with gene_cluster ids as keys
+                the values are dictionaries, where:
+                gene_clusters_functions_summary_dict[gene_cluster_id]['gene_clusters_function'] - contains the chosen function
+
+                If you want to see all the functions and number of votes per function, simply do:
+                for f in gene_clusters_functions_summary_dict[gene_cluster_id]:
+                    print('For gene cluster %s: the number of votes for function %s is %s'\
+                            % (gene_cluster_id, f, gene_clusters_functions_summary_dict[gene_cluster_id][f])
+        """
+
+        if functional_annotation_source not in self.gene_clusters_function_sources:
+            raise ConfigError("Your favorite functional annotation source '%s' does not seem to be among one of the sources\
+                               that are available to you. Here are the ones you should choose from: %s." % (functional_annotation_source, ', '.join(self.gene_clusters_function_sources)))
+
+        if not self.functions_initialized:
+            self.init_gene_clusters_functions()
+
+        if not len(self.gene_clusters_functions_dict):
+            raise ConfigError("The gene clusters functions dict seems to be empty. We assume this error makes\
+                               zero sense to you, and it probably will not help you to know that it also makes\
+                               zero sense to anvi'o too :/ Maybe you forgot to provide a genomes storage?")
+
+        gene_clusters_functions_summary_dict = {}
+        
+        self.progress.new('Summarizing functions for gene clusters')
+        self.progress.update('Creating a dictionary')
+        for gene_cluster in self.gene_clusters_functions_dict:
+            gene_clusters_functions_summary_dict[gene_cluster] = {}
+            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = None 
+            max_votes = 0
+            for genome in self.gene_clusters_functions_dict[gene_cluster]:
+                for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster][genome]:
+                    if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id]:
+                        annotation_blob = self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id][functional_annotation_source]
+                        accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
+                        for f in annotations:
+                            if f not in gene_clusters_functions_summary_dict[gene_cluster]:
+                                gene_clusters_functions_summary_dict[gene_cluster][f] = 0
+
+                            gene_clusters_functions_summary_dict[gene_cluster][f] += 1
+                            if gene_clusters_functions_summary_dict[gene_cluster][f] > max_votes:
+                                # The function has the votes!
+                                max_votes = gene_clusters_functions_summary_dict[gene_cluster][f]
+                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = f 
+
+        self.progress.end()
+
+        return gene_clusters_functions_summary_dict
 
 
     def init_gene_clusters_functions(self):
@@ -1701,11 +1764,7 @@ class PanSuperclass(object):
         gene_clusters = {}
         full_report = []
 
-        genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
-                                                                       self.p_meta['genomes_storage_hash'],
-                                                                       genome_names_to_focus=self.p_meta['genome_names'],
-                                                                       run=self.run,
-                                                                       progress=self.progress)
+        genomes_db = db.DB(self.genomes_storage_path, anvio.__genomes_storage_version__)
 
         for search_term in search_terms:
             self.progress.new('Search functions')
@@ -1713,26 +1772,30 @@ class PanSuperclass(object):
 
             query = '''select gene_callers_id, source, accession, function, genome_name from ''' + t.genome_gene_function_calls_table_name + ''' where (function LIKE "%%''' \
                             + search_term + '''%%" OR accession LIKE "%%''' + search_term + '''%%")'''
+
+            query += ''' AND genome_name IN (%s) ''' % (', '.join(["'%s'" % s for s in self.p_meta['genome_names']]))
+
             if requested_sources:
                 query += ''' AND source IN (%s);''' % (', '.join(["'%s'" % s for s in requested_sources]))
             else:
                 query += ';'
 
-            results = genomes_storage.db._exec(query).fetchall()
+            results = genomes_db._exec(query).fetchall()
             gene_clusters[search_term] = []
 
+            found_mismatch = False
             for result in results:
                 gene_caller_id, source, accession, function, genome_name = result
 
                 # we're finding gene caller ids in the genomes storage, but they may not end up in any
                 # of the final gene clusters stored in the pan database due to various reasons. for
                 # instance, if the user set a min occurrence parameter, a singleton will not be found
-                # in the pan db yet it will return a functional hit. FIXME: we need to track these and
-                # report them to the user.
-                if gene_caller_id not in self.gene_callers_id_to_gene_cluster[genome_name]:
-                    continue
-
-                gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
+                # in the pan db yet it will return a functional hit.
+                if not gene_caller_id in self.gene_callers_id_to_gene_cluster[genome_name]:
+                    gene_cluster_id = 'n/a'
+                    found_mismatch = True
+                else:
+                    gene_cluster_id = self.gene_callers_id_to_gene_cluster[genome_name][gene_caller_id]
 
                 gene_dict = self.genomes_storage.gene_info[genome_name][gene_caller_id]
 
@@ -1740,10 +1803,17 @@ class PanSuperclass(object):
                     gene_cluster_id, gene_dict['dna_sequence'], gene_dict['aa_sequence'])])
 
                 gene_clusters[search_term].append(gene_cluster_id)
-
             self.progress.end()
-        genomes_storage.close()
+
+            if found_mismatch:
+                self.run.warning("Some of the search results for the term '%s' found in your genomes storage do not seem to \
+                                 belong any gene cluster in your pan database. This may be due to filtering parameters used (ex: --min-occurrence) \
+                                 during the pangenome analysis. Gene cluster ids for these results will appear as 'n/a' in the report." % search_term)
+
+        genomes_db.disconnect()
         self.progress.end()
+
+
 
         return gene_clusters, full_report
 
@@ -1957,7 +2027,7 @@ class ProfileSuperclass(object):
         profile_db.disconnect()
 
         self.progress.update('Accessing the layers additional data')
-        self.layers_additional_data_keys, self.layers_additional_data = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).get()
+        self.layers_additional_data_keys, self.layers_additional_data = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).get_all()
 
         self.progress.update('Accessing the auxiliary data file')
         self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
@@ -2761,7 +2831,7 @@ class ContigsDatabase:
         self.db.set_meta_value('num_contigs', contigs_info_table.total_contigs)
         self.db.set_meta_value('total_length', contigs_info_table.total_nts)
         self.db.set_meta_value('num_splits', splits_info_table.total_splits)
-        self.db.set_meta_value('taxonomy_source', None)
+        self.db.set_meta_value('gene_level_taxonomy_source', None)
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))

@@ -11,6 +11,7 @@ import socket
 import shutil
 import psutil
 import smtplib
+import hashlib
 import textwrap
 import webbrowser
 import subprocess
@@ -1575,7 +1576,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                             need to use this flag, you must also be explicit about what fields you expect to\
                             find in the file.")
 
-    filesnpaths.is_file_exists(file_path)
+    filesnpaths.is_file_plain_text(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator=separator)
 
     f = open(file_path, 'rU')
@@ -2084,6 +2085,16 @@ def is_pan_db(db_path):
     return True
 
 
+def is_profile_db_merged(profile_db_path):
+    is_profile_db(profile_db_path)
+
+    profile_db = db.DB(profile_db_path, get_required_version_for_db(profile_db_path))
+    merged = int(profile_db.get_meta_value('merged'))
+    profile_db.disconnect()
+
+    return merged
+
+
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     is_contigs_db(contigs_db_path)
     is_profile_db(profile_db_path)
@@ -2109,11 +2120,6 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
 
 
 def download_file(url, output_file_path, progress=progress, run=run):
-    """Downloads file.
-
-       We will have to revisit this function when the codebase is Python 3.* compatible.
-    """
-
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
@@ -2144,6 +2150,16 @@ def download_file(url, output_file_path, progress=progress, run=run):
 
     progress.end()
     run.info('Downloaded succesfully', output_file_path)
+
+
+def get_file_md5(file_path):
+    hash_md5 = hashlib.md5()
+
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    
+    return hash_md5.hexdigest()
 
 
 def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run):

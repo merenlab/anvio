@@ -24,7 +24,8 @@ function Node(label) {
     this.child = null;
     this.sibling = null;
     this.collapsed = false;
-    this.label = null;
+    this.label = label;
+    this.size = 1;
     this.id = 0;
     this.xy = [];
     this.original_edge_length = 0.0;
@@ -33,13 +34,8 @@ function Node(label) {
     this.depth = 0;
     this.order = null;
     this.max_child_path = 0;
+    this.branch_support = 0;
 }
-
-
-Node.prototype.SetLabel = function(label) {
-    this.collapsed = (label && label.endsWith('_collapsed')) ? true : false;
-    this.label = (label) ? label.replace(/_collapsed$/,'') : '';
-};
 
 
 Node.prototype.IsLeaf = function() {
@@ -54,6 +50,67 @@ Node.prototype.GetRightMostSibling = function() {
     }
     return p;
 };
+
+
+Node.prototype.GetBorderNodes = function() {
+    var p1 = this;
+    while (p1.child) {
+        p1 = p1.child;
+    }
+
+    var p2 = this;
+    while (p2.child) {
+        p2 = p2.child.GetRightMostSibling();
+    }
+
+    return [p1, p2];
+};
+
+
+Node.prototype.GetChildren = function() {
+    var n = new NodeIterator(this);
+    var q = n.Begin();
+    var children = [];
+
+    while (q != null)
+    {
+        children.push(q);
+        q=n.Next();
+    }
+
+    return children;
+}
+
+
+Node.prototype.IterateChildren = function*() {
+    var n = new NodeIterator(this);
+    var q = n.Begin();
+
+    while (q != null)
+    {
+        yield q;
+        q=n.Next();
+    }
+}
+
+Node.prototype.SetColor = function(color, width=3) {
+    let line = document.getElementById('line' + this.id);
+    if (line) {
+        line.style['stroke-width'] = width;
+        line.style['stroke'] = color;
+    }
+
+    let arc = document.getElementById('arc' + this.id);
+    if (arc) {
+        arc.style['stroke-width'] = width;
+        arc.style['stroke'] = color;
+    }
+}
+
+
+Node.prototype.ResetColor = function() {
+    this.SetColor(LINE_COLOR, width=1);
+}
 
 
 Node.prototype.Rotate = function() {
@@ -84,10 +141,21 @@ function Tree() {
     this.num_leaves = 0;
     this.num_nodes = 0;
     this.nodes = [];
+    this.leaves = [];
     this.rooted = true;
     this.has_edge_lengths = false;
     this.error = 0;
+    this.label_to_leaves = {};
 }
+
+
+Tree.prototype.GetLeafByName = function(name) {
+    if (this.label_to_leaves.hasOwnProperty(name)) {
+        return this.label_to_leaves[name];
+    }
+    return null;
+}
+
 
 Tree.prototype.NewNode = function() {
     var node = new Node();
@@ -95,6 +163,7 @@ Tree.prototype.NewNode = function() {
     this.nodes[node.id] = node;
     return node;
 };
+
 
 Tree.prototype.Parse = function(str, edge_length_norm) {
     str = str.replace(/\(/g, "|(|");
@@ -120,10 +189,18 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
     while ((state != 99) && (this.error == 0)) {
         switch (state) {
             case 0:
-                if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
-                    this.num_leaves++;
-                    label = token[i];
-                    curnode.SetLabel(label);
+                if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
+                    var order = this.num_leaves++;
+                    this.leaves[order] = curnode;
+                    this.label_to_leaves[token[i]] = curnode;
+                    curnode.order = order;
+
+                    if (isNumber(token[i]) && mode != 'gene') {
+                        curnode.branch_support = parseFloat(token[i]);
+                    } else {
+                        curnode.label = token[i];
+                    }
+
                     i++;
                     state = 1;
                 } else {
@@ -228,15 +305,19 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 break;
 
             case 3: // finishchildren
-                if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"') {
-                    curnode.SetLabel(token[i]);
+                if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
+                    if (isNumber(token[i]) && mode != 'gene') {
+                        curnode.branch_support = parseFloat(token[i]);
+                    } else {
+                        curnode.label = token[i];
+                    }
                     i++;
                 } else {
                     switch (token[i]) {
                         case ':':
                             i++;
                             if (isNumber(token[i])) {
-                                curnode.original_edge_length = token[i];
+                                curnode.original_edge_length = parseFloat(token[i]);
                                 
                                 // normalization of edge lengths
                                 if (edge_length_norm) {
@@ -289,21 +370,6 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 break;
         }
     }
-};
-
-Tree.prototype.FindNode = function(label) {
-    var n = new NodeIterator(this.root);
-    var q = n.Begin();
-    while (q != null)
-    {
-        if (q.label == label)
-            return q;
-
-        q=n.Next();
-    }
-
-    console.log("Couldn't find item with label '" + label + "'");
-    return null;
 };
 
 
@@ -362,11 +428,11 @@ function NodeIterator(root)
 
 NodeIterator.prototype.Begin = function() 
 {
-    if (this.root.constructor === Array)
+/*    if (this.root.constructor === Array)
     {
         this.cur = 0;
         return label_to_node_map[this.root[0]];
-    }
+    }*/
     this.cur = this.root;
     while (this.cur.child)
     {
@@ -379,7 +445,7 @@ NodeIterator.prototype.Begin = function()
 
 NodeIterator.prototype.Next = function() 
 {
-    if (this.root.constructor === Array)
+/*    if (this.root.constructor === Array)
     {
         this.cur = this.cur + 1;
         if (this.cur >= this.root.length)
@@ -387,7 +453,7 @@ NodeIterator.prototype.Next = function()
             return null;
         }
         return label_to_node_map[this.root[this.cur]];
-    }
+    }*/
     if (this.stack.length == 0)
     {
         this.cur = null;

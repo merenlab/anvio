@@ -128,6 +128,7 @@ class Progress:
             raise TerminalError('Progress with null pid will not update for msg "%s"' % msg)
 
         self.clear()
+        self.msg = msg
         self.write('\r[%s] %s' % (self.pid, msg))
 
 
@@ -145,6 +146,10 @@ class Run:
         self.info_dict = {}
         self.verbose = verbose
         self.width = width
+
+        self.single_line_prefixes = {1: '* ',
+                                     2: '    - ',
+                                     3: '        > '}
 
 
     def log(self, line):
@@ -168,7 +173,7 @@ class Run:
                 sys.stderr.write(line.encode('utf-8'))
 
 
-    def info(self, key, value, quiet=False, display_only=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow'):
+    def info(self, key, value, quiet=False, display_only=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow', progress=None):
         if not display_only:
             self.info_dict[key] = value
 
@@ -185,17 +190,26 @@ class Run:
                                          '.' * (self.width - len(label)),
                                          c(str(value), mc), '\n' * nl_after)
 
-        self.write(info_line, quiet=quiet)
+        if progress:
+            progress.clear()
+            self.write(info_line, quiet=quiet)
+            progress.update(progress.msg)
+
+        else:
+            self.write(info_line, quiet=quiet)
 
 
-    def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80):
+    def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1):
         if isinstance(message, str):
             message = remove_spaces(message)
 
+        if level not in self.single_line_prefixes:
+            raise TerminalError("the `info_single` function does not know how to deal with a level of %d :/" % level)
+
         if cut_after:
-            message_line = c("* %s\n" % (textwrap.fill(str(message), cut_after)), mc)
+            message_line = c("%s%s\n" % (self.single_line_prefixes[level], textwrap.fill(str(message), cut_after)), mc)
         else:
-            message_line = c("* %s\n" % str(message), mc)
+            message_line = c("%s%s\n" % (self.single_line_prefixes[level], str(message)), mc)
 
         message_line = ('\n' * nl_before) + message_line + ('\n' * nl_after)
 

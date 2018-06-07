@@ -13,16 +13,17 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "11"
-profile_db_version = "25"
-pan_db_version = "8"
+contigs_db_version = "12"
+profile_db_version = "27"
+pan_db_version = "10"
 auxiliary_data_version = "2"
 genomes_storage_vesion = "6"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
                          'pan': pan_db_version,
-                         'genomestorage': genomes_storage_vesion}
+                         'genomestorage': genomes_storage_vesion,
+                         'auxiliary data for coverages': auxiliary_data_version}
 
 ####################################################################################################
 #
@@ -91,7 +92,7 @@ genes_taxonomy_table_types             = [    'numeric'    ,  'numeric',]
 
 hmm_hits_info_table_name               = 'hmm_hits_info'
 hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'domain', 'genes']
-hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    ,  'text' , 'text' ]       # This one here is the id that apperas in gene_calls table
+hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    ,  'text' , 'text' ]       # This one here is the id that apper as in gene_calls table
                                                                                          #         /
 hmm_hits_table_name                    = 'hmm_hits'                                      # _______|_______
 hmm_hits_table_structure               = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_hmm_id', 'e_value']
@@ -119,16 +120,16 @@ item_orders_table_structure         = ['name', 'type', 'data']
 item_orders_table_types             = ['text', 'text', 'text']
 
 item_additional_data_table_name      = 'item_additional_data'
-item_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type']
-item_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ]
+item_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+item_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 layer_orders_table_name              = 'layer_orders'
 layer_orders_table_structure         = ['data_key', 'data_type', 'data_value']
 layer_orders_table_types             = [  'text'  ,    'text'  ,    'text'   ]
 
 layer_additional_data_table_name      = 'layer_additional_data'
-layer_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type']
-layer_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ]
+layer_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+layer_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']

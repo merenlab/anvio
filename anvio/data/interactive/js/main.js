@@ -18,37 +18,27 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
-var VERSION = '0.2.1';
+
+var VERSION = '2';
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
+
 var VIEWER_WIDTH;
 var VIEWER_HEIGHT;
 
-
 var scale = 0;
+var drawer;
 
-var id_to_node_map = new Array();
-var label_to_node_map = {};
-var order_to_node_map = new Array();
-var leaf_count;
 var samples_id_to_node_map;
-
-var angle_per_leaf;
-var height_per_leaf;
-var margin;
-var order_counter;
-
 var total_radius = 0;
 
-var SELECTED = new Array();
+var bins;
 var clusteringData;
 
 var layerdata;
-var contig_lengths;
+var item_lengths;
 var parameter_count;
 
-var bin_counter = 0; // for id
-var bin_count = 0;
 var tree_type;
 var layer_types;
 
@@ -57,31 +47,18 @@ var categorical_stats = {};
 var stack_bar_colors = {};
 var legends = [];
 
-var context_menu_target_id = 0;
-var context_menu_layer_id = 0;
-
 var layerdata_title = {};
-var layerdata_dict;
 var empty_tooltip = "";
 
 var last_settings;
 
 var search_column;
 var search_results = [];
-var highlighted_splits = [];
 
 var views = {};
 var layers = {};
 var current_view = '';
 var layer_order;
-
-var completeness_dict = {};
-var gene_cluster_bins_summary_dict = {}
-
-var sort_column;
-var sort_order;
-
-var bin_prefix;
 
 var current_state_name = "";
 
@@ -173,15 +150,11 @@ $(document).ready(function() {
             if (!bySetColor) $(el).val(hex);
         },
         onHide: function() {
-            redrawBins();
+            emit('bin-settings-changed');
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
     });
-
-    document.body.addEventListener('click', function() {
-        $('#control_contextmenu').hide();
-    }, false);
 
     $("li[role='presentation']").click(function (e) {
         if ($(this).hasClass('disabled')) {
@@ -237,8 +210,7 @@ function initData() {
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
 
-            bin_prefix = response.bin_prefix;
-            contig_lengths = response.contig_lengths;
+            item_lengths = response.item_lengths;
 
             var default_tree  = response.item_orders[0];
             var available_trees = response.item_orders[2];
@@ -249,17 +221,21 @@ function initData() {
             var available_views = response.views[2];
             $('#views_container').append(getComboBoxContent(default_view, available_views));
 
-            // make layers and samples table sortable
-            var _notFirstSelector = ''
-            if (mode != 'manual' && mode != 'pan' && mode != 'server') {
-                _notFirstSelector = ':not(:first)';
-            }
-            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr" + _notFirstSelector}).disableSelection(); 
+            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
             $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
             
             samples_order_dict = response.layers_order;
             samples_information_dict = response.layers_information;
             let samples_information_default_layer_order = response.layers_information_default_order;
+            let samples_groups = Object.keys(samples_information_dict).sort();
+
+            samples_groups.forEach(function (group_name) {
+                $('#sample_groups_container').append(`
+                    <div style="float: left; padding: 4px 4px;">
+                        <input type="checkbox" onclick="toggleSampleGroups();" id="group_${group_name}" value="${group_name}" ${group_name == 'default' ? 'checked="checked"' : ''}>
+                        <label style="margin-left: 2px;" onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
+                    </div>`);
+            });
 
             let available_orders = Object.keys(samples_order_dict).sort();
             $('#samples_order').append(new Option('custom'));
@@ -271,7 +247,18 @@ function initData() {
 
                 $('#samples_order').append(new Option(order_name, order));
             });
-            buildSamplesTable(samples_information_default_layer_order);
+
+            // Populate function sources checkboxes in search functions panel.
+            if (response.functions_sources.length > 0) {
+                $('#functions_sources_list').empty();
+            }
+            
+            response.functions_sources.forEach((source) => {
+                $('#functions_sources_list').append(`<label style="margin: 5px;"><input type="checkbox" value="${source}" checked="checked" style="margin-right: 2px;"/>${source}</label>`);
+            });
+            
+            buildSamplesTable(convert_samples_order_to_array(samples_information_default_layer_order));
+            toggleSampleGroups();
             changeViewData(response.views[1]);
 
             if (response.state[0] && response.state[1]) {
@@ -280,27 +267,26 @@ function initData() {
 
             $('.loading-screen').hide();
 
+            bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
+            bins.NewBin();
+
             if (response.autodraw)
             {
                 $('#btn_draw_tree').removeClass('glowing-button');
 
-                $.when({})
+                $.when()
                  .then(drawTree)
                  .then(function() {
                     if (response.collection !== null && mode !== 'refine' && mode !== 'gene')
                     {
-                        processCollection(response.collection);
+                        bins.ImportCollection(response.collection);
                     }
 
                     if ($('#panel-left').is(':visible')) {
                         setTimeout(toggleLeftPanel, 500);
                     }
                  });
-            }
-
-            if (!response.collection) {
-                newBin();
-            }   
+            } 
         }
     });
 }
@@ -492,46 +478,57 @@ function populateColorDicts() {
         }
     }
 
-    var first_sample = Object.keys(samples_information_dict)[0];
+    for (let group in samples_information_dict) {
+        var first_sample = Object.keys(samples_information_dict[group])[0];
 
-    if (typeof first_sample !== 'undefined')
-    {
-        for (let sample_layer_name in samples_information_dict[first_sample])
+        if (typeof first_sample !== 'undefined')
         {
-            if (isNumber(samples_information_dict[first_sample][sample_layer_name]))
+            for (let sample_layer_name in samples_information_dict[group][first_sample])
             {
-                // no color table for numeric
-            }
-            else if (sample_layer_name.indexOf(';') > -1) // stack bar
-            {
-                if (!(sample_layer_name in samples_stack_bar_colors))
+                if (isNumber(samples_information_dict[group][first_sample][sample_layer_name]))
                 {
-                    samples_stack_bar_colors[sample_layer_name] = new Array();
-                    for (var j=0; j < sample_layer_name.split(";").length; j++)
-                    {
-                        samples_stack_bar_colors[sample_layer_name].push(randomColor());
-                    } 
+                    // no color table for numeric
                 }
-            }
-            else // categorical
-            {
-                if (typeof samples_categorical_colors[sample_layer_name] === 'undefined') {
-                    samples_categorical_colors[sample_layer_name] = {};
-                    samples_categorical_stats[sample_layer_name] = {};
+                else if (sample_layer_name.indexOf(';') > -1) // stack bar
+                {
+                    if (typeof samples_stack_bar_colors[group] === 'undefined') {
+                        samples_stack_bar_colors[group] = {};
+                    }
 
-                    for (let _sample in samples_information_dict)
+                    if (!(sample_layer_name in samples_stack_bar_colors[group]))
                     {
-                        var _category_name = samples_information_dict[_sample][sample_layer_name];
-                        if (_category_name == null || _category_name == '' || _category_name == 'null')
-                            _category_name = 'None';
-                        samples_information_dict[_sample][sample_layer_name] = _category_name;
+                        samples_stack_bar_colors[group][sample_layer_name] = new Array();
+                        for (var j=0; j < sample_layer_name.split(";").length; j++)
+                        {
+                            samples_stack_bar_colors[group][sample_layer_name].push(randomColor());
+                        } 
+                    }
+                }
+                else // categorical
+                {
+                    if (typeof samples_categorical_colors[group] === 'undefined') {
+                        samples_categorical_colors[group] = {};
+                        samples_categorical_stats[group] = {};
+                    }
 
-                        if (typeof samples_categorical_colors[sample_layer_name][_category_name] === 'undefined'){
-                            samples_categorical_colors[sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
-                            samples_categorical_stats[sample_layer_name][_category_name] = 0;
+                    if (typeof samples_categorical_colors[group][sample_layer_name] === 'undefined') {
+                        samples_categorical_colors[group][sample_layer_name] = {};
+                        samples_categorical_stats[group][sample_layer_name] = {};
+
+                        for (let _sample in samples_information_dict[group])
+                        {
+                            var _category_name = samples_information_dict[group][_sample][sample_layer_name];
+                            if (_category_name == null || _category_name == '' || _category_name == 'null')
+                                _category_name = 'None';
+                            samples_information_dict[group][_sample][sample_layer_name] = _category_name;
+
+                            if (typeof samples_categorical_colors[group][sample_layer_name][_category_name] === 'undefined'){
+                                samples_categorical_colors[group][sample_layer_name][_category_name] = getNamedCategoryColor(_category_name);
+                                samples_categorical_stats[group][sample_layer_name][_category_name] = 0;
+                            }
+
+                            samples_categorical_stats[group][sample_layer_name][_category_name]++;
                         }
-
-                        samples_categorical_stats[sample_layer_name][_category_name]++;
                     }
                 }
             }
@@ -581,33 +578,39 @@ function buildLegendTables() {
         });    
     }
 
-    for (let sample in samples_categorical_colors)
-    {
-        var names = Object.keys(samples_categorical_colors[sample]);
+    for (let group in samples_categorical_colors) {
+        for (let sample in samples_categorical_colors[group])
+        {
+            var names = Object.keys(samples_categorical_colors[group][sample]);
 
-        legends.push({
-            'name': getPrettyName(sample),
-            'source': 'samples_categorical_colors',
-            'key': sample,
-            'item_names': names,
-            'item_keys': names,
-            'stats': samples_categorical_stats[sample]
-        });
+            legends.push({
+                'name': group + ' :: ' + getPrettyName(sample),
+                'source': 'samples_categorical_colors',
+                'group': group,
+                'key': sample,
+                'item_names': names,
+                'item_keys': names,
+                'stats': samples_categorical_stats[group][sample]
+            });
+        }
     }
 
-    for (let sample in samples_stack_bar_colors)
-    {
-        var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
-        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
-        var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
+    for (let group in samples_stack_bar_colors) {
+        for (let sample in samples_stack_bar_colors[group])
+        {
+            var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
+            var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
+            var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
-        legends.push({
-            'name': getPrettyName(pretty_name),
-            'source': 'samples_stack_bar_colors',
-            'key': sample,
-            'item_names': names,
-            'item_keys': keys
-        });
+            legends.push({
+                'name': group + ' :: ' + getPrettyName(pretty_name),
+                'source': 'samples_stack_bar_colors',
+                'group': group,
+                'key': sample,
+                'item_names': names,
+                'item_keys': keys
+            });
+        }
     }
 
     for (var i=0; i < legends.length; i++)
@@ -697,16 +700,28 @@ function batchColor(legend_id) {
         }
 
         if (rule == 'all') {
-            window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+            if (typeof legend['group'] === 'undefined') {
+                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+            } else {
+                window[legend['source']][legend['group']][legend['key']][legend['item_keys'][i]] = color;
+            }
         }
         else if (rule == 'name') {
             if (legend['item_names'][i].toLowerCase().indexOf($('#name_rule_' + legend_id).val().toLowerCase()) > -1) {
-                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                if (typeof legend['group'] === 'undefined') {
+                    window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                } else {
+                    window[legend['source']][legend['group']][legend['key']][legend['item_keys'][i]] = color;
+                }
             }
         } 
         else if (rule == 'count') {
             if (eval("legend['stats'][legend['item_keys'][i]] " + unescape($('#count_rule_'+legend_id).val()) + " " + parseFloat($('#count_rule_value_'+legend_id).val()))) {
-                window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                if (typeof legend['group'] === 'undefined') {
+                    window[legend['source']][legend['key']][legend['item_keys'][i]] = color;
+                } else {
+                    window[legend['source']][legend['group']][legend['key']][legend['item_keys'][i]] = color;
+                }
             }
         }
     }
@@ -721,10 +736,16 @@ function createLegendColorPanel(legend_id) {
     for (var j = 0; j < legend['item_names'].length; j++) {
 
         var _name = legend['item_names'][j];
-        var _color = window[legend['source']][legend['key']][legend['item_keys'][j]]
 
-        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0)
+        if (legend.hasOwnProperty('group')) {
+            var _color = window[legend['source']][legend['group']][legend['key']][legend['item_keys'][j]];
+        } else {
+            var _color = window[legend['source']][legend['key']][legend['item_keys'][j]];
+        }
+
+        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0) {
             continue;
+        }
 
         if (legend.hasOwnProperty('stats')) {
             _name = _name + ' (' + legend['stats'][_name] + ')';
@@ -734,6 +755,7 @@ function createLegendColorPanel(legend_id) {
                                 '<div class="colorpicker legendcolorpicker" color="' + _color + '"' +
                                 'style="margin-right: 5px; background-color: ' + _color + '"' +
                                 'callback_source="' + legend['source'] + '"' +
+                                'callback_group="' + ((typeof legend['group'] !== 'undefined') ? legend['group'] : '') + '"' +
                                 'callback_pindex="' + legend['key'] + '"' +
                                 'callback_name="' + legend['item_keys'][j] + '"' + 
                                '></div>' + _name + '</div>';
@@ -748,7 +770,11 @@ function createLegendColorPanel(legend_id) {
         colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
-            window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+            if (el.getAttribute('callback_group') !== '') {
+                window[el.getAttribute('callback_source')][el.getAttribute('callback_group')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+            } else {
+                window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+            }
         }
     });
 }
@@ -1317,8 +1343,18 @@ function serializeSettings(use_layer_names) {
     $('#tbody_samples tr').each(
         function(index, tr) {
             var samples_layer_name = $(tr).attr('samples-layer-name');
-            state['samples-layer-order'].push(samples_layer_name);
-            state['samples-layers'][samples_layer_name] = {
+            var samples_group_name = $(tr).attr('samples-group-name');
+
+            state['samples-layer-order'].push({
+                'layer_name': samples_layer_name,
+                'group': samples_group_name
+            });
+
+            if (!state['samples-layers'].hasOwnProperty(samples_group_name)) {
+                state['samples-layers'][samples_group_name] = {};
+            }
+
+            state['samples-layers'][samples_group_name][samples_layer_name] = {
                 'data-type'     : $(tr).attr('data-type'),
                 'height'        : parseFloat($(tr).find('.input-height').val()),
                 'margin'        : parseFloat($(tr).find('.input-margin').val()),
@@ -1332,10 +1368,15 @@ function serializeSettings(use_layer_names) {
         }
     );
 
+    state['samples-groups'] = {};
+    $('#sample_groups_container input:checkbox').each((index, checkbox) => {
+        state['samples-groups'][$(checkbox).val()] = $(checkbox).is(':checked');
+    });
+
     return state;
 }
 
-function drawTree() {
+function drawTree(collapsed_node_id) {
     var defer = $.Deferred();
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
@@ -1359,14 +1400,18 @@ function drawTree() {
                 defer.resolve(); 
             },
             onShow: function() {
-                var drawer = new Drawer(settings);
+                drawer = new Drawer(settings);
+                if (typeof collapsed_node_id !== 'undefined') {
+                    drawer.tree.nodes[collapsed_node_id].collaped = true;
+                }
+
                 drawer.draw();
 
                 // last_settings used in export svg for layer information,
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
                 last_settings = serializeSettings();
 
-                redrawBins();
+                bins.RedrawBins();
 
                 $('#btn_draw_tree').prop('disabled', false);
                 $('#btn_redraw_samples').prop('disabled', false);
@@ -1383,20 +1428,6 @@ function drawTree() {
     return defer.promise();
 }
 
-
-function getContigNames(bin_id) {
-    var names = new Array();
-
-    for (var j = 0; j < SELECTED[bin_id].length; j++) {
-        if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf()) {
-            names.push(SELECTED[bin_id][j]);
-        }
-    }
-
-    return names;
-}
-
-
 function showContigNames(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
@@ -1407,148 +1438,13 @@ function showContigNames(bin_id, updateOnly) {
         return;
 
     var msg = '<table class="table table-striped">';
-    var names = getContigNames(bin_id);
-
-    for (var i in names)
-        msg += "<tr><td><a href='#' class='no-link' onclick='highlightSplit(\"" + names[i] + "\");'>" + names[i] + "</a></td></tr>";
+    for (const label of bins.GetBinNodeLabels(bin_id)) {
+        msg += `<tr><td><a href='#' class='no-link' onclick="bins.HighlightItems('${label}');">${label}</a></td></tr>`;
+    }
 
     msg = msg + '</table>';
 
     showDraggableDialog(title, msg, updateOnly);
-}
-
-function newBin(id, binState) {
-
-    bin_count++;
-
-    if (typeof id === 'undefined')
-    {
-        bin_counter++;
-        var from_state = false;
-        var id = bin_counter;
-        var name = bin_prefix + id;
-        var color = randomColor({luminosity: 'dark'});
-        var contig_count = 0;
-        var contig_length = "N/A";
-        var completeness = '---';
-        var redundancy = '---';
-
-        SELECTED[bin_counter] = [];
-    }
-    else
-    {
-        // we are adding bins from collection
-        var from_state = true;
-        var name = binState['name'];
-        var color = binState['color'];
-        var contig_count = 0;
-        var contig_length = "N/A";
-        var completeness = "---";
-        var redundancy = "---";
-    }
-
-    var template = '<tr bin-id="{id}" id="bin_row_{id}">' +
-                   '    <td><input type="radio" name="active_bin" value="{id}" checked></td>' +
-                   '    <td><div id="bin_color_{id}" class="colorpicker" color="{color}" style="background-color: {color}"></td>' +
-                   '    <td data-value="{name}"><input type="text" onChange="redrawBins();" size="21" id="bin_name_{id}" value="{name}"></td>';
-
-    if (mode != 'pan')
-    {
-        template +='    <td data-value="{count}"><input id="contig_count_{id}" type="button" value="{count}" title="Click for contig names" onClick="showContigNames({id});"></td> ' +
-                   '    <td data-value="{length}"><span id="contig_length_{id}">{length}</span></td>';
-    }
-
-    template +=    '    <td data-value="{completeness}"><input id="completeness_{id}" type="button" value="{completeness}" title="Click for completeness table" onClick="showCompleteness({id});"></td> ' +
-                   '    <td data-value="{redundancy}"><input id="redundancy_{id}" type="button" value="{redundancy}" title="Click for redundant hits" onClick="showRedundants({id});"></td> ' +
-                   '    <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="deleteBin({id});"></span></center></td>' +
-                   '</tr>';
-
-    template = template.replace(new RegExp('{id}', 'g'), id)
-                       .replace(new RegExp('{name}', 'g'), name)
-                       .replace(new RegExp('{color}', 'g'), color)
-                       .replace(new RegExp('{count}', 'g'), contig_count)
-                       .replace(new RegExp('{completeness}', 'g'), completeness)
-                       .replace(new RegExp('{redundancy}', 'g'), redundancy)
-                       .replace(new RegExp('{length}', 'g'), contig_length);
-
-    $('#tbody_bins').append(template);
-
-    if(!from_state){
-        $('#completeness_' + id).attr("disabled", true);
-        $('#redundancy_' + id).attr("disabled", true);
-    }
-
-    $('#bin_color_' + id).colpick({
-        layout: 'hex',
-        submit: 0,
-        colorScheme: 'light',
-        onChange: function(hsb, hex, rgb, el, bySetColor) {
-            $(el).css('background-color', '#' + hex);
-            $(el).attr('color', '#' + hex);
-
-            if (!bySetColor) $(el).val(hex);
-        },
-        onHide: function() {
-            redrawBins();
-        }
-    }).keyup(function() {
-        $(this).colpickSetColor(this.value);
-    });
-}
-
-function deleteBin(id, show_confirm) {
-    if (typeof show_confirm === 'undefined') {
-        show_confirm = true;
-    }
-
-    if (show_confirm && !confirm('Are you sure?')) {
-        return;
-    }
-
-    $('#bin_row_' + id).remove();
-    $('#tbody_bins input[type=radio]').last().prop('checked', true);
-    bin_count--;
-
-    for (var i = 0; i < SELECTED[id].length; i++) {
-        var node = label_to_node_map[SELECTED[id][i]];
-
-        if (typeof node === 'undefined' || !node.hasOwnProperty('id')) {
-            continue;
-        }
-
-        var node_id = node.id;
-        $("#line" + node_id).css('stroke-width', '1');
-        $("#arc" + node_id).css('stroke-width', '1');
-        $("#line" + node_id).css('stroke', LINE_COLOR);
-        $("#arc" + node_id).css('stroke', LINE_COLOR);
-    }
-
-    SELECTED[id] = [];
-    delete completeness_dict[id];
-
-    if (bin_count==0)
-    {
-        newBin();
-    }
-
-    redrawBins();
-}
-
-function deleteAllBins() {
-    if (!confirm('Are you sure you want to remove all bins?')) {
-        return;
-    }
-    var bin_ids_to_delete = [];
-
-    $('#tbody_bins tr').each(
-        function(index, bin) {
-            bin_ids_to_delete.push($(bin).attr('bin-id'));
-        }
-    );
-
-    bin_ids_to_delete.map(function(bin_id) { 
-        deleteBin(bin_id, false);
-    });
 }
 
 function showGenSummaryWindow() {
@@ -1579,120 +1475,16 @@ function showGenSummaryWindow() {
     });
 }
 
-
-function updateBinsWindow(bin_list) {
-    if (typeof bin_list === 'undefined')
-    {
-        var bin_list = [];
-        $('#tbody_bins tr').each(
-        function(index, bin) {
-            bin_list.push(parseInt($(bin).attr('bin-id')));
-        });
-    }
-
-    for (var _i = 0; _i < bin_list.length; _i++) {
-        var bin_id = bin_list[_i];
-
-        if (mode === 'pan'){
-            updateGeneClustersBin(bin_id);
-        } else {
-            updateComplateness(bin_id);
-
-            var contigs = 0;
-            var length_sum = 0;
-
-            for (var j = 0; j < SELECTED[bin_id].length; j++) {
-                if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf())
-                {
-                    contigs++;
-                    length_sum += parseInt(contig_lengths[SELECTED[bin_id][j]]);
-                }
-            }
-
-            $('#contig_count_' + bin_id).val(contigs).parent().attr('data-value', contigs);
-
-            // it is likely in manual or server modes lenghts are not going to be available.
-            if (isNaN(length_sum))
-                $('#contig_length_' + bin_id).html('N/A').parent().attr('data-value', 0);
-            else
-                $('#contig_length_' + bin_id).html(readableNumber(length_sum)).parent().attr('data-value', length_sum);
-
-        }
-
-        showContigNames(bin_id, true);
-    }
-
-    $('#bin_settings_tab:not(.active) a').css('color', "#ff0000");
-}
-
-
-function updateGeneClustersBin(bin_id) {
-    if (mode !== 'pan'){ 
-        return;
-    }
-
-    $.ajax({
-        type: "POST",
-        url: "/data/geneclusterssummary",
-        cache: false,
-        data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
-        success: function(data){
-            gene_cluster_bins_summary_dict[bin_id] = data;
-            $('#redundancy_' + bin_id).val(data['num_gene_calls']).parent().attr('data-value', data['num_gene_calls']);
-            $('#completeness_' + bin_id).val(data['num_gene_clusters']).parent().attr('data-value', data['num_gene_clusters']);
-
-            $('#completeness_' + bin_id).attr("disabled", false);
-            $('#redundancy_' + bin_id).attr("disabled", false);
-        },
-    });
-}
-
-
-function updateComplateness(bin_id) {
-    if (mode === 'manual' || mode === 'pan' || mode === 'server'){ 
-        // there is nothing to do here
-        return;
-    }
-
-    $.ajax({
-        type: "POST",
-        url: "/data/completeness",
-        cache: false,
-        data: {split_names: JSON.stringify(getContigNames(bin_id)), bin_name: JSON.stringify($('#bin_name_' + bin_id).val())},
-        success: function(completeness_info_dict){
-            let stats = completeness_info_dict['stats'];
-            let refs = completeness_info_dict['refs'];
-            let averages = completeness_info_dict['averages'];
-
-            completeness_dict[bin_id] = completeness_info_dict;
-
-            let average_completeness = averages['percent_completion'];
-            let average_redundancy = averages['percent_redundancy'];
-
-            if (average_completeness != null && average_redundancy != null) {
-                $('#completeness_' + bin_id).val(average_completeness.toFixed(1) + '%').parent().attr('data-value', average_completeness);
-                $('#redundancy_' + bin_id).val(average_redundancy.toFixed(1) + '%').parent().attr('data-value', average_redundancy);
-            }
-
-            $('#completeness_' + bin_id).attr("disabled", false);
-            $('#redundancy_' + bin_id).attr("disabled", false);
-
-            showCompleteness(bin_id, true);
-            showRedundants(bin_id, true);
-        },
-    });
-}
-
 function showCompleteness(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
 
-    if (!completeness_dict.hasOwnProperty(bin_id))
+    if (!bins.cache['completeness'].hasOwnProperty(bin_id))
         return;
 
-    var refs = completeness_dict[bin_id]['refs'];
-    var stats = completeness_dict[bin_id]['stats'];
-    var averages = completeness_dict[bin_id]['averages'];
+    var refs = bins.cache['completeness'][bin_id]['refs'];
+    var stats = bins.cache['completeness'][bin_id]['stats'];
+    var averages = bins.cache['completeness'][bin_id]['averages'];
 
     var title = 'Completeness of "' + $('#bin_name_' + bin_id).val() + '"';
 
@@ -1720,11 +1512,11 @@ function showRedundants(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
     
-    if (!completeness_dict.hasOwnProperty(bin_id))
+    if (!bins.cache['completeness'].hasOwnProperty(bin_id))
         return;
 
-    var stats = completeness_dict[bin_id]['stats'];
-    var averages = completeness_dict[bin_id]['averages'];
+    var stats = bins.cache['completeness'][bin_id]['stats'];
+    var averages = bins.cache['completeness'][bin_id]['averages'];
 
     var output_title = 'Redundants of "' + $('#bin_name_' + bin_id).val() + '"';
 
@@ -1763,13 +1555,13 @@ function showRedundants(bin_id, updateOnly) {
 
             redundants_html += '<span style="cursor:pointer;" \
                                     data-toggle="tooltip" data-placement="top" title="' + title + '" \
-                                    onclick="highlighted_splits = [' + split_array + ']; redrawBins();"> \
+                                    onclick="bins.HighlightItems([' + split_array + ']);"> \
                                     ' + redundant + ' (' + stats[source]['redundants'][redundant].length + ') \
                                   </span><br />';
         }
 
         tabletext += '<tr><td valign="top">' + redundants_html + '<br /><br /><span style="cursor:pointer;" \
-                                    onclick="highlighted_splits = [' + split_array_all + ']; redrawBins();">(Highlight All)\
+                                    onclick="bins.HighlightItems([' + split_array_all + ']);">(Highlight All)\
                                   </span></tr></td></table></div>';
         output += tabletext;
 
@@ -1785,8 +1577,7 @@ function showRedundants(bin_id, updateOnly) {
 }
 
 function exportSvg(dontDownload) {
-    // check if tree parsed, which means there is a tree on the screen
-    if ($.isEmptyObject(label_to_node_map)) 
+    if (!drawer) 
         return;
 
     // draw bin and layer legend to output svg
@@ -1850,63 +1641,18 @@ function exportSvg(dontDownload) {
     $('#legend_group').remove();
 }
 
-function showStoreCollectionWindow() {
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/collections',
-        success: function(data) {
-            $('#storeCollection_list').empty();
-
-            for (let source in data) {
-                var read_only = data[source]["read_only"];
-
-                if (read_only) {
-                    var _disabled = ' disabled="true"';
-                    var _name = source + ' (read only)';
-                }
-                else
-                {
-                    var _disabled = '';
-                    var _name = source;
-                }
-
-                $('#storeCollection_list').append('<option value="' + source + '"' + _disabled + '>' + _name + '</option>');
-            }
-
-            $('#modStoreCollection').modal('show');
-        }
-    });
-}
-
 
 function storeRefinedBins() {
-    var data = {};
-    var colors = {};
-
-    $('#tbody_bins tr').each(
-        function(index, bin) {
-            var bin_id = $(bin).attr('bin-id');
-            var bin_name = $('#bin_name_' + bin_id).val();
-
-            colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
-            data[bin_name] = new Array();
-
-            for (let i=0; i < SELECTED[bin_id].length; i++)
-            {
-                if (label_to_node_map[SELECTED[bin_id][i]].IsLeaf())
-                {
-                    data[bin_name].push(SELECTED[bin_id][i]);
-                }
-            }
-        }
-    );
+    let collection_info = bins.ExportCollection();
 
     $.ajax({
         type: 'POST',
         cache: false,
         url: '/data/store_refined_bins',
-        data: { data: JSON.stringify(data, null, 4), colors: JSON.stringify(colors, null, 4) },
+        data: { 
+            data: JSON.stringify(collection_info['data'], null, 4), 
+            colors: JSON.stringify(collection_info['colors'], null, 4)
+        },
         success: function(data) {
             if (data.status == -1){
                 toastr.error(data.message, "You made the server upset :(");
@@ -1915,65 +1661,6 @@ function storeRefinedBins() {
             }
         }
     });
-}
-
-
-function storeCollection() {
-    var collection_name = $('#storeCollection_name').val();
-
-    collection_name = collection_name.replace(/\W+/g, "_");
-    $('#storeCollection_name').val(collection_name);
-
-    if (collection_name.length==0) {
-        $('#storeCollection_name').focus();
-        return;
-    }
-
-    var collection_info = serializeCollection();
-
-    $.post("/store_collection", {
-        source: collection_name,
-        data: JSON.stringify(collection_info['data'], null, 4),
-        colors: JSON.stringify(collection_info['colors'], null, 4),
-    },
-    function(server_response, status){
-        toastr.info(server_response, "Server");
-    });
-
-    $('#modStoreCollection').modal('hide');    
-}
-
-
-function serializeCollection() {
-    var data = {};
-    var colors = {};
-
-    $('#tbody_bins tr').each(
-        function(index, bin) {
-            var bin_id = $(bin).attr('bin-id');
-            var bin_name = $('#bin_name_' + bin_id).val();
-
-            var items = new Array();
-            
-            for (let i=0; i < SELECTED[bin_id].length; i++)
-            {
-                var node_label = SELECTED[bin_id][i];
-                var node = label_to_node_map[node_label];
-
-                if (node.IsLeaf() && !node.collapsed)
-                {
-                    items.push(node_label);
-                }
-            }
-
-            if (items.length > 0) {
-                colors[bin_name] = $('#bin_color_' + bin_id).attr('color');
-                data[bin_name] = items;
-            }
-        }
-    );
-
-    return {'data': data, 'colors': colors};
 }
 
 
@@ -2006,162 +1693,6 @@ function generateSummary() {
             }
         }
     });
-}
-
-
-function showLoadCollectionWindow() {
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/collections',
-        success: function(data) {
-            $('#loadCollection_list').empty();
-
-            for (let source in data) {
-                var read_only = data[source]["read_only"];
-
-                if (read_only) {
-                    var _name = source + ' (read only)';
-                }
-                else
-                {
-                    var _name = source;
-                }
-
-                $('#loadCollection_list').append('<option value="' + source + '">' + _name + '</option>');
-            }
-
-            $('#loadCollection_list, #btn-load-collection').prop('disabled', false);
-            showCollectionDetails('');
-            $('#modLoadCollection').modal('show');
-        }
-    });
-}
-
-function showCollectionDetails(list) {
-
-    var cname = $(list).val();
-
-    if (cname=='' || typeof cname === 'undefined')
-    {
-        // clear details
-        var tbl = '<div class="col-md-12">Collection Details</div><hr>' +
-            '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>n/a</b></div>' +
-            '<div class="col-md-8">Number of Bins:</div><div class="col-md-4"><b>n/a</b></div>';
-
-        $('.collection-details').html(tbl);
-
-        return;
-    }
-
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/collections',
-        success: function(data) {
-            var tbl = '<div class="col-md-12">Collection Details</div><hr>' +
-                '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>' + data[cname]['num_splits'] + '</b></div>' +
-                '<div class="col-md-8">Number of Bins:</div><div class="col-md-4"><b>' + data[cname]['num_bins'] + '</b></div>';
-
-            $('.collection-details').html(tbl);
-        }
-    });
-}
-
-function loadCollection(default_collection) {
-    if ($.isEmptyObject(label_to_node_map)) {
-        toastr.warning('You should draw tree before load collection.');
-        return;
-    }
-
-    $('#modLoadCollection').modal('hide');
-    var collection = $('#loadCollection_list').val();
-
-    if (collection === null) {
-        toastr.warning('Please select a collection.');
-        return;
-    }
-
-    $('#loadCollection_list, #btn-load-collection').prop('disabled', true);
-    
-    var bin_list = [];
-    var total_selection = 0;
-    
-    $('#tbody_bins tr').each(
-    function(index, bin) {
-        bin_list.push(parseInt($(bin).attr('bin-id')));
-    });
-    for (let _i = 0; _i < bin_list.length; _i++) {
-        let bin_id = bin_list[_i];
-        for (let j = 0; j < SELECTED[bin_id].length; j++) {
-            if (label_to_node_map[SELECTED[bin_id][j]].IsLeaf())
-                total_selection++;
-        }
-    }
-
-    if (total_selection > 0 && !confirm("You will lost current bins, please be sure you stored current bins. Do you want to continue?")) {
-        showLoadCollectionWindow();
-        return;
-    }
-
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/data/collection/' + collection,
-        success: function(data) {
-            processCollection(data);
-        }
-    });
-}
-
-function processCollection(collection_data) {
-    SELECTED = new Array();
-    var bins_cleared = false;
-    bin_count = 0;
-    bin_counter = 0;
-
-    // calculate treshold.
-    var threshold = parseFloat($('#loadCollection_threshold').val()) * $('#loadCollection_threshold_base').val();
-
-    // load new bins
-    var bin_id=0;
-    for (let bin in collection_data['data'])
-    {
-        // collection may be contain unknown splits/contigs, we should clear them.
-        var contigs = new Array();
-        var sum_contig_length = 0;
-
-        for (let index in collection_data['data'][bin])
-        {
-            if (mode === 'manual' || mode === 'pan' || mode === 'server'){
-                contigs.push(collection_data['data'][bin][index]);
-            } else if (typeof contig_lengths[collection_data['data'][bin][index]] !== 'undefined') {
-                contigs.push(collection_data['data'][bin][index]);
-                sum_contig_length += contig_lengths[collection_data['data'][bin][index]];
-            }
-            
-        }
-
-        if (mode === 'manual' || mode === 'pan' || mode === 'server' || sum_contig_length >= threshold)
-        {
-            if (!bins_cleared)
-            {
-                $('#tbody_bins').empty();
-                bins_cleared = true;
-            }
-            bin_id++;
-            bin_counter++;
-            SELECTED[bin_id] = contigs;
-
-            var _color =  (collection_data['colors'][bin]) ? collection_data['colors'][bin] : randomColor();
-
-            newBin(bin_id, {'name': bin, 'color': _color});
-        }
-    }
-
-    rebuildIntersections();
-    updateBinsWindow();
-    redrawBins();    
 }
 
 function showSaveStateWindow()
@@ -2240,9 +1771,10 @@ function generatePhylogeneticTree() {
     var new_phylogeny_name = $('#phylogeny_name').val();
     var gene_cluster_list = [];
     var gene_clusters_id = $('#phylogeny_gene_cluster').val();
-    for (var i=0; i < SELECTED[gene_clusters_id].length; i++) {
-        if (label_to_node_map[SELECTED[gene_clusters_id][i]].IsLeaf()) {
-            gene_cluster_list.push(SELECTED[gene_clusters_id][i]);
+    
+    for (const node of this.selections[gene_clusters_id].values()) {
+        if (node.IsLeaf()) {
+            gene_cluster_list.push(node.label);
         } 
     }
 
@@ -2459,6 +1991,7 @@ function loadState()
                                 changeViewData(response[2]);
                                 processState(state_name, response[0]);
                             }catch(e){
+                                console.error("Exception thrown", e.stack);
                                 toastr.error('Failed to parse state data, ' + e);
                                 defer.reject();
                                 return;
@@ -2474,10 +2007,22 @@ function loadState()
 }
 
 function processState(state_name, state) {
-    if (!state.hasOwnProperty('version') || (state['version'] !== VERSION))
+    if (!state.hasOwnProperty('version'))
     {
-        toastr.error("Version of the given state file doesn't match with version of the interactive tree, ignoring state file.");
+        toastr.error("Interface received a state without version information, it will be not loaded.");
         throw "";
+    }
+
+    if (state['version'] == '0.2.1') {
+        // switch to numerical versioning instead semantic one.
+        state['version'] = '1';
+    }
+
+    if (state['version'] != VERSION) {
+        toastr.info(`Interface received a state at version ${state['version']} but the current version of the
+            interface is ${VERSION}. Anvi'o will try to upgrade it automatically.`);
+
+        state = migrate_state(state);
     }
 
     if (state.hasOwnProperty('layer-order')) {
@@ -2657,6 +2202,17 @@ function processState(state_name, state) {
 
     buildLayersTable(layer_order, views[current_view]);
     buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
+
+    if (state.hasOwnProperty('samples-groups')) {
+        for (let group_name in state['samples-groups']) {
+            let checkbox = $('input:checkbox#group_' + group_name);
+
+            if (checkbox) {
+                $(checkbox).prop('checked', state['samples-groups'][group_name]);
+            }
+        }
+    }
+
     buildLegendTables();
 
     current_state_name = state_name;
@@ -2666,7 +2222,7 @@ function processState(state_name, state) {
 
 
 function restoreOriginalTree() {
-    $.when({})
+    $.when()
      .then(onTreeClusteringChange)
      .then(
         function() {
@@ -2676,7 +2232,10 @@ function restoreOriginalTree() {
     );
 }
 
-
 function showSaveModifiedTree() {
     $('#saveModifiedTree').modal('show');
+}
+
+function saveModifiedTree() {
+    
 }

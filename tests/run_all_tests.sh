@@ -54,7 +54,7 @@ INFO "Exporting contig sequences from the contigs database in 'splits mode'"
 anvi-export-contigs -c $output_dir/CONTIGS.db -o $output_dir/exported_split_seqeunces.fa --splits-mode
 
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
-anvi-import-taxonomy -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/centrifuge_report.tsv $files/example_files_for_centrifuge_taxonomy/centrifuge_hits.tsv
+anvi-import-taxonomy-for-genes -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/centrifuge_report.tsv $files/example_files_for_centrifuge_taxonomy/centrifuge_hits.tsv
 
 INFO "Trying to remove HMM sources from the contigs database (when there are none in it)"
 anvi-delete-hmms -c $output_dir/CONTIGS.db --just-do-it
@@ -123,7 +123,11 @@ for f in 01 02 03
 do
     INFO "Profiling sample SAMPLE-$f"
     anvi-profile -i $output_dir/SAMPLE-$f.bam -o $output_dir/SAMPLE-$f -c $output_dir/CONTIGS.db --profile-SCVs
-    echo
+
+    INFO "Importing short-read-level taxonomy for SAMPLE-$f"
+    anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \
+                                    -i $files/example_files_for_kraken_hll_taxonomy/SAMPLE-$f.mpa \
+                                    --parser kraken_hll
 done
 
 

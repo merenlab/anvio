@@ -116,11 +116,12 @@ class GenomeStorage(object):
         else:
             self.genome_names = self.genome_names_in_db
 
+        self.progress.new('Recovering data from the db')
+        self.progress.update('Initializing...')
+
         self.num_genomes = len(self.genome_names)
         self.functions_are_available = self.db.get_meta_value('functions_are_available')
         self.gene_functions_entry_id = self.db.get_max_value_in_column(t.genome_gene_function_calls_table_name, 'entry_id')
-
-        self.progress.new('Recovering data from the db')
 
         ## load the data
         self.progress.update('Loading genomes basic info...')

@@ -52,6 +52,11 @@
     <script type="text/javascript" src="js/svg-helpers.js"></script>
     <script type="text/javascript" src="js/bin.js"></script>
     <script type="text/javascript" src="js/news.js"></script>
+    <script type="text/javascript" src="js/context-menu.js"></script>
+    <script type="text/javascript" src="js/dialogs/load-collection.js"></script>
+    <script type="text/javascript" src="js/dialogs/store-collection.js"></script>
+    <script type="text/javascript" src="js/dialogs/save-tree.js"></script>
+    <script type="text/javascript" src="js/migrations.js"></script>
 
     <!-- Table sorter, source: https://github.com/drvic10k/bootstrap-sortable -->
     <script type="text/javascript" src="lib/bootstrap-sortable/Scripts/bootstrap-sortable.js"></script>
@@ -116,7 +121,7 @@
                 <div role="tabpanel" style="margin: 0px;">
                     <ul class="nav nav-tabs" role="tablist">
                       <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Main</a></li>
-                      <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Samples</a></li>
+                      <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Layers</a></li>
                       <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
                       <li role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-list-alt" aria-hidden="true"></span> Legends</a></li>
                       <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
@@ -158,7 +163,7 @@
                                         <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
                                             The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
                                             <br />
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="showSaveModifiedTree();">Save tree</button>
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
                                             <button type="button" class="btn btn-xs" onclick="restoreOriginalTree();">Revert changes</button>
                                         </div>
                                     </div>
@@ -209,37 +214,37 @@
                                 <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>  
                                         <div class="col-md-8">
-                                            <input type="text" onchange="redrawBins();" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
+                                            <input type="text" onchange="emit('bin-settings-changed');" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Margin:</label>  
                                         <div class="col-md-8">
-                                            <input type="text" onchange="redrawBins();" value="30" size="4" id="outer-ring-margin" class="form-control input-xs">
+                                            <input type="text" onchange="emit('bin-settings-changed');" value="30" size="4" id="outer-ring-margin" class="form-control input-xs">
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="show_bin_labels" data-help="show-bin-labels">Show names:</label>  
                                         <div class="col-md-8">
                                             <input type="checkbox" id="show_bin_labels" name="checkbox" 
-                                            value="value" onchange="redrawBins(); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" style="float: left;" checked>
-                                            <span class="bin_labels_details" style="margin-left:5px; float-left;">Font Size: <input id="bin_labels_font_size" size="5" value="128" onchange="redrawBins();" /></span>
+                                            value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" style="float: left;" checked>
+                                            <span class="bin_labels_details" style="margin-left:5px; float-left;">Font Size: <input id="bin_labels_font_size" size="5" value="128" onchange="emit('bin-settings-changed');" /></span>
                                         </div>
                                 </div> 
                                 <div class="form-group form-margin bin_labels_details">
                                         <label class="col-md-4 settings-label" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>  
                                         <div class="col-md-8">
                                             <input type="checkbox" id="autorotate_bin_labels" name="checkbox" 
-                                            value="value" onchange="redrawBins(); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" style="float: left;" checked>
-                                            <span id="span_bin_labels_angle" style="display: none; margin-left:5px; float-left;">Angle: <input id="bin_labels_angle" size="5" value="0" onchange="redrawBins();" /></span>
+                                            value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" style="float: left;" checked>
+                                            <span id="span_bin_labels_angle" style="display: none; margin-left:5px; float-left;">Angle: <input id="bin_labels_angle" size="5" value="0" onchange="emit('bin-settings-changed');" /></span>
                                         </div>
                                 </div> 
                                 <div class="form-group form-margin">
                                         <label class="col-md-4 settings-label" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>  
                                         <div class="col-md-8">
-                                            <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="redrawBins(); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
+                                            <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
                                             <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
-                                            <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="redrawBins();" /></span>
+                                            <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="emit('bin-settings-changed');" /></span>
                                         </div>
                                 </div>
 
@@ -377,7 +382,7 @@
                                             <th id="len_title">Len</th>
                                             <th id="completion_title" title="Completion">Comp.</th>
                                             <th id="redundancy_title" title="Redundancy">Red.</th>
-                                            <th data-defaultsort='disabled'><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete all bins" title="Delete all bins" onClick="deleteAllBins();" style="color: red;"></span></th>
+                                            <th data-defaultsort='disabled'><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete all bins" title="Delete all bins" onClick="bins.DeleteAllBins();" style="color: red;"></span></th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbody_bins">
@@ -386,48 +391,18 @@
                                 </table>
 
                                 <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="newBin();" style="width: 100%"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New bin</button>
+                                    <button type="button" class="btn btn-default btn-sm" onclick="bins.NewBin();" style="width: 100%"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New bin</button>
                                 </div>
 
-                                <div class="full-mode">
-                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                                <div class="">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode manual-mode" role="group" style="display: none">
+                                        <button type="button" class="btn btn-default btn-sm" onclick="new LoadCollectionDialog().Show();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
+                                        <button type="button" class="btn btn-default btn-sm" onclick="new StoreCollectionDialog().Show();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
                                     </div>
-                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode collection-mode" role="group" style="display: none">
                                         <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
                                     </div>
-                                </div>
-
-                                <div class="pan-mode">
-                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load collection</button>
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store collection</button>
-                                    </div>
-                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%"disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
-                                    </div>
-                                </div>
-
-
-                                <div class="collection-mode">
-                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
-                                    </div>
-                                </div>
-
-                                <div class="manual-mode">
-                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showLoadCollectionWindow();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showStoreCollectionWindow();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
-                                    </div>
-                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                        <button type="button" class="btn btn-default btn-sm" style="width: 100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
-                                    </div>
-                                </div>
-
-                                <div class="refine-mode" style="display: none">
-                                    <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12 refine-mode" role="group" style="display: none">
                                         <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>
                                     </div>
                                 </div>
@@ -471,7 +446,11 @@
                                         <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
                                     </div>
                             </div>
+                            <span class="settings-header">Layer Groups</span>
+                            <div id="sample_groups_container">
 
+                            </div>
+                            <div class="clearfix"></div>
                             <span class="settings-header">Layers</span>
                             <div id="table_samples_container" style="margin-top: 10px;">
                                 <table id="table_samples">
@@ -526,7 +505,7 @@
                             </div>
                             <br />
                             <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
-                                <button id="btn_redraw_samples" type="button" class="btn btn-default btn-sm" onClick="drawSamples();" style="width:100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span>Redraw sample layers</button>
+                                <button id="btn_redraw_samples" type="button" class="btn btn-default btn-sm" onClick="drawSamples();" style="width:100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Redraw layer data</button>
                             </div>
                         </div>
                     </div>
@@ -576,6 +555,14 @@
                                         <td>Search terms:</td>
                                         <td><input id="searchFunctionsValue" class="form-control" value="" onkeypress="var key = event.which || event.charCode || event.keyCode; if (key == 13) { $('#search_functions_button').trigger('click'); }" data-help="search-value" style="width: 100%;" disabled>
                                             <small>You can separate multiple search terms with ","</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Sources:</td>
+                                        <td id="functions_sources_list">No source found.</td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td><button onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', true);">Check All</button><button onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', false);">Uncheck All</button></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
@@ -651,7 +638,7 @@
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
                                 <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="glyphicon glyphicon-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
                                 <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FF0000;" color="#FF0000" data-help="search-color"></div>
-                                <button type="button" class="btn btn-default btn-sm" onclick="highlighted_splits = []; redrawBins();" data-help="search-clear"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear highlight</button>
+                                <button type="button" class="btn btn-default btn-sm" onclick="bins.ClearHighlightedItems();" data-help="search-clear"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear highlight</button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
                                 <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
@@ -785,75 +772,6 @@
             </div>
         </div>
     </div>
-    
-    <!-- LOAD COLLECTION -->
-    <div class="modal fade" id="modLoadCollection">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
-                    <h4 class="modal-title">Load bin collection</h4>
-                </div>
-
-                <div class="modal-body">
-                    <div class="col-md-7">
-                        <select class="form-control" size="10" id="loadCollection_list" ondblclick="loadCollection();" onchange="showCollectionDetails(this);"></select>
-                    </div>
-                    <div class="col-md-5 collection-details">
-                            <div class="col-md-12">Collection Details</div>
-                            <hr>
-                            <div class="col-md-8">Number of Splits:</div><div class="col-md-4">n/a</div>
-                            <div class="col-md-8">Number of Bins:</div><div class="col-md-4">n/a</div>
-                    </div>
-
-                    <div class="col-md-6 col-md-offset-3 form-inline">
-                    <br />
-                        Minimum bin size: 
-                        <input type="text" id="loadCollection_threshold" value="1" size="4" class="form-control input-xs">
-                        <select id="loadCollection_threshold_base" class="form-control input-xs">
-                            <option value="1000">K</option>
-                            <option value="1000000">M</option>
-                            <option value="1000000000">G</option>
-                        </select> bases.
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" id="btn-load-collection" class="btn btn-primary" onclick="loadCollection();">Load</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SAVE COLLECTION -->
-    <div class="modal fade" id="modStoreCollection">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
-                    <h4 class="modal-title">Store bin collection</h4>
-                </div>
-
-                <div class="modal-body">
-                    <div class="form-group">
-                        <select class="form-control" id="storeCollection_list" size="10" onchange="$('#storeCollection_name').val(this.value);" ondblclick="storeCollection();"></select>
-                    </div>
-                    <div class="form-group">
-                            <label class="col-md-2 settings-label label-big" for="storeCollection_name">Name: </label>  
-                            <div class="col-md-10">
-                                <input type="text" id="storeCollection_name" class="form-control" value="default" />
-                            </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="storeCollection();">Store</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- GENERATE SUMMARY -->
     <div class="modal fade" id="modGenerateSummary">
@@ -882,23 +800,6 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- PROJECT SETTINGS -->
-    <div class="modal fade" id="modProjectInfo">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
-            <h4 class="modal-title" style="font-family: 'PT Serif',serif; font-size: 18px;">Project Information</h4>
-          </div>
-	  
-          <div class="modal-body" id="projectInfoContent" style="font-family: 'PT Serif',serif; font-size: 14px;"><img src="images/loading.gif" style="width: 32px;"></div>
-          <div class="modal-footer">
-            <button class="btn btn-default" data-dismiss="modal" type="button" style="font-family: 'PT Serif',serif;">Close</button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- SUMMARY RESULT -->
@@ -1106,100 +1007,6 @@
             </div>
         </div>
     </div>
-
-
-    <!-- SAVE MODIFIED TREE WINDOW -->
-    <div class="modal fade" id="saveModifiedTree">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
-                    <h4 class="modal-title">Save Tree</h4>
-                </div>
-
-                <div class="modal-body">
-                    Soon...
-                </div>
-
-                <div class="modal-footer">
-                    <button class="btn btn-primary" data-dismiss="modal" type="button">Save</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- RIGHT CLICK MENU FOR BRANCH -->
-    <ul id="branch_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
-        <li class="menuItemCollapse"><a href="#" onclick="menu_callback('select');">Add branch to bin</a></li>
-        <li class="menuItemCollapse"><a href="#" onclick="menu_callback('remove');">Remove branch from bin</a></li>
-        <li class="menuItemCollapse"><a href="#" onclick="menu_callback('collapse');">Collapse this branch</a></li>
-        <li class="menuItemCollapse"><a href="#" onclick="menu_callback('rotate');">Rotate this branch</a></li>
-        <li class="menuItemCollapse"><a href="#" onclick="menu_callback('reroot');">Reroot tree here</a></li>
-        <li class="menuItemExpand"><a href="#" onclick="menu_callback('expand');">Expand this branch</a></li>
-    </ul>
-    <!-- DEFAULT RIGHT CLICK MENU -->
-    <ul id="default_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
-        <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>
-        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove item from bin</a></li>
-        <li class="divider"></li>
-        <li id="select_layer"><a href="#" onclick="menu_callback('select_layer');">Select layer</a></li>
-        <li id="unselect_layer"><a href="#" onclick="menu_callback('unselect_layer');">Unselect layer</a></li>
-        <li class="divider"></li>
-        <li class="menuItemInspect"><a href="#" onclick="menu_callback('inspect_contig');">Inspect</a></li>
-        <li class="divider"></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('get_split_sequence');">Show split sequence</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_nr');"> - blastn @ nr</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_refseq_genomic');"> - blastn @ refseq_genomic</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastx_nr');"> - blastx @ nr</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastx_refseq_protein');"> - blastx @ refseq_protein</a></li>
-    </ul>
-
-    <!-- GENE RIGHT CLICK MENU -->
-    <ul id="gene_mode_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
-        <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>
-        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove item from bin</a></li>
-        <li class="divider"></li>
-        <li id="select_layer"><a href="#" onclick="menu_callback('select_layer');">Select layer</a></li>
-        <li id="unselect_layer"><a href="#" onclick="menu_callback('unselect_layer');">Unselect layer</a></li>
-        <li class="divider"></li>
-        <li class="menuItemInspect"><a href="#" onclick="menu_callback('inspect_context');">Inspect Context</a></li>
-        <li class="menuItemInspectGene"><a href="#" onclick="menu_callback('inspect_gene');">Inspect Gene</a></li>
-        <li class="divider"></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('get_gene_sequence');">Show gene sequence</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_nr');"> - blastn @ nr</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastn_refseq_genomic');"> - blastn @ refseq_genomic</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastx_nr');"> - blastx @ nr</a></li>
-        <li class="menuItemSequence"><a href="#" onclick="menu_callback('blastx_refseq_protein');"> - blastx @ refseq_protein</a></li>
-    </ul>
-
-    <!-- COLLECTION MODE RIGHT CLICK MENU -->
-    <ul id="collection_mode_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
-        <li id="select"><a href="#" onclick="menu_callback('select');">Add item to bin</a></li>
-        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove item from bin</a></li>
-        <li class="divider"></li>
-        <li id="select_layer"><a href="#" onclick="menu_callback('select_layer');">Select layer</a></li>
-        <li id="unselect_layer"><a href="#" onclick="menu_callback('unselect_layer');">Unselect layer</a></li>
-        <li class="divider"></li>
-        <li class="menuItemRefineBin"><a href="#" onclick="menu_callback('refine_bin');">Refine this bin</a></li>
-        <li class="divider"></li>
-        <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_hmm_sequence', 'RecA');">RecA</a></li>
-        <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_hmm_sequence', 'Ribosomal_S3_C');">Ribosomal S3</a></li>
-        <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_hmm_sequence', 'Ribosomal_L10');">Ribosomal L10</a></li>
-    </ul>
-
-    <!-- PAN MODE RIGHT CLICK MENU -->
-    <ul id="pan_mode_right_click_menu" class="dropdown-menu" role="menu" style="display:none" >
-        <li id="select"><a href="#" onclick="menu_callback('select');">Add GC to bin</a></li>
-        <li id="remove"><a href="#" onclick="menu_callback('remove');">Remove GC from bin</a></li>
-        <li class="divider"></li>
-        <li id="select_layer"><a href="#" onclick="menu_callback('select_layer');">Select layer</a></li>
-        <li id="unselect_layer"><a href="#" onclick="menu_callback('unselect_layer');">Unselect layer</a></li>
-        <li class="divider"></li>
-        <li class="menuItemInspectGeneCluster"><a href="#" onclick="menu_callback('inspect_gene_cluster');">Inspect gene cluster</a></li>
-        <li class="divider"></li>
-        <li class="menuItemHMMSequence"><a href="#" onclick="menu_callback('get_AA_sequences_for_gene_cluster');">Get AA sequences</a></li>
-    </ul>
 
     <!-- AREA ZOOM -->
     <div id="divzoom"></div>
