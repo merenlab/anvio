@@ -74,7 +74,7 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-slave_mode=(False if 'workflows/metagenomics' in workflow.included[0] else True)
+slave_mode= False if 'workflows/metagenomics' in workflow.included[0] else True
 
 if not slave_mode:
     # it is important that this comes before the include statement since
