@@ -199,6 +199,19 @@ run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_perc
 
 run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
+run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
+
+if not references_mode and not (run_idba_ud or run_megahit):
+    # Sanity check for assembly mode
+    # Make sure that user specified an assembler
+    raise ConfigError("You didn't specify any assembler for your metagenomes, and yet\
+                       your config file shows you are not using references_mode. If you\
+                       already have your assemblies or reference fasta files, then maybe\
+                       you need to add '\"references_mode\": true', and a '\"fasta_txt\": \
+                       \"name-of-your-fasta-txt-file\"' to your config file. Otherwise,\
+                       if you do mean to use assembly, please set 'run: true' for one of the,\
+                       following available assemblers: %s" % ', '.join(M.get_assembly_software_list))
+
 rule metagenomics_workflow_target_rule:
     '''
         The target rule for the workflow.
