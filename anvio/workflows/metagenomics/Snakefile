@@ -74,15 +74,18 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
+slave_mode=(False if 'workflows/metagenomics' in workflow.included[0] else True)
+
+if not slave_mode:
+    # it is important that this comes before the include statement since
+    # M is defined here and will also be used in the contigs workflow
+    M = MetagenomicsWorkflow(argparse.Namespace(config=config))
+    M.init()
+    dirs_dict = M.dirs_dict
+
 # in order to generate the contigs databases we include the snakefile
 # for the generation of contigs databases
 include: w.get_workflow_snake_file_path('contigs')
-
-# it is important that this comes after the include statement since
-# M is also defined in the contigs workflow
-M = MetagenomicsWorkflow(argparse.Namespace(config=config, slave_mode=(False if 'workflows/metagenomics' in workflow.included[0] else True)))
-M.init()
-dirs_dict = M.dirs_dict
 
 # sanity check for requested assembly
 # make sure that the user is not requesting multiple assemblers
@@ -957,7 +960,8 @@ rule import_percent_of_reads_mapped:
                                   --just-do-it
         """
 
-# check if all program dependencies are met. for this line to be effective,
-# there should be an initial dry run step (which is the default behavior of
-# the `WorkflowSuperClass`, so you are most likely covered).
-M.check_workflow_program_dependencies(workflow)
+if not slave_mode:
+    # check if all program dependencies are met. for this line to be effective,
+    # there should be an initial dry run step (which is the default behavior of
+    # the `WorkflowSuperClass`, so you are most likely covered).
+    M.check_workflow_program_dependencies(workflow)
