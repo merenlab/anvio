@@ -492,28 +492,31 @@ function Chart(options){
                             .domain([0, this.coverage.length]);
    
 
-    // this.max_coverage comes from options, -1 means not available
-    // this.maxCoverage used in charts
+    this.minCoverage = Math.min.apply(null, this.coverage);
+    this.maxCoverage = Math.max.apply(null, this.coverage);
+
+    // this.max_coverage comes from options, 0 means not available
     if (this.max_coverage == 0) {
-        this.maxCoverage = Math.max(20, Math.max.apply(null, this.coverage));
+        this.maxCoverageForyScale = Math.max(20, this.maxCoverage);
     } else {
-        this.maxCoverage = this.max_coverage;
+        this.maxCoverageForyScale = this.max_coverage;
     }
 
     this.maxGCContent = Math.max.apply(null, this.gc_content);
+    this.minGCContent = Math.min.apply(null, this.gc_content);
 
     this.yScale = d3.scale.linear()
                             .range([this.height,0])
-                            .domain([0,this.maxCoverage]);
+                            .domain([0,this.maxCoverageForyScale]);
 
     this.yScaleLine = d3.scale.linear()
                             .range([this.height, 0])
                             .domain([0, this.maxVariability]);
 
     this.yScaleGC = d3.scale.linear()
-                            .range([this.height, 0])
-                            .domain([0, this.maxGCContent]);
-    
+                            .range([this.yScale(this.minCoverage), this.yScale(this.maxCoverage)])
+                            .domain([this.minGCContent, this.maxGCContent]);
+
     var xS = this.xScale;
     var yS = this.yScale;
     var ySL = this.yScaleLine;
