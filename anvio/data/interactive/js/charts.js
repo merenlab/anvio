@@ -680,6 +680,7 @@ function Chart(options){
 Chart.prototype.showOnly = function(b){
     this.xScale.domain(b); var xS = this.xScale;
     this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
+    this.gcContainer.selectAll("path").data([this.gc_content]).attr("d", this.gc_line);
     this.lineContainer.select("[name=outside_gene]").data([this.variability_a]).attr("d", this.line);
     this.lineContainer.select("[name=first_pos]").data([this.variability_b]).attr("d", this.line);
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.line);
