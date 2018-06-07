@@ -514,7 +514,7 @@ function Chart(options){
                             .domain([0, this.maxVariability]);
 
     this.yScaleGC = d3.scale.linear()
-                            .range([this.yScale(this.minCoverage), this.yScale(this.maxCoverage)])
+                            .range([this.yScale(this.minCoverage), 0])
                             .domain([this.minGCContent, this.maxGCContent]);
 
     var xS = this.xScale;
