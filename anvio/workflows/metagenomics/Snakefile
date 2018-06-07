@@ -888,7 +888,7 @@ rule anvi_merge:
             # Still waiting to get an answer on this issue:
             # https://groups.google.com/d/msg/snakemake/zU_wkfZ7YCs/GZP0Z_RoAgAJ
             # Until then, I will just create fake file so snakemake is happy
-            _message = "Only one file was profiles with %s so there " \
+            _message = "Only one file was profiled with %s so there " \
                        "is nothing to merge. But don't worry, you can " \
                        "still use anvi-interacite with the single profile " \
                        "database that is here: %s" \
