@@ -84,6 +84,21 @@ $(document).ready(function() {
             }
         }
     });
+
+
+    $('#group_select_all').click(function() {
+        let target_group = $('#group_list_for_select_all').val();
+        
+        $('#tbody_samples tr').each((index, tr) => {
+            let group = $(tr).attr('samples-group-name');
+
+            if (group == target_group) {
+                $(tr).find('.layer_selectors').prop('checked', true);
+            } else {
+                $(tr).find('.layer_selectors').prop('checked', false);
+            }
+        });
+    });
 });
 
 function convert_samples_order_to_array(input_dict) {
@@ -111,15 +126,23 @@ function is_sample_group_visible(group_name) {
 }
 
 function toggleSampleGroups() {
+    let visible_groups = new Set([]);
+
     $('#tbody_samples tr').each((index, tr) => {
         let group = $(tr).attr('samples-group-name');
 
         if (is_sample_group_visible(group)) {
             $(tr).show();
+            visible_groups.add(group);
         } else {
             $(tr).hide();
             $(tr).find('.layer_selectors').prop('checked', false);
         }
+    });
+
+    $('#group_list_for_select_all').empty();
+    visible_groups.forEach((group) => {
+        $('#group_list_for_select_all').append(`<option val="${group}">${group}</option>`);
     });
 };
 
