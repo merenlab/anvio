@@ -190,14 +190,10 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
         switch (state) {
             case 0:
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
-                    var order = this.num_leaves++;
-                    this.leaves[order] = curnode;
-                    this.label_to_leaves[token[i]] = curnode;
-                    curnode.order = order;
-
                     if (isNumber(token[i]) && mode != 'gene') {
                         curnode.branch_support = parseFloat(token[i]);
                     } else {
+                        this.label_to_leaves[token[i]] = curnode;
                         curnode.label = token[i];
                     }
 

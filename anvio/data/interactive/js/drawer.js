@@ -77,10 +77,11 @@ Drawer.prototype.draw = function() {
 
     if (this.has_tree) {
         let node_list = this.find_collapsed_nodes();
-        this.generate_mock_data_for_collapsed_nodes(node_list);
         this.collapse_nodes(node_list);
+        this.generate_mock_data_for_collapsed_nodes(node_list);
     }
 
+    this.assign_leaf_order();
     this.generate_tooltips();
     this.normalize_values();
     this.calculate_bar_sizes();
@@ -139,17 +140,46 @@ Drawer.prototype.draw = function() {
 Drawer.prototype.find_collapsed_nodes = function() {
     var node_list = [];
 
-    var n = new NodeIterator(this.tree.root);
-    var q = n.Begin();
-    while (q != null)
-    {
-        if (q.collapsed)
-            node_list.push(q);
+    collapsedNodes.forEach((tuple) => {
+        let node = this.tree.FindLowestCommonAncestor(tuple[0], tuple[1]);
 
-        q=n.Next();
-    }
-
+        if (node) {
+            node_list.push(node);
+        }
+    });
     return node_list;
+};
+
+    
+Drawer.prototype.assign_leaf_order = function() {
+    if (this.has_tree) {
+        var n = new NodeIterator(this.tree.root);
+        var q = n.Begin();
+
+        var order_counter = 0;   
+        while (q != null) {
+            if (q.IsLeaf()) {
+                q.order = order_counter++;
+                this.tree.leaves[q.order] = q;
+            }
+            q=n.Next();
+        }
+        
+        this.tree.num_leaves = order_counter;
+        leaf_count = order_counter;
+    }
+    else
+    {
+        for (var i = 0; i < clusteringData.length; i++) {
+            let q = this.tree.NewNode();
+            q.order = this.tree.num_leaves++;
+            q.label = clusteringData[i];
+            this.tree.label_to_leaves[q.label] = q;
+            this.tree.leaves[q.order] = q;
+        }
+
+        leaf_count = clusteringData.length;
+    }
 };
 
 
@@ -158,7 +188,7 @@ Drawer.prototype.generate_mock_data_for_collapsed_nodes = function(node_list) {
         return;
 
     for (var i=0; i < node_list.length; i++) {
-        var q = node_list[i];
+        var q = this.tree.nodes[node_list[i].id];
 
         var mock_data = [q.label];
         for (var j = 1; j < parameter_count; j++) {
@@ -387,21 +417,11 @@ Drawer.prototype.initialize_tree = function() {
             q=n.Next();
         }
     }
-    else
-    {
-        for (var i = 0; i < clusteringData.length; i++) {
-            let q = this.tree.NewNode();
-            q.order = this.tree.num_leaves++;
-            q.label = clusteringData[i];
-            this.tree.label_to_leaves[q.label] = q;
-            this.tree.leaves[q.order] = q;
-        }
-    }  
 };
 
 Drawer.prototype.collapse_nodes = function(node_list) {
     for (var i=0; i < node_list.length; i++) {
-        var cnode = node_list[i];
+        var cnode = this.tree.nodes[node_list[i].id];
 
         var max_edge = 0;
         var sum_size = 0;
@@ -436,6 +456,8 @@ Drawer.prototype.collapse_nodes = function(node_list) {
         cnode.max_child_path = max_edge;
         cnode.size = Math.max(1, sum_size / 4);
         cnode.child = null;
+        cnode.collapsed = true;
+        cnode.label = 'CollapsedNode';
     }
 };
 

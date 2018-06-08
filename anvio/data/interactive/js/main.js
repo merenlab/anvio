@@ -62,6 +62,8 @@ var layer_order;
 
 var current_state_name = "";
 
+var collapsedNodes = [];
+
 var session_id;
 var mode;
 var server_mode = false;
@@ -1376,7 +1378,7 @@ function serializeSettings(use_layer_names) {
     return state;
 }
 
-function drawTree(collapsed_node_id) {
+function drawTree() {
     var defer = $.Deferred();
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
@@ -1401,10 +1403,6 @@ function drawTree(collapsed_node_id) {
             },
             onShow: function() {
                 drawer = new Drawer(settings);
-                if (typeof collapsed_node_id !== 'undefined') {
-                    drawer.tree.nodes[collapsed_node_id].collaped = true;
-                }
-
                 drawer.draw();
 
                 // last_settings used in export svg for layer information,
