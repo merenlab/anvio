@@ -812,14 +812,22 @@ Drawer.prototype.draw_collapsed_node = function(p) {
 
         let bottom_size = Math.hypot(tp1_x - tp2_x, tp1_y - tp2_y);
 
+        let align = 'left';
+        let angle = Math.toDegrees(p.angle);
+
+        if ((p.angle > Math.PI / 2.0) && (p.angle < 1.5 * Math.PI)) {
+            align = 'right';
+            angle += 180.0;
+        }
+
         drawRotatedText('tree', 
             {
                 'x': (_radius + 20) * Math.cos(p.angle), 
                 'y': (_radius + 20) * Math.sin(p.angle)
             }, 
             p.label,
-            Math.toDegrees(p.angle),
-            'left',
+            angle,
+            align,
             (bottom_size / 2) + 'px',
             'sans-serif',
             LINE_COLOR,
