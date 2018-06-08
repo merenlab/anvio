@@ -181,6 +181,7 @@ ContextMenu = function(options) {
                         'right_most': right_most.label  
                     },
                     success: function(data) {
+                        collapsedNodes = [];
                         clusteringData = data['newick'];
                         $('#tree_modified_warning').show();
                         drawTree();
