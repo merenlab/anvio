@@ -55,6 +55,12 @@ class VariabilityFilter:
         ]
 
 
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+        if key == "df":
+            self.__dict__[self.name] = value
+
+
     def filter_by_occurrence(self, min_occurrence=None):
         if not min_occurrence:
             min_occurrence = self.min_occurrence
@@ -62,7 +68,7 @@ class VariabilityFilter:
         if min_occurrence <= 1:
             return
 
-        occurrences = self.data["unique_pos_identifier_str"].value_counts()
+        occurrences = self.df["unique_pos_identifier_str"].value_counts()
         postions_with_greater_than_min_occurrence = occurrences[occurrences >= min_occurrence].index
 
         func = self.subset_filter
@@ -81,7 +87,7 @@ class VariabilityFilter:
         if min_coverage_in_each_sample < 1:
             return
 
-        min_cov_each_pos = self.data.groupby("unique_pos_identifier")["coverage"].min()
+        min_cov_each_pos = self.df.groupby("unique_pos_identifier")["coverage"].min()
         pos_to_keep = list(min_cov_each_pos[min_cov_each_pos >= min_coverage_in_each_sample].index)
 
         func = self.subset_filter
@@ -100,7 +106,7 @@ class VariabilityFilter:
 
         subsample_func = lambda x: pd.Series(x.unique()) if len(x.unique()) <= num_positions_from_each_split else\
                                    pd.Series(np.random.choice(x.unique(), size=num_positions_from_each_split, replace=False))
-        unique_positions_to_keep = self.data.groupby('split_name')['unique_pos_identifier'].apply(subsample_func)
+        unique_positions_to_keep = self.df.groupby('split_name')['unique_pos_identifier'].apply(subsample_func)
 
         func = self.subset_filter
         filter_args = {"criterion": "unique_pos_identifier",
@@ -151,8 +157,10 @@ class VariabilityFilter:
         self.is_passed_kwargs_valid(kwargs)
 
 
-    def filter_data(self, criterion=None, function=None, verbose=False, **kwargs):
+    def filter_data(self, name='data', criterion=None, function=None, verbose=False, **kwargs):
         """ FIXME add example here """
+        self.name = name
+        self.df = getattr(self, name)
         self.filter_info_log = {}
         self.criterion = criterion
         self.passed_function = function
@@ -257,7 +265,7 @@ class VariabilityFilter:
 
     def subset_filter(self, criterion, subset_values):
         subset_values = self.get_subset_values_as_set(subset_values)
-        return self.data.loc[self.data[criterion].isin(subset_values)]
+        return self.df.loc[self.df[criterion].isin(subset_values)]
 
 
     def get_subset_values_as_set(self, subset_values):
@@ -279,7 +287,7 @@ class VariabilityFilter:
                If True, values equal to extremum_value will not be removed"""
         extremum_value = float(extremum_value)
         op = self.get_bound_filter_operator(extremum_type, inclusive)
-        return self.data[op(self.data[criterion], extremum_value)]
+        return self.df[op(self.df[criterion], extremum_value)]
 
 
     def get_bound_filter_operator(self, extremum_type, inclusive):
@@ -295,15 +303,15 @@ class VariabilityFilter:
 
     def filter_wrapper(self, filter_func, descriptor=None, value_for_run_info=None, **filter_args):
         if self.stealth_filtering or not (descriptor and str(value_for_run_info)):
-            self.data = filter_func(**filter_args)
+            self.df = filter_func(**filter_args)
 
         else:
             key, val = self.generate_message_for_run_info(descriptor, value_for_run_info)
             self.run.info(key, val)
             self.progress.new('Filtering based on %s' % (descriptor))
-            entries_before = len(self.data.index)
-            self.data = filter_func(**filter_args)
-            entries_after = len(self.data.index)
+            entries_before = len(self.df.index)
+            self.df = filter_func(**filter_args)
+            entries_after = len(self.df.index)
             self.progress.end()
             self.report_change_in_entry_number(entries_before, entries_after, reason=descriptor.lower())
 
@@ -422,12 +430,12 @@ class VariabilityFilter:
 
         if not self.is_filter_criterion_a_column_in_dataframe():
             raise ConfigError("VariabilityFilter :: The filter criterion `%s` does not exist as\
-                               a column in self.data. It must." % (self.criterion))
+                               a column in self.df. It must." % (self.criterion))
 
 
     def is_filter_criterion_a_column_in_dataframe(self):
-        is_column = True if self.criterion in self.data.columns else False
-        self.append_info_log("%s is a column in self.data" % (self.criterion), is_column)
+        is_column = True if self.criterion in self.df.columns else False
+        self.append_info_log("%s is a column in self.df" % (self.criterion), is_column)
         return is_column
 
 
@@ -1423,37 +1431,6 @@ class VariabilitySuper(VariabilityFilter, object):
         except self.EndProcess as e:
             msg = 'Nothing left in the variability data to work with. Quitting :/' if exit_if_data_empty else ''
             e.end(exit_if_data_empty, msg)
-
-
-    def get_histograms_for_interactive(self, column_info_list):
-        # subset info list to columns that occur in self.data
-        column_info_list = [info for info in column_info_list if info["name"] in self.data.columns]
-
-        output = {}
-        for column_info in column_info_list:
-            column = column_info["name"]
-            output[column] = {}
-
-            if column_info["controller"] in ["slider"]:
-                # make a number histogram
-                histogram_args = {}
-                histogram_args["range"] = (column_info["min"], column_info["max"])
-                histogram_args["bins"] = 15
-                values, bins = self.get_histogram(column, fix_offset=True, **histogram_args)
-
-            elif column_info["controller"] in ["checkbox"]:
-                # make a bar chart (categorical)
-                category_counts_df = self.data[column].value_counts().reset_index()
-                values = category_counts_df[column]
-                bins = category_counts_df["index"]
-
-            else:
-                raise ConfigError("get_histogram :: %s is not a recognizable controller type" %s (column_info["controller"]))
-
-            output[column]['counts'] = values.tolist()
-            output[column]['bins'] = bins.tolist()
-
-        return output
 
 
     def get_histogram(self, column, fix_offset=False, **kwargs):
