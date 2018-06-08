@@ -517,6 +517,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.unique_pos_id_to_entry_id = {}
         self.contig_sequences = None
         self.input_file_path = None
+        self.data_merged = {}
 
         self.comprehensive_stats_headers = []
         self.comprehensive_variability_scores_computed = False
@@ -1286,7 +1287,7 @@ class VariabilitySuper(VariabilityFilter, object):
         for SMM, matrix in numpy_substitution_scoring_matrices.items():
 
             # initialize the entropy column in self.data with np.nans
-            self.data[SMM + "weighted"] = np.nan
+            self.data[SMM + "_weighted"] = np.nan
 
             # We find which items in self.items are in the SSM and record the index at which they appear in
             # self.items. By definition this is also the index ordering of coverage_table. For example, the index of
@@ -1581,27 +1582,6 @@ class VariabilitySuper(VariabilityFilter, object):
         self.run.info('Num entries reported', pp(len(self.data.index)))
         self.run.info('Output File', self.output_file_path)
         self.run.info('Num %s positions reported' % self.engine, self.data["unique_pos_identifier"].nunique())
-
-
-    def merge_data(self, sample_names):
-        """This function merges rows in self.data that share the same unique position identifier.
-           For example if you have samples s01, s02, and s03, each with an entry with unique
-           position identifier = 1234, this function will return dataframe containing only one entry
-           with unique position identifier = 1234, with entries in this row being the mean of the
-           three previous rows for columns that have numerical values and the most common value for
-           columns that have categorical values. For example,
-
-           unique_pos_identifier  sec_struc  departure_from_consensus
-           1234                   H          1.0
-           1234                   H          0.8
-           1234                   B          0.9
-
-           will become:
-
-           unique_pos_identifier  sec_struc  departure_from_consensus
-           1234                   H          0.9
-        """
-        pass
 
 
     class EndProcess(Exception):
