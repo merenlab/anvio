@@ -786,6 +786,18 @@ Drawer.prototype.draw_collapsed_node = function(p) {
 
         var tp1_y = p0['y'] - p.size / 3;
         var tp2_y = p0['y'] + p.size / 3;
+
+        drawRotatedText('tree', 
+            {'x': tp1_x + 10, 'y': (tp1_y + tp2_y) / 2}, 
+            p.label,
+            0,
+            'left',
+            (p.size / 2) + 'px',
+            'sans-serif',
+            LINE_COLOR,
+            0,
+            'central');
+
     } else {
         var _radius = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.radius / 2) - this.root_length));
         var tp1_x = _radius * Math.cos(p.angle + p.size / 3);
