@@ -181,6 +181,9 @@ Bins.prototype.AppendNode = function(targets) {
     }
 
     for (const target of targets) {
+        if (target.collapsed)
+            continue;
+
         for (const node of target.IterateChildren()) {
             if (!this.selections[bin_id].has(node)) {
                 this.selections[bin_id].add(node);
@@ -218,6 +221,9 @@ Bins.prototype.RemoveNode = function(targets) {
     }
 
     for (const target of targets) {
+        if (target.collapsed)
+            continue;
+
         for (const node of target.IterateChildren()) {
             for (let bin_id in this.selections) {
                 if (this.selections[bin_id].has(node)) {
