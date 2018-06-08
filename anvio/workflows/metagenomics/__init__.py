@@ -100,7 +100,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "anvi_init_bam": {"threads": 4},
                                     "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
-                                    "import_percent_of_reads_mapped": {"run": False}})
+                                    "import_percent_of_reads_mapped": {"run": True}})
 
 
     def get_assembly_software_list(self):
