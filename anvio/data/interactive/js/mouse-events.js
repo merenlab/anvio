@@ -268,7 +268,7 @@ function mouseMoveHandler(event) {
     var target_node = drawer.tree.nodes[p.id];
 
     if (target_node.collapsed) {
-        $('#tooltip_content').html("Collapsed branch");
+        write_mouse_table(target_node.label, 'CollapsedNode', 0);
         return;
     }
 
