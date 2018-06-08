@@ -48,6 +48,9 @@ def main(args):
 
 
 if __name__ == '__main__':
+    run.warning('If you publish results from this workflow, please do not forget to cite snakemake \
+                 (doi:10.1038/nmeth.3176)', lc = 'yellow')
+
     import argparse
     parser = argparse.ArgumentParser(description="")
 
