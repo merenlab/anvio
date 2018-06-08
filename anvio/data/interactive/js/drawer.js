@@ -789,7 +789,7 @@ Drawer.prototype.draw_collapsed_node = function(p) {
 
         drawRotatedText('tree', 
             {
-                'x': tp1_x, 
+                'x': tp1_x + 20, 
                 'y': (tp1_y + tp2_y) / 2
             }, 
             p.label,
@@ -814,8 +814,8 @@ Drawer.prototype.draw_collapsed_node = function(p) {
 
         drawRotatedText('tree', 
             {
-                'x': _radius * Math.cos(p.angle), 
-                'y': _radius * Math.sin(p.angle)
+                'x': (_radius + 20) * Math.cos(p.angle), 
+                'y': (_radius + 20) * Math.sin(p.angle)
             }, 
             p.label,
             Math.toDegrees(p.angle),
