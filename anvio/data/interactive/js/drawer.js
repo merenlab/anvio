@@ -788,7 +788,10 @@ Drawer.prototype.draw_collapsed_node = function(p) {
         var tp2_y = p0['y'] + p.size / 3;
 
         drawRotatedText('tree', 
-            {'x': tp1_x + 10, 'y': (tp1_y + tp2_y) / 2}, 
+            {
+                'x': tp1_x, 
+                'y': (tp1_y + tp2_y) / 2
+            }, 
             p.label,
             0,
             'left',
@@ -806,6 +809,22 @@ Drawer.prototype.draw_collapsed_node = function(p) {
 
         var tp2_x = _radius * Math.cos(p.angle - size / 3);
         var tp2_y = _radius * Math.sin(p.angle - size / 3);
+
+        let bottom_size = Math.hypot(tp1_x - tp2_x, tp1_y - tp2_y);
+
+        drawRotatedText('tree', 
+            {
+                'x': _radius * Math.cos(p.angle), 
+                'y': _radius * Math.sin(p.angle)
+            }, 
+            p.label,
+            Math.toDegrees(p.angle),
+            'left',
+            (bottom_size / 2) + 'px',
+            'sans-serif',
+            LINE_COLOR,
+            0,
+            'central');
     }
     triangle.setAttribute('points', p0['x'] + ',' + p0['y'] + ' ' + tp1_x + ',' + tp1_y + ' ' + tp2_x + ',' + tp2_y);
     document.getElementById('tree').appendChild(triangle);
