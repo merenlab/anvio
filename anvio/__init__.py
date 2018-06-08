@@ -1641,7 +1641,7 @@ D = {
             {'required': False,
              'nargs':'...', 'type':str,
              'help': "Additional snakemake parameters to add when running snakemake. NOTICE: --additional-params \
-                      HAS TO BE THE LAST ARGUMENT THAT IS PASSED TO anvi-run-snakemake-workflow, ANYTHING THAT \
+                      HAS TO BE THE LAST ARGUMENT THAT IS PASSED TO anvi-run-workflow, ANYTHING THAT \
                       FOLLOWS WILL BE CONSIDERED AS PART OF THE ADDITIONAL PARAMETERS THAT ARE PASSED TO SNAKEMAKE. \
                       Any parameter that is accepted by snakemake should be fair game here, but it is your \
                       responsibility to make sure that whatever you added makes sense. To see what parameters are \
