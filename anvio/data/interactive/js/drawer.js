@@ -800,11 +800,12 @@ Drawer.prototype.draw_collapsed_node = function(p) {
 
     } else {
         var _radius = this.root_length + (((p.path_length + p.max_child_path) / this.max_path_length) * ((this.radius / 2) - this.root_length));
-        var tp1_x = _radius * Math.cos(p.angle + p.size / 3);
-        var tp1_y = _radius * Math.sin(p.angle + p.size / 3);
+        let size = Math.min(p.size * 2/3, Math.PI / 3);
+        var tp1_x = _radius * Math.cos(p.angle + size / 3);
+        var tp1_y = _radius * Math.sin(p.angle + size / 3);
 
-        var tp2_x = _radius * Math.cos(p.angle - p.size / 3);
-        var tp2_y = _radius * Math.sin(p.angle - p.size / 3);
+        var tp2_x = _radius * Math.cos(p.angle - size / 3);
+        var tp2_y = _radius * Math.sin(p.angle - size / 3);
     }
     triangle.setAttribute('points', p0['x'] + ',' + p0['y'] + ' ' + tp1_x + ',' + tp1_y + ' ' + tp2_x + ',' + tp2_y);
     document.getElementById('tree').appendChild(triangle);
