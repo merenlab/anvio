@@ -143,7 +143,9 @@ ContextMenu = function(options) {
             'title': 'Collapse',
             'action': (node, layer, param) => {
                 $('#tree_modified_warning').show();
-                drawTree({collapsed_node_id: this.node.id});
+                let [p1, p2] = node.GetBorderNodes();
+                collapsedNodes.push([p1, p2]);
+                drawTree();
             }
         },
         'expand': {
