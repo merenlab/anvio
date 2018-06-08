@@ -1583,6 +1583,27 @@ class VariabilitySuper(VariabilityFilter, object):
         self.run.info('Num %s positions reported' % self.engine, self.data["unique_pos_identifier"].nunique())
 
 
+    def merge_data(self, sample_names):
+        """This function merges rows in self.data that share the same unique position identifier.
+           For example if you have samples s01, s02, and s03, each with an entry with unique
+           position identifier = 1234, this function will return dataframe containing only one entry
+           with unique position identifier = 1234, with entries in this row being the mean of the
+           three previous rows for columns that have numerical values and the most common value for
+           columns that have categorical values. For example,
+
+           unique_pos_identifier  sec_struc  departure_from_consensus
+           1234                   H          1.0
+           1234                   H          0.8
+           1234                   B          0.9
+
+           will become:
+
+           unique_pos_identifier  sec_struc  departure_from_consensus
+           1234                   H          0.9
+        """
+        pass
+
+
     class EndProcess(Exception):
         def end(self, exit, msg=None):
             """exit: bool
