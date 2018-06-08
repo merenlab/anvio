@@ -142,16 +142,18 @@ ContextMenu = function(options) {
         'collapse': {
             'title': 'Collapse',
             'action': (node, layer, param) => {
-                $('#tree_modified_warning').show();
-                let [p1, p2] = node.GetBorderNodes();
-                collapsedNodes.push([p1, p2]);
-                drawTree();
+                new CollapseNodeDialog(node);
             }
         },
         'expand': {
             'title': 'Expand',
             'action': (node, layer, param) => {
-                collapsedNodes.splice(node.collapse_order, 1);
+                for (let i=0; i < collapsedNodes.length; i++) {
+                    if (collapsedNodes[i]['label'] == node.label) {
+                        collapsedNodes.splice(i, 1);
+                        break;
+                    }
+                }
                 drawTree();
             }
         }, 

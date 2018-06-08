@@ -76,9 +76,8 @@ Drawer.prototype.draw = function() {
     this.initialize_tree();
 
     if (this.has_tree) {
-        let node_list = this.find_collapsed_nodes();
-        this.collapse_nodes(node_list);
-        this.generate_mock_data_for_collapsed_nodes(node_list);
+        this.collapse_nodes();
+        this.generate_mock_data_for_collapsed_nodes();
     }
 
     this.assign_leaf_order();
@@ -187,8 +186,11 @@ Drawer.prototype.generate_mock_data_for_collapsed_nodes = function(node_list) {
     if (!this.has_tree)
         return;
 
-    for (var i=0; i < node_list.length; i++) {
-        var q = this.tree.nodes[node_list[i].id];
+    for (var i=0; i < collapsedNodes.length; i++) {
+        let collapse_attributes = collapsedNodes[i];
+        let left_most = this.tree.label_to_leaves[collapse_attributes['left_most']];
+        let right_most = this.tree.label_to_leaves[collapse_attributes['right_most']];
+        var q = this.tree.FindLowestCommonAncestor(left_most, right_most);
 
         var mock_data = [q.label];
         for (var j = 1; j < parameter_count; j++) {
@@ -420,8 +422,11 @@ Drawer.prototype.initialize_tree = function() {
 };
 
 Drawer.prototype.collapse_nodes = function(node_list) {
-    for (var i=0; i < node_list.length; i++) {
-        var cnode = this.tree.nodes[node_list[i].id];
+    for (var i=0; i < collapsedNodes.length; i++) {
+        let collapse_attributes = collapsedNodes[i];
+        let left_most = this.tree.label_to_leaves[collapse_attributes['left_most']];
+        let right_most = this.tree.label_to_leaves[collapse_attributes['right_most']];
+        var cnode = this.tree.FindLowestCommonAncestor(left_most, right_most);
 
         var max_edge = 0;
         var sum_size = 0;
@@ -452,11 +457,11 @@ Drawer.prototype.collapse_nodes = function(node_list) {
             }
             q = n.Next();
         }
-        let [p1, p2] = cnode.GetBorderNodes();
-        cnode.label = `CollapsedNode_${p1.label}_${p2.label}`;
+
+        cnode.label = collapse_attributes['label'];
 
         cnode.max_child_path = max_edge;
-        cnode.size = Math.max(1, sum_size / 4);
+        cnode.size = Math.max(1, sum_size * collapse_attributes['size']);
         cnode.collapse_order = i;
         cnode.child = null;
         cnode.collapsed = true;
