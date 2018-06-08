@@ -22,7 +22,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Download Pfam data from the EBI')
-    parser.add_argument('--pfam-data-dir', default=None, type=str, help="The directory for COG data to be stored. If you leave it\
+    parser.add_argument('--pfam-data-dir', default=None, type=str, help="The directory for Pfam data to be stored. If you leave it\
                         as is without specifying anything, the default destination for the data directory will be used to set things\
                         up. The advantage of it is that everyone will be using a single data directory, but then you may need\
                         superuser privileges to do it. Using this parameter you can choose the location of the data directory somewhere\
