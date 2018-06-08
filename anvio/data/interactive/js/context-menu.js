@@ -151,7 +151,8 @@ ContextMenu = function(options) {
         'expand': {
             'title': 'Expand',
             'action': (node, layer, param) => {
-                // TO DO
+                collapsedNodes.splice(node.collapse_order, 1);
+                drawTree();
             }
         }, 
         'rotate': {
@@ -302,7 +303,7 @@ ContextMenu.prototype.BuildMenu = function() {
     }
     else
     {
-        if (this.node.IsLeaf()) {
+        if (this.node.IsLeaf() && !this.node.collapsed) {
             if (bins.IsNodeMemberOfBin(this.node)) {
                 menu.push('remove');
             } else {
