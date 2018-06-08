@@ -1370,9 +1370,9 @@ class StructureInteractive(VariabilitySuper):
 
 
     def get_column_info(self, gene_callers_id, engine):
-        x = self.variability_storage[gene_callers_id][engine]
-        FIND_MIN = lambda c: x.data[c].min()
-        FIND_MAX = lambda c: x.data[c].max()
+        var = self.variability_storage[gene_callers_id][engine]['var_object']
+        FIND_MIN = lambda c: var.data[c].min()
+        FIND_MAX = lambda c: var.data[c].max()
 
         info = [
             {
@@ -1490,7 +1490,7 @@ class StructureInteractive(VariabilitySuper):
                 'data_type': 'integer',
                 'step': 1,
                 'min': 0,
-                'max': x.data["gene_length"].iloc[0]/3 - 1,
+                'max': var.data["gene_length"].iloc[0]/3 - 1,
             },
             {
                 'name': 'codon_number',
@@ -1500,14 +1500,14 @@ class StructureInteractive(VariabilitySuper):
                 'data_type': 'integer',
                 'step': 1,
                 'min': 1,
-                'max': x.data["gene_length"].iloc[0]/3,
+                'max': var.data["gene_length"].iloc[0]/3,
             },
             {
-                'name': x.competing_items,
+                'name': var.competing_items,
                 'title': 'Competing Amino Acids' if engine == "AA" else 'Competing Codons',
                 'engine': ['AA', 'CDN'],
                 'controller': 'checkbox',
-                'choices': list(x.data[x.competing_items].value_counts().sort_values(ascending=False).index)
+                'choices': list(var.data[var.competing_items].value_counts().sort_values(ascending=False).index)
             },
             {
                 'name': 'reference',
@@ -1523,7 +1523,7 @@ class StructureInteractive(VariabilitySuper):
                 'controller': 'checkbox',
                 'choices': constants.amino_acids if engine == "AA" else constants.codons
             },
-            ]
+        ]
 
         info = [v for v in info if engine in v["engine"]]
         return info
@@ -1704,23 +1704,24 @@ class StructureInteractive(VariabilitySuper):
             return
 
         gene_var = {}
-
-        if self.store_full_variability_in_memory:
-            # if the full variability is in memory, make a deep copy, then filter
-            var = copy.deepcopy(self.full_variability)
-            var.filter_data(criterion="corresponding_gene_call", subset_filter=set([gene_callers_id]))
-            gene_var[var.engine] = var
-        else:
-            # if not, we profile from scratch, passing as an argument our gene of interest
-            for engine in self.available_engines:
+        for engine in self.available_engines:
+            gene_var[engine] = {}
+            if self.store_full_variability_in_memory:
+                # if the full variability is in memory, make a deep copy, then filter
+                var = copy.deepcopy(self.full_variability)
+                var.filter_data(criterion="corresponding_gene_call", subset_filter=set([gene_callers_id]))
+            else:
+                # if not, we profile from scratch, passing as an argument our gene of interest
                 self.args.engine = engine
                 self.args.genes_of_interest_set = set([gene_callers_id])
-
-                gene_var[engine] = variability_engines[engine](self.args)
-                gene_var[engine].stealth_filtering = True
-                gene_var[engine].process()
+                var = variability_engines[engine](self.args)
+                var.stealth_filtering = True
+                var.process()
+            gene_var[engine]['var_object'] = var
 
         self.variability_storage[gene_callers_id] = gene_var
+        for engine in self.available_engines:
+            self.variability_storage[gene_callers_id][engine]['column_info'] = self.get_column_info(gene_callers_id, engine)
 
 
     def get_initial_data(self):
@@ -1740,15 +1741,47 @@ class StructureInteractive(VariabilitySuper):
 
         summary['histograms'] = {}
         for engine in self.available_engines:
-            column_info_list = self.get_column_info(gene_callers_id, engine)
-            summary['histograms'][engine] = self.variability_storage[gene_callers_id][engine].get_histograms_for_interactive(column_info_list)
+            summary['histograms'][engine] = self.get_histograms(self.variability_storage[gene_callers_id][engine]['var_object'],
+                                                                self.variability_storage[gene_callers_id][engine]['column_info'])
 
         return summary
+
+
+    def get_histograms(self, var_object, column_info_list):
+        # subset info list to columns that occur in var_object.data
+        column_info_list = [info for info in column_info_list if info["name"] in var_object.data.columns]
+
+        histograms = {}
+        for column_info in column_info_list:
+            column = column_info["name"]
+            histograms[column] = {}
+
+            if column_info["controller"] in ["slider"]:
+                # make a number histogram
+                histogram_args = {}
+                histogram_args["range"] = (column_info["min"], column_info["max"])
+                histogram_args["bins"] = 15
+                values, bins = var_object.get_histogram(column, fix_offset=True, **histogram_args)
+
+            elif column_info["controller"] in ["checkbox"]:
+                # make a bar chart (categorical)
+                category_counts_df = var_object.data[column].value_counts().reset_index()
+                values = category_counts_df[column]
+                bins = category_counts_df["index"]
+
+            else:
+                raise ConfigError("StructureInteractive :: %s is not a recognizable controller type" %s (column_info["controller"]))
+
+            histograms[column]['counts'] = values.tolist()
+            histograms[column]['bins'] = bins.tolist()
+
+        return histograms
 
 
     def get_variability(self, options):
         selected_engine = options['engine']
         gene_callers_id = int(options['gene_callers_id'])
+        column_info = self.variability_storage[gene_callers_id][selected_engine]['column_info']
 
         output = {}
 
@@ -1757,19 +1790,21 @@ class StructureInteractive(VariabilitySuper):
         if not options["filter_params"]:
             for group in options['groups']:
                 output[group] = {
-                    'data': self.variability_storage[gene_callers_id][selected_engine].data.to_json(orient='index'),
-                    'entries_after_filtering': self.variability_storage[gene_callers_id][selected_engine].data.shape[0]
+                    'data': self.variability_storage[gene_callers_id][selected_engine]['var_object'].data.to_json(orient='index'),
+                    'entries_after_filtering': self.variability_storage[gene_callers_id][selected_engine]['var_object'].data.shape[0]
                 }
 
         list_of_filter_functions = []
         F = lambda f, **kwargs: (f, kwargs)
         for group in options['groups']:
+            samples_in_group = options['groups'][group]
 
             # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
-            var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine])
+            var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
+            self.merge_variability_by_group(var, samples_in_group, column_info)
 
             # set group specific filter parameters here
-            var.sample_ids_of_interest = set(options['groups'][group])
+            var.sample_ids_of_interest = set(samples_in_group)
             list_of_filter_functions.append(F(var.filter_data, criterion="sample_id"))
 
             # now set all other filter parameters
@@ -1789,6 +1824,35 @@ class StructureInteractive(VariabilitySuper):
             list_of_filter_functions = []
 
         return output
+
+
+    def merge_variability_by_group(self, var, sample_names, column_info):
+        """
+           var : class
+               instance that inherits VariabilitySuper
+           sample_names : list-like
+               sample_ids to merge
+
+           This function merges rows in self.data that share the same unique position identifier.
+           For example if you have samples s01, s02, and s03, each with an entry with unique
+           position identifier = 1234, this function will return dataframe containing only one entry
+           with unique position identifier = 1234, with entries in this row being the mean of the
+           three previous rows for columns that have numerical values and the most common value for
+           columns that have categorical values. For example,
+
+           unique_pos_identifier  sec_struc  departure_from_consensus
+           1234                   H          1.0
+           1234                   H          0.8
+           1234                   B          0.9
+
+           will become:
+
+           unique_pos_identifier  sec_struc  departure_from_consensus
+           1234                   H          0.9
+        """
+        print(var.data.columns)
+        print(sample_names)
+        pass
 
 
 class ContigsInteractive():
