@@ -452,13 +452,14 @@ Drawer.prototype.collapse_nodes = function(node_list) {
             }
             q = n.Next();
         }
+        let [p1, p2] = cnode.GetBorderNodes();
+        cnode.label = `CollapsedNode_${p1.label}_${p2.label}`;
 
         cnode.max_child_path = max_edge;
         cnode.size = Math.max(1, sum_size / 4);
         cnode.collapse_order = i;
         cnode.child = null;
         cnode.collapsed = true;
-        cnode.label = 'CollapsedNode';
     }
 };
 
