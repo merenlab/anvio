@@ -323,29 +323,29 @@ class VariabilityFilter:
         d = {}
 
         if keyword_name == "min_filter":
-            d["filter_function"]           = self.extremum_filter
-            d["descriptor"]                = D("minimum", self.criterion)
+            d["filter_function"]    = self.extremum_filter
+            d["descriptor"]         = D("minimum", self.criterion)
             d["value_for_run_info"] = keyword_value
-            d["filter_args"]               = {"extremum_value" : keyword_value,
-                                              "criterion"      : self.criterion,
-                                              "extremum_type"  : "min",
-                                              "inclusive"      : True}
+            d["filter_args"]        = {"extremum_value" : keyword_value,
+                                       "criterion"      : self.criterion,
+                                       "extremum_type"  : "min",
+                                       "inclusive"      : True}
 
         elif keyword_name == "max_filter":
-            d["filter_function"]           = self.extremum_filter
-            d["descriptor"]                = D("maximum", self.criterion)
+            d["filter_function"]    = self.extremum_filter
+            d["descriptor"]         = D("maximum", self.criterion)
             d["value_for_run_info"] = keyword_value
-            d["filter_args"]               = {"extremum_value" : keyword_value,
-                                              "criterion"      : self.criterion,
-                                              "extremum_type"  : "max",
-                                              "inclusive"      : True}
+            d["filter_args"]        = {"extremum_value" : keyword_value,
+                                       "criterion"      : self.criterion,
+                                       "extremum_type"  : "max",
+                                       "inclusive"      : True}
 
         elif keyword_name == "subset_filter":
-            d["filter_function"]           = self.subset_filter
-            d["descriptor"]                = D(self.criterion+"(s)", "of interest")
+            d["filter_function"]    = self.subset_filter
+            d["descriptor"]         = D(self.criterion+"(s)", "of interest")
             d["value_for_run_info"] = keyword_value
-            d["filter_args"]               = {"subset_values" : keyword_value,
-                                              "criterion"     : self.criterion}
+            d["filter_args"]        = {"subset_values" : keyword_value,
+                                       "criterion"     : self.criterion}
 
         else:
             raise ConfigError("VariabilitySuper :: `%s` is not a keyword recognized by the built in\
@@ -357,10 +357,10 @@ class VariabilityFilter:
     def general_serial_filtering(self, **params):
         for param in params:
             d = self.gen_filter_wrapper_args_for_serial_filtering(param, params[param])
-            self.filter_wrapper( d["filter_function"],
-                                 d["descriptor"],
-                                 d["value_for_run_info"],
-                                **d["filter_args"] )
+            self.filter_wrapper(d["filter_function"],
+                                d["descriptor"],
+                                d["value_for_run_info"],
+                                **d["filter_args"])
 
     def is_passed_kwargs_compatible_with_passed_function(self, kwargs):
         params_inspection = inspect.signature(self.passed_function).parameters
@@ -403,8 +403,8 @@ class VariabilityFilter:
                                    methods will be employed based on known arguments you supply.\
                                    Here are all known arguments: [%s]" % (kwarg, ", ".join(self.known_kwargs)))
 
-    def is_passed_kwargs_valid(self, kwargs):
 
+    def is_passed_kwargs_valid(self, kwargs):
         if self.passed_function:
             self.is_passed_kwargs_compatible_with_passed_function(kwargs)
         else:
@@ -468,7 +468,6 @@ class VariabilityFilter:
             return descriptor, value
 
 
-
 class VariabilitySuper(VariabilityFilter, object):
     def __init__(self, args={}, p=progress, r=run):
         self.args = args
@@ -525,7 +524,6 @@ class VariabilitySuper(VariabilityFilter, object):
         self.unique_pos_id_to_entry_id = {}
         self.contig_sequences = None
         self.input_file_path = None
-        self.data_merged = {}
 
         self.comprehensive_stats_headers = []
         self.comprehensive_variability_scores_computed = False
