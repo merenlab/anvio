@@ -891,7 +891,7 @@ rule anvi_merge:
                        "is nothing to merge. But don't worry, you can " \
                        "still use anvi-interacite with the single profile " \
                        "database that is here: %s" \
-                       % (wildcards.group, input.profiles)
+                       % (wildcards.group, input.profiles[0])
             create_fake_output_files(_message, output)
 
         elif len(input.profiles) == 1:
