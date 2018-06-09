@@ -32,7 +32,7 @@ if not slave_mode:
 # include statement must come after we get an instance of PangenomicsWorkflow class
 include: w.get_workflow_snake_file_path('contigs')
 
-project_name = config["project_name"]
+project_name = M.get_param_value_from_config("project_name")
 if not project_name:
     raise ConfigError("You must provide a project name in your config file.")
 pan_project_name = M.get_param_value_from_config(["anvi_pan_genome", "--project-name"])
