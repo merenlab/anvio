@@ -1268,7 +1268,7 @@ class StructureInteractive(VariabilitySuper):
         # others
         self.variability_table_path = A('variability_profile', null)
         self.no_variability = A('no_variability', bool)
-        self.min_departure_from_consensus = A('min_departure_from_consensus', bool)
+        self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
 
         # For now, only true if self.variability_table_path. Otherwise variability is computed on the fly
         self.store_full_variability_in_memory = True if self.variability_table_path else False
@@ -1309,7 +1309,7 @@ class StructureInteractive(VariabilitySuper):
         except self.EndProcess as e:
             raise ConfigError("This is really sad. There are no entries in your variability table\
                                with a departure_from_consensus less than {}. Try setting\
-                               --min-departure-from-consensus to 0.")
+                               --min-departure-from-consensus to 0.".format(self.min_departure_from_consensus))
 
 
     def create_sample_groups_dict(self):
