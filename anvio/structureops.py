@@ -246,26 +246,12 @@ class Structure(object):
             "DSSP": {
                 "method"    : self.run_DSSP,
                 "skip"      : self.skip_DSSP,
-                "structure" : {"codon_order_in_gene"   : "integer",
-                               "aa"              : "text",
-                               "sec_struct"      : "text",
-                               "rel_solvent_acc" : "real",
-                               "phi"             : "real",
-                               "psi"             : "real",
-                               "NH_O_1_index"    : "integer",
-                               "NH_O_1_energy"   : "real",
-                               "O_NH_1_index"    : "integer",
-                               "O_NH_1_energy"   : "real",
-                               "NH_O_2_index"    : "integer",
-                               "NH_O_2_energy"   : "real",
-                               "O_NH_2_index"    : "integer",
-                               "O_NH_2_energy"   : "real"},
+                "structure" : {k: v for k in t.DSSP_structure for v in t.DSSP_types}
                 },
             "STRIDE": {
                 "method"  : lambda *args, **kwargs: None,
                 "skip"    : True,
-                "columns" : {
-                            },
+                "columns" : {},
                 },
             }
         return annotation_sources_info
