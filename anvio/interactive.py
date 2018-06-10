@@ -1268,6 +1268,7 @@ class StructureInteractive(VariabilitySuper):
         # others
         self.variability_table_path = A('variability_profile', null)
         self.no_variability = A('no_variability', bool)
+        self.min_departure_from_consensus = A('min_departure_from_consensus', bool)
 
         # For now, only true if self.variability_table_path. Otherwise variability is computed on the fly
         self.store_full_variability_in_memory = True if self.variability_table_path else False
@@ -1285,7 +1286,7 @@ class StructureInteractive(VariabilitySuper):
 
         # can save significant memory if available genes is a fraction of genes in full variability
         if self.full_variability:
-            self.filter_full_variability_to_available_genes_subset()
+            self.filter_full_variability()
 
         # default gene is the first gene of interest
         self.profile_gene_variability_data(list(self.available_genes)[0])
@@ -1294,13 +1295,21 @@ class StructureInteractive(VariabilitySuper):
         self.sample_groups = self.create_sample_groups_dict()
 
 
-    def filter_full_variability_to_available_genes_subset(self):
+    def filter_full_variability(self):
         try:
             self.full_variability.filter_data(criterion="corresponding_gene_call",
                                               subset_filter=self.available_genes)
         except self.EndProcess as e:
             raise ConfigError("This is really sad. There is no overlap between the gene IDs in your\
                                structure database and the gene IDs in your variability table.")
+
+        try:
+            self.full_variability.filter_data(criterion="departure_from_consensus",
+                                              min_filter=self.min_departure_from_consensus)
+        except self.EndProcess as e:
+            raise ConfigError("This is really sad. There are no entries in your variability table\
+                               with a departure_from_consensus less than {}. Try setting\
+                               --min-departure-from-consensus to 0.")
 
 
     def create_sample_groups_dict(self):
@@ -1469,7 +1478,7 @@ class StructureInteractive(VariabilitySuper):
                 'controller': 'slider',
                 'data_type': 'integer',
                 'step': 1,
-                'min': -6,
+                'min': -4,
                 'max': 11,
             },
             {
@@ -1693,7 +1702,6 @@ class StructureInteractive(VariabilitySuper):
         self.full_variability.stealth_filtering = True
 
 
-
     def profile_gene_variability_data(self, gene_callers_id):
         """Variability data is computed on the fly if a profile and contigs database is provided.
            If the variability table is provided, the full table is stored in memory and a gene
@@ -1846,9 +1854,9 @@ class StructureInteractive(VariabilitySuper):
            1234        B          0.9
         """
         var.filter_data(criterion = "sample_id", subset_filter = sample_names)
-        #for unique_pos_identifier, df in var.data.groupby('unique_pos_identifier'):
-        #    print(df)
-        #pass
+        for unique_pos_identifier, df in var.data.groupby('unique_pos_identifier'):
+            print(df)
+        pass
 
 
 class ContigsInteractive():
