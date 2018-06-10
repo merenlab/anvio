@@ -15,7 +15,7 @@ run = terminal.Run()
 
 engines = ['AA', 'CDN', 'NT']
 
-def get(engine):
+def get(engine, run=run):
     data = {}
 
     if engine not in engines:

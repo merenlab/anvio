@@ -1234,6 +1234,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 class StructureInteractive(VariabilitySuper):
     def __init__(self, args, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
+
         self.args = args
         self.mode = 'structure'
 
@@ -1672,8 +1675,10 @@ class StructureInteractive(VariabilitySuper):
         """Creates self.full_variability, which houses the full variability... well, the full
            variability of all genes with structures in the structure database
         """
-        self.full_variability = variabilityops.VariabilityData(self.args, p=progress, r=run)
+        self.progress.new("Loading full variability table"); self.progress.update("...")
+        self.full_variability = variabilityops.VariabilityData(self.args, p=terminal.Progress(verbose=False), r=terminal.Run(verbose=False))
         self.full_variability.stealth_filtering = True
+        self.progress.end()
 
 
     def profile_gene_variability_data(self, gene_callers_id):
@@ -1685,8 +1690,10 @@ class StructureInteractive(VariabilitySuper):
             # already profiled.
             return
 
+        self.progress.new("Profiling variability for gene %s" % str(gene_callers_id))
         gene_var = {}
         for engine in self.available_engines:
+            self.progress.update("Fetching %s..." % ("SAAVs" if engine == "AA" else "SCVs"))
             gene_var[engine] = {}
             if self.store_full_variability_in_memory:
                 # if the full variability is in memory, make a deep copy, then filter
@@ -1696,14 +1703,18 @@ class StructureInteractive(VariabilitySuper):
                 # if not, we profile from scratch, passing as an argument our gene of interest
                 self.args.engine = engine
                 self.args.genes_of_interest_set = set([gene_callers_id])
-                var = variability_engines[engine](self.args)
+                var = variability_engines[engine](self.args, p=terminal.Progress(verbose=False), r=terminal.Run(verbose=False))
                 var.stealth_filtering = True
                 var.process()
             gene_var[engine]['var_object'] = var
+            self.run.info_single('%s for gene %s are loaded' % ('SAAVs' if engine == 'AA' else 'SCVs', gene_callers_id),
+                                 progress = self.progress)
 
         self.variability_storage[gene_callers_id] = gene_var
         for engine in self.available_engines:
             self.variability_storage[gene_callers_id][engine]['column_info'] = self.get_column_info(gene_callers_id, engine)
+
+        self.progress.end()
 
 
     def get_initial_data(self):
@@ -1725,17 +1736,24 @@ class StructureInteractive(VariabilitySuper):
         for engine in self.available_engines:
             summary['histograms'][engine] = self.get_histograms(self.variability_storage[gene_callers_id][engine]['var_object'],
                                                                 self.variability_storage[gene_callers_id][engine]['column_info'])
+        self.progress.end()
 
         return summary
 
 
     def get_histograms(self, var_object, column_info_list):
+        numpy.seterr(invalid='ignore')
+        self.progress.new('Generating %s histograms' % ("SAAV" if var_object.engine else "SCV"))
+
         # subset info list to columns that occur in var_object.data
+        engine = var_object.engine
         column_info_list = [info for info in column_info_list if info["name"] in var_object.data.columns]
 
         histograms = {}
         for column_info in column_info_list:
             column = column_info["name"]
+            self.progress.update("`%s`..." % column_info["name"])
+
             histograms[column] = {}
 
             if column_info["controller"] in ["slider"]:
@@ -1752,11 +1770,13 @@ class StructureInteractive(VariabilitySuper):
                 bins = category_counts_df["index"]
 
             else:
+                self.progress.end()
                 raise ConfigError("StructureInteractive :: %s is not a recognizable controller type" %s (column_info["controller"]))
 
             histograms[column]['counts'] = values.tolist()
             histograms[column]['bins'] = bins.tolist()
 
+        self.progress.end()
         return histograms
 
 
@@ -1764,6 +1784,15 @@ class StructureInteractive(VariabilitySuper):
         selected_engine = options['engine']
         gene_callers_id = int(options['gene_callers_id'])
         column_info = self.variability_storage[gene_callers_id][selected_engine]['column_info']
+
+        self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'),
+                           discard_previous_if_exists=True) # FIXME For large datasets this function
+                                                            # is called a second time before the
+                                                            # first function call can be finished.
+                                                            # Hence the temporary use of
+                                                            # discard_previous_if_exists. We need to
+                                                            # look at the flow and track down this
+                                                            # double call
 
         output = {}
 
@@ -1779,6 +1808,7 @@ class StructureInteractive(VariabilitySuper):
         list_of_filter_functions = []
         F = lambda f, **kwargs: (f, kwargs)
         for group in options['groups']:
+            self.progress.update('Group `%s`...' % group)
             samples_in_group = options['groups'][group]
 
             # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
@@ -1805,6 +1835,7 @@ class StructureInteractive(VariabilitySuper):
 
             list_of_filter_functions = []
 
+        self.progress.end()
         return output
 
 
