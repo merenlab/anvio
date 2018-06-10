@@ -11,6 +11,7 @@ import socket
 import shutil
 import psutil
 import smtplib
+import hashlib
 import textwrap
 import webbrowser
 import subprocess
@@ -1578,7 +1579,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                             need to use this flag, you must also be explicit about what fields you expect to\
                             find in the file.")
 
-    filesnpaths.is_file_exists(file_path)
+    filesnpaths.is_file_plain_text(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator=separator)
 
     f = open(file_path, 'rU')
@@ -2173,11 +2174,6 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
 
 
 def download_file(url, output_file_path, progress=progress, run=run):
-    """Downloads file.
-
-       We will have to revisit this function when the codebase is Python 3.* compatible.
-    """
-
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
@@ -2239,6 +2235,16 @@ def download_protein_structures(protein_code_list, output_dir):
 
     progress.end()
     return protein_code_list
+
+
+def get_file_md5(file_path):
+    hash_md5 = hashlib.md5()
+
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+
+    return hash_md5.hexdigest()
 
 
 def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run):

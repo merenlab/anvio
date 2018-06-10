@@ -33,6 +33,8 @@ var visible_layers;
 var contig_id;
 var highlight_gene;
 var gene_mode;
+var show_snvs;
+var sequence;
 
 
 function loadAll() {
@@ -47,9 +49,24 @@ function loadAll() {
         return options;
     });
 
+    $('.colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
     contig_id = getParameterByName('id');
     highlight_gene = getParameterByName('highlight_gene') == 'true';
     gene_mode = getParameterByName('gene_mode') == 'true';
+    show_snvs = getParameterByName('show_snvs') == 'true';
 
     if (typeof localStorage.state === 'undefined')
     {
@@ -69,6 +86,7 @@ function loadAll() {
                     page_header = contig_data.title;
                     layers = contig_data.layers;
                     coverage = contig_data.coverage;
+                    sequence = contig_data.sequence;
                     variability = [];
 
                     for (var i=0; i<coverage.length; i++) {
@@ -120,25 +138,85 @@ function loadAll() {
                     }
 
                     if(next_contig_name)
-                        next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, next_contig_name) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+                        next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': show_snvs}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
 
                     if(previous_contig_name)
-                        prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link(inspect_mode, previous_contig_name) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+                        prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': show_snvs}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
                     $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
 
-                    $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px;"> \
+                    $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button> \
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button> \
+                                        </div>`);
+
+                    $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
                                             <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
                                             <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button> \
                                         </div>');
 
-                    
                     createCharts(state);
                     $('.loading-screen').hide();
                 }
             });
     }
     
+}
+
+
+function computeGCContent(window_size, step_size) {
+    let gc_array = [];
+    let padding = parseInt(window_size / 2);
+
+    for (let i=padding; i < sequence.length - padding; i = i + step_size) {
+        let gc_count = 0;
+
+        for (let j=i; j < i + window_size; j++) {
+            let pos = j - padding;
+
+            if (sequence[pos] == 'C' || sequence[pos] == 'G' || sequence[pos] == 'c' || sequence[pos] == 'g') {
+                gc_count++;
+            }
+        }
+
+        gc_array.push(gc_count / window_size);
+    }
+
+    return gc_array;
+}
+
+
+function showOverlayGCContentDialog() {
+    if (typeof sessionStorage.gc_overlay_settings !== 'undefined') {
+        let gc_overlay_settings = JSON.parse(sessionStorage.gc_overlay_settings);
+
+        $('#gc_window_size').val(gc_overlay_settings['gc_window_size']);
+        $('#gc_step_size').val(gc_overlay_settings['gc_step_size']);
+
+        $('#gc_overlay_color').attr('color', gc_overlay_settings['gc_overlay_color']);
+        $('#gc_overlay_color').css('background-color', gc_overlay_color['gc_overlay_color']);
+
+    }
+
+    $('#GCContentOverlayDialog').modal('show');
+}
+
+
+function applyOverlayGCContent() {
+    let gc_overlay_settings = {
+        'gc_window_size': $('#gc_window_size').val(),
+        'gc_step_size': $('#gc_step_size').val(),
+        'gc_overlay_color': $('#gc_overlay_color').attr('color')
+    }
+
+    sessionStorage.gc_overlay_settings = JSON.stringify(gc_overlay_settings);
+    createCharts(state);
+}
+
+
+function resetOverlayGCContent() {
+    delete sessionStorage.gc_overlay_settings;
+    createCharts(state);
 }
 
 
@@ -269,6 +347,15 @@ function createCharts(state){
         max_coverage_values = JSON.parse(sessionStorage.max_coverage);
     }
 
+    let gc_content_array = [];
+    let gc_overlay_color = '#00FF00';
+
+    if (typeof sessionStorage.gc_overlay_settings !== 'undefined') {
+        let gc_overlay_settings = JSON.parse(sessionStorage.gc_overlay_settings);
+        gc_content_array = computeGCContent(parseInt(gc_overlay_settings['gc_window_size']), parseInt(gc_overlay_settings['gc_step_size']));
+        gc_overlay_color = gc_overlay_settings['gc_overlay_color'];
+    }
+
     var j=0;
     for(var i = 0; i < layersCount; i++){
         var layer_index = layers.indexOf(layers_ordered[i]);
@@ -285,6 +372,8 @@ function createCharts(state){
                         variability_c: variability[layer_index][2],
                         variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
+                        gc_content: gc_content_array,
+                        'gc_overlay_color': gc_overlay_color,
                         id: j++,
                         width: width,
                         height: chartHeight,
@@ -383,6 +472,8 @@ function Chart(options){
     this.variability_c = options.variability_c;
     this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
+    this.gc_content = options.gc_content;
+    this.gc_overlay_color = options.gc_overlay_color;
     this.width = options.width;
     this.height = options.height;
     this.maxVariability = options.maxVariability;
@@ -401,25 +492,36 @@ function Chart(options){
                             .domain([0, this.coverage.length]);
    
 
-    // this.max_coverage comes from options, -1 means not available
-    // this.maxCoverage used in charts
+    this.minCoverage = Math.min.apply(null, this.coverage);
+    this.maxCoverage = Math.max.apply(null, this.coverage);
+
+    // this.max_coverage comes from options, 0 means not available
     if (this.max_coverage == 0) {
-        this.maxCoverage = Math.max(20, Math.max.apply(null, this.coverage));
+        this.maxCoverageForyScale = Math.max(20, this.maxCoverage);
     } else {
-        this.maxCoverage = this.max_coverage;
+        this.maxCoverageForyScale = this.max_coverage;
     }
+
+    this.maxGCContent = Math.max.apply(null, this.gc_content);
+    this.minGCContent = Math.min.apply(null, this.gc_content);
 
     this.yScale = d3.scale.linear()
                             .range([this.height,0])
-                            .domain([0,this.maxCoverage]);
+                            .domain([0,this.maxCoverageForyScale]);
 
     this.yScaleLine = d3.scale.linear()
                             .range([this.height, 0])
                             .domain([0, this.maxVariability]);
-    
+
+    this.yScaleGC = d3.scale.linear()
+                            .range([this.yScale(this.minCoverage), 
+                                   (this.maxCoverage < this.maxCoverageForyScale) ? this.yScale(this.maxCoverage) : 0])
+                            .domain([this.minGCContent, this.maxGCContent]);
+
     var xS = this.xScale;
     var yS = this.yScale;
     var ySL = this.yScaleLine;
+    var yGC = this.yScaleGC;
     
     this.area = d3.svg.area()
                             .x(function(d, i) { return xS(i); })
@@ -430,6 +532,12 @@ function Chart(options){
                             .x(function(d, i) { return xS(i); })
                             .y(function(d, i) { if(i == 0) return ySL(0); if(i == num_data_points - 1) return ySL(0); return ySL(d); })
                             .interpolate('step-before');
+
+
+    // .x() needs to stay as a arrow function, it has reference to scope.
+    this.gc_line = d3.svg.line()
+                            .x((d, i) => { return xS((i / this.gc_content.length) * this.coverage.length); })
+                            .y(function(d) { return (yGC(d) < 0) ? 0 : yGC(d); });
 
     /*
         Assign it a class so we can assign a fill color
@@ -447,6 +555,11 @@ function Chart(options){
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
+    this.gcContainer   = this.svg.append("g")
+                        .attr('class',this.name.toLowerCase())
+                        .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+
     /* Add both into the page */
     this.chartContainer.append("path")
                               .data([this.coverage])
@@ -455,76 +568,85 @@ function Chart(options){
                               .style("fill-opacity", "0.5")
                               .attr("d", this.area);
 
-    this.lineContainer.append("path")
-        .data([this.variability_b])
-        .attr("class", "line")
-        .attr("name", "first_pos")
-        .style("fill", '#990000')
-        .attr("d", this.line);
+    this.gcContainer.append("path")
+                      .data([this.gc_content])
+                      .attr("class", "line")
+                      .style("stroke", this.gc_overlay_color)
+                      .style("stroke-width", "1")
+                      .style("fill", "none")
+                      .attr("d", this.gc_line);
 
-    this.lineContainer.append("path")
-        .data([this.variability_c])
-        .attr("class", "line")
-        .attr("name", "second_pos")
-        .style("fill", '#990000')
-        .attr("d", this.line);
+    if (show_snvs) {
+        this.lineContainer.append("path")
+            .data([this.variability_b])
+            .attr("class", "line")
+            .attr("name", "first_pos")
+            .style("fill", '#990000')
+            .attr("d", this.line);
 
-    this.lineContainer.append("path")
-        .data([this.variability_d])
-        .attr("class", "line")
-        .attr("name", "third_pos")
-        .style("fill", '#004400')
-        .attr("d", this.line);
+        this.lineContainer.append("path")
+            .data([this.variability_c])
+            .attr("class", "line")
+            .attr("name", "second_pos")
+            .style("fill", '#990000')
+            .attr("d", this.line);
 
-    this.lineContainer.append("path")
-        .data([this.variability_a])
-        .attr("class", "line")
-        .attr("name", "outside_gene")
-        .style("stroke", '#666666')
-        .style("stroke-width", "0.2")
-        .attr("d", this.line);
+        this.lineContainer.append("path")
+            .data([this.variability_d])
+            .attr("class", "line")
+            .attr("name", "third_pos")
+            .style("fill", '#004400')
+            .attr("d", this.line);
 
+        this.lineContainer.append("path")
+            .data([this.variability_a])
+            .attr("class", "line")
+            .attr("name", "outside_gene")
+            .style("stroke", '#666666')
+            .style("stroke-width", "0.2")
+            .attr("d", this.line);
 
-    this.textContainer.selectAll("text")
-                            .data(d3.entries(this.competing_nucleotides))
-                            .enter()
-                            .append("text")
-                            .attr("x", function (d) { return xS(d.key); })
-                            .attr("y", function (d) { return 0; })
-                            .attr("writing-mode", "tb")
-                            .attr("font-size", "7px")
-                            .attr("glyph-orientation-vertical", "0")
-                            .attr("style", "cursor:pointer;")
-                            .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
-                            .attr('data-content', function(d) { 
-                                return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
-                                        <h3>Content</h3> \
-                                        <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
-                                            <tr><td>Position in split</td><td>' + d.value['pos'] +'</td></tr> \
-                                            <tr><td>Position in contig</td><td>' + d.value['pos_in_contig'] +'</td></tr> \
-                                            <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
-                                            <tr><td>Consensus</td><td>' + d.value['consensus'] +'</td></tr> \
-                                            <tr><td>Departure from reference</td><td>' + d.value['departure_from_reference'].toFixed(4) +'</td></tr> \
-                                            <tr><td>Departure from consensus</td><td>' + d.value['departure_from_consensus'].toFixed(4) +'</td></tr> \
-                                            <tr><td>Competing nucleotides</td><td>' + d.value['competing_nts'] +'</td></tr> \
-                                            <tr><td>Corresponding gene call</td><td>' + ((d.value['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': d.value['corresponding_gene_call']) +'</td></tr> \
-                                            <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene or in partial gene': d.value['codon_order_in_gene']) +'</td></tr> \
-                                            <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene or in partial gene': d.value['base_pos_in_codon']) +'</td></tr> \
-                                            <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
-                                        </table> \
-                                        <h3>Counts</h3> \
-                                        <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
-                                            <tr><td>A</td><td>' + d.value['A'] +'</td></tr> \
-                                            <tr><td>T</td><td>' + d.value['T'] +'</td></tr> \
-                                            <tr><td>G</td><td>' + d.value['G'] +'</td></tr> \
-                                            <tr><td>C</td><td>' + d.value['C'] +'</td></tr> \
-                                            <tr><td>N</td><td>' + d.value['N'] +'</td></tr> \
-                                        </table>';
-                            })
-                            .attr('data-toggle', 'popover')
-                            .text(function (d) {
-                                return d.value['competing_nts'];
-                            });
+        this.textContainer.selectAll("text")
+                                .data(d3.entries(this.competing_nucleotides))
+                                .enter()
+                                .append("text")
+                                .attr("x", function (d) { return xS(d.key); })
+                                .attr("y", function (d) { return 0; })
+                                .attr("writing-mode", "tb")
+                                .attr("font-size", "7px")
+                                .attr("glyph-orientation-vertical", "0")
+                                .attr("style", "cursor:pointer;")
+                                .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
+                                .attr('data-content', function(d) { 
+                                    return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
+                                            <h3>Content</h3> \
+                                            <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+                                                <tr><td>Position in split</td><td>' + d.value['pos'] +'</td></tr> \
+                                                <tr><td>Position in contig</td><td>' + d.value['pos_in_contig'] +'</td></tr> \
+                                                <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
+                                                <tr><td>Consensus</td><td>' + d.value['consensus'] +'</td></tr> \
+                                                <tr><td>Departure from reference</td><td>' + d.value['departure_from_reference'].toFixed(4) +'</td></tr> \
+                                                <tr><td>Departure from consensus</td><td>' + d.value['departure_from_consensus'].toFixed(4) +'</td></tr> \
+                                                <tr><td>Competing nucleotides</td><td>' + d.value['competing_nts'] +'</td></tr> \
+                                                <tr><td>Corresponding gene call</td><td>' + ((d.value['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': d.value['corresponding_gene_call']) +'</td></tr> \
+                                                <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene or in partial gene': d.value['codon_order_in_gene']) +'</td></tr> \
+                                                <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene or in partial gene': d.value['base_pos_in_codon']) +'</td></tr> \
+                                                <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
+                                            </table> \
+                                            <h3>Counts</h3> \
+                                            <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+                                                <tr><td>A</td><td>' + d.value['A'] +'</td></tr> \
+                                                <tr><td>T</td><td>' + d.value['T'] +'</td></tr> \
+                                                <tr><td>G</td><td>' + d.value['G'] +'</td></tr> \
+                                                <tr><td>C</td><td>' + d.value['C'] +'</td></tr> \
+                                                <tr><td>N</td><td>' + d.value['N'] +'</td></tr> \
+                                            </table>';
+                                })
+                                .attr('data-toggle', 'popover')
+                                .text(function (d) {
+                                    return d.value['competing_nts'];
+                                });
+    }
 
 
     
@@ -561,6 +683,7 @@ function Chart(options){
 Chart.prototype.showOnly = function(b){
     this.xScale.domain(b); var xS = this.xScale;
     this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
+    this.gcContainer.selectAll("path").data([this.gc_content]).attr("d", this.gc_line);
     this.lineContainer.select("[name=outside_gene]").data([this.variability_a]).attr("d", this.line);
     this.lineContainer.select("[name=first_pos]").data([this.variability_b]).attr("d", this.line);
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.line);

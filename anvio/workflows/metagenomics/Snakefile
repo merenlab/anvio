@@ -74,15 +74,18 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
+slave_mode= False if 'workflows/metagenomics' in workflow.included[0] else True
+
+if not slave_mode:
+    # it is important that this comes before the include statement since
+    # M is defined here and will also be used in the contigs workflow
+    M = MetagenomicsWorkflow(argparse.Namespace(config=config))
+    M.init()
+    dirs_dict = M.dirs_dict
+
 # in order to generate the contigs databases we include the snakefile
 # for the generation of contigs databases
 include: w.get_workflow_snake_file_path('contigs')
-
-# it is important that this comes after the include statement since
-# M is also defined in the contigs workflow
-M = MetagenomicsWorkflow(argparse.Namespace(config=config, slave_mode=(False if 'workflows/metagenomics' in workflow.included[0] else True)))
-M.init()
-dirs_dict = M.dirs_dict
 
 # sanity check for requested assembly
 # make sure that the user is not requesting multiple assemblers
@@ -198,6 +201,19 @@ run_qc = M.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == 
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True
 
 run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
+
+run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
+
+if not references_mode and not (run_idba_ud or run_megahit):
+    # Sanity check for assembly mode
+    # Make sure that user specified an assembler
+    raise ConfigError("You didn't specify any assembler for your metagenomes, and yet\
+                       your config file shows you are not using references_mode. If you\
+                       already have your assemblies or reference fasta files, then maybe\
+                       you need to add '\"references_mode\": true', and a '\"fasta_txt\": \
+                       \"name-of-your-fasta-txt-file\"' to your config file. Otherwise,\
+                       if you do mean to use assembly, please set 'run: true' for one of the,\
+                       following available assemblers: %s" % ', '.join(M.get_assembly_software_list))
 
 rule metagenomics_workflow_target_rule:
     '''
@@ -610,8 +626,7 @@ rule bowtie:
     input: unpack(input_for_bowtie)
     # setting the output as temp, since we only want to keep the bam file.
     output:
-        sam = temp(dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.sam"),
-        log = dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie.log"
+        sam = temp(dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.sam")
     params:
         dir = dirs_dict["MAPPING_DIR"] + "/{sample}",
         bowtie_build_prefix = rules.bowtie_build.params.prefix,
@@ -872,11 +887,11 @@ rule anvi_merge:
             # Still waiting to get an answer on this issue:
             # https://groups.google.com/d/msg/snakemake/zU_wkfZ7YCs/GZP0Z_RoAgAJ
             # Until then, I will just create fake file so snakemake is happy
-            _message = "Only one file was profiles with %s so there " \
+            _message = "Only one file was profiled with %s so there " \
                        "is nothing to merge. But don't worry, you can " \
                        "still use anvi-interacite with the single profile " \
                        "database that is here: %s" \
-                       % (wildcards.group, input.profiles)
+                       % (wildcards.group, input.profiles[0])
             create_fake_output_files(_message, output)
 
         elif len(input.profiles) == 1:
@@ -898,53 +913,69 @@ rule import_percent_of_reads_mapped:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_percent_of_reads_mapped.log"
     input:
-        bowtie_log = rules.bowtie.output.log,
         profile = rules.anvi_profile.output.profile
     output:
         flag = touch(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done"),
         total_num_reads_txt = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/total-num-reads.txt"),
         layers_additional_data = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/layers-additional-data.txt"),
         layers_additional_data_updated = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/layers-additional-data-updated.txt")
+    params:
+        bowtie_log = dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie.log"
     threads: M.T('import_percent_of_reads_mapped')
     resources: nodes = M.T('import_percent_of_reads_mapped')
-    shell:
-        """
-            echo -e "sample\ttotal_num_reads" > {output.total_num_reads_txt}
-            # ok so this whole thing is a terrible hack anyway, so the next two lines
-            # shouldn't surprise you. Basically printing one line with the sample name
-            # and the the number of reads (which is grepped from the log file)
-            echo -e "`echo -n "{input.bowtie_log}" | awk 'BEGIN{{FS="-"}}{{printf("%s\t", $2)}}';\
-                    grep 'reads; of these:' {input.bowtie_log} | awk '{{print $1 * 2}}'`" >> {output.total_num_reads_txt}
+    run:
+        if not filesnpaths.is_file_exists(params.bowtie_log, dont_raise=True):
+            run.warning('We expected to find the log file for bowtie here: %s\
+                         but it is not there. This means we can\'t find out what \
+                         percentage of short reads mapped to the fasta file. \
+                         If you are confused, feel free to contact us. \
+                         This file will still be created: %s, but don\'t let \
+                         it fool you, nothing was really imported.' % (params.bowtie_log, output.flag))
+            for f in output:
+                # creating fake output files for the rule
+                # this is done just so snakemake thinks that this rule
+                # was executed succesfully.
+                shell("touch %s" %f)
 
-            # import this into the profile database. this part is simply
-            # a 'hack' so we can get a file with both 'mapper reads' and
-            # 'total reads' columns in the next step.
-            anvi-import-misc-data {output.total_num_reads_txt} \
-                                  -p {input.profile} \
-                                  -t layers \
-                                  --just-do-it
+        else:
+            shell("""
+                    echo -e "sample\ttotal_num_reads" > {output.total_num_reads_txt}
+                    # ok so this whole thing is a terrible hack anyway, so the next two lines
+                    # shouldn't surprise you. Basically printing one line with the sample name
+                    # and the the number of reads (which is grepped from the log file)
+                    echo -e "`echo -n "{params.bowtie_log}" | awk 'BEGIN{{FS="-"}}{{printf("%s\t", $2)}}';\
+                            grep 'reads; of these:' {params.bowtie_log} | awk '{{print $1 * 2}}'`" >> {output.total_num_reads_txt}
 
-            # get the layers additional data table, which has two columns
-            # now.
-            anvi-export-misc-data -p {input.profile} \
-                                  -t layers \
-                                  -o {output.layers_additional_data}
+                    # import this into the profile database. this part is simply
+                    # a 'hack' so we can get a file with both 'mapper reads' and
+                    # 'total reads' columns in the next step.
+                    anvi-import-misc-data {output.total_num_reads_txt} \
+                                          -p {input.profile} \
+                                          -t layers \
+                                          --just-do-it
 
-            # do an awk one-liner to add a third column, 'percent mapped'.
-            awk '{{if(NR==1) \
-                     {{print $0 "\tpercent_mapped"}} \
-                  else \
-                      {{print $0 "\t" ($2 * 100 / $4)}}}}' \
-                {output.layers_additional_data} > {output.layers_additional_data_updated}
+                    # get the layers additional data table, which has two columns
+                    # now.
+                    anvi-export-misc-data -p {input.profile} \
+                                          -t layers \
+                                          -o {output.layers_additional_data}
 
-            # import the new file with three columns
-            anvi-import-misc-data {output.layers_additional_data_updated} \
-                                  -p {input.profile} \
-                                  -t layers \
-                                  --just-do-it
-        """
+                    # do an awk one-liner to add a third column, 'percent mapped'.
+                    awk '{{if(NR==1) \
+                             {{print $0 "\tpercent_mapped"}} \
+                          else \
+                              {{print $0 "\t" ($2 * 100 / $4)}}}}' \
+                        {output.layers_additional_data} > {output.layers_additional_data_updated}
 
-# check if all program dependencies are met. for this line to be effective,
-# there should be an initial dry run step (which is the default behavior of
-# the `WorkflowSuperClass`, so you are most likely covered).
-M.check_workflow_program_dependencies(workflow)
+                    # import the new file with three columns
+                    anvi-import-misc-data {output.layers_additional_data_updated} \
+                                          -p {input.profile} \
+                                          -t layers \
+                                          --just-do-it
+                """)
+
+if not slave_mode:
+    # check if all program dependencies are met. for this line to be effective,
+    # there should be an initial dry run step (which is the default behavior of
+    # the `WorkflowSuperClass`, so you are most likely covered).
+    M.check_workflow_program_dependencies(workflow)

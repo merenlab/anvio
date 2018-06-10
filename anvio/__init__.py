@@ -379,8 +379,8 @@ D = {
              'metavar': 'CATEGORY',
              'help': "The additional layers data variable name that divides layers into multiple categories."}
                 ),
-    'min-portion-occurence-of-function-in-group': (
-            ['-P', '--min-portion-occurence-of-function-in-group'],
+    'min-portion-occurrence-of-function-in-group': (
+            ['-P', '--min-portion-occurrence-of-function-in-group'],
             {'metavar': 'PORTION',
              'default': 0,
              'type': float,
@@ -395,6 +395,15 @@ D = {
              'help': "Takes a value between 0 and 1, where 1 means that the output will include only functions\
                      that occur in all members of one group and in none of the members of the other group.\
                      Default is %(default).1f."}
+                ),
+    'functional-occurrence-table-output': (
+            ['-F', '--functional-occurrence-table-output'],
+            {'metavar': 'FILE',
+             'default': None,
+             'type': str,
+             'help': "Saves the presence/absence information for functions in genomes in a TAB-delimited format.\
+                      A file name must be provided. To learn more about how the presence/absence is computed, please\
+                      refer to the tutorial."}
                 ),
     'table': (
             ['--table'],
@@ -445,6 +454,13 @@ D = {
             {'default': None,
              'type': str,
              'help': "The directory path for your COG setup. Anvi'o will try to use the default path\
+                      if you do not specify anything."}
+                ),
+    'pfam-data-dir': (
+            ['--pfam-data-dir'],
+            {'default': None,
+             'type': str,
+             'help': "The directory path for your Pfam setup. Anvi'o will try to use the default path\
                       if you do not specify anything."}
                 ),
     'hide-outlier-SNVs': (
@@ -753,6 +769,19 @@ D = {
                       the gene context for it to be reported. You must consider the length of\
                       your short reads, as well as the length of the gene you are targeting.\
                       The default is %(default)d nts."}
+                ),
+    'split-R1-and-R2': (
+            ['-Q', '--split-R1-and-R2'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, this program outputs 3 FASTA files for paired-end reads: one\
+                      for R1, one for R2, and one for unpaired reads."}
+                ),
+    'gzip-output': (
+            ['-X', '--gzip-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, output file(s) will be gzip compressed and the extension `.gz` will be added."}
                 ),
     'list-contigs': (
             ['--list-contigs'],
@@ -1645,7 +1674,7 @@ D = {
             {'required': False,
              'nargs':'...', 'type':str,
              'help': "Additional snakemake parameters to add when running snakemake. NOTICE: --additional-params \
-                      HAS TO BE THE LAST ARGUMENT THAT IS PASSED TO anvi-run-snakemake-workflow, ANYTHING THAT \
+                      HAS TO BE THE LAST ARGUMENT THAT IS PASSED TO anvi-run-workflow, ANYTHING THAT \
                       FOLLOWS WILL BE CONSIDERED AS PART OF THE ADDITIONAL PARAMETERS THAT ARE PASSED TO SNAKEMAKE. \
                       Any parameter that is accepted by snakemake should be fair game here, but it is your \
                       responsibility to make sure that whatever you added makes sense. To see what parameters are \
@@ -1742,7 +1771,7 @@ def get_version_tuples():
 
 
 def print_version():
-    run.info("Anvi'o version", '%s, "%s"' % (__version__, __codename__), mc='green')
+    run.info("Anvi'o version", "%s (v%s)" % (__codename__, __version__), mc='green')
     run.info("Profile DB version", __profile__version__)
     run.info("Contigs DB version", __contigs__version__)
     run.info("Pan DB version", __pan__version__)

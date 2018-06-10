@@ -25,8 +25,10 @@ from bottle import BaseRequest
 from bottle import redirect, static_file
 
 import anvio
+import anvio.db as db
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.tables as t
 import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -118,7 +120,6 @@ class BottleApplication(Bottle):
         self.route('/summary/<collection_name>/:filename#.*#', callback=self.send_summary_static)
         self.route('/data/gene/<gene_callers_id>',             callback=self.get_sequence_for_gene_call)
         self.route('/data/hmm/<bin_name>/<gene_name>',         callback=self.get_hmm_hit_from_bin)
-        self.route('/data/geneclusterssummary',             callback=self.get_gene_clusters_summary, method='POST')
         self.route('/data/get_AA_sequences_for_gene_cluster/<gene_cluster_name>',  callback=self.get_AA_sequences_for_gene_cluster)
         self.route('/data/pan_gene_popup/<gene_callers_id>/<genome_name>',         callback=self.get_gene_popup_for_pan)
         self.route('/data/geneclusters/<order_name>/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
@@ -135,6 +136,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_variability',                    callback=self.get_variability, method='POST')
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
+        self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
 
 
     def run_application(self, ip, port):
@@ -284,11 +286,28 @@ class BottleApplication(Bottle):
                 collection_dict = json.loads(self.get_collection_dict(self.interactive.collection_autoload))
                 autodraw = True
 
+            item_lengths = {}
+            if self.interactive.mode == 'full':
+                item_lengths = dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info])
+            elif self.interactive.mode == 'pan':
+                item_lengths = {}
+                for gene_cluster in self.interactive.gene_clusters:
+                    item_lengths[gene_cluster] = 0
+                    for genome in self.interactive.gene_clusters[gene_cluster]:
+                        item_lengths[gene_cluster] += len(self.interactive.gene_clusters[gene_cluster][genome])
+
+            functions_sources = []
+            if self.interactive.mode == 'full':
+                functions_sources = list(self.interactive.gene_function_call_sources)
+            elif self.interactive.mode == 'pan':
+                functions_sources = list(self.interactive.gene_clusters_function_sources)
+
+
             return json.dumps( { "title":                              self.interactive.title,
                                  "description":                        self.interactive.p_meta['description'],
                                  "item_orders":                        (default_order, self.interactive.p_meta['item_orders'][default_order], list(self.interactive.p_meta['item_orders'].keys())),
                                  "views":                              (default_view, self.interactive.views[default_view], list(self.interactive.views.keys())),
-                                 "contig_lengths":                     dict([tuple((c, self.interactive.splits_basic_info[c]['length']),) for c in self.interactive.splits_basic_info]),
+                                 "item_lengths":                       item_lengths,
                                  "mode":                               self.interactive.mode,
                                  "server_mode":                        False,
                                  "read_only":                          self.read_only,
@@ -302,6 +321,7 @@ class BottleApplication(Bottle):
                                  "inspection_available":               self.interactive.auxiliary_profile_data_available,
                                  "sequences_available":                True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
                                  "functions_initialized":              self.interactive.gene_function_calls_initiated,
+                                 "functions_sources":                  functions_sources,
                                  "state":                              (self.interactive.state_autoload, state_dict),
                                  "collection":                         collection_dict })
 
@@ -329,6 +349,38 @@ class BottleApplication(Bottle):
             return json.dumps(items_order['data'])
 
         return json.dumps("")
+
+
+    def save_tree(self):
+        try:
+            overwrite = True if request.forms.get('overwrite') == 'true' else False
+            name = request.forms.get('name')
+            data = request.forms.get('data')
+            
+            self.interactive.p_meta['item_orders'][name] = {'type': 'newick', 'data': data}
+
+            anvio_db = db.DB(self.interactive.pan_db_path or self.interactive.profile_db_path, None, ignore_version=True)
+            orders_in_database = anvio_db.get_table_as_dict(t.item_orders_table_name)
+
+            if overwrite:
+                if name not in orders_in_database:
+                    raise Exception('You wanted to overwrite "%s", but this order does not exists in database.' % name)
+
+                anvio_db._exec('''UPDATE %s SET "data" = ? WHERE "name" LIKE ?''' % t.item_orders_table_name, (data, name))
+            else:
+                if name in orders_in_database:
+                    raise Exception('Order "%s" already in database, If you want to overwrite please use overwrite option.' % name)
+
+                anvio_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, (name, 'newick', data))
+
+            anvio_db.set_meta_value('available_item_orders', ",".join(anvio_db.get_single_column_from_table(t.item_orders_table_name, 'name')))
+            anvio_db.disconnect()
+
+            return json.dumps({'status': 0, 'message': 'New order "%s" successfully saved to the database.' % name})
+
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
 
 
     def state_all(self):
@@ -405,6 +457,7 @@ class BottleApplication(Bottle):
         auxiliary_coverages_db.close()
 
         data['coverage'] = [coverages[layer].tolist() for layer in layers]
+        data['sequence'] = self.interactive.split_sequences[split_name]
 
         ## get the variability information dict for split:
         progress.new('Variability', discard_previous_if_exists=True)
@@ -495,6 +548,8 @@ class BottleApplication(Bottle):
             coverage_list = coverages[layer].tolist()
             # gene -+ 100 gap if possible
             data['coverage'].append(coverage_list[focus_region_start:focus_region_end])
+
+        data['sequence'] = self.interactive.split_sequences[split_name][focus_region_start:focus_region_end]
 
         ## get the variability information dict for split:
         progress.new('Variability')
@@ -818,20 +873,6 @@ class BottleApplication(Bottle):
         return json.dumps({'sequence': sequence, 'header': header})
 
 
-    def get_gene_clusters_summary(self):
-        gene_cluster_ids = json.loads(request.forms.get('split_names'))
-        bin_name = json.loads(request.forms.get('bin_name'))
-
-        summary = self.interactive.get_summary_for_gene_clusters_list(gene_cluster_ids)
-
-        run.info_single('Gene cluster info has been requested for %d items in %s' % (len(gene_cluster_ids), bin_name))
-
-        return json.dumps({'functions': summary['functions'],
-                           'num_gene_clusters': summary['num_gene_clusters'],
-                           'genomes_contributing': summary['genomes_contributing'],
-                           'num_gene_calls': summary['num_gene_calls']})
-
-
     def get_AA_sequences_for_gene_cluster(self, gene_cluster_name):
         data = {}
 
@@ -891,8 +932,18 @@ class BottleApplication(Bottle):
 
     def search_functions(self):
         try:
-            full_report = self.interactive.search_for_functions(request.forms.get('terms'))
-            return json.dumps({'status': 0, 'results': full_report})
+            requested_sources = request.forms.getall('sources[]')
+
+            if not len(requested_sources):
+                requested_sources = None
+
+            items, full_report = self.interactive.search_for_functions(request.forms.get('terms'), requested_sources)
+            
+            items_unique = set([])
+            for search_term in items:
+                items_unique = items_unique.union(set(items[search_term]))
+
+            return json.dumps({'status': 0, 'results': full_report, 'item_count': len(items_unique)})
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
@@ -1068,12 +1119,12 @@ class BottleApplication(Bottle):
 
     def reroot_tree(self):
         newick = request.forms.get('newick')
-        branch = request.forms.get('branch')
-
         tree = Tree(newick, format=1)
-        new_root = tree.search_nodes(name=branch)[0]
+
+        left_most = tree.search_nodes(name=request.forms.get('left_most'))[0]
+        right_most = tree.search_nodes(name=request.forms.get('right_most'))[0]
+
+        new_root = tree.get_common_ancestor(left_most, right_most)
         tree.set_outgroup(new_root)
 
         return json.dumps({'newick': tree.write(format=1)})
-
-

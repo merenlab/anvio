@@ -110,6 +110,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     anvi-script-add-default-collection to create a default collection \
                                     with all contigs.")
 
+        if self.collection_name and (not self.gene_mode) and (self.bin_id or self.bin_ids_file_path) and self.mode != 'refine':
+            raise ConfigError("On the one hand you provide a collection name, signaling anvi'o that you wish to\
+                               run the interactive display in collection mode. But then you also provide a bin name\
+                               as if you wish to run the refinement interface. Are you sure you don't want to run\
+                               `anvi-refine` instead? That would really make things much less confusing here :(")
+
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
@@ -207,22 +213,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.gen_alphabetical_orders_of_items()
         if not self.p_meta['default_item_order'] and len(self.p_meta['available_item_orders']):
             self.p_meta['default_item_order'] = self.p_meta['available_item_orders'][0]
-
-        # we are going to iterate the newick trees, and make sure that internal nodes have labels
-        for item_order_name in self.p_meta['item_orders']:
-            if self.p_meta['item_orders'][item_order_name]['type'] == 'newick':
-                tree = Tree(self.p_meta['item_orders'][item_order_name]['data'], format=1)
-
-                node_counter = 0
-                for node in tree.traverse():
-                    if node.name == "":
-                        node.name = "Int_%d" % node_counter
-                        node_counter += 1
-
-                if node_counter > 0:
-                    # if we did not changed any branch name there is no need to spend time for
-                    # serialization back to newick
-                    self.p_meta['item_orders'][item_order_name]['data'] = tree.write(format=1)
 
         # if there are any HMM search results in the contigs database other than 'singlecopy' sources,
         # we would like to visualize them as additional layers. following function is inherited from
@@ -1027,22 +1017,21 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 run.info('Additional Tree', "'%s' has been added to available trees." % clustering_id)
 
 
-    def search_for_functions(self, search_terms):
+    def search_for_functions(self, search_terms, requested_sources=None):
         search_terms = [s.strip() for s in search_terms.split(',')]
         full_report = None
 
         if self.mode == 'full' or self.mode == 'gene':
-            _, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
-
+            items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
             if self.mode == 'gene':
                 # otherwise gene mode report functions from other splits are not the bin interactive initialized.
                 full_report = [i for i in full_report if i[5] in self.split_names_of_interest]
         elif self.mode == 'pan':
-            _, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False)
+            items, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
         else:
             raise ConfigError("Searching functions are not supported for this mode.")
 
-        return full_report
+        return items, full_report
 
 
     def check_names_consistency(self):

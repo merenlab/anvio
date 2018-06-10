@@ -14,16 +14,16 @@ cp $files/workflows/pangenomics/config.json $output_dir/workflow_test/
 cd $output_dir/workflow_test
 
 INFO "Creating a default config for pangenomics workflow"
-anvi-run-snakemake-workflow -w pangenomics --get-default-config default-config.json
+anvi-run-workflow -w pangenomics --get-default-config default-config.json
 
 INFO "Listing dependencies for pangenomics workflow"
-anvi-run-snakemake-workflow -w pangenomics -c config.json --list-dependencies
+anvi-run-workflow -w pangenomics -c config.json --list-dependencies
 
 INFO "Saving a workflow graph"
-anvi-run-snakemake-workflow -w pangenomics -c config.json --save-workflow-graph
+anvi-run-workflow -w pangenomics -c config.json --save-workflow-graph
 
 INFO "Running pangenomics workflow"
-anvi-run-snakemake-workflow -w pangenomics -c config.json
+anvi-run-workflow -w pangenomics -c config.json
 
 INFO "Importing default state for pangenome"
 anvi-import-state -p 03_PAN/TEST-PAN.db -s default-state.json -n default
