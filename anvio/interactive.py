@@ -1813,7 +1813,7 @@ class StructureInteractive(VariabilitySuper):
 
             # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
             var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
-            var.data_merged = self.merge_variability_by_group(var, samples_in_group, column_info)
+            var.merge_data_by_sample_group(samples_in_group, group)
 
             # set group specific filter parameters here
             var.sample_ids_of_interest = set(samples_in_group)
@@ -1837,31 +1837,6 @@ class StructureInteractive(VariabilitySuper):
 
         self.progress.end()
         return output
-
-
-    def merge_variability_by_group(self, var, sample_names, column_info):
-        """
-           var : class
-               instance that inherits VariabilitySuper
-           sample_names : list-like
-               sample_ids to merge
-
-           This function merges rows in self.data that share the same unique position identifier.
-           For example if you have samples s01, s02, and s03, each with an entry with unique
-           position identifier = 1234, this function will return dataframe containing only one entry
-           with unique position identifier = 1234, with entries in this row being the mean of the
-           three previous rows for columns that have numerical values and the most common value for
-           columns that have categorical values. For example,
-
-           unique_pos  sec_struc  dfc
-           1234        H          1.0       becomes       unique_pos  sec_struc  dfc
-           1234        H          0.8      ========>      1234        H          0.9
-           1234        B          0.9
-        """
-        var.filter_data(criterion = "sample_id", subset_filter = sample_names)
-        for unique_pos_identifier, df in var.data.groupby('unique_pos_identifier'):
-            df
-        pass
 
 
 class ContigsInteractive():
