@@ -107,7 +107,9 @@ Drawer.prototype.draw = function() {
     this.draw_stack_bar_layers();
     this.draw_layer_names();
     this.draw_samples();
-    
+    this.overlay_collapsed_node_layers();
+    this.draw_collapsed_nodes();
+
     bins.MigrateCollection();
     bins.RebuildIntersections();
     bins.RedrawLineColors();
@@ -136,17 +138,15 @@ Drawer.prototype.draw = function() {
 };
 
 
-Drawer.prototype.find_collapsed_nodes = function() {
-    var node_list = [];
+Drawer.prototype.draw_collapsed_nodes = function() {
+    for (var i=0; i < collapsedNodes.length; i++) {
+        let collapse_attributes = collapsedNodes[i];
+        let left_most = this.tree.label_to_leaves[collapse_attributes['left_most']];
+        let right_most = this.tree.label_to_leaves[collapse_attributes['right_most']];
+        var p = this.tree.FindLowestCommonAncestor(left_most, right_most);
 
-    collapsedNodes.forEach((tuple) => {
-        let node = this.tree.FindLowestCommonAncestor(tuple[0], tuple[1]);
-
-        if (node) {
-            node_list.push(node);
-        }
-    });
-    return node_list;
+        this.draw_collapsed_node(p);
+    }
 };
 
     
@@ -468,6 +468,27 @@ Drawer.prototype.collapse_nodes = function(node_list) {
     }
 };
 
+
+Drawer.prototype.overlay_collapsed_node_layers = function() {
+    for (var i=0; i < collapsedNodes.length; i++) {
+        let collapse_attributes = collapsedNodes[i];
+        let left_most = this.tree.label_to_leaves[collapse_attributes['left_most']];
+        let right_most = this.tree.label_to_leaves[collapse_attributes['right_most']];
+        var p = this.tree.FindLowestCommonAncestor(left_most, right_most);
+
+        drawPie('tree_bin',
+            'overlay_collapsed_' + p.id,
+            p.angle - p.size / 2,
+            p.angle + p.size / 2,
+            beginning_of_layers - 10,
+            total_radius + 10,
+            (p.size > Math.PI) ? 1 : 0,
+            'white',
+            1,
+            false);
+    }
+}
+
 Drawer.prototype.bind_tree_events = function() {
     var tree_bin = document.getElementById('tree_bin');
     tree_bin.addEventListener('click', lineClickHandler, false);
@@ -684,10 +705,6 @@ Drawer.prototype.draw_tree = function() {
                 this.draw_internal_node(p);
             }
 
-            if (p.collapsed) {
-                this.draw_collapsed_node(p);
-            }
-
             p = n.Next();
         }
     } else {
@@ -787,7 +804,7 @@ Drawer.prototype.draw_collapsed_node = function(p) {
         var tp1_y = p0['y'] - p.size / 3;
         var tp2_y = p0['y'] + p.size / 3;
 
-        drawRotatedText('tree', 
+        drawRotatedText('tree_bin', 
             {
                 'x': tp1_x + 20, 
                 'y': (tp1_y + tp2_y) / 2
@@ -820,7 +837,7 @@ Drawer.prototype.draw_collapsed_node = function(p) {
             angle += 180.0;
         }
 
-        drawRotatedText('tree', 
+        drawRotatedText('tree_bin', 
             {
                 'x': (_radius + 20) * Math.cos(p.angle), 
                 'y': (_radius + 20) * Math.sin(p.angle)
