@@ -153,6 +153,8 @@ class VariabilityFilter:
                                or if you want to apply a special filter, pass a filter function (function=).\
                                You passed both.")
 
+        self.is_df_exists()
+        self.is_df_a_dataframe()
         self.is_filter_criterion_valid()
         self.is_passed_function_valid()
         self.is_passed_kwargs_valid(kwargs)
@@ -161,7 +163,6 @@ class VariabilityFilter:
     def filter_data(self, name='data', criterion=None, function=None, verbose=False, **kwargs):
         """ FIXME add example here """
         self.name = name
-        self.df = getattr(self, name)
         self.filter_info_log = {}
         self.criterion = criterion
         self.passed_function = function
@@ -424,6 +425,26 @@ class VariabilityFilter:
             self.append_info_log("function is callable", True)
 
 
+    def is_df_exists(self):
+        try:
+            self.df = getattr(self, self.name)
+        except AttributeError as e:
+            self.append_info_log("%s is an object" % self.name, False)
+            raise ConfigError("VariabilityFilter :: You tried to filter the object `%s` which is\
+                               not an attribute of VariabilitySuper or its parent classes." \
+                                   % (self.name))
+        self.append_info_log("%s is an object" % self.name, True)
+
+
+    def is_df_a_dataframe(self):
+        if type(self.df) != pd.core.frame.DataFrame:
+            self.append_info_log("name points to a valid dataframe", False)
+            raise ConfigError("VariabilityFilter :: You tried to filter the object `%s` which is\
+                               of type `%s`. You can only filter pandas dataframes." \
+                                   % (self.name, type(self.df)))
+        self.append_info_log("name points to a valid dataframe", True)
+
+
     def is_filter_criterion_valid(self):
         if not self.criterion:
             self.append_info_log("criterion was passed", False)
@@ -514,6 +535,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.include_split_names_in_output = A('include_split_names', null)
         self.include_contig_names_in_output = A('include_contig_names', null)
         self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
+        self.data_merged = {}
 
         self.append_structure_residue_info = True if self.structure_db_path else False
         self.table_provided = False if self.data.empty else True
@@ -930,6 +952,34 @@ class VariabilitySuper(VariabilityFilter, object):
             return ""
 
         return " AND ".join([col_name + col_condition for col_name, col_condition in conditions.items()])
+
+
+    def merge_data_by_sample_group(self, sample_group_to_merge, group_name):
+        """
+           var : class
+               instance that inherits VariabilitySuper
+           sample_names : list-like
+               sample_ids to merge
+
+           This function merges rows in self.data that share the same unique position identifier.
+           For example if you have samples s01, s02, and s03, each with an entry with unique
+           position identifier = 1234, this function will return dataframe containing only one entry
+           with unique position identifier = 1234, with entries in this row being the mean of the
+           three previous rows for columns that have numerical values and the most common value for
+           columns that have categorical values. For example,
+
+           unique_pos  sec_struc  dfc
+           1234        H          1.0       becomes       unique_pos  sec_struc  dfc
+           1234        H          0.8      ========>      1234        H          0.9
+           1234        B          0.9
+        """
+        self.merged = copy.deepcopy(self.data)
+        self.filter_data(name = 'merged', criterion = 'sample_id', subset_filter = sample_group_to_merge)
+
+        for unique_pos_identifier, df in self.merged.groupby('unique_pos_identifier'):
+            df
+
+        self.merged = None
 
 
     def load_variability_data(self):
