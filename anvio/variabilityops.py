@@ -1544,7 +1544,8 @@ class VariabilitySuper(VariabilityFilter, object):
                              on = ["corresponding_gene_call", "codon_order_in_gene"],
                              how = "left")
 
-        self.columns_to_report['structural'].extend([x for x in include_columns if not x in ["corresponding_gene_call", "codon_order_in_gene"]])
+        redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa']
+        self.columns_to_report['structural'].extend([x for x in include_columns if not x in redundant_columns])
         self.progress.end()
 
 
@@ -1573,31 +1574,17 @@ class VariabilitySuper(VariabilityFilter, object):
     def report(self):
         self.progress.new('Reporting variability data')
 
-        truncate_at = lambda x: [column for column in self.table_structure[:self.table_structure.index(x)]]
-        structure_subset = truncate_at(constants.nucleotides[0]) if self.engine == 'NT' else truncate_at(constants.codons[0])
-        structure_subset = [column for column in structure_subset if column not in ["entry_id", "split_name", "competing_nts"]]
+        new_structure = []
+        for column_group, columns in self.columns_to_report.items():
+            for column in columns:
+                if column in self.data.columns:
+                    new_structure.append(column)
 
-        new_structure = ['entry_id', 'unique_pos_identifier', 'gene_length'] + \
-                        structure_subset + \
-                        ['codon_number'] + \
-                        self.items + \
-                        list(self.substitution_scoring_matrices.keys()) + \
-                        [self.competing_items, 'consensus', 'departure_from_consensus', 'n2n1ratio'] + \
-                        self.comprehensive_stats_headers
+        if not self.include_contig_names_in_output:
+            new_structure.remove('contig_name')
 
-        if self.engine == "CDN":
-            new_structure.append("synonymity")
-
-        if self.include_contig_names_in_output:
-            new_structure.append('contig_name')
-
-        if self.include_split_names_in_output:
-            new_structure.append('split_name')
-
-        if self.append_structure_residue_info:
-            redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa']
-            residue_info_columns = [x for x in self.structure_residue_info.columns if x not in redundant_columns]
-            new_structure.extend(residue_info_columns)
+        if not self.include_split_names_in_output:
+            new_structure.remove('split_name')
 
         # Update entry_id with sequential numbers based on the final ordering of the data:
         self.data.reset_index(drop=True, inplace=True)
