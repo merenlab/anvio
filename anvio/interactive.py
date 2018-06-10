@@ -1845,8 +1845,10 @@ class StructureInteractive(VariabilitySuper):
            1234        H          0.8      ========>      1234        H          0.9
            1234        B          0.9
         """
-        var.filter_data('')
-        pass
+        var.filter_data(criterion = "sample_id", subset_filter = sample_names)
+        #for unique_pos_identifier, df in var.data.groupby('unique_pos_identifier'):
+        #    print(df)
+        #pass
 
 
 class ContigsInteractive():

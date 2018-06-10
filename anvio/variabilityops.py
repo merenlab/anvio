@@ -1571,13 +1571,16 @@ class VariabilitySuper(VariabilityFilter, object):
                drop_duplicates().set_index("unique_pos_identifier").to_dict()["codon_order_in_gene"]
 
 
-    def report(self):
+    def report(self, data = None):
+        if not data:
+            data = self.data
+
         self.progress.new('Reporting variability data')
 
         new_structure = []
         for column_group, columns in self.columns_to_report.items():
             for column in columns:
-                if column in self.data.columns:
+                if column in data.columns:
                     new_structure.append(column)
 
         if not self.include_contig_names_in_output:
@@ -1587,19 +1590,19 @@ class VariabilitySuper(VariabilityFilter, object):
             new_structure.remove('split_name')
 
         # Update entry_id with sequential numbers based on the final ordering of the data:
-        self.data.reset_index(drop=True, inplace=True)
-        self.data["entry_id"] = self.data.index
+        data.reset_index(drop=True, inplace=True)
+        data["entry_id"] = data.index
 
         # order by [corresponding_gene_call, codon_order_in_gene]
-        self.data = self.data.sort_values(by = ["corresponding_gene_call", "codon_order_in_gene"])
+        data = data.sort_values(by = ["corresponding_gene_call", "codon_order_in_gene"])
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
-        utils.store_dataframe_as_TAB_delimited_file(self.data, self.args.output_file, columns=new_structure)
+        utils.store_dataframe_as_TAB_delimited_file(data, self.args.output_file, columns=new_structure)
         self.progress.end()
 
-        self.run.info('Num entries reported', pp(len(self.data.index)))
+        self.run.info('Num entries reported', pp(len(data.index)))
         self.run.info('Output File', self.output_file_path)
-        self.run.info('Num %s positions reported' % self.engine, self.data["unique_pos_identifier"].nunique())
+        self.run.info('Num %s positions reported' % self.engine, data["unique_pos_identifier"].nunique())
 
 
     class EndProcess(Exception):
