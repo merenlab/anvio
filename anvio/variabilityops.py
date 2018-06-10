@@ -46,6 +46,7 @@ run = terminal.Run(width=62)
 
 class VariabilityFilter:
     def __init__(self, args={}, p=progress, r=run):
+        np.seterr(invalid='ignore')
         self.stealth_filtering = False
 
         self.known_kwargs = [
@@ -470,6 +471,7 @@ class VariabilityFilter:
 
 class VariabilitySuper(VariabilityFilter, object):
     def __init__(self, args={}, p=progress, r=run):
+        np.seterr(invalid='ignore')
         self.args = args
 
         if args.engine not in variability_engines:
@@ -785,7 +787,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def get_substitution_scoring_matrices(self):
         import anvio.data.SSMs as SSMs
-        self.substitution_scoring_matrices = SSMs.get(self.engine)
+        self.substitution_scoring_matrices = SSMs.get(self.engine, self.run)
         for m in self.substitution_scoring_matrices:
             self.columns_to_report['SSMs'].extend([m, m + '_weighted'])
 
@@ -852,8 +854,8 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.table_provided:
             self.check_if_data_is_empty()
             self.available_sample_ids = self.data["sample_id"].unique()
-            self.progress.end()
             self.is_available_samples_compatible_with_sample_ids_of_interest()
+            self.progress.end()
             return
 
         # otherwise we have more work to do
@@ -895,7 +897,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.update('Reading the profile database ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         self.available_sample_ids = sorted(list(profile_db.samples))
-        self.progress.end(); self.is_available_samples_compatible_with_sample_ids_of_interest(); self.progress.new("Init")
+        self.is_available_samples_compatible_with_sample_ids_of_interest()
 
         if not profile_db.meta['SNVs_profiled']:
             self.progress.end()
@@ -911,17 +913,17 @@ class VariabilitySuper(VariabilityFilter, object):
            splits_of_interest, sample_ids_of_interest, and genes_of_interest. For example, what if
            genes_of_interest = set([0]) in a profile database with 50,000 genes? Why is splits of interest
            not included here? Because split_name is not a column in the variable codon table."""
-        R = lambda x, y: run.info("%s that variability data will be generated for" % \
-                        (x.capitalize() if len(y)<200 else "Num "+x), ", ".join([str(z) for z in y]) if len(y)<200 else len(y))
+        R = lambda x, y: self.run.info("%s that variability data will be generated for" % \
+                         (x.capitalize() if len(y)<200 else "Num of "+x), ", ".join([str(z) for z in y]) if len(y)<200 else len(y))
 
         conditions = {}
         if self.sample_ids_of_interest:
             conditions['sample_id'] = ' IN (%s)' % ','.join(['"{}"'.format(x) for x in self.sample_ids_of_interest])
-            R("samples", self.sample_ids_of_interest)
+            R("sample ids", self.sample_ids_of_interest)
             self.load_all_samples = False
         if self.genes_of_interest:
             conditions['corresponding_gene_call'] = ' IN (%s)' % ','.join(['{}'.format(x) for x in self.genes_of_interest])
-            R("genes", self.genes_of_interest)
+            R("gene ids", self.genes_of_interest)
             self.load_all_genes = False
 
         if not conditions:
@@ -1052,10 +1054,11 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def is_available_samples_compatible_with_sample_ids_of_interest(self):
-        self.run.info("Samples available", ", ".join(sorted(self.available_sample_ids)))
+        self.run.info("Samples available", ", ".join(sorted(self.available_sample_ids)), progress=self.progress)
         if self.sample_ids_of_interest:
             samples_missing = [sample_id for sample_id in self.sample_ids_of_interest if sample_id not in self.available_sample_ids]
             if len(samples_missing):
+                self.progress.end()
                 raise ConfigError('One or more samples you are interested in seem to be missing from\
                                    the %s: %s' % ('variability table' if self.table_provided else 'profile database',
                                                   ', '.join(samples_missing)))
@@ -2199,8 +2202,8 @@ class VariabilityNetwork:
 
 class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
     def __init__(self, args={}, p=progress, r=run):
-        self.run = r
         self.progress = p
+        self.run = r
 
         self.args = args
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
@@ -2234,7 +2237,7 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         self.args.data = self.data
         self.args.engine = self.engine
         self.args.skip_sanity_check = True
-        variability_engines[self.engine].__init__(self, self.args, p=self.progress, r=run)
+        variability_engines[self.engine].__init__(self, self.args, p=self.progress, r=self.run)
 
         # load residue info data
         if self.append_structure_residue_info:
