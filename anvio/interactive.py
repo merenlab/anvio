@@ -1511,7 +1511,7 @@ class StructureInteractive(VariabilitySuper):
             },
         ]
 
-        info = [v for v in info if v['name'] in var.get_data_column_structure()]
+        info = [v for v in info if v['name'] in var.get_data_column_structure()[0]]
         return info
 
 
