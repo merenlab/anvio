@@ -559,6 +559,59 @@ class VariabilitySuper(VariabilityFilter, object):
             dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
             self.init_contig_sequences()
 
+        # these lists are dynamically extended
+        self.columns_to_report = {
+            'position_identifiers': [
+                'entry_id',
+                'unique_pos_identifier',
+                'pos',
+                'pos_in_contig',
+                'contig_name',
+                'split_name',
+            ],
+            'sample_info': [
+                'sample_id',
+            ],
+            'gene_info': [
+                'corresponding_gene_call',
+                'in_partial_gene_call',
+                'in_complete_gene_call',
+                'base_pos_in_codon',
+                'codon_order_in_gene',
+                'codon_number',
+                'gene_length',
+            ],
+            'coverage_info': [
+                'coverage',
+                'cov_outlier_in_split',
+                'cov_outlier_in_contig',
+                'in_complete_gene_call',
+            ],
+            'sequence_identifiers': [
+                'reference',
+                'consensus',
+                'competing_nts',
+                'competing_aas',
+                'competing_codons',
+            ],
+            'statistical': [
+                'departure_from_reference',
+                'departure_from_consensus',
+                'n2n1ratio',
+                'entropy',
+                'kullback_leibler_divergence_raw',
+                'kullback_leibler_divergence_normalized',
+                'synonymity',
+            ],
+            'SSMs': [
+            ],
+            'structural': [
+            ],
+        }
+        self.columns_to_report_order = ['position_identifiers', 'sample_info', 'gene_info', 'coverage_info',
+                                        'sequence_identifiers', 'statistical', 'SSMs', 'structural']
+
+
 
     def sanity_check(self):
         if self.engine not in variability_engines:
@@ -727,11 +780,14 @@ class VariabilitySuper(VariabilityFilter, object):
             self.items = sorted(constants.amino_acids)
         else:
             raise ConfigError("https://goo.gl/sx6JHg :(")
+        self.columns_to_report['coverage_info'].extend(self.items)
 
 
     def get_substitution_scoring_matrices(self):
         import anvio.data.SSMs as SSMs
         self.substitution_scoring_matrices = SSMs.get(self.engine)
+        for m in self.substitution_scoring_matrices:
+            self.columns_to_report['SSMs'].extend([m, m + '_weighted'])
 
 
     def init_commons(self):
@@ -898,7 +954,6 @@ class VariabilitySuper(VariabilityFilter, object):
 
             self.data = profile_db.db.get_table_as_dataframe(t.variable_codons_table_name,
                                                              where_clause=sqlite_where_clause)
-
             self.check_if_data_is_empty()
 
             # this is where magic happens for the AA engine. we just read the data from the variable codons table, and it
@@ -1279,7 +1334,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # Ala->Ala is indexed by [0,0], whereas Val->Val is indexed by [-1,-1]. We decided it makes sense to set the
         # substitution score of an item with itself to zero. This way we only consider substitutions to other items
         # (and don't consider substitution of an item with itself)
-        numpy_substitution_scoring_matrices = {SMM: np.array([[matrix[i][j] if j != i else 0 for j in sorted(matrix[i])] for i in sorted(matrix)]) for SMM, matrix in self.substitution_scoring_matrices.items()}
+        numpy_substitution_scoring_matrices = {SSM: np.array([[matrix[i][j] if j != i else 0 for j in sorted(matrix[i])] for i in sorted(matrix)]) for SSM, matrix in self.substitution_scoring_matrices.items()}
 
         # We loop through each of the substitution scoring matrices available. It's possible the items in the
         # substitution matrices aren't a complete set of the items we have coverage data for. For example, BLOSUM90
@@ -1290,16 +1345,16 @@ class VariabilitySuper(VariabilityFilter, object):
         # items are stored in `previous_indices` so the table is only recalculated if the current SSM items vary
         # from the previous SSM items.
         previous_indices = None
-        for SMM, matrix in numpy_substitution_scoring_matrices.items():
+        for SSM, matrix in numpy_substitution_scoring_matrices.items():
 
             # initialize the entropy column in self.data with np.nans
-            self.data[SMM + "_weighted"] = np.nan
+            self.data[SSM + "_weighted"] = np.nan
 
             # We find which items in self.items are in the SSM and record the index at which they appear in
             # self.items. By definition this is also the index ordering of coverage_table. For example, the index of
             # Ala is 0 so the coverage data for Ala is coverage_table[0,:]. Hence, the subset of coverage_table for
             # the given SSM is coverage_table[indices, :].
-            indices = sorted([self.items.index(item) for item in self.substitution_scoring_matrices[SMM]])
+            indices = sorted([self.items.index(item) for item in self.substitution_scoring_matrices[SSM]])
             if indices != previous_indices:
 
                 # To get the frequency table we divide each column by the sum of the rows (the array called
@@ -1334,7 +1389,7 @@ class VariabilitySuper(VariabilityFilter, object):
             # item, pj is the frequency of the jth item, and S_{i,j} is the substitution matrix score for the i->j
             # substitution. If you remember, we already set i=j entries to zero so they contribute zero weight to
             # the score.
-            self.data.loc[keep, SMM + "_weighted"] = normalization * np.sum(freq_table[np.newaxis, :].T * freq_table[:, np.newaxis].T * matrix, axis=(1,2)) # V/\
+            self.data.loc[keep, SSM + "_weighted"] = normalization * np.sum(freq_table[np.newaxis, :].T * freq_table[:, np.newaxis].T * matrix, axis=(1,2)) # V/\
 
         if not self.quince_mode:
             self.progress.end()
@@ -1489,6 +1544,7 @@ class VariabilitySuper(VariabilityFilter, object):
                              on = ["corresponding_gene_call", "codon_order_in_gene"],
                              how = "left")
 
+        self.columns_to_report['structural'].extend([x for x in include_columns if not x in ["corresponding_gene_call", "codon_order_in_gene"]])
         self.progress.end()
 
 
