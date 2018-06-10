@@ -1801,7 +1801,7 @@ class StructureInteractive(VariabilitySuper):
 
             # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
             var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
-            self.merge_variability_by_group(var, samples_in_group, column_info)
+            var.data_merged = self.merge_variability_by_group(var, samples_in_group, column_info)
 
             # set group specific filter parameters here
             var.sample_ids_of_interest = set(samples_in_group)
@@ -1840,18 +1840,12 @@ class StructureInteractive(VariabilitySuper):
            three previous rows for columns that have numerical values and the most common value for
            columns that have categorical values. For example,
 
-           unique_pos_identifier  sec_struc  departure_from_consensus
-           1234                   H          1.0
-           1234                   H          0.8
-           1234                   B          0.9
-
-           will become:
-
-           unique_pos_identifier  sec_struc  departure_from_consensus
-           1234                   H          0.9
+           unique_pos  sec_struc  dfc
+           1234        H          1.0       becomes       unique_pos  sec_struc  dfc
+           1234        H          0.8      ========>      1234        H          0.9
+           1234        B          0.9
         """
-        print(var.data.columns)
-        print(sample_names)
+        var.filter_data('')
         pass
 
 
