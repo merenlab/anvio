@@ -1571,17 +1571,13 @@ class VariabilitySuper(VariabilityFilter, object):
                drop_duplicates().set_index("unique_pos_identifier").to_dict()["codon_order_in_gene"]
 
 
-    def report(self, data = None):
+    def report(self, data=None):
         if not data:
             data = self.data
 
         self.progress.new('Reporting variability data')
 
-        new_structure = []
-        for column_group, columns in self.columns_to_report.items():
-            for column in columns:
-                if column in data.columns:
-                    new_structure.append(column)
+        new_structure = self.get_data_column_structure()
 
         if not self.include_contig_names_in_output:
             new_structure.remove('contig_name')
@@ -1603,6 +1599,18 @@ class VariabilitySuper(VariabilityFilter, object):
         self.run.info('Num entries reported', pp(len(data.index)))
         self.run.info('Output File', self.output_file_path)
         self.run.info('Num %s positions reported' % self.engine, data["unique_pos_identifier"].nunique())
+
+
+    def get_data_column_structure(self, data=None):
+        if not data:
+            data = self.data
+
+        structure = []
+        for column_group, columns in self.columns_to_report.items():
+            for column in columns:
+                if column in data.columns:
+                    structure.append(column)
+        return structure
 
 
     class EndProcess(Exception):
