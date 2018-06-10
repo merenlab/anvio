@@ -12,19 +12,19 @@ cp $files/workflows/contigs/* $output_dir/workflow_test/
 cd $output_dir/workflow_test
 
 INFO "Creating a default config for contigs workflow"
-anvi-run-snakemake-workflow -w contigs --get-default-config default-config.json
+anvi-run-workflow -w contigs --get-default-config default-config.json
 
 INFO "Listing dependencies for contigs workflow"
-anvi-run-snakemake-workflow -w contigs -c default-config.json --list-dependencies
+anvi-run-workflow -w contigs -c default-config.json --list-dependencies
 
 INFO "Saving a workflow graph"
-anvi-run-snakemake-workflow -w contigs -c default-config.json --save-workflow-graph
+anvi-run-workflow -w contigs -c default-config.json --save-workflow-graph
 
 INFO "Running contigs workflow with a dry-run"
-anvi-run-snakemake-workflow -w contigs -c default-config.json --dry-run
+anvi-run-workflow -w contigs -c default-config.json --dry-run
 
 INFO "Running contigs workflow"
-anvi-run-snakemake-workflow -w contigs -c default-config.json
+anvi-run-workflow -w contigs -c default-config.json
 
 INFO "Examine contigs databases with anvi-display-contigs-stats"
 anvi-display-contigs-stats 02_CONTIGS/*db

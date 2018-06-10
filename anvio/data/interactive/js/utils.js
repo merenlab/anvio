@@ -18,8 +18,14 @@
  */
 
 
+function emit(name, element=document.body) {
+    let event = new Event(name);
+    element.dispatchEvent(event);
+};
+
 //--------------------------------------------------------------------------------------------------
 // http://stackoverflow.com/questions/3019278/any-way-to-specify-the-base-of-math-log-in-javascript
+
 function log10(val) {
   return Math.log(val) / Math.LN10;
 }
@@ -107,49 +113,48 @@ function fire_up_ncbi_blast(sequence, program, database, target)
 }
 //--------------------------------------------------------------------------------------------------
 
-function generate_inspect_link(type, item_name) {
+function generate_inspect_link(options) {
+    let show_snvs = options.show_snvs;
+    let type = options.type;
+    let item_name = options.item_name;
+
+    let url = window.location.href.split('?')[0];
+    let new_url = "";
+
     if (self == top) {
         // local anvio
-        var url = window.location.href.split('?')[0];
 
         if (url.endsWith('index.html')) {
             // on index page
-            if (type == 'inspect') {
-                return 'charts.html?id=' + item_name;
+            if (type == 'inspect_split') {
+                new_url = 'charts.html?id=' + item_name;
             }
             else if (type == 'inspect_context') {
-                return 'charts.html?id=' + item_name + '&highlight_gene=true';
+                new_url = 'charts.html?id=' + item_name + '&highlight_gene=true';
             }
             else if (type == 'inspect_gene') {
-                return 'charts.html?id=' + item_name + '&highlight_gene=true&gene_mode=true';
+                new_url = 'charts.html?id=' + item_name + '&highlight_gene=true&gene_mode=true';
             } 
-            else if (type == 'geneclusters') {
-                return 'geneclusters.html?id=' + item_name;
+            else if (type == 'inspect_geneclusters') {
+                new_url = 'geneclusters.html?id=' + item_name;
             }
         }
         else
         {
             // on charts or gene cluster page, so changing the ?id= part enough
-            var new_url = "";
             new_url =  url + '?id=' + item_name;
 
             if (type == 'inspect_context') {
-                return new_url + '&highlight_gene=true';
+                new_url = new_url + '&highlight_gene=true';
             }
             else if (type == 'inspect_gene') {
-                return new_url + '&highlight_gene=true&gene_mode=true';
-            }
-            else {
-                return new_url;
+                new_url = new_url + '&highlight_gene=true&gene_mode=true';
             }
         }
     }
     else
     {
         // anvi server
-        var url = window.parent.location.href.split('?')[0];
-        var new_url = "";
-
         if (url.endsWith('/inspect') || url.endsWith('/geneclusters')) {
             // on charts or gene cluster page
             new_url = url;
@@ -166,9 +171,14 @@ function generate_inspect_link(type, item_name) {
         if (view_key != 'no_view_key') {
             new_url = new_url + '&view_key=' + view_key;
         }
-
-        return new_url;
     }
+
+    if (type != 'inspect_geneclusters')
+    {
+        new_url = new_url + '&show_snvs=' + show_snvs;
+    }
+
+    return new_url;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -191,7 +201,7 @@ function renderMarkdown(content) {
             var item_name = href.split('//')[1];
 
             var html = '<a href="#" class="item-link">' + text + '<span class="tooltiptext"> \
-                <span href="#" onclick="highlighted_splits = [\'' + item_name + '\']; redrawBins();">HIGHLIGHT</span>';
+                <span href="#" onclick="bins.HighlightItems(\'' + item_name + '\');">HIGHLIGHT</span>';
 
             if (mode == 'full' | mode == 'pan') {
                 var target = (mode == 'pan') ? 'inspect_gene_cluster' : 'inspect_contig';
@@ -279,6 +289,11 @@ function showDraggableDialog(title, content, updateOnly)
 }
 
 //--------------------------------------------------------------------------------------------------
+function IsCtrlPressed(event) {
+    return ((navigator.platform.toUpperCase().indexOf('MAC') >= 0 && event.metaKey) || event.ctrlKey);
+}
+
+
 
 function checkObjectExists(selector)
 {

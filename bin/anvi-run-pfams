@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+
+import anvio
+import anvio.pfam as pfam
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Özcan Esen"
+__email__ = "ozcanesen@gmail.com"
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Run Pfam on Contigs Database.')
+
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parser.add_argument(*anvio.A('pfam-data-dir'), **anvio.K('pfam-data-dir'))
+    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        pfam = pfam.Pfam(args)
+        pfam.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)

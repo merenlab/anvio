@@ -55,10 +55,10 @@ function draw_n_values_plot(container, stats) {
                                                 .attr('font-size', '12px');
 
                             tooltip_text.append('tspan')
-                                            .text('N: ' + (i+1) );
+                                            .text('N' + (i+1) + ': ' + d.num_contigs + ' contigs');
 
                             tooltip_text.append('tspan')
-                                            .text('Num contigs > ' + getCommafiedNumberString(d.length) + ' nts: ' + d.num_contigs + '.')
+                                            .text('L' + (i+1) + ': ' + getCommafiedNumberString(d.length) + ' nts')
                                             .attr('x', '10')
                                             .attr('dy', '1.4em');
 
@@ -82,9 +82,21 @@ function draw_n_values_plot(container, stats) {
 
     g.append('text')
             .text('N50')
-            .style("font-size", '8')
-            .attr("x", xscale(49))
-            .attr("y", yscale(data[49].length) - 4);
+            .style("font-size", '9.5')
+            .attr("x", xscale(49) - 2)
+            .attr("y", yscale(0) + 10);
+
+    g.append('text')
+            .text('N0')
+            .style("font-size", '9.5')
+            .attr("x", xscale(0) - 2)
+            .attr("y", yscale(0) + 10);
+
+    g.append('text')
+            .text('N100')
+            .style("font-size", '9.5')
+            .attr("x", xscale(99) - 2)
+            .attr("y", yscale(0) + 10);
 
     var yAxis = d3.svg.axis()
         .scale(yscale)
