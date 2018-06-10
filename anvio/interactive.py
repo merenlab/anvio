@@ -1380,6 +1380,7 @@ class StructureInteractive(VariabilitySuper):
 
     def get_column_info(self, gene_callers_id, engine):
         var = self.variability_storage[gene_callers_id][engine]['var_object']
+
         FIND_MIN = lambda c: var.data[c].min()
         FIND_MAX = lambda c: var.data[c].max()
 
@@ -1387,7 +1388,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'departure_from_consensus',
                 'title': 'Departure from consensus',
-                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1397,7 +1397,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'departure_from_reference',
                 'title': 'Departure from reference',
-                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1407,7 +1406,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'coverage',
                 'title': 'Coverage',
-                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1417,7 +1415,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'synonymity',
                 'title': 'Synonymity',
-                'engine': ['CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1427,7 +1424,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'entropy',
                 'title': 'Entropy',
-                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1437,7 +1433,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'rel_solvent_acc',
                 'title': 'Relative solvent accessibility',
-                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1447,14 +1442,12 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'sec_struct',
                 'title': 'Secondary structure',
-                'engine': ['AA', 'CDN'],
                 'controller': 'checkbox',
                 'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
             },
             {
                 'name': 'phi',
                 'title': 'Phi',
-                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1464,7 +1457,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'psi',
                 'title': 'Psi',
-                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1474,7 +1466,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'BLOSUM62',
                 'title': 'BLOSUM62',
-                'engine': ['AA'],
                 'controller': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1484,7 +1475,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'BLOSUM90',
                 'title': 'BLOSUM90',
-                'engine': ['AA'],
                 'controller': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1494,7 +1484,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'codon_order_in_gene',
                 'title': 'Codon index',
-                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1504,7 +1493,6 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'codon_number',
                 'title': 'Codon number',
-                'engine': ['AA', 'CDN'],
                 'controller': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1514,27 +1502,24 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': var.competing_items,
                 'title': 'Competing Amino Acids' if engine == "AA" else 'Competing Codons',
-                'engine': ['AA', 'CDN'],
                 'controller': 'checkbox',
                 'choices': list(var.data[var.competing_items].value_counts().sort_values(ascending=False).index)
             },
             {
                 'name': 'reference',
                 'title': 'Reference',
-                'engine': ['AA', 'CDN'],
                 'controller': 'checkbox',
                 'choices': constants.amino_acids if engine == "AA" else constants.codons
             },
             {
                 'name': 'consensus',
                 'title': 'Consensus',
-                'engine': ['AA', 'CDN'],
                 'controller': 'checkbox',
                 'choices': constants.amino_acids if engine == "AA" else constants.codons
             },
         ]
 
-        info = [v for v in info if engine in v["engine"]]
+        info = [v for v in info if v['name'] in var.get_data_column_structure()]
         return info
 
 
@@ -1855,7 +1840,7 @@ class StructureInteractive(VariabilitySuper):
         """
         var.filter_data(criterion = "sample_id", subset_filter = sample_names)
         for unique_pos_identifier, df in var.data.groupby('unique_pos_identifier'):
-            print(df)
+            df
         pass
 
 
