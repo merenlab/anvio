@@ -476,16 +476,28 @@ Drawer.prototype.overlay_collapsed_node_layers = function() {
         let right_most = this.tree.label_to_leaves[collapse_attributes['right_most']];
         var p = this.tree.FindLowestCommonAncestor(left_most, right_most);
 
-        drawPie('tree_bin',
-            'overlay_collapsed_' + p.id,
-            p.angle - p.size / 2,
-            p.angle + p.size / 2,
-            beginning_of_layers - 10,
-            total_radius + 10,
-            (p.size > Math.PI) ? 1 : 0,
-            'white',
-            1,
-            false);
+        if (this.settings['tree-type'] == 'circlephylogram') {
+            drawPie('tree_bin',
+                'overlay_collapsed_' + p.id,
+                p.angle - p.size / 2,
+                p.angle + p.size / 2,
+                beginning_of_layers - 10,
+                total_radius + 10,
+                (p.size > Math.PI) ? 1 : 0,
+                'white',
+                1,
+                false);
+        } else {
+            drawPhylogramRectangle('tree_bin',
+                'overlay_collapsed_' + p.id,
+                beginning_of_layers - 10,
+                p.xy.y,
+                p.size,
+                total_radius - beginning_of_layers + 20,
+                'white',
+                1,
+                false);
+        }
     }
 }
 
