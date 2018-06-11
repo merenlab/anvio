@@ -94,7 +94,17 @@ $(document).ready(function() {
 
             if (group == target_group) {
                 $(tr).find('.layer_selectors').prop('checked', true);
-            } else {
+            }
+        });
+    });
+
+    $('#group_unselect_all').click(function() {
+        let target_group = $('#group_list_for_select_all').val();
+        
+        $('#tbody_samples tr').each((index, tr) => {
+            let group = $(tr).attr('samples-group-name');
+
+            if (group == target_group) {
                 $(tr).find('.layer_selectors').prop('checked', false);
             }
         });
