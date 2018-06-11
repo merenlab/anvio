@@ -2224,16 +2224,9 @@ function restoreOriginalTree() {
      .then(onTreeClusteringChange)
      .then(
         function() {
+            collapsedNodes = [];
             $('#tree_modified_warning').hide();
             drawTree();
         }
     );
-}
-
-function showSaveModifiedTree() {
-    $('#saveModifiedTree').modal('show');
-}
-
-function saveModifiedTree() {
-    
 }
