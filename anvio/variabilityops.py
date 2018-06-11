@@ -586,46 +586,46 @@ class VariabilitySuper(VariabilityFilter, object):
         # these lists are dynamically extended
         self.columns_to_report = {
             'position_identifiers': [
-                ('entry_id', 'integer'),
-                ('unique_pos_identifier', 'integer'),
-                ('pos', 'integer'),
-                ('pos_in_contig', 'integer'),
-                ('contig_name', 'text'),
-                ('split_name', 'text'),
+                ('entry_id', int),
+                ('unique_pos_identifier', int),
+                ('pos', int),
+                ('pos_in_contig', int),
+                ('contig_name', str),
+                ('split_name', str),
             ],
             'sample_info': [
-                ('sample_id', 'text'),
+                ('sample_id', str),
             ],
             'gene_info': [
-                ('corresponding_gene_call', 'integer'),
-                ('in_partial_gene_call', 'integer'),
-                ('in_complete_gene_call', 'integer'),
-                ('base_pos_in_codon', 'integer'),
-                ('codon_order_in_gene', 'integer'),
-                ('codon_number', 'integer'),
-                ('gene_length', 'integer'),
+                ('corresponding_gene_call', int),
+                ('in_partial_gene_call', int),
+                ('in_complete_gene_call', int),
+                ('base_pos_in_codon', int),
+                ('codon_order_in_gene', int),
+                ('codon_number', int),
+                ('gene_length', int),
             ],
             'coverage_info': [
-                ('coverage', 'integer'),
-                ('cov_outlier_in_split', 'integer'),
-                ('cov_outlier_in_contig', 'integer'),
-                ('in_complete_gene_call', 'integer'),
+                ('coverage', int),
+                ('cov_outlier_in_split', int),
+                ('cov_outlier_in_contig', int),
+                ('in_complete_gene_call', int),
             ],
             'sequence_identifiers': [
-                ('reference', 'text'),
-                ('consensus', 'text'),
-                ('competing_nts', 'text'),
-                ('competing_aas', 'text'),
-                ('competing_codons', 'text'),
+                ('reference', str),
+                ('consensus', str),
+                ('competing_nts', str),
+                ('competing_aas', str),
+                ('competing_codons', str),
             ],
             'statistical': [
-                ('departure_from_reference', 'real'),
-                ('departure_from_consensus', 'real'),
-                ('n2n1ratio', 'real'),
-                ('entropy', 'real'),
-                ('kullback_leibler_divergence_raw', 'real'),
-                ('kullback_leibler_divergence_normalized', 'real'),
-                ('synonymity', 'real'),
+                ('departure_from_reference', float),
+                ('departure_from_consensus', float),
+                ('n2n1ratio', float),
+                ('entropy', float),
+                ('kullback_leibler_divergence_raw', float),
+                ('kullback_leibler_divergence_normalized', float),
+                ('synonymity', float),
             ],
             'SSMs': [
             ],
@@ -811,7 +811,7 @@ class VariabilitySuper(VariabilityFilter, object):
         import anvio.data.SSMs as SSMs
         self.substitution_scoring_matrices = SSMs.get(self.engine, self.run)
         for m in self.substitution_scoring_matrices:
-            self.columns_to_report['SSMs'].extend([(m, 'integer'), (m + '_weighted', 'real')])
+            self.columns_to_report['SSMs'].extend([(m, int), (m + '_weighted', float)])
 
 
     def init_commons(self):
@@ -976,18 +976,17 @@ class VariabilitySuper(VariabilityFilter, object):
         self.merged = copy.deepcopy(self.data)
         self.filter_data(name = 'merged', criterion = 'sample_id', subset_filter = sample_group_to_merge)
 
-        #columns, datatypes = self.get_data_column_structure(data = self.merged)
-        #print(datatypes)
+        columns, datatypes = self.get_data_column_structure(data = self.merged)
 
-        #most_common = lambda x: x.mode()[0]
-        #operation_dictionary = {'text'   : [most_common],
-        #                        'real' : ['mean'],
-        #                        'integer'   : ['mean']}
-        #column_operations = {column: operation_dictionary[datatype] for column in columns for datatype in datatypes}
-        #print(column_operations)
+        most_common = lambda x: x.mode()[0]
+        integer_mean = lambda x: x.mean()
+        float_mean = lambda x: x.mean()
 
-        for unique_pos_identifier, df in self.merged.groupby('unique_pos_identifier'):
-            pass
+        operation_dictionary = {str: most_common, float: float_mean, int: integer_mean}
+        column_operations = {k: operation_dictionary[v] for k, v in dict(zip(columns, datatypes)).items()}
+
+        self.merged = self.merged.groupby('unique_pos_identifier').agg(column_operations)
+        self.data_merged[group_name] = self.merged
 
 
     def load_variability_data(self):
@@ -1606,8 +1605,9 @@ class VariabilitySuper(VariabilityFilter, object):
                              how = "left")
 
         # add all known residue info sources to columns_to_report
+        C = {'text': str, 'real': float, 'integer': int}
         redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa']
-        structure_columns_to_report = [(x, y) for x in t.DSSP_structure for y in t.DSSP_types if x not in redundant_columns]
+        structure_columns_to_report = [(x, C[y]) for x, y in zip(t.DSSP_structure, t.DSSP_types) if x not in redundant_columns]
         self.columns_to_report['structural'].extend(structure_columns_to_report)
         self.progress.end()
 

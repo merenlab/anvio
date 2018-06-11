@@ -1823,14 +1823,14 @@ class StructureInteractive(VariabilitySuper):
             for filter_criterion, param_values in options["filter_params"].items():
                 for param_name, param_value in param_values.items():
                     setattr(var, param_name, param_value)
-                list_of_filter_functions.append(F(var.filter_data, criterion=filter_criterion))
+                list_of_filter_functions.append(F(var.filter_data, name='merged', criterion=filter_criterion))
 
             # ʕ•ᴥ•ʔ
             var.process(process_functions=list_of_filter_functions, exit_if_data_empty=False)
 
             output[group] = {
-                'data': var.data.to_json(orient='index'),
-                'entries_after_filtering': var.data.shape[0]
+                'data': var.merged.to_json(orient='index'),
+                'entries_after_filtering': var.merged.shape[0]
             }
 
             list_of_filter_functions = []

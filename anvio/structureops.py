@@ -246,7 +246,7 @@ class Structure(object):
             "DSSP": {
                 "method"    : self.run_DSSP,
                 "skip"      : self.skip_DSSP,
-                "structure" : {k: v for k in t.DSSP_structure for v in t.DSSP_types}
+                "structure" : dict(zip(t.DSSP_structure, t.DSSP_types))
                 },
             "STRIDE": {
                 "method"  : lambda *args, **kwargs: None,
