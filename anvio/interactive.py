@@ -296,7 +296,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
         skipped_additional_data_layers = []
         # go through additional layers that are not of type `bar`.
-        for layer in [additional_layer for additional_layer in self.items_additional_data_keys if '!' not in additional_layer]:
+        for layer in [additional_layer for additional_layer in self.items_additional_data_keys]:
             self.progress.update('for "%s" ...' % layer)
             layer_type = utils.get_predicted_type_of_items_in_a_dict(self.items_additional_data_dict, layer)
 
