@@ -1501,17 +1501,17 @@ class StructureInteractive(VariabilitySuper):
                 'name': 'reference',
                 'title': 'Reference',
                 'controller': 'checkbox',
-                'choices': constants.amino_acids if engine == "AA" else constants.codons
+                'choices': list(var.data['reference'].value_counts().sort_values(ascending=False).index)
             },
             {
                 'name': 'consensus',
                 'title': 'Consensus',
                 'controller': 'checkbox',
-                'choices': constants.amino_acids if engine == "AA" else constants.codons
+                'choices': list(var.data['consensus'].value_counts().sort_values(ascending=False).index)
             },
         ]
 
-        info = [v for v in info if v['name'] in var.get_data_column_structure()[0]]
+        info = [v for v in info if v['name'] in var.data.columns]
         return info
 
 
