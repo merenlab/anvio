@@ -272,6 +272,7 @@ function serialize_filtering_widgets() {
 }
 
 function draw_variability() {
+    $('.overlay').show();
     let gene_callers_id = $('#gene_callers_id_list').val();
     let engine = $('[name=engine]:checked').val();
 
@@ -386,9 +387,12 @@ function draw_variability() {
                     }
                 }
             }
+
+            $('.overlay').hide();
         },
         error: function(request, status, error) {
             console.log(request, status, error);
+            $('.overlay').hide();
         }
     });
 };
