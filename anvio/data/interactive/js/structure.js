@@ -216,12 +216,14 @@ function create_ngl_views() {
 function load_protein() {
     let gene_callers_id = $('#gene_callers_id_list').val();
     var defer = $.Deferred();
+    $('.overlay').show();
     
     $.ajax({
         type: 'GET',
         cache: false,
         url: '/data/get_structure/' + gene_callers_id,
         success: function(data) {
+            $('.overlay').hide();
             histogram_data = data['histograms'];
             pdb_content = data['pdb_content'];
             defer.resolve();
