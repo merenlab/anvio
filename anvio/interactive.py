@@ -1810,10 +1810,10 @@ class StructureInteractive(VariabilitySuper):
         var.merged = copy.deepcopy(var.data)
         var.filter_data(name = 'merged', criterion = 'sample_id', subset_filter = sample_group_to_merge)
 
-        columns, datatypes = var.get_data_column_structure(data = self.merged)
+        columns, datatypes = var.get_data_column_structure(data = var.merged)
 
         # all statistical measures
-        operation_dictionary = {str: [
+        generic_operation_dictionary = {str: [
                                     ('',                  lambda x: x.mode()[0]), # most common gets no suffix
                                     ('_most_common_freq', lambda x: x.value_counts().iloc[0] / x.count()),
                                      ],
@@ -1840,19 +1840,19 @@ class StructureInteractive(VariabilitySuper):
                                }
 
         # e.g. {'dfc':[('dfc_min', mini), ...], 'sec_struc':[('sec_struct_most_common', most_common), ...]}
-        column_operations = {k: [(k + x, y) for x, y in operation_dictionary[v]] for k, v in dict(zip(columns, datatypes)).items()}
+        column_operations = {k: [(k + x, y) for x, y in generic_operation_dictionary[v]] for k, v in dict(zip(columns, datatypes)).items()}
 
-        # update with merge-specific columns
         # occurrence: the number of samples that contained a given SAAV in the sample group
         # prevalence: the frequency of samples that contained a given SAAV in the sample group
-        self.merged['occurrence'] = 0 # initialize column
-        self.merged['prevalence'] = 0 # initialize column
+        var.merged['occurrence'] = 0 # initialize column
+        var.merged['prevalence'] = 0 # initialize column
         column_operations.update({'occurrence': [('occurrence', lambda x: x.count())],
-                                  'prevalence': [('prevalence', lambda x: x.count() / len(sample_group_to_merge))]})
+                                  'prevalence': [('prevalence', lambda x: x.count() / len(sample_group_to_merge))],
+                                  'sample_id': [('sample_ids', lambda x: ", ".join(list(x.unique())))]})
 
 
-        self.merged = self.merged.groupby('unique_pos_identifier').agg(column_operations)
-        self.merged.columns = self.merged.columns.droplevel()
+        var.merged = var.merged.groupby('unique_pos_identifier').agg(column_operations)
+        var.merged.columns = var.merged.columns.droplevel()
 
 
     def get_variability(self, options):
@@ -1888,7 +1888,7 @@ class StructureInteractive(VariabilitySuper):
 
             # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
             var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
-            var.merge_data_by_sample_group(samples_in_group, group)
+            self.compute_merged_variability(var, samples_in_group)
 
             # set group specific filter parameters here
             var.sample_ids_of_interest = set(samples_in_group)
