@@ -310,8 +310,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     if item in self.items_additional_data_dict:
                         sum_stackbar_items[stackbar_name][item] += float(self.items_additional_data_dict[item][layer])
 
-        print(sum_stackbar_items)
-
         for layer in [additional_layer for additional_layer in self.items_additional_data_keys]:
             self.progress.update('for "%s" ...' % layer)
             layer_type = utils.get_predicted_type_of_items_in_a_dict(self.items_additional_data_dict, layer)
