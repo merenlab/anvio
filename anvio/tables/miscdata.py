@@ -330,17 +330,21 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         for data_key in additional_data_keys:
             if '!' in data_key:
                 predicted_key_type = "stackedbar"
+                stacked_bar_name, item_name = data_key.split('!')
+                data_key_name = '%s [%s]' % (stacked_bar_name, item_name)
             else:
                 type_class = utils.get_predicted_type_of_items_in_a_dict(additional_data_dict, data_key)
                 predicted_key_type = type_class.__name__ if type_class else 'unknown'
+                data_key_name = data_key
 
             if predicted_key_type == "stackedbar":
                 stackbar_name = data_key.split('!')[0]
                 layer_name_layer_data_tuples = [(float(additional_data_dict[layer][data_key]) / (1.0 * sum_stackbar_items[stackbar_name][layer]) if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
             else:
                 layer_name_layer_data_tuples = [(additional_data_dict[layer][data_key] if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
-            order_data_dict['>> ' + data_key] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples)])}
-            order_data_dict['>> ' + data_key + ' (reverse)'] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples, reverse=True)])}
+
+            order_data_dict['>> ' + data_key_name] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples)])}
+            order_data_dict['>> ' + data_key_name + ' (reverse)'] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples, reverse=True)])}
 
         return order_data_dict
 
