@@ -21,7 +21,7 @@ body {
     height: 100%;
     display: block;
     overflow-y: scroll;
-    background: url(../images/fractal.jpg) center center scroll;
+    background: #FAFAFA;
 }
 
 .ngl-inner {
@@ -148,4 +148,12 @@ body {
     border-color: #DDDDDD;
     text-align: center;
     background-color: #FFFFFF;
+}
+
+.table-striped>tbody>tr:nth-child(odd)>td, .table-striped>tbody>tr:nth-child(odd)>th {
+    background-color: #777777;
+}
+
+.table-striped>tbody>tr:nth-child(even)>td, .table-striped>tbody>tr:nth-child(even)>th {
+    background-color: #999999;
 }
