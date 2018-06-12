@@ -402,7 +402,7 @@ function onViewChange() {
 
 
 function changeViewData(view_data) {
-    layerdata = view_data;
+    layerdata = mergeStackbarLayers(view_data);
     parameter_count = layerdata[0].length;
 
     // since we are painting parent layers odd-even, 
@@ -437,6 +437,48 @@ function changeViewData(view_data) {
     buildLayersTable(layer_order, views[current_view]);
     populateColorDicts();
     buildLegendTables();
+}
+
+
+function mergeStackbarLayers(view_data) {
+    layerdata = []
+
+    for (let i=0; i < view_data.length; i++) {
+        layerdata.push([]);
+    }
+
+    for (let i=0; i < view_data[0].length; i++) {
+        let pos = -1;
+        let stack_group_name; // part before !
+        let stack_layer_name; // after !
+
+        if (view_data[0][i].indexOf('!') > -1) {
+            stack_group_name = view_data[0][i].split('!')[0];
+            stack_layer_name = view_data[0][i].split('!')[1];
+
+            for (let j=0; j < layerdata[0].length; j++) {
+                if (layerdata[0][j].startsWith(stack_group_name + '!')) {
+                    pos = j;
+                    break;
+                }
+            }
+        }
+
+        for (let j=0; j < view_data.length; j++) {
+            if (pos == -1) {
+                layerdata[j].push(view_data[j][i]);
+            } else {
+                if (j==0) {
+                    layerdata[0][pos] += ';' + stack_layer_name;
+                }
+                else {
+                    layerdata[j][pos] += ';' + view_data[j][i];
+                }
+            }
+        }
+    }
+
+    return layerdata;
 }
 
 
