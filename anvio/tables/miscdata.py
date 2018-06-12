@@ -317,10 +317,11 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         sum_stackbar_items = {}
         for data_key in additional_data_keys:
             if '!' in data_key:
-                sum_stackbar_items[data_key] = 0
+                stackbar_name = data_key.split('!')[0]
+                sum_stackbar_items[stackbar_name] = 0
 
                 for layer in additional_data_dict:
-                    sum_stackbar_items[data_key] += float(additional_data_dict[layer][data_key])
+                    sum_stackbar_items[stackbar_name] += float(additional_data_dict[layer][data_key])
 
         for data_key in additional_data_keys:
             if '!' in data_key:
@@ -330,7 +331,8 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 predicted_key_type = type_class.__name__ if type_class else 'unknown'
 
             if predicted_key_type == "stackedbar":
-                layer_name_layer_data_tuples = [(float(additional_data_dict[layer][data_key]) * 1.0 / sum_stackbar_items[data_key] if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
+                stackbar_name = data_key.split('!')[0]
+                layer_name_layer_data_tuples = [(float(additional_data_dict[layer][data_key]) * 1.0 / sum_stackbar_items[stackbar_name] if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
             else:
                 layer_name_layer_data_tuples = [(additional_data_dict[layer][data_key] if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
             order_data_dict['>> ' + data_key] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples)])}
