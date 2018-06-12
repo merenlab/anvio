@@ -617,6 +617,7 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('competing_nts', str),
                 ('competing_aas', str),
                 ('competing_codons', str),
+                ('primary_substitution', str),
             ],
             'statistical': [
                 ('departure_from_reference', float),
@@ -1324,6 +1325,12 @@ class VariabilitySuper(VariabilityFilter, object):
         # the most common item with itself.
         self.data.loc[entry_ids, self.competing_items] = np.sum(np.sort(items_first_and_second.values, axis=1), axis=1) # V/\
         self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == self.data[self.items].max(axis=1)), self.competing_items] = self.data["consensus"]*2
+
+        # compute the primary substitution while we're at it
+        self.data.loc[entry_ids, "primary_substitution"] \
+            = items_first_and_second[entry_ids,0].map(str) + self.data.loc[entry_ids,"codon_number"].map(str) + items_first_and_second[entry_ids,1].map(str)
+        self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == self.data[self.items].max(axis=1)), "primary_substitution"] \
+            = self.data["consensus"].map(str) + self.data["primary_substitution"] + self.data["consensus"].map(str)
 
         # Loop through each SSM, filling each corresponding column entry by entry using the `apply`
         # operator. Instead of using self.substitution_scoring_matrices[m], we speed things up by
