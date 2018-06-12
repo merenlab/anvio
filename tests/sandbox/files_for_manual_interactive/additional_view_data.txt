@@ -298,4 +298,4 @@ tucotuco	t		uqskf	1.52	152	149	296
 turanian	t	x	cdv npqxiz	1.56	156	145	297
 tuskless	t	y	wlemkpjt oqkdgj	1.87	187	114	298
 twelvemo	t	x	fsep gocuk	1.91	191	110	299
-tyrtaeus	t	y	umbhqd mqjer znifypes	1.81	181	120	300
+tyrtaeus	t	y	umbhqd mqjer znifypes	1.81	100000	9999999999999	9999999999999
