@@ -356,11 +356,19 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                                                              layer))
                 self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
 
-            self.p_meta['available_item_orders'].append('>> %s:none:none' % layer)
-            self.p_meta['item_orders']['>> %s' % layer] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple)]}
 
-            self.p_meta['available_item_orders'].append('>> %s_(reverse):none:none' % layer)
-            self.p_meta['item_orders']['>> %s_(reverse)' % layer] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
+            # try to fancify the layer names that will appear in items order combo for stacked
+            # bar data type before adding them in:
+            if '!' in layer:
+                stacked_bar_name, item_name = layer.split('!')
+                layer_name = '%s [%s]' % (stacked_bar_name, item_name)
+            else:
+                layer_name = layer
+
+            self.p_meta['available_item_orders'].append('>> %s:none:none' % layer_name)
+            self.p_meta['item_orders']['>> %s' % layer_name] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple)]}
+            self.p_meta['available_item_orders'].append('>> %s_(reverse):none:none' % layer_name)
+            self.p_meta['item_orders']['>> %s_(reverse)' % layer_name] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
 
         self.progress.end()
 
