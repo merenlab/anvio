@@ -213,7 +213,7 @@ if not references_mode and not (run_idba_ud or run_megahit):
                        you need to add '\"references_mode\": true', and a '\"fasta_txt\": \
                        \"name-of-your-fasta-txt-file\"' to your config file. Otherwise,\
                        if you do mean to use assembly, please set 'run: true' for one of the,\
-                       following available assemblers: %s" % ', '.join(M.get_assembly_software_list))
+                       following available assemblers: %s" % ', '.join(available_assemblers))
 
 rule metagenomics_workflow_target_rule:
     '''
