@@ -188,18 +188,39 @@ function create_ngl_views() {
 
                 if (variability[group].hasOwnProperty(residue)) {
                     let HTML_reference_title = `<h4>Reference info</h4>`
-                    let HTML_reference_body = `<table>
-                        <tr><td>Residue</td><td>${variability[group][residue]['reference']}${variability[group][residue]['codon_number']}</td></tr>
+                    let HTML_reference_body = `
                         <tr><td>Secondary Structure</td><td>${variability[group][residue]['sec_struct']}</td></tr>
                         <tr><td>Solvent Accessibility</td><td>${variability[group][residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
-                        </table>`
+                        `
+
                     let HTML_variant_title = `<h4>Variant info</h4>`
-                    let HTML_variant_body = `<table>
+                    let HTML_variant_body = `
                         <tr><td>Consensus</td><td>${variability[group][residue]['consensus']}</td></tr>
-                        <tr><td>Primary Substitution</td><td>${variability[group][residue]['primary_substitution']}</td></tr>
+                        <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
                         <tr><td>Occurrence</td><td>${variability[group][residue]['occurrence']} of ${variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']} samples</td></tr>
                         <tr><td>Mean Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
-                        </table>`
+                        <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
+                        `
+
+                    // add CDN specific columns
+                    if ($('[name=engine]:checked').val() == 'CDN') {
+                        // prepend to body
+                        HTML_reference_body = `<tr><td>Codon</td><td>${variability[group][residue]['reference']}</td></tr>` + HTML_reference_body
+                        HTML_reference_body = `<tr><td>Codon No.</td><td>${variability[group][residue]['codon_number']}</td></tr>` + HTML_reference_body
+                        // append to body
+                        HTML_variant_body += `<tr><td>Synonymity</td><td>${variability[group][residue]['synonymity'].toFixed(2)}</td></tr>`
+                    }
+
+                    // add AA specific columns
+                    if ($('[name=engine]:checked').val() == 'AA') {
+                        // prepend to body
+                        HTML_reference_body = `<tr><td>Residue</td><td>${variability[group][residue]['reference']}</td></tr>` + HTML_reference_body
+                        HTML_reference_body = `<tr><td>Residue No.</td><td>${variability[group][residue]['codon_number']}</td></tr>` + HTML_reference_body
+                    }
+
+                    HTML_reference_body = `<table>` + HTML_reference_body + `</table>`
+                    HTML_variant_body = `<table>` + HTML_variant_body + `</table>`
+
                     tooltip.innerHTML = HTML_reference_title + HTML_reference_body + HTML_variant_title + HTML_variant_body;
                     tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
                     tooltip.style.left = mp.x + 3 + "px";
