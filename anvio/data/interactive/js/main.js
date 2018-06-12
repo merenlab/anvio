@@ -2209,6 +2209,7 @@ function processState(state_name, state) {
                 $(checkbox).prop('checked', state['samples-groups'][group_name]);
             }
         }
+        toggleSampleGroups();
     }
 
     buildLegendTables();
