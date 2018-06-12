@@ -160,7 +160,7 @@ function create_ngl_views() {
                 if( component.type !== "structure" ) return;
 
                 component.addRepresentation( "cartoon", {
-                    colorScheme: 'residueindex',
+                    //colorScheme: 'residueindex',
                     metalness: 0.1,
                     aspectRatio: 3.0,
                     scale: 1.5
@@ -187,11 +187,20 @@ function create_ngl_views() {
                 let mp = pickingProxy.mouse.position;
 
                 if (variability[group].hasOwnProperty(residue)) {
-                    tooltip.innerHTML = `<table>
-                            <tr><td>Coverage</td><td>${variability[group][residue]['coverage']}</td></tr>
-                            <tr><td>Cove</td><td>${variability[group][residue]['coverage']}</td></tr>
-                            <tr><td>Coverage</td><td>${variability[group][residue]['coverage']}</td></tr>
-                            </table>`;
+                    let HTML_reference_title = `<h4>Reference info</h4>`
+                    let HTML_reference_body = `<table>
+                        <tr><td>Residue</td><td>${variability[group][residue]['reference']}${variability[group][residue]['codon_number']}</td></tr>
+                        <tr><td>Secondary Structure</td><td>${variability[group][residue]['sec_struct']}</td></tr>
+                        <tr><td>Solvent Accessibility</td><td>${variability[group][residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
+                        </table>`
+                    let HTML_variant_title = `<h4>Variant info</h4>`
+                    let HTML_variant_body = `<table>
+                        <tr><td>Consensus</td><td>${variability[group][residue]['consensus']}</td></tr>
+                        <tr><td>Primary Substitution</td><td>${variability[group][residue]['consensus']}</td></tr>
+                        <tr><td>Occurrence</td><td>${variability[group][residue]['occurrence']} of ${variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']} samples</td></tr>
+                        <tr><td>Mean Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
+                        </table>`
+                    tooltip.innerHTML = HTML_reference_title + HTML_reference_body + HTML_variant_title + HTML_variant_body;
                     tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
                     tooltip.style.left = mp.x + 3 + "px";
                     tooltip.style.display = "block";
