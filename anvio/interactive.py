@@ -1788,6 +1788,73 @@ class StructureInteractive(VariabilitySuper):
         return histograms
 
 
+    def compute_merged_variability(self, var, sample_group_to_merge):
+        """
+           var : class
+               instance that inherits VariabilitySuper
+           sample_names : list-like
+               sample_ids to merge
+
+           This function merges rows in self.data that share the same unique position identifier.
+           For example if you have samples s01, s02, and s03, each with an entry with unique
+           position identifier = 1234, this function will return dataframe containing only one entry
+           with unique position identifier = 1234, with entries in this row being the mean of the
+           three previous rows for columns that have numerical values and the most common value for
+           columns that have categorical values. For example,
+
+           unique_pos  sec_struc  dfc
+           1234        H          1.0       becomes       unique_pos  sec_struc  dfc
+           1234        H          0.8      ========>      1234        H          0.9
+           1234        B          0.9
+        """
+        var.merged = copy.deepcopy(var.data)
+        var.filter_data(name = 'merged', criterion = 'sample_id', subset_filter = sample_group_to_merge)
+
+        columns, datatypes = var.get_data_column_structure(data = self.merged)
+
+        # all statistical measures
+        operation_dictionary = {str: [
+                                    ('',                  lambda x: x.mode()[0]), # most common gets no suffix
+                                    ('_most_common_freq', lambda x: x.value_counts().iloc[0] / x.count()),
+                                     ],
+                                float: [
+                                    ('_std',              lambda x: x.std()),
+                                    ('',                  lambda x: x.mean()), # mean gets no suffix
+                                    ('_mini',             lambda x: x.min()),
+                                    ('_maxi',             lambda x: x.max()),
+                                    ('_median',           lambda x: x.median()),
+                                    ('_percentile_25',    lambda x: x.quantile(0.25)),
+                                    ('_percentile_50',    lambda x: x.quantile(0.50)),
+                                    ('_percentile_75',    lambda x: x.quantile(0.75)),
+                                     ],
+                                int: [
+                                    ('_std',              lambda x: x.std()),
+                                    ('',                  lambda x: x.mean()),
+                                    ('_mini',             lambda x: x.min()),
+                                    ('_maxi',             lambda x: x.max()),
+                                    ('_median',           lambda x: x.median()),
+                                    ('_percentile_25',    lambda x: x.quantile(0.25)),
+                                    ('_percentile_50',    lambda x: x.quantile(0.50)),
+                                    ('_percentile_75',    lambda x: x.quantile(0.75)),
+                                     ],
+                               }
+
+        # e.g. {'dfc':[('dfc_min', mini), ...], 'sec_struc':[('sec_struct_most_common', most_common), ...]}
+        column_operations = {k: [(k + x, y) for x, y in operation_dictionary[v]] for k, v in dict(zip(columns, datatypes)).items()}
+
+        # update with merge-specific columns
+        # occurrence: the number of samples that contained a given SAAV in the sample group
+        # prevalence: the frequency of samples that contained a given SAAV in the sample group
+        self.merged['occurrence'] = 0 # initialize column
+        self.merged['prevalence'] = 0 # initialize column
+        column_operations.update({'occurrence': [('occurrence', lambda x: x.count())],
+                                  'prevalence': [('prevalence', lambda x: x.count() / len(sample_group_to_merge))]})
+
+
+        self.merged = self.merged.groupby('unique_pos_identifier').agg(column_operations)
+        self.merged.columns = self.merged.columns.droplevel()
+
+
     def get_variability(self, options):
         selected_engine = options['engine']
         gene_callers_id = int(options['gene_callers_id'])
