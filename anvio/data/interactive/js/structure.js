@@ -364,6 +364,8 @@ function draw_variability() {
                             if (controller == 'slider') {
                                 let min_value = parseFloat($('#size_min').val());
                                 let max_value = parseFloat($('#size_max').val());
+                                let start_value = parseFloat($('#size_start').val());
+                                let end_value = parseFloat($('#size_end').val());
 
                                 if (min_value >= max_value) {
                                     $('#dynamic_size_error').show();
@@ -375,7 +377,7 @@ function draw_variability() {
                                 
                                 val = Math.max(0, Math.min(1, val));
 
-                                spacefill_options['scale'] = parseFloat($('#size_start').val()) + (val * Math.abs(parseFloat($('#size_end').val()) - parseFloat($('#size_start').val())));
+                                spacefill_options['scale'] = start_value + (val * (end_value - start_value));
                             }
                             else {
                                 spacefill_options['scale'] = size_legend[engine][column][column_value];
