@@ -1906,7 +1906,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
         genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names=['gene', 'accession', 'hmmsource'])
 
-        check_gene_names_in_hmm_model(os.path.join(source, 'genes.hmm.gz'), genes)
+        sanity_check_hmm_model(os.path.join(source, 'genes.hmm.gz'), genes)
 
         sources[os.path.basename(source)] = {'ref': ref,
                                              'kind': kind,
@@ -1919,14 +1919,22 @@ def get_HMM_sources_dictionary(source_dirs=[]):
     return sources
 
 
-def check_gene_names_in_hmm_model(model_path, genes):
+def sanity_check_hmm_model(model_path, genes):
     genes = set(genes)
     genes_in_model = set([])
+    accession_ids_in_model = []
 
     with gzip.open(model_path, 'rt', encoding='utf-8') as f:
         for line in f:
             if line.startswith('NAME'):
                 genes_in_model.add(line.split()[1])
+            if line.startswith('ACC'):
+                accession_ids_in_model.append(line.split()[1])
+
+    if len(accession_ids_in_model) != len(set(accession_ids_in_model)):
+        raise ConfigError("Accession IDs in your HMM model should be unique, however, the `genes.hmm.gz`\
+                           file for `%s` seems to have the same accession ID (the line that starts with `ACC`)\
+                           more than once :(" % (os.path.abspath(model_path).split('/')[-2]))
 
     if len(genes.difference(genes_in_model)):
         raise ConfigError("Some gene names in genes.txt file does not seem to be appear in genes.hmm.gz.\
