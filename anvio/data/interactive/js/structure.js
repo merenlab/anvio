@@ -196,7 +196,7 @@ function create_ngl_views() {
                     let HTML_variant_title = `<h4>Variant info</h4>`
                     let HTML_variant_body = `<table>
                         <tr><td>Consensus</td><td>${variability[group][residue]['consensus']}</td></tr>
-                        <tr><td>Primary Substitution</td><td>${variability[group][residue]['consensus']}</td></tr>
+                        <tr><td>Primary Substitution</td><td>${variability[group][residue]['primary_substitution']}</td></tr>
                         <tr><td>Occurrence</td><td>${variability[group][residue]['occurrence']} of ${variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']} samples</td></tr>
                         <tr><td>Mean Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
                         </table>`
