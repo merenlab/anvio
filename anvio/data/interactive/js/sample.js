@@ -111,6 +111,50 @@ $(document).ready(function() {
     });
 });
 
+
+function samplesMergeStackbarLayers(data_dict, order_list) {
+    let new_dict = {};
+    let new_order_list = {};
+
+    for (let group in data_dict) {
+        new_dict[group] = {};
+
+        for (let item in data_dict[group]) {
+
+            new_dict[group][item] = {};
+            for (let i=0; i < order_list[group].length; i++) {
+                let data_key = order_list[group][i];
+                if (data_key.indexOf('!') > -1) {
+                    let stack_bar_name = data_key.split('!')[0];
+                    let stack_bar_layer_name = data_key.split('!')[1];
+                    let found_key_in_new_dict = "";
+
+                    for (let data_key_in_new in new_dict[group][item]) {
+                        if (data_key_in_new.startsWith(stack_bar_name)) {
+                            found_key_in_new_dict = data_key_in_new;
+                            break;
+                        }
+                    }
+
+                    if (found_key_in_new_dict === "") {
+                        new_dict[group][item][data_key] = data_dict[group][item][data_key];
+                    } else {
+                        new_dict[group][item][found_key_in_new_dict + ';' + stack_bar_layer_name] = new_dict[group][item][found_key_in_new_dict] + ';' + data_dict[group][item][data_key];
+                        delete new_dict[group][item][found_key_in_new_dict];
+                    }
+                } else {
+                    new_dict[group][item][data_key] = data_dict[group][item][data_key];
+                }
+            }
+        }
+
+        let first_item = Object.keys(new_dict[group])[0];
+        new_order_list[group] = Object.keys(new_dict[group][first_item]);
+    }
+
+    return {'dict': new_dict, 'default_order': new_order_list};
+}
+
 function convert_samples_order_to_array(input_dict) {
     let all_information_layers = [];
 
