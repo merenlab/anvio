@@ -159,12 +159,23 @@ function create_ngl_views() {
              .then((component) => {
                 if( component.type !== "structure" ) return;
 
-                component.addRepresentation( "cartoon", {
+                // component.addRepresentation("surface", {
+                //     surfaceType: "ms",
+                //     smooth: 2,
+                //     probeRadius: 1.4,
+                //     scaleFactor: 2.0,
+                //     flatShaded: false,
+                //     opacity: 0.8,
+                //     lowResolution: false,
+                //     colorScheme: "element"
+                // });
+
+                component.addRepresentation("cartoon", {
                     //colorScheme: 'residueindex',
                     metalness: 0.1,
                     aspectRatio: 3.0,
                     scale: 1.5
-                } );
+                });
 
                 var pa = component.structure.getPrincipalAxes();     
                 component.setRotation(pa.getRotationQuaternion());
@@ -191,13 +202,14 @@ function create_ngl_views() {
                     let HTML_reference_body = `
                         <tr><td>Secondary Structure</td><td>${variability[group][residue]['sec_struct']}</td></tr>
                         <tr><td>Solvent Accessibility</td><td>${variability[group][residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
+                        <tr><td>(Phi, Psi)</td><td>(${variability[group][residue]['phi'].toFixed(1)}, ${variability[group][residue]['psi'].toFixed(1)})</td></tr>
                         `
 
                     let HTML_variant_title = `<h4>Variant info</h4>`
                     let HTML_variant_body = `
                         <tr><td>Consensus</td><td>${variability[group][residue]['consensus']}</td></tr>
                         <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
-                        <tr><td>Occurrence</td><td>${variability[group][residue]['occurrence']} of ${variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']} samples</td></tr>
+                        <tr><td>Prevalence</td><td>${variability[group][residue]['occurrence']} of ${parseInt(Math.round(variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']))} samples</td></tr>
                         <tr><td>Mean Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
                         <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
                         `
@@ -216,10 +228,12 @@ function create_ngl_views() {
                         // prepend to body
                         HTML_reference_body = `<tr><td>Residue</td><td>${variability[group][residue]['reference']}</td></tr>` + HTML_reference_body
                         HTML_reference_body = `<tr><td>Residue No.</td><td>${variability[group][residue]['codon_number']}</td></tr>` + HTML_reference_body
+                        // append to body
+                        HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
                     }
 
-                    HTML_reference_body = `<table>` + HTML_reference_body + `</table>`
-                    HTML_variant_body = `<table>` + HTML_variant_body + `</table>`
+                    HTML_reference_body = `<table class="table table-striped">` + HTML_reference_body + `</table>`
+                    HTML_variant_body = `<table class="table table-striped">` + HTML_variant_body + `</table>`
 
                     tooltip.innerHTML = HTML_reference_title + HTML_reference_body + HTML_variant_title + HTML_variant_body;
                     tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
