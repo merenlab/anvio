@@ -1396,6 +1396,15 @@ class StructureInteractive(VariabilitySuper):
                 'max': 1,
             },
             {
+                'name': 'prevalence',
+                'title': 'Prevalence',
+                'controller': 'none',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': 0,
+                'max': 1
+            },
+            {
                 'name': 'coverage',
                 'title': 'Coverage',
                 'controller': 'slider',
@@ -1736,7 +1745,6 @@ class StructureInteractive(VariabilitySuper):
         for engine in self.available_engines:
             summary['histograms'][engine] = self.get_histograms(self.variability_storage[gene_callers_id][engine]['var_object'],
                                                                 self.variability_storage[gene_callers_id][engine]['column_info'])
-        self.progress.end()
 
         return summary
 
