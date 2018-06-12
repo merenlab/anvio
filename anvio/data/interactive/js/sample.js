@@ -130,7 +130,7 @@ function samplesMergeStackbarLayers(data_dict, order_list) {
                     let found_key_in_new_dict = "";
 
                     for (let data_key_in_new in new_dict[group][item]) {
-                        if (data_key_in_new.startsWith(stack_bar_name)) {
+                        if (data_key_in_new.startsWith(stack_bar_name + '!')) {
                             found_key_in_new_dict = data_key_in_new;
                             break;
                         }
