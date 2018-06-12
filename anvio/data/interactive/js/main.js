@@ -225,10 +225,13 @@ function initData() {
 
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
             $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
+                        
+            let merged = samplesMergeStackbarLayers(response.layers_information, response.layers_information_default_order);
             
             samples_order_dict = response.layers_order;
-            samples_information_dict = response.layers_information;
-            let samples_information_default_layer_order = response.layers_information_default_order;
+            samples_information_dict = merged['dict'];
+            let samples_information_default_layer_order = merged['default_order'];
+
             let samples_groups = Object.keys(samples_information_dict).sort();
 
             samples_groups.forEach(function (group_name) {
