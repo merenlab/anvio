@@ -295,7 +295,23 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
         skipped_additional_data_layers = []
-        # go through additional layers that are not of type `bar`.
+
+        sum_stackbar_items = {}
+        for layer in [additional_layer for additional_layer in self.items_additional_data_keys]:
+            if '!' in layer:
+                stackbar_name = layer.split('!')[0]
+                if stackbar_name not in sum_stackbar_items:
+                    sum_stackbar_items[stackbar_name] = {}
+
+                for item in self.displayed_item_names_ordered:
+                    if item not in sum_stackbar_items[stackbar_name]:
+                        sum_stackbar_items[stackbar_name][item] = 0.0
+
+                    if item in self.items_additional_data_dict:
+                        sum_stackbar_items[stackbar_name][item] += float(self.items_additional_data_dict[item][layer])
+
+        print(sum_stackbar_items)
+
         for layer in [additional_layer for additional_layer in self.items_additional_data_keys]:
             self.progress.update('for "%s" ...' % layer)
             layer_type = utils.get_predicted_type_of_items_in_a_dict(self.items_additional_data_dict, layer)
@@ -321,7 +337,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                         else:
                             item_layer_data_tuple.append(('', item))
                     else:
-                        item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
+                        if '!' in layer:
+                            stackbar_name = layer.split('!')[0]
+                            item_layer_data_tuple.append((float(self.items_additional_data_dict[item][layer]) / (1.0 * float(sum_stackbar_items[stackbar_name][item])), item))
+                        else:
+                            item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
 
             if len(items_for_which_we_put_zeros_for_missing_values):
                 self.progress.end()
