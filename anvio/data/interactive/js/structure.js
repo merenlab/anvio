@@ -127,6 +127,14 @@ function apply_orientation_matrix_to_all_stages(orientationMatrix) {
 }
 
 function create_ngl_views() {
+    let selected_groups = $('[checkbox-for="group"]:checked');
+    if (selected_groups.length > MAX_NGL_WIDGETS) {
+        $('#maximum_ngl_widgets_error').show();
+        return;
+    } else {
+        $('#maximum_ngl_widgets_error').hide();
+    }
+
     for (let group in stages) {
         stages[group].dispose();
     }
@@ -134,12 +142,6 @@ function create_ngl_views() {
 
     $('#ngl-container').empty();
 
-    let selected_groups = $('[checkbox-for="group"]:checked');
-    if (selected_groups.length > MAX_NGL_WIDGETS) {
-        $('#maximum_ngl_widgets_error').show();
-    } else {
-        $('#maximum_ngl_widgets_error').hide();
-    }
 
     $(selected_groups).each((index, element) => {
         let group = $(element).attr('data-group');
