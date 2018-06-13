@@ -17,6 +17,9 @@ $(document).ready(function() {
             $(el).attr('color', '#' + hex);
 
             if (!bySetColor) $(el).val(hex);
+        },
+        onHide: function() {
+            draw_variability();
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
