@@ -225,10 +225,13 @@ function initData() {
 
             $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
             $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection(); 
+                        
+            let merged = samplesMergeStackbarLayers(response.layers_information, response.layers_information_default_order);
             
             samples_order_dict = response.layers_order;
-            samples_information_dict = response.layers_information;
-            let samples_information_default_layer_order = response.layers_information_default_order;
+            samples_information_dict = merged['dict'];
+            let samples_information_default_layer_order = merged['default_order'];
+
             let samples_groups = Object.keys(samples_information_dict).sort();
 
             samples_groups.forEach(function (group_name) {
@@ -402,7 +405,7 @@ function onViewChange() {
 
 
 function changeViewData(view_data) {
-    layerdata = view_data;
+    layerdata = mergeStackbarLayers(view_data);
     parameter_count = layerdata[0].length;
 
     // since we are painting parent layers odd-even, 
@@ -437,6 +440,48 @@ function changeViewData(view_data) {
     buildLayersTable(layer_order, views[current_view]);
     populateColorDicts();
     buildLegendTables();
+}
+
+
+function mergeStackbarLayers(view_data) {
+    layerdata = []
+
+    for (let i=0; i < view_data.length; i++) {
+        layerdata.push([]);
+    }
+
+    for (let i=0; i < view_data[0].length; i++) {
+        let pos = -1;
+        let stack_group_name; // part before !
+        let stack_layer_name; // after !
+
+        if (view_data[0][i].indexOf('!') > -1) {
+            stack_group_name = view_data[0][i].split('!')[0];
+            stack_layer_name = view_data[0][i].split('!')[1];
+
+            for (let j=0; j < layerdata[0].length; j++) {
+                if (layerdata[0][j].startsWith(stack_group_name + '!')) {
+                    pos = j;
+                    break;
+                }
+            }
+        }
+
+        for (let j=0; j < view_data.length; j++) {
+            if (pos == -1) {
+                layerdata[j].push(view_data[j][i]);
+            } else {
+                if (j==0) {
+                    layerdata[0][pos] += ';' + stack_layer_name;
+                }
+                else {
+                    layerdata[j][pos] += ';' + view_data[j][i];
+                }
+            }
+        }
+    }
+
+    return layerdata;
 }
 
 

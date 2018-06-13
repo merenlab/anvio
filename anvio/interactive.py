@@ -295,8 +295,22 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
         skipped_additional_data_layers = []
-        # go through additional layers that are not of type `bar`.
-        for layer in [additional_layer for additional_layer in self.items_additional_data_keys if '!' not in additional_layer]:
+
+        sum_stackbar_items = {}
+        for layer in [additional_layer for additional_layer in self.items_additional_data_keys]:
+            if '!' in layer:
+                stackbar_name = layer.split('!')[0]
+                if stackbar_name not in sum_stackbar_items:
+                    sum_stackbar_items[stackbar_name] = {}
+
+                for item in self.displayed_item_names_ordered:
+                    if item not in sum_stackbar_items[stackbar_name]:
+                        sum_stackbar_items[stackbar_name][item] = 0.0
+
+                    if item in self.items_additional_data_dict:
+                        sum_stackbar_items[stackbar_name][item] += float(self.items_additional_data_dict[item][layer])
+
+        for layer in [additional_layer for additional_layer in self.items_additional_data_keys]:
             self.progress.update('for "%s" ...' % layer)
             layer_type = utils.get_predicted_type_of_items_in_a_dict(self.items_additional_data_dict, layer)
 
@@ -321,7 +335,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                         else:
                             item_layer_data_tuple.append(('', item))
                     else:
-                        item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
+                        if '!' in layer:
+                            stackbar_name = layer.split('!')[0]
+                            item_layer_data_tuple.append((float(self.items_additional_data_dict[item][layer]) / (1.0 * float(sum_stackbar_items[stackbar_name][item])), item))
+                        else:
+                            item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
 
             if len(items_for_which_we_put_zeros_for_missing_values):
                 self.progress.end()
@@ -338,11 +356,19 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                                                              layer))
                 self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
 
-            self.p_meta['available_item_orders'].append('>> %s:none:none' % layer)
-            self.p_meta['item_orders']['>> %s' % layer] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple)]}
 
-            self.p_meta['available_item_orders'].append('>> %s_(reverse):none:none' % layer)
-            self.p_meta['item_orders']['>> %s_(reverse)' % layer] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
+            # try to fancify the layer names that will appear in items order combo for stacked
+            # bar data type before adding them in:
+            if '!' in layer:
+                stacked_bar_name, item_name = layer.split('!')
+                layer_name = '%s [%s]' % (stacked_bar_name, item_name)
+            else:
+                layer_name = layer
+
+            self.p_meta['available_item_orders'].append('>> %s:none:none' % layer_name)
+            self.p_meta['item_orders']['>> %s' % layer_name] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple)]}
+            self.p_meta['available_item_orders'].append('>> %s_(reverse):none:none' % layer_name)
+            self.p_meta['item_orders']['>> %s_(reverse)' % layer_name] = {'type': 'basic', 'data': [i[1] for i in sorted(item_layer_data_tuple, reverse=True)]}
 
         self.progress.end()
 
@@ -502,6 +528,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # sanity of the view data
             filesnpaths.is_file_tab_delimited(view_data_path)
             view_data_columns = utils.get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
+
+            utils.check_misc_data_keys_for_format(view_data_columns)
 
             # load view data as the default view:
             self.views[self.default_view] = {'header': view_data_columns[1:],

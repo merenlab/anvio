@@ -227,6 +227,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         if data_keys_list and not isinstance(data_keys_list, list):
             raise ConfigError("List of keys must be of type `list`. Go away (and come back).")
 
+        utils.check_misc_data_keys_for_format(data_keys_list)
+
         # FIXME: we have two controls here. The first one is how we work with order data natively. The second one is how it
         #        looks like when it is read through the .get() member function of the TableForLayerOrders because rest of
         #        anvi'o does not know how to work with the native format. This should be fixed by teaching the rest of anvi'o
@@ -309,26 +311,42 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         if order_data_dict:
             self.data_dict_sanity_check(order_data_dict, treat_data_dict_as='layer_orders')
 
-        self.data_dict_sanity_check(additional_data_dict, data_keys_list=additional_data_keys, treat_data_dict_as='layers')
-
         # FIXME: here we need to check whether the two dictionaries are in fact 'compatible' with respect to sample names
         #        they describe.
+        self.data_dict_sanity_check(additional_data_dict, data_keys_list=additional_data_keys, treat_data_dict_as='layers')
+
+        sum_stackbar_items = {}
+        for data_key in additional_data_keys:
+            if '!' in data_key:
+                stackbar_name = data_key.split('!')[0]
+
+                if stackbar_name not in sum_stackbar_items:
+                    sum_stackbar_items[stackbar_name] = {}
+
+                for layer in additional_data_dict:
+                    if layer not in sum_stackbar_items[stackbar_name]:
+                        sum_stackbar_items[stackbar_name][layer] = 0.0
+
+                    sum_stackbar_items[stackbar_name][layer] += float(additional_data_dict[layer][data_key])
 
         for data_key in additional_data_keys:
             if '!' in data_key:
-                # we don't order stacked bar charts
-                continue
-
-            # predict the type for proper assignment of 'null' values
-            if '!' in data_key:
                 predicted_key_type = "stackedbar"
+                stacked_bar_name, item_name = data_key.split('!')
+                data_key_name = '%s [%s]' % (stacked_bar_name, item_name)
             else:
                 type_class = utils.get_predicted_type_of_items_in_a_dict(additional_data_dict, data_key)
                 predicted_key_type = type_class.__name__ if type_class else 'unknown'
+                data_key_name = data_key
 
-            layer_name_layer_data_tuples = [(additional_data_dict[layer][data_key] if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
-            order_data_dict['>> ' + data_key] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples)])}
-            order_data_dict['>> ' + data_key + ' (reverse)'] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples, reverse=True)])}
+            if predicted_key_type == "stackedbar":
+                stackbar_name = data_key.split('!')[0]
+                layer_name_layer_data_tuples = [(float(additional_data_dict[layer][data_key]) / (1.0 * sum_stackbar_items[stackbar_name][layer]) if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
+            else:
+                layer_name_layer_data_tuples = [(additional_data_dict[layer][data_key] if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
+
+            order_data_dict['>> ' + data_key_name] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples)])}
+            order_data_dict['>> ' + data_key_name + ' (reverse)'] = {'newick': None, 'basic': ','.join([t[1] for t in sorted(layer_name_layer_data_tuples, reverse=True)])}
 
         return order_data_dict
 
