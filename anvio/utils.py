@@ -1923,9 +1923,13 @@ def check_misc_data_keys_for_format(data_keys_list):
     """A function to make sure user-provided misc data keys are compatible
        with the current version of anvi'o. Housekeeping BS."""
 
+    if not data_keys_list:
+        return
+
     # findout whether the user data contains the older implementation of stacked
     # bar data type
     obsolete_stackedbar_keys = [k for k in data_keys_list if k.find('!') > -1 and k.find(';') > -1]
+
     if len(obsolete_stackedbar_keys):
         key_violates_new_rule = obsolete_stackedbar_keys[0]
         main_key, data_items = key_violates_new_rule.split('!')
