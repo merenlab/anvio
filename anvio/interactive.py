@@ -529,6 +529,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             filesnpaths.is_file_tab_delimited(view_data_path)
             view_data_columns = utils.get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
 
+            utils.check_misc_data_keys_for_format(view_data_columns)
+
             # load view data as the default view:
             self.views[self.default_view] = {'header': view_data_columns[1:],
                                              'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}

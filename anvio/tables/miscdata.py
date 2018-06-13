@@ -227,6 +227,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         if data_keys_list and not isinstance(data_keys_list, list):
             raise ConfigError("List of keys must be of type `list`. Go away (and come back).")
 
+        utils.check_misc_data_keys_for_format(data_keys_list)
+
         # FIXME: we have two controls here. The first one is how we work with order data natively. The second one is how it
         #        looks like when it is read through the .get() member function of the TableForLayerOrders because rest of
         #        anvi'o does not know how to work with the native format. This should be fixed by teaching the rest of anvi'o
