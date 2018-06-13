@@ -176,28 +176,39 @@ function create_ngl_views() {
 
                 if ($('#show_surface').is(':checked')) {
                     component.addRepresentation("surface", {
-                        surfaceType: "ms",
-                        smooth: 2,
+                        surfaceType: "av",
+                        colorScheme: $('#surface_type').val(),
+                        smooth: 3,
                         probeRadius: 1.4,
-                        scaleFactor: 2.0,
-                        flatShaded: false,
+                        scaleFactor: 3.0,
                         opacity: parseFloat($('#surface_opacity').val()),
                         lowResolution: false,
-                        colorScheme: "element"
                     });
                 }
+
+                // FIXME does not work as expected. When loading structure residue info create
+                // manual labels
+                // if ($('#show_residue_labels').is(':checked')) {
+                //     component.addRepresentation("label", {
+                //     sele: ".CA",
+                //     color: "element",
+                //     labelType: "format",
+                //     labelFormat: "%(resname)s"
+                //     });
+                // }
 
                 if ($('#show_cartoon').is(':checked')) {
                     component.addRepresentation("cartoon", {
                         color: $('#cartoon_color').attr('color'),
-                        metalness: 0.1,
                         aspectRatio: 3.0,
                         scale: 1.5
                     });
                 }
 
                 if ($('#show_ballstick').is(':checked')) {
-                    component.addRepresentation("ball+stick");
+                    component.addRepresentation("ball+stick", {
+                        sele: "sidechainAttached"
+                    });
                 }
 
                 component.autoView();
