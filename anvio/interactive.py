@@ -1863,8 +1863,7 @@ class StructureInteractive(VariabilitySuper):
         self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'))
         output = {}
 
-        # FIXME if filter params are initialized in structure.js before get_variability is called
-        # this if statement isn't required. Currently first callback passes empty dict.
+        # If no filtering parameters are given, return all variability
         if not options["filter_params"]:
             for group in options['groups']:
                 output[group] = {
