@@ -689,7 +689,7 @@ Bins.prototype.RedrawBins = function() {
             drawPhylogramRectangle('bin',
                 'bin_outer_' + 1,
                 total_radius + outer_ring_margin + outer_ring_size,
-                node.xy['y'] - node.size / 2,
+                node.xy['y'],
                 node.size,
                 outer_ring_size,
                 color,
