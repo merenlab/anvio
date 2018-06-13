@@ -1,3 +1,5 @@
+const MAX_NGL_WIDGETS = 16;
+
 var stages = {};
 var variability = {};
 var histogram_data;
@@ -18,8 +20,9 @@ $(document).ready(function() {
 
             if (!bySetColor) $(el).val(hex);
         },
-        onHide: function() {
-            draw_variability();
+        onHide: function(cal) {
+            let el = $(cal).data('colpick').el;
+            $(el).trigger('change');
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
@@ -58,7 +61,7 @@ $(document).ready(function() {
             $.when({}).then(load_protein).then(() => {
                 let default_engine = available_engines[0];
                 available_engines.forEach(function(engine) {
-                    $('#engine_list').append(`<input type="radio" name="engine" onclick="create_ui();" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
+                    $('#engine_list').append(`<input type="radio" name="engine" onclick="$.when({}).then(create_ui).then(() => { fetch_and_draw_variability(); });" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
                 });
                 create_ui();
 
@@ -76,6 +79,7 @@ function load_sample_group_widget(category) {
     $('#sample_groups').empty();
     tableHtml = '<table class="table table-condensed"><tr><td>Groups</td><td>Samples</td></tr>';
 
+    let counter=0;
     for (let group in sample_groups[category]) {
         tableHtml += `
             <tr>
@@ -88,7 +92,7 @@ function load_sample_group_widget(category) {
                         data-category="${category}"
                         data-group="${group}"
                         value="${group}" 
-                        checked="checked">
+                        ${ (counter < 16) ? `checked="checked"` : `` }>
                     <label class="form-check-label" for="${category}_${group}">${group}</label>
                 </td>
                 <td>`;
@@ -98,7 +102,7 @@ function load_sample_group_widget(category) {
                 <div class="table-group-checkbox" style="display: inline-block; float: left;">
                     <input class="form-check-input" 
                             id="${category}_${group}_${sample}"
-                            onclick="draw_variability();"
+                            onclick="fetch_and_draw_variability();"
                             type="checkbox" 
                             data-category="${category}"
                             data-group="${group}"
@@ -110,6 +114,7 @@ function load_sample_group_widget(category) {
         });
 
         tableHtml += '</td></tr>';
+        counter++;
     }
 
     $('#sample_groups').append(tableHtml + '</table>');
@@ -123,6 +128,14 @@ function apply_orientation_matrix_to_all_stages(orientationMatrix) {
 }
 
 function create_ngl_views() {
+    let selected_groups = $('[checkbox-for="group"]:checked');
+    if (selected_groups.length > MAX_NGL_WIDGETS) {
+        $('#maximum_ngl_widgets_error').show();
+        return;
+    } else {
+        $('#maximum_ngl_widgets_error').hide();
+    }
+
     for (let group in stages) {
         stages[group].dispose();
     }
@@ -130,7 +143,6 @@ function create_ngl_views() {
 
     $('#ngl-container').empty();
 
-    let selected_groups = $('[checkbox-for="group"]:checked');
 
     $(selected_groups).each((index, element) => {
         let group = $(element).attr('data-group');
@@ -162,27 +174,33 @@ function create_ngl_views() {
              .then((component) => {
                 if( component.type !== "structure" ) return;
 
-                // component.addRepresentation("surface", {
-                //     surfaceType: "ms",
-                //     smooth: 2,
-                //     probeRadius: 1.4,
-                //     scaleFactor: 2.0,
-                //     flatShaded: false,
-                //     opacity: 0.8,
-                //     lowResolution: false,
-                //     colorScheme: "element"
-                // });
+                if ($('#show_surface').is(':checked')) {
+                    component.addRepresentation("surface", {
+                        surfaceType: "ms",
+                        smooth: 2,
+                        probeRadius: 1.4,
+                        scaleFactor: 2.0,
+                        flatShaded: false,
+                        opacity: parseFloat($('#surface_opacity').val()),
+                        lowResolution: false,
+                        colorScheme: "element"
+                    });
+                }
 
-                component.addRepresentation("cartoon", {
-                    //colorScheme: 'residueindex',
-                    metalness: 0.1,
-                    aspectRatio: 3.0,
-                    scale: 1.5
-                });
+                if ($('#show_cartoon').is(':checked')) {
+                    component.addRepresentation("cartoon", {
+                        color: $('#cartoon_color').attr('color'),
+                        metalness: 0.1,
+                        aspectRatio: 3.0,
+                        scale: 1.5
+                    });
+                }
 
-                var pa = component.structure.getPrincipalAxes();     
-                component.setRotation(pa.getRotationQuaternion());
-                stage.autoView();
+                if ($('#show_ballstick').is(':checked')) {
+                    component.addRepresentation("ball+stick");
+                }
+
+                component.autoView();
              });
         
         stage.setParameters({
@@ -257,7 +275,7 @@ function create_ngl_views() {
         stages[group] = stage;
     });
 
-    draw_variability();
+    fetch_and_draw_variability();
 }
 
 function load_protein() {
@@ -320,7 +338,7 @@ function serialize_filtering_widgets() {
     return output;
 }
 
-function draw_variability() {
+function fetch_and_draw_variability() {
     $('.overlay').show();
     let gene_callers_id = $('#gene_callers_id_list').val();
     let engine = $('[name=engine]:checked').val();
@@ -339,6 +357,8 @@ function draw_variability() {
         data: {'options': JSON.stringify(options)},
         url: '/data/get_variability',
         success: function(response_all) {
+            $('.overlay').hide();
+
             variability = {};
             for (let group in response_all) {
                 let response = response_all[group];
@@ -347,105 +367,113 @@ function draw_variability() {
                 let total_entries = response['total_entries'];
                 let entries_after_filtering = response['entries_after_filtering'];
 
-                let component = stages[group].compList[0];
-
-                component.reprList.slice(0).forEach((rep) => {
-                    if (rep.name == 'spacefill') {
-                        rep.dispose();
-                    }
-                });
-
                 let codon_to_variability = {};
                 for (let index in data) {
                     codon_to_variability[data[index]['codon_number']] = data[index];
                 }
 
                 variability[group] = codon_to_variability;
-
-                if (Object.keys(data).length > 0) {
-                    for (let index in data) {
-                        let spacefill_options = {
-                            sele: data[index]['codon_number'] + " and .CA",
-                            scale: 1
-                        }
-
-                        if ($('#color_type').val() == 'Dynamic') {
-                            let column = $('#color_target_column').val();
-                            let widget = $('.widget[data-column="' + column + '"]');
-                            let controller = $(widget).attr('data-controller');
-                            let column_value = data[index][column];
-
-                            if (controller == 'slider') {
-                                let min_value = parseFloat($('#color_min').val());
-                                let max_value = parseFloat($('#color_max').val());
-
-                                if (min_value >= max_value) {
-                                    $('#dynamic_color_error').show();
-                                } else {
-                                    $('#dynamic_color_error').hide();
-                                }
-
-                                let val = (parseFloat(column_value) - min_value) / (max_value - min_value);
-                                
-                                val = Math.max(0, Math.min(1, val));
-
-                                spacefill_options['color'] = getGradientColor(
-                                    $('#color_start').attr('color'),
-                                    $('#color_end').attr('color'),
-                                    val);
-                            }
-                            else
-                            {
-                                spacefill_options['color'] = color_legend[engine][column][column_value];   
-                            }
-                        } else {
-                            spacefill_options['color'] = $('#color_static').attr('color');
-                        }
-
-                        if ($('#size_type').val() == 'Dynamic') {
-                            let column = $('#size_target_column').val();
-                            let widget = $('.widget[data-column="' + column + '"]');
-                            let controller = $(widget).attr('data-controller');
-                            let column_value = data[index][column];
-
-                            if (controller == 'slider') {
-                                let min_value = parseFloat($('#size_min').val());
-                                let max_value = parseFloat($('#size_max').val());
-                                let start_value = parseFloat($('#size_start').val());
-                                let end_value = parseFloat($('#size_end').val());
-
-                                if (min_value >= max_value) {
-                                    $('#dynamic_size_error').show();
-                                } else {
-                                    $('#dynamic_size_error').hide();
-                                }
-
-                                let val = (parseFloat(column_value) - min_value) / max_value - min_value;
-                                
-                                val = Math.max(0, Math.min(1, val));
-
-                                spacefill_options['scale'] = start_value + (val * (end_value - start_value));
-                            }
-                            else {
-                                spacefill_options['scale'] = size_legend[engine][column][column_value];
-                            }
-                        } else {
-                            spacefill_options['scale'] = parseFloat($('#size_static').val());
-                        }
-
-                        let representation = component.addRepresentation("spacefill", spacefill_options);
-                        representation['variability'] = data[index];
-                    }
-                }
             }
 
-            $('.overlay').hide();
+            draw_variability();
         },
         error: function(request, status, error) {
             console.log(request, status, error);
             $('.overlay').hide();
         }
-    });
+    }); 
+}
+
+function draw_variability() {
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    let engine = $('[name=engine]:checked').val();
+
+    for (let group in variability) {
+        let data = variability[group];
+        let component = stages[group].compList[0];
+
+        component.reprList.slice(0).forEach((rep) => {
+            if (rep.name == 'spacefill') {
+                rep.dispose();
+            }
+        });
+
+        if (Object.keys(data).length > 0) {
+            for (let index in data) {
+                let spacefill_options = {
+                    sele: data[index]['codon_number'] + " and .CA",
+                    scale: 1
+                }
+
+                if ($('#color_type').val() == 'Dynamic') {
+                    let column = $('#color_target_column').val();
+                    let widget = $('.widget[data-column="' + column + '"]');
+                    let controller = $(widget).attr('data-controller');
+                    let column_value = data[index][column];
+
+                    if (controller == 'slider') {
+                        let min_value = parseFloat($('#color_min').val());
+                        let max_value = parseFloat($('#color_max').val());
+
+                        if (min_value >= max_value) {
+                            $('#dynamic_color_error').show();
+                        } else {
+                            $('#dynamic_color_error').hide();
+                        }
+
+                        let val = (parseFloat(column_value) - min_value) / (max_value - min_value);
+                        
+                        val = Math.max(0, Math.min(1, val));
+
+                        spacefill_options['color'] = getGradientColor(
+                            $('#color_start').attr('color'),
+                            $('#color_end').attr('color'),
+                            val);
+                    }
+                    else
+                    {
+                        spacefill_options['color'] = color_legend[engine][column][column_value];   
+                    }
+                } else {
+                    spacefill_options['color'] = $('#color_static').attr('color');
+                }
+
+                if ($('#size_type').val() == 'Dynamic') {
+                    let column = $('#size_target_column').val();
+                    let widget = $('.widget[data-column="' + column + '"]');
+                    let controller = $(widget).attr('data-controller');
+                    let column_value = data[index][column];
+
+                    if (controller == 'slider') {
+                        let min_value = parseFloat($('#size_min').val());
+                        let max_value = parseFloat($('#size_max').val());
+                        let start_value = parseFloat($('#size_start').val());
+                        let end_value = parseFloat($('#size_end').val());
+
+                        if (min_value >= max_value) {
+                            $('#dynamic_size_error').show();
+                        } else {
+                            $('#dynamic_size_error').hide();
+                        }
+
+                        let val = (parseFloat(column_value) - min_value) / max_value - min_value;
+                        
+                        val = Math.max(0, Math.min(1, val));
+
+                        spacefill_options['scale'] = start_value + (val * (end_value - start_value));
+                    }
+                    else {
+                        spacefill_options['scale'] = size_legend[engine][column][column_value];
+                    }
+                } else {
+                    spacefill_options['scale'] = parseFloat($('#size_static').val());
+                }
+
+                let representation = component.addRepresentation("spacefill", spacefill_options);
+                representation['variability'] = data[index];
+            }
+        }
+    }
 };
 
 
@@ -497,6 +525,7 @@ function draw_histogram() {
 };
 
 function create_ui() {
+    var defer = $.Deferred();
     let gene_callers_id = $('#gene_callers_id_list').val();
     let engine = $('[name=engine]:checked').val();
 
@@ -544,18 +573,18 @@ function create_ui() {
                                     >
                         </div>
                     `);
-                    $(`#${item['name']}`).slider({}).on('slideStop', () => { draw_variability(); });
+                    $(`#${item['name']}`).slider({}).on('slideStop', () => { fetch_and_draw_variability(); });
                 }
                 if (item['controller'] == 'checkbox') {
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['controller']}">
                             ${item['title']}<br />
                             ${item['choices'].map((choice) => { return `
-                                <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="draw_variability();" checked="checked">
+                                <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="fetch_and_draw_variability();" checked="checked">
                                 <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
                             <br />
-                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true); draw_variability();">Check All</button>
-                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false); draw_variability();">Uncheck All</button>
+                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true); fetch_and_draw_variability();">Check All</button>
+                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false); fetch_and_draw_variability();">Uncheck All</button>
                         </div>
                     `);
 
@@ -578,8 +607,11 @@ function create_ui() {
             });
 
             draw_histogram();
+            defer.resolve();
         }
-    });   
+    });
+
+   return defer.promise();
 }
 
 
