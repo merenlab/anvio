@@ -1,3 +1,5 @@
+const MAX_NGL_WIDGETS = 16;
+
 var stages = {};
 var variability = {};
 var histogram_data;
@@ -76,6 +78,7 @@ function load_sample_group_widget(category) {
     $('#sample_groups').empty();
     tableHtml = '<table class="table table-condensed"><tr><td>Groups</td><td>Samples</td></tr>';
 
+    let counter=0;
     for (let group in sample_groups[category]) {
         tableHtml += `
             <tr>
@@ -88,7 +91,7 @@ function load_sample_group_widget(category) {
                         data-category="${category}"
                         data-group="${group}"
                         value="${group}" 
-                        checked="checked">
+                        ${ (counter < 16) ? `checked="checked"` : `` }>
                     <label class="form-check-label" for="${category}_${group}">${group}</label>
                 </td>
                 <td>`;
@@ -110,6 +113,7 @@ function load_sample_group_widget(category) {
         });
 
         tableHtml += '</td></tr>';
+        counter++;
     }
 
     $('#sample_groups').append(tableHtml + '</table>');
@@ -131,6 +135,11 @@ function create_ngl_views() {
     $('#ngl-container').empty();
 
     let selected_groups = $('[checkbox-for="group"]:checked');
+    if (selected_groups.length > MAX_NGL_WIDGETS) {
+        $('#maximum_ngl_widgets_error').show();
+    } else {
+        $('#maximum_ngl_widgets_error').hide();
+    }
 
     $(selected_groups).each((index, element) => {
         let group = $(element).attr('data-group');
