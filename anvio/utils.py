@@ -1919,6 +1919,28 @@ def get_HMM_sources_dictionary(source_dirs=[]):
     return sources
 
 
+def check_misc_data_keys_for_format(data_keys_list):
+    """A function to make sure user-provided misc data keys are compatible
+       with the current version of anvi'o. Housekeeping BS."""
+
+    # findout whether the user data contains the older implementation of stacked
+    # bar data type
+    obsolete_stackedbar_keys = [k for k in data_keys_list if k.find('!') > -1 and k.find(';') > -1]
+    if len(obsolete_stackedbar_keys):
+        key_violates_new_rule = obsolete_stackedbar_keys[0]
+        main_key, data_items = key_violates_new_rule.split('!')
+        new_rule_compatible_data_keys = ['%s!%s' % (main_key, d) for d in data_items.split(';')]
+    
+        raise ConfigError("Oh no :( We recently changed the description of the stacked bar data type, and your input data\
+                           file still has the older version. Here is the list of those that are violating the new format:\
+                           %s. To avoid this issue and to turn them into the new format, you could take '%s', and present\
+                           it as %d separate TAB-delimited entries that look like this: %s. Sorry!" % \
+                                            (', '.join(['"%s"' % k for k in obsolete_stackedbar_keys]),
+                                             key_violates_new_rule,
+                                             len(new_rule_compatible_data_keys),
+                                             ', '.join(['"%s"' % k for k in new_rule_compatible_data_keys])))
+
+
 def sanity_check_hmm_model(model_path, genes):
     genes = set(genes)
     genes_in_model = set([])
