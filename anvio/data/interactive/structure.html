@@ -82,7 +82,7 @@
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Type: </label>  
                             <div class="col-md-8">
-                                <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show();  };">
+                                <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show(); }; draw_variability();">
                                     <option>Static</option>
                                     <option>Dynamic</option>
                                 </select>
@@ -130,7 +130,7 @@
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Type: </label>  
                             <div class="col-md-8">
-                                <select id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show();  };">
+                                <select id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show(); }; draw_variability();">
                                     <option>Static</option>
                                     <option>Dynamic</option>
                                 </select>
@@ -139,7 +139,7 @@
                         <div class="static-size">
                             <div class="col-md-12">
                                 <label class="col-md-4 settings-label">Size: </label>  
-                                <div class="col-md-8"><input type="input" id="size_static" value="1"></div>
+                                <div class="col-md-8"><input type="input" id="size_static" onblur="draw_variability(); " value="1"></div>
                             </div>
                         </div>
                         <div class="dynamic-size" style="display: none;">
@@ -173,9 +173,6 @@
                             </div>
                         </div>
                         <div class="clearfix"></div>
-                        <div class="col-md-12" style="margin-top: 80px;">
-                            <button type="button" class="btn btn-primary" onclick="draw_variability();" style="width: 100%;">Apply changes</button>
-                        </div>
                     </div>
                     <div id="tab_summary" role="tabpanel" class="tab-pane fade">
                         <div class="col-md-12" style="margin-top: 10px;">
