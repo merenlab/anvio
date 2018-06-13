@@ -387,6 +387,10 @@ class Structure(object):
                                                                               corresponding_gene_call,
                                                                               modeller_out["best_model_path"])
 
+            # Compute contact map
+            contact_map = ContactMap(modeller_out['best_model_path'])
+            contact_map.compute_contact_map()
+
             # Append info to tables
             self.append_gene_info_to_tables(modeller_out, residue_info_dataframe)
 
@@ -793,5 +797,58 @@ class StructureUpdate(Structure):
 
             self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
                                   % self.DSSP_executable, nl_before=1, nl_after=1)
+
+
+class ContactMap(object):
+    def __init__(self, pdb_path, p=terminal.Progress(), r=terminal.Run()):
+        self.pdb_path = pdb_path
+        self.contact_map = None
+
+
+    def load_pdb_file(self, name_id = 'structure'):
+        p = PDBParser()
+        model = p.get_structure(name_id, self.pdb_path)[0] # [0] = first model
+        structure = model[' '] # [' '] = get first chain in model
+        return structure
+
+
+    def compute_contact_map(self):
+        structure = self.load_pdb_file()
+
+        # init coordinate list
+        coords = []
+
+        for residue1 in structure:
+            for residue2 in structure:
+                pass
+
+
+    def calc_residue_dist(self, residue1, residue2):
+        """Returns the C-alpha distance between two residues"""
+        diff_vector  = residue1["CA"].coord - residue2["CA"].coord
+        return np.sqrt(numpy.sum(diff_vector * diff_vector))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
