@@ -578,7 +578,6 @@ function create_ui() {
             });
 
             draw_histogram();
-            draw_variability();
         }
     });   
 }

@@ -1860,15 +1860,7 @@ class StructureInteractive(VariabilitySuper):
         gene_callers_id = int(options['gene_callers_id'])
         column_info = self.variability_storage[gene_callers_id][selected_engine]['column_info']
 
-        self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'),
-                           discard_previous_if_exists=True) # FIXME For large datasets this function
-                                                            # is called a second time before the
-                                                            # first function call can be finished.
-                                                            # Hence the temporary use of
-                                                            # discard_previous_if_exists. We need to
-                                                            # look at the flow and track down this
-                                                            # double call
-
+        self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'))
         output = {}
 
         # FIXME if filter params are initialized in structure.js before get_variability is called
