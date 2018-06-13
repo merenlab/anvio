@@ -20,8 +20,9 @@ $(document).ready(function() {
 
             if (!bySetColor) $(el).val(hex);
         },
-        onHide: function() {
-            draw_variability();
+        onHide: function(cal) {
+            let el = $(cal).data('colpick').el;
+            $(el).trigger('change');
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
@@ -173,27 +174,33 @@ function create_ngl_views() {
              .then((component) => {
                 if( component.type !== "structure" ) return;
 
-                // component.addRepresentation("surface", {
-                //     surfaceType: "ms",
-                //     smooth: 2,
-                //     probeRadius: 1.4,
-                //     scaleFactor: 2.0,
-                //     flatShaded: false,
-                //     opacity: 0.8,
-                //     lowResolution: false,
-                //     colorScheme: "element"
-                // });
+                if ($('#show_surface').is(':checked')) {
+                    component.addRepresentation("surface", {
+                        surfaceType: "ms",
+                        smooth: 2,
+                        probeRadius: 1.4,
+                        scaleFactor: 2.0,
+                        flatShaded: false,
+                        opacity: parseFloat($('#surface_opacity').val()),
+                        lowResolution: false,
+                        colorScheme: "element"
+                    });
+                }
 
-                component.addRepresentation("cartoon", {
-                    //colorScheme: 'residueindex',
-                    metalness: 0.1,
-                    aspectRatio: 3.0,
-                    scale: 1.5
-                });
+                if ($('#show_cartoon').is(':checked')) {
+                    component.addRepresentation("cartoon", {
+                        color: $('#cartoon_color').attr('color'),
+                        metalness: 0.1,
+                        aspectRatio: 3.0,
+                        scale: 1.5
+                    });
+                }
 
-                var pa = component.structure.getPrincipalAxes();     
-                component.setRotation(pa.getRotationQuaternion());
-                stage.autoView();
+                if ($('#show_ballstick').is(':checked')) {
+                    component.addRepresentation("ball+stick");
+                }
+
+                component.autoView();
              });
         
         stage.setParameters({
