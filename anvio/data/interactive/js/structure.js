@@ -58,7 +58,7 @@ $(document).ready(function() {
             $.when({}).then(load_protein).then(() => {
                 let default_engine = available_engines[0];
                 available_engines.forEach(function(engine) {
-                    $('#engine_list').append(`<input type="radio" name="engine" onclick="create_ui();" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
+                    $('#engine_list').append(`<input type="radio" name="engine" onclick="$.when({}).then(create_ui).then(() => { draw_variability(); });" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
                 });
                 create_ui();
 
@@ -497,6 +497,7 @@ function draw_histogram() {
 };
 
 function create_ui() {
+    var defer = $.Deferred();
     let gene_callers_id = $('#gene_callers_id_list').val();
     let engine = $('[name=engine]:checked').val();
 
@@ -578,8 +579,11 @@ function create_ui() {
             });
 
             draw_histogram();
+            defer.resolve();
         }
-    });   
+    });
+
+   return defer.promise();
 }
 
 
