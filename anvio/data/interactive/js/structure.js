@@ -733,7 +733,7 @@ async function make_image(group, sample) {
         // in draw_variability.
         listRepresentations.forEach((rep) => {
             if (rep.name == 'spacefill') {
-                if (rep.variability.sample_id != sample) {
+                if (rep.variability.sample_ids.split(', ').indexOf(sample) === -1) {
                     rep.setVisibility(false);
                 }
             }
@@ -745,7 +745,7 @@ async function make_image(group, sample) {
         // restore representations
         listRepresentations.forEach((rep) => {
             if (rep.name == 'spacefill') {
-                if (rep.variability.sample_id != sample) {
+                if (rep.variability.sample_ids.split(', ').indexOf(sample) === -1) {
                     rep.setVisibility(true);
                 }
             }
