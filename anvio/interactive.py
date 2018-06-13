@@ -1444,6 +1444,7 @@ class StructureInteractive(VariabilitySuper):
                 'name': 'sec_struct',
                 'title': 'Secondary structure',
                 'controller': 'checkbox',
+                'data_type': 'text',
                 'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
             },
             {
@@ -1504,23 +1505,28 @@ class StructureInteractive(VariabilitySuper):
                 'name': var.competing_items,
                 'title': 'Competing Amino Acids' if engine == "AA" else 'Competing Codons',
                 'controller': 'checkbox',
+                'data_type': 'text',
                 'choices': list(var.data[var.competing_items].value_counts().sort_values(ascending=False).index)
             },
             {
                 'name': 'reference',
                 'title': 'Reference',
                 'controller': 'checkbox',
+                'data_type': 'text',
                 'choices': list(var.data['reference'].value_counts().sort_values(ascending=False).index)
             },
             {
                 'name': 'consensus',
                 'title': 'Consensus',
                 'controller': 'checkbox',
+                'data_type': 'text',
                 'choices': list(var.data['consensus'].value_counts().sort_values(ascending=False).index)
             },
         ]
 
-        info = [v for v in info if v['name'] in var.data.columns]
+        # keep those that the variability data table has. also keep those with no controller. these
+        # entries may not exist in table, but will when data is merged
+        info = [v for v in info if v['name'] in var.data.columns or v['controller'] == 'none']
         return info
 
 
@@ -1788,7 +1794,7 @@ class StructureInteractive(VariabilitySuper):
         return histograms
 
 
-    def compute_merged_variability(self, var, sample_group_to_merge):
+    def compute_merged_variability(self, var, column_info, sample_group_to_merge):
         """
            var : class
                instance that inherits VariabilitySuper
@@ -1810,37 +1816,37 @@ class StructureInteractive(VariabilitySuper):
         var.merged = copy.deepcopy(var.data)
         var.filter_data(name = 'merged', criterion = 'sample_id', subset_filter = sample_group_to_merge)
 
-        columns, datatypes = var.get_data_column_structure(data = var.merged)
+        columns_and_types_dict = {e['name']: e['data_type'] for e in column_info}
 
         # all statistical measures
-        generic_operation_dictionary = {str: [
-                                    ('',                  lambda x: x.mode()[0]), # most common gets no suffix
-                                    ('_most_common_freq', lambda x: x.value_counts().iloc[0] / x.count()),
-                                     ],
-                                float: [
-                                    ('_std',              lambda x: x.std()),
-                                    ('',                  lambda x: x.mean()), # mean gets no suffix
-                                    ('_mini',             lambda x: x.min()),
-                                    ('_maxi',             lambda x: x.max()),
-                                    ('_median',           lambda x: x.median()),
-                                    ('_percentile_25',    lambda x: x.quantile(0.25)),
-                                    ('_percentile_50',    lambda x: x.quantile(0.50)),
-                                    ('_percentile_75',    lambda x: x.quantile(0.75)),
-                                     ],
-                                int: [
-                                    ('_std',              lambda x: x.std()),
-                                    ('',                  lambda x: x.mean()),
-                                    ('_mini',             lambda x: x.min()),
-                                    ('_maxi',             lambda x: x.max()),
-                                    ('_median',           lambda x: x.median()),
-                                    ('_percentile_25',    lambda x: x.quantile(0.25)),
-                                    ('_percentile_50',    lambda x: x.quantile(0.50)),
-                                    ('_percentile_75',    lambda x: x.quantile(0.75)),
-                                     ],
-                               }
+        generic_operation_dictionary = {'text': [
+                                            ('',                  lambda x: x.mode()[0]), # most common gets no suffix
+                                            ('_most_common_freq', lambda x: x.value_counts().iloc[0] / x.count()),
+                                             ],
+                                        'float': [
+                                            ('_std',              lambda x: x.std()),
+                                            ('',                  lambda x: x.mean()), # mean gets no suffix
+                                            ('_mini',             lambda x: x.min()),
+                                            ('_maxi',             lambda x: x.max()),
+                                            ('_median',           lambda x: x.median()),
+                                            ('_percentile_25',    lambda x: x.quantile(0.25)),
+                                            ('_percentile_50',    lambda x: x.quantile(0.50)),
+                                            ('_percentile_75',    lambda x: x.quantile(0.75)),
+                                             ],
+                                        'integer': [
+                                            ('_std',              lambda x: x.std()),
+                                            ('',                  lambda x: x.mean()),
+                                            ('_mini',             lambda x: x.min()),
+                                            ('_maxi',             lambda x: x.max()),
+                                            ('_median',           lambda x: x.median()),
+                                            ('_percentile_25',    lambda x: x.quantile(0.25)),
+                                            ('_percentile_50',    lambda x: x.quantile(0.50)),
+                                            ('_percentile_75',    lambda x: x.quantile(0.75)),
+                                             ],
+                                       }
 
         # e.g. {'dfc':[('dfc_min', mini), ...], 'sec_struc':[('sec_struct_most_common', most_common), ...]}
-        column_operations = {k: [(k + x, y) for x, y in generic_operation_dictionary[v]] for k, v in dict(zip(columns, datatypes)).items()}
+        column_operations = {k: [(k + x, y) for x, y in generic_operation_dictionary[v]] for k, v in columns_and_types_dict.items()}
 
         # occurrence: the number of samples that contained a given SAAV in the sample group
         # prevalence: the frequency of samples that contained a given SAAV in the sample group
@@ -1879,7 +1885,7 @@ class StructureInteractive(VariabilitySuper):
 
             # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
             var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
-            self.compute_merged_variability(var, samples_in_group)
+            self.compute_merged_variability(var, column_info, samples_in_group)
 
             # set group specific filter parameters here
             var.sample_ids_of_interest = set(samples_in_group)
