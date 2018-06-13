@@ -95,7 +95,7 @@
                         <div class="static-color">
                             <div class="col-md-12">
                                 <label class="col-md-4 settings-label">Color: </label>  
-                                <div class="col-md-8"><div class="colorpicker" id="color_static" color="#AAAAAA" onchange="draw_variability();" style="background-color: #AAAAAA;"></div></div>
+                                <div class="col-md-8"><div class="colorpicker" id="color_static" color="#b53e3e" onchange="draw_variability();" style="background-color: #b53e3e;"></div></div>
                             </div>
                         </div>
                         <div class="dynamic-color" style="display: none;">
@@ -110,7 +110,7 @@
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Start Color: </label>  
-                                    <div class="col-md-8"><div class="colorpicker" id="color_start" color="#FFFFFF" onchange="draw_variability();" style="background-color: #FFFFFF"></div></div>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Max Value: </label>  
@@ -118,7 +118,7 @@
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">End Color: </label>
-                                    <div class="col-md-8"><div class="colorpicker" id="color_end" color="#000000" onchange="draw_variability();" style="background-color: #000000"></div></div>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_end" color="#911010" onchange="draw_variability();" style="background-color: #911010"></div></div>
                                 </div>
                                 <div class="clearfix"></div>
                                 <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_color_error">Max Value must be greater than Min Value.</div>
@@ -143,7 +143,7 @@
                         <div class="static-size">
                             <div class="col-md-12">
                                 <label class="col-md-4 settings-label">Size: </label>  
-                                <div class="col-md-8"><input type="input" id="size_static" onblur="draw_variability(); " value="1"></div>
+                                <div class="col-md-8"><input type="input" id="size_static" onblur="draw_variability(); " value="0.75"></div>
                             </div>
                         </div>
                         <div class="dynamic-size" style="display: none;">
@@ -185,13 +185,27 @@
                         </div>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Color: </label>  
-                            <div class="col-md-8"><div class="colorpicker" id="cartoon_color" color="#313695" onchange="create_ngl_views();" style="background-color: #313695;"></div>
+                            <div class="col-md-8"><div class="colorpicker" id="cartoon_color" color="#386496" onchange="create_ngl_views();" style="background-color: #386496;"></div>
                             </div>
                         </div>
                         <span class="settings-header" style="margin-left: 10px;"><h5>Surface</h5></span>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Show: </label>  
-                            <div class="col-md-8"><input type="checkbox" id="show_surface" onclick="create_ngl_views(); " /></div>
+                            <div class="col-md-8">
+                                <input type="checkbox" id="show_surface" onclick="create_ngl_views(); " />
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Coloring: </label>  
+                            <div class="col-md-8">
+                                <select id="surface_type" onchange="create_ngl_views();">
+                                    <option>plain</option>
+                                    <option>electrostatic</option>
+                                    <option>hydrophobicity</option>
+                                    <option>residueindex</option>
+                                    <option>element</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Opacity: </label>  
@@ -201,6 +215,11 @@
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Show: </label>  
                             <div class="col-md-8"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(); " /></div>
+                        </div>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Residue Labels</h5></span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Show: </label>  
+                            <div class="col-md-8"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(); " /></div>
                         </div>
                     </div>
                     <div id="tab_summary" role="tabpanel" class="tab-pane fade">
