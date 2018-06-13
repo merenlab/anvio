@@ -197,9 +197,9 @@ function create_ngl_views() {
                 //     });
                 // }
 
-                if ($('#show_cartoon').is(':checked')) {
-                    component.addRepresentation("cartoon", {
-                        color: $('#cartoon_color').attr('color'),
+                if ($('#show_backbone').is(':checked')) {
+                    component.addRepresentation($('#backbone_type').val(), {
+                        color: $('#backbone_color').attr('color'),
                         aspectRatio: 3.0,
                         scale: 1.5
                     });

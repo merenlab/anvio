@@ -178,14 +178,23 @@
                         </div>
                         <div class="clearfix"></div>
                         <span class="settings-header" style="margin-top: 30px;"><h4>Structure</h4></span>
-                        <span class="settings-header" style="margin-left: 10px;"><h5>Cartoon</h5></span>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Backbone</h5></span>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Show: </label>  
-                            <div class="col-md-8"><input type="checkbox" id="show_cartoon" onclick="create_ngl_views(); " checked="checked" /></div>
+                            <div class="col-md-8"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(); " checked="checked" /></div>
                         </div>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Color: </label>  
-                            <div class="col-md-8"><div class="colorpicker" id="cartoon_color" color="#386496" onchange="create_ngl_views();" style="background-color: #386496;"></div>
+                            <div class="col-md-8"><div class="colorpicker" id="backbone_color" color="#386496" onchange="create_ngl_views();" style="background-color: #386496;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Style: </label>  
+                            <div class="col-md-8">
+                                <select id="backbone_type" onchange="create_ngl_views();">
+                                    <option>cartoon</option>
+                                    <option>ribbon</option>
+                                </select>
                             </div>
                         </div>
                         <span class="settings-header" style="margin-left: 10px;"><h5>Surface</h5></span>
