@@ -12,7 +12,7 @@ import anvio.tables as t
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.migrations import migration_scripts
 
 run = terminal.Run()
@@ -122,3 +122,6 @@ if __name__ == '__main__':
     except ConfigError as e:
         print(e)
         sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
