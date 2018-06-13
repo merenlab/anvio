@@ -649,7 +649,10 @@ function onTargetColumnChange(element) {
             $(el).attr('color', '#' + hex);
 
             if (!bySetColor) $(el).val(hex);
-            color_legend[$(el).attr('data-engine')][$(el).attr('data-column')][$(el).attr('data-key')] = '#' + hex;
+        },
+        onHide: function(cal) {
+            let el = $(cal).data('colpick').el;
+            color_legend[$(el).attr('data-engine')][$(el).attr('data-column')][$(el).attr('data-key')] = $(el).attr('color');
             draw_variability();
         }
     }).keyup(function() {
