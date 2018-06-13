@@ -150,10 +150,15 @@ body {
     background-color: #FFFFFF;
 }
 
-.table-striped>tbody>tr:nth-child(odd)>td, .table-striped>tbody>tr:nth-child(odd)>th {
-    background-color: #777777;
+.tooltip-table>tbody>tr:nth-child(odd)>td, .tooltip-table>tbody>tr:nth-child(odd)>th {
+    background-color: rgba(119,119,119,0.5);
 }
 
-.table-striped>tbody>tr:nth-child(even)>td, .table-striped>tbody>tr:nth-child(even)>th {
-    background-color: #999999;
+.tooltip-table>tbody>tr:nth-child(even)>td, .tooltip-table>tbody>tr:nth-child(even)>th {
+    background-color: rgba(153,153,153,0.5);
+}
+
+.tooltip-table {
+    font-size: 10px;
+    color: rgb(230, 230, 230) !important;
 }
