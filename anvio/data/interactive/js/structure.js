@@ -201,14 +201,14 @@ function create_ngl_views() {
                 let mp = pickingProxy.mouse.position;
 
                 if (variability[group].hasOwnProperty(residue)) {
-                    let HTML_reference_title = `<h4>Reference info</h4>`
+                    let HTML_reference_title = `<h5>Reference info</h5>`
                     let HTML_reference_body = `
                         <tr><td>Secondary Structure</td><td>${variability[group][residue]['sec_struct']}</td></tr>
                         <tr><td>Solvent Accessibility</td><td>${variability[group][residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
                         <tr><td>(Phi, Psi)</td><td>(${variability[group][residue]['phi'].toFixed(1)}, ${variability[group][residue]['psi'].toFixed(1)})</td></tr>
                         `
 
-                    let HTML_variant_title = `<h4>Variant info</h4>`
+                    let HTML_variant_title = `<h5>Variant info</h5>`
                     let HTML_variant_body = `
                         <tr><td>Consensus</td><td>${variability[group][residue]['consensus']}</td></tr>
                         <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
@@ -235,8 +235,8 @@ function create_ngl_views() {
                         HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
                     }
 
-                    HTML_reference_body = `<table class="table table-striped">` + HTML_reference_body + `</table>`
-                    HTML_variant_body = `<table class="table table-striped">` + HTML_variant_body + `</table>`
+                    HTML_reference_body = `<table class="tooltip-table">` + HTML_reference_body + `</table>`
+                    HTML_variant_body = `<table class="tooltip-table">` + HTML_variant_body + `</table>`
 
                     tooltip.innerHTML = HTML_reference_title + HTML_reference_body + HTML_variant_title + HTML_variant_body;
                     tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
