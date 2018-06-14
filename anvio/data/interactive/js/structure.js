@@ -646,11 +646,11 @@ function onTargetColumnChange(element) {
     let prefix = element.getAttribute('id').split('_')[0];
 
     // show column related panel.
-    // for linear values, show slider panel
+    // for linear values, show numerical panel
     // for discreete values, show legend panel
-    // read the min/max from slider and put into prefixed input in perspective
+    // read the min/max from numerical and put into prefixed input in perspective
     if (selected_column_info['data_type'] == 'float' || selected_column_info['data_type'] == 'integer') {
-        $(`#${prefix}_slider_panel`).show();
+        $(`#${prefix}_numerical_panel`).show();
         $(`#${prefix}_legend_panel`).hide();
 
         $(`#${prefix}_min`).val(selected_column_info['min']);
@@ -658,7 +658,7 @@ function onTargetColumnChange(element) {
     } 
     else
     {
-        $(`#${prefix}_slider_panel`).hide();
+        $(`#${prefix}_numerical_panel`).hide();
         $(`#${prefix}_legend_panel`).show();
 
         // populate color legend.
