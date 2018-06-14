@@ -1399,7 +1399,17 @@ class StructureInteractive(VariabilitySuper):
                 'name': 'prevalence',
                 'title': 'Prevalence',
                 'controller': 'none',
+                'merged_only': True,
                 'data_type': 'float',
+                'step': 0.01,
+                'min': 0,
+                'max': 1
+            },
+            {
+                'name': 'contact_numbers',
+                'title': 'Contact Numbers',
+                'controller': 'none',
+                'data_type': 'text',
                 'step': 0.01,
                 'min': 0,
                 'max': 1
@@ -1526,7 +1536,7 @@ class StructureInteractive(VariabilitySuper):
 
         # keep those that the variability data table has. also keep those with no controller. these
         # entries may not exist in table, but will when data is merged
-        info = [v for v in info if v['name'] in var.data.columns or v['controller'] == 'none']
+        info = [v for v in info if v['name'] in var.data.columns or v.get('merged_only', False)]
         return info
 
 
@@ -1783,9 +1793,12 @@ class StructureInteractive(VariabilitySuper):
                 values = category_counts_df[column]
                 bins = category_counts_df["index"]
 
+            elif column_info["controller"] == "none":
+                continue
+
             else:
                 self.progress.end()
-                raise ConfigError("StructureInteractive :: %s is not a recognizable controller type" %s (column_info["controller"]))
+                raise ConfigError("StructureInteractive :: %s is not a recognizable controller type" % (column_info["controller"]))
 
             histograms[column]['counts'] = values.tolist()
             histograms[column]['bins'] = bins.tolist()

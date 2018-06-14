@@ -1640,8 +1640,9 @@ class VariabilitySuper(VariabilityFilter, object):
         # add all known residue info sources to columns_to_report
         C = {'text': str, 'real': float, 'integer': int}
         redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa']
-        structure_columns_to_report = [(x, C[y]) for x, y in zip(t.DSSP_structure, t.DSSP_types) if x not in redundant_columns]
-        self.columns_to_report['structural'].extend(structure_columns_to_report)
+        for source in t.residue_info_sources:
+            self.columns_to_report['structural'].extend([(x, C[y]) for x, y in zip(t.residue_info_sources[source]["structure"], t.residue_info_sources[source]["types"]) if x not in redundant_columns])
+
         self.progress.end()
 
 

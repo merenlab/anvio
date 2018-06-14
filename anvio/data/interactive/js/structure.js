@@ -235,6 +235,7 @@ function create_ngl_views() {
                         <tr><td>Secondary Structure</td><td>${variability[group][residue]['sec_struct']}</td></tr>
                         <tr><td>Solvent Accessibility</td><td>${variability[group][residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
                         <tr><td>(Phi, Psi)</td><td>(${variability[group][residue]['phi'].toFixed(1)}, ${variability[group][residue]['psi'].toFixed(1)})</td></tr>
+                        <tr><td>Contacts With</td><td>${variability[group][residue]['contact_numbers']}</td></tr>
                         `
 
                     let HTML_variant_title = `<h5>Variant info</h5>`

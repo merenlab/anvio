@@ -231,8 +231,9 @@ class Structure(object):
 
         for source, info in self.annotation_sources_info.items():
             if not info["skip"]:
-                structure.extend(list(info["structure"].keys()))
-                types.extend([info["structure"][x] for x in info["structure"].keys()])
+                d = {k: v for k, v in info["structure"].items() if k != "codon_order_in_gene"}
+                structure.extend([x for x in d.keys()])
+                types.extend([d[y] for y in d.keys()])
         return structure, types
 
 
@@ -246,12 +247,14 @@ class Structure(object):
             "DSSP": {
                 "method"    : self.run_DSSP,
                 "skip"      : self.skip_DSSP,
-                "structure" : dict(zip(t.DSSP_structure, t.DSSP_types))
+                "structure" : dict(zip(t.residue_info_sources["DSSP"]["structure"],
+                                       t.residue_info_sources["DSSP"]["types"]))
                 },
-            "STRIDE": {
-                "method"  : lambda *args, **kwargs: None,
-                "skip"    : True,
-                "columns" : {},
+            "contact_map": {
+                "method"    : self.run_contact_map,
+                "skip"      : False,
+                "structure" : dict(zip(t.residue_info_sources["contact_map"]["structure"],
+                                       t.residue_info_sources["contact_map"]["types"]))
                 },
             }
         return annotation_sources_info
@@ -386,11 +389,6 @@ class Structure(object):
                 residue_info_dataframe = self.run_residue_annotation_for_gene(residue_annotation_methods,
                                                                               corresponding_gene_call,
                                                                               modeller_out["best_model_path"])
-
-            # Compute contact map
-            contact_map = ContactMap(modeller_out['best_model_path'])
-            contact_map.compute_contact_map()
-
             # Append info to tables
             self.append_gene_info_to_tables(modeller_out, residue_info_dataframe)
 
@@ -459,6 +457,25 @@ class Structure(object):
         output_gene_dir = os.path.join(self.full_modeller_output, self.modeller.corresponding_gene_call)
         filesnpaths.check_output_directory(output_gene_dir)
         shutil.move(self.modeller.directory, output_gene_dir)
+
+
+    def run_contact_map(self, corresponding_gene_call, pdb_filepath):
+        contact_map_matrix = ContactMap(pdb_filepath).compute_contact_map()
+
+        contacts_dict = {"codon_order_in_gene": [],
+                         "contact_indices":     [],
+                         "contact_numbers":     []}
+        for codon_order_in_gene in range(contact_map_matrix.shape[0]):
+            contacts = np.where(contact_map_matrix[codon_order_in_gene, :] == 1)[0]
+            contact_indices = contacts[contacts != codon_order_in_gene].astype(str)
+            contact_numbers = [str(int(x) + 1) for x in contact_indices]
+
+            contacts_dict["codon_order_in_gene"].append(codon_order_in_gene)
+            contacts_dict["contact_indices"].append(",".join(contact_indices))
+            contacts_dict["contact_numbers"].append(",".join(contact_numbers))
+
+        contacts_df = pd.DataFrame(contacts_dict).set_index("codon_order_in_gene")
+        return contacts_df
 
 
     def run_DSSP(self, corresponding_gene_call, pdb_filepath):
@@ -800,9 +817,15 @@ class StructureUpdate(Structure):
 
 
 class ContactMap(object):
-    def __init__(self, pdb_path, p=terminal.Progress(), r=terminal.Run()):
+    def __init__(self, pdb_path, distance_method='CA', threshold=6, p=terminal.Progress(), r=terminal.Run()):
         self.pdb_path = pdb_path
         self.contact_map = None
+        self.distance_method = distance_method
+        self.threshold = threshold
+
+        self.distances_methods_dict = {
+            "CA": self.calc_CA_dist
+        }
 
 
     def load_pdb_file(self, name_id = 'structure'):
@@ -815,40 +838,21 @@ class ContactMap(object):
     def compute_contact_map(self):
         structure = self.load_pdb_file()
 
-        # init coordinate list
-        coords = []
+        contact_map = np.zeros((len(structure), len(structure)))
+        for i, residue1 in enumerate(structure):
+            for j, residue2 in enumerate(structure):
+                contact_map[i, j] = self.distances_methods_dict[self.distance_method](residue1, residue2)
 
-        for residue1 in structure:
-            for residue2 in structure:
-                pass
+        if self.threshold is not None:
+            contact_map[contact_map <= self.threshold] = 1
+            contact_map[contact_map >  self.threshold] = 0
+
+        return contact_map
 
 
-    def calc_residue_dist(self, residue1, residue2):
+    def calc_CA_dist(self, residue1, residue2):
         """Returns the C-alpha distance between two residues"""
-        diff_vector  = residue1["CA"].coord - residue2["CA"].coord
-        return np.sqrt(numpy.sum(diff_vector * diff_vector))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        diff_vector = residue1["CA"].coord - residue2["CA"].coord
+        return np.sqrt(np.sum(diff_vector**2))
 
 
