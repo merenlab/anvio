@@ -53,7 +53,9 @@ def main(args):
     # build input for layer additional data tables
     sample_name = dbops.ProfileDatabase(args.profile_db).meta['sample_id']
     for level in levels_of_taxonomy:
-        taxonomy_dict_level = taxonomy_dict[level]
+        taxonomy_dict_level = {}
+        for taxon in taxonomy_dict[level]:
+            taxonomy_dict_level['%s!%s' % (level, taxon)] = taxonomy_dict[level][taxon]
 
         data_keys_list = list(taxonomy_dict_level.keys())
         data_dict = {sample_name: taxonomy_dict_level}
