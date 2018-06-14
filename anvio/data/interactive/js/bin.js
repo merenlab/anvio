@@ -305,7 +305,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                 bin_row.querySelector('td.length-sum>span').innerHTML = readableNumber(length_sum);
             }
 
-            if (mode == 'full') {
+            if (mode == 'full' || mode == 'refine') {
                 $.ajax({
                     type: "POST",
                     url: "/data/completeness",
