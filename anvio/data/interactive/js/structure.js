@@ -3,6 +3,7 @@ const MAX_NGL_WIDGETS = 16;
 var stages = {};
 var variability = {};
 var histogram_data;
+var residue_info;
 var column_info;
 var sample_groups;
 var pdb_content;
@@ -311,6 +312,7 @@ function load_protein() {
             $('.overlay').hide();
             histogram_data = data['histograms'];
             pdb_content = data['pdb_content'];
+            residue_info = data['residue_info'];
             defer.resolve();
         }
     });
