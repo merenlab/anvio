@@ -1783,6 +1783,56 @@ class StructureInteractive(VariabilitySuper):
         return summary
 
 
+    def get_variability(self, options):
+        selected_engine = options['engine']
+        gene_callers_id = int(options['gene_callers_id'])
+        column_info = self.variability_storage[gene_callers_id][selected_engine]['column_info']
+
+        self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'))
+        output = {}
+
+        # If no filtering parameters are given, return all variability
+        if not options["filter_params"]:
+            for group in options['groups']:
+                output[group] = {
+                    'data': self.variability_storage[gene_callers_id][selected_engine]['var_object'].data.to_json(orient='index'),
+                    'entries_after_filtering': self.variability_storage[gene_callers_id][selected_engine]['var_object'].data.shape[0]
+                }
+
+        list_of_filter_functions = []
+        F = lambda f, **kwargs: (f, kwargs)
+        for group in options['groups']:
+            self.progress.update('Group `%s`...' % group)
+            samples_in_group = options['groups'][group]
+
+            # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
+            var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
+            self.compute_merged_variability(var, column_info, samples_in_group)
+
+            # set group specific filter parameters here
+            var.sample_ids_of_interest = set(samples_in_group)
+            list_of_filter_functions.append(F(var.filter_data, criterion="sample_id"))
+
+            # now set all other filter parameters
+            for filter_criterion, param_values in options["filter_params"].items():
+                for param_name, param_value in param_values.items():
+                    setattr(var, param_name, param_value)
+                list_of_filter_functions.append(F(var.filter_data, name='merged', criterion=filter_criterion))
+
+            # ʕ•ᴥ•ʔ
+            var.process(process_functions=list_of_filter_functions, exit_if_data_empty=False)
+
+            output[group] = {
+                'data': var.merged.to_json(orient='index'),
+                'entries_after_filtering': var.merged.shape[0]
+            }
+
+            list_of_filter_functions = []
+
+        self.progress.end()
+        return output
+
+
     def get_histograms(self, var_object, column_info_list):
         numpy.seterr(invalid='ignore')
         self.progress.new('Generating %s histograms' % ("SAAV" if var_object.engine else "SCV"))
@@ -1890,56 +1940,6 @@ class StructureInteractive(VariabilitySuper):
 
         var.merged = var.merged.groupby('unique_pos_identifier').agg(column_operations)
         var.merged.columns = var.merged.columns.droplevel()
-
-
-    def get_variability(self, options):
-        selected_engine = options['engine']
-        gene_callers_id = int(options['gene_callers_id'])
-        column_info = self.variability_storage[gene_callers_id][selected_engine]['column_info']
-
-        self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'))
-        output = {}
-
-        # If no filtering parameters are given, return all variability
-        if not options["filter_params"]:
-            for group in options['groups']:
-                output[group] = {
-                    'data': self.variability_storage[gene_callers_id][selected_engine]['var_object'].data.to_json(orient='index'),
-                    'entries_after_filtering': self.variability_storage[gene_callers_id][selected_engine]['var_object'].data.shape[0]
-                }
-
-        list_of_filter_functions = []
-        F = lambda f, **kwargs: (f, kwargs)
-        for group in options['groups']:
-            self.progress.update('Group `%s`...' % group)
-            samples_in_group = options['groups'][group]
-
-            # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
-            var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
-            self.compute_merged_variability(var, column_info, samples_in_group)
-
-            # set group specific filter parameters here
-            var.sample_ids_of_interest = set(samples_in_group)
-            list_of_filter_functions.append(F(var.filter_data, criterion="sample_id"))
-
-            # now set all other filter parameters
-            for filter_criterion, param_values in options["filter_params"].items():
-                for param_name, param_value in param_values.items():
-                    setattr(var, param_name, param_value)
-                list_of_filter_functions.append(F(var.filter_data, name='merged', criterion=filter_criterion))
-
-            # ʕ•ᴥ•ʔ
-            var.process(process_functions=list_of_filter_functions, exit_if_data_empty=False)
-
-            output[group] = {
-                'data': var.merged.to_json(orient='index'),
-                'entries_after_filtering': var.merged.shape[0]
-            }
-
-            list_of_filter_functions = []
-
-        self.progress.end()
-        return output
 
 
 class ContigsInteractive():
