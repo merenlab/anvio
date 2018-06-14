@@ -93,7 +93,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                 you send to this class. What are you doing?")
 
         if self.additional_layers_path:
-            filesnpaths.is_file_tab_delimited(self.additional_layers_path, check_empty_headers=True)
+            filesnpaths.is_file_tab_delimited(self.additional_layers_path)
 
         if self.gene_mode:
             if self.collection_name is None or self.bin_id is None:
