@@ -237,11 +237,12 @@ function create_ngl_views() {
             if (pickingProxy && pickingProxy.atom) {
                 let residue = pickingProxy.atom.resno;
                 let mp = pickingProxy.mouse.position;
+                console.log(residue_info[residue])
 
                 if (variability[group].hasOwnProperty(residue)) {
                     let HTML_reference_title = `<h5>Reference info</h5>`
                     let HTML_reference_body = `
-                        <tr><td>Secondary Structure</td><td>${variability[group][residue]['sec_struct']}</td></tr>
+                        <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
                         <tr><td>Solvent Accessibility</td><td>${variability[group][residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
                         <tr><td>(Phi, Psi)</td><td>(${variability[group][residue]['phi'].toFixed(1)}, ${variability[group][residue]['psi'].toFixed(1)})</td></tr>
                         <tr><td>Contacts With</td><td>${variability[group][residue]['contact_numbers']}</td></tr>
@@ -312,7 +313,7 @@ function load_protein() {
             $('.overlay').hide();
             histogram_data = data['histograms'];
             pdb_content = data['pdb_content'];
-            residue_info = data['residue_info'];
+            residue_info = JSON.parse(data['residue_info']);
             defer.resolve();
         }
     });
@@ -384,17 +385,12 @@ function fetch_and_draw_variability() {
             variability = {};
             for (let group in response_all) {
                 let response = response_all[group];
-                
+
                 let data = JSON.parse(response['data']);
                 let total_entries = response['total_entries'];
                 let entries_after_filtering = response['entries_after_filtering'];
 
-                let codon_to_variability = {};
-                for (let index in data) {
-                    codon_to_variability[data[index]['codon_number']] = data[index];
-                }
-
-                variability[group] = codon_to_variability;
+                variability[group] = move_codon_number_to_index(data);
             }
 
             draw_variability();
@@ -764,6 +760,17 @@ function getGradientColor(start_color, end_color, percent) {
  };
 
 
+function move_codon_number_to_index(data) {
+    // dataframes converted to JSON in python use index as the key. this converts key to the
+    // 'codon_number' entry
+    let codon_indexed = {};
+    for (let index in data) {
+        codon_indexed[data[index]['codon_number']] = data[index];
+    }
+    return codon_indexed
+}
+
+
 async function make_image(group, sample) {
     let blob;
     let image_options = {
@@ -836,3 +843,5 @@ async function generate_summary() {
         saveAs(content, $('#zip_name').val());
     });
 }
+
+
