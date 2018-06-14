@@ -637,11 +637,10 @@ function create_ui() {
 
 
 function onTargetColumnChange(element) {
-    // this on change event shared between color_target_column, size_target_column.
+    // this on change event is shared between color_target_column and size_target_column.
     let engine = $('[name=engine]:checked').val();
     let column = $(element).val();
-    let widget = $('.widget[data-column="' + column + '"]');
-    let controller = $(widget).attr('data-controller');
+    let selected_column_info = column_info.find(function(el) {if (el['name'] == column) {return el}})
 
     // color or size
     let prefix = element.getAttribute('id').split('_')[0];
@@ -650,15 +649,14 @@ function onTargetColumnChange(element) {
     // for linear values, show slider panel
     // for discreete values, show legend panel
     // read the min/max from slider and put into prefixed input in perspective
-    if (controller == 'slider') {
+    if (selected_column_info['data_type'] == 'float' || selected_column_info['data_type'] == 'integer') {
         $(`#${prefix}_slider_panel`).show();
         $(`#${prefix}_legend_panel`).hide();
-        let slider = $(widget).find('input');
 
-        $(`#${prefix}_min`).val($(slider).attr('data-slider-min'));
-        $(`#${prefix}_max`).val($(slider).attr('data-slider-max'));
+        $(`#${prefix}_min`).val(selected_column_info['min']);
+        $(`#${prefix}_max`).val(selected_column_info['max']);
     } 
-    else 
+    else
     {
         $(`#${prefix}_slider_panel`).hide();
         $(`#${prefix}_legend_panel`).show();
