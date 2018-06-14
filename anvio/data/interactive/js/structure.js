@@ -313,7 +313,7 @@ function load_protein() {
             $('.overlay').hide();
             histogram_data = data['histograms'];
             pdb_content = data['pdb_content'];
-            residue_info = JSON.parse(data['residue_info']);
+            residue_info = move_codon_number_to_index(JSON.parse(data['residue_info']));
             defer.resolve();
         }
     });
@@ -762,7 +762,7 @@ function getGradientColor(start_color, end_color, percent) {
 
 function move_codon_number_to_index(data) {
     // dataframes converted to JSON in python use index as the key. this converts key to the
-    // 'codon_number' entry
+    // 'codon_number' entry.
     let codon_indexed = {};
     for (let index in data) {
         codon_indexed[data[index]['codon_number']] = data[index];
