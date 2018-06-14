@@ -1603,6 +1603,10 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
     else:
         columns = f.readline().strip('\n').split(separator)
 
+    if min(map(len, columns)) == 0:
+        raise ConfigError("At least one of the column headers in your tab delimited file '%s'\
+                                is empty." % file_path)
+
     if expected_fields:
         for field in expected_fields:
             if field not in columns:
