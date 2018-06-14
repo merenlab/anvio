@@ -3,8 +3,10 @@ const MAX_NGL_WIDGETS = 16;
 var stages = {};
 var variability = {};
 var histogram_data;
+var column_info;
 var sample_groups;
 var pdb_content;
+var cached_orientation_matrix = null;
 
 var color_legend = {};
 var size_legend = {};
@@ -125,6 +127,7 @@ function apply_orientation_matrix_to_all_stages(orientationMatrix) {
     for (let group in stages) {
         stages[group].viewerControls.orient(orientationMatrix); 
     }
+    cached_orientation_matrix = orientationMatrix;
 }
 
 function create_ngl_views() {
@@ -188,14 +191,14 @@ function create_ngl_views() {
 
                 // FIXME does not work as expected. When loading structure residue info create
                 // manual labels
-                // if ($('#show_residue_labels').is(':checked')) {
-                //     component.addRepresentation("label", {
-                //     sele: ".CA",
-                //     color: "element",
-                //     labelType: "format",
-                //     labelFormat: "%(resname)s"
-                //     });
-                // }
+                if ($('#show_residue_labels').is(':checked')) {
+                    component.addRepresentation("label", {
+                    sele: ".CA",
+                    color: "element",
+                    labelType: "format",
+                    labelFormat: "%(resname)s"
+                    });
+                }
 
                 if ($('#show_backbone').is(':checked')) {
                     component.addRepresentation($('#backbone_type').val(), {
@@ -211,7 +214,11 @@ function create_ngl_views() {
                     });
                 }
 
-                component.autoView();
+                if (cached_orientation_matrix) {
+                    stage.viewerControls.orient(cached_orientation_matrix);
+                } else {
+                    component.autoView();
+                }
              });
         
         stage.setParameters({
@@ -220,6 +227,7 @@ function create_ngl_views() {
 
         // prevent default tooltip
         stage.mouseControls.remove("hoverPick");
+
 
         // add custom tooltip
         stage.signals.hovered.add(function (pickingProxy) {
@@ -419,11 +427,10 @@ function draw_variability() {
 
                 if ($('#color_type').val() == 'Dynamic') {
                     let column = $('#color_target_column').val();
-                    let widget = $('.widget[data-column="' + column + '"]');
-                    let controller = $(widget).attr('data-controller');
                     let column_value = data[index][column];
+                    let selected_column_info = column_info.find(function(el) {if (el['name'] == column) {return el}})
 
-                    if (controller == 'slider') {
+                    if (selected_column_info['data_type'] == 'float' || selected_column_info['data_type'] == 'integer') {
                         let min_value = parseFloat($('#color_min').val());
                         let max_value = parseFloat($('#color_max').val());
 
@@ -434,7 +441,6 @@ function draw_variability() {
                         }
 
                         let val = (parseFloat(column_value) - min_value) / (max_value - min_value);
-                        
                         val = Math.max(0, Math.min(1, val));
 
                         spacefill_options['color'] = getGradientColor(
@@ -452,11 +458,10 @@ function draw_variability() {
 
                 if ($('#size_type').val() == 'Dynamic') {
                     let column = $('#size_target_column').val();
-                    let widget = $('.widget[data-column="' + column + '"]');
-                    let controller = $(widget).attr('data-controller');
                     let column_value = data[index][column];
+                    let selected_column_info = column_info.find(function(el) {if (el['name'] == column) {return el}})
 
-                    if (controller == 'slider') {
+                    if (selected_column_info['data_type'] == 'float' || selected_column_info['data_type'] == 'integer') {
                         let min_value = parseFloat($('#size_min').val());
                         let max_value = parseFloat($('#size_max').val());
                         let start_value = parseFloat($('#size_start').val());
@@ -468,8 +473,7 @@ function draw_variability() {
                             $('#dynamic_size_error').hide();
                         }
 
-                        let val = (parseFloat(column_value) - min_value) / max_value - min_value;
-                        
+                        let val = (parseFloat(column_value) - min_value) / (max_value - min_value);
                         val = Math.max(0, Math.min(1, val));
 
                         spacefill_options['scale'] = start_value + (val * (end_value - start_value));
@@ -536,6 +540,7 @@ function draw_histogram() {
     }
 };
 
+
 function create_ui() {
     var defer = $.Deferred();
     let gene_callers_id = $('#gene_callers_id_list').val();
@@ -550,6 +555,7 @@ function create_ui() {
             'engine': engine
         },
         success: function(data) {
+            column_info = data
             let container = $('#controls');
 
             // remove widgets
@@ -566,13 +572,16 @@ function create_ui() {
                 size_legend[engine] = {};
             }
 
-            data.forEach((item) => {
-                $('#color_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
-                $('#size_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
+            column_info.forEach((item) => {
+                console.log(item)
+                if (item['as_perspective']) {
+                    $('#color_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
+                    $('#size_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
+                }
 
-                if (item['controller'] == 'slider') {
+                if (item['as_filter'] == 'slider') {
                     $(container).append(`
-                        <div class="widget" data-column="${item['name']}" data-controller="${item['controller']}">
+                        <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             ${item['title']}<br />
                             <svg id="histogram_${item['name']}" width="100%" height="30" style="position: relative; top: 6;" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>   
                             <input id="${item['name']}" 
@@ -587,9 +596,9 @@ function create_ui() {
                     `);
                     $(`#${item['name']}`).slider({}).on('slideStop', () => { fetch_and_draw_variability(); });
                 }
-                if (item['controller'] == 'checkbox') {
+                if (item['as_filter'] == 'checkbox') {
                     $(container).append(`
-                        <div class="widget" data-column="${item['name']}" data-controller="${item['controller']}">
+                        <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             ${item['title']}<br />
                             ${item['choices'].map((choice) => { return `
                                 <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="fetch_and_draw_variability();" checked="checked">

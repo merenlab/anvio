@@ -1380,7 +1380,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'departure_from_consensus',
                 'title': 'Departure from consensus',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
                 'min': 0,
@@ -1389,7 +1390,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'departure_from_reference',
                 'title': 'Departure from reference',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
                 'min': 0,
@@ -1398,7 +1400,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'prevalence',
                 'title': 'Prevalence',
-                'controller': 'none',
+                'as_perspective': True,
+                'as_filter': False,
                 'merged_only': True,
                 'data_type': 'float',
                 'step': 0.01,
@@ -1408,7 +1411,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'contact_numbers',
                 'title': 'Contact Numbers',
-                'controller': 'none',
+                'as_perspective': False,
+                'as_filter': False,
                 'data_type': 'text',
                 'step': 0.01,
                 'min': 0,
@@ -1417,7 +1421,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'coverage',
                 'title': 'Coverage',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 1,
                 'min': int(FIND_MIN('coverage')),
@@ -1426,7 +1431,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'synonymity',
                 'title': 'Synonymity',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
                 'min': 0,
@@ -1435,7 +1441,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'entropy',
                 'title': 'Entropy',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
                 'min': 0,
@@ -1444,7 +1451,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'rel_solvent_acc',
                 'title': 'Relative solvent accessibility',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
                 'min': 0,
@@ -1453,14 +1461,16 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'sec_struct',
                 'title': 'Secondary structure',
-                'controller': 'checkbox',
+                'as_perspective': True,
+                'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
             },
             {
                 'name': 'phi',
                 'title': 'Phi',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 1,
                 'min': -180,
@@ -1469,7 +1479,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'psi',
                 'title': 'Psi',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 1,
                 'min': -180,
@@ -1478,7 +1489,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'BLOSUM62',
                 'title': 'BLOSUM62',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
                 'min': -4,
@@ -1487,7 +1499,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'BLOSUM90',
                 'title': 'BLOSUM90',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
                 'min': -6,
@@ -1496,7 +1509,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'codon_order_in_gene',
                 'title': 'Codon index',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
                 'min': 0,
@@ -1505,7 +1519,8 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'codon_number',
                 'title': 'Codon number',
-                'controller': 'slider',
+                'as_perspective': True,
+                'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
                 'min': 1,
@@ -1514,21 +1529,24 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': var.competing_items,
                 'title': 'Competing Amino Acids' if engine == "AA" else 'Competing Codons',
-                'controller': 'checkbox',
+                'as_perspective': True,
+                'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': list(var.data[var.competing_items].value_counts().sort_values(ascending=False).index)
             },
             {
                 'name': 'reference',
                 'title': 'Reference',
-                'controller': 'checkbox',
+                'as_perspective': True,
+                'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': list(var.data['reference'].value_counts().sort_values(ascending=False).index)
             },
             {
                 'name': 'consensus',
                 'title': 'Consensus',
-                'controller': 'checkbox',
+                'as_perspective': True,
+                'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': list(var.data['consensus'].value_counts().sort_values(ascending=False).index)
             },
@@ -1780,25 +1798,25 @@ class StructureInteractive(VariabilitySuper):
 
             histograms[column] = {}
 
-            if column_info["controller"] in ["slider"]:
+            if column_info["as_filter"] in ["slider"]:
                 # make a number histogram
                 histogram_args = {}
                 histogram_args["range"] = (column_info["min"], column_info["max"])
                 histogram_args["bins"] = 15
                 values, bins = var_object.get_histogram(column, fix_offset=True, **histogram_args)
 
-            elif column_info["controller"] in ["checkbox"]:
+            elif column_info["as_filter"] in ["checkbox"]:
                 # make a bar chart (categorical)
                 category_counts_df = var_object.data[column].value_counts().reset_index()
                 values = category_counts_df[column]
                 bins = category_counts_df["index"]
 
-            elif column_info["controller"] == "none":
+            elif not column_info["as_filter"]:
                 continue
 
             else:
                 self.progress.end()
-                raise ConfigError("StructureInteractive :: %s is not a recognizable controller type" % (column_info["controller"]))
+                raise ConfigError("StructureInteractive :: %s is not a recognizable controller type" % (column_info["as_filter"]))
 
             histograms[column]['counts'] = values.tolist()
             histograms[column]['bins'] = bins.tolist()
