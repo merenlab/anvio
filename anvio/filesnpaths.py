@@ -97,7 +97,7 @@ def is_dir_empty(dir_path):
     return False if len(os.listdir(dir_path)) else True
 
 
-def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None):
+def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None, check_empty_headers=False):
     is_file_exists(file_path)
     f = open(file_path, 'rU')
 
@@ -112,7 +112,7 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
         raise FilesNPathsError("File '%s' does not seem to have TAB characters.\
                             Did you export this file on MAC using EXCEL? :(" % file_path)
 
-    if min(map(len, line.split(separator))) == 0:
+    if check_empty_headers and min(map(len, line.split(separator))) == 0:
         raise FilesNPathsError("At least one of the column headers in your tab delimited file '%s'\
                                 is empty." % file_path)
 
