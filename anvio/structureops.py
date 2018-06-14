@@ -150,8 +150,12 @@ class StructureDatabase(object):
         summary['pdb_content'] = self.db.get_single_column_from_table(t.structure_pdb_data_table_name,
             'pdb_content', where_clause="corresponding_gene_call = %d" % corresponding_gene_call)[0].decode('utf-8')
 
-        summary['residue_info'] = self.db.get_table_as_dataframe(t.structure_residue_info_table_name,
-            where_clause = "corresponding_gene_call = %d" % corresponding_gene_call).to_json(orient='index')
+        residue_info_df = self.db.get_table_as_dataframe(t.structure_residue_info_table_name,
+            where_clause = "corresponding_gene_call = %d" % corresponding_gene_call)
+
+        # add codon_number
+        residue_info_df['codon_number'] = utils.convert_sequence_indexing(residue_info_df['codon_order_in_gene'], "M0", "M1")
+        summary['residue_info'] = residue_info_df.to_json(orient='index')
 
         return summary
 
