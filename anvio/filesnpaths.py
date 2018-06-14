@@ -112,10 +112,6 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
         raise FilesNPathsError("File '%s' does not seem to have TAB characters.\
                             Did you export this file on MAC using EXCEL? :(" % file_path)
 
-    if min(map(len, line.split(separator))) == 0:
-        raise FilesNPathsError("At least one of the column headers in your tab delimited file '%s'\
-                                is empty." % file_path)
-
     f.seek(0)
     num_fields_set = set([len(line.split(separator)) for line in f.readlines()])
     if len(num_fields_set) != 1:
