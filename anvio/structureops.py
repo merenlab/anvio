@@ -23,6 +23,7 @@ import pandas as pd
 
 from collections import OrderedDict
 from anvio.errors import ConfigError, ModellerScriptError
+from anvio.dbops import ContigsSuperclass
 from Bio.PDB import PDBParser
 from Bio.PDB import DSSP
 
@@ -234,7 +235,7 @@ class Structure(object):
         types = []
 
         for source, info in self.annotation_sources_info.items():
-            if not info["skip"]:
+            if not info["skip"] and info.get("structure"):
                 d = {k: v for k, v in info["structure"].items() if k != "codon_order_in_gene"}
                 structure.extend([x for x in d.keys()])
                 types.extend([d[y] for y in d.keys()])
@@ -245,7 +246,9 @@ class Structure(object):
         """
         The annotation_sources_info is a dictionary spelling out all column names relevant to each
         annotation source, the method which returns the annotation dataframe, and the boolean
-        stating whether or not the annotation source will be called.
+        stating whether or not the annotation source will be called. Those without a `structure` key
+        are necessarily run and the columns they produce are statically present in
+        t.structure_residue_info_table_structure
         """
         annotation_sources_info = {
             "DSSP": {
@@ -257,8 +260,6 @@ class Structure(object):
             "contact_map": {
                 "method"    : self.run_contact_map,
                 "skip"      : False,
-                "structure" : dict(zip(t.residue_info_sources["contact_map"]["structure"],
-                                       t.residue_info_sources["contact_map"]["types"]))
                 },
             }
         return annotation_sources_info
@@ -366,6 +367,8 @@ class Structure(object):
         # which genes had structures and which did not. this information is added to the structure database self table
         has_structure = {True: [], False: []}
 
+        contigs_db = ContigsSuperclass(self.args)
+
         for corresponding_gene_call in self.genes_of_interest:
             # MODELLER outputs a lot of stuff into its working directory. A temporary directory is
             # made for each instance of MODELLER (i.e. each protein), And bits and pieces of this
@@ -440,6 +443,7 @@ class Structure(object):
         # All annotation sources must have the index called "codon_order_in_gene" whose values are
         # anvi'o-indexed, i.e. the methionine has index 0. Each annotation source does NOT have
         # to annotate each residue in the gene.
+
         res_annotation_for_gene = pd.DataFrame({})
         for method in residue_annotation_methods:
             res_annotation_for_gene = pd.concat([res_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1)

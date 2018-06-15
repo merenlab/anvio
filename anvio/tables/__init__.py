@@ -232,11 +232,9 @@ structure_models_table_types      = ['integer'  , 'integer'                 , 'r
 # The FULL table structure is defined in the StructureDatabase class based on what annotation
 # sources are found and/or requested.
 structure_residue_info_table_name       = 'residue_info'
-structure_residue_info_table_structure  = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene']
-structure_residue_info_table_types      = ['integer',         'integer'        ,        'integer'     ]
+structure_residue_info_table_structure  = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'contact_indices', 'contact_numbers']
+structure_residue_info_table_types      = ['integer',         'integer'        ,        'integer'     ,  'text',             'text']
 
 residue_info_sources = {"DSSP":        {"structure": ['codon_order_in_gene' , 'aa'   , 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy'],
                                         "types":     ['integer'             , 'text' , 'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']},
-                        "contact_map": {"structure": ['codon_order_in_gene' , 'contact_indices', 'contact_numbers'],
-                                        "types":     ['integer'             , 'text',            'text']},
                        }
