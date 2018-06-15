@@ -209,6 +209,7 @@ function create_ngl_views() {
                     });
                 }
 
+
                 if ($('#show_ballstick').is(':checked')) {
                     component.addRepresentation("ball+stick", {
                         sele: "sidechainAttached"
@@ -235,6 +236,7 @@ function create_ngl_views() {
             let tooltip = document.getElementById('ngl-tooltip');
 
             if (pickingProxy && pickingProxy.atom) {
+
                 let residue = pickingProxy.atom.resno;
                 let mp = pickingProxy.mouse.position;
 
@@ -248,6 +250,11 @@ function create_ngl_views() {
                     <tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>
                     <tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>
                     `
+
+                stage.compList[0].addRepresentation("ball+stick", {
+                    hydrogenBond: true,
+                    sele: residue_info[residue]['contact_numbers'].split(',').join(', ')
+                });
 
                 tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
                 tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
@@ -285,6 +292,11 @@ function create_ngl_views() {
 
             } else {
                 tooltip.style.display = "none";
+                stage.compList[0].reprList.slice(0).forEach((rep) => {
+                    if (rep.name == 'ball+stick') {
+                        rep.dispose();
+                    }
+                });
             }
         });
 
