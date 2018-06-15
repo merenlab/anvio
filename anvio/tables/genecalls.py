@@ -271,8 +271,19 @@ class TablesForGeneCalls(Table):
             # so we are in the append mode. We must remove all the previous entries from genes in contigs
             # that matches to the incoming sources. otherwhise we may end up with many duplicates in the db.
             sources = set([v['source'] for v in gene_calls_dict.values()])
+
+            # basically here we will go through those sources, find gene caller ids associated with them in
+            # the genes in contigs table, and then remove entries for those gene caller ids both from the
+            # genes in contigs and genes in splits tables.
             for source in sources:
-                database._exec('''DELETE FROM %s WHERE source = "%s"''' % (t.genes_in_contigs_table_name, source))
+                gene_caller_ids_for_source = database.get_single_column_from_table(t.genes_in_contigs_table_name, 
+                                                                                   'gene_callers_id',
+                                                                                   where_clause="""source='%s'""" % source)
+
+                if gene_caller_ids_for_source:
+                    for table_name in [t.genes_in_contigs_table_name, t.genes_in_splits_table_name]:
+                        database._exec('''DELETE FROM %s WHERE gene_callers_id IN (%s)''' % \
+                                                    (table_name, ','.join([str(g) for g in gene_caller_ids_for_source])))
 
         self.progress.new('Processing')
         self.progress.update('Entering %d gene calls into the db ...' % (len(gene_calls_dict)))
