@@ -241,22 +241,13 @@ function create_ngl_views() {
                 // Reference data is always available, so is always shown
                 let tooltip_HTML_title = `<h5>Reference info</h5>`
                 let tooltip_HTML_body = `
+                    <tr><td>Residue</td><td>${residue_info[residue]['amino_acid']} (${residue_info[residue]['codon']})</td></tr>
+                    <tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>
                     <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
                     <tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
                     <tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>
                     <tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>
                     `
-
-                // add engine-specific data
-                if ($('[name=engine]:checked').val() == 'AA') {
-                    // prepend to body
-                    tooltip_HTML_body = `<tr><td>Residue</td><td>${residue_info[residue]['aa']}</td></tr>` + tooltip_HTML_body
-                    tooltip_HTML_body = `<tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>` + tooltip_HTML_body
-                } else {
-                    // prepend to body
-                    tooltip_HTML_body = `<tr><td>Codon</td><td>${residue_info[residue]['aa']}</td></tr>` + tooltip_HTML_body
-                    tooltip_HTML_body = `<tr><td>Codon No.</td><td>${residue_info[residue]['codon_number']}</td></tr>` + tooltip_HTML_body
-                }
 
                 tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
                 tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
@@ -397,7 +388,6 @@ function fetch_and_draw_variability() {
                 let data = JSON.parse(response['data']);
                 let total_entries = response['total_entries'];
                 let entries_after_filtering = response['entries_after_filtering'];
-
                 variability[group] = move_codon_number_to_index(data);
             }
 
@@ -579,7 +569,6 @@ function create_ui() {
             }
 
             column_info.forEach((item) => {
-                console.log(item)
                 if (item['as_perspective']) {
                     $('#color_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);
                     $('#size_target_column').append(`<option value="${item['name']}">${item['title']}</item>`);

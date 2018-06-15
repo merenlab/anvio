@@ -151,12 +151,8 @@ class StructureDatabase(object):
         summary['pdb_content'] = self.db.get_single_column_from_table(t.structure_pdb_data_table_name,
             'pdb_content', where_clause="corresponding_gene_call = %d" % corresponding_gene_call)[0].decode('utf-8')
 
-        residue_info_df = self.db.get_table_as_dataframe(t.structure_residue_info_table_name,
-            where_clause = "corresponding_gene_call = %d" % corresponding_gene_call)
-
-        # add codon_number
-        residue_info_df['codon_number'] = utils.convert_sequence_indexing(residue_info_df['codon_order_in_gene'], "M0", "M1")
-        summary['residue_info'] = residue_info_df.to_json(orient='index')
+        summary['residue_info'] = self.db.get_table_as_dataframe(t.structure_residue_info_table_name,
+            where_clause = "corresponding_gene_call = %d" % corresponding_gene_call).to_json(orient='index')
 
         return summary
 
@@ -222,6 +218,9 @@ class Structure(object):
                                               residue_info_types_extras = self.residue_info_table_types,
                                               create_new=True)
 
+        # init ContigsSuperClass
+        self.contigs_super = ContigsSuperclass(self.args)
+
 
     def get_residue_info_table_structure(self):
         """
@@ -259,6 +258,10 @@ class Structure(object):
                 },
             "contact_map": {
                 "method"    : self.run_contact_map,
+                "skip"      : False,
+                },
+            "residue_identities": {
+                "method"    : self.run_residue_identity_annotation,
                 "skip"      : False,
                 },
             }
@@ -367,8 +370,6 @@ class Structure(object):
         # which genes had structures and which did not. this information is added to the structure database self table
         has_structure = {True: [], False: []}
 
-        contigs_db = ContigsSuperclass(self.args)
-
         for corresponding_gene_call in self.genes_of_interest:
             # MODELLER outputs a lot of stuff into its working directory. A temporary directory is
             # made for each instance of MODELLER (i.e. each protein), And bits and pieces of this
@@ -467,23 +468,39 @@ class Structure(object):
         shutil.move(self.modeller.directory, output_gene_dir)
 
 
+    def run_residue_identity_annotation(self, corresponding_gene_call, pdb_filepath):
+        nt_sequence = self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call],
+                                                                             reverse_complement_if_necessary=True)
+        nt_sequence = nt_sequence[1][corresponding_gene_call]['sequence']
+
+        seq_dict = {"codon_order_in_gene": [],
+                    "codon_number":        [],
+                    "codon":               [],
+                    "amino_acid":          []}
+
+        gene_length_in_codons = len(nt_sequence)//3 - 1 # subtract 1 because it's the stop codon
+        for codon_order_in_gene in range(0, gene_length_in_codons):
+            seq_dict["codon_order_in_gene"].append(codon_order_in_gene)
+            seq_dict["codon_number"].append(codon_order_in_gene+1)
+            seq_dict["codon"].append(nt_sequence[3*codon_order_in_gene:3*(codon_order_in_gene + 1)])
+            seq_dict["amino_acid"].append(constants.codon_to_AA[nt_sequence[3*codon_order_in_gene:3*(codon_order_in_gene + 1)]])
+
+        return pd.DataFrame(seq_dict).set_index("codon_order_in_gene")
+
+
     def run_contact_map(self, corresponding_gene_call, pdb_filepath):
         contact_map_matrix = ContactMap(pdb_filepath).compute_contact_map()
 
         contacts_dict = {"codon_order_in_gene": [],
-                         "contact_indices":     [],
                          "contact_numbers":     []}
         for codon_order_in_gene in range(contact_map_matrix.shape[0]):
             contacts = np.where(contact_map_matrix[codon_order_in_gene, :] == 1)[0]
-            contact_indices = contacts[contacts != codon_order_in_gene].astype(str)
-            contact_numbers = [str(int(x) + 1) for x in contact_indices]
+            contact_numbers = np.add(contacts[contacts != codon_order_in_gene], 1).astype(str)
 
             contacts_dict["codon_order_in_gene"].append(codon_order_in_gene)
-            contacts_dict["contact_indices"].append(",".join(contact_indices))
             contacts_dict["contact_numbers"].append(",".join(contact_numbers))
 
-        contacts_df = pd.DataFrame(contacts_dict).set_index("codon_order_in_gene")
-        return contacts_df
+        return pd.DataFrame(contacts_dict).set_index("codon_order_in_gene")
 
 
     def run_DSSP(self, corresponding_gene_call, pdb_filepath):
