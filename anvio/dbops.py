@@ -2134,8 +2134,22 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
-    def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False):
+    def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
+                                      populate_nt_level_coverage=False, zeros_are_outliers=False, gene_caller_ids_of_interest=set([])):
+
+        # sanity check
+        if not isinstance(gene_caller_ids_of_interest, set):
+            raise ConfigError("`gene_caller_ids_of_interest` must be of type `set`")
+
         # recover split coverage values from the auxiliary data file
+        if split_name not in self.split_coverage_values_per_nt_dict:
+            if not self.auxiliary_profile_data_available:
+                raise ConfigError("You are trying to recover gene coverage stats dict for a single split, but (1)\
+                                   the split is not described in split coverage values per nucleotide dicts, and (2)\
+                                   you don't seem to have access to the auxiliary data file :/")
+
+            self.split_coverage_values_per_nt_dict[split_name] = self.split_coverage_values.get(split_name)
+
         split_coverage = self.split_coverage_values_per_nt_dict[split_name]
 
         # identify entry ids for genes in `split_name`
@@ -2152,6 +2166,11 @@ class ProfileSuperclass(object):
             e = contigs_db.genes_in_splits[genes_in_splits_entry]
             gene_callers_id, gene_start, gene_stop = e['gene_callers_id'], e['start_in_split'], e['stop_in_split']
             gene_length = gene_stop - gene_start
+
+            # if the user requested to work only with a set of genes, check whether we are working with
+            # one of those. see https://github.com/merenlab/anvio/issues/865 for details.
+            if len(gene_caller_ids_of_interest) and gene_callers_id not in gene_caller_ids_of_interest:
+                continue
 
             if gene_length <= 0:
                 raise ConfigError("What? :( How! The gene with the caller id '%d' has a length of %d :/ We are done\
