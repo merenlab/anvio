@@ -494,11 +494,10 @@ class Structure(object):
         contacts_dict = {"codon_order_in_gene": [],
                          "contact_numbers":     []}
         for codon_order_in_gene in range(contact_map_matrix.shape[0]):
-            contacts = np.where(contact_map_matrix[codon_order_in_gene, :] == 1)[0]
-            contact_numbers = np.add(contacts[contacts != codon_order_in_gene], 1).astype(str)
+            contacts = np.add(np.where(contact_map_matrix[codon_order_in_gene, :] == 1)[0], 1).astype(str)
 
             contacts_dict["codon_order_in_gene"].append(codon_order_in_gene)
-            contacts_dict["contact_numbers"].append(",".join(contact_numbers))
+            contacts_dict["contact_numbers"].append(",".join(contacts))
 
         return pd.DataFrame(contacts_dict).set_index("codon_order_in_gene")
 
