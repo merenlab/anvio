@@ -9,6 +9,7 @@ import sys
 import copy
 import random
 import inspect
+import argparse
 import numpy as np
 import pandas as pd
 import operator as op
@@ -535,7 +536,6 @@ class VariabilitySuper(VariabilityFilter, object):
         self.include_split_names_in_output = A('include_split_names', null)
         self.include_contig_names_in_output = A('include_contig_names', null)
         self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
-        self.data_merged = {}
 
         self.append_structure_residue_info = True if self.structure_db_path else False
         self.table_provided = False if self.data.empty else True
@@ -572,6 +572,7 @@ class VariabilitySuper(VariabilityFilter, object):
                                   F(self.recover_base_frequencies_for_all_samples),
                                   F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
                                   F(self.compute_comprehensive_variability_scores),
+                                  F(self.compute_gene_coverage_fields),
                                   F(self.get_residue_structure_information,)]
 
         if not self.skip_sanity_check:
@@ -604,9 +605,11 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('codon_order_in_gene', int),
                 ('codon_number', int),
                 ('gene_length', int),
+                ('mean_gene_coverage', int),
             ],
             'coverage_info': [
                 ('coverage', int),
+                ('mean_normalized_coverage', int),
                 ('cov_outlier_in_split', int),
                 ('cov_outlier_in_contig', int),
                 ('in_complete_gene_call', int),
@@ -789,6 +792,10 @@ class VariabilitySuper(VariabilityFilter, object):
             filesnpaths.is_file_tab_delimited(splits_of_interest_path, expected_number_of_fields=1)
             splits_of_interest = set([c.strip().replace('\r', '') for c in open(splits_of_interest_path).readlines()])
 
+        else:
+            raise ConfigError("Invalid split source '%s'. Expected 'split_names', 'bin_id', or\
+                               'gene_caller_ids'." % split_source)
+
         return splits_of_interest
 
 
@@ -952,74 +959,6 @@ class VariabilitySuper(VariabilityFilter, object):
             return ""
 
         return " AND ".join([col_name + col_condition for col_name, col_condition in conditions.items()])
-
-
-    def merge_data_by_sample_group(self, sample_group_to_merge, group_name):
-        """
-           var : class
-               instance that inherits VariabilitySuper
-           sample_names : list-like
-               sample_ids to merge
-
-           This function merges rows in self.data that share the same unique position identifier.
-           For example if you have samples s01, s02, and s03, each with an entry with unique
-           position identifier = 1234, this function will return dataframe containing only one entry
-           with unique position identifier = 1234, with entries in this row being the mean of the
-           three previous rows for columns that have numerical values and the most common value for
-           columns that have categorical values. For example,
-
-           unique_pos  sec_struc  dfc
-           1234        H          1.0       becomes       unique_pos  sec_struc  dfc
-           1234        H          0.8      ========>      1234        H          0.9
-           1234        B          0.9
-        """
-        self.merged = copy.deepcopy(self.data)
-        self.filter_data(name = 'merged', criterion = 'sample_id', subset_filter = sample_group_to_merge)
-
-        columns, datatypes = self.get_data_column_structure(data = self.merged)
-
-        # all statistical measures
-        operation_dictionary = {str: [
-                                    ('',                  lambda x: x.mode()[0]), # most common gets no suffix
-                                    ('_most_common_freq', lambda x: x.value_counts().iloc[0] / x.count()),
-                                     ],
-                                float: [
-                                    ('_std',              lambda x: x.std()),
-                                    ('',                  lambda x: x.mean()), # mean gets no suffix
-                                    ('_mini',             lambda x: x.min()),
-                                    ('_maxi',             lambda x: x.max()),
-                                    ('_median',           lambda x: x.median()),
-                                    ('_percentile_25',    lambda x: x.quantile(0.25)),
-                                    ('_percentile_50',    lambda x: x.quantile(0.50)),
-                                    ('_percentile_75',    lambda x: x.quantile(0.75)),
-                                     ],
-                                int: [
-                                    ('_std',              lambda x: x.std()),
-                                    ('',                  lambda x: x.mean()),
-                                    ('_mini',             lambda x: x.min()),
-                                    ('_maxi',             lambda x: x.max()),
-                                    ('_median',           lambda x: x.median()),
-                                    ('_percentile_25',    lambda x: x.quantile(0.25)),
-                                    ('_percentile_50',    lambda x: x.quantile(0.50)),
-                                    ('_percentile_75',    lambda x: x.quantile(0.75)),
-                                     ],
-                               }
-
-        # e.g. {'dfc':[('dfc_min', mini), ...], 'sec_struc':[('sec_struct_most_common', most_common), ...]}
-        column_operations = {k: [(k + x, y) for x, y in operation_dictionary[v]] for k, v in dict(zip(columns, datatypes)).items()}
-
-        # update with merge-specific columns
-        # occurrence: the number of samples that contained a given SAAV in the sample group
-        # prevalence: the frequency of samples that contained a given SAAV in the sample group
-        self.merged['occurrence'] = 0 # initialize column
-        self.merged['prevalence'] = 0 # initialize column
-        column_operations.update({'occurrence': [('occurrence', lambda x: x.count())],
-                                  'prevalence': [('prevalence', lambda x: x.count() / len(sample_group_to_merge))]})
-
-
-        self.merged = self.merged.groupby('unique_pos_identifier').agg(column_operations)
-        self.merged.columns = self.merged.columns.droplevel()
-        self.data_merged[group_name] = self.merged
 
 
     def load_variability_data(self):
@@ -1191,9 +1130,6 @@ class VariabilitySuper(VariabilityFilter, object):
 
         self.filter_data(function = self.filter_by_occurrence,
                          min_occurrence = self.min_occurrence)
-
-        # this could go anywhere now
-        self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
 
 
     def set_unique_pos_identification_numbers(self):
@@ -1644,6 +1580,22 @@ class VariabilitySuper(VariabilityFilter, object):
             self.columns_to_report['structural'].extend([(x, C[y]) for x, y in zip(t.residue_info_sources[source]["structure"], t.residue_info_sources[source]["types"]) if x not in redundant_columns])
 
         self.progress.end()
+
+
+    def compute_gene_coverage_fields(self):
+        self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
+
+        # Initialize the profile super
+        profile_super = dbops.ProfileSuperclass(argparse.Namespace(profile_db = self.profile_db_path))
+
+        gene_cov_dict = {}
+        for gene, split in self.gene_callers_id_to_split_name_dict.items():
+            if self.genes_of_interest and gene not in self.genes_of_interest:
+                continue
+            gene_cov_dict.update(profile_super.get_gene_level_coverage_stats(split, self,
+                                                                             gene_caller_ids_of_interest=set([gene])))
+
+        #self.data[['corresponding_gene_call','sample_id']].apply(J, args=(x,), axis=1)
 
 
     def get_gene_length(self, gene_callers_id):
