@@ -49,6 +49,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
+# for full output
+pd.options.display.max_columns=100
+pd.options.display.max_rows=100
 
 # Mock progress object that will not report anything, for general clarity.
 progress = Progress()
@@ -747,7 +750,7 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
         for ind, column_name in enumerate(column_names):
             d[column_name].append(out_values[ind])
 
-    df2 = pd.DataFrame(d)
+    df2 = pd.DataFrame(d, index=df.index)
     return pd.concat((df, df2), axis=1)
 
 
