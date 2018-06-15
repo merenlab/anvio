@@ -1634,12 +1634,12 @@ class VariabilitySuper(VariabilityFilter, object):
         include_columns = [x for x in self.structure_residue_info.columns if x not in skip_columns]
         self.data = pd.merge(self.data,
                              self.structure_residue_info[include_columns],
-                             on = ["corresponding_gene_call", "codon_order_in_gene"],
+                             on = ["corresponding_gene_call", "codon_order_in_gene", "codon_number"],
                              how = "left")
 
         # add all known residue info sources to columns_to_report
         C = {'text': str, 'real': float, 'integer': int}
-        redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa']
+        redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa', 'amino_acid', 'codon', 'codon_number']
         for source in t.residue_info_sources:
             self.columns_to_report['structural'].extend([(x, C[y]) for x, y in zip(t.residue_info_sources[source]["structure"], t.residue_info_sources[source]["types"]) if x not in redundant_columns])
 
