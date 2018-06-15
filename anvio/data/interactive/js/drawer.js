@@ -196,7 +196,7 @@ Drawer.prototype.generate_mock_data_for_collapsed_nodes = function(node_list) {
         for (var j = 1; j < parameter_count; j++) {
             if (layerdata[0][j].indexOf(';') > -1) {
                 var pcount = layerdata[0][j].split(';').length;
-                mock_data.push(Array(pcount).fill('0').join(';'));
+                mock_data.push(Array(pcount).fill('1').join(';'));
             }
             else if (isNumber(layerdata[1][j])) {
                 mock_data.push(0);
@@ -1461,9 +1461,6 @@ Drawer.prototype.draw_stack_bar_layers = function() {
 
         for (var i=0; i < this.tree.leaves.length; i++) {
             q = this.tree.leaves[i];
-
-            if (q.collapsed)
-                continue;
 
             var offset = 0;
             for (var j=0; j < this.layerdata_dict[q.label][layer.index].length - 1; j++)
