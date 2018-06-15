@@ -484,7 +484,7 @@ Drawer.prototype.overlay_collapsed_node_layers = function() {
                 beginning_of_layers - 10,
                 total_radius + 10,
                 (p.size > Math.PI) ? 1 : 0,
-                'white',
+                '#F0F0F0',
                 1,
                 false);
         } else {
@@ -494,7 +494,7 @@ Drawer.prototype.overlay_collapsed_node_layers = function() {
                 p.xy.y,
                 p.size,
                 total_radius - beginning_of_layers + 20,
-                'white',
+                '#F0F0F0',
                 1,
                 false);
         }
