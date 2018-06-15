@@ -225,6 +225,29 @@
                             <label class="col-md-4 settings-label">Show: </label>  
                             <div class="col-md-8"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(); " /></div>
                         </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">When: </label>  
+                            <div class="col-md-8">
+                                <select id="show_ballstick_when" onchange="create_ngl_views();">
+                                    <option>always</option>
+                                    <option>on hover</option>
+                                </select>
+                            </div>
+                        </div>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Hover Tooltip</h5></span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Show: </label>  
+                            <div class="col-md-8"><input type="checkbox" id="show_tooltip" onclick="create_ngl_views(); " checked="checked" /></div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">When: </label>  
+                            <div class="col-md-8">
+                                <select id="show_tooltip_when" onchange="create_ngl_views();">
+                                    <option>variant residues</option>
+                                    <option>all residues</option>
+                                </select>
+                            </div>
+                        </div>
                         <span class="settings-header" style="margin-left: 10px;"><h5>Residue Labels</h5></span>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Show: </label>  
