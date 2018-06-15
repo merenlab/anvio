@@ -1419,8 +1419,18 @@ class StructureInteractive(VariabilitySuper):
                 'max': 1
             },
             {
+                'name': 'mean_normalized_coverage',
+                'title': 'Site coverage normalized by gene average',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': float(FIND_MIN('mean_normalized_coverage')),
+                'max': float(FIND_MAX('mean_normalized_coverage'))
+            },
+            {
                 'name': 'coverage',
-                'title': 'Coverage',
+                'title': 'Site coverage',
                 'as_perspective': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
