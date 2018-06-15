@@ -40,6 +40,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 pd.options.display.max_columns=100
+pd.options.display.max_rows=100
 pp = terminal.pretty_print
 progress = terminal.Progress()
 run = terminal.Run(width=62)
@@ -605,11 +606,13 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('codon_order_in_gene', int),
                 ('codon_number', int),
                 ('gene_length', int),
-                ('mean_gene_coverage', int),
+                ('gene_coverage', float),
+                ('non_outlier_gene_coverage', float),
+                ('non_outlier_gene_coverage_std', float),
             ],
             'coverage_info': [
                 ('coverage', int),
-                ('mean_normalized_coverage', int),
+                ('mean_normalized_coverage', float),
                 ('cov_outlier_in_split', int),
                 ('cov_outlier_in_contig', int),
                 ('in_complete_gene_call', int),
@@ -1131,6 +1134,9 @@ class VariabilitySuper(VariabilityFilter, object):
         self.filter_data(function = self.filter_by_occurrence,
                          min_occurrence = self.min_occurrence)
 
+        # this guy has no home
+        self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
+
 
     def set_unique_pos_identification_numbers(self):
         self.progress.new('Further processing')
@@ -1523,7 +1529,7 @@ class VariabilitySuper(VariabilityFilter, object):
            (https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.histogram.html)
         """
         if not pd.api.types.is_numeric_dtype(self.data[column]):
-            raise ConfigError("get_histogram :: %s is not of numeric type" %s (column))
+            raise ConfigError("get_histogram :: %s is not of numeric type" % (column))
 
         if fix_offset:
             range_offset = (kwargs["range"][1] - kwargs["range"][0]) / (kwargs["bins"] - 1) / 2
@@ -1583,11 +1589,11 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def compute_gene_coverage_fields(self):
-        self.data['gene_length'] = self.data['corresponding_gene_call'].apply(self.get_gene_length)
 
         # Initialize the profile super
         profile_super = dbops.ProfileSuperclass(argparse.Namespace(profile_db = self.profile_db_path))
 
+        # obtain gene coverage info per gene/sample combo
         gene_cov_dict = {}
         for gene, split in self.gene_callers_id_to_split_name_dict.items():
             if self.genes_of_interest and gene not in self.genes_of_interest:
@@ -1595,7 +1601,24 @@ class VariabilitySuper(VariabilityFilter, object):
             gene_cov_dict.update(profile_super.get_gene_level_coverage_stats(split, self,
                                                                              gene_caller_ids_of_interest=set([gene])))
 
-        #self.data[['corresponding_gene_call','sample_id']].apply(J, args=(x,), axis=1)
+        gene_coverage_columns = ['gene_coverage',
+                                 'non_outlier_gene_coverage',
+                                 'non_outlier_gene_coverage_std']
+
+        J = lambda row, g: (g[row.iloc[0]][row.iloc[1]]['mean_coverage'],
+                            g[row.iloc[0]][row.iloc[1]]['non_outlier_mean_coverage'],
+                            g[row.iloc[0]][row.iloc[1]]['non_outlier_coverage_std']) \
+                            if row.iloc[0] in self.gene_lengths else (-1, -1, -1)
+
+        self.data = utils.apply_and_concat(df = self.data,
+                                           fields = ['corresponding_gene_call', 'sample_id'],
+                                           func = J,
+                                           column_names = gene_coverage_columns,
+                                           func_args = (gene_cov_dict,))
+
+        # this guy piggybacks in this method
+        self.data['mean_normalized_coverage'] = self.data['coverage'] / self.data['gene_coverage']
+        self.data.loc[self.data['gene_coverage'] == -1, 'mean_normalized_coverage'] = -1
 
 
     def get_gene_length(self, gene_callers_id):
@@ -1789,7 +1812,6 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         # no columns exist in new_entries but not in self.data. This is unacceptable, and could have
         # happened if code for new_entries was changed or if the workflow in process() is
         # significantly reworked.
-
         column_order = self.data.columns.tolist()
         if len([x for x in new_entries.columns.tolist() if x not in self.data.columns.tolist()]):
             raise ValueError("Columns found in new_entries exist that aren't in self.data.")
