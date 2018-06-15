@@ -331,19 +331,23 @@ Drawer.prototype.calculate_bar_sizes = function() {
 
                     for (var j=0; j < this.layerdata_dict[id][layer.index].length; j++)
                     {
-                        total = total + parseFloat(this.layerdata_dict[id][layer.index][j]);
+                        if (isNumber(this.layerdata_dict[id][layer.index][j])) {
+                            total = total + parseFloat(this.layerdata_dict[id][layer.index][j]);
+                        }
                     }
 
-                    var multiplier = parseFloat(layer.get_visual_attribute('height')) / total;
+                    var multiplier = (total == 0) ? 0 : (parseFloat(layer.get_visual_attribute('height')) / total);
 
                     for (var j=0; j < this.layerdata_dict[id][layer.index].length; j++)
                     {
-                        this.layerdata_dict[id][layer.index][j] = this.layerdata_dict[id][layer.index][j] * multiplier;
+                        if (isNumber(this.layerdata_dict[id][layer.index][j])) {
+                            this.layerdata_dict[id][layer.index][j] = this.layerdata_dict[id][layer.index][j] * multiplier;
+                        }
                     }
                 }
                 else // numerical data
                 {
-                    var bar_size = parseFloat(this.layerdata_dict[id][layer.index]);
+                    var bar_size = isNumber(this.layerdata_dict[id][layer.index]) ? parseFloat(this.layerdata_dict[id][layer.index]) : 0;
                                         
                     if (!min_max_disabled)
                     {
@@ -1461,6 +1465,16 @@ Drawer.prototype.draw_stack_bar_layers = function() {
 
         for (var i=0; i < this.tree.leaves.length; i++) {
             q = this.tree.leaves[i];
+
+            let total = 0;
+            for (var j=0; j < this.layerdata_dict[q.label][layer.index].length - 1; j++)
+            {
+                total = total + parseFloat(this.layerdata_dict[q.label][layer.index][j]);
+            }
+
+            if (total == 0) {
+                continue;
+            }
 
             var offset = 0;
             for (var j=0; j < this.layerdata_dict[q.label][layer.index].length - 1; j++)
