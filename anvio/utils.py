@@ -719,6 +719,38 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     return id_to_sample_dict, sample_to_id_dict, columns, vectors
 
 
+def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
+    """ This function has been taken from https://tinyurl.com/y9ylqy4l
+        and has been modified for speed considerations using this blog post:
+        https://tinyurl.com/ya4e5tz3. Its utility is to append multiple columns to an existing
+        dataframe row by row. This is usually a bad idea because usually operations can be
+        vectorized. However when they cannot, looping through each row becomes a necessary evil.
+
+        df: pandas DataFrame object
+            An existing dataframe to loop through append columns to.
+        fields: list
+            A list of columns in the existing dataframe used to calculate the new columns
+        func: function
+            A function that takes as its first argument a row of `df` (i.e. a pd.Series
+            object) and potential additional positional arguments `func_args`. It should return a
+            tuple of values with with the same length as `column_names`.
+        func_args: tuple
+            A tuple of arguments passed to `func` besides the assumed first argument (a pd.Series
+            object). For example, is `def func(row, a)`, then `func_args = (a,)`. If func_args is an
+            empty tuple, `func` should take no other args.
+        column_names: list
+            A list of column headers for the newly appended columns
+    """
+    d = {column_name: [] for column_name in column_names}
+    for _, row in df[fields].iterrows():
+        out_values = func(row, *func_args)
+        for ind, column_name in enumerate(column_names):
+            d[column_name].append(out_values[ind])
+
+    df2 = pd.DataFrame(d)
+    return pd.concat((df, df2), axis=1)
+
+
 def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):
     """
         This function takes the gene_level_coverage_stats_dict and return one of the values
