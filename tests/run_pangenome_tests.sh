@@ -13,6 +13,7 @@ cp $files/mock_data_for_pangenomics/external-genomes.txt      $output_dir/pan_te
 cp $files/mock_data_for_pangenomics/example-gene-clusters-collection.txt $output_dir/pan_test/
 cp $files/mock_data_for_pangenomics/default-state.json        $output_dir/pan_test/
 cp $files/example_description.md                              $output_dir/pan_test/
+cp $files/mock_data_for_pangenomics/group-information.txt     $output_dir/pan_test/
 cd $output_dir/pan_test
 
 INFO "Generating contigs databases for external genomes"
@@ -54,6 +55,18 @@ head -n 5 aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa
 
 INFO "First five line from the DNA output"
 head -n 5 aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_DNA.fa
+
+INFO "Importing group information as misc data for layers"
+anvi-import-misc-data -p TEST/TEST-PAN.db \
+                      -t layers \
+                      group-information.txt
+
+anvi-get-enriched-functions-per-pan-group -p TEST/TEST-PAN.db \
+                                          -g TEST-GENOMES.db \
+                                          --category group \
+                                          --annotation-source COG_FUNCTION \
+                                          -o functions-enrichment.txt \
+                                          -F functional-occurence.txt
 
 INFO "Exporting concatenated amino acid sequences for some gene clusters for phylogenomics"
 anvi-get-sequences-for-gene-clusters -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -b GENE_CLUSTER_BIN_1_CORE -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa --concatenate-gene-clusters
