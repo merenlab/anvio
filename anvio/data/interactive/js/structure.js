@@ -237,19 +237,35 @@ function create_ngl_views() {
             if (pickingProxy && pickingProxy.atom) {
                 let residue = pickingProxy.atom.resno;
                 let mp = pickingProxy.mouse.position;
-                console.log(residue_info[residue])
 
+                // Reference data is always available, so is always shown
+                let tooltip_HTML_title = `<h5>Reference info</h5>`
+                let tooltip_HTML_body = `
+                    <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
+                    <tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
+                    <tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>
+                    <tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>
+                    `
+
+                // add engine-specific data
+                if ($('[name=engine]:checked').val() == 'AA') {
+                    // prepend to body
+                    tooltip_HTML_body = `<tr><td>Residue</td><td>${residue_info[residue]['aa']}</td></tr>` + tooltip_HTML_body
+                    tooltip_HTML_body = `<tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>` + tooltip_HTML_body
+                } else {
+                    // prepend to body
+                    tooltip_HTML_body = `<tr><td>Codon</td><td>${residue_info[residue]['aa']}</td></tr>` + tooltip_HTML_body
+                    tooltip_HTML_body = `<tr><td>Codon No.</td><td>${residue_info[residue]['codon_number']}</td></tr>` + tooltip_HTML_body
+                }
+
+                tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
+                tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
+
+                // Variant data is available if a variant exists at hovered residue
                 if (variability[group].hasOwnProperty(residue)) {
-                    let HTML_reference_title = `<h5>Reference info</h5>`
-                    let HTML_reference_body = `
-                        <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
-                        <tr><td>Solvent Accessibility</td><td>${variability[group][residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
-                        <tr><td>(Phi, Psi)</td><td>(${variability[group][residue]['phi'].toFixed(1)}, ${variability[group][residue]['psi'].toFixed(1)})</td></tr>
-                        <tr><td>Contacts With</td><td>${variability[group][residue]['contact_numbers']}</td></tr>
-                        `
 
-                    let HTML_variant_title = `<h5>Variant info</h5>`
-                    let HTML_variant_body = `
+                    let tooltip_HTML_variant_title = `<h5>Variant info</h5>`
+                    let tooltip_HTML_variant_body = `
                         <tr><td>Consensus</td><td>${variability[group][residue]['consensus']}</td></tr>
                         <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
                         <tr><td>Prevalence</td><td>${variability[group][residue]['occurrence']} of ${parseInt(Math.round(variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']))} samples</td></tr>
@@ -257,32 +273,24 @@ function create_ngl_views() {
                         <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
                         `
 
-                    // add CDN specific columns
-                    if ($('[name=engine]:checked').val() == 'CDN') {
-                        // prepend to body
-                        HTML_reference_body = `<tr><td>Codon</td><td>${variability[group][residue]['reference']}</td></tr>` + HTML_reference_body
-                        HTML_reference_body = `<tr><td>Codon No.</td><td>${variability[group][residue]['codon_number']}</td></tr>` + HTML_reference_body
-                        // append to body
-                        HTML_variant_body += `<tr><td>Synonymity</td><td>${variability[group][residue]['synonymity'].toFixed(2)}</td></tr>`
-                    }
-
-                    // add AA specific columns
+                    // add engine-specific data
                     if ($('[name=engine]:checked').val() == 'AA') {
-                        // prepend to body
-                        HTML_reference_body = `<tr><td>Residue</td><td>${variability[group][residue]['reference']}</td></tr>` + HTML_reference_body
-                        HTML_reference_body = `<tr><td>Residue No.</td><td>${variability[group][residue]['codon_number']}</td></tr>` + HTML_reference_body
                         // append to body
-                        HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
+                        tooltip_HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
+                    } else {
+                        // append to body
+                        tooltip_HTML_variant_body += `<tr><td>Synonymity</td><td>${variability[group][residue]['synonymity'].toFixed(2)}</td></tr>`
                     }
 
-                    HTML_reference_body = `<table class="tooltip-table">` + HTML_reference_body + `</table>`
-                    HTML_variant_body = `<table class="tooltip-table">` + HTML_variant_body + `</table>`
-
-                    tooltip.innerHTML = HTML_reference_title + HTML_reference_body + HTML_variant_title + HTML_variant_body;
-                    tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
-                    tooltip.style.left = mp.x + 3 + "px";
-                    tooltip.style.display = "block";
+                    tooltip_HTML_variant_body = `<table class="tooltip-table">` + tooltip_HTML_variant_body + `</table>`
+                    tooltip_HTML += tooltip_HTML_variant_title + tooltip_HTML_variant_body
                 }
+
+                tooltip.innerHTML = tooltip_HTML;
+                tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
+                tooltip.style.left = mp.x + 3 + "px";
+                tooltip.style.display = "block";
+
             } else {
                 tooltip.style.display = "none";
             }
