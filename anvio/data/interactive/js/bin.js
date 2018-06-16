@@ -472,9 +472,11 @@ Bins.prototype.ClearHighlightedItems = function() {
 
 Bins.prototype.RedrawLineColors = function() {
     for (let bin_id in this.selections) {
-        let bin_color = this.GetBinColor(bin_id);
-        for (let node of this.selections[bin_id].values()) {
-            node.SetColor(bin_color);
+        if (this.selections[bin_id].size) {
+            let bin_color = this.GetBinColor(bin_id);
+            for (let node of this.selections[bin_id].values()) {
+                node.SetColor(bin_color);
+            }
         }
     }
 };
