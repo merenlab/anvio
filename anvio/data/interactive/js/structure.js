@@ -239,10 +239,29 @@ function create_ngl_views() {
                 let residue = pickingProxy.atom.resno;
                 let mp = pickingProxy.mouse.position;
 
-                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() == 'on hover'){
+                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always') {
+                    if ($('#show_ballstick_when').val() == 'hovered residue') {
+                        var selection = "(" + residue + ")" + " and sidechainAttached";
+                    }
+                    else if ($('#show_ballstick_when').val() == 'hovered residue + contacts') {
+                        var selection = "(" + residue_info[residue]['contact_numbers'].split(',').join(', ') + ")" + " and sidechainAttached";
+                    }
+                    if ($('#show_ballstick_when').val() == 'hovered residue + variant contacts') {
+                        let contacts = residue_info[residue]['contact_numbers'].split(',');
+                        let variant_contacts = [];
+                        for (i in contacts) {
+                            if (contacts[i] == String(residue)) {
+                                variant_contacts.push(contacts[i]);
+                            } 
+                            else if (variability[group].hasOwnProperty(parseInt(contacts[i]))) {
+                                variant_contacts.push(contacts[i]);
+                            }
+                        }
+                        var selection = "(" + variant_contacts.join(', ') + ")" + " and sidechainAttached";
+                    }
                     stage.compList[0].addRepresentation("ball+stick", {
                         hydrogenBond: true,
-                        sele: "(" + residue_info[residue]['contact_numbers'].split(',').join(', ') + ")" + " and sidechainAttached"
+                        sele: selection
                     });
                 }
 
@@ -339,7 +358,7 @@ function create_ngl_views() {
 
             } else {
                 tooltip.style.display = "none";
-                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() == 'on hover'){
+                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always'){
                     stage.compList[0].reprList.slice(0).forEach((rep) => {
                         if (rep.name == 'ball+stick') {
                             rep.dispose();
