@@ -1258,6 +1258,8 @@ class StructureInteractive(VariabilitySuper):
         self.available_samples_path = A('samples_of_interest', null)
         self.available_samples = A('available_samples', set) or set([])
         # others
+        self.saavs_only = A('SAAVs_only', bool)
+        self.scvs_only = A('SCVs_only', bool)
         self.variability_table_path = A('variability_profile', null)
         self.no_variability = A('no_variability', bool)
         self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
@@ -1274,7 +1276,7 @@ class StructureInteractive(VariabilitySuper):
             self.profile_full_variability_data()
 
         self.available_genes = self.get_available_genes()
-        self.available_engines = [self.full_variability.engine] if self.variability_table_path else ["AA", "CDN"]
+        self.available_engines = self.get_available_engines()
 
         # can save significant memory if available genes is a fraction of genes in full variability
         if self.full_variability:
@@ -1568,8 +1570,19 @@ class StructureInteractive(VariabilitySuper):
         return info
 
 
-    def get_genes_of_interest_from_bin_id():
+    def get_genes_of_interest_from_bin_id(self):
         pass
+
+
+    def get_available_engines(self):
+        if self.variability_table_path:
+            return [self.full_variability.engine]
+        elif self.saavs_only:
+            return ['AA']
+        elif self.scvs_only:
+            return ['CDN']
+        else:
+            return ['AA', 'CDN']
 
 
     def get_available_genes(self, available_genes_path="", available_gene_caller_ids=""):
@@ -1722,6 +1735,9 @@ class StructureInteractive(VariabilitySuper):
         elif self.profile_db_path and not self.contigs_db_path:
             raise ConfigError("A contigs database must accompany your profile database. Provide one\
                                with the flag `-c`.")
+
+        if self.saavs_only and self.scvs_only:
+            raise ConfigError("--SAAVs-only and --SCVs-only are not compatible with one another. Pick one.")
 
 
     def profile_full_variability_data(self):
@@ -1911,6 +1927,7 @@ class StructureInteractive(VariabilitySuper):
 
         # all statistical measures
         generic_operation_dictionary = {'text': [
+                                            ('test',                  lambda x: print(x.mode(), x)), # most common gets no suffix
                                             ('',                  lambda x: x.mode()[0]), # most common gets no suffix
                                             ('_most_common_freq', lambda x: x.value_counts().iloc[0] / x.count()),
                                              ],
@@ -1945,6 +1962,7 @@ class StructureInteractive(VariabilitySuper):
         var.merged['prevalence'] = 0 # initialize column
         column_operations.update({'occurrence': [('occurrence', lambda x: x.count())],
                                   'prevalence': [('prevalence', lambda x: x.count() / len(sample_group_to_merge))],
+                                  #'contact_numbers': [('contact_numbers', lambda x: x.iloc[0])],
                                   'sample_id': [('sample_ids', lambda x: ", ".join(list(x.unique())))]})
 
 

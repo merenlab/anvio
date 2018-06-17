@@ -1590,7 +1590,10 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def compute_gene_coverage_fields(self):
 
-        # Initialize the profile super
+        # Initialize the profile super FIXME This bastard spits out 
+        #       Auxiliary Data ...............................: Found: SAR11/AUXILIARY-DATA.db (v. 2)
+        #       Profile Super ................................: Initialized with all 1393 splits: SAR11/PROFILE.db (v. 27)
+        # and it isn't silenced even if self.Run(verbose=False) is passed to the VariabilitySuper class
         profile_super = dbops.ProfileSuperclass(argparse.Namespace(profile_db = self.profile_db_path))
 
         # obtain gene coverage info per gene/sample combo
