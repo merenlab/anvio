@@ -69,7 +69,7 @@ class PyANI:
         for matrix_name in output_matrix_names:
             output_matrix_path = full_matrix_path(matrix_name)
             if os.path.exists(output_matrix_path):
-                matrices[matrix_name] = utils.get_TAB_delimited_file_as_dictionary(output_matrix_path)
+                matrices[matrix_name] = utils.get_TAB_delimited_file_as_dictionary(output_matrix_path, empty_header_columns_are_OK=True)
 
         if not len(matrices):
             raise ConfigError("None of the output matrices pyANI was supposed to generate was found in the\
