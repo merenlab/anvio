@@ -231,10 +231,21 @@ function create_ngl_views() {
 
 
         // add custom tooltip
+        var previous_hovered_residue = null;
         stage.signals.hovered.add(function (pickingProxy) {
             let tooltip = document.getElementById('ngl-tooltip');
 
             if (pickingProxy && pickingProxy.atom) {
+                if (pickingProxy.atom.resno != previous_hovered_residue) {
+                    // remove ball+stick if hovered residue changed or 
+                    if (pickingProxy.atom.resno != previous_hovered_residue) {
+                        stage.compList[0].reprList.slice(0).forEach((rep) => {
+                            if (rep.name == 'ball+stick') {
+                                rep.dispose();
+                            }
+                        });
+                    }
+                }
 
                 let residue = pickingProxy.atom.resno;
                 let mp = pickingProxy.mouse.position;
@@ -265,18 +276,18 @@ function create_ngl_views() {
                     });
                 }
 
-                if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'all residues') {
-                    // Reference data is always available
-                    let tooltip_HTML_title = `<h5>Reference info</h5>`
-                    let tooltip_HTML_body = `
-                        <tr><td>Residue</td><td>${residue_info[residue]['amino_acid']} (${residue_info[residue]['codon']})</td></tr>
-                        <tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>
-                        <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
-                        <tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
-                        <tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>
-                        <tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>
-                        `
+                // Reference data is always available
+                let tooltip_HTML_title = `<h5>Reference info</h5>`
+                let tooltip_HTML_body = `
+                    <tr><td>Residue</td><td>${residue_info[residue]['amino_acid']} (${residue_info[residue]['codon']})</td></tr>
+                    <tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>
+                    <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
+                    <tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
+                    <tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>
+                    <tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>
+                    `
 
+                if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'all residues') {
                     tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
                     tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
 
@@ -289,7 +300,7 @@ function create_ngl_views() {
                             <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
                             <tr><td>Prevalence</td><td>${variability[group][residue]['occurrence']} of ${parseInt(Math.round(variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']))} samples</td></tr>
                             <tr><td>Site Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
-                            <tr><td>Site Coverage Over Gene Coverage</td><td>${variability[group][residue]['mean_normalized_coverage'].toFixed(2)}</td></tr>
+                            <tr><td>Site Coverage / Gene Coverage</td><td>${variability[group][residue]['mean_normalized_coverage'].toFixed(2)}</td></tr>
                             <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
                             `
 
@@ -313,17 +324,6 @@ function create_ngl_views() {
                 }
                 else if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'variant residues') {
                     if (variability[group].hasOwnProperty(residue)) {
-                        // Reference data is always available
-                        let tooltip_HTML_title = `<h5>Reference info</h5>`
-                        let tooltip_HTML_body = `
-                            <tr><td>Residue</td><td>${residue_info[residue]['amino_acid']} (${residue_info[residue]['codon']})</td></tr>
-                            <tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>
-                            <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
-                            <tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
-                            <tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>
-                            <tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>
-                            `
-
                         tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
                         tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
 
@@ -356,6 +356,7 @@ function create_ngl_views() {
                     }
                 }
 
+                previous_hovered_residue = residue;
             } else {
                 tooltip.style.display = "none";
                 if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always'){
