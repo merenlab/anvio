@@ -1564,7 +1564,7 @@ def is_ascii_only(text):
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
                                         column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
                                         ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
-                                        none_value=None):
+                                        none_value=None, empty_header_columns_are_OK=False):
     """Takes a file path, returns a dictionary."""
 
     if expected_fields and (not isinstance(expected_fields, list) and not isinstance(expected_fields, set)):
@@ -1603,9 +1603,9 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
     else:
         columns = f.readline().strip('\n').split(separator)
 
-    if min(map(len, columns)) == 0:
+    if not empty_header_columns_are_OK and min(map(len, columns)) == 0:
         raise ConfigError("At least one of the column headers in your tab delimited file '%s'\
-                                is empty." % file_path)
+                           is empty." % file_path)
 
     if expected_fields:
         for field in expected_fields:
