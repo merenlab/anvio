@@ -109,7 +109,7 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
             else:
                 break
     except UnicodeDecodeError:
-        raise FilesNPathsError("The probability that this is a tab-delimited file is zero.")
+        raise FilesNPathsError("The probability that `%s` is a tab-delimited file is zero." % file_path)
 
     if len(line.split(separator)) == 1 and expected_number_of_fields != 1:
         raise FilesNPathsError("File '%s' does not seem to have TAB characters.\
