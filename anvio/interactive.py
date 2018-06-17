@@ -1927,12 +1927,11 @@ class StructureInteractive(VariabilitySuper):
 
         # all statistical measures
         generic_operation_dictionary = {'text': [
-                                            ('test',                  lambda x: print(x.mode(), x)), # most common gets no suffix
-                                            ('',                  lambda x: x.mode()[0]), # most common gets no suffix
-                                            ('_most_common_freq', lambda x: x.value_counts().iloc[0] / x.count()),
+                                            ('',                  lambda x: x.mode().iloc[0] if not x.mode().empty else x.iloc[0]), # most common gets no suffix
+                                            ('_most_common_freq', lambda x: x.value_counts().iloc[0] / x.count() if not x.value_counts().empty else 0),
                                              ],
                                         'float': [
-                                            ('_std',              lambda x: x.std()),
+                                            ('_std',              lambda x: x.std() if len(x) > 1 else 0.0),
                                             ('',                  lambda x: x.mean()), # mean gets no suffix
                                             ('_mini',             lambda x: x.min()),
                                             ('_maxi',             lambda x: x.max()),
