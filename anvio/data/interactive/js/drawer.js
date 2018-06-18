@@ -248,12 +248,19 @@ Drawer.prototype.generate_tooltips = function() {
                 }
                 
             }
+            else if (layer_types[pindex] == 1) {
+                let stack_names = layerdata[0][pindex].split('!')[1].split(';');
+                message = '<td>' + layer_title.split('!')[0] + '</td><td><table>';
+                for (let j= stack_names.length - 1; j >= 0; j--) {
+                    message += `<tr><td><div class="colorpicker" style="background-color: ${stack_bar_colors[pindex][j]}"></div>${stack_names[j]}</td><td>${layerdata[index][pindex][j]}</td></tr>`;
+                }
+                message += '</table></td>';
+
+                title.push(message);
+            }
             else
             {
                 var layer_title = layerdata[0][pindex];
-                if (layer_title.indexOf('!') > -1)
-                    layer_title = layer_title.split('!')[0];
-
                 title.push('<td>' + layer_title + '</td><td>' + layerdata[index][pindex] + '</td>');
             }
         }
