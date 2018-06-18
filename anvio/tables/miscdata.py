@@ -79,9 +79,9 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         if not len(data_keys):
             raise ConfigError("There is something wrong with the additional data file for %s at %s.\
                                It does not seem to have any additional keys for data :/" \
-                                            % (self.target, additional_data_file_path))
+                                            % (self.target_table, additional_data_file_path))
 
-        if self.target == 'layer_orders':
+        if self.target_table == 'layer_orders':
             OrderDataBaseClass.add(self, data_dict, skip_check_names)
         else:
             AdditionalDataBaseClass.add(self, data_dict, data_keys, skip_check_names)
@@ -105,7 +105,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
         if not len(additional_data_keys):
-            self.run.info_single('There is nothing to remove --the %s additional data table is already empty :(' % self.target)
+            self.run.info_single('There is nothing to remove --the %s additional data table is already empty :(' % self.target_table)
             database.disconnect()
 
             return
@@ -127,17 +127,17 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                 else:
                     database._exec('''DELETE from %s WHERE data_key="%s" and data_group="%s"''' % (self.table_name, key, data_group))
 
-            self.run.warning("%s data for the following keys removed from the database: '%s'. #SAD." % (self.target, ', '.join(data_keys_list)))
+            self.run.warning("%s data for the following keys removed from the database: '%s'. #SAD." % (self.target_table, ', '.join(data_keys_list)))
         else:
             if not self.just_do_it:
                 raise ConfigError("You did not provide a list of data keys to remove, which means you are about to delete everything in the\
                                    %s additional data table. Just to be on the safe side, anvi'o is looking for a confirmation. If you\
                                    try again with the --just-do-it flag, anvi'o will put on its business socks, and burn this table\
-                                   and everything in it to the ground." % self.target)
+                                   and everything in it to the ground." % self.target_table)
 
             database._exec('''DELETE from %s''' % (self.table_name))
 
-            self.run.warning("All data from the %s additional data table is removed (ouch)." % self.target)
+            self.run.warning("All data from the %s additional data table is removed (ouch)." % self.target_table)
 
         database.disconnect()
 
@@ -145,54 +145,60 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def export(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
 
-        if self.target in ['layers', 'items']:
+        if self.target_table in ['layers', 'items']:
             keys, data = AdditionalDataBaseClass.get(self)
-        elif self.target in ['layer_orders']:
+        elif self.target_table in ['layer_orders']:
             data = OrderDataBaseClass.get(self, native_form=True)
             keys = ['data_type', 'data_value']
         else:
-            raise ConfigError("Your target table '%s' does not make any sense" % self.target)
+            raise ConfigError("Your target table '%s' does not make any sense" % self.target_table)
 
         if not(len(data)):
-            raise ConfigError("Additional data table for %s is empty. There is nothing to export :/" % self.target)
+            raise ConfigError("Additional data table for %s is empty. There is nothing to export :/" % self.target_table)
 
-        utils.store_dict_as_TAB_delimited_file(data, output_file_path, headers=[self.target] + keys)
+        utils.store_dict_as_TAB_delimited_file(data, output_file_path, headers=[self.target_table] + keys)
 
-        self.run.info('Output file for %s' % self.target, output_file_path)
+        self.run.info('Output file for %s' % self.target_table, output_file_path)
 
 
     def list_data_keys(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-        NOPE = lambda: self.run.info_single("There are no additional data for '%s' in this database :/" % self.target, nl_before=1, nl_after=1, mc='red')
+        NOPE = lambda: self.run.info_single("There are no additional data for '%s' in this database :/" \
+                                                    % (self.target_table), nl_before=1, nl_after=1, mc='red')
 
         additional_data_keys = {}
         # here is where things get tricky. if we are dealing with additional data layers or items, we will have
         # data groups that are not relevant for order data. this will affect the listing of data keys in either
         # of these table types. hence we get group names first here, and then will do a bunch of if/else checks
         # based on their availability
-        if self.target in ['layers', 'items']:
+        if self.target_table in ['layers', 'items']:
             group_names = AdditionalDataBaseClass.get_group_names(self)
             for group_name in group_names:
-                additional_data_keys[group_name] = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True, where_clause="data_group = '%s'" % group_name))
+                data_keys_in_group = database.get_single_column_from_table(self.table_name, \
+                                                                           'data_key', \
+                                                                           unique=True, \
+                                                                           where_clause="data_group='%s'" % group_name)
+                additional_data_keys[group_name] = sorted(data_keys_in_group)
 
             if not len(additional_data_keys):
                 NOPE()
                 database.disconnect()
                 return
 
-        elif self.target in ['layer_orders']:
+        elif self.target_table in ['layer_orders']:
             data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
             if not len(data_keys):
-                self.run.info_single("There are no additional data for '%s' in this database :/" % self.target, nl_before=1, nl_after=1, mc='red')
+                self.run.info_single("There are no additional data for '%s' in this database :/" \
+                                                    % (self.target_table), nl_before=1, nl_after=1, mc='red')
                 database.disconnect()
                 return
 
             additional_data_keys['default'] = data_keys
             group_names = ['default']
 
-        self.run.warning('', 'DATA KEYS FOR "%s" in %d DATA GROUP(S)' % (self.target.upper(), len(group_names)), lc='yellow')
+        self.run.warning('', 'DATA KEYS FOR "%s" in %d DATA GROUP(S)' % (self.target_table.upper(), len(group_names)), lc='yellow')
 
         for group_name in group_names:
             num_keys = len(additional_data_keys[group_name])
@@ -208,11 +214,11 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                 data_key = additional_data_keys[group_name][key_index]
                 rows = database.get_some_rows_from_table_as_dict(self.table_name, 'data_key="%s"' % data_key)
 
-                if self.target == 'layer_orders':
+                if self.target_table == 'layer_orders':
                     self.run.info_single('%s (%s)' % (data_key, list(rows.values())[0]['data_type']),
                                          nl_after = 1 if data_key == additional_data_keys[group_name][-1] else 0, level=2)
                 else:
-                    self.run.info_single('%s (%s, describes %d %s)' % (data_key, list(rows.values())[0]['data_type'], len(rows), self.target),
+                    self.run.info_single('%s (%s, describes %d %s)' % (data_key, list(rows.values())[0]['data_type'], len(rows), self.target_table),
                                          nl_after = 1 if data_key == additional_data_keys[group_name][-1] else 0, level=2)
 
             num_keys_not_displayed = num_keys - num_keys_to_display
@@ -224,7 +230,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
 
     def data_dict_sanity_check(self, data_dict, data_keys_list=None, treat_data_dict_as=None):
-        data_dict_type = treat_data_dict_as or self.target
+        data_dict_type = treat_data_dict_as or self.target_table
 
         if not isinstance(data_dict, dict):
             raise ConfigError("Nope. Your data must be of type %s, but it is a %s." % (type(dict()), type(data_dict)))
@@ -246,7 +252,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         if looks_like_layer_orders and data_dict_type is not 'layer_orders':
             raise ConfigError("The data you sent here seems to describe an order, but you want anvi'o to treat it\
-                               as additional data for %s. Not cool." % self.target)
+                               as additional data for %s. Not cool." % self.target_table)
 
         if not looks_like_layer_orders and data_dict_type is 'layer_orders':
             raise ConfigError("The data that claims to be a layer order data do not seem to be one.")
@@ -307,7 +313,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 d[order_name] = {'newick': None, 'basic': data_value}
             else:
                 raise ConfigError("Something is wrong :( Anvi'o just found an entry in %s table with an unrecognized\
-                                   type of '%s'." % (self.target, data_type))
+                                   type of '%s'." % (self.target_table, data_type))
 
         if additional_data_keys and additional_data_dict:
             return self.update_orders_dict_using_additional_data_dict(d, additional_data_keys, additional_data_dict)
@@ -378,13 +384,13 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         self.data_dict_sanity_check(data_dict)
 
-        if self.target not in ['layer_orders']:
+        if self.target_table not in ['layer_orders']:
             raise ConfigError("You are using an OrderDataBaseClass instance to add %s data into your %s database. This is\
                                illegal and if you are here, it means someone made a mistake somewhere. If you are a user,\
                                check your flags to make sure you are targeting the right data table. If you are a programmer,\
-                               you are fired." % (self.target, self.db_type))
+                               you are fired." % (self.target_table, self.db_type))
 
-        self.run.warning(None, 'New %s data...' % self.target, lc="yellow")
+        self.run.warning(None, 'New %s data...' % self.target_table, lc="yellow")
         data_keys_list = list(data_dict.keys())
         data_key_types = {}
         for key in data_keys_list:
@@ -414,7 +420,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                               between your additional data and the %s database you are attempting to update. So be it.\
                               Anvi'o will not check anything, but if things don't look the way you expected them to look,\
                               you will not blame anvi'o for your poorly prepared data, but choose between yourself or\
-                              Obama." % (self.target, self.db_type))
+                              Obama." % (self.target_table, self.db_type))
         else:
             TableForLayerOrders.check_names(self, data_dict)
 
@@ -428,7 +434,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         database._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
 
-        self.run.info('New order data added to the db for %s' % self.target, '%s.' % (', '.join(data_keys_list)))
+        self.run.info('New order data added to the db for %s' % self.target_table, '%s.' % (', '.join(data_keys_list)))
 
 
     def get_layer_names(self, data_dict):
@@ -471,7 +477,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             raise ConfigError("The `get` function in AdditionalDataBaseClass is upset with you. You could change that\
                                by making sure you request additional data keys with a variable of type `list`.")
 
-        self.progress.new('Recovering additional keys and data for %s' % self.target)
+        self.progress.new('Recovering additional keys and data for %s' % self.target_table)
         self.progress.update('...')
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -489,7 +495,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                    dictionary. But since you are requested to get a specific list of keys ('%s'), we are raising\
                                    an exception and break the flow just to make sure you are aware of the fact that we don't\
                                    see the stuff you're requesting :(" \
-                                        % (self.db_type, self.db_path, self.target, ' ,'.join(additional_data_keys_requested)))
+                                        % (self.db_type, self.db_path, self.target_table, ' ,'.join(additional_data_keys_requested)))
 
             if set(additional_data_keys_requested) - set(additional_data_keys_in_db):
                 raise ConfigError("The keys you requested does not seem to appear in the additional data table of this %s db\
@@ -555,13 +561,13 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         self.data_dict_sanity_check(data_dict, data_keys_list=data_keys_list)
 
-        if self.target not in ['items', 'layers']:
+        if self.target_table not in ['items', 'layers']:
             raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But\
                                you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user,\
                                check your flags to make sure you are targeting the right data table. If you are a programmer,\
-                               you are fired." % (self.target, self.db_type))
+                               you are fired." % (self.target_table, self.db_type))
 
-        self.run.warning(None, 'New %s additional data...' % self.target, lc="yellow")
+        self.run.warning(None, 'New %s additional data...' % self.target_table, lc="yellow")
         key_types = {}
         for key in data_keys_list:
             if '!' in key:
@@ -600,11 +606,11 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                               between your additional data and the %s database you are attempting to update. So be it.\
                               Anvi'o will not check anything, but if things don't look the way you expected them to look,\
                               you will not blame anvi'o for your poorly prepared data, but choose between yourself or\
-                              Obama." % (self.target, self.db_type))
+                              Obama." % (self.target_table, self.db_type))
         else:
-            if self.target == 'layers':
+            if self.target_table == 'layers':
                 TableForLayerAdditionalData.check_names(self, data_dict)
-            elif self.target == 'items':
+            elif self.target_table == 'items':
                 TableForItemAdditionalData.check_names(self, data_dict)
             else:
                 raise ConfigError("Congratulations, you managed to hit an uncharted are in anvi'o. It is cerrtainly very\
@@ -625,7 +631,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
 
-        self.run.info('New data added to the db for your %s' % self.target, '%s.' % (', '.join(data_keys_list)), nl_after=1)
+        self.run.info('New data added to the db for your %s' % self.target_table, '%s.' % (', '.join(data_keys_list)), nl_after=1)
 
 
     def get_all(self):
@@ -657,7 +663,7 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.table_name = A('table_name') or t.item_additional_data_table_name
 
-        self.target = 'items'
+        self.target_table = 'items'
 
         AdditionalDataBaseClass.__init__(self, args)
 
@@ -705,7 +711,7 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.table_name = A('table_name') or t.layer_additional_data_table_name
 
-        self.target = 'layers'
+        self.target_table = 'layers'
 
         AdditionalDataBaseClass.__init__(self, args)
 
@@ -757,7 +763,7 @@ class TableForLayerOrders(OrderDataBaseClass):
         self.table_name = A('table_name') or t.layer_orders_table_name
 
         self.allowde_types = ['newick', 'basic']
-        self.target = 'layer_orders'
+        self.target_table = 'layer_orders'
 
         OrderDataBaseClass.__init__(self, args)
 
