@@ -36,6 +36,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
         self.just_do_it = A('just_do_it')
+        self.target_data_group_set_by_user = A('target_data_group') or None
+        self.target_data_group = self.target_data_group_set_by_user or 'default'
 
         if not self.db_path:
             raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not\
