@@ -131,7 +131,8 @@ function apply_orientation_matrix_to_all_stages(orientationMatrix) {
     cached_orientation_matrix = orientationMatrix;
 }
 
-function create_ngl_views() {
+function create_ngl_views(fetch_variability = true) {
+    // if fetch_variability, fetch_and_draw_variability is called, otherwise draw_variability i called
     let selected_groups = $('[checkbox-for="group"]:checked');
     if (selected_groups.length > MAX_NGL_WIDGETS) {
         $('#maximum_ngl_widgets_error').show();
@@ -173,7 +174,7 @@ function create_ngl_views() {
 
         var stage = new NGL.Stage(`ngl_${group}`);
         var stringBlob = new Blob( [ pdb_content ], { type: 'text/plain'} );
-        
+
         stage.loadFile(stringBlob, { ext: "pdb" })
              .then((component) => {
                 if( component.type !== "structure" ) return;
@@ -221,7 +222,7 @@ function create_ngl_views() {
                     component.autoView();
                 }
              });
-        
+
         stage.setParameters({
             backgroundColor: "white"
         });
@@ -229,14 +230,13 @@ function create_ngl_views() {
         // prevent default tooltip
         stage.mouseControls.remove("hoverPick");
 
-
         // add custom tooltip
         var previous_hovered_residue = null;
         stage.signals.hovered.add(function (pickingProxy) {
             let tooltip = document.getElementById('ngl-tooltip');
 
             if (pickingProxy && pickingProxy.atom) {
-                if (pickingProxy.atom.resno != previous_hovered_residue) {
+                if (pickingProxy.atom.resno != previous_hovered_residue && $('#show_ballstick_when').val() != 'always') {
                     // remove ball+stick if hovered residue changed or 
                     if (pickingProxy.atom.resno != previous_hovered_residue) {
                         stage.compList[0].reprList.slice(0).forEach((rep) => {
@@ -369,7 +369,6 @@ function create_ngl_views() {
             }
         });
 
-
         let func = () => { apply_orientation_matrix_to_all_stages( stage.viewerControls.getOrientation()); };
         stage.mouseObserver.signals.scrolled.add(() => { func(); });
         stage.mouseObserver.signals.dragged.add(() => { func(); });
@@ -378,7 +377,11 @@ function create_ngl_views() {
         stages[group] = stage;
     });
 
-    fetch_and_draw_variability();
+    if (fetch_variability) {
+        fetch_and_draw_variability();
+    } else {
+        draw_variability();
+    }
 }
 
 function load_protein() {
@@ -492,6 +495,7 @@ function draw_variability() {
 
         component.reprList.slice(0).forEach((rep) => {
             if (rep.name == 'spacefill') {
+                console.log('dleteld')
                 rep.dispose();
             }
         });
@@ -867,7 +871,7 @@ async function make_image(group, sample) {
         // sample requested.
         let listRepresentations = stages[group].compList[0].reprList.slice(0);
 
-        // hide all representations besides we want.
+        // hide all representations besides what we want.
         // variability_information dictionary linked during creation of representation
         // in draw_variability.
         listRepresentations.forEach((rep) => {
