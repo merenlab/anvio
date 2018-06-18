@@ -467,6 +467,28 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     def __init__(self, args):
         AdditionalAndOrderDataBaseClass.__init__(self, args)
 
+        self.available_group_names = self.get_group_names()
+
+
+    def check_target_data_group(self):
+        """A function to check whether the data group set is among the available ones.
+
+           The reason this function is a separate one and it is not being called by the
+           init function of the base class is because the user *can* set a new data group
+           name when they want to 'import' things into the database. So, while exporting
+           data or displaying data will require the requested data group to be a proper one,
+           it is better to check that explicitly."""
+
+        if self.target_data_group not in self.available_group_names:
+            raise ConfigError("You (or the programmer) requested to initiate the additional data table for '%s' with\
+                               the data group '%s', which is not really in that table :/ If it helps at all,\
+                               the target table happened to have these ones instead: %s. What to do now? If you are\
+                               here becasue the last command you run was something like 'show me all the data in misc'\
+                               data tables, then you may try to be more specific by explicitly defining your target\
+                               data table. If you think you have already been as sepecific as you could be, then anvi'o\
+                               is as frustrated as you are right now :(" %\
+                                    (self.target_table, self.target_data_group, ', '.join(['"%s"' % d for d in self.available_group_names])))
+
 
     def get(self, additional_data_keys_requested=[], data_group="default"):
         """Will return the additional data keys and the dict."""
