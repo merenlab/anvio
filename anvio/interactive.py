@@ -1281,6 +1281,7 @@ class StructureInteractive(VariabilitySuper):
         # can save significant memory if available genes is a fraction of genes in full variability
         if self.full_variability:
             self.filter_full_variability()
+            self.process_full_variability()
 
         # default gene is the first gene of interest
         self.profile_gene_variability_data(list(self.available_genes)[0])
@@ -1304,6 +1305,10 @@ class StructureInteractive(VariabilitySuper):
             raise ConfigError("This is really sad. There are no entries in your variability table\
                                with a departure_from_consensus less than {}. Try setting\
                                --min-departure-from-consensus to 0.".format(self.min_departure_from_consensus))
+
+
+    def process_full_variability(self):
+        self.full_variability.convert_counts_to_frequencies()
 
 
     def create_sample_groups_dict(self):
@@ -1774,6 +1779,10 @@ class StructureInteractive(VariabilitySuper):
                 self.args.genes_of_interest_set = set([gene_callers_id])
                 var = variability_engines[engine](self.args, p=terminal.Progress(verbose=False), r=terminal.Run(verbose=False))
                 var.stealth_filtering = True
+
+                # we convert counts to frequencies so high-covered samples do not skew averaging
+                # across samples
+                var.process_functions.append((var.convert_counts_to_frequencies, {}))
                 var.process()
             gene_var[engine]['var_object'] = var
             self.run.info_single('%s for gene %s are loaded' % ('SAAVs' if engine == 'AA' else 'SCVs', gene_callers_id),

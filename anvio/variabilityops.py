@@ -699,6 +699,14 @@ class VariabilitySuper(VariabilityFilter, object):
                                self.collection_name will all be ignored.")
 
 
+    def convert_counts_to_frequencies(self, retain_counts = False):
+        if retain_counts:
+            freq_columns = [x + '_freq' for x in self.items]
+            self.data[freq_columns] = self.data[self.items].divide(self.data['coverage'], axis = 0)
+        else:
+            self.data[self.items] = self.data[self.items].divide(self.data['coverage'], axis = 0)
+
+
     def get_sample_ids_of_interest(self, sample_ids_of_interest_path=""):
         """It is essential to note that sample_ids_of_interest_path is "" by default, not None. The
            programmer can pass None to avoid the argument defaulting to a class-wide attribute
@@ -2295,10 +2303,13 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         self.engine = inferred_engine
 
         if self.engine == 'NT':
+            self.items = constants.nucleotides
             self.competing_items = 'competing_nts'
         elif self.engine == 'CDN':
+            self.items = constants.codons
             self.competing_items = 'competing_codons'
         elif self.engine == 'AA':
+            self.items = constants.amino_acids
             self.competing_items = 'competing_aas'
         else:
             pass
