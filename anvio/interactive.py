@@ -1769,6 +1769,7 @@ class StructureInteractive(VariabilitySuper):
         for engine in self.available_engines:
             self.progress.update("Fetching %s..." % ("SAAVs" if engine == "AA" else "SCVs"))
             gene_var[engine] = {}
+
             if self.store_full_variability_in_memory:
                 # if the full variability is in memory, make a deep copy, then filter
                 var = copy.deepcopy(self.full_variability)
@@ -1784,6 +1785,7 @@ class StructureInteractive(VariabilitySuper):
                 # across samples
                 var.process_functions.append((var.convert_counts_to_frequencies, {}))
                 var.process()
+
             gene_var[engine]['var_object'] = var
             self.run.info_single('%s for gene %s are loaded' % ('SAAVs' if engine == 'AA' else 'SCVs', gene_callers_id),
                                  progress = self.progress)
@@ -1843,6 +1845,7 @@ class StructureInteractive(VariabilitySuper):
             # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
             var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
             self.compute_merged_variability(var, column_info, samples_in_group)
+            self.wrangle_merged_variability(var)
 
             # set group specific filter parameters here
             var.sample_ids_of_interest = set(samples_in_group)
@@ -1940,42 +1943,58 @@ class StructureInteractive(VariabilitySuper):
                                             ('_most_common_freq', lambda x: x.value_counts().iloc[0] / x.count() if not x.value_counts().empty else 0),
                                              ],
                                         'float': [
-                                            ('_std',              lambda x: x.std() if len(x) > 1 else 0.0),
                                             ('',                  lambda x: x.mean()), # mean gets no suffix
-                                            ('_mini',             lambda x: x.min()),
-                                            ('_maxi',             lambda x: x.max()),
-                                            ('_median',           lambda x: x.median()),
-                                            ('_percentile_25',    lambda x: x.quantile(0.25)),
-                                            ('_percentile_50',    lambda x: x.quantile(0.50)),
-                                            ('_percentile_75',    lambda x: x.quantile(0.75)),
+                                            ('_std',              lambda x: x.std() if len(x) > 1 else 0.0),
+                                            #('_mini',             lambda x: x.min()),
+                                            #('_maxi',             lambda x: x.max()),
+                                            #('_median',           lambda x: x.median()),
+                                            #('_percentile_25',    lambda x: x.quantile(0.25)),
+                                            #('_percentile_50',    lambda x: x.quantile(0.50)),
+                                            #('_percentile_75',    lambda x: x.quantile(0.75)),
                                              ],
                                         'integer': [
-                                            ('_std',              lambda x: x.std()),
                                             ('',                  lambda x: x.mean()),
-                                            ('_mini',             lambda x: x.min()),
-                                            ('_maxi',             lambda x: x.max()),
-                                            ('_median',           lambda x: x.median()),
-                                            ('_percentile_25',    lambda x: x.quantile(0.25)),
-                                            ('_percentile_50',    lambda x: x.quantile(0.50)),
-                                            ('_percentile_75',    lambda x: x.quantile(0.75)),
+                                            ('_std',              lambda x: x.std()),
+                                            #('_mini',             lambda x: x.min()),
+                                            #('_maxi',             lambda x: x.max()),
+                                            #('_median',           lambda x: x.median()),
+                                            #('_percentile_25',    lambda x: x.quantile(0.25)),
+                                            #('_percentile_50',    lambda x: x.quantile(0.50)),
+                                            #('_percentile_75',    lambda x: x.quantile(0.75)),
                                              ],
                                        }
 
         # e.g. {'dfc':[('dfc_min', mini), ...], 'sec_struc':[('sec_struct_most_common', most_common), ...]}
         column_operations = {k: [(k + x, y) for x, y in generic_operation_dictionary[v]] for k, v in columns_and_types_dict.items()}
 
+        # ad-hoc operations
         # occurrence: the number of samples that contained a given SAAV in the sample group
         # prevalence: the frequency of samples that contained a given SAAV in the sample group
         var.merged['occurrence'] = 0 # initialize column
         var.merged['prevalence'] = 0 # initialize column
         column_operations.update({'occurrence': [('occurrence', lambda x: x.count())],
                                   'prevalence': [('prevalence', lambda x: x.count() / len(sample_group_to_merge))],
-                                  #'contact_numbers': [('contact_numbers', lambda x: x.iloc[0])],
                                   'sample_id': [('sample_ids', lambda x: ", ".join(list(x.unique())))]})
-
 
         var.merged = var.merged.groupby('unique_pos_identifier').agg(column_operations)
         var.merged.columns = var.merged.columns.droplevel()
+
+
+    def wrangle_merged_variability(self, var):
+        # determine top n items and frequencies per variant
+        num_items_to_report = 5
+        for i, s in var.data[var.items].iterrows():
+            top_freqs = s.sort_values(ascending=False).iloc[:num_items_to_report]
+            for x in range(num_items_to_report):
+                var.data.loc[i, str(x)+'_item'] = top_freqs.index[x]
+                var.data.loc[i, str(x)+'_freq'] = top_freqs.iloc[x]
+
+        # delete all over freq data
+        columns_to_drop = []
+        columns = var.data.columns
+        for item in var.items:
+            columns_to_drop.extend([x for x in columns if x.startswith(item)])
+        var.data.drop(labels=columns_to_drop, axis=1, inplace=True)
 
 
 class ContigsInteractive():
