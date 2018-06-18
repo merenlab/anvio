@@ -740,10 +740,16 @@ function drawSamplesLayers(settings) {
                         false);
                 }
 
+                let font_size = Math.min(samples_layer_settings['height'] / 3, parseFloat(settings['max-font-size-label']));
                 drawText('samples', {
-                    'x': layer_boundaries[samples_end][1] + 20,
-                    'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 6
-                }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name) , samples_layer_settings['height'] / 3 + 'px', 'left', samples_layer_settings['color'], 'baseline');
+                        'x': layer_boundaries[samples_end][1] + 20,
+                        'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + font_size / 6
+                    }, 
+                    getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name), 
+                    font_size + 'px', 
+                    'left',
+                    samples_layer_settings['color'],
+                    'baseline');
 
                 drawText('samples', {
                     'x': layer_boundaries[samples_end][1] + 20,
@@ -758,17 +764,29 @@ function drawSamplesLayers(settings) {
             }
             else if (samples_layer_settings['data-type'] == 'stack-bar')
             {
+                let font_size = Math.min(samples_layer_settings['height'] / 3, parseFloat(settings['max-font-size-label']));
                 drawText('samples', {
-                    'x': layer_boundaries[samples_end][1] + 20,
-                    'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 6
-                }, getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name), samples_layer_settings['height'] / 3 + 'px', 'left', '#919191', 'baseline');
+                        'x': layer_boundaries[samples_end][1] + 20,
+                        'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + font_size / 6
+                    }, 
+                    getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name), 
+                    font_size + 'px',
+                    'left',
+                    '#919191',
+                    'baseline');
             }
             else
             {
+                let font_size = Math.min(samples_layer_settings['height'], parseFloat(settings['max-font-size-label']));
                 drawText('samples', {
-                    'x': layer_boundaries[samples_end][1] + 20,
-                    'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + samples_layer_settings['height'] / 2
-                }, getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name), samples_layer_settings['height'] + 'px', 'left', samples_layer_settings['color'], 'baseline');   
+                        'x': layer_boundaries[samples_end][1] + 20,
+                        'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + font_size / 2
+                    },
+                    getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name),
+                    font_size + 'px',
+                    'left',
+                    samples_layer_settings['color'],
+                    'baseline');   
             }
         }
     }
