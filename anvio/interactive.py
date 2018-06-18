@@ -2009,7 +2009,7 @@ class StructureInteractive(VariabilitySuper):
         var.merged['prevalence'] = 0 # initialize column
         column_operations.update({'occurrence': [('occurrence', lambda x: x.count())],
                                   'prevalence': [('prevalence', lambda x: x.count() / len(sample_group_to_merge))],
-                                  'sample_id': [('sample_ids', lambda x: ", ".join(list(x.unique())))]})
+                                  'sample_id':  [('sample_ids', lambda x: ", ".join(list(x.unique())))]})
 
         var.merged = var.merged.groupby('unique_pos_identifier').agg(column_operations)
         var.merged.columns = var.merged.columns.droplevel()

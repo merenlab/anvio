@@ -277,8 +277,8 @@ function create_ngl_views(fetch_variability = true) {
                 }
 
                 // Reference data is always available
-                let tooltip_HTML_title = `<h5>Reference info</h5>`
-                let tooltip_HTML_body = `
+                var tooltip_HTML_title = `<h5>Reference info</h5>`
+                var tooltip_HTML_body = `
                     <tr><td>Residue</td><td>${residue_info[residue]['amino_acid']} (${residue_info[residue]['codon']})</td></tr>
                     <tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>
                     <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
@@ -287,32 +287,36 @@ function create_ngl_views(fetch_variability = true) {
                     <tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>
                     `
 
+                // Variant data is available if a variant exists at hovered residue
+                if (variability[group].hasOwnProperty(residue)) {
+                    var tooltip_HTML_variant_title = `<h5>Variant info</h5>`
+                    var tooltip_HTML_variant_body = `
+                        <tr><td>1st Frequent</td><td>${variability[group][residue]['0_item']} (${variability[group][residue]['0_freq'].toFixed(2)})</td></tr>
+                        <tr><td>2nd Frequent</td><td>${variability[group][residue]['1_item']} (${variability[group][residue]['1_freq'].toFixed(2)})</td></tr>
+                        <tr><td>3rd Frequent</td><td>${variability[group][residue]['2_item']} (${variability[group][residue]['2_freq'].toFixed(2)})</td></tr>
+                        <tr><td>4th Frequent</td><td>${variability[group][residue]['3_item']} (${variability[group][residue]['3_freq'].toFixed(2)})</td></tr>
+                        <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
+                        <tr><td>Prevalence</td><td>${variability[group][residue]['occurrence']} of ${parseInt(Math.round(variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']))} samples</td></tr>
+                        <tr><td>Site Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
+                        <tr><td>Site Coverage / Gene Coverage</td><td>${variability[group][residue]['mean_normalized_coverage'].toFixed(2)}</td></tr>
+                        <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
+                        `
+                    // add engine-specific data
+                    if ($('[name=engine]:checked').val() == 'AA') {
+                        // append to body
+                        tooltip_HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
+                    } else {
+                        // append to body
+                        tooltip_HTML_variant_body += `<tr><td>Synonymity</td><td>${variability[group][residue]['synonymity'].toFixed(2)}</td></tr>`
+                    }
+                }
+
                 if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'all residues') {
                     tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
                     tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
 
                     // Variant data is available if a variant exists at hovered residue
                     if (variability[group].hasOwnProperty(residue)) {
-
-                        let tooltip_HTML_variant_title = `<h5>Variant info</h5>`
-                        let tooltip_HTML_variant_body = `
-                            <tr><td>Consensus</td><td>${variability[group][residue]['consensus']}</td></tr>
-                            <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
-                            <tr><td>Prevalence</td><td>${variability[group][residue]['occurrence']} of ${parseInt(Math.round(variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']))} samples</td></tr>
-                            <tr><td>Site Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
-                            <tr><td>Site Coverage / Gene Coverage</td><td>${variability[group][residue]['mean_normalized_coverage'].toFixed(2)}</td></tr>
-                            <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
-                            `
-
-                        // add engine-specific data
-                        if ($('[name=engine]:checked').val() == 'AA') {
-                            // append to body
-                            tooltip_HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
-                        } else {
-                            // append to body
-                            tooltip_HTML_variant_body += `<tr><td>Synonymity</td><td>${variability[group][residue]['synonymity'].toFixed(2)}</td></tr>`
-                        }
-
                         tooltip_HTML_variant_body = `<table class="tooltip-table">` + tooltip_HTML_variant_body + `</table>`
                         tooltip_HTML += tooltip_HTML_variant_title + tooltip_HTML_variant_body
                     }
@@ -326,25 +330,6 @@ function create_ngl_views(fetch_variability = true) {
                     if (variability[group].hasOwnProperty(residue)) {
                         tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
                         tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
-
-                        let tooltip_HTML_variant_title = `<h5>Variant info</h5>`
-                        let tooltip_HTML_variant_body = `
-                            <tr><td>Consensus</td><td>${variability[group][residue]['consensus']}</td></tr>
-                            <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
-                            <tr><td>Prevalence</td><td>${variability[group][residue]['occurrence']} of ${parseInt(Math.round(variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']))} samples</td></tr>
-                            <tr><td>Site Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
-                            <tr><td>Site Coverage Over Gene Coverage</td><td>${variability[group][residue]['mean_normalized_coverage'].toFixed(2)}</td></tr>
-                            <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
-                            `
-
-                        // add engine-specific data
-                        if ($('[name=engine]:checked').val() == 'AA') {
-                            // append to body
-                            tooltip_HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
-                        } else {
-                            // append to body
-                            tooltip_HTML_variant_body += `<tr><td>Synonymity</td><td>${variability[group][residue]['synonymity'].toFixed(2)}</td></tr>`
-                        }
 
                         tooltip_HTML_variant_body = `<table class="tooltip-table">` + tooltip_HTML_variant_body + `</table>`
                         tooltip_HTML += tooltip_HTML_variant_title + tooltip_HTML_variant_body
