@@ -87,8 +87,13 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             AdditionalDataBaseClass.add(self, data_dict, data_keys, skip_check_names)
 
 
-    def remove(self, data_keys_list):
-        '''Give this guy a list of key for additional data, and watch their demise.'''
+    def remove(self, data_keys_list, data_group=None):
+        '''Give this guy a list of key for additional data, and watch their demise.
+
+           If higher level of stringency is deisred, a `data_group` can also be provided to
+           make sure data keys that occur multiple times in different data groups are
+           not deleted.
+        '''
 
         if not isinstance(data_keys_list, list):
             raise ConfigError("The remove function in AdditionalDataBaseClass wants you to watch\
@@ -117,7 +122,10 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                     # what the hell, user?
                     return
 
-                database._exec('''DELETE from %s WHERE data_key="%s"''' % (self.table_name, key))
+                if not data_group:
+                    database._exec('''DELETE from %s WHERE data_key="%s"''' % (self.table_name, key))
+                else:
+                    database._exec('''DELETE from %s WHERE data_key="%s" and data_group="%s"''' % (self.table_name, key, data_group))
 
             self.run.warning("%s data for the following keys removed from the database: '%s'. #SAD." % (self.target, ', '.join(data_keys_list)))
         else:
