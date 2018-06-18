@@ -475,7 +475,14 @@ function readableNumber(num) {
         return num;
     var s = ['', 'K', 'M', 'G'];
     var e = Math.floor(Math.log(num) / Math.log(1000));
-    return (num / Math.pow(1000, e)).toPrecision(3) + s[e];
+    let result = (num / Math.pow(1000, e)).toPrecision(3);
+
+    if (e < s.length) {
+        result += s[e];
+    } else {
+        result += 'x10^' + Math.floor(Math.log(num));
+    }
+    return result;
 }
 
 //--------------------------------------------------------------------------------------------------
