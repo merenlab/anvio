@@ -175,18 +175,22 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         # of these table types. hence we get group names first here, and then will do a bunch of if/else checks
         # based on their availability
         if self.target_table in ['layers', 'items']:
-            group_names = AdditionalDataBaseClass.get_group_names(self)
+            if not self.available_group_names:
+                NOPE()
+                return
+            else:
+                self.check_target_data_group()
+
+            # if the user set a target data group, let's focus on that here. otherwise we will
+            # use all data groups available for a messy output.
+            group_names = [self.target_data_group] if self.target_data_group_set_by_user else self.available_group_names
+
             for group_name in group_names:
                 data_keys_in_group = database.get_single_column_from_table(self.table_name, \
                                                                            'data_key', \
                                                                            unique=True, \
                                                                            where_clause="data_group='%s'" % group_name)
                 additional_data_keys[group_name] = sorted(data_keys_in_group)
-
-            if not len(additional_data_keys):
-                NOPE()
-                database.disconnect()
-                return
 
         elif self.target_table in ['layer_orders']:
             data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
@@ -661,7 +665,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     def get_all(self):
         keys_dict, data_dict = {}, {}
 
-        for group_name in self.get_group_names():
+        for group_name in self.available_group_names:
             keys_dict[group_name], data_dict[group_name] = self.get(data_group=group_name)
 
         return keys_dict, data_dict
