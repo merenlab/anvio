@@ -250,9 +250,11 @@ Drawer.prototype.generate_tooltips = function() {
             }
             else if (layer_types[pindex] == 1) {
                 let stack_names = layerdata[0][pindex].split('!')[1].split(';');
+                let stack_items = layerdata[index][pindex].split(';');
+
                 message = '<td>' + layer_title.split('!')[0] + '</td><td><table>';
-                for (let j= stack_names.length - 1; j >= 0; j--) {
-                    message += `<tr><td><div class="colorpicker" style="background-color: ${stack_bar_colors[pindex][j]}"></div>${stack_names[j]}</td><td>${layerdata[index][pindex][j]}</td></tr>`;
+                for (let j = stack_names.length - 1; j >= 0; j--) {
+                    message += `<tr><td><div class="colorpicker" style="background-color: ${stack_bar_colors[pindex][j]}"></div>${stack_names[j]}</td><td>${stack_items[j]}</td></tr>`;
                 }
                 message += '</table></td>';
 
