@@ -1270,6 +1270,8 @@ class StructureInteractive(VariabilitySuper):
         self.full_variability = None
         self.variability_storage = {}
 
+        self.num_reported_frequencies = 5
+
         self.sanity_check()
 
         if self.store_full_variability_in_memory:
@@ -1411,19 +1413,22 @@ class StructureInteractive(VariabilitySuper):
                 'as_filter': False,
                 'merged_only': True,
                 'data_type': 'float',
-                'step': 0.01,
                 'min': 0,
                 'max': 1
             },
             {
+                'name': 'occurrence',
+                'title': 'occurrence',
+                'as_perspective': False,
+                'as_filter': False,
+                'merged_only': True,
+                'data_type': 'integer',
+            },
+            {
                 'name': 'contact_numbers',
-                'title': 'Contact Numbers',
                 'as_perspective': False,
                 'as_filter': False,
                 'data_type': 'text',
-                'step': 0.01,
-                'min': 0,
-                'max': 1
             },
             {
                 'name': 'mean_normalized_coverage',
@@ -1568,6 +1573,36 @@ class StructureInteractive(VariabilitySuper):
                 'choices': list(var.data['consensus'].value_counts().sort_values(ascending=False).index)
             },
         ]
+
+        # coverage values
+        for item in var.items:
+            info.append(
+                {
+                    'name': item,
+                    'as_perspective': False,
+                    'as_filter': False,
+                    'data_type': 'integer',
+                },
+            )
+
+        # top n freqs
+        for x in range(self.num_reported_frequencies):
+            info.extend([
+                {
+                    'name': str(x) + '_item',
+                    'as_perspective': False,
+                    'as_filter': False,
+                    'data_type': 'text',
+                    'merged_only': True,
+                },
+                {
+                    'name': str(x) + '_freq',
+                    'as_perspective': False,
+                    'as_filter': False,
+                    'data_type': 'float',
+                    'merged_only': True,
+                },
+            ])
 
         # keep those that the variability data table has. also keep those with no controller. these
         # entries may not exist in table, but will when data is merged
@@ -1935,7 +1970,7 @@ class StructureInteractive(VariabilitySuper):
         var.merged = copy.deepcopy(var.data)
         var.filter_data(name = 'merged', criterion = 'sample_id', subset_filter = sample_group_to_merge)
 
-        columns_and_types_dict = {e['name']: e['data_type'] for e in column_info}
+        columns_and_types_dict = {e['name']: e['data_type'] for e in column_info if not e.get('merged_only')}
 
         # all statistical measures
         generic_operation_dictionary = {'text': [
@@ -1982,19 +2017,19 @@ class StructureInteractive(VariabilitySuper):
 
     def wrangle_merged_variability(self, var):
         # determine top n items and frequencies per variant
-        num_items_to_report = 5
-        for i, s in var.data[var.items].iterrows():
-            top_freqs = s.sort_values(ascending=False).iloc[:num_items_to_report]
-            for x in range(num_items_to_report):
-                var.data.loc[i, str(x)+'_item'] = top_freqs.index[x]
-                var.data.loc[i, str(x)+'_freq'] = top_freqs.iloc[x]
+        self.num_reported_frequencies = 5
+        for i, s in var.merged[var.items].iterrows():
+            top_freqs = s.sort_values(ascending=False).iloc[:self.num_reported_frequencies]
+            for x in range(self.num_reported_frequencies):
+                var.merged.loc[i, str(x)+'_item'] = top_freqs.index[x]
+                var.merged.loc[i, str(x)+'_freq'] = top_freqs.iloc[x]
 
         # delete all over freq data
         columns_to_drop = []
-        columns = var.data.columns
+        columns = var.merged.columns
         for item in var.items:
             columns_to_drop.extend([x for x in columns if x.startswith(item)])
-        var.data.drop(labels=columns_to_drop, axis=1, inplace=True)
+        var.merged.drop(labels=columns_to_drop, axis=1, inplace=True)
 
 
 class ContigsInteractive():
