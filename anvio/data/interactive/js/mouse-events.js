@@ -229,15 +229,29 @@ function mouseMoveHandler(event) {
 
             var pretty_name = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[0] : layer_name;
 
+            let highlight_row = false;
             if (layer_name == layer_name_hover && group == sample_group)
             {
-                message += '<tr style="background-color: rgb(232, 202, 207);"><td>' + pretty_name + '</td><td>' + samples_information_dict[sample_group][sample_name][layer_name] + '</td></tr>';
+                highlight_row = true;
                 layer_pos = layer_counter;
             }
-            else
-            {
-                message += '<tr><td>' + pretty_name + '</td><td>' + samples_information_dict[group][sample_name][layer_name] + '</td></tr>';
+
+            message += `<tr style="${highlight_row ? 'background-color: rgb(232, 202, 207);' : ''}"><td>` + pretty_name + '</td><td>';
+
+            if (layer_name.indexOf('!') > -1) { // stack bar
+                let stack_names = layer_name.split('!')[1].split(';');
+                let stack_items = samples_information_dict[sample_group][sample_name][layer_name].split(';');
+                message += '<table>';
+                for (let j= stack_names.length - 1; j >= 0; j--) {
+                    message += `<tr><td><div class="colorpicker" style="background-color: ${samples_stack_bar_colors[sample_group][layer_name][j]}"></div>${stack_names[j]}</td><td>${stack_items[j]}</td></tr>`;
+                }
+                message += '</table>';
+            } else {
+                message += samples_information_dict[sample_group][sample_name][layer_name];
             }
+
+            message += '</td></tr>';
+            
 
             // since we skip hidden layer groups, we can not use 'i' to refer layer position.
             layer_counter++;
