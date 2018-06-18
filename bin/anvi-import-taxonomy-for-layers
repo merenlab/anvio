@@ -76,7 +76,8 @@ def main(args):
 
         # first remove previous entries for `data_group`
         data_keys_in_db, data_dict_in_db = T.get(data_group=level)
-        T.remove(data_keys_list=data_keys_in_db, data_group=level)
+        if len(data_keys_in_db):
+            T.remove(data_keys_list=data_keys_in_db, data_group=level)
 
         # then add the incoming data
         T.add(data_dict, data_keys_list, data_group=level)
