@@ -1596,6 +1596,13 @@ class StructureInteractive(VariabilitySuper):
                     'merged_only': True,
                 },
                 {
+                    'name': str(x) + '_item_AA',
+                    'as_perspective': False,
+                    'as_filter': False,
+                    'data_type': 'text',
+                    'merged_only': True,
+                },
+                {
                     'name': str(x) + '_freq',
                     'as_perspective': False,
                     'as_filter': False,
@@ -2023,6 +2030,8 @@ class StructureInteractive(VariabilitySuper):
             for x in range(self.num_reported_frequencies):
                 var.merged.loc[i, str(x)+'_item'] = top_freqs.index[x]
                 var.merged.loc[i, str(x)+'_freq'] = top_freqs.iloc[x]
+                if var.engine == 'CDN':
+                    var.merged.loc[i, str(x)+'_item_AA'] = constants.codon_to_AA[top_freqs.index[x]]
 
         # delete all over freq data
         columns_to_drop = []

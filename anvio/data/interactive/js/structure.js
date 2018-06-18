@@ -291,10 +291,6 @@ function create_ngl_views(fetch_variability = true) {
                 if (variability[group].hasOwnProperty(residue)) {
                     var tooltip_HTML_variant_title = `<h5>Variant info</h5>`
                     var tooltip_HTML_variant_body = `
-                        <tr><td>1st Frequent</td><td>${variability[group][residue]['0_item']} (${variability[group][residue]['0_freq'].toFixed(2)})</td></tr>
-                        <tr><td>2nd Frequent</td><td>${variability[group][residue]['1_item']} (${variability[group][residue]['1_freq'].toFixed(2)})</td></tr>
-                        <tr><td>3rd Frequent</td><td>${variability[group][residue]['2_item']} (${variability[group][residue]['2_freq'].toFixed(2)})</td></tr>
-                        <tr><td>4th Frequent</td><td>${variability[group][residue]['3_item']} (${variability[group][residue]['3_freq'].toFixed(2)})</td></tr>
                         <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
                         <tr><td>Prevalence</td><td>${variability[group][residue]['occurrence']} of ${parseInt(Math.round(variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']))} samples</td></tr>
                         <tr><td>Site Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
@@ -309,6 +305,23 @@ function create_ngl_views(fetch_variability = true) {
                         // append to body
                         tooltip_HTML_variant_body += `<tr><td>Synonymity</td><td>${variability[group][residue]['synonymity'].toFixed(2)}</td></tr>`
                     }
+
+                    var tooltip_HTML_variant_freqs_title = `<h5>Variant frequencies</h5>`
+                    if ($('[name=engine]:checked').val() == 'AA') {
+                        var tooltip_HTML_variant_freqs_body = `
+                            <tr><td>${variability[group][residue]['0_item']}</td><td>${variability[group][residue]['0_freq'].toFixed(2)}</td></tr>
+                            <tr><td>${variability[group][residue]['1_item']}</td><td>${variability[group][residue]['1_freq'].toFixed(2)}</td></tr>
+                            <tr><td>${variability[group][residue]['2_item']}</td><td>${variability[group][residue]['2_freq'].toFixed(2)}</td></tr>
+                            <tr><td>${variability[group][residue]['3_item']}</td><td>${variability[group][residue]['3_freq'].toFixed(2)}</td></tr>
+                            `
+                    } else {
+                        var tooltip_HTML_variant_freqs_body = `
+                            <tr><td>${variability[group][residue]['0_item_AA']} (${variability[group][residue]['0_item']})</td><td>${variability[group][residue]['0_freq'].toFixed(2)}</td></tr>
+                            <tr><td>${variability[group][residue]['1_item_AA']} (${variability[group][residue]['1_item']})</td><td>${variability[group][residue]['1_freq'].toFixed(2)}</td></tr>
+                            <tr><td>${variability[group][residue]['2_item_AA']} (${variability[group][residue]['2_item']})</td><td>${variability[group][residue]['2_freq'].toFixed(2)}</td></tr>
+                            <tr><td>${variability[group][residue]['3_item_AA']} (${variability[group][residue]['3_item']})</td><td>${variability[group][residue]['3_freq'].toFixed(2)}</td></tr>
+                            `
+                    }
                 }
 
                 if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'all residues') {
@@ -319,6 +332,8 @@ function create_ngl_views(fetch_variability = true) {
                     if (variability[group].hasOwnProperty(residue)) {
                         tooltip_HTML_variant_body = `<table class="tooltip-table">` + tooltip_HTML_variant_body + `</table>`
                         tooltip_HTML += tooltip_HTML_variant_title + tooltip_HTML_variant_body
+                        tooltip_HTML_variant_freqs_body = `<table class="tooltip-table">` + tooltip_HTML_variant_freqs_body + `</table>`
+                        tooltip_HTML += tooltip_HTML_variant_freqs_title + tooltip_HTML_variant_freqs_body
                     }
 
                     tooltip.innerHTML = tooltip_HTML;
@@ -333,6 +348,8 @@ function create_ngl_views(fetch_variability = true) {
 
                         tooltip_HTML_variant_body = `<table class="tooltip-table">` + tooltip_HTML_variant_body + `</table>`
                         tooltip_HTML += tooltip_HTML_variant_title + tooltip_HTML_variant_body
+                        tooltip_HTML_variant_freqs_body = `<table class="tooltip-table">` + tooltip_HTML_variant_freqs_body + `</table>`
+                        tooltip_HTML += tooltip_HTML_variant_freqs_title + tooltip_HTML_variant_freqs_body
 
                         tooltip.innerHTML = tooltip_HTML;
                         tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
