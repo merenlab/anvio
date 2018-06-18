@@ -198,7 +198,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             additional_data_keys['default'] = data_keys
             group_names = ['default']
 
-        self.run.warning('', 'DATA KEYS FOR "%s" in %d DATA GROUP(S)' % (self.target_table.upper(), len(group_names)), lc='yellow')
+        self.run.warning('', 'DATA KEYS FOR "%s" in %d DATA GROUP(S)' % (self.target_table.upper(), len(group_names)), lc='green')
 
         for group_name in group_names:
             num_keys = len(additional_data_keys[group_name])
