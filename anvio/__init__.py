@@ -345,6 +345,14 @@ D = {
                       every column. Anvi'o will try to deal with missing data nicely. Each column in this\
                       file will be visualized as a new layer in the tree."}
                 ),
+    'target-data-group': (
+            ['-D', '--target-data-group'],
+            {'metavar': 'DATA_GROUP_NAME',
+             'default': None,
+             'help': "Data group to focus. Anvi'o misc data tables support associating a set of data keys\
+                      with a data group. If you have no idea what this is, then probably you don't need it,\
+                      and anvi'o will take care of you."}
+                ),
     'target-data-table': (
             ['-t', '--target-data-table'],
             {'metavar': 'NAME',
