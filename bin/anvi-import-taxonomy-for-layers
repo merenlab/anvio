@@ -41,6 +41,9 @@ def main(args):
     if utils.is_profile_db_merged(args.profile_db) and not utils.is_blank_profile(args.profile_db):
         raise ConfigError("This will not work with merged profile databases :(")
 
+    if args.min_abundance < 0 or args.min_abundance > 5:
+        raise ConfigError("The minimum abundance value for taxon names to be included should be equal or\
+                           greater than 0%, and lower than 5% :/")
 
     parser_obj = parsers.get_parser_obj('taxonomy_layers', args.parser)
 
@@ -54,8 +57,17 @@ def main(args):
     sample_name = dbops.ProfileDatabase(args.profile_db).meta['sample_id']
     for level in levels_of_taxonomy:
         taxonomy_dict_level = {}
+
+        total_count = sum(taxonomy_dict[level].values())
+        taxa_excluded = set([])
+        taxa_excluded_count = 0
+
         for taxon in taxonomy_dict[level]:
-            taxonomy_dict_level['%s!%s' % (level, taxon)] = taxonomy_dict[level][taxon]
+            if taxonomy_dict[level][taxon] * 100 / total_count < args.min_abundance:
+                taxa_excluded.add(taxon)
+                taxa_excluded_count += taxonomy_dict[level][taxon]
+            else:
+                taxonomy_dict_level['%s!%s' % (level, taxon)] = taxonomy_dict[level][taxon]
 
         data_keys_list = list(taxonomy_dict_level.keys())
         data_dict = {sample_name: taxonomy_dict_level}
@@ -63,6 +75,10 @@ def main(args):
         TableForLayerAdditionalData(args, r=terminal.Run(verbose=False)).add(data_dict, data_keys_list, data_group=level)
         run.info_single("%d entries added into layers additional data as data group '%s'" % (len(data_keys_list), level))
 
+        if taxa_excluded_count:
+            run.warning("A total of %d taxon names, which made up %.2f%% of the input data altogether were excluded\
+                         from this import due to the min abundance criterion of %.1f%% for inclusion." % \
+                                (len(taxa_excluded), taxa_excluded_count * 100 / total_count, args.min_abundance))
 
 if __name__ == '__main__':
 
@@ -74,10 +90,14 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
 
     parser.add_argument('--parser', default = None,
-                        help = "Parser to make sense of the input files. There are %d parsers readily available: %s." % (len(parser_names), parser_names))
-    parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
-                        help = 'Input file(s) for selected parser. Each parser (except "blank") requires input files to\
-                                process that you generate before running anvio. Please see the documentation for details.')
+                        help="Parser to make sense of the input files. There are %d parsers readily available: %s." % (len(parser_names), parser_names))
+    parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default=None, required=True,
+                        help='Input file(s) for selected parser. Each parser (except "blank") requires input files to\
+                              process that you generate before running anvio. Please see the documentation for details.')
+    parser.add_argument('--min-abundance', metavar='PERCENTAGE', default=0.1, type=float,
+                        help='Short read-based taxonomy can be extremely noisy. Therefore, here we have defeault minimum\
+                              percentage cutoff of 0.1%% to eliminate any taxon that occurs less than that in a given input\
+                              file.')
 
     args = anvio.get_args(parser)
 
