@@ -89,6 +89,7 @@ SaveTreeDialog.prototype.SaveTree = function() {
             'overwrite': overwrite,
             'name': new_tree_name,
             'data': clusteringData,
+            'additional': JSON.stringify({'collapsedNodes': collapsedNodes})
         },
         success: function(data) {
             if (data['status'] == 0) {

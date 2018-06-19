@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import copy
+import json
 import numpy
 import random
 import argparse
@@ -3134,7 +3135,7 @@ def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split
                               run=run)
 
 
-def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None, linkage=None, make_default=False, run=run):
+def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None, linkage=None, make_default=False, additional_data=None, run=run):
     """Adds a new clustering into an anvi'o db
 
        Here is a FIXME for future, smarter generations. This function should go away,
@@ -3158,6 +3159,14 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
     else:
         order_name = ':'.join([order_name, 'NA', 'NA'])
 
+    # additional data is JSON formatted entry
+    # for now it will only contain collapsed node information.
+    # in future we may extend this column to include other annotations
+    if not additional_data:
+        additional_data = json.dumps({})
+    else:
+        additional_data = json.dumps(additional)
+
     anvio_db = DBClassFactory().get_db_object(anvio_db_path)
 
     if t.item_orders_table_name not in anvio_db.db.get_table_names():
@@ -3177,7 +3186,7 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
     else:
         available_item_orders.append(order_name)
 
-    anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, tuple([order_name, 'newick' if order_data_type_newick else 'basic', order_data]))
+    anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.item_orders_table_name, tuple([order_name, 'newick' if order_data_type_newick else 'basic', order_data, additional_data]))
 
     anvio_db.db.set_meta_value('available_item_orders', ','.join(available_item_orders))
 
