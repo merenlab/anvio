@@ -72,15 +72,16 @@ def main(args):
         data_keys_list = list(taxonomy_dict_level.keys())
         data_dict = {sample_name: taxonomy_dict_level}
 
+        args.target_data_group = level
         T = TableForLayerAdditionalData(args, r=terminal.Run(verbose=False))
 
         # first remove previous entries for `data_group`
-        data_keys_in_db, data_dict_in_db = T.get(data_group=level)
+        data_keys_in_db, data_dict_in_db = T.get()
         if len(data_keys_in_db):
-            T.remove(data_keys_list=data_keys_in_db, data_group=level)
+            T.remove(data_keys_list=data_keys_in_db)
 
         # then add the incoming data
-        T.add(data_dict, data_keys_list, data_group=level)
+        T.add(data_dict, data_keys_list)
 
         run.info_single("%d entries added into layers additional data as data group '%s'" % (len(data_keys_list), level))
 

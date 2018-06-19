@@ -26,7 +26,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Populate additional data or order tables in pan or profile databases for items or layers (the swiss army knife level stuff).")
+    parser = argparse.ArgumentParser(description="Populate additional data or order tables in pan or profile databases for\
+                                                  items or layers (the Swiss army knife-level serious stuff).")
 
     parser.add_argument('data_file', metavar = "TAB DELIMITED FILE", help = 'The input file that describes an additional data\
                         for layers or items. The expected format of this file depends on the data table you will target. This\
@@ -36,6 +37,7 @@ if __name__ == '__main__':
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
+    parser.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
