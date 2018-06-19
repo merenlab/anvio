@@ -91,7 +91,15 @@ function drawLegend() {
                 _left = left;
                 _top = _top + line_height + gap;
             }
-            var rect = drawRectangle(bin_id, _left, _top, line_height, line_height, window[legend['source']][legend['key']][legend['item_keys'][j]], 1, 'black',
+
+            let color = '#FFFFFF';
+            if (typeof legend['group'] === 'undefined') {
+                color = window[legend['source']][legend['key']][legend['item_keys'][j]];
+            } else {
+                color = window[legend['source']][legend['group']][legend['key']][legend['item_keys'][j]];
+            }
+            
+            var rect = drawRectangle(bin_id, _left, _top, line_height, line_height, color, 1, 'black',
                 null,
                 function() {
                     // mouseenter
