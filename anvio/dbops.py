@@ -1750,8 +1750,6 @@ class PanSuperclass(object):
         if not isinstance(search_terms, list):
             raise ConfigError("Search terms must be of type 'list'")
 
-        #self.check_functional_annotation_sources(requested_sources)
-
         search_terms = [s.strip() for s in search_terms]
 
         if len([s.strip().lower() for s in search_terms]) != len(set([s.strip().lower() for s in search_terms])):
@@ -1813,8 +1811,6 @@ class PanSuperclass(object):
 
         genomes_db.disconnect()
         self.progress.end()
-
-
 
         return gene_clusters, full_report
 
