@@ -494,12 +494,15 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                     (self.target_table, self.target_data_group, ', '.join(['"%s"' % d for d in self.available_group_names])))
 
 
-    def get(self, additional_data_keys_requested=[], data_group="default"):
+    def get(self, additional_data_keys_requested=[]):
         """Will return the additional data keys and the dict."""
 
-        if not data_group or not isinstance(data_group, str):
-            raise ConfigError("Data group variable must be a name of type `str`. The default is `data_group`, if you\
-                               wish to overwrite that, you will have to do it somehting else.")
+        if not self.target_data_group:
+            raise ConfigError("It seems the target data group is not set, which makes zero sense and should never happen\
+                               unless you are doing some hacker stuff. Are you doing hacker stuff? Awesome! Tell us about\
+                               it!")
+
+        self.check_target_data_group() if self.target_data_group_set_by_user else None
 
         if not isinstance(additional_data_keys_requested, list):
             raise ConfigError("The `get` function in AdditionalDataBaseClass is upset with you. You could change that\
@@ -510,11 +513,12 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True, \
-                        where_clause="""data_group LIKE '%s'""" % data_group)
+                        where_clause="""data_group LIKE '%s'""" % self.target_data_group)
 
         if not len(additional_data_keys_requested):
             additional_data_keys = additional_data_keys_in_db
-            additional_data = database.get_some_rows_from_table_as_dict(self.table_name, where_clause = """data_group LIKE '%s'""" % data_group,
+            additional_data = database.get_some_rows_from_table_as_dict(self.table_name,
+                                                                        where_clause = """data_group LIKE '%s'""" % self.target_data_group,
                                                                         error_if_no_data=False)
         else:
             if not len(additional_data_keys_in_db):
@@ -528,14 +532,19 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             if set(additional_data_keys_requested) - set(additional_data_keys_in_db):
                 raise ConfigError("The keys you requested does not seem to appear in the additional data table of this %s db\
                                    at '%s' :/ Here is the list of keys you requested: '%s'. And here is the list of keys that anvi'o\
-                                   knows about: '%s'." % (self.db_type, self.db_path, ', '.join(additional_data_keys_requested), ', '.join(additional_data_keys_in_db)))
+                                   knows about: '%s'." % (self.db_type, self.db_path,
+                                                          ', '.join(additional_data_keys_requested),
+                                                          ', '.join(additional_data_keys_in_db)))
 
             additional_data = database.get_some_rows_from_table_as_dict(self.table_name,
-                        where_clause = """data_group LIKE '%s' and data_key IN (%s)""" % (data_group, ",".join('"' + key + '"' for key in additional_data_keys_requested)))
+                                                where_clause = """data_group LIKE '%s' and data_key IN (%s)""" % (self.target_data_group,
+                                                                                                                  ",".join(['"%s"' % key for key in additional_data_keys_requested])))
             additional_data_keys = additional_data_keys_requested
 
-        additional_data_item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True,
-                        where_clause="""data_group LIKE '%s'""" % data_group)
+        additional_data_item_names = database.get_single_column_from_table(self.table_name,
+                                                                           'item_name',
+                                                                           unique=True,
+                                                                           where_clause="""data_group LIKE '%s'""" % self.target_data_group)
 
         database.disconnect()
 
