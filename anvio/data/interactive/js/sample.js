@@ -1,6 +1,7 @@
 var samples_categorical_colors = {};
 var samples_categorical_stats = {};
 var samples_stack_bar_colors = {};
+var samples_stack_bar_stats = {};
 var samples_information_dict;
 var samples_order_dict;
 
