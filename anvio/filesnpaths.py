@@ -97,6 +97,10 @@ def is_dir_empty(dir_path):
     return False if len(os.listdir(dir_path)) else True
 
 
+def is_file_empty(file_path):
+    return os.stat(file_path).st_size == 0
+
+
 def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None):
     is_file_exists(file_path)
     f = open(file_path, 'rU')
