@@ -155,7 +155,7 @@ class MultipleRuns:
 
             all_keys = set([])
             for p in self.input_profile_db_paths:
-                keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get(data_group=data_group_name)
+                keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p, target_data_group=data_group_name)).get()
                 dicts_of_layer_additional_data_dicts[p] = data
                 all_keys.update(set(keys))
 
@@ -182,7 +182,7 @@ class MultipleRuns:
             self.layer_additional_data_keys[data_group_name] = []
 
             for p in self.input_profile_db_paths:
-                keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p)).get(data_group=data_group_name)
+                keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db = p, target_data_group=data_group_name)).get()
                 dicts_of_layer_additional_data_dicts[p] = {'keys': keys, 'data': data}
 
             # find common keys to all layer additional data tables:
@@ -616,9 +616,9 @@ class MultipleRuns:
 
         # done with layer orders. let's add our layer additional data and call it a day.
         for data_group_name in self.layer_additional_data_dict:
+            args.target_data_group = data_group_name
             TableForLayerAdditionalData(args, r=terminal.Run(verbose=False)).add(self.layer_additional_data_dict[data_group_name],
-                                                                                 list(self.layer_additional_data_keys[data_group_name]),
-                                                                                 data_group=data_group_name)
+                                                                                 list(self.layer_additional_data_keys[data_group_name]))
 
         self.run.warning(None, header="Data groups added", lc='cyan')
         for data_group in self.layer_additional_data_dict:
