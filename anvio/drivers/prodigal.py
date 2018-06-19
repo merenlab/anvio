@@ -7,6 +7,7 @@ import anvio
 import anvio.utils as utils
 import anvio.fastalib as fastalib
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
@@ -124,6 +125,11 @@ class Prodigal:
                                expected output :/ Fortunately, this log file should tell you what\
                                might be the problem: '%s'. Please do not forget to include this\
                                file if you were to ask for help." % log_file_path)
+
+        if filesnpaths.is_file_empty(self.amino_acid_sequences_in_contigs):
+            self.progress.end()
+            self.run.info('Result', 'Prodigal (%s) has identified no genes :/' % (self.installed_version), nl_after=1, mc="red")
+            return gene_calls_dict, amino_acid_sequences_dict
 
         self.progress.update('Processing gene calls ...')
 
