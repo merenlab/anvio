@@ -45,6 +45,7 @@ var layer_types;
 var categorical_data_colors = {};
 var categorical_stats = {};
 var stack_bar_colors = {};
+var stack_bar_stats = {};
 var legends = [];
 
 var layerdata_title = {};
@@ -494,10 +495,19 @@ function populateColorDicts() {
             if (!(layer_id in stack_bar_colors))
             {
                 stack_bar_colors[layer_id] = new Array();
+                stack_bar_stats[layer_id] = new Array();
+
                 var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
                 for (var j=0; j < bars.length; j++)
                 {
                     stack_bar_colors[layer_id].push(getNamedCategoryColor(bars[j]));
+                    
+                    let sum = 0;
+                    for (let i=1; i < layerdata.length; i++) {
+                        sum += parseFloat(layerdata[i][layer_id].split(';')[j]);
+                    }
+
+                    stack_bar_stats[layer_id].push(sum);
                 } 
             }
         }
@@ -540,14 +550,24 @@ function populateColorDicts() {
                 {
                     if (typeof samples_stack_bar_colors[group] === 'undefined') {
                         samples_stack_bar_colors[group] = {};
+                        samples_stack_bar_stats[group] = {};
                     }
 
                     if (!(sample_layer_name in samples_stack_bar_colors[group]))
                     {
                         samples_stack_bar_colors[group][sample_layer_name] = new Array();
+                        samples_stack_bar_stats[group][sample_layer_name] = new Array();
+
                         for (var j=0; j < sample_layer_name.split(";").length; j++)
                         {
                             samples_stack_bar_colors[group][sample_layer_name].push(randomColor());
+
+                            let sum = 0;
+                            for (let _sample in samples_information_dict[group]) {
+                                sum += parseFloat(samples_information_dict[group][_sample][sample_layer_name].split(';')[j]);
+                            }
+
+                            samples_stack_bar_stats[group][sample_layer_name].push(sum);
                         } 
                     }
                 }
@@ -622,6 +642,7 @@ function buildLegendTables() {
             'key': pindex,
             'item_names': names,
             'item_keys': keys,
+            'stats': stack_bar_stats[pindex]
         });    
     }
 
@@ -655,7 +676,8 @@ function buildLegendTables() {
                 'group': group,
                 'key': sample,
                 'item_names': names,
-                'item_keys': keys
+                'item_keys': keys,
+                'stats': samples_stack_bar_stats[group][sample]
             });
         }
     }
@@ -672,48 +694,47 @@ function buildLegendTables() {
         }
 
         template += legend['name'] + '</span><div>';
-        if (legend.hasOwnProperty('stats')) {
-            template += `Sort: <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
-                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
-                        </div>
-                        <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
-                        </div>
-                        <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
-                            <table class="col-md-12 table-spacing">
-                                <tr>
-                                    <td class="col-md-2">Rule: </td>
-                                    <td class="col-md-10">
-                                        <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
-                                        <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
-                                        <input type="radio" name="batch_rule_`+i+`" value="count"> Count 
-                                            <select id="count_rule_`+i+`">
-                                                <option selected>==</option>
-                                                <option>&lt;</option>
-                                                <option>&gt;</option>
-                                            </select>
-                                            <input type="text" id="count_rule_value_`+i+`" size="3">
-                                        <br />
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="col-md-2">Color: </td>
-                                    <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
-                                </tr>
-                                <tr>
-                                    <td class="col-md-2"></td>
-                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
-                                </tr>
-                                <tr>
-                                    <td class="col-md-2"></td>
-                                    <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div style="clear: both; display:block;"></div>
-                        <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
-        }
+        template += `Sort: <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
+                        <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
+                    </div>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
+                    </div>
+                    <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
+                        <table class="col-md-12 table-spacing">
+                            <tr>
+                                <td class="col-md-2">Rule: </td>
+                                <td class="col-md-10">
+                                    <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
+                                    <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
+                                    <input type="radio" name="batch_rule_`+i+`" value="count"> Count 
+                                        <select id="count_rule_`+i+`">
+                                            <option selected>==</option>
+                                            <option>&lt;</option>
+                                            <option>&gt;</option>
+                                        </select>
+                                        <input type="text" id="count_rule_value_`+i+`" size="3">
+                                    <br />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="col-md-2">Color: </td>
+                                <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
+                            </tr>
+                            <tr>
+                                <td class="col-md-2"></td>
+                                <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
+                            </tr>
+                            <tr>
+                                <td class="col-md-2"></td>
+                                <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div style="clear: both; display:block;"></div>
+                    <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
+
         template += '<div id="legend_content_' + i + '"></div>';
         template = template + '<div style="clear: both; display:block;"></div>';
         $('#legend_settings').append(template + '</div>');
@@ -794,7 +815,9 @@ function createLegendColorPanel(legend_id) {
             continue;
         }
 
-        if (legend.hasOwnProperty('stats')) {
+        if (legend['source'].indexOf('stack') > -1) {
+            _name = _name + ' <span title="' + legend['stats'][j] + '">(Total: ' + readableNumber(legend['stats'][j]) + ')</span>';
+        } else {
             _name = _name + ' (' + legend['stats'][_name] + ')';
         }
 
