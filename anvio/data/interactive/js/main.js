@@ -219,14 +219,8 @@ function initData() {
             var available_trees = response.item_orders[2];
             $('#trees_container').append(getComboBoxContent(default_tree, available_trees));
             clusteringData = response.item_orders[1]['data'];
+            loadOrderingAdditionalData(response.item_orders[1]);
 
-            if (response.item_orders[1].hasOwnProperty('additional')) {
-                let orders_additional = JSON.parse(response.item_orders[1]['additional']);
-
-                if (orders_additional.hasOwnProperty('collapsedNodes')) {
-                    collapsedNodes = orders_additional['collapsedNodes'];
-                }
-            }
 
             var default_view = response.views[0];
             var available_views = response.views[2];
@@ -870,6 +864,18 @@ function orderLegend(legend_id, type) {
     createLegendColorPanel(legend_id);
 }
 
+function loadOrderingAdditionalData(order) {
+    collapsedNodes = {};
+    
+    if (order.hasOwnProperty('additional')) {
+        let orders_additional = JSON.parse(order['additional']);
+
+        if (orders_additional.hasOwnProperty('collapsedNodes')) {
+            collapsedNodes = orders_additional['collapsedNodes'];
+        }
+    }
+}
+
 function onTreeClusteringChange() {
     var defer = $.Deferred();
     console.log('Tree clustering data ' + $('#trees_container').val() + ' requested.');
@@ -887,8 +893,10 @@ function onTreeClusteringChange() {
                     type: 'GET',
                     cache: false,
                     url: '/tree/' + $('#trees_container').val(),
-                    success: function(data) {
-                        clusteringData = data;
+                    success: function(order) {
+                        clusteringData = order['data'];
+                        loadOrderingAdditionalData(order);
+
                         $('#trees_container').attr('disabled', false);
                         $('#btn_draw_tree').attr('disabled', false); 
                         waitingDialog.hide();
@@ -2061,6 +2069,7 @@ function loadState()
                         success: function(response) {
                             try{
                                 clusteringData = response[1]['data'];
+                                loadOrderingAdditionalData(response[1]);
                                 changeViewData(response[2]);
                                 processState(state_name, response[0]);
                             }catch(e){
