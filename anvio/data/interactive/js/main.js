@@ -19,7 +19,7 @@
  */
 
 
-var VERSION = '2';
+var VERSION = '3';
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
 
