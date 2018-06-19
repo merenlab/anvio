@@ -36,11 +36,23 @@ function CollapseNodeDialog(node) {
                     <div class="col-md-12">
                         <label class="col-md-4 settings-label">Label</label>  
                         <div class="col-md-8">
-                            <input type="text" id="collapsed_node_label" value="Collapsed_Node_${collapsedNodes.length+1}">
+                            <input type="text" id="collapsed_node_label" value="Collapsed Node ${collapsedNodes.length+1}">
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Reduce size to</label>  
+                        <label class="col-md-4 settings-label">Font size</label>  
+                        <div class="col-md-8">
+                            <input type="text" id="collapsed_font_size" value="0"> (0: auto)
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Font color</label>  
+                        <div class="col-md-8">
+                            <div class="colorpicker" color="#888888" style="background-color: #888888;"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="col-md-4 settings-label">Reduce branch size to</label>  
                         <div class="col-md-8">
                             <input type="text" id="collapsed_node_size" value="0.25">
                         </div>
@@ -53,6 +65,20 @@ function CollapseNodeDialog(node) {
                 </div>
             </div>
         </div>`;
+
+    $(this.dialog.querySelector('.colorpicker')).colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
 
     this.dialog.querySelector('.btn-primary').addEventListener('click', (event) => { this.Collapse(); });
     $(this.dialog).modal('show').on('hidden.bs.modal', () => this.dialog.remove());
@@ -76,6 +102,8 @@ CollapseNodeDialog.prototype.IsNameExists = function(name) {
 CollapseNodeDialog.prototype.Collapse = function() {
     let label = this.dialog.querySelector('#collapsed_node_label').value;
     let size = this.dialog.querySelector('#collapsed_node_size').value;
+    let font_size = this.dialog.querySelector('#collapsed_font_size').value;
+    let color = this.dialog.querySelector('.colorpicker').getAttribute('color');
 
     if (this.IsNameExists(label)) {
         toastr.warning("This node label already exists in tree.", "Collapse", { 'timeOut': '0', 'extendedTimeOut': '0' });
@@ -89,6 +117,8 @@ CollapseNodeDialog.prototype.Collapse = function() {
         'right_most': right_most.label,
         'label': label,
         'size': size,
+        'font_size': font_size,
+        'color': color
     });
 
     $('#tree_modified_warning').show();
