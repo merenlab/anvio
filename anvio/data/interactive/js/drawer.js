@@ -145,7 +145,7 @@ Drawer.prototype.draw_collapsed_nodes = function() {
         let right_most = this.tree.label_to_leaves[collapse_attributes['right_most']];
         var p = this.tree.FindLowestCommonAncestor(left_most, right_most);
 
-        this.draw_collapsed_node(p);
+        this.draw_collapsed_node(p, collapse_attributes);
     }
 };
 
@@ -813,13 +813,13 @@ Drawer.prototype.draw_internal_node = function(p) {
     }
 };
 
-Drawer.prototype.draw_collapsed_node = function(p) {
+Drawer.prototype.draw_collapsed_node = function(p, attributes) {
     var p0 = p.xy
 
     var triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     triangle.setAttribute('id', 'line' + p.id);
     triangle.setAttribute('vector-effect', 'non-scaling-stroke');
-    triangle.setAttribute('fill', '#FFFFFF');
+    triangle.setAttribute('fill', attributes['color']);
     triangle.setAttribute('style', 'stroke:' + LINE_COLOR + ';stroke-width:1;');
 
     var tp1_x, tp1_y, tp2_x, tp2_y;
@@ -838,9 +838,9 @@ Drawer.prototype.draw_collapsed_node = function(p) {
             p.label,
             0,
             'left',
-            (p.size / 2) + 'px',
+            ((attributes['font_size'] !== "0") ? parseFloat(attributes['font_size']) : (p.size / 2)) + 'px',
             'sans-serif',
-            LINE_COLOR,
+            attributes['color'],
             0,
             'central');
 
@@ -871,9 +871,9 @@ Drawer.prototype.draw_collapsed_node = function(p) {
             p.label,
             angle,
             align,
-            (bottom_size / 2) + 'px',
+            ((attributes['font_size'] !== "0") ? parseFloat(attributes['font_size']) : (bottom_size / 2)) + 'px',
             'sans-serif',
-            LINE_COLOR,
+            attributes['color'],
             0,
             'central');
     }

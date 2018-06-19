@@ -14,8 +14,8 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "12"
-profile_db_version = "28"
-pan_db_version = "11"
+profile_db_version = "29"
+pan_db_version = "12"
 auxiliary_data_version = "2"
 genomes_storage_vesion = "6"
 
@@ -116,8 +116,8 @@ nt_position_info_table_types      = [    'str'    ,      'blob'    ]
 ####################################################################################################
 
 item_orders_table_name               = 'item_orders'
-item_orders_table_structure         = ['name', 'type', 'data']
-item_orders_table_types             = ['text', 'text', 'text']
+item_orders_table_structure         = ['name', 'type', 'data', 'additional']
+item_orders_table_types             = ['text', 'text', 'text',    'text'   ]
 
 item_additional_data_table_name      = 'item_additional_data'
 item_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
