@@ -494,20 +494,20 @@ function populateColorDicts() {
         if (layer_types[layer_id] == 1) {
             if (!(layer_id in stack_bar_colors))
             {
-                stack_bar_colors[layer_id] = new Array();
-                stack_bar_stats[layer_id] = new Array();
+                stack_bar_colors[layer_id] = {};
+                stack_bar_stats[layer_id] = {};
 
                 var bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
                 for (var j=0; j < bars.length; j++)
                 {
-                    stack_bar_colors[layer_id].push(getNamedCategoryColor(bars[j]));
+                    stack_bar_colors[layer_id][bars[j]] = getNamedCategoryColor(bars[j]);
                     
                     let sum = 0;
                     for (let i=1; i < layerdata.length; i++) {
                         sum += parseFloat(layerdata[i][layer_id].split(';')[j]);
                     }
 
-                    stack_bar_stats[layer_id].push(sum);
+                    stack_bar_stats[layer_id][bars[j]] = sum;
                 } 
             }
         }
@@ -555,19 +555,21 @@ function populateColorDicts() {
 
                     if (!(sample_layer_name in samples_stack_bar_colors[group]))
                     {
-                        samples_stack_bar_colors[group][sample_layer_name] = new Array();
-                        samples_stack_bar_stats[group][sample_layer_name] = new Array();
+                        samples_stack_bar_colors[group][sample_layer_name] = {};
+                        samples_stack_bar_stats[group][sample_layer_name] = {};
 
                         for (var j=0; j < sample_layer_name.split(";").length; j++)
                         {
-                            samples_stack_bar_colors[group][sample_layer_name].push(randomColor());
+                            let item_name = sample_layer_name.split('!')[1].split(';')[j];
+
+                            samples_stack_bar_colors[group][sample_layer_name][item_name] = randomColor();
 
                             let sum = 0;
                             for (let _sample in samples_information_dict[group]) {
                                 sum += parseFloat(samples_information_dict[group][_sample][sample_layer_name].split(';')[j]);
                             }
 
-                            samples_stack_bar_stats[group][sample_layer_name].push(sum);
+                            samples_stack_bar_stats[group][sample_layer_name][item_name] = sum;
                         } 
                     }
                 }
@@ -631,8 +633,6 @@ function buildLegendTables() {
     {
         var layer_name = getLayerName(pindex);
         var names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
-        var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
-
         var pretty_name = getLayerName(pindex);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
 
@@ -641,7 +641,7 @@ function buildLegendTables() {
             'source': 'stack_bar_colors',
             'key': pindex,
             'item_names': names,
-            'item_keys': keys,
+            'item_keys': names,
             'stats': stack_bar_stats[pindex]
         });    
     }
@@ -667,7 +667,6 @@ function buildLegendTables() {
         for (let sample in samples_stack_bar_colors[group])
         {
             var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
-            var keys = Array.apply(null, Array(names.length)).map(function (_, i) {return i;});
             var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
             legends.push({
@@ -676,7 +675,7 @@ function buildLegendTables() {
                 'group': group,
                 'key': sample,
                 'item_names': names,
-                'item_keys': keys,
+                'item_keys': names,
                 'stats': samples_stack_bar_stats[group][sample]
             });
         }
@@ -816,7 +815,7 @@ function createLegendColorPanel(legend_id) {
         }
 
         if (legend['source'].indexOf('stack') > -1) {
-            _name = _name + ' <span title="' + legend['stats'][j] + '">(Total: ' + readableNumber(legend['stats'][j]) + ')</span>';
+            _name = _name + ' <span title="' + legend['stats'][_name] + '">(Total: ' + readableNumber(legend['stats'][_name]) + ')</span>';
         } else {
             _name = _name + ' (' + legend['stats'][_name] + ')';
         }

@@ -649,7 +649,8 @@ function drawSamplesLayers(settings) {
                 var offset = 0;
                 for (var _i=0; _i < stack_bar_items.length; _i++)
                 {
-                    var color = samples_stack_bar_colors[group][samples_layer_name][_i];
+                    let bar_name = samples_layer_name.split('!')[1].split(';')[_i];
+                    var color = samples_stack_bar_colors[group][samples_layer_name][bar_name];
                     var size  = (samples_layer_boundaries[i][1] - samples_layer_boundaries[i][0]) * stack_bar_items[_i];
 
                     var rect = drawPhylogramRectangle('samples',

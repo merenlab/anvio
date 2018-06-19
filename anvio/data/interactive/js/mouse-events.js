@@ -242,8 +242,9 @@ function mouseMoveHandler(event) {
                 let stack_names = layer_name.split('!')[1].split(';');
                 let stack_items = samples_information_dict[sample_group][sample_name][layer_name].split(';');
                 message += '<table>';
-                for (let j= stack_names.length - 1; j >= 0; j--) {
-                    message += `<tr><td><div class="colorpicker" style="background-color: ${samples_stack_bar_colors[sample_group][layer_name][j]}"></div>${stack_names[j]}</td><td>${stack_items[j]}</td></tr>`;
+                for (let j = stack_names.length - 1; j >= 0; j--) {
+                    let bar_name = stack_names[j];
+                    message += `<tr><td><div class="colorpicker" style="background-color: ${samples_stack_bar_colors[sample_group][layer_name][bar_name]}"></div>${bar_name}</td><td>${stack_items[j]}</td></tr>`;
                 }
                 message += '</table>';
             } else {
