@@ -339,7 +339,7 @@ class BottleApplication(Bottle):
                                              can only be in the form of 'newick' or 'basic'. But the interface requested\
                                              a '%s'. We are all confused here :/" % items_order_id})
 
-            return json.dumps(items_order['data'])
+            return json.dumps(items_order)
 
         return json.dumps("")
 
