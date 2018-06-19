@@ -675,7 +675,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         keys_dict, data_dict = {}, {}
 
         for group_name in self.available_group_names:
-            keys_dict[group_name], data_dict[group_name] = self.get(data_group=group_name)
+            self.target_data_group = group_name
+            keys_dict[group_name], data_dict[group_name] = self.get()
 
         return keys_dict, data_dict
 
