@@ -116,8 +116,8 @@ nt_position_info_table_types      = [    'str'    ,      'blob'    ]
 ####################################################################################################
 
 item_orders_table_name               = 'item_orders'
-item_orders_table_structure         = ['name', 'type', 'data']
-item_orders_table_types             = ['text', 'text', 'text']
+item_orders_table_structure         = ['name', 'type', 'data', 'additional']
+item_orders_table_types             = ['text', 'text', 'text',    'text'   ]
 
 item_additional_data_table_name      = 'item_additional_data'
 item_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
