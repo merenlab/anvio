@@ -3165,7 +3165,7 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
     if not additional_data:
         additional_data = json.dumps({})
     else:
-        additional_data = json.dumps(additional)
+        additional_data = json.dumps(additional_data)
 
     anvio_db = DBClassFactory().get_db_object(anvio_db_path)
 
