@@ -220,6 +220,14 @@ function initData() {
             $('#trees_container').append(getComboBoxContent(default_tree, available_trees));
             clusteringData = response.item_orders[1]['data'];
 
+            if (response.item_orders[1].hasOwnProperty('additional')) {
+                let orders_additional = JSON.parse(response.item_orders[1]['additional']);
+
+                if (orders_additional.hasOwnProperty('collapsedNodes')) {
+                    collapsedNodes = orders_additional['collapsedNodes'];
+                }
+            }
+
             var default_view = response.views[0];
             var available_views = response.views[2];
             $('#views_container').append(getComboBoxContent(default_view, available_views));
