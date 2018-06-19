@@ -254,7 +254,8 @@ Drawer.prototype.generate_tooltips = function() {
 
                 message = '<td>' + layer_title.split('!')[0] + '</td><td><table>';
                 for (let j = stack_names.length - 1; j >= 0; j--) {
-                    message += `<tr><td><div class="colorpicker" style="background-color: ${stack_bar_colors[pindex][j]}"></div>${stack_names[j]}</td><td>${stack_items[j]}</td></tr>`;
+                    let bar_name = stack_names[j]; 
+                    message += `<tr><td><div class="colorpicker" style="background-color: ${stack_bar_colors[pindex][bar_name]}"></div>${bar_name}</td><td>${stack_items[j]}</td></tr>`;
                 }
                 message += '</table></td>';
 
@@ -1163,7 +1164,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
                 0,
                 true);  
         } 
-        else 
+        else
         {
             var _first = this.tree.leaves[0];
             var _last = this.tree.leaves[this.tree.leaves.length - 1];
@@ -1191,8 +1192,11 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         }
 
         if (layer.is_stackbar) {
-            var _colors = stack_bar_colors[layer.index]; 
-            _bgcolor = _colors[_colors.length-1];
+            // we draw background as a last item of stack bar so we won't have to create
+            // path for last item. we just save one path. just one. but everything counts.
+            // the loop in draw_stack_bar function has one missing indice for this reason
+            let bars = getLayerName(layer.index).split(';')
+            _bgcolor = stack_bar_colors[layer.index][bars[bars.length - 1]];
             _opacity = 1;
         }
 
@@ -1557,13 +1561,17 @@ Drawer.prototype.draw_stack_bar_layers = function() {
                 offset += this.layerdata_dict[q.label][layer.index][j];
             }
         }
+        
+        let layer_name = getLayerName(layer.index);
+        let bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
 
+        // see comment in draw_layer_backgrounds 
         for (var j = path_cache.length - 1; j >= 0; j--) {
             var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
             path.setAttribute('shape-rendering', 'auto');
             path.setAttribute('pointer-events', 'none');
-            path.setAttribute('fill', stack_bar_colors[layer.index][j]);
+            path.setAttribute('fill', stack_bar_colors[layer.index][bars[j]]);
             path.setAttribute('stroke-width', '0');
             path.setAttribute('d', path_cache[j].join(' '));
 
