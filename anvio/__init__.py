@@ -347,7 +347,7 @@ D = {
                 ),
     'target-data-group': (
             ['-D', '--target-data-group'],
-            {'metavar': 'DATA_GROUP_NAME',
+            {'metavar': 'NAME',
              'default': None,
              'help': "Data group to focus. Anvi'o misc data tables support associating a set of data keys\
                       with a data group. If you have no idea what this is, then probably you don't need it,\
