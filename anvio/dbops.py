@@ -1798,7 +1798,7 @@ class PanSuperclass(object):
 
                 gene_dict = self.genomes_storage.gene_info[genome_name][gene_caller_id]
 
-                full_report.extend([(gene_caller_id, source, accession, function, search_term,
+                full_report.extend([(gene_caller_id, genome_name, source, accession, function, search_term,
                     gene_cluster_id, gene_dict['dna_sequence'], gene_dict['aa_sequence'])])
 
                 gene_clusters[search_term].append(gene_cluster_id)
