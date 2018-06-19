@@ -7,7 +7,6 @@ import sys
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass, PanSuperclass
@@ -51,7 +50,7 @@ class SearchResultReporter(object):
         self.annotation_sources = [a.strip() for a in A('annotation_sources').split(A('delimiter'))] if A('annotation_sources') else None
 
         self.db = self.get_database()
-        
+
         if self.list_annotation_sources:
             self.db.list_function_sources()
             sys.exit()
@@ -110,15 +109,22 @@ class SearchResultReporter(object):
 
 
     def write_full_report(self):
-        header = ['gene_callers_id', 'source', 'accession', 'function', 'search_term']
-        header.append(self.search_mode) # we append either "contigs" or "gene_clusters"
+        if self.search_mode == 'contigs':
+            header = ['gene_callers_id']
+        elif self.search_mode == 'gene_clusters':
+            header = ['gene_callers_id', 'genome_name']
+        else:
+            raise ConfigError("You ended up in a place you should have never ended up. Go back. Go back.")
+
+        header.extend(['source', 'accession', 'function', 'search_term', self.search_mode])
 
         if self.include_sequences:
             if self.search_mode == 'contigs':
                 gene_caller_ids = list(set([e[0] for e in self.verbose_output]))
                 _, gene_sequences_dict = self.db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
                 header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
-
+            elif self.search_mode == 'gene_clusters':
+                header.extend(['dna_sequence', 'aa_sequence'])
 
         report = open(self.full_report_path, 'w')
         report.write('\t'.join(header) + '\n')
@@ -131,14 +137,12 @@ class SearchResultReporter(object):
                                     g['rev_compd'],
                                     g['sequence'],
                                     g['aa_sequence'],])
-                else:
-                    # it already contains dna and aa sequence for pan search
-                    # we are gonna just inject n/a for direction and rev_compd
-                    content = content[:-2] + ['n/a', 'n/a'] + content[-2:]
+                elif self.search_mode == 'gene_clusters':
+                    # pan results already contains dna and aa sequences
+                    pass
             else:
-                # pan search verbose_output directory contains aa, dna sequence
-                # we need to remove those, user does not want it.
-                content = content[:-2]
+                if self.search_mode == 'gene_clusters':
+                    content = content[:-2]
 
             report.write('\t'.join(content) + '\n')
         report.close()
