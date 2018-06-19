@@ -865,7 +865,7 @@ function orderLegend(legend_id, type) {
 }
 
 function loadOrderingAdditionalData(order) {
-    collapsedNodes = {};
+    collapsedNodes = [];
     
     if (order.hasOwnProperty('additional')) {
         let orders_additional = JSON.parse(order['additional']);
