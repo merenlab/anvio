@@ -351,7 +351,8 @@ D = {
              'default': None,
              'help': "Data group to focus. Anvi'o misc data tables support associating a set of data keys\
                       with a data group. If you have no idea what this is, then probably you don't need it,\
-                      and anvi'o will take care of you."}
+                      and anvi'o will take care of you. Note: this flag is IRRELEVANT if you are working with\
+                      additioanl order data tables."}
                 ),
     'target-data-table': (
             ['-t', '--target-data-table'],
