@@ -36,6 +36,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
         self.just_do_it = A('just_do_it')
+        self.target_data_group_set_by_user = A('target_data_group') or None
+        self.target_data_group = self.target_data_group_set_by_user or 'default'
 
         if not self.db_path:
             raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not\
@@ -87,13 +89,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             AdditionalDataBaseClass.add(self, data_dict, data_keys, skip_check_names)
 
 
-    def remove(self, data_keys_list, data_group=None):
-        '''Give this guy a list of key for additional data, and watch their demise.
-
-           If higher level of stringency is deisred, a `data_group` can also be provided to
-           make sure data keys that occur multiple times in different data groups are
-           not deleted.
-        '''
+    def remove(self, data_keys_list):
+        '''Give this guy a list of key for additional data, and watch their demise.'''
 
         if not isinstance(data_keys_list, list):
             raise ConfigError("The remove function in AdditionalDataBaseClass wants you to watch\
@@ -122,12 +119,10 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                     # what the hell, user?
                     return
 
-                if not data_group:
-                    database._exec('''DELETE from %s WHERE data_key="%s"''' % (self.table_name, key))
-                else:
-                    database._exec('''DELETE from %s WHERE data_key="%s" and data_group="%s"''' % (self.table_name, key, data_group))
+                database._exec('''DELETE from %s WHERE data_key="%s" and data_group="%s"''' % (self.table_name, key, self.target_data_group))
 
-            self.run.warning("%s data for the following keys removed from the database: '%s'. #SAD." % (self.target_table, ', '.join(data_keys_list)))
+            self.run.warning("Data from the table '%s' for the following data keys in data group '%s' \
+                              removed from the database: '%s'. #SAD." % (self.target_table, self.target_data_group, ', '.join(data_keys_list)))
         else:
             if not self.just_do_it:
                 raise ConfigError("You did not provide a list of data keys to remove, which means you are about to delete everything in the\
@@ -147,6 +142,17 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         if self.target_table in ['layers', 'items']:
             keys, data = AdditionalDataBaseClass.get(self)
+            if keys:
+                if len(self.available_group_names) - 1:
+                    self.run.warning("You are exporting data from the additional data table '%s' for the\
+                                      data group '%s'. Great. Just remember that there are %d more data\
+                                      groups in your database, and you are not exporting anything from them\
+                                      at this point (they know you're the boss, so they're not upset)." \
+                                        % (self.target_table, self.target_data_group, len(self.available_group_names) - 1),
+                                      header="FRIENDLY REMINDER", lc='yellow')
+
+                self.run.info('Target data group', self.target_data_group, mc='green')
+
         elif self.target_table in ['layer_orders']:
             data = OrderDataBaseClass.get(self, native_form=True)
             keys = ['data_type', 'data_value']
@@ -158,7 +164,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         utils.store_dict_as_TAB_delimited_file(data, output_file_path, headers=[self.target_table] + keys)
 
-        self.run.info('Output file for %s' % self.target_table, output_file_path)
+        self.run.info('Target data table', self.target_table)
+        self.run.info('Output file', output_file_path)
 
 
     def list_data_keys(self):
@@ -173,18 +180,22 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         # of these table types. hence we get group names first here, and then will do a bunch of if/else checks
         # based on their availability
         if self.target_table in ['layers', 'items']:
-            group_names = AdditionalDataBaseClass.get_group_names(self)
+            if not self.available_group_names:
+                NOPE()
+                return
+            else:
+                self.check_target_data_group()
+
+            # if the user set a target data group, let's focus on that here. otherwise we will
+            # use all data groups available for a messy output.
+            group_names = [self.target_data_group] if self.target_data_group_set_by_user else self.available_group_names
+
             for group_name in group_names:
                 data_keys_in_group = database.get_single_column_from_table(self.table_name, \
                                                                            'data_key', \
                                                                            unique=True, \
                                                                            where_clause="data_group='%s'" % group_name)
                 additional_data_keys[group_name] = sorted(data_keys_in_group)
-
-            if not len(additional_data_keys):
-                NOPE()
-                database.disconnect()
-                return
 
         elif self.target_table in ['layer_orders']:
             data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
@@ -198,7 +209,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             additional_data_keys['default'] = data_keys
             group_names = ['default']
 
-        self.run.warning('', 'DATA KEYS FOR "%s" in %d DATA GROUP(S)' % (self.target_table.upper(), len(group_names)), lc='yellow')
+        self.run.warning('', 'DATA KEYS FOR "%s" in %d DATA GROUP(S)' % (self.target_table.upper(), len(group_names)), lc='green')
 
         for group_name in group_names:
             num_keys = len(additional_data_keys[group_name])
@@ -465,13 +476,36 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     def __init__(self, args):
         AdditionalAndOrderDataBaseClass.__init__(self, args)
 
+        self.available_group_names = self.get_group_names()
 
-    def get(self, additional_data_keys_requested=[], data_group="default"):
+
+    def check_target_data_group(self):
+        """A function to check whether the data group set is among the available ones.
+
+           The reason this function is a separate one and it is not being called by the
+           init function of the base class is because the user *can* set a new data group
+           name when they want to 'import' things into the database. So, while exporting
+           data or displaying data will require the requested data group to be a proper one,
+           it is better to check that explicitly."""
+
+        if self.target_data_group not in self.available_group_names:
+            raise ConfigError("You (or the programmer) requested to initiate the additional data table for '%s' with\
+                               the data group '%s', which is not really in that table :/ If it helps at all,\
+                               the target table happened to have these ones instead: %s. What to do now? If you are\
+                               here becasue the last command you run was something like 'show me all the data in misc'\
+                               data tables, then you may try to be more specific by explicitly defining your target\
+                               data table. If you think you have already been as sepecific as you could be, then anvi'o\
+                               is as frustrated as you are right now :(" %\
+                                    (self.target_table, self.target_data_group, ', '.join(['"%s"' % d for d in self.available_group_names])))
+
+
+    def get(self, additional_data_keys_requested=[]):
         """Will return the additional data keys and the dict."""
 
-        if not data_group or not isinstance(data_group, str):
-            raise ConfigError("Data group variable must be a name of type `str`. The default is `data_group`, if you\
-                               wish to overwrite that, you will have to do it somehting else.")
+        if not self.target_data_group:
+            raise ConfigError("It seems the target data group is not set, which makes zero sense and should never happen\
+                               unless you are doing some hacker stuff. Are you doing hacker stuff? Awesome! Tell us about\
+                               it!")
 
         if not isinstance(additional_data_keys_requested, list):
             raise ConfigError("The `get` function in AdditionalDataBaseClass is upset with you. You could change that\
@@ -482,11 +516,12 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True, \
-                        where_clause="""data_group LIKE '%s'""" % data_group)
+                        where_clause="""data_group LIKE '%s'""" % self.target_data_group)
 
         if not len(additional_data_keys_requested):
             additional_data_keys = additional_data_keys_in_db
-            additional_data = database.get_some_rows_from_table_as_dict(self.table_name, where_clause = """data_group LIKE '%s'""" % data_group,
+            additional_data = database.get_some_rows_from_table_as_dict(self.table_name,
+                                                                        where_clause = """data_group LIKE '%s'""" % self.target_data_group,
                                                                         error_if_no_data=False)
         else:
             if not len(additional_data_keys_in_db):
@@ -500,14 +535,19 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             if set(additional_data_keys_requested) - set(additional_data_keys_in_db):
                 raise ConfigError("The keys you requested does not seem to appear in the additional data table of this %s db\
                                    at '%s' :/ Here is the list of keys you requested: '%s'. And here is the list of keys that anvi'o\
-                                   knows about: '%s'." % (self.db_type, self.db_path, ', '.join(additional_data_keys_requested), ', '.join(additional_data_keys_in_db)))
+                                   knows about: '%s'." % (self.db_type, self.db_path,
+                                                          ', '.join(additional_data_keys_requested),
+                                                          ', '.join(additional_data_keys_in_db)))
 
             additional_data = database.get_some_rows_from_table_as_dict(self.table_name,
-                        where_clause = """data_group LIKE '%s' and data_key IN (%s)""" % (data_group, ",".join('"' + key + '"' for key in additional_data_keys_requested)))
+                                                where_clause = """data_group LIKE '%s' and data_key IN (%s)""" % (self.target_data_group,
+                                                                                                                  ",".join(['"%s"' % key for key in additional_data_keys_requested])))
             additional_data_keys = additional_data_keys_requested
 
-        additional_data_item_names = database.get_single_column_from_table(self.table_name, 'item_name', unique=True,
-                        where_clause="""data_group LIKE '%s'""" % data_group)
+        additional_data_item_names = database.get_single_column_from_table(self.table_name,
+                                                                           'item_name',
+                                                                           unique=True,
+                                                                           where_clause="""data_group LIKE '%s'""" % self.target_data_group)
 
         database.disconnect()
 
@@ -539,7 +579,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         return additional_data_keys, d
 
 
-    def add(self, data_dict, data_keys_list, skip_check_names=False, data_group="default"):
+    def add(self, data_dict, data_keys_list, skip_check_names=False):
         """Function to add data into the item additional data table.
 
            * `data_dict`: a dictionary for items or layers additional should follow this format:
@@ -559,15 +599,15 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                in `data_dict`.
         """
 
-        self.data_dict_sanity_check(data_dict, data_keys_list=data_keys_list)
-
         if self.target_table not in ['items', 'layers']:
             raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But\
                                you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user,\
                                check your flags to make sure you are targeting the right data table. If you are a programmer,\
                                you are fired." % (self.target_table, self.db_type))
 
-        self.run.warning(None, 'New %s additional data...' % self.target_table, lc="yellow")
+        self.data_dict_sanity_check(data_dict, data_keys_list=data_keys_list)
+
+        self.run.warning(None, "New data for '%s' in data group '%s'" % (self.target_table, self.target_data_group), lc="yellow")
         key_types = {}
         for key in data_keys_list:
             if '!' in key:
@@ -583,23 +623,28 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         # we be responsible here.
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         all_keys_for_group = database.get_single_column_from_table(self.table_name, 
-            'data_key', unique=True, where_clause="""'data_group' LIKE '%s'""" % data_group)
+            'data_key', unique=True, where_clause="""data_group='%s'""" % self.target_data_group)
         database.disconnect()
 
         keys_already_in_db = [c for c in data_keys_list if c in all_keys_for_group]
         if len(keys_already_in_db):
             if self.just_do_it:
                 self.run.warning('The following keys in your data dict will replace the ones that are already\
-                                  in your %s database: %s.' % (self.db_type, ', '.join(keys_already_in_db)))
+                                  in your %s database %s table and %s data group: %s.' \
+                                                % (self.db_type, self.target_table,
+                                                   self.target_data_group, ', '.join(keys_already_in_db)))
 
                 self.remove(keys_already_in_db)
             else:
-                run.info('Data keys already in the db', ', '.join(keys_already_in_db), nl_before=2, mc='red')
+                self.run.info('Database', self.db_type, nl_before=1)
+                self.run.info('Data group', self.target_data_group)
+                self.run.info('Data table', self.target_table)
+                self.run.info('Data keys already in db', ', '.join(keys_already_in_db), mc='red')
 
-                raise ConfigError("Some of the data keys in your new data appear to be in the database already. If you\
-                                   want to replace those in the database with the ones in your new data use the\
-                                   `--just-do-it` flag, and watch anvi'o make an exception just for you and complain\
-                                   about nothin' for this once.")
+                raise ConfigError("Some of the data keys in your new data are already in the database. If you\
+                                   want to replace them with the ones in your new data input use the `--just-do-it` flag,\
+                                   and watch anvi'o make an exception just for you and complain about nothin' for this\
+                                   once.")
 
         if skip_check_names:
             self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of the names of your %s\
@@ -614,7 +659,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 TableForItemAdditionalData.check_names(self, data_dict)
             else:
                 raise ConfigError("Congratulations, you managed to hit an uncharted are in anvi'o. It is cerrtainly very\
-                                   curious how you got here unless you are trying to implement a new functionality.")
+                                   curious how you got here unless you are trying to implement a new functionality. Are\
+                                   you? What *IS* it? IS IT FUN?")
 
         db_entries = []
         self.set_next_available_id(self.table_name)
@@ -625,20 +671,26 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                          key,
                                          data_dict[item_name][key],
                                          key_types[key],
-                                         data_group]))
+                                         self.target_data_group]))
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
 
-        self.run.info('New data added to the db for your %s' % self.target_table, '%s.' % (', '.join(data_keys_list)), nl_after=1)
+
+        self.run.warning('', 'NEW DATA', lc='green')
+        self.run.info('Database', self.db_type)
+        self.run.info('Data group', self.target_data_group)
+        self.run.info('Data table', self.target_table)
+        self.run.info('New data keys', '%s.' % (', '.join(data_keys_list)), nl_after=1)
 
 
     def get_all(self):
         keys_dict, data_dict = {}, {}
 
-        for group_name in self.get_group_names():
-            keys_dict[group_name], data_dict[group_name] = self.get(data_group=group_name)
+        for group_name in self.available_group_names:
+            self.target_data_group = group_name
+            keys_dict[group_name], data_dict[group_name] = self.get()
 
         return keys_dict, data_dict
 

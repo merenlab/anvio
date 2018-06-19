@@ -34,7 +34,7 @@ __email__ = "ozcanesen@gmail.com"
 run = terminal.Run()
 
 def restore_names_in_dict(input_dict, conversion_dict):
-    """ 
+    """
     Takes dictionary that contains hashes as keys
     and replaces it back to genome names using conversion_dict.
 
@@ -81,7 +81,7 @@ def main(args):
 
     clusterings = {}
     for report_name in results:
-        clusterings[report_name] = clustering.get_newick_tree_data_for_dict(results[report_name], 
+        clusterings[report_name] = clustering.get_newick_tree_data_for_dict(results[report_name],
             linkage=args.linkage, distance=args.distance)
 
     os.mkdir(args.output_dir)
@@ -96,7 +96,7 @@ def main(args):
         utils.is_pan_db(args.pan_db)
         pan = db.DB(args.pan_db, anvio.__pan__version__)
 
-        db_genome_names = set(pan.get_meta_value('external_genome_names').split(',') + 
+        db_genome_names = set(pan.get_meta_value('external_genome_names').split(',') +
             pan.get_meta_value('internal_genome_names').split(','))
 
         found_only_in_db = db_genome_names.difference(genome_names)
@@ -112,10 +112,12 @@ def main(args):
                 " + ", ".join(list(found_only_in_db)))
 
         for report_name in results:
-            layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(pan_db=args.pan_db, just_do_it=args.just_do_it))
-            layer_additional_data_table.add(results[report_name], list(results[report_name].keys()), data_group='ANI_' + report_name)
+            target_data_group = 'ANI_%s' % (report_name)
+            l_args = argparse.Namespace(pan_db=args.pan_db, just_do_it=True, target_data_group=target_data_group)
+            TableForLayerAdditionalData(l_args).add(results[report_name], list(results[report_name].keys()))
 
-            TableForLayerOrders(args).add({'ANI_' + report_name: {'data_type': 'newick', 'data_value': clusterings[report_name]}})
+            TableForLayerOrders(args).add({'ANI_' + report_name: {'data_type': 'newick',
+                                                                  'data_value': clusterings[report_name]}})
 
 
     if anvio.DEBUG:
