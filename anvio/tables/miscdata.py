@@ -149,6 +149,17 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         if self.target_table in ['layers', 'items']:
             keys, data = AdditionalDataBaseClass.get(self)
+            if keys:
+                if len(self.available_group_names) - 1:
+                    self.run.warning("You are exporting data from the additional data table '%s' for the\
+                                      data group '%s'. Great. Just remember that there are %d more data\
+                                      groups in your database, and you are not exporting anything from them\
+                                      at this point (they know you're the boss, so they're not upset)." \
+                                        % (self.target_table, self.target_data_group, len(self.available_group_names) - 1),
+                                      header="FRIENDLY REMINDER", lc='yellow')
+
+                self.run.info('Target data group', self.target_data_group, mc='green')
+
         elif self.target_table in ['layer_orders']:
             data = OrderDataBaseClass.get(self, native_form=True)
             keys = ['data_type', 'data_value']
@@ -160,7 +171,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         utils.store_dict_as_TAB_delimited_file(data, output_file_path, headers=[self.target_table] + keys)
 
-        self.run.info('Output file for %s' % self.target_table, output_file_path)
+        self.run.info('Target data table', self.target_table)
+        self.run.info('Output file', output_file_path)
 
 
     def list_data_keys(self):
