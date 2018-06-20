@@ -117,14 +117,18 @@ class DB:
         self._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
 
 
-    def get_max_value_in_column(self, table_name, column_name):
+    def get_max_value_in_column(self, table_name, column_name, value_if_empty=None):
+        """
+        value_if_empty, default = None:
+            If not None and table has no entries, value returned is value_if_empty.
+        """
         response = self._exec("""SELECT MAX(%s) FROM %s""" % (column_name, table_name))
         rows = response.fetchall()
 
         val = rows[0][0]
 
         if isinstance(val, type(None)):
-            return None
+            return value_if_empty
 
         try:
             val = int(val)
@@ -134,7 +138,8 @@ class DB:
         return val
 
 
-    def get_meta_value(self, key):
+    def get_meta_value(self, key, try_as_type_int=True):
+        """if try_as_type_int, value is attempted to be converted to integer. If it fails, no harm no foul."""
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
         rows = response.fetchall()
 
@@ -146,10 +151,11 @@ class DB:
         if isinstance(val, type(None)):
             return None
 
-        try:
-            val = int(val)
-        except ValueError:
-            pass
+        if try_as_type_int:
+            try:
+                val = int(val)
+            except ValueError:
+                pass
 
         return val
 
@@ -188,8 +194,71 @@ class DB:
             return self._exec_many(query, entries)
 
 
-    def get_all_rows_from_table(self, table):
-        response = self._exec('''SELECT * FROM %s''' % table)
+    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns = True, key = None):
+        """
+        raise_if_no_columns, bool:
+            If true, if dataframe has no columns (e.g. dataframe = pd.DataFrame({})), this function
+            returns without raising error.
+
+        key, list-like:
+            If table is meant to have a column with unique and sequential entries, the
+            column name should be passed so appended rows retain sequential order. E.g., consider
+
+                           Table                                dataframe
+                entry_id   value1   value2            entry_id    value1    value2
+                0          yes      30                0           no        2
+                1          yes      23
+
+            Depending if key=None or key="entry_id", the result is different:
+
+                        key = None                         key = "entry_id"
+                entry_id   value1   value2            entry_id   value1   value2
+                0          yes      30                0          yes      30
+                1          yes      23                1          yes      23
+                0          no       2                 2          no       2
+        """
+        if table_name not in self.get_table_names():
+            raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does\
+                               not exist in the database you requested. {} are the tables\
+                               existent in the database".\
+                               format(table_name, ", ".join(self.get_table_names())))
+
+        if not list(dataframe.columns) and not raise_if_no_columns:
+            # if the dataframe has no colums, we just return
+            return
+
+        if len(set(dataframe.columns)) != len(list(dataframe.columns)):
+            raise ConfigError("insert_rows_from_dataframe :: There is at least one duplicate column\
+                               name in the dataframe. Here is the list of columns: [{}].".\
+                               format(", ".join(list(dataframe.columns))))
+
+        if set(dataframe.columns) != set(self.get_table_structure(table_name)):
+            raise ConfigError("insert_rows_from_dataframe :: The columns in the dataframe\
+                               do not equal the columns (structure) of the requested table.\
+                               The columns from each are respectively ({}); and ({}).".\
+                               format(", ".join(list(dataframe.columns)),
+                                      ", ".join(self.get_table_structure(table_name))))
+
+        if key and key not in dataframe.columns:
+            raise ConfigError("insert_rows_from_dataframe :: key ({}) is not a column of your\
+                               dataframe. The columns in your dataframe are [{}].".\
+                               format(key, ", ".join(list(dataframe.columns))))
+
+        elif key:
+            start = self.get_max_value_in_column(table_name, key, value_if_empty=-1) + 1
+            end = start + dataframe.shape[0]
+            key_values = list(range(start, end))
+            dataframe[key] = key_values
+
+        # conform to the column order of the table structure
+        dataframe = dataframe[self.get_table_structure(table_name)]
+
+        entries = [tuple(row) for row in dataframe.values]
+        self.insert_many(table_name, entries=entries)
+
+
+    def get_all_rows_from_table(self, table_name):
+        response = self._exec('''SELECT * FROM %s''' % table_name)
         return response.fetchall()
 
 
@@ -202,8 +271,13 @@ class DB:
         return response.fetchall()[0][0]
 
 
-    def get_some_rows_from_table(self, table, where_clause):
-        response = self._exec('''SELECT * FROM %s WHERE %s''' % (table, where_clause))
+    def remove_some_rows_from_table(self, table_name, where_clause):
+        self._exec('''DELETE FROM %s WHERE %s''' % (table_name, where_clause))
+        self.commit()
+
+
+    def get_some_rows_from_table(self, table_name, where_clause):
+        response = self._exec('''SELECT * FROM %s WHERE %s''' % (table_name, where_clause))
         return response.fetchall()
 
 
@@ -215,23 +289,23 @@ class DB:
         return [t[0] for t in response.fetchall()]
 
 
-    def get_table_column_types(self, table):
-        response = self._exec('PRAGMA TABLE_INFO(%s)' % table)
+    def get_table_column_types(self, table_name):
+        response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
         return [t[2] for t in response.fetchall()]
 
 
-    def get_table_structure(self, table):
-        response = self._exec('''SELECT * FROM %s''' % table)
+    def get_table_structure(self, table_name):
+        response = self._exec('''SELECT * FROM %s''' % table_name)
         return [t[0] for t in response.description]
 
 
-    def get_table_as_list_of_tuples(self, table, table_structure=None):
-        return self.get_all_rows_from_table(table)
+    def get_table_as_list_of_tuples(self, table_name, table_structure=None):
+        return self.get_all_rows_from_table(table_name)
 
 
-    def get_table_as_dict(self, table, table_structure=None, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
+    def get_table_as_dict(self, table_name, table_structure=None, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
         if not table_structure:
-            table_structure = self.get_table_structure(table)
+            table_structure = self.get_table_structure(table_name)
 
         columns_to_return = list(range(0, len(table_structure)))
 
@@ -257,9 +331,9 @@ class DB:
 
         results_dict = {}
 
-        rows = self.get_all_rows_from_table(table)
+        rows = self.get_all_rows_from_table(table_name)
 
-        if table not in tables.tables_without_unique_entry_ids:
+        if table_name not in tables.tables_without_unique_entry_ids:
             unique_keys = set([r[0] for r in rows])
             if len(unique_keys) != len(rows):
                 raise ConfigError("This is one of the core functions of anvi'o you never want to hear from, but there seems\
@@ -294,17 +368,19 @@ class DB:
         return results_dict
 
 
-    def get_table_as_dataframe(self, table, table_structure=None, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
-        """
-        get_table_as_dict() uses the first column as the key in the resulting
-        dictionary. For pandas DataFrames there are two reasonable design
-        approaches. The first mimics this approach and uses the first column as
-        the index of the DataFrame. The approach I take instead is to keep the
-        first column as a column in the DataFrame (it is afterall, a column)
-        and use numerical indices for the DataFrame.
-        """
+    def get_table_as_dataframe(self, table_name,
+                               table_structure  = None, columns_of_interest = None,
+                               keys_of_interest = None, omit_parent_column  = False,
+                               error_if_no_data = True, where_clause        = None):
+        """get_table_as_dict() uses the first column as the key in the resulting
+           dictionary. For pandas DataFrames there are two reasonable design
+           approaches. The first mimics this approach and uses the first column as
+           the index of the DataFrame. The approach I take instead is to keep the
+           first column as a column in the DataFrame (it is afterall, a column)
+           and use numerical indices for the DataFrame."""
+
         if not table_structure:
-            table_structure = self.get_table_structure(table)
+            table_structure = self.get_table_structure(table_name)
 
         columns_to_return = table_structure
 
@@ -328,8 +404,10 @@ class DB:
         if keys_of_interest:
             keys_of_interest = set(keys_of_interest)
 
-        rows = self.get_all_rows_from_table(table)
-        results_df = pd.DataFrame(rows, columns=table_structure)
+        if where_clause:
+            results_df = pd.read_sql('''SELECT * FROM "%s" WHERE %s''' % (table_name, where_clause), self.conn, columns=table_structure)
+        else:
+            results_df = pd.read_sql('''SELECT * FROM "%s"''' % table_name, self.conn, columns=table_structure)
 
         if keys_of_interest:
             results_df = results_df.loc[results_df.index.isin(keys_of_interest)]
@@ -338,7 +416,7 @@ class DB:
         return results_df
 
 
-    def get_some_rows_from_table_as_dict(self, table, where_clause, error_if_no_data=True, string_the_key=False):
+    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False):
         """This is similar to get_table_as_dict, but much less general.
 
            get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
@@ -348,10 +426,10 @@ class DB:
 
         results_dict = {}
 
-        table_structure = self.get_table_structure(table)
+        table_structure = self.get_table_structure(table_name)
         columns_to_return = list(range(0, len(table_structure)))
 
-        rows = self._exec('''SELECT * FROM %s WHERE %s''' % (table, where_clause)).fetchall()
+        rows = self._exec('''SELECT * FROM %s WHERE %s''' % (table_name, where_clause)).fetchall()
 
         for row in rows:
             entry = {}
@@ -365,7 +443,7 @@ class DB:
                 results_dict[row[0]] = entry
 
         if error_if_no_data and not len(results_dict):
-            raise ConfigError("Query on %s with the where clause of '%s' did not return anything." % (table, where_clause))
+            raise ConfigError("Query on %s with the where clause of '%s' did not return anything." % (table_name, where_clause))
 
         return results_dict
 

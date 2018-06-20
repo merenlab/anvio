@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import anvio
+import argparse
+
+import anvio.terminal as terminal
+import anvio.structureops as structops
+
+from anvio.errors import ConfigError, FilesNPathsError, ModellerError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+    structure_update = structops.StructureUpdate(args)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Add or remove genes from an already existing \
+                                                  structure database. All settings used to generate \
+                                                  your database will be used in this program.")
+
+    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
+    groupG = parser.add_argument_group('GENES', 'Specifying which genes you want to be modelled.')
+    groupO = parser.add_argument_group('OUTPUT', 'Output file and output style.')
+    groupE = parser.add_argument_group('MODELLER EXECUTABLE', 'Which executable program to use for MODELLER, e.g. mod9.19')
+
+    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
+
+    groupG.add_argument("--genes-to-remove", "-r", type=str, help = \
+                        """Gene caller ids to remove from your structure database. Multiple of them \
+                           can be declared by separating with comma (e.g. --genes-to-remove 2,4,5,6).""")
+
+    groupG.add_argument("--genes-to-remove-file", "-R", type=str, help = \
+                        """A file of gene caller ids to remove from your structure database. Each line \
+                           in the file should be a gene caller id.""")
+
+    groupG.add_argument("--genes-to-add", "-a", type=str, help = \
+                        """Gene caller ids to remove from your structure database. Multiple of them \
+                           can be declared by separating with comma (e.g. --genes-to-remove 2,4,5,6).""")
+
+    groupG.add_argument("--genes-to-add-file", "-A", type=str, help = \
+                        """A file of gene caller ids to remove from your structure database. Each line \
+                           in the file should be a gene caller id.""")
+
+    groupO.add_argument(*anvio.A('dump-dir'), **anvio.K('dump-dir'))
+
+    groupE.add_argument("--modeller-executable", type=str, help = \
+                        """ The MODELLER program to use. For example, `mod9.19`. The default is `mod9.19`""")
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(2)
+    except ModellerError as e:
+        print(e)
+        sys.exit(3)

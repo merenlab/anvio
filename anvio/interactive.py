@@ -4,8 +4,12 @@
 
 import os
 import sys
+import copy
 import numpy
+import argparse
 import textwrap
+import pandas as pd
+from ete3 import Tree
 
 import anvio
 import anvio.utils as utils
@@ -17,6 +21,8 @@ import anvio.summarizer as summarizer
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
+import anvio.structureops as structureops
+import anvio.variabilityops as variabilityops
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
@@ -24,6 +30,8 @@ from anvio.dbops import get_description_in_db
 from anvio.dbops import get_default_item_order_name
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, RefineError
+from anvio.variabilityops import VariabilitySuper
+from anvio.variabilityops import variability_engines
 
 from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders
 from anvio.tables.collections import TablesForCollections
@@ -1250,6 +1258,815 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def end(self):
         # FIXME: remove temp files and stuff
         pass
+
+
+class StructureInteractive(VariabilitySuper):
+    def __init__(self, args, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
+
+        self.args = args
+        self.mode = 'structure'
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        # splits
+        self.bin_id = A('bin_id', null)
+        self.collection_name = A('collection_name', null)
+        self.splits_of_interest_path = A('splits_of_interest', null)
+        # database
+        self.profile_db_path = A('profile_db', null)
+        self.contigs_db_path = A('contigs_db', null)
+        self.structure_db_path = A('structure_db', null)
+        # genes
+        self.available_gene_caller_ids = A('gene_caller_ids', null)
+        self.available_genes_path = A('genes_of_interest', null)
+        self.available_genes = A('available_genes', set) or set([])
+        # samples
+        self.available_samples_path = A('samples_of_interest', null)
+        self.available_samples = A('available_samples', set) or set([])
+        # others
+        self.saavs_only = A('SAAVs_only', bool)
+        self.scvs_only = A('SCVs_only', bool)
+        self.variability_table_path = A('variability_profile', null)
+        self.no_variability = A('no_variability', bool)
+        self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
+
+        # For now, only true if self.variability_table_path. Otherwise variability is computed on the fly
+        self.store_full_variability_in_memory = True if self.variability_table_path else False
+        self.sample_groups_provided = True if self.profile_db_path else False
+        self.full_variability = None
+        self.variability_storage = {}
+
+        self.num_reported_frequencies = 5
+
+        self.sanity_check()
+
+        if self.store_full_variability_in_memory:
+            self.profile_full_variability_data()
+
+        self.available_genes = self.get_available_genes()
+        self.available_engines = self.get_available_engines()
+
+        # can save significant memory if available genes is a fraction of genes in full variability
+        if self.full_variability:
+            self.filter_full_variability()
+            self.process_full_variability()
+
+        # default gene is the first gene of interest
+        self.profile_gene_variability_data(list(self.available_genes)[0])
+
+        self.available_samples = self.get_available_samples()
+        self.sample_groups = self.create_sample_groups_dict()
+
+
+    def filter_full_variability(self):
+        try:
+            self.full_variability.filter_data(criterion="corresponding_gene_call",
+                                              subset_filter=self.available_genes)
+        except self.EndProcess as e:
+            raise ConfigError("This is really sad. There is no overlap between the gene IDs in your\
+                               structure database and the gene IDs in your variability table.")
+
+        try:
+            self.full_variability.filter_data(criterion="departure_from_consensus",
+                                              min_filter=self.min_departure_from_consensus)
+        except self.EndProcess as e:
+            raise ConfigError("This is really sad. There are no entries in your variability table\
+                               with a departure_from_consensus less than {}. Try setting\
+                               --min-departure-from-consensus to 0.".format(self.min_departure_from_consensus))
+
+
+    def process_full_variability(self):
+        self.full_variability.convert_counts_to_frequencies()
+
+
+    def create_sample_groups_dict(self):
+        """This method converts the native data structure of additional_layer_dict:
+
+           {sample1: {"temperature": "hot", "diet": "high-fat", ...},
+            sample2: {"temperature": "hot", "diet": "low-fat", ...}}
+
+           to a data structure designed with the structure interactive interface in mind:
+
+           {"temperature": {"hot":      [sample1, sample2], "cold":    []},
+            "diet":        {"high-fat": [sample1],          "low-fat": [sample2]}}
+        """
+        if not self.profile_db_path:
+            return {"merged"  : {"all": sorted(list(self.available_samples))},
+                    "samples" : {s:[s] for s in self.available_samples}}
+
+        layer_names, additional_layer_dict = self.load_additional_layer_data()
+
+        d = {}
+        # important merged group (all samples in one group)
+        d["merged"] = {"all": sorted(list(self.available_samples))}
+
+        # filter additional_layer_dict to only include available samples
+        additional_layer_dict = {k: v for k, v in additional_layer_dict.items() if k in self.available_samples}
+
+        # Now begins the horrible process of converting between the two data structures. get ready
+        # for triple-nested `for` loops and an unreadable mess. Or... a cheeky little pandas dataframe
+        # whose only purpose is to enable a dictionary comprehension. Imagine how many lines this
+        # would be using native python.
+        df = pd.DataFrame(additional_layer_dict).T.fillna("NA").reset_index().rename(columns={"index":"samples"})
+        d.update({col: {val: list(df.loc[df[col]==val, "samples"]) for val in df[col].unique()} for col in df.columns}) # V/\
+
+        return d
+
+
+    def load_additional_layer_data(self, profile_db_path=None):
+        """I don't know how I can only get layers that are of type string, so unfortunately this
+           finds columns suitable for grouping samples (those of type string) in an adhoc manner.
+           See the following issue: https://github.com/merenlab/anvio/issues/829
+        """
+        if not profile_db_path:
+            profile_db_path = self.profile_db_path
+
+        x = argparse.Namespace(pan_or_profile_db=profile_db_path, target_data_table="layers")
+        additional_layers_table = TableForLayerAdditionalData(args=x)
+        layer_names, additional_layer_dict = additional_layers_table.get()
+
+        ####### ad hoc piece of garbage https://github.com/merenlab/anvio/issues/829 ########
+        samples_in_layer_data = additional_layer_dict.keys()
+        layers_to_remove = []
+        for layer_name in layer_names:
+            remove_column = True
+            if not "!" in layer_name:
+                for sample_name in samples_in_layer_data:
+                    # loops through samples until it finds evidence the column is string-type
+                    if isinstance(additional_layer_dict[sample_name][layer_name], str):
+                        remove_column = False
+                        continue
+            if remove_column:
+                layers_to_remove.append(layer_name)
+        for sample_name in additional_layer_dict:
+            for bad_layer in layers_to_remove:
+                del additional_layer_dict[sample_name][bad_layer]
+        ####### ad hoc piece of garbage https://github.com/merenlab/anvio/issues/829 ########
+        return layer_names, additional_layer_dict
+
+
+    def get_column_info(self, gene_callers_id, engine):
+        var = self.variability_storage[gene_callers_id][engine]['var_object']
+
+        FIND_MIN = lambda c: var.data[c].min()
+        FIND_MAX = lambda c: var.data[c].max()
+
+        info = [
+            {
+                'name': 'departure_from_consensus',
+                'title': 'Departure from consensus',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': 0,
+                'max': 1,
+            },
+            {
+                'name': 'departure_from_reference',
+                'title': 'Departure from reference',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': 0,
+                'max': 1,
+            },
+            {
+                'name': 'prevalence',
+                'title': 'Prevalence',
+                'as_perspective': True,
+                'as_filter': False,
+                'merged_only': True,
+                'data_type': 'float',
+                'min': 0,
+                'max': 1
+            },
+            {
+                'name': 'occurrence',
+                'title': 'occurrence',
+                'as_perspective': False,
+                'as_filter': False,
+                'merged_only': True,
+                'data_type': 'integer',
+            },
+            {
+                'name': 'contact_numbers',
+                'as_perspective': False,
+                'as_filter': False,
+                'data_type': 'text',
+            },
+            {
+                'name': 'mean_normalized_coverage',
+                'title': 'Site coverage normalized by gene average',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': float(FIND_MIN('mean_normalized_coverage')),
+                'max': float(FIND_MAX('mean_normalized_coverage'))
+            },
+            {
+                'name': 'coverage',
+                'title': 'Site coverage',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 1,
+                'min': int(FIND_MIN('coverage')),
+                'max': int(FIND_MAX('coverage'))
+            },
+            {
+                'name': 'synonymity',
+                'title': 'Synonymity',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': 0,
+                'max': 1,
+            },
+            {
+                'name': 'entropy',
+                'title': 'Entropy',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': 0,
+                'max': float(FIND_MAX('entropy'))
+            },
+            {
+                'name': 'rel_solvent_acc',
+                'title': 'Relative solvent accessibility',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': 0,
+                'max': 1,
+            },
+            {
+                'name': 'sec_struct',
+                'title': 'Secondary structure',
+                'as_perspective': True,
+                'as_filter': 'checkbox',
+                'data_type': 'text',
+                'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
+            },
+            {
+                'name': 'phi',
+                'title': 'Phi',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 1,
+                'min': -180,
+                'max': 180,
+            },
+            {
+                'name': 'psi',
+                'title': 'Psi',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 1,
+                'min': -180,
+                'max': 180,
+            },
+            {
+                'name': 'BLOSUM62',
+                'title': 'BLOSUM62',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'integer',
+                'step': 1,
+                'min': -4,
+                'max': 11,
+            },
+            {
+                'name': 'BLOSUM90',
+                'title': 'BLOSUM90',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'integer',
+                'step': 1,
+                'min': -6,
+                'max': 11,
+            },
+            {
+                'name': 'codon_order_in_gene',
+                'title': 'Codon index',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'integer',
+                'step': 1,
+                'min': 0,
+                'max': var.data["gene_length"].iloc[0]/3 - 1,
+            },
+            {
+                'name': 'codon_number',
+                'title': 'Codon number',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'integer',
+                'step': 1,
+                'min': 1,
+                'max': var.data["gene_length"].iloc[0]/3,
+            },
+            {
+                'name': var.competing_items,
+                'title': 'Competing Amino Acids' if engine == "AA" else 'Competing Codons',
+                'as_perspective': True,
+                'as_filter': 'checkbox',
+                'data_type': 'text',
+                'choices': list(var.data[var.competing_items].value_counts().sort_values(ascending=False).index)
+            },
+            {
+                'name': 'reference',
+                'title': 'Reference',
+                'as_perspective': True,
+                'as_filter': 'checkbox',
+                'data_type': 'text',
+                'choices': list(var.data['reference'].value_counts().sort_values(ascending=False).index)
+            },
+            {
+                'name': 'consensus',
+                'title': 'Consensus',
+                'as_perspective': True,
+                'as_filter': 'checkbox',
+                'data_type': 'text',
+                'choices': list(var.data['consensus'].value_counts().sort_values(ascending=False).index)
+            },
+        ]
+
+        # coverage values
+        for item in var.items:
+            info.append(
+                {
+                    'name': item,
+                    'as_perspective': False,
+                    'as_filter': False,
+                    'data_type': 'integer',
+                },
+            )
+
+        # top n freqs
+        for x in range(self.num_reported_frequencies):
+            info.extend([
+                {
+                    'name': str(x) + '_item',
+                    'as_perspective': False,
+                    'as_filter': False,
+                    'data_type': 'text',
+                    'merged_only': True,
+                },
+                {
+                    'name': str(x) + '_item_AA',
+                    'as_perspective': False,
+                    'as_filter': False,
+                    'data_type': 'text',
+                    'merged_only': True,
+                },
+                {
+                    'name': str(x) + '_freq',
+                    'as_perspective': False,
+                    'as_filter': False,
+                    'data_type': 'float',
+                    'merged_only': True,
+                },
+            ])
+
+        # keep those that the variability data table has. also keep those with no controller. these
+        # entries may not exist in table, but will when data is merged
+        info = [v for v in info if v['name'] in var.data.columns or v.get('merged_only', False)]
+        return info
+
+
+    def get_genes_of_interest_from_bin_id(self):
+        pass
+
+
+    def get_available_engines(self):
+        if self.variability_table_path:
+            return [self.full_variability.engine]
+        elif self.saavs_only:
+            return ['AA']
+        elif self.scvs_only:
+            return ['CDN']
+        else:
+            return ['AA', 'CDN']
+
+
+    def get_available_genes(self, available_genes_path="", available_gene_caller_ids=""):
+        """It is essential to note that available_genes_path and available_gene_caller_ids are "" by
+           default, not None. The programmer can pass None to avoid the argument defaulting to a
+           class-wide attribute (first code block of this method), which may not exist for classes
+           inheriting this method.
+        """
+        # use class-wide attributes if no parameters are passed
+        if available_gene_caller_ids is "" and available_genes_path is "":
+            available_gene_caller_ids = self.available_gene_caller_ids
+            available_genes_path = self.available_genes_path
+
+        # method inherited from VariabilitySuper
+        requested_available_genes = self.get_genes_of_interest(available_genes_path, available_gene_caller_ids)
+
+        # load in structure to compare genes of interest with those in requested_available_genes
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+
+        if requested_available_genes:
+
+            # check for genes that do not appear in the structure database
+            unrecognized_genes = [g for g in requested_available_genes if g not in structure_db.genes_queried]
+            if unrecognized_genes:
+                some_to_report = unrecognized_genes[:5] if len(unrecognized_genes) <= 5 else unrecognized_genes
+                raise ConfigError("{} of the gene caller ids you provided {} not known to the\
+                                   structure database. {}: {}. They might exist in the contigs\
+                                   database used to generate the structure database, but not all\
+                                   genes in the contigs database exist in the corresponding\
+                                   structure database :(. You can try running\
+                                   anvi-gen-structure-database again, this time with these missing\
+                                   genes included".format(len(unrecognized_genes),
+                                                 "is" if len(unrecognized_genes) == 1 else "are",
+                                                 "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
+                                                 ", ".join([str(x) for x in some_to_report])))
+
+            # check for genes that structures were attempted for, but failed
+            unavailable_genes = [g for g in requested_available_genes if g in structure_db.genes_without_structure]
+            available_genes = [g for g in requested_available_genes if g not in unavailable_genes]
+            if unavailable_genes:
+                some_to_report = unavailable_genes[:5] if len(unavailable_genes) <= 5 else unavailable_genes
+                run.warning("When your structure database was first generated\
+                             (anvi-gen-structure-database), anvi'o attempted--but failed--to predict\
+                             the structures for genes with the following ids: {}. Yet, these genes\
+                             are all included in your genes of interest. This is just a heads up so\
+                             that you're not surprised when these genes don't show up in your\
+                             display.".format(", ".join([str(x) for x in some_to_report])))
+
+        else:
+            available_genes = set(structure_db.genes_with_structure)
+
+        # if full variability table is loaded, we further demand variability exists for the genes
+        if self.full_variability:
+            genes_in_variability = self.full_variability.data["corresponding_gene_call"].unique()
+            available_genes = [x for x in available_genes if x in genes_in_variability]
+
+        structure_db.disconnect()
+        # We are done with self.args.gene_caller_ids and self.args.genes_of_interest, so we set them
+        # to None. Now downstream class instances initialized with self.args will not process our
+        # already processed gene caller ids or genes of interest path.
+        self.args.gene_caller_ids = None
+        self.args.genes_of_interest = None
+
+        return available_genes
+
+
+    def get_available_samples(self, available_samples_path=""):
+        """There may be confusion within this method regarding the difference between available
+           samples and samples of interest. Available samples refer to those samples which are
+           capable of being displayed, whereas samples of interest refers to a subset of the
+           available samples that have been explicitly selected from within the interactive
+           interface. This is despite the fact that users modify available samples using the flag
+           --samples-of-interest.
+
+           It is essential to note that available_samples_path is "" by default, not None. The
+           programmer can pass None to avoid the argument defaulting to a class-wide attribute
+           (first code block of this method), which may not exist for classes inheriting this
+           method.
+        """
+        # use class-wide attributes if no parameters are passed
+        if available_samples_path is "":
+            available_samples_path = self.available_samples_path
+
+        # method inherited from VariabilitySuper
+        available_samples = self.get_sample_ids_of_interest(available_samples_path)
+
+        if self.full_variability:
+            all_sample_ids = self.full_variability.data["sample_id"].unique()
+        else:
+            profile_db = dbops.ProfileDatabase(self.profile_db_path)
+            all_sample_ids = sorted(list(profile_db.samples))
+            profile_db.disconnect()
+
+        if available_samples:
+
+            # check for samples that do not appear in the profile database
+            unrecognized_samples = [g for g in available_samples if g not in all_sample_ids]
+            if unrecognized_samples:
+                raise ConfigError("{} of the sample ids you provided are not in the variability\
+                                   table. Here they are: {}. They may exist in the profile database\
+                                   that generated the variability table\
+                                   (anvi-gen-variability-profile), but were filtered out at some\
+                                   point. Or you made a mistake, but what are the chances of\
+                                   that?".format(len(unrecognized_samples),
+                                                 ", ".join([str(x) for x in unrecognized_samples])))
+
+        else:
+            available_samples = set(all_sample_ids)
+
+        # We are done with self.args.samples_of_interest, so we set it to None. Now downstream class
+        # instances initialized with self.args will not process our already processed samples of
+        # interest path.
+        self.args.samples_of_interest = None
+
+        return available_samples
+
+
+    def sanity_check(self):
+        if not self.structure_db_path:
+            raise ConfigError("Must provide a structure database.")
+        utils.is_structure_db(self.structure_db_path)
+
+        if self.no_variability:
+            run.warning("Wow. Seriously? --no-variability? This is why freedom of speech needs to be\
+                         abolished.")
+
+        elif not self.profile_db_path and not self.variability_table_path:
+            raise ConfigError("You have to provide either a variability table generated from\
+                               anvi-gen-variability-profile, or a profile and contigs database from\
+                               which sequence variability will be computed. Alternatively, you can give\
+                               the --no-variability flag, but anvi'o will be extremely condescending\
+                               in messages to follow.")
+
+        if self.variability_table_path:
+            run.warning("You opted to work with a variability table previously generated from\
+                         anvi-gen-varability-profile. As a word of caution, keep in mind that any\
+                         filters applied when the table was generated now persist in the\
+                         following visualizations.")
+            if not self.profile_db_path:
+                run.warning("Anvi'o offers a nice way to visualize sequence variability for\
+                             user-defined groups of samples, as opposed to individual samples.\
+                             However, these groups are defined as additional layers in the profile\
+                             database used to generate your variability table\
+                             (anvi-gen-variability-profile) which you did not provide. If you\
+                             already have these tables in your profile database, include your\
+                             profile database with the flag `-p`. If you want to create groupings,\
+                             you can read about how to create them here:\
+                             http://merenlab.org/2017/12/11/additional-data-tables/#layers-additional-data-table.")
+
+        elif self.profile_db_path and not self.contigs_db_path:
+            raise ConfigError("A contigs database must accompany your profile database. Provide one\
+                               with the flag `-c`.")
+
+        if self.saavs_only and self.scvs_only:
+            raise ConfigError("--SAAVs-only and --SCVs-only are not compatible with one another. Pick one.")
+
+
+    def profile_full_variability_data(self):
+        """Creates self.full_variability, which houses the full variability... well, the full
+           variability of all genes with structures in the structure database
+        """
+        self.progress.new("Loading full variability table"); self.progress.update("...")
+        self.full_variability = variabilityops.VariabilityData(self.args, p=terminal.Progress(verbose=False), r=terminal.Run(verbose=False))
+        self.full_variability.stealth_filtering = True
+        self.progress.end()
+
+
+    def profile_gene_variability_data(self, gene_callers_id):
+        """Variability data is computed on the fly if a profile and contigs database is provided.
+           If the variability table is provided, the full table is stored in memory and a gene
+           subset is created.
+        """
+        if gene_callers_id in self.variability_storage:
+            # already profiled.
+            return
+
+        self.progress.new("Profiling variability for gene %s" % str(gene_callers_id))
+        gene_var = {}
+        for engine in self.available_engines:
+            self.progress.update("Fetching %s..." % ("SAAVs" if engine == "AA" else "SCVs"))
+            gene_var[engine] = {}
+
+            if self.store_full_variability_in_memory:
+                # if the full variability is in memory, make a deep copy, then filter
+                var = copy.deepcopy(self.full_variability)
+                var.filter_data(criterion="corresponding_gene_call", subset_filter=set([gene_callers_id]))
+            else:
+                # if not, we profile from scratch, passing as an argument our gene of interest
+                self.args.engine = engine
+                self.args.genes_of_interest_set = set([gene_callers_id])
+                var = variability_engines[engine](self.args, p=terminal.Progress(verbose=False), r=terminal.Run(verbose=False))
+                var.stealth_filtering = True
+
+                # we convert counts to frequencies so high-covered samples do not skew averaging
+                # across samples
+                var.process_functions.append((var.convert_counts_to_frequencies, {}))
+                var.process()
+
+            gene_var[engine]['var_object'] = var
+            self.run.info_single('%s for gene %s are loaded' % ('SAAVs' if engine == 'AA' else 'SCVs', gene_callers_id),
+                                 progress = self.progress)
+
+        self.variability_storage[gene_callers_id] = gene_var
+        for engine in self.available_engines:
+            self.variability_storage[gene_callers_id][engine]['column_info'] = self.get_column_info(gene_callers_id, engine)
+
+        self.progress.end()
+
+
+    def get_initial_data(self):
+        output = {}
+        output['available_gene_callers_ids'] = list(self.available_genes)
+        output['available_engines'] = self.available_engines
+        output['sample_groups'] = self.sample_groups
+        return output
+
+
+    def get_structure(self, gene_callers_id):
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+        summary = structure_db.get_summary_for_interactive(gene_callers_id)
+        structure_db.disconnect()
+
+        self.profile_gene_variability_data(gene_callers_id)
+
+        summary['histograms'] = {}
+        for engine in self.available_engines:
+            summary['histograms'][engine] = self.get_histograms(self.variability_storage[gene_callers_id][engine]['var_object'],
+                                                                self.variability_storage[gene_callers_id][engine]['column_info'])
+
+        return summary
+
+
+    def get_variability(self, options):
+        selected_engine = options['engine']
+        gene_callers_id = int(options['gene_callers_id'])
+        column_info = self.variability_storage[gene_callers_id][selected_engine]['column_info']
+
+        self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'))
+        output = {}
+
+        # If no filtering parameters are given, return all variability
+        if not options["filter_params"]:
+            for group in options['groups']:
+                output[group] = {
+                    'data': self.variability_storage[gene_callers_id][selected_engine]['var_object'].data.to_json(orient='index'),
+                    'entries_after_filtering': self.variability_storage[gene_callers_id][selected_engine]['var_object'].data.shape[0]
+                }
+
+        list_of_filter_functions = []
+        F = lambda f, **kwargs: (f, kwargs)
+        for group in options['groups']:
+            self.progress.update('Group `%s`...' % group)
+            samples_in_group = options['groups'][group]
+
+            # var becomes a filtered subset of variability_storage. it is a deepcopy so that filtering is not irreversible
+            var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
+            self.compute_merged_variability(var, column_info, samples_in_group)
+            self.wrangle_merged_variability(var)
+
+            # set group specific filter parameters here
+            var.sample_ids_of_interest = set(samples_in_group)
+            list_of_filter_functions.append(F(var.filter_data, criterion="sample_id"))
+
+            # now set all other filter parameters
+            for filter_criterion, param_values in options["filter_params"].items():
+                for param_name, param_value in param_values.items():
+                    setattr(var, param_name, param_value)
+                list_of_filter_functions.append(F(var.filter_data, name='merged', criterion=filter_criterion))
+
+            # ʕ•ᴥ•ʔ
+            var.process(process_functions=list_of_filter_functions, exit_if_data_empty=False)
+
+            output[group] = {
+                'data': var.merged.to_json(orient='index'),
+                'entries_after_filtering': var.merged.shape[0]
+            }
+
+            list_of_filter_functions = []
+
+        self.progress.end()
+        return output
+
+
+    def get_histograms(self, var_object, column_info_list):
+        numpy.seterr(invalid='ignore')
+        self.progress.new('Generating %s histograms' % ("SAAV" if var_object.engine else "SCV"))
+
+        # subset info list to columns that occur in var_object.data
+        engine = var_object.engine
+        column_info_list = [info for info in column_info_list if info["name"] in var_object.data.columns]
+
+        histograms = {}
+        for column_info in column_info_list:
+            column = column_info["name"]
+            self.progress.update("`%s`..." % column_info["name"])
+
+            histograms[column] = {}
+
+            if column_info["as_filter"] in ["slider"]:
+                # make a number histogram
+                histogram_args = {}
+                histogram_args["range"] = (column_info["min"], column_info["max"])
+                histogram_args["bins"] = 15
+                values, bins = var_object.get_histogram(column, fix_offset=True, **histogram_args)
+
+            elif column_info["as_filter"] in ["checkbox"]:
+                # make a bar chart (categorical)
+                category_counts_df = var_object.data[column].value_counts().reset_index()
+                values = category_counts_df[column]
+                bins = category_counts_df["index"]
+
+            elif not column_info["as_filter"]:
+                continue
+
+            else:
+                self.progress.end()
+                raise ConfigError("StructureInteractive :: %s is not a recognizable controller type" % (column_info["as_filter"]))
+
+            histograms[column]['counts'] = values.tolist()
+            histograms[column]['bins'] = bins.tolist()
+
+        self.progress.end()
+        return histograms
+
+
+    def compute_merged_variability(self, var, column_info, sample_group_to_merge):
+        """
+           var : class
+               instance that inherits VariabilitySuper
+           sample_names : list-like
+               sample_ids to merge
+
+           This function merges rows in self.data that share the same unique position identifier.
+           For example if you have samples s01, s02, and s03, each with an entry with unique
+           position identifier = 1234, this function will return dataframe containing only one entry
+           with unique position identifier = 1234, with entries in this row being the mean of the
+           three previous rows for columns that have numerical values and the most common value for
+           columns that have categorical values. For example,
+
+           unique_pos  sec_struc  dfc
+           1234        H          1.0       becomes       unique_pos  sec_struc  dfc
+           1234        H          0.8      ========>      1234        H          0.9
+           1234        B          0.9
+        """
+        var.merged = copy.deepcopy(var.data)
+        var.filter_data(name = 'merged', criterion = 'sample_id', subset_filter = sample_group_to_merge)
+
+        columns_and_types_dict = {e['name']: e['data_type'] for e in column_info if not e.get('merged_only')}
+
+        # all statistical measures
+        generic_operation_dictionary = {'text': [
+                                            ('',                  lambda x: x.mode().iloc[0] if not x.mode().empty else x.iloc[0]), # most common gets no suffix
+                                            ('_most_common_freq', lambda x: x.value_counts().iloc[0] / x.count() if not x.value_counts().empty else 0),
+                                             ],
+                                        'float': [
+                                            ('',                  lambda x: x.mean()), # mean gets no suffix
+                                            ('_std',              lambda x: x.std() if len(x) > 1 else 0.0),
+                                            #('_mini',             lambda x: x.min()),
+                                            #('_maxi',             lambda x: x.max()),
+                                            #('_median',           lambda x: x.median()),
+                                            #('_percentile_25',    lambda x: x.quantile(0.25)),
+                                            #('_percentile_50',    lambda x: x.quantile(0.50)),
+                                            #('_percentile_75',    lambda x: x.quantile(0.75)),
+                                             ],
+                                        'integer': [
+                                            ('',                  lambda x: x.mean()),
+                                            ('_std',              lambda x: x.std()),
+                                            #('_mini',             lambda x: x.min()),
+                                            #('_maxi',             lambda x: x.max()),
+                                            #('_median',           lambda x: x.median()),
+                                            #('_percentile_25',    lambda x: x.quantile(0.25)),
+                                            #('_percentile_50',    lambda x: x.quantile(0.50)),
+                                            #('_percentile_75',    lambda x: x.quantile(0.75)),
+                                             ],
+                                       }
+
+        # e.g. {'dfc':[('dfc_min', mini), ...], 'sec_struc':[('sec_struct_most_common', most_common), ...]}
+        column_operations = {k: [(k + x, y) for x, y in generic_operation_dictionary[v]] for k, v in columns_and_types_dict.items()}
+
+        # ad-hoc operations
+        # occurrence: the number of samples that contained a given SAAV in the sample group
+        # prevalence: the frequency of samples that contained a given SAAV in the sample group
+        var.merged['occurrence'] = 0 # initialize column
+        var.merged['prevalence'] = 0 # initialize column
+        column_operations.update({'occurrence': [('occurrence', lambda x: x.count())],
+                                  'prevalence': [('prevalence', lambda x: x.count() / len(sample_group_to_merge))],
+                                  'sample_id':  [('sample_ids', lambda x: ", ".join(list(x.unique())))]})
+
+        var.merged = var.merged.groupby('unique_pos_identifier').agg(column_operations)
+        var.merged.columns = var.merged.columns.droplevel()
+
+
+    def wrangle_merged_variability(self, var):
+        # determine top n items and frequencies per variant
+        self.num_reported_frequencies = 5
+        for i, s in var.merged[var.items].iterrows():
+            top_freqs = s.sort_values(ascending=False).iloc[:self.num_reported_frequencies]
+            for x in range(self.num_reported_frequencies):
+                var.merged.loc[i, str(x)+'_item'] = top_freqs.index[x]
+                var.merged.loc[i, str(x)+'_freq'] = top_freqs.iloc[x]
+                if var.engine == 'CDN':
+                    var.merged.loc[i, str(x)+'_item_AA'] = constants.codon_to_AA[top_freqs.index[x]]
+
+        # delete all over freq data
+        columns_to_drop = []
+        columns = var.merged.columns
+        for item in var.items:
+            columns_to_drop.extend([x for x in columns if x.startswith(item)])
+        var.merged.drop(labels=columns_to_drop, axis=1, inplace=True)
 
 
 class ContigsInteractive():

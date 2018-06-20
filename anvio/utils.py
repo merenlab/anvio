@@ -18,7 +18,9 @@ import subprocess
 import configparser
 import multiprocessing
 import urllib.request, urllib.error, urllib.parse
+
 import numpy as np
+import pandas as pd
 
 from email.mime.text import MIMEText
 from collections import Counter
@@ -47,6 +49,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
+# for full output
+pd.options.display.max_columns=100
+pd.options.display.max_rows=100
 
 # Mock progress object that will not report anything, for general clarity.
 progress = Progress()
@@ -717,6 +722,38 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     return id_to_sample_dict, sample_to_id_dict, columns, vectors
 
 
+def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
+    """ This function has been taken from https://tinyurl.com/y9ylqy4l
+        and has been modified for speed considerations using this blog post:
+        https://tinyurl.com/ya4e5tz3. Its utility is to append multiple columns to an existing
+        dataframe row by row. This is usually a bad idea because usually operations can be
+        vectorized. However when they cannot, looping through each row becomes a necessary evil.
+
+        df: pandas DataFrame object
+            An existing dataframe to loop through append columns to.
+        fields: list
+            A list of columns in the existing dataframe used to calculate the new columns
+        func: function
+            A function that takes as its first argument a row of `df` (i.e. a pd.Series
+            object) and potential additional positional arguments `func_args`. It should return a
+            tuple of values with with the same length as `column_names`.
+        func_args: tuple
+            A tuple of arguments passed to `func` besides the assumed first argument (a pd.Series
+            object). For example, is `def func(row, a)`, then `func_args = (a,)`. If func_args is an
+            empty tuple, `func` should take no other args.
+        column_names: list
+            A list of column headers for the newly appended columns
+    """
+    d = {column_name: [] for column_name in column_names}
+    for _, row in df[fields].iterrows():
+        out_values = func(row, *func_args)
+        for ind, column_name in enumerate(column_names):
+            d[column_name].append(out_values[ind])
+
+    df2 = pd.DataFrame(d, index=df.index)
+    return pd.concat((df, df2), axis=1)
+
+
 def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):
     """
         This function takes the gene_level_coverage_stats_dict and return one of the values
@@ -1093,31 +1130,32 @@ def get_codon_order_to_nt_positions_dict(gene_call):
     return codon_order_to_nt_positions
 
 
-def convert_sequence_indexing(index, source="anvio", destination="not anvio"):
+def convert_sequence_indexing(index, source="M0", destination="M1"):
     """
     Anvi'o zero-indexes sequences. For example, the methionine that every
-    ORF starts with has the index 0. This is in contrast to the rest of the
-    world, in which the methionine is indexed by 1. This function converts
-    between the two. 
+    ORF starts with has the index 0 (M0). This is in contrast to the rest of the
+    world, in which the methionine is indexed by 1 (M1). This function converts
+    between the two.
     
-    index : integer
-        The sequence index you are converting. 
+    index : integer, numpy array, pandas series, list
+        The sequence index/indices you are converting.
     source : string
-        The convention you are converting from. Must be either "anvio" or "not
-        anvio"
+        The convention you are converting from. Must be either "M0" (anvio) or 
+        "M1" (not anvio)
     destination : string
-        The convention you are converting to. Must be either "anvio" or "not
-        anvio"
+        The convention you are converting to. Must be either "M0" (anvio) or 
+        "M1" (not anvio)
     """
+    convert = lambda x, a: [i + a for i in x] if type(x) == list else x + a
 
-    if source not in ["anvio", "not anvio"] or destination not in ["anvio", "not anvio"]:
-        raise ValueError("Must be 'anvio' or 'not anvio'.")
+    if source not in ["M0", "M1"] or destination not in ["M0", "M1"]:
+        raise ValueError("Must be 'M0' or 'M1'.")
 
-    if source == "anvio" and destination == "not anvio":
-        return index + 1
+    if source == "M0" and destination == "M1":
+        return convert(index, 1)
 
-    if source == "not anvio" and destination == "anvio":
-        return index - 1
+    if source == "M1" and destination == "M0":
+        return convert(index, -1)
 
     return index
 
@@ -2087,6 +2125,29 @@ def get_all_item_names_from_the_database(db_path, run=run):
     return all_items
 
 
+def get_variability_table_engine_type(table_path, dont_raise=False):
+    """A non-extensive test to determine if a file was generated by anvi-gen-variability-profile,
+       and if it was, what engine (NT, CDN, or AA) was used.
+    """
+    filesnpaths.is_file_tab_delimited(table_path)
+    columns_names = set(pd.read_csv(table_path, sep="\t", nrows = 0).columns)
+
+    if set(constants.nucleotides) < columns_names:
+        return "NT"
+
+    elif set(constants.codons) < columns_names:
+        return "CDN"
+
+    elif set(constants.amino_acids) < columns_names:
+        return "AA"
+
+    else:
+        if dont_raise:
+            return ""
+        raise ConfigError("anvi'o does not recognize %s as being a variability table generated by\
+                           anvi-gen-variability-profile." % table_path)
+
+
 def is_contigs_db(db_path):
     filesnpaths.is_file_exists(db_path)
     if get_db_type(db_path) != 'contigs':
@@ -2103,6 +2164,12 @@ def is_pan_or_profile_db(db_path):
 def is_profile_db(db_path):
     if get_db_type(db_path) != 'profile':
         raise ConfigError("'%s' is not an anvi'o profile database." % db_path)
+    return True
+
+
+def is_structure_db(db_path):
+    if get_db_type(db_path) != 'structure':
+        raise ConfigError("'%s' is not an anvi'o structure database." % db_path)
     return True
 
 
@@ -2134,8 +2201,8 @@ def is_profile_db_merged(profile_db_path):
 
 
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
-    is_contigs_db(contigs_db_path)
     is_profile_db(profile_db_path)
+    is_contigs_db(contigs_db_path)
 
     profile_db = db.DB(profile_db_path, get_required_version_for_db(profile_db_path))
     contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
@@ -2157,13 +2224,35 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     return True
 
 
+def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path):
+    is_structure_db(structure_db_path)
+    is_contigs_db(contigs_db_path)
+
+    structure_db = db.DB(structure_db_path, get_required_version_for_db(structure_db_path))
+    contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
+
+    p_hash = structure_db.get_meta_value('contigs_db_hash')
+    a_hash = contigs_db.get_meta_value('contigs_db_hash')
+
+    structure_db.disconnect()
+    contigs_db.disconnect()
+
+    if a_hash != p_hash:
+        raise ConfigError('The contigs and structure databases do not seem compatible.\
+                           More specifically, the contigs database is not the one that\
+                           was used when the structure database was created (%s != %s).'\
+                               % (a_hash, p_hash))
+
+    return True
+
+
 def download_file(url, output_file_path, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
         response = urllib.request.urlopen(url)
     except Exception as e:
-        raise ConfigError("Something went wrong with your donwload attempt. Here is the\
+        raise ConfigError("Something went wrong with your download attempt. Here is the\
                             problem: '%s'" % e)
 
     file_size = int(response.headers['Content-Length'])
@@ -2190,13 +2279,44 @@ def download_file(url, output_file_path, progress=progress, run=run):
     run.info('Downloaded succesfully', output_file_path)
 
 
+def download_protein_structures(protein_code_list, output_dir):
+    """ 
+    Downloads protein structures using Biopython. protein_code_list is a list
+    of 4-letter protein codes. Returns list of successful downloads
+    """
+    import Bio.PDB as PDB
+
+    progress.new("Downloading proteins from PDB")
+
+    filesnpaths.gen_output_directory(output_dir)
+
+    pdb_list = PDB.PDBList()
+
+    # this rule may one day change
+    get_protein_path = lambda x: os.path.join(output_dir, "pdb" + x + ".ent")
+
+    for protein_code in protein_code_list:
+        progress.update("Downloading protein structure: {}".format(protein_code))
+
+        with SuppressAllOutput(): # FIXME SuppressAllOutput gives error
+            pdb_list.retrieve_pdb_file(protein_code, file_format="pdb", pdir=output_dir, overwrite=True)
+
+        # raise warning if structure was not downloaded
+        if not filesnpaths.is_file_exists(get_protein_path(protein_code), dont_raise=True):
+            run.warning("The protein {} could not be downloaded.".format(protein_code))
+            protein_code_list.remove(protein_code)
+
+    progress.end()
+    return protein_code_list
+
+
 def get_file_md5(file_path):
     hash_md5 = hashlib.md5()
 
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
-    
+
     return hash_md5.hexdigest()
 
 

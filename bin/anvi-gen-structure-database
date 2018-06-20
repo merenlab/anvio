@@ -1,0 +1,143 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import anvio
+import argparse
+
+import anvio.terminal as terminal
+import anvio.structureops as structops
+
+from anvio.errors import ConfigError, FilesNPathsError, ModellerError
+
+
+__author__ = "A. Murat Eren"
+__copyright__ = "Copyright 2015, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+def main(args):
+
+    structure = structops.Structure(args)
+    structure.process()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Identifies genes in your contigs database that encode proteins that are \
+                                                  homologous to proteins with solved structures. If sufficiently similar \
+                                                  homologs are identified, they are used as structural templates to predict \
+                                                  the 3D structure of proteins in your contigs database. This means we are \
+                                                  at the mercy of structural biologists: if they have not solved a structure \
+                                                  of a protein sufficiently similar in AA sequence to yours, this isn't going \
+                                                  to work. But it's worth a try! The software we are using is MODELLER, more \
+                                                  of which can be learned about at https://salilab.org/modeller/, or in our \
+                                                  tutorial, which doesn't exist yet FIXME")
+
+    groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
+    groupG = parser.add_argument_group('GENES', 'Specifying which genes you want to be modelled.')
+    groupO = parser.add_argument_group('OUTPUT', 'Output file and output style.')
+    groupM = parser.add_argument_group('MODELLER PARAMS', 'Parameters for MODELLER\'s homology modeling.')
+    groupE = parser.add_argument_group('EXTRA', 'Everything else.')
+
+    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupG.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
+    groupG.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    groupO.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path'))
+    groupO.add_argument(*anvio.A('dump-dir'), **anvio.K('dump-dir'))
+
+    groupM.add_argument("--num-models", "-N", type=int, default=3, help = \
+                        """This parameter determines the number of predicted structures that are
+                        solved for a given protein.  The original atomic positions for each model
+                        are perturbed by an amount defined by --deviation, which leads to
+                        differences between each model. Therefore, whichever of the N models is
+                        chosen to be the "best" model is more likely to be accurate when
+                        --num-models is high, since more of the solution space is searched. It
+                        should be kept in mind that the largest determinant of a model's accuracy is
+                        determined by the protein templates used, so no need to go overboard with an
+                        excessively large --num-models. The default is 3.""")
+
+    groupM.add_argument("--deviation", "-d", type=float, default=4.0, help = \
+                        """Deviation (angstroms)""")
+
+    groupM.add_argument("--modeller-database", "-D", type=str, default="pdb_95", help = \
+                        """Which database do you want to search the structures of? Default is
+                        "pdb_95". If you have your own database it must have either the extension
+                        .bin or .pir. If you don't have a database or don't know what this
+                        means, don't worry, we will both inform you and take care of you.""")
+
+    groupM.add_argument("--scoring-method", "-b", type=str, default="DOPE_score", help = \
+                        """How should the best model be decided? The metric used could be any of
+                        GA341_score, DOPE_score, and molpdf. GA341 is an absolute measure,
+                        where a good model will have a score near 1.0, whereas anything below 0.6
+                        can be considered bad. DOPE and molpdf scores are relative energy measures,
+                        where lower scores are better. DOPE has been generally shown to be a better
+                        distinguisher between good and bad models than molpdf. By default, DOPE
+                        is used. To learn more see the MODELLER tutorial:
+                        https://salilab.org/modeller/tutorial/basic.html.""")
+
+    groupM.add_argument("--very-fast", action = 'store_true', help = \
+                        """If provided, a very fast optimization is done for each model at the cost
+                        of accuracy. It is recommended to use a --num-models of 1, since the
+                        optimization is so crude that all models will likely converge to the same
+                        solution.""")
+
+    groupM.add_argument("--percent-identical-cutoff", "-p", type=float, default=30, help = \
+                        """If a protein in the database has a proper percent identity to the gene of
+                        interest that is greater than or equal to --percent-identical-cutoff, then
+                        it is used as a template. Otherwise it is not. Here we define proper percent
+                        identity as the percentage of amino acids in the gene of interest that are
+                        identical to an entry in the database given the sequence length of the gene
+                        of interest. For example, if there is 100%% identity between the gene of
+                        interest and the template over the length of the alignment, but the
+                        alignment length is only half of the gene of interest sequence length, then
+                        the proper percent identical is 50%%. (This helps us avoid the inflation of
+                        identity scores due to only partially good matches). The default is 30.""")
+
+    groupM.add_argument("--max-number-templates", "-T", type=int, default=5, help = \
+                        """Generally speaking it is best to use as many templates as possible given
+                        that they have high proper percent identity to the gene of interest. Taken
+                        from https://salilab.org/modeller/methenz/andras/node4.html: 'The use of
+                        several templates generally increases the model accuracy. One strength of
+                        MODELLER is that it can combine information from multiple template
+                        structures, in two ways. First, multiple template structures may be aligned
+                        with different domains of the target, with little overlap between them, in
+                        which case the modeling procedure can construct a homology-based model of
+                        the whole target sequence. Second, the template structures may be aligned
+                        with the same part of the target, in which case the modeling procedure is
+                        likely to automatically build the model on the locally best template
+                        [43,44]. In general, it is frequently beneficial to include in the modeling
+                        process all the templates that differ substantially from each other, if they
+                        share approximately the same overall similarity to the target sequence.' The
+                        default is 5.""")
+
+    groupE.add_argument("--skip-DSSP", action = "store_true", help = \
+                        """Dictionary of Secondary Structure of Proteins (DSSP) is a program that takes
+                        as its input a protein structure file and outputs predicted secondary
+                        structure (alpha helix, beta strand, etc.), measures of solvent
+                        accessibility, and hydrogen bonds for each residue in the protein. If for
+                        some reason you don't want this, provide this flag.""")
+
+    groupE.add_argument("--modeller-executable", type=str, help = \
+                        """ The MODELLER program to use. For example, `mod9.19`. The default is `mod9.19`""")
+
+    args = parser.parse_args()
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(2)
+    except ModellerError as e:
+        print(e)
+        sys.exit(3)

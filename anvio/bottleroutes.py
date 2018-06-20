@@ -33,6 +33,7 @@ import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
+import anvio.structureops as structureops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
@@ -129,6 +130,10 @@ class BottleApplication(Bottle):
         self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
         self.route('/data/search_functions',                   callback=self.search_functions, method='POST')
         self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
+        self.route('/data/get_initial_data',                   callback=self.get_initial_data)
+        self.route('/data/get_column_info',                    callback=self.get_column_info, method='POST')
+        self.route('/data/get_structure/<gene_callers_id:int>',callback=self.get_structure)
+        self.route('/data/get_variability',                    callback=self.get_variability, method='POST')
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
@@ -173,6 +178,8 @@ class BottleApplication(Bottle):
         homepage = 'index.html' 
         if self.interactive.mode == 'contigs':
             homepage = 'contigs.html'
+        elif self.interactive.mode == 'structure':
+            homepage = 'structure.html'
 
         redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
@@ -1076,6 +1083,26 @@ class BottleApplication(Bottle):
         return json.dumps({'stats': self.interactive.contigs_stats,
                            'tables': self.interactive.tables,
                            'human_readable_keys': self.interactive.human_readable_keys})
+
+
+    def get_initial_data(self):
+        return json.dumps(self.interactive.get_initial_data())
+
+
+    def get_column_info(self):
+        gene_callers_id = int(request.forms.get('gene_callers_id'))
+        engine = request.forms.get('engine')
+
+        return json.dumps(self.interactive.get_column_info(gene_callers_id, engine))
+
+
+    def get_structure(self, gene_callers_id):
+        return json.dumps(self.interactive.get_structure(gene_callers_id))
+
+
+    def get_variability(self):
+        options = json.loads(request.forms.get('options'))
+        return self.interactive.get_variability(options)
 
 
     def filter_gene_clusters(self):

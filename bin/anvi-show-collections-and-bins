@@ -35,6 +35,12 @@ def main(args):
     collections.populate_collections_dict(args.pan_or_profile_db)
     progress.end()
 
+    if not collections.collections_dict:
+        raise ConfigError("There are no collections in this profile database. Consider making some\
+                           in interactive mode, or importing a collection with\
+                           `anvi-import-collection` (a tutorial on importing collections here:\
+                           http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-import-collection)")
+
     for source in collections.collections_dict:
         run.warning('', header = 'Collection: "%s"' % source, lc = 'green')
         run.info('Collection ID', source)

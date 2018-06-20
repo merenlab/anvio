@@ -124,7 +124,7 @@ INFO "anvi-gen-variability for CDN"
 anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              -c test-output/single_contig.db \
                              -o test-output/variability_CDN.txt \
-                             --splits-of-interest test-output/splits_of_interest.txt \
+                             --gene-caller-ids 0 \
                              --quince-mode \
                              --engine CDN
 
