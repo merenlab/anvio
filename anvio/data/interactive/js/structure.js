@@ -497,7 +497,6 @@ function draw_variability() {
 
         component.reprList.slice(0).forEach((rep) => {
             if (rep.name == 'spacefill') {
-                console.log('dleteld')
                 rep.dispose();
             }
         });
