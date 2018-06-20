@@ -12,6 +12,8 @@ var cached_orientation_matrix = null;
 var color_legend = {};
 var size_legend = {};
 
+var filter_backup = {};
+
 $(document).ready(function() {
     $('.colorpicker').colpick({
         layout: 'hex',
@@ -628,6 +630,11 @@ function create_ui() {
     var defer = $.Deferred();
     let gene_callers_id = $('#gene_callers_id_list').val();
     let engine = $('[name=engine]:checked').val();
+    
+    let backup = serialize_filtering_widgets();
+    if (Object.keys(backup).length > 0) {
+        filter_backup[$('#controls').attr('created-for-engine')] = backup;
+    }
 
    $.ajax({
         type: 'POST',
@@ -640,6 +647,7 @@ function create_ui() {
         success: function(data) {
             column_info = data
             let container = $('#controls');
+            $('#controls').attr('created-for-engine', engine);
 
             // remove widgets
             container.empty();
@@ -662,6 +670,14 @@ function create_ui() {
                 }
 
                 if (item['as_filter'] == 'slider') {
+                    let min_val = item['min'];
+                    let max_val = item['max'];
+
+                    if (filter_backup.hasOwnProperty(engine) && filter_backup[engine].hasOwnProperty(item['name'])) {
+                        min_val = filter_backup[engine][item['name']]['min_' + item['name']];
+                        max_val = filter_backup[engine][item['name']]['max_' + item['name']];
+                    }
+
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             ${item['title']}<br />
@@ -672,18 +688,24 @@ function create_ui() {
                                     data-slider-min="${item['min']}" 
                                     data-slider-max="${item['max']}" 
                                     data-slider-step="${item['step']}" 
-                                    data-slider-value="[${item['min']},${item['max']}]"
+                                    data-slider-value="[${min_val},${max_val}]"
                                     >
                         </div>
                     `);
                     $(`#${item['name']}`).slider({}).on('slideStop', () => { fetch_and_draw_variability(); });
                 }
                 if (item['as_filter'] == 'checkbox') {
+                    let checked_choices = item['choices'];
+
+                    if (filter_backup.hasOwnProperty(engine) && filter_backup[engine].hasOwnProperty(item['name'])) {
+                        checked_choices = filter_backup[engine][item['name']][item['name'] + 's_of_interest'];
+                    }
+                    
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             ${item['title']}<br />
                             ${item['choices'].map((choice) => { return `
-                                <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="fetch_and_draw_variability();" checked="checked">
+                                <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="fetch_and_draw_variability();" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
                                 <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
                             <br />
                             <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true); fetch_and_draw_variability();">Check All</button>
