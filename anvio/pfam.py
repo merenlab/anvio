@@ -5,7 +5,6 @@
 
 """
 import os
-import sys
 import gzip
 import requests
 from io import BytesIO
@@ -18,7 +17,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 from anvio.tables.genefunctions import TableForGeneFunctions
 
 
@@ -150,14 +149,14 @@ class Pfam(object):
         self.is_database_exists()
 
         self.run.info('Pfam database directory', self.pfam_data_dir)
-        
+
         self.get_version()
         self.load_catalog()
 
 
     def is_database_exists(self):
         if not os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
-            raise ConfigError("It seems you do not have Pfam database installed, please run 'anvi-setup-pfam' to download it.")
+            raise ConfigError("It seems you do not have Pfam database installed, please run 'anvi-setup-pfams' to download it.")
 
 
     def get_version(self):
