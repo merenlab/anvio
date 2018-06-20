@@ -1606,11 +1606,14 @@ class VariabilitySuper(VariabilityFilter, object):
 
         # obtain gene coverage info per gene/sample combo
         gene_cov_dict = {}
-        for gene, split in self.gene_callers_id_to_split_name_dict.items():
-            if self.genes_of_interest and gene not in self.genes_of_interest:
-                continue
-            gene_cov_dict.update(profile_super.get_gene_level_coverage_stats(split, self,
-                                                                             gene_caller_ids_of_interest=set([gene])))
+        for split_name in self.splits_of_interest:
+            entry_ids = self.split_name_to_genes_in_splits_entry_ids[split_name]
+            for entry_id in entry_ids:
+                gene_cov_dict.update(profile_super.get_gene_level_coverage_stats(
+                    self.genes_in_splits[entry_id]['split'],
+                    self,
+                    gene_caller_ids_of_interest = set([self.genes_in_splits[entry_id]['gene_callers_id']])
+                ))
 
         gene_coverage_columns = ['gene_coverage',
                                  'non_outlier_gene_coverage',
