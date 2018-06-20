@@ -346,11 +346,14 @@ class GetSplitNamesInBins:
         if not self.bins:
             self.bins = bins_in_collection
         else:
-            bins_that_does_not_exist_in_collection = [b for b in self.bins if b not in bins_in_collection]
-            if len(bins_that_does_not_exist_in_collection):
-                raise ConfigError('Some of the bins you requested does not appear to have been described in the collection\
-                                    "%s". Here is a list of bins that are missing: "%s"'\
-                                            % (self.collection_name, ', '.join(bins_that_does_not_exist_in_collection)))
+            bins_that_do_not_exist_in_collection = [b for b in self.bins if b not in bins_in_collection]
+            if len(bins_that_do_not_exist_in_collection):
+                some_bins_that_exist_in_collection = bins_in_collection if len(bins_in_collection) < 30 else bins_in_collection[:30]
+                raise ConfigError('Some of the bins you requested do not appear to have been described in the collection\
+                                    "%s". Here is a list of bins that are missing: "%s". Here is a list of some bins in\
+                                    your collection: "%s"' % (self.collection_name,
+                                                              ', '.join(bins_that_do_not_exist_in_collection),
+                                                              ', '.join(some_bins_that_exist_in_collection)))
 
         if not len(self.bins):
             raise ConfigError('There is no bin to work with :/')

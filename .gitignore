@@ -7,5 +7,5 @@ test-output/
 /*.egg-info/
 anvio/extensions/concoct/vbgmm.c
 anvio/data/misc/COG/
-anvio/data/misc/MODELLER/
+anvio/data/misc/MODELLER/db/
 smtp_config.ini

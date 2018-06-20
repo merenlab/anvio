@@ -157,8 +157,9 @@ class Table(object):
             optional_info = ("It turned out %d of the item ids you requested was actually in the database." \
                                     % len(sequences_table)) if num_items_to_be_reported != len(item_names) else ''
 
-            self.run.warning("You asked anvi'o to report only %d items from a database that contained %d. %s" \
-                                        % (len(item_names), total_num_items_in_db, optional_info))
+            if not self.quiet:
+                self.run.info_single("You asked anvi'o to report only %d items from a database that contained %d. %s" \
+                                            % (len(item_names), total_num_items_in_db, optional_info))
 
         if not len([sequences_table]):
             raise ConfigError("There are no sequences to report in table '%s'." % (table))

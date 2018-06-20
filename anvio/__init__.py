@@ -76,6 +76,22 @@ D = {
              'required': False,
              'help': "Anvi'o genomes storage file"}
                 ),
+    'structure-db': (
+            ['-s', '--structure-db'],
+            {'metavar': "STRUCTURE_DB",
+             'required': True,
+             'help': "Anvi'o structure database."}
+                ),
+    'only-if-structure': (
+            ['--only-if-structure'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If provided, your genes of interest will be further subset to only include\
+                      genes with structures in your structure database, and therefore must be supplied in\
+                      conjunction with a structure database, i.e. `-s <your_structure_database>`. If you did\
+                      not specify genes of interest, ALL genes will be subset to those that have\
+                      structures."}
+                ),
     'genomes-names': (
             ['-G', '--genome-names'],
             {'metavar': "GENOME_NAMES",
@@ -693,9 +709,11 @@ D = {
     'gene-caller-ids': (
             ['--gene-caller-ids'],
             {'metavar': 'GENE_CALLER_IDS',
+             'type': str,
              'help': "Gene caller ids. Multiple of them can be declared separated by a delimiter (the default is a comma).\
-                      If you declare nothing, you may get everything. Or you may get an error. Really depends on the\
-                      situation. Worth a try."}
+                      In anvi-gen-variability-profile, if you declare nothing you will get all genes matching your other\
+                      filtering criteria. In other programs, you may get everything, nothing, or an error. It really depends\
+                      on the situation. Fortunately mistakes are cheap, so it's worth a try."}
                 ),
     'gene-mode': (
             ['--gene-mode'],
@@ -958,7 +976,13 @@ D = {
                       be careful with this option if you are running your commands on a SGE --if you are clusterizing your runs,\
                       and asking for multiple threads to use, you may deplete your resources very fast."}
                 ),
-
+    'variability-profile': (
+            ['-V', '--variability-profile'],
+            {'metavar': 'VARIABILITY_TABLE',
+             'type': str,
+             'required': False,
+             'help': "FIXME"}
+                ),
     'min-coverage-in-each-sample': (
             ['--min-coverage-in-each-sample'],
             {'metavar': 'INT',
@@ -1599,6 +1623,15 @@ D = {
              'help': "If you give this flag, Anvi'o will not open new browser to show Contigs database statistics and write all stats \
                       to TAB separated file and you should also give --output-file with this flag otherwise Anvi'o will complain."}
                 ),
+    'dump-dir': (
+            ['--dump-dir'],
+            {'required': False,
+             'help': "Modelling and annotating structures requires a lot of moving parts, each which have \
+                      their own outputs. The output of this program is a structure database containing the \
+                      pertinent results of this computation, however a lot of stuff doesn't make the cut. \
+                      By providing a directory for this parameter you will get, in addition to the structure \
+                      database, a directory containing the raw output for everything."}
+                ),
     'workflow': (
             ['-w', '--workflow'],
             {'required': False,
@@ -1669,6 +1702,13 @@ D = {
              'type': str,
              'help': "The value you wish to set for the self key."}
                 ),
+    'no-variability': (
+            ['--no-variability'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "If provided, no measures of sequence heterogeneity (from short read data) will be overlayed\
+                      on structures."}
+                ),
 }
 
 # two functions that works with the dictionary above.
@@ -1717,7 +1757,17 @@ def set_version():
            t.pan_db_version, \
            t.profile_db_version, \
            t.auxiliary_data_version, \
-           t.genomes_storage_vesion
+           t.genomes_storage_vesion, \
+           t.structure_db_version
+
+def get_version_tuples():
+    return [("Anvi'o version", __version__),
+            ("Profile DB version", __profile__version__),
+            ("Contigs DB version", __contigs__version__),
+            ("Structure DB version", __structure__version__),
+            ("Pan DB version", __pan__version__),
+            ("Genome data storage version", __genomes_storage_version__),
+            ("Auxiliary data storage version", __auxiliary_data_version__)]
 
 def get_version_tuples():
     return [("Anvi'o version", '%s', __version__),
@@ -1736,6 +1786,7 @@ def print_version():
     run.info("Pan DB version", __pan__version__)
     run.info("Genome data storage version", __genomes_storage_version__)
     run.info("Auxiliary data storage version", __auxiliary_data_version__)
+    run.info("Structure DB version", __structure__version__)
 
 
 __version__, \
@@ -1744,7 +1795,8 @@ __contigs__version__, \
 __pan__version__, \
 __profile__version__, \
 __auxiliary_data_version__, \
-__genomes_storage_version__  = set_version()
+__genomes_storage_version__ , \
+__structure__version__ = set_version()
 
 
 if '-v' in sys.argv or '--version' in sys.argv:

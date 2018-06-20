@@ -1,0 +1,299 @@
+<html>
+
+<head>
+    <title>Structure Display</title>
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+    <script type='text/javascript' src='js/utils.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.0.0/bootstrap-slider.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/10.0.0/css/bootstrap-slider.css" />
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
+    <link rel="stylesheet" href="css/structure.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="lib/randomColor/randomColor.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js"></script>
+    <script type="text/javascript" src="https://cdn.rawgit.com/arose/ngl/v0.10.4/dist/ngl.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-interpolate/1.2.0/d3-interpolate.js"></script>
+    <script type="text/javascript" src="lib/colpick/colpick.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://fastcdn.org/FileSaver.js/1.1.20151003/FileSaver.min.js"></script>
+    <script type="text/javascript" src="js/structure.js"></script>
+</head>
+
+<body>
+    <div class="overlay">
+        <div class="loading-gif-container">
+            <img src="images/spinning_dna.gif" width="120" /><br />loading...
+        </div>
+    </div>
+    <div class="container-fluid parent-container">
+        <div id="ngl-tooltip" class="ngl-tooltip"></div>
+        <div class="row">
+            <div class="col-md-3 sidebar">
+                <ul class="nav nav-tabs"  role="tablist">
+                  <li role="presentation" class="active"><a href="#tab_main" aria-controls="tab_main" role="tab" data-toggle="tab">Main</a></li>
+                  <li role="presentation"><a href="#tab_filters" aria-controls="tab_filters" role="tab" data-toggle="tab">Filters</a></li>
+                  <li role="presentation"><a href="#tab_perspectives" aria-controls="tab_perspectives" role="tab" data-toggle="tab">Perspectives</a></li>
+                  <li role="presentation"><a href="#tab_summary" aria-controls="tab_summary" role="tab" data-toggle="tab">Generate Summary</a></li>
+                </ul>
+                <div class="tab-content">
+                    <div id="tab_main" role="tabpanel" class="tab-pane fade in active">
+                        <div class="widget">
+                            <div class="row">
+                                <div class="col-md-4 form-row-padding">
+                                    Gene Callers ID:
+                                </div>
+                                <div class="col-md-8 form-row-padding">
+                                    <select class="form-control" serialize="true" id="gene_callers_id_list" style="width: 100%;"></select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 form-row-padding">
+                                    Engine:
+                                </div>
+                                <div class="col-md-8 form-row-padding">
+                                    <div id="engine_list"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="widget">
+                            <div class="row">
+                                <div class="col-md-4 form-row-padding">
+                                    Category:
+                                </div>
+                                <div class="col-md-8 form-row-padding">
+                                    <select class="form-control" serialize="true" id="sample_groups_list">
+
+                                    </select>
+                                </div>
+                                <div class="clearfix"></div>
+                                <div class="alert alert-danger" role="alert" style="margin: 10px; display: none;" id="maximum_ngl_widgets_error">You can only select up to 16 groups at a time. Unselect some to add more.</div>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div id="sample_groups">
+
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tab_filters" role="tabpanel" class="tab-pane fade">
+                        <div id="controls">
+
+                        </div>
+                    </div>
+                    <div id="tab_perspectives" role="tabpanel" class="tab-pane fade">
+                        <span class="settings-header"><h4>Variants</h4></span>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Color</h5></span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Type: </label>  
+                            <div class="col-md-8">
+                                <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show(); }; draw_variability();">
+                                    <option>Static</option>
+                                    <option>Dynamic</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="static-color">
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Color: </label>  
+                                <div class="col-md-8"><div class="colorpicker" id="color_static" color="#b53e3e" onchange="draw_variability();" style="background-color: #b53e3e;"></div></div>
+                            </div>
+                        </div>
+                        <div class="dynamic-color" style="display: none;">
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Column: </label>  
+                                <div class="col-md-8"><select id="color_target_column" onChange="onTargetColumnChange(this);"></select></div>
+                            </div>
+                            <div id="color_numerical_panel">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Min Value: </label>  
+                                    <div class="col-md-8"><input type="input" id="color_min" value="0"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Start Color: </label>  
+                                    <div class="col-md-8"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Max Value: </label>  
+                                    <div class="col-md-8"><input type="input" id="color_max" value="1"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">End Color: </label>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_end" color="#911010" onchange="draw_variability();" style="background-color: #911010"></div></div>
+                                </div>
+                                <div class="clearfix"></div>
+                                <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_color_error">Max Value must be greater than Min Value.</div>
+                            </div>
+                            <div class="clearfix"></div>
+                            <div id="color_legend_panel" class="widget row">
+
+
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Size</h5></span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Type: </label>  
+                            <div class="col-md-8">
+                                <select id="size_type" onchange="if ($(this).val() == 'Static') { $('.static-size').show(); $('.dynamic-size').hide(); } else { $('.static-size').hide(); $('.dynamic-size').show(); }; draw_variability();">
+                                    <option>Static</option>
+                                    <option>Dynamic</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="static-size">
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Size: </label>  
+                                <div class="col-md-8"><input type="input" id="size_static" onblur="draw_variability(); " value="0.75"></div>
+                            </div>
+                        </div>
+                        <div class="dynamic-size" style="display: none;">
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Column: </label>  
+                                <div class="col-md-8"><select id="size_target_column" onChange="onTargetColumnChange(this);"></select></div>
+                            </div>
+                            <div id="size_numerical_panel">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Min Value: </label>  
+                                    <div class="col-md-8"><input type="input" id="size_min" value="0"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Size Start: </label>  
+                                    <div class="col-md-8"><input type="input" id="size_start" value="0.4"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Max Value: </label>  
+                                    <div class="col-md-8"><input type="input" id="size_max" value="1"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Size End: </label>  
+                                    <div class="col-md-8"><input type="input" id="size_end" value="1.4"></div>
+                                </div>
+                                <div class="clearfix"></div>
+                                <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_size_error">Max Value must be greater than Min Value.</div>
+                            </div>
+                            <div class="clearfix"></div>
+                            <div id="size_legend_panel" class="widget row">
+
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
+                        <span class="settings-header" style="margin-top: 30px;"><h4>Structure</h4></span>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Backbone</h5></span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Show: </label>  
+                            <div class="col-md-8"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(); " checked="checked" /></div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Color: </label>  
+                            <div class="col-md-8"><div class="colorpicker" id="backbone_color" color="#386496" onchange="create_ngl_views();" style="background-color: #386496;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Style: </label>  
+                            <div class="col-md-8">
+                                <select id="backbone_type" onchange="create_ngl_views();">
+                                    <option>cartoon</option>
+                                    <option>ribbon</option>
+                                </select>
+                            </div>
+                        </div>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Surface</h5></span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Show: </label>  
+                            <div class="col-md-8">
+                                <input type="checkbox" id="show_surface" onclick="create_ngl_views(); " />
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Coloring: </label>  
+                            <div class="col-md-8">
+                                <select id="surface_type" onchange="create_ngl_views();">
+                                    <option>plain</option>
+                                    <option>electrostatic</option>
+                                    <option>hydrophobicity</option>
+                                    <option>residueindex</option>
+                                    <option>element</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Opacity: </label>  
+                            <div class="col-md-8"><input type="text" id="surface_opacity" value="0.3" onblur="create_ngl_views(); " /></div>
+                        </div>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Ball-Stick</h5></span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Show: </label>  
+                            <div class="col-md-8"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(); " /></div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">When: </label>  
+                            <div class="col-md-8">
+                                <select id="show_ballstick_when" onchange="create_ngl_views();">
+                                    <option>always</option>
+                                    <option>hovered residue</option>
+                                    <option>hovered residue + contacts</option>
+                                    <option>hovered residue + variant contacts</option>
+                                </select>
+                            </div>
+                        </div>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Hover Tooltip</h5></span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Show: </label>  
+                            <div class="col-md-8"><input type="checkbox" id="show_tooltip" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">When: </label>  
+                            <div class="col-md-8">
+                                <select id="show_tooltip_when" onchange="create_ngl_views();">
+                                    <option>variant residues</option>
+                                    <option>all residues</option>
+                                </select>
+                            </div>
+                        </div>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Residue Labels</h5></span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Show: </label>  
+                            <div class="col-md-8"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(); " /></div>
+                        </div>
+                    </div>
+                    <div id="tab_summary" role="tabpanel" class="tab-pane fade">
+                        <div class="col-md-12" style="margin-top: 10px;">
+                            <span class="settings-header">Output</span>
+                            <div class="col-md-12">
+                                <label class="col-md-5 settings-label" for="scale">File Name</label>  
+                                <div class="col-md-7"><input type="input" id="zip_name" value="structure-summary.zip"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-12" style="margin-top: 10px;">
+                             <span class="settings-header">Image Rendering Options</span>
+                                <div class="col-md-12">
+                                    <label class="col-md-8 settings-label" for="scale">Scale</label>  
+                                    <div class="col-md-4"><input type="input" id="scale" value="5" size="4"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-8 settings-label" for="transparent">Transparent</label>  
+                                    <div class="col-md-4"><input type="checkbox" id="transparent" checked="checked"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-8 settings-label" for="trim">Trim</label>  
+                                    <div class="col-md-4"><input type="checkbox" id="trim" checked="checked"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-8 settings-label" for="antialias">Antialiasing</label>  
+                                    <div class="col-md-4"><input type="checkbox" id="antialias" checked="checked"></div>
+                                </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="generate_summary();" style="width: 100%; margin-top: 10px;">Generate static summary page</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-9 ngl-container-wrapper">
+                <div id="ngl-container">
+
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

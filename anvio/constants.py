@@ -86,6 +86,51 @@ AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Tyr': {"C":9,  "H":11, "N":1, "O":3, "S":0},
                                  'Val': {"C":5,  "H":11, "N":1, "O":2, "S":0}})
 
+AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
+                                 'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
+                                 'Asn': {"C":4,  "H":8,  "N":2, "O":3, "S":0},
+                                 'Asp': {"C":4,  "H":7,  "N":1, "O":4, "S":0},
+                                 'Cys': {"C":3,  "H":7,  "N":1, "O":2, "S":1},
+                                 'Gln': {"C":5,  "H":10, "N":2, "O":3, "S":0},
+                                 'Glu': {"C":5,  "H":9,  "N":1, "O":4, "S":0},
+                                 'Gly': {"C":2,  "H":5,  "N":1, "O":2, "S":0},
+                                 'His': {"C":6,  "H":9,  "N":3, "O":2, "S":0},
+                                 'Ile': {"C":6,  "H":13, "N":1, "O":2, "S":0},
+                                 'Leu': {"C":6,  "H":13, "N":1, "O":2, "S":0},
+                                 'Lys': {"C":6,  "H":14, "N":2, "O":2, "S":0},
+                                 'Met': {"C":5,  "H":11, "N":1, "O":2, "S":1},
+                                 'Phe': {"C":9,  "H":11, "N":1, "O":2, "S":0},
+                                 'Pro': {"C":5,  "H":9,  "N":1, "O":2, "S":0},
+                                 'Ser': {"C":3,  "H":7,  "N":1, "O":3, "S":0},
+                                 'Thr': {"C":4,  "H":9,  "N":1, "O":3, "S":0},
+                                 'Trp': {"C":11, "H":12, "N":2, "O":2, "S":0},
+                                 'Tyr': {"C":9,  "H":11, "N":1, "O":3, "S":0},
+                                 'Val': {"C":5,  "H":11, "N":1, "O":2, "S":0}})
+
+# taken from http://prowl.rockefeller.edu/aainfo/volume.htm
+# volume reference: A.A. Zamyatin, Protein Volume in Solution, Prog. Biophys. Mol. Biol. 24(1972)107-123. 
+# surface area reference: C. Chotia, The Nature of the Accessible and Buried Surfaces in Proteins, J. Mol. Biol., 105(1975)1-14. 
+AA_geometry = Counter({'Ala': {"volume":88.6,  "area":115},
+                       'Arg': {"volume":173.4, "area":225},
+                       'Asn': {"volume":111.1, "area":150},
+                       'Asp': {"volume":114.1, "area":160},
+                       'Cys': {"volume":108.5, "area":135},
+                       'Gln': {"volume":138.4, "area":190},
+                       'Glu': {"volume":143.8, "area":180},
+                       'Gly': {"volume":60.1,  "area":75},
+                       'His': {"volume":153.2, "area":195},
+                       'Ile': {"volume":166.7, "area":175},
+                       'Leu': {"volume":166.7, "area":170},
+                       'Lys': {"volume":168.6, "area":200},
+                       'Met': {"volume":162.9, "area":185},
+                       'Phe': {"volume":189.9, "area":210},
+                       'Pro': {"volume":112.7, "area":145},
+                       'Ser': {"volume":89.0,  "area":115},
+                       'Thr': {"volume":116.1, "area":140},
+                       'Trp': {"volume":227.8, "area":255},
+                       'Tyr': {"volume":193.6, "area":230},
+                       'Val': {"volume":140.0, "area":155}})
+
 AA_to_codons = Counter({'Ala': ['GCA', 'GCC', 'GCG', 'GCT'],
                         'Arg': ['AGA', 'AGG', 'CGA', 'CGC', 'CGG', 'CGT'],
                         'Asn': ['AAC', 'AAT'],
@@ -169,6 +214,16 @@ codon_to_codon_RC = Counter({'AAA': 'TTT', 'AAC': 'GTT', 'AAG': 'CTT', 'AAT': 'A
                              'TTA': 'TAA', 'TTC': 'GAA', 'TTG': 'CAA', 'TTT': 'AAA'})
 
 codons = sorted(list(set(codon_to_AA.keys())))
+coding_codons = [x for x in codons if codon_to_AA[x] != "STP"]
+
+is_synonymous = {}
+for i in coding_codons:
+    is_synonymous[i] = {}
+    for j in coding_codons:
+        if codon_to_AA[i] == codon_to_AA[j]:
+            is_synonymous[i][j] = True
+        else:
+            is_synonymous[i][j] = False
 
 pretty_names = {}
 

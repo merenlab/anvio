@@ -29,10 +29,10 @@ class SuppressAllOutput(object):
     def __enter__(self):
         sys.stderr.flush()
         self.old_stderr = sys.stderr
-        sys.stderr = open('/dev/null', 'a')
+        sys.stderr = open(os.devnull, 'w')
         sys.stdout.flush()
         self.old_stdout = sys.stdout
-        sys.stdout = open('/dev/null', 'a')
+        sys.stdout = open(os.devnull, 'w')
 
     def __exit__(self, exc_type, exc_value, traceback):
         sys.stderr.flush()
@@ -121,6 +121,8 @@ class Progress:
 
 
     def update(self, msg):
+        self.msg = msg
+
         if not self.verbose:
             return
 
@@ -128,7 +130,6 @@ class Progress:
             raise TerminalError('Progress with null pid will not update for msg "%s"' % msg)
 
         self.clear()
-        self.msg = msg
         self.write('\r[%s] %s' % (self.pid, msg))
 
 
@@ -199,7 +200,7 @@ class Run:
             self.write(info_line, quiet=quiet)
 
 
-    def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1):
+    def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1, progress=None):
         if isinstance(message, str):
             message = remove_spaces(message)
 
@@ -213,7 +214,13 @@ class Run:
 
         message_line = ('\n' * nl_before) + message_line + ('\n' * nl_after)
 
-        self.write(message_line)
+        if progress:
+            progress.clear()
+            self.write(message_line)
+            progress.update(progress.msg)
+
+        else:
+            self.write(message_line)
 
 
     def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False, nl_before=0, nl_after=0):
