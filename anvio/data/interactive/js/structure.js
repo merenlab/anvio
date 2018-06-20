@@ -992,4 +992,49 @@ async function generate_summary() {
     });
 }
 
+function serializeAuxiliaryInputs() {
+    let backup = {};
+
+    ['tab_perspectives', 'tab_summary'].forEach((tab) => {
+        backup[tab] = {};
+
+        $(`#${tab} :input`).each((index, elem) => {
+            let tag = elem.tagName;
+            let id = elem.getAttribute('id');
+
+            if (tag == 'SELECT') {
+                backup[tab][id] = $(elem).val();
+            }
+            else if (tag == 'INPUT') {
+                let type = elem.getAttribute('type');
+
+                if (type == 'checkbox') {
+                    backup[tab][id] = $(elem).is(':checked');
+                }
+                else if (type == 'input' || type == 'text') {
+                    backup[tab][id] = $(elem).val();
+                }
+            }
+        });
+    });
+
+    return backup;
+}
+
+
+function serializeState() {
+    let state = {
+        'version': '1',
+        'gene_callers_id': $('#gene_callers_id_list').val(),
+        'engine': $('[name=engine]:checked').val(),
+        'category': $('#sample_groups_list').val(),
+        'sample_groups_backup': sample_groups_backup,
+        'filter_backup': filter_backup,
+        'color_legend': color_legend,
+        'size_legend': size_legend,
+        'auxiliary': serializeAuxiliaryInputs()
+    };
+
+    console.log(state);
+}
 
