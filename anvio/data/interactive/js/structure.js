@@ -13,6 +13,7 @@ var color_legend = {};
 var size_legend = {};
 
 var filter_backup = {};
+var sample_groups_backup = {};
 
 $(document).ready(function() {
     $('.colorpicker').colpick({
@@ -47,6 +48,27 @@ $(document).ready(function() {
     });
 
     $('#sample_groups_list').on('change', function(ev) {
+        // backup exists sample groups if possible
+        let backup = {
+            'groups': [],
+            'samples': {}
+        };
+
+        $('[checkbox-for="group"]:checked').each((index, element) => {
+            backup['groups'].push($(element).attr('data-group'));
+        });
+
+        $('[data-sample]:checked').each((index, element) => {
+            if (!backup['samples'].hasOwnProperty($(element).attr('data-group'))) {
+                backup['samples'][$(element).attr('data-group')] = [];
+            }
+            backup['samples'][$(element).attr('data-group')].push($(element).attr('data-sample'));
+        });
+
+        if (backup['groups'].length > 0 || Object.keys(backup['samples']).length > 0) {
+            sample_groups_backup[$('#sample_groups').attr('created-for-category')] = backup;
+        }
+
         load_sample_group_widget($('#sample_groups_list').val());
     });
 
@@ -82,10 +104,26 @@ $(document).ready(function() {
 
 function load_sample_group_widget(category) {
     $('#sample_groups').empty();
+    $('#sample_groups').attr('created-for-category', category);
+
     tableHtml = '<table class="table table-condensed"><tr><td>Groups</td><td>Samples</td></tr>';
 
     let counter=0;
     for (let group in sample_groups[category]) {
+        let group_checked = true;
+
+        if (sample_groups_backup.hasOwnProperty(category)) {
+            group_checked = (sample_groups_backup[category]['groups'].indexOf(group) > -1);
+        }
+
+        if (group_checked) {
+            counter++;
+        }
+
+        if (counter > 15) {
+            group_checked = false;
+        }
+
         tableHtml += `
             <tr>
                 <td>
@@ -97,12 +135,17 @@ function load_sample_group_widget(category) {
                         data-category="${category}"
                         data-group="${group}"
                         value="${group}" 
-                        ${ (counter < 16) ? `checked="checked"` : `` }>
+                        ${ group_checked ? `checked="checked"` : `` }>
                     <label class="form-check-label" for="${category}_${group}">${group}</label>
                 </td>
                 <td>`;
 
         sample_groups[category][group].forEach((sample) => {
+            let sample_checked = true;
+            if (sample_groups_backup.hasOwnProperty(category) && sample_groups_backup[category]['samples'].hasOwnProperty(group)) {
+                sample_checked = (sample_groups_backup[category]['samples'][group].indexOf(sample) > -1);
+            }
+
             tableHtml += `
                 <div class="table-group-checkbox" style="display: inline-block; float: left;">
                     <input class="form-check-input" 
@@ -113,13 +156,12 @@ function load_sample_group_widget(category) {
                             data-group="${group}"
                             data-sample="${sample}"
                             value="${sample}" 
-                            checked="checked">
+                            ${sample_checked ? 'checked="checked"' : ''}>
                     <label class="form-check-label" for="${category}_${group}_${sample}">${sample}</label>
                 </div>`;
         });
 
         tableHtml += '</td></tr>';
-        counter++;
     }
 
     $('#sample_groups').append(tableHtml + '</table>');
