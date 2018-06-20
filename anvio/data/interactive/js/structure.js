@@ -925,7 +925,7 @@ async function generate_summary() {
     }
 
     zip.generateAsync(zip_options).then(function(content) {
-        saveAs(content, $('#zip_name').val());
+        saveAs(content, $('#zip_name').val() + '.zip');
     });
 }
 
