@@ -715,8 +715,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
             overall_mean_coverage = self.total_coverage_values_for_all_contigs / self.total_length_of_all_contigs
 
         # FIXME: We know this is ugly. You can keep your opinion to yourself.
-        dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_splits SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
-        dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
+        if overall_mean_coverage > 0.0:
+            # avoid dividing by zero
+            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_splits SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
+            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
 
