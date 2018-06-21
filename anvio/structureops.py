@@ -363,12 +363,14 @@ class Structure(object):
     def process(self):
         """
         """
-
         # will be empty if all sources in self.annotation_sources_info have "skip": True
         residue_annotation_methods = [info["method"] for _, info in self.annotation_sources_info.items() if not info["skip"]]
 
         # which genes had structures and which did not. this information is added to the structure database self table
         has_structure = {True: [], False: []}
+
+        num_genes_tried = 0
+        num_genes_to_try = len(self.genes_of_interest)
 
         for corresponding_gene_call in self.genes_of_interest:
             # MODELLER outputs a lot of stuff into its working directory. A temporary directory is
@@ -385,7 +387,8 @@ class Structure(object):
                                                       quiet = True)
 
             # Model structure
-            modeller_out = self.run_modeller(corresponding_gene_call)
+            progress_title = 'Modelling gene ID %d; (%d of %d processed)' % (corresponding_gene_call, num_genes_tried, num_genes_to_try)
+            modeller_out = self.run_modeller(corresponding_gene_call, progress_title)
             if modeller_out["structure_exists"]:
                 self.run.info_single("Gene successfully modelled!", nl_after=1, mc="green")
 
@@ -402,6 +405,8 @@ class Structure(object):
 
             if self.full_modeller_output:
                 self.dump_results_to_full_output()
+
+            num_genes_tried += 1
 
         if not has_structure[True]:
             raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
@@ -584,8 +589,8 @@ class Structure(object):
         return pd.DataFrame(d, index=columns).T.set_index("codon_order_in_gene")
 
 
-    def run_modeller(self, corresponding_gene_call):
-        self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress)
+    def run_modeller(self, corresponding_gene_call, progress_title):
+        self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress, progress_title=progress_title)
         modeller_out = self.modeller.process()
 
         return modeller_out
@@ -654,6 +659,9 @@ class StructureUpdate(Structure):
         utils.is_contigs_db(self.contigs_db_path)
         self.contigs_db           = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash      = self.contigs_db.meta['contigs_db_hash']
+
+        # init ContigsSuperClass
+        self.contigs_super = ContigsSuperclass(self.args)
 
         if not any([self.genes_to_remove, self.genes_to_remove_path, self.genes_to_add, self.genes_to_add_path]):
             raise ConfigError("Please specify some genes to add or remove to your database.")
@@ -773,15 +781,16 @@ class StructureUpdate(Structure):
         self.progress.new("Determining parameters used during structure database creation")
 
         meta_table_dict = self.structure_db.db.get_table_as_dict("self")
-        modeller_params = [('modeller_database', str),
-                           ('scoring_method', str),
-                           ('percent_identical_cutoff', float),
-                           ('very_fast', lambda x: bool(int(x))),
-                           ('deviation', float),
-                           ('max_number_templates', int),
-                           ('num_models', int),
-                           ('skip_DSSP', lambda x: bool(int(x))),
-                           ('skip_STRIDE', lambda x: bool(int(x)))]
+        modeller_params = [
+            ('modeller_database', str),
+            ('scoring_method', str),
+            ('percent_identical_cutoff', float),
+            ('very_fast', lambda x: bool(int(x))),
+            ('deviation', float),
+            ('max_number_templates', int),
+            ('num_models', int),
+            ('skip_DSSP', lambda x: bool(int(x))),
+        ]
 
         self.run.info_single("Previous parameters used for creating the structure database", nl_before=1)
         for param, cast_type in modeller_params:
