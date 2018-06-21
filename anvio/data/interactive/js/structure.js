@@ -684,7 +684,11 @@ function create_ui() {
     
     let backup = serialize_filtering_widgets();
     if (Object.keys(backup).length > 0) {
-        filter_backup[$('#controls').attr('created-for-engine')] = backup;
+        if (!filter_backup.hasOwnProperty($('#controls').attr('created-for-gene-caller-id'))) {
+            filter_backup[$('#controls').attr('created-for-gene-caller-id')] = {};
+        }
+
+        filter_backup[$('#controls').attr('created-for-gene-caller-id')][$('#controls').attr('created-for-engine')] = backup;
     }
 
    $.ajax({
@@ -699,6 +703,7 @@ function create_ui() {
             column_info = data
             let container = $('#controls');
             $('#controls').attr('created-for-engine', engine);
+            $('#controls').attr('created-for-gene-caller-id', gene_callers_id);
 
             // remove widgets
             container.empty();
@@ -724,9 +729,9 @@ function create_ui() {
                     let min_val = item['min'];
                     let max_val = item['max'];
 
-                    if (filter_backup.hasOwnProperty(engine) && filter_backup[engine].hasOwnProperty(item['name'])) {
-                        min_val = filter_backup[engine][item['name']]['min_' + item['name']];
-                        max_val = filter_backup[engine][item['name']]['max_' + item['name']];
+                    if (filter_backup.hasOwnProperty(gene_callers_id) && filter_backup[gene_callers_id].hasOwnProperty(engine) && filter_backup[gene_callers_id][engine].hasOwnProperty(item['name'])) {
+                        min_val = filter_backup[gene_callers_id][engine][item['name']]['min_' + item['name']];
+                        max_val = filter_backup[gene_callers_id][engine][item['name']]['max_' + item['name']];
                     }
 
                     $(container).append(`
@@ -748,8 +753,8 @@ function create_ui() {
                 if (item['as_filter'] == 'checkbox') {
                     let checked_choices = item['choices'];
 
-                    if (filter_backup.hasOwnProperty(engine) && filter_backup[engine].hasOwnProperty(item['name'])) {
-                        checked_choices = filter_backup[engine][item['name']][item['name'] + 's_of_interest'];
+                    if (filter_backup.hasOwnProperty(gene_callers_id) && filter_backup[gene_callers_id].hasOwnProperty(engine) && filter_backup[gene_callers_id][engine].hasOwnProperty(item['name'])) {
+                        checked_choices = filter_backup[gene_callers_id][engine][item['name']][item['name'] + 's_of_interest'];
                     }
                     
                     $(container).append(`
