@@ -11,6 +11,7 @@ import anvio.terminal as terminal
 
 from anvio.tables.tableops import Table
 
+from anvio.errors import ConfigError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -32,7 +33,8 @@ class TablesForStates(Table):
         self.db_path = db_path
         self.states = {}
 
-        utils.is_pan_or_profile_db(self.db_path)
+        if utils.get_db_type(self.db_path) not in ['profile', 'pan', 'structure']:
+            raise ConfigError("Your database '%s' does not seem to have states table, which anvi'o tries to access.")
 
         Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run, progress)
 
