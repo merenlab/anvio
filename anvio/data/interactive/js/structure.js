@@ -1030,6 +1030,10 @@ function serializeAuxiliaryInputs() {
                 }
             }
         });
+         $(`#${tab} .colorpicker`).each((index, elem) => {
+            let id = elem.getAttribute('id');
+            backup[tab][id] = $(elem).attr('color');
+        });
     });
 
     return backup;
