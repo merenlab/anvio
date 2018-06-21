@@ -343,7 +343,7 @@ class DB:
                                    This may be a programmer error when the data was being inserted into the database, but\
                                    needs fixin' before we can continue. If you are a user, please get in touch with anvi'o\
                                    developers about this error. If you are a programmer, you probably did something\
-                                   wrong :(" % (table, len(rows), len(unique_keys)))
+                                   wrong :(" % (table_name, len(rows), len(unique_keys)))
 
         for row in rows:
             entry = {}

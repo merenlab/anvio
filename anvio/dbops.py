@@ -251,8 +251,13 @@ class ContigsSuperclass(object):
         return contigs_shorter_than_M
 
 
-    def init_split_sequences(self, min_contig_length=0):
+    def init_split_sequences(self, min_contig_length=0, split_names_of_interest=[]):
         contigs_shorter_than_M = self.init_contig_sequences(min_contig_length)
+
+        if not len(self.splits_basic_info):
+            self.run.info_single("Anvi'o was attempting to initialize split sequences, but the splits basic info dictionary\
+                                  was mysteriously empty. So you are warned.", mc="red")
+            return
 
         self.progress.new('Computing split sequences from contigs')
 
@@ -265,8 +270,39 @@ class ContigsSuperclass(object):
         for split_name in split_names_to_discard:
             self.splits_basic_info.pop(split_name)
 
+        if not len(self.splits_basic_info):
+            self.progress.end()
+            raise ConfigError("Something bad happened :/ The minimum length criterion of %d matched %d split names, and \
+                               removed all splits from the splits basic info dict. How could this happen? What have \
+                               you done?" % (min_contig_length, len(contigs_shorter_than_M)))
+
+        # user asks for a specific set of splits to be initialized? maybe a better idea
+        # is to set those names at a higher level in the contigs super, but for now this
+        # will do it.
+        if len(split_names_of_interest):
+            missing_split_names = [s for s in split_names_of_interest if s not in self.splits_basic_info]
+            if len(missing_split_names):
+                self.progress.end()
+                raise ConfigError("The `init_split_sequences` function was called with a set of split names of interest\
+                                   but %d of %d of those split names were missing from the splits basic info dict, which\
+                                   contained %d split names. Note that if you have been using a `min_contig_length` cutoff\
+                                   that may have resulted in the removal of your splits from the primary dict of splits.\
+                                   Regardless, here is one of the split names that you requested and were missing: '%s'.\
+                                   And here is one found in the splits basic info dict: '%s'." % \
+                                                (len(missing_split_names), len(split_names_of_interest), len(self.splits_basic_info),
+                                                 missing_split_names[0], list(self.splits_basic_info.keys())[0]))
+
+            self.progress.end()
+            self.run.info_single("FYI: A subset of split sequences are being initialized (%d of %d the contigs database\
+                                  knows about, to be precise). Nothing to worry about. Probably." \
+                                                % (len(split_names_of_interest), len(self.splits_basic_info)),
+                                  mc="cyan", nl_after=1)
+            self.progress.new('Computing split sequences from contigs')
+        else:
+            split_names_of_interest = list(self.splits_basic_info.keys())
+
         self.progress.update('Generating split sequences dict')
-        for split_name in self.splits_basic_info:
+        for split_name in split_names_of_interest:
             split = self.splits_basic_info[split_name]
 
             if split['parent'] in contigs_shorter_than_M:
