@@ -9,7 +9,6 @@ import numpy
 import argparse
 import textwrap
 import pandas as pd
-from ete3 import Tree
 
 import anvio
 import anvio.utils as utils
@@ -976,10 +975,18 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 }
 
         self.collections.populate_collections_dict(self.profile_db_path)
-        splits_of_interest = self.collections.get_collection_dict(self.collection_name)[self.bin_id]
+        split_names_of_interest = self.collections.get_collection_dict(self.collection_name)[self.bin_id]
         all_gene_callers_ids = []
 
-        for split_name in splits_of_interest:
+        # NOTE: here we ask anvi'o to not worry about names consistency. because we are initializing
+        # split sequences in gene mode, downstream code will be confused regarding how are there items
+        # in this object (gene caller IDs) that do not match split sequences (that are coming from the
+        # contigs database). Bypassing those checks helps us avoid headaches later.
+        self.skip_check_names = True
+
+        self.init_split_sequences(self.p_meta['min_contig_length'], split_names_of_interest=split_names_of_interest)
+
+        for split_name in split_names_of_interest:
             genes_in_splits_entries = self.split_name_to_genes_in_splits_entry_ids[split_name]
 
             for genes_in_splits_entry in genes_in_splits_entries:
@@ -1950,7 +1957,6 @@ class StructureInteractive(VariabilitySuper):
         self.progress.new('Generating %s histograms' % ("SAAV" if var_object.engine else "SCV"))
 
         # subset info list to columns that occur in var_object.data
-        engine = var_object.engine
         column_info_list = [info for info in column_info_list if info["name"] in var_object.data.columns]
 
         histograms = {}
