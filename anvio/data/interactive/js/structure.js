@@ -1,3 +1,4 @@
+const mode = 'structure';
 const MAX_NGL_WIDGETS = 16;
 
 var stages = {};
