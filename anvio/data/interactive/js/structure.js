@@ -175,7 +175,7 @@ function apply_orientation_matrix_to_all_stages(orientationMatrix) {
     cached_orientation_matrix = orientationMatrix;
 }
 
-function create_ngl_views(fetch_variability = true) {
+async function create_ngl_views(fetch_variability = true) {
     // if fetch_variability, fetch_and_draw_variability is called, otherwise draw_variability i called
     let selected_groups = $('[checkbox-for="group"]:checked');
     if (selected_groups.length > MAX_NGL_WIDGETS) {
@@ -192,97 +192,230 @@ function create_ngl_views(fetch_variability = true) {
 
     $('#ngl-container').empty();
 
+    let num_cells = selected_groups.length;
+    let num_columns = Math.min(4, Math.ceil(Math.sqrt(num_cells)));
+    let num_rows = Math.min(4, Math.ceil(num_cells / num_columns));
 
-    $(selected_groups).each((index, element) => {
-        let group = $(element).attr('data-group');
-        let num_cells = selected_groups.length;
-        let num_columns = Math.min(4, Math.ceil(Math.sqrt(num_cells)));
-        let num_rows = Math.min(4, Math.ceil(num_cells / num_columns));
+    for (let i=0; i < selected_groups.length; i++) {
+        let group = selected_groups[i].getAttribute('data-group');
+        await create_single_ngl_view(group, num_rows, num_columns);
+    }
 
-        $('#ngl-container').append(`
-            <div id="ngl_${group}_wrapper" 
-                 class="col-md-${parseInt(12 / num_columns)} nopadding" 
-                 style="height: ${parseFloat(100 / num_rows)}%; ">
-                 <div class="ngl-group-title">
-                    ${group}
-                 </div>
-                 <div class="ngl-group-fullscreen">
-                    <button type="button" class="btn btn-link btn-sm" onclick="stages['${group}'].toggleFullscreen();" title="Fullscreen">
-                        <span class="glyphicon glyphicon-fullscreen"></span>
-                     </button>
-                 </div>
-                 <div id="ngl_${group}" class="ngl-inner">
+    if (fetch_variability) {
+        fetch_and_draw_variability();
+    } else {
+        draw_variability();
+    }
+}
 
-                 </div> 
-            </div>`);
+async function create_single_ngl_view(group, num_rows, num_columns) {
+    var defer = $.Deferred();
 
-        var stage = new NGL.Stage(`ngl_${group}`);
-        var stringBlob = new Blob( [ pdb_content ], { type: 'text/plain'} );
+    $('#ngl-container').append(`
+        <div id="ngl_${group}_wrapper" 
+             class="col-md-${parseInt(12 / num_columns)} nopadding" 
+             style="height: ${parseFloat(100 / num_rows)}%; ">
+             <div class="ngl-group-title">
+                ${group}
+             </div>
+             <div class="ngl-group-fullscreen">
+                <button type="button" class="btn btn-link btn-sm" onclick="stages['${group}'].toggleFullscreen();" title="Fullscreen">
+                    <span class="glyphicon glyphicon-fullscreen"></span>
+                 </button>
+             </div>
+             <div id="ngl_${group}" class="ngl-inner">
 
-        stage.loadFile(stringBlob, { ext: "pdb" })
-             .then((component) => {
-                if( component.type !== "structure" ) return;
+             </div> 
+        </div>`);
 
-                if ($('#show_surface').is(':checked')) {
-                    component.addRepresentation("surface", {
-                        surfaceType: "av",
-                        colorScheme: $('#surface_type').val(),
-                        smooth: 3,
-                        probeRadius: 1.4,
-                        scaleFactor: 3.0,
-                        opacity: parseFloat($('#surface_opacity').val()),
-                        lowResolution: false,
-                    });
-                }
+    var stage = new NGL.Stage(`ngl_${group}`);
+    var stringBlob = new Blob( [ pdb_content ], { type: 'text/plain'} );
 
-                // FIXME does not work as expected. When loading structure residue info create
-                // manual labels
-                if ($('#show_residue_labels').is(':checked')) {
-                    component.addRepresentation("label", {
-                    sele: ".CA",
-                    color: "element",
-                    labelType: "format",
-                    labelFormat: "%(resname)s"
-                    });
-                }
+    stage.loadFile(stringBlob, { ext: "pdb" }).then((component) => {
+            if( component.type !== "structure" ) return;
 
-                if ($('#show_backbone').is(':checked')) {
-                    component.addRepresentation($('#backbone_type').val(), {
-                        color: $('#backbone_color').attr('color'),
-                        aspectRatio: 3.0,
-                        scale: 1.5
-                    });
-                }
+            if ($('#show_surface').is(':checked')) {
+                component.addRepresentation("surface", {
+                    surfaceType: "av",
+                    colorScheme: $('#surface_type').val(),
+                    smooth: 3,
+                    probeRadius: 1.4,
+                    scaleFactor: 3.0,
+                    opacity: parseFloat($('#surface_opacity').val()),
+                    lowResolution: false,
+                });
+            }
 
-                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() == 'always'){
-                    component.addRepresentation("ball+stick", {
-                        sele: "sidechainAttached"
-                    });
-                }
+            // FIXME does not work as expected. When loading structure residue info create
+            // manual labels
+            if ($('#show_residue_labels').is(':checked')) {
+                component.addRepresentation("label", {
+                sele: ".CA",
+                color: "element",
+                labelType: "format",
+                labelFormat: "%(resname)s"
+                });
+            }
 
-                if (cached_orientation_matrix) {
-                    stage.viewerControls.orient(cached_orientation_matrix);
+            if ($('#show_backbone').is(':checked')) {
+                component.addRepresentation($('#backbone_type').val(), {
+                    color: $('#backbone_color').attr('color'),
+                    aspectRatio: 3.0,
+                    scale: 1.5
+                });
+            }
+
+            if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() == 'always'){
+                component.addRepresentation("ball+stick", {
+                    sele: "sidechainAttached"
+                });
+            }
+
+            if (cached_orientation_matrix) {
+                stage.viewerControls.orient(cached_orientation_matrix);
+            } else {
+                component.autoView();
+            }
+
+            stage.setParameters({
+                backgroundColor: "white"
+            });
+
+            // prevent default tooltip
+            stage.mouseControls.remove("hoverPick");
+
+            // add custom tooltip
+            var previous_hovered_residue = null;
+            stage.signals.hovered.add(function (pickingProxy) {
+                let tooltip = document.getElementById('ngl-tooltip');
+
+                if (pickingProxy && pickingProxy.atom) {
+                    if (pickingProxy.atom.resno != previous_hovered_residue && $('#show_ballstick_when').val() != 'always') {
+                        // remove ball+stick if hovered residue changed or 
+                        if (pickingProxy.atom.resno != previous_hovered_residue) {
+                            stage.compList[0].reprList.slice(0).forEach((rep) => {
+                                if (rep.name == 'ball+stick') {
+                                    rep.dispose();
+                                }
+                            });
+                        }
+                    }
+
+                    let residue = pickingProxy.atom.resno;
+                    let mp = pickingProxy.mouse.position;
+
+                    if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always') {
+                        if ($('#show_ballstick_when').val() == 'hovered residue') {
+                            var selection = "(" + residue + ")" + " and sidechainAttached";
+                        }
+                        else if ($('#show_ballstick_when').val() == 'hovered residue + contacts') {
+                            var selection = "(" + residue_info[residue]['contact_numbers'].split(',').join(', ') + ")" + " and sidechainAttached";
+                        }
+                        if ($('#show_ballstick_when').val() == 'hovered residue + variant contacts') {
+                            let contacts = residue_info[residue]['contact_numbers'].split(',');
+                            let variant_contacts = [];
+                            for (i in contacts) {
+                                if (contacts[i] == String(residue)) {
+                                    variant_contacts.push(contacts[i]);
+                                } 
+                                else if (variability[group].hasOwnProperty(parseInt(contacts[i]))) {
+                                    variant_contacts.push(contacts[i]);
+                                }
+                            }
+                            var selection = "(" + variant_contacts.join(', ') + ")" + " and sidechainAttached";
+                        }
+                        stage.compList[0].addRepresentation("ball+stick", {
+                            hydrogenBond: true,
+                            sele: selection
+                        });
+                    }
+
+                    // Reference data is always available
+                    var tooltip_HTML_title = `<h5>Reference info</h5>`
+                    var tooltip_HTML_body = `
+                        <tr><td>Residue</td><td>${residue_info[residue]['amino_acid']} (${residue_info[residue]['codon']})</td></tr>
+                        <tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>
+                        <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
+                        <tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
+                        <tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>
+                        <tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>
+                        `
+
+                    // Variant data is available if a variant exists at hovered residue
+                    if (variability[group].hasOwnProperty(residue)) {
+                        var tooltip_HTML_variant_title = `<h5>Variant info</h5>`
+                        var tooltip_HTML_variant_body = `
+                            <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
+                            <tr><td>Prevalence</td><td>${variability[group][residue]['occurrence']} of ${parseInt(Math.round(variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']))} samples</td></tr>
+                            <tr><td>Site Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
+                            <tr><td>Site Coverage / Gene Coverage</td><td>${variability[group][residue]['mean_normalized_coverage'].toFixed(2)}</td></tr>
+                            <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
+                            `
+                        // add engine-specific data
+                        if ($('[name=engine]:checked').val() == 'AA') {
+                            // append to body
+                            tooltip_HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
+                        } else {
+                            // append to body
+                            tooltip_HTML_variant_body += `<tr><td>Synonymity</td><td>${variability[group][residue]['synonymity'].toFixed(2)}</td></tr>`
+                        }
+
+                        var tooltip_HTML_variant_freqs_title = `<h5>Variant frequencies</h5>`
+                        if ($('[name=engine]:checked').val() == 'AA') {
+                            var tooltip_HTML_variant_freqs_body = `
+                                <tr><td>${variability[group][residue]['0_item']}</td><td>${variability[group][residue]['0_freq'].toFixed(2)}</td></tr>
+                                <tr><td>${variability[group][residue]['1_item']}</td><td>${variability[group][residue]['1_freq'].toFixed(2)}</td></tr>
+                                <tr><td>${variability[group][residue]['2_item']}</td><td>${variability[group][residue]['2_freq'].toFixed(2)}</td></tr>
+                                <tr><td>${variability[group][residue]['3_item']}</td><td>${variability[group][residue]['3_freq'].toFixed(2)}</td></tr>
+                                `
+                        } else {
+                            var tooltip_HTML_variant_freqs_body = `
+                                <tr><td>${variability[group][residue]['0_item_AA']} (${variability[group][residue]['0_item']})</td><td>${variability[group][residue]['0_freq'].toFixed(2)}</td></tr>
+                                <tr><td>${variability[group][residue]['1_item_AA']} (${variability[group][residue]['1_item']})</td><td>${variability[group][residue]['1_freq'].toFixed(2)}</td></tr>
+                                <tr><td>${variability[group][residue]['2_item_AA']} (${variability[group][residue]['2_item']})</td><td>${variability[group][residue]['2_freq'].toFixed(2)}</td></tr>
+                                <tr><td>${variability[group][residue]['3_item_AA']} (${variability[group][residue]['3_item']})</td><td>${variability[group][residue]['3_freq'].toFixed(2)}</td></tr>
+                                `
+                        }
+                    }
+
+                    if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'all residues') {
+                        tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
+                        tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
+
+                        // Variant data is available if a variant exists at hovered residue
+                        if (variability[group].hasOwnProperty(residue)) {
+                            tooltip_HTML_variant_body = `<table class="tooltip-table">` + tooltip_HTML_variant_body + `</table>`
+                            tooltip_HTML += tooltip_HTML_variant_title + tooltip_HTML_variant_body
+                            tooltip_HTML_variant_freqs_body = `<table class="tooltip-table">` + tooltip_HTML_variant_freqs_body + `</table>`
+                            tooltip_HTML += tooltip_HTML_variant_freqs_title + tooltip_HTML_variant_freqs_body
+                        }
+
+                        tooltip.innerHTML = tooltip_HTML;
+                        tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
+                        tooltip.style.left = mp.x + 3 + "px";
+                        tooltip.style.display = "block";
+                    }
+                    else if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'variant residues') {
+                        if (variability[group].hasOwnProperty(residue)) {
+                            tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
+                            tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
+
+                            tooltip_HTML_variant_body = `<table class="tooltip-table">` + tooltip_HTML_variant_body + `</table>`
+                            tooltip_HTML += tooltip_HTML_variant_title + tooltip_HTML_variant_body
+                            tooltip_HTML_variant_freqs_body = `<table class="tooltip-table">` + tooltip_HTML_variant_freqs_body + `</table>`
+                            tooltip_HTML += tooltip_HTML_variant_freqs_title + tooltip_HTML_variant_freqs_body
+
+                            tooltip.innerHTML = tooltip_HTML;
+                            tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
+                            tooltip.style.left = mp.x + 3 + "px";
+                            tooltip.style.display = "block";
+                        }
+                    }
+
+                    previous_hovered_residue = residue;
                 } else {
-                    component.autoView();
-                }
-             });
-
-        stage.setParameters({
-            backgroundColor: "white"
-        });
-
-        // prevent default tooltip
-        stage.mouseControls.remove("hoverPick");
-
-        // add custom tooltip
-        var previous_hovered_residue = null;
-        stage.signals.hovered.add(function (pickingProxy) {
-            let tooltip = document.getElementById('ngl-tooltip');
-
-            if (pickingProxy && pickingProxy.atom) {
-                if (pickingProxy.atom.resno != previous_hovered_residue && $('#show_ballstick_when').val() != 'always') {
-                    // remove ball+stick if hovered residue changed or 
-                    if (pickingProxy.atom.resno != previous_hovered_residue) {
+                    tooltip.style.display = "none";
+                    if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always'){
                         stage.compList[0].reprList.slice(0).forEach((rep) => {
                             if (rep.name == 'ball+stick') {
                                 rep.dispose();
@@ -290,144 +423,19 @@ function create_ngl_views(fetch_variability = true) {
                         });
                     }
                 }
+            });
 
-                let residue = pickingProxy.atom.resno;
-                let mp = pickingProxy.mouse.position;
+            let func = () => { apply_orientation_matrix_to_all_stages( stage.viewerControls.getOrientation()); };
+            stage.mouseObserver.signals.scrolled.add(() => { func(); });
+            stage.mouseObserver.signals.dragged.add(() => { func(); });
+            $(`#ngl_${group}`).mouseup(func);
 
-                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always') {
-                    if ($('#show_ballstick_when').val() == 'hovered residue') {
-                        var selection = "(" + residue + ")" + " and sidechainAttached";
-                    }
-                    else if ($('#show_ballstick_when').val() == 'hovered residue + contacts') {
-                        var selection = "(" + residue_info[residue]['contact_numbers'].split(',').join(', ') + ")" + " and sidechainAttached";
-                    }
-                    if ($('#show_ballstick_when').val() == 'hovered residue + variant contacts') {
-                        let contacts = residue_info[residue]['contact_numbers'].split(',');
-                        let variant_contacts = [];
-                        for (i in contacts) {
-                            if (contacts[i] == String(residue)) {
-                                variant_contacts.push(contacts[i]);
-                            } 
-                            else if (variability[group].hasOwnProperty(parseInt(contacts[i]))) {
-                                variant_contacts.push(contacts[i]);
-                            }
-                        }
-                        var selection = "(" + variant_contacts.join(', ') + ")" + " and sidechainAttached";
-                    }
-                    stage.compList[0].addRepresentation("ball+stick", {
-                        hydrogenBond: true,
-                        sele: selection
-                    });
-                }
+            stages[group] = stage;
 
-                // Reference data is always available
-                var tooltip_HTML_title = `<h5>Reference info</h5>`
-                var tooltip_HTML_body = `
-                    <tr><td>Residue</td><td>${residue_info[residue]['amino_acid']} (${residue_info[residue]['codon']})</td></tr>
-                    <tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>
-                    <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
-                    <tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
-                    <tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>
-                    <tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>
-                    `
-
-                // Variant data is available if a variant exists at hovered residue
-                if (variability[group].hasOwnProperty(residue)) {
-                    var tooltip_HTML_variant_title = `<h5>Variant info</h5>`
-                    var tooltip_HTML_variant_body = `
-                        <tr><td>Mean Dfc</td><td>${variability[group][residue]['departure_from_consensus'].toFixed(2)}</td></tr>
-                        <tr><td>Prevalence</td><td>${variability[group][residue]['occurrence']} of ${parseInt(Math.round(variability[group][residue]['occurrence'] / variability[group][residue]['prevalence']))} samples</td></tr>
-                        <tr><td>Site Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
-                        <tr><td>Site Coverage / Gene Coverage</td><td>${variability[group][residue]['mean_normalized_coverage'].toFixed(2)}</td></tr>
-                        <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
-                        `
-                    // add engine-specific data
-                    if ($('[name=engine]:checked').val() == 'AA') {
-                        // append to body
-                        tooltip_HTML_variant_body += `<tr><td>Mean BLOSUM90</td><td>${variability[group][residue]['BLOSUM90'].toFixed(1)}</td></tr>`
-                    } else {
-                        // append to body
-                        tooltip_HTML_variant_body += `<tr><td>Synonymity</td><td>${variability[group][residue]['synonymity'].toFixed(2)}</td></tr>`
-                    }
-
-                    var tooltip_HTML_variant_freqs_title = `<h5>Variant frequencies</h5>`
-                    if ($('[name=engine]:checked').val() == 'AA') {
-                        var tooltip_HTML_variant_freqs_body = `
-                            <tr><td>${variability[group][residue]['0_item']}</td><td>${variability[group][residue]['0_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['1_item']}</td><td>${variability[group][residue]['1_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['2_item']}</td><td>${variability[group][residue]['2_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['3_item']}</td><td>${variability[group][residue]['3_freq'].toFixed(2)}</td></tr>
-                            `
-                    } else {
-                        var tooltip_HTML_variant_freqs_body = `
-                            <tr><td>${variability[group][residue]['0_item_AA']} (${variability[group][residue]['0_item']})</td><td>${variability[group][residue]['0_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['1_item_AA']} (${variability[group][residue]['1_item']})</td><td>${variability[group][residue]['1_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['2_item_AA']} (${variability[group][residue]['2_item']})</td><td>${variability[group][residue]['2_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['3_item_AA']} (${variability[group][residue]['3_item']})</td><td>${variability[group][residue]['3_freq'].toFixed(2)}</td></tr>
-                            `
-                    }
-                }
-
-                if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'all residues') {
-                    tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
-                    tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
-
-                    // Variant data is available if a variant exists at hovered residue
-                    if (variability[group].hasOwnProperty(residue)) {
-                        tooltip_HTML_variant_body = `<table class="tooltip-table">` + tooltip_HTML_variant_body + `</table>`
-                        tooltip_HTML += tooltip_HTML_variant_title + tooltip_HTML_variant_body
-                        tooltip_HTML_variant_freqs_body = `<table class="tooltip-table">` + tooltip_HTML_variant_freqs_body + `</table>`
-                        tooltip_HTML += tooltip_HTML_variant_freqs_title + tooltip_HTML_variant_freqs_body
-                    }
-
-                    tooltip.innerHTML = tooltip_HTML;
-                    tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
-                    tooltip.style.left = mp.x + 3 + "px";
-                    tooltip.style.display = "block";
-                }
-                else if ($('#show_tooltip').is(':checked') && $('#show_tooltip_when').val() == 'variant residues') {
-                    if (variability[group].hasOwnProperty(residue)) {
-                        tooltip_HTML_body = `<table class="tooltip-table">` + tooltip_HTML_body + `</table>`
-                        tooltip_HTML = tooltip_HTML_title + tooltip_HTML_body
-
-                        tooltip_HTML_variant_body = `<table class="tooltip-table">` + tooltip_HTML_variant_body + `</table>`
-                        tooltip_HTML += tooltip_HTML_variant_title + tooltip_HTML_variant_body
-                        tooltip_HTML_variant_freqs_body = `<table class="tooltip-table">` + tooltip_HTML_variant_freqs_body + `</table>`
-                        tooltip_HTML += tooltip_HTML_variant_freqs_title + tooltip_HTML_variant_freqs_body
-
-                        tooltip.innerHTML = tooltip_HTML;
-                        tooltip.style.bottom = window.innerHeight - mp.y + 3 + "px";
-                        tooltip.style.left = mp.x + 3 + "px";
-                        tooltip.style.display = "block";
-                    }
-                }
-
-                previous_hovered_residue = residue;
-            } else {
-                tooltip.style.display = "none";
-                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always'){
-                    stage.compList[0].reprList.slice(0).forEach((rep) => {
-                        if (rep.name == 'ball+stick') {
-                            rep.dispose();
-                        }
-                    });
-                }
-            }
-        });
-
-        let func = () => { apply_orientation_matrix_to_all_stages( stage.viewerControls.getOrientation()); };
-        stage.mouseObserver.signals.scrolled.add(() => { func(); });
-        stage.mouseObserver.signals.dragged.add(() => { func(); });
-        $(`#ngl_${group}`).mouseup(func);
-
-        stages[group] = stage;
+            defer.resolve();
     });
 
-    if (fetch_variability) {
-        fetch_and_draw_variability();
-    } else {
-        draw_variability();
-    }
+    return defer.promise();
 }
 
 function load_protein() {
