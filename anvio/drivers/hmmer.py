@@ -95,12 +95,12 @@ class HMMer:
         ret_val = utils.run_command(cmd_line, log_file_path)
 
         if ret_val:
-            raise ConfigError("The last call did not work quite well. Most probably the version of HMMER\
-                                you have installed is not up-to-date enough. Just to make sure what went\
-                                wrong please take a look at the log file ('%s'). Please visit %s to see what\
-                                is the latest version availalbe. You can learn which version of HMMER you have\
-                                on your system by typing 'hmmpress -h'"\
-                                        % (log_file_path, 'http://hmmer.janelia.org/download.html'))
+            raise ConfigError("The last call did not work quite well. Most probably the version of HMMER you have\
+                               installed is either not up-to-date enough, or too new :/ Just to make sure what went\
+                               wrong please take a look at the log file ('%s'). Please visit %s to see what\
+                               is the latest version availalbe if you think updating HMMER can resolve it. You can\
+                               learn which version of HMMER you have on your system by typing 'hmmpress -h'."\
+                                       % (log_file_path, 'http://hmmer.janelia.org/download.html'))
         self.progress.end()
 
         self.progress.new('Processing')
