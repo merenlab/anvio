@@ -532,7 +532,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # output
         self.quince_mode = A('quince_mode', bool)
         self.output_file_path = A('output_file', null)
-        self.only_if_structure = A('only_if_structure', null)
+        self.only_if_structure = A('only_if_structure', bool)
         self.skip_sanity_check = A('skip_sanity_check', bool) or False
         self.include_split_names_in_output = A('include_split_names', null)
         self.include_contig_names_in_output = A('include_contig_names', null)
@@ -1115,7 +1115,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
         self.filter_data(criterion = "corresponding_gene_call",
                          subset_filter = self.genes_of_interest,
-                         subset_condition = self.genes_of_interest and self.load_all_genes)
+                         subset_condition = (self.genes_of_interest and self.load_all_genes) or self.only_if_structure)
 
         self.filter_data(criterion = "split_name",
                          subset_filter = self.splits_of_interest,
