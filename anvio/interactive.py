@@ -1927,10 +1927,6 @@ class StructureInteractive(VariabilitySuper):
             self.compute_merged_variability(var, column_info, samples_in_group)
             self.wrangle_merged_variability(var)
 
-            # set group specific filter parameters here
-            var.sample_ids_of_interest = set(samples_in_group)
-            list_of_filter_functions.append(F(var.filter_data, criterion="sample_id"))
-
             # now set all other filter parameters
             for filter_criterion, param_values in options["filter_params"].items():
                 for param_name, param_value in param_values.items():
