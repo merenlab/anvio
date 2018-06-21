@@ -403,17 +403,21 @@ class BottleApplication(Bottle):
         if state_name in self.interactive.states_table.states:
             state = self.interactive.states_table.states[state_name]
             state_dict = json.loads(state['content'])
+            
+            if self.interactive.mode == 'structure':
+                return json.dumps({'content': state['content']})
+            else:
 
-            default_view = self.interactive.default_view
-            default_order = self.interactive.p_meta['default_item_order']
+                default_view = self.interactive.default_view
+                default_order = self.interactive.p_meta['default_item_order']
 
-            if state_dict['current-view'] in self.interactive.views:
-                default_view = state_dict['current-view']
+                if state_dict['current-view'] in self.interactive.views:
+                    default_view = state_dict['current-view']
 
-            if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
-                default_order = state_dict['order-by']
+                if state_dict['order-by'] in self.interactive.p_meta['item_orders']:
+                    default_order = state_dict['order-by']
 
-            return json.dumps((state_dict, self.interactive.p_meta['item_orders'][default_order], self.interactive.views[default_view]))
+                return json.dumps((state_dict, self.interactive.p_meta['item_orders'][default_order], self.interactive.views[default_view]))
 
         return json.dumps("")
 
