@@ -615,7 +615,6 @@ class VariabilitySuper(VariabilityFilter, object):
                 ('mean_normalized_coverage', float),
                 ('cov_outlier_in_split', int),
                 ('cov_outlier_in_contig', int),
-                ('in_complete_gene_call', int),
             ],
             'sequence_identifiers': [
                 ('reference', str),
