@@ -123,7 +123,7 @@ $(document).ready(function() {
 });
 
 
-function load_sample_group_widget(category) {
+function load_sample_group_widget(category, trigger_create_ngl_views=true) {
     $('#sample_groups').empty();
     $('#sample_groups').attr('created-for-category', category);
 
@@ -186,7 +186,10 @@ function load_sample_group_widget(category) {
     }
 
     $('#sample_groups').append(tableHtml + '</table>');
-    create_ngl_views();
+
+    if (trigger_create_ngl_views) {
+        create_ngl_views();
+    }
 }
 
 function apply_orientation_matrix_to_all_stages(orientationMatrix) {
@@ -1036,23 +1039,27 @@ function serializeAuxiliaryInputs() {
             let tag = elem.tagName;
             let id = elem.getAttribute('id');
 
-            if (tag == 'SELECT') {
-                backup[tab][id] = $(elem).val();
-            }
-            else if (tag == 'INPUT') {
-                let type = elem.getAttribute('type');
-
-                if (type == 'checkbox') {
-                    backup[tab][id] = $(elem).is(':checked');
-                }
-                else if (type == 'input' || type == 'text') {
+            if (tag && id) {
+                if (tag == 'SELECT') {
                     backup[tab][id] = $(elem).val();
+                }
+                else if (tag == 'INPUT') {
+                    let type = elem.getAttribute('type');
+
+                    if (type == 'checkbox') {
+                        backup[tab][id] = $(elem).is(':checked');
+                    }
+                    else if (type == 'input' || type == 'text') {
+                        backup[tab][id] = $(elem).val();
+                    }
                 }
             }
         });
          $(`#${tab} .colorpicker`).each((index, elem) => {
             let id = elem.getAttribute('id');
-            backup[tab][id] = $(elem).attr('color');
+            if (id) {
+                backup[tab][id] = $(elem).attr('color');
+            }
         });
     });
 
@@ -1067,6 +1074,7 @@ function serializeState() {
         'engine': $('[name=engine]:checked').val(),
         'category': $('#sample_groups_list').val(),
         'sample_groups_backup': sample_groups_backup,
+        'cached_orientation_matrices': cached_orientation_matrices,
         'filter_backup': filter_backup,
         'color_legend': color_legend,
         'size_legend': size_legend,
@@ -1153,6 +1161,79 @@ function saveState()
                 $('#modSaveState').modal('hide');
                 toastr.success("State '" + name + "' successfully saved.");
             }
+        }
+    });
+}
+
+function loadState()
+{
+    $('#modLoadState').modal('hide');
+    if ($('#loadState_list').val() == null) {
+        return;
+    }
+
+    var state_name = $('#loadState_list').val();
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/get/' + state_name,
+        success: function(response) {
+            $('#controls').empty();
+            $('#sample_groups').empty();
+            
+            state = JSON.parse(response['content']);
+            current_state_name = state_name;
+
+            sample_groups_backup = state['sample_groups_backup'];
+            cached_orientation_matrices = state['cached_orientation_matrices'];
+            filter_backup = state['filter_backup'];
+            color_legend = state['color_legend'];
+            size_legend = state['size_legend'];
+
+            if($(`#sample_groups_list option[id='${state['category']}']`).length > 0) {
+                $('#sample_groups_list').val(state['category']);
+                load_sample_group_widget(state['category'], trigger_create_ngl_views=false);
+            }
+            
+            if($(`[name=engine][value='${state['engine']}']`).length > 0) {
+                $(`[name=engine][value='${state['engine']}']`).prop('checked', true);
+            }
+
+            if($(`#gene_callers_id_list option[id='${state['gene_callers_id']}']`).length > 0) {
+                $('#gene_callers_id_list').val(state['gene_callers_id']);
+            }
+
+            for (let tab_name in state['auxiliary']) {
+                for (let object_id in state['auxiliary'][tab_name]) {
+                    let selector = `#${tab_name} #${object_id}`;
+
+                    if ($(selector).length > 0) {
+                        let elem = $(selector)[0];
+
+                        if (elem.tagName == 'SELECT') {
+                            $(elem).val(state['auxiliary'][tab_name][object_id]);
+                        }
+                        else if (elem.tagName == 'INPUT') {
+                            let type = elem.getAttribute('type');
+
+                            if (type == 'checkbox') {
+                                $(elem).prop('checked', state['auxiliary'][tab_name][object_id]);
+                            }
+                            else if (type == 'input' || type == 'text') {
+                                $(elem).val(state['auxiliary'][tab_name][object_id]);
+                            }
+                        }
+                        else if (elem.tagName == 'DIV' && elem.className.indexOf('colorpicker') > -1) {
+                            $(elem).attr('color', state['auxiliary'][tab_name][object_id]);
+                            $(elem).css('background-color', state['auxiliary'][tab_name][object_id]);
+                        }
+                    }
+                }
+            }
+
+            // start the chain reaction...
+            $('#gene_callers_id_list').trigger('change');
         }
     });
 }
