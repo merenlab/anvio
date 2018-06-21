@@ -47,7 +47,7 @@ class MODELLER:
         self.run = run
         self.progress = progress
 
-        up_to_date_modeller_exec = "mod9.19" # default exec to use
+        up_to_date_modeller_exec = "mod9.20" # default exec to use
 
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
@@ -80,16 +80,16 @@ class MODELLER:
 
         # as reward, whoever called this class will receive self.out when they run self.process()
         self.out = {
-            "templates"               : {"pdb_id": [],"chain_id": [],"ppi": []},
-            "models"                  : {"molpdf": [],"GA341_score": [],"DOPE_score": [],"picked_as_best": []},
-            "corresponding_gene_call" : self.corresponding_gene_call,
-            "structure_exists"        : False,
-            "best_model_path"         : None,
-            "best_score"              : None,
-            "scoring_method"          : self.scoring_method,
-            "percent_identical_cutoff"       : self.percent_identical_cutoff,
-            "very_fast"               : self.very_fast,
-            "deviation"               : self.deviation,
+            "templates"                : {"pdb_id": [],"chain_id": [],"ppi": []},
+            "models"                   : {"molpdf": [],"GA341_score": [],"DOPE_score": [],"picked_as_best": []},
+            "corresponding_gene_call"  : self.corresponding_gene_call,
+            "structure_exists"         : False,
+            "best_model_path"          : None,
+            "best_score"               : None,
+            "scoring_method"           : self.scoring_method,
+            "percent_identical_cutoff" : self.percent_identical_cutoff,
+            "very_fast"                : self.very_fast,
+            "deviation"                : self.deviation,
             }
 
         # All MODELLER databases are housed in self.database_dir
@@ -271,11 +271,19 @@ class MODELLER:
 
         # check that MODELLER exists
         if self.args.__dict__['modeller_executable'] if 'modeller_executable' in self.args.__dict__ else None:
-            self.run.info_single("As per your request, anvi'o will use `%s` to run MODELLER." % self.executable,
-                                  nl_before=1)
+            self.run.info_single("As per your request, anvi'o will use `%s` to run MODELLER." % self.executable, nl_before=1)
             utils.is_program_exists(self.executable)
         else:
-            utils.is_program_exists(self.executable)
+            try:
+                utils.is_program_exists(self.executable)
+            except ConfigError as e:
+                raise ConfigError("Anvi'o needs a MODELLER program to be installed on your system. You didn't specify one\
+                                   (which can be done with `--modeller-executable`), so anvi'o tried the most recent version\
+                                   it knows about: '%s'. If you are certain you have it on your system (for instance you can run it\
+                                   by typing '%s' in your terminal window), you may want to send a detailed bug report. If you\
+                                   don't have it on your system, check out these installation instructions on our website:\
+                                   http://merenlab.org/2016/06/18/installing-third-party-software/#modeller" % (program, program))
+
             self.run.info_single("Anvi'o found the default executable for MODELLER, `%s`, and will\
                                   use it." % self.executable, nl_before=1)
         self.is_executable_a_MODELLER_program()
@@ -615,16 +623,18 @@ class MODELLER:
             if is_licence_key_error:
                 # its a valid modeller program with no license key
                 license_target_file = error.split('\n')[-1]
-                raise ConfigError("MODELLER could not find your licence key. Please go to https://salilab.org/modeller/ and \
-                                   get a new license. After you receive an e-mail with your key, please open '%s' \
-                                   and replace 'XXXXX' with your key, save the file and try again. " % license_target_file)
+                raise ConfigError("You're making progress and we're proud of you! You just need to validate your MODELLER\
+                                   with a license key (it's free). Please go to https://salilab.org/modeller/registration.html\
+                                   to register for a new license. After you receive an e-mail with your key, please open '%s'\
+                                   and replace the characters `XXXXX` with your own key. Save the file and try again. " % license_target_file)
 
             else:
                 error = "\n" + "\n".join(error.split('\n'))
                 print(terminal.c(error, color='red'))
                 raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that\
                                    it is a MODELLER program. That was determined by running the command `%s`, which raised the\
-                                   error seen above." % (self.executable, " ".join(command)))
+                                   error seen above. Try running your command without `--modeller-executable`."
+                                       % (self.executable, " ".join(command)))
 
         # no error was raised. now check if output file exists
         try:
@@ -632,7 +642,7 @@ class MODELLER:
         except FilesNPathsError:
             raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that\
                                it is a MODELLER program. That was determined by running the command `%s`, which did not\
-                               output the file expected." % (self.executable, " ".join(command)))
+                               output the file expected. Try running your command without `--modeller-executable`" % (self.executable, " ".join(command)))
 
 
     def run_fasta_to_pir(self):
