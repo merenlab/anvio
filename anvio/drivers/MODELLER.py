@@ -623,10 +623,10 @@ class MODELLER:
             if is_licence_key_error:
                 # its a valid modeller program with no license key
                 license_target_file = error.split('\n')[-1]
-                raise ConfigError("You're making progress and we're proud of you! You just need to validate your MODELLER\
+                raise ConfigError("You're making progress and anvi'o is proud of you! You just need to validate your MODELLER\
                                    with a license key (it's free). Please go to https://salilab.org/modeller/registration.html\
                                    to register for a new license. After you receive an e-mail with your key, please open '%s'\
-                                   and replace the characters `XXXXX` with your own key. Save the file and try again. " % license_target_file)
+                                   and replace the characters XXXXX with your own key. Save the file and try again. " % license_target_file)
 
             else:
                 error = "\n" + "\n".join(error.split('\n'))
