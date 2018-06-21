@@ -1661,7 +1661,13 @@ class StructureInteractive(VariabilitySuper):
 
     def get_available_engines(self):
         if self.variability_table_path:
-            return [self.full_variability.engine]
+            engine = self.full_variability.engine
+            if engine == 'NT':
+                self.run.warning("You passed a variabilty table of SNVs (`--engine NT`). We did not\
+                                  develop this program with the intention of displaying NT variants\
+                                  yet it very randomly works and we're pretty happy about out. So\
+                                  have fun, yet understand some features won't work.")
+            return [engine]
         elif self.saavs_only:
             return ['AA']
         elif self.scvs_only:
