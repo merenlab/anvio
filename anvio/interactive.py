@@ -226,7 +226,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.items_additional_data_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=self.items_additional_data_dict, assign_none_for_missing=True)
             self.items_additional_data_keys = self.items_additional_data_keys + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
 
-        self.check_names_consistency()
+        if self.mode != 'gene':
+            self.check_names_consistency()
+
         self.gen_orders_for_items_based_on_additional_layers_data()
         self.convert_view_data_into_json()
 
@@ -956,6 +958,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.init_functions()
 
         ProfileSuperclass.__init__(self, self.args)
+
+        self.init_split_sequences(self.p_meta['min_contig_length'])
 
         self.init_gene_level_coverage_stats_dicts()
 
