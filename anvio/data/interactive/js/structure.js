@@ -18,6 +18,8 @@ var sample_groups_backup = {};
 
 var current_state_name;
 
+
+
 $(document).ready(function() {
     toastr.options = {
         "closeButton": true,
@@ -69,27 +71,7 @@ $(document).ready(function() {
     });
 
     $('#sample_groups_list').on('change', function(ev) {
-        // backup exists sample groups if possible
-        let backup = {
-            'groups': [],
-            'samples': {}
-        };
-
-        $('[checkbox-for="group"]:checked').each((index, element) => {
-            backup['groups'].push($(element).attr('data-group'));
-        });
-
-        $('[data-sample]:checked').each((index, element) => {
-            if (!backup['samples'].hasOwnProperty($(element).attr('data-group'))) {
-                backup['samples'][$(element).attr('data-group')] = [];
-            }
-            backup['samples'][$(element).attr('data-group')].push($(element).attr('data-sample'));
-        });
-
-        if (backup['groups'].length > 0 || Object.keys(backup['samples']).length > 0) {
-            sample_groups_backup[$('#sample_groups').attr('created-for-category')] = backup;
-        }
-
+        backupGroupsWidget();
         load_sample_group_widget($('#sample_groups_list').val());
     });
 
@@ -705,14 +687,7 @@ function create_ui() {
     let gene_callers_id = $('#gene_callers_id_list').val();
     let engine = $('[name=engine]:checked').val();
     
-    let backup = serialize_filtering_widgets();
-    if (Object.keys(backup).length > 0) {
-        if (!filter_backup.hasOwnProperty($('#controls').attr('created-for-gene-caller-id'))) {
-            filter_backup[$('#controls').attr('created-for-gene-caller-id')] = {};
-        }
-
-        filter_backup[$('#controls').attr('created-for-gene-caller-id')][$('#controls').attr('created-for-engine')] = backup;
-    }
+    backupFilters();
 
    $.ajax({
         type: 'POST',
@@ -1067,7 +1042,44 @@ function serializeAuxiliaryInputs() {
 }
 
 
+function backupGroupsWidget() {
+    let backup = {
+        'groups': [],
+        'samples': {}
+    };
+
+    $('[checkbox-for="group"]:checked').each((index, element) => {
+        backup['groups'].push($(element).attr('data-group'));
+    });
+
+    $('[data-sample]:checked').each((index, element) => {
+        if (!backup['samples'].hasOwnProperty($(element).attr('data-group'))) {
+            backup['samples'][$(element).attr('data-group')] = [];
+        }
+        backup['samples'][$(element).attr('data-group')].push($(element).attr('data-sample'));
+    });
+
+    if (backup['groups'].length > 0 || Object.keys(backup['samples']).length > 0) {
+        sample_groups_backup[$('#sample_groups').attr('created-for-category')] = backup;
+    }
+}
+
+function backupFilters() {
+    let backup = serialize_filtering_widgets();
+    if (Object.keys(backup).length > 0) {
+        if (!filter_backup.hasOwnProperty($('#controls').attr('created-for-gene-caller-id'))) {
+            filter_backup[$('#controls').attr('created-for-gene-caller-id')] = {};
+        }
+
+        filter_backup[$('#controls').attr('created-for-gene-caller-id')][$('#controls').attr('created-for-engine')] = backup;
+    }
+}
+
+
 function serializeState() {
+    backupGroupsWidget();
+    backupFilters();
+
     let state = {
         'version': '1',
         'gene_callers_id': $('#gene_callers_id_list').val(),
@@ -1180,12 +1192,16 @@ function loadState()
         url: '/state/get/' + state_name,
         success: function(response) {
             $('#controls').empty();
+            $('#controls').removeAttr('created-for-gene-caller-id');
+            $('#controls').removeAttr('created-for-engine')
             $('#sample_groups').empty();
-            
+            $('#sample_groups').removeAttr('created-for-category');
+
             state = JSON.parse(response['content']);
             current_state_name = state_name;
 
             sample_groups_backup = state['sample_groups_backup'];
+            console.log(sample_groups_backup);
             cached_orientation_matrices = state['cached_orientation_matrices'];
             filter_backup = state['filter_backup'];
             color_legend = state['color_legend'];
@@ -1213,6 +1229,7 @@ function loadState()
 
                         if (elem.tagName == 'SELECT') {
                             $(elem).val(state['auxiliary'][tab_name][object_id]);
+                            $(elem).trigger('change');
                         }
                         else if (elem.tagName == 'INPUT') {
                             let type = elem.getAttribute('type');
