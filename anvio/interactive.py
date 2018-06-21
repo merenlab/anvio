@@ -1908,14 +1908,6 @@ class StructureInteractive(VariabilitySuper):
         self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'))
         output = {}
 
-        # If no filtering parameters are given, return all variability
-        if not options["filter_params"]:
-            for group in options['groups']:
-                output[group] = {
-                    'data': self.variability_storage[gene_callers_id][selected_engine]['var_object'].data.to_json(orient='index'),
-                    'entries_after_filtering': self.variability_storage[gene_callers_id][selected_engine]['var_object'].data.shape[0]
-                }
-
         list_of_filter_functions = []
         F = lambda f, **kwargs: (f, kwargs)
         for group in options['groups']:
@@ -1927,14 +1919,16 @@ class StructureInteractive(VariabilitySuper):
             self.compute_merged_variability(var, column_info, samples_in_group)
             self.wrangle_merged_variability(var)
 
-            # now set all other filter parameters
+            # now set all filter parameters
             for filter_criterion, param_values in options["filter_params"].items():
                 for param_name, param_value in param_values.items():
                     setattr(var, param_name, param_value)
                 list_of_filter_functions.append(F(var.filter_data, name='merged', criterion=filter_criterion))
 
             # ʕ•ᴥ•ʔ
-            var.process(process_functions=list_of_filter_functions, exit_if_data_empty=False)
+            if options["filter_params"]:
+                # only filter when there were filter params passed
+                var.process(process_functions=list_of_filter_functions, exit_if_data_empty=False)
 
             output[group] = {
                 'data': var.merged.to_json(orient='index'),
