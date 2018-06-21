@@ -231,6 +231,10 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
     var stage = new NGL.Stage(`ngl_${group}`);
     var stringBlob = new Blob( [ pdb_content ], { type: 'text/plain'} );
 
+    stage.setParameters({
+        backgroundColor: "white"
+    });
+
     stage.loadFile(stringBlob, { ext: "pdb" }).then((component) => {
             if( component.type !== "structure" ) return;
 
@@ -276,10 +280,6 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
             } else {
                 component.autoView();
             }
-
-            stage.setParameters({
-                backgroundColor: "white"
-            });
 
             // prevent default tooltip
             stage.mouseControls.remove("hoverPick");
