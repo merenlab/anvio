@@ -16,7 +16,27 @@ var size_legend = {};
 var filter_backup = {};
 var sample_groups_backup = {};
 
+var current_state_name;
+
 $(document).ready(function() {
+    toastr.options = {
+        "closeButton": true,
+        "debug": false,
+        "newestOnTop": true,
+        "progressBar": false,
+        "positionClass": "toast-top-right",
+        "preventDuplicates": false,
+        "onclick": null,
+        "showDuration": "500",
+        "hideDuration": "2000",
+        "timeOut": "6000",
+        "extendedTimeOut": "1000",
+        "showEasing": "swing",
+        "hideEasing": "linear",
+        "showMethod": "fadeIn",
+        "hideMethod": "fadeOut",
+    }
+
     $('.colorpicker').colpick({
         layout: 'hex',
         submit: 0,
@@ -1125,14 +1145,13 @@ function saveState()
 
             if (response['status_code']==0)
             {
-                //toastr.error("Failed, Interface running in read only mode.");
+                toastr.error("Failed, Interface running in read only mode.");
             }
             else if (response['status_code']==1)
             {
                 // successfull
                 $('#modSaveState').modal('hide');
-
-                //toastr.success("State '" + current_state_name + "' successfully saved.");
+                toastr.success("State '" + name + "' successfully saved.");
             }
         }
     });
