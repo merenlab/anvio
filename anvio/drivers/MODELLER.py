@@ -282,7 +282,7 @@ class MODELLER:
                                    it knows about: '%s'. If you are certain you have it on your system (for instance you can run it\
                                    by typing '%s' in your terminal window), you may want to send a detailed bug report. If you\
                                    don't have it on your system, check out these installation instructions on our website:\
-                                   http://merenlab.org/2016/06/18/installing-third-party-software/#modeller" % (program, program))
+                                   http://merenlab.org/2016/06/18/installing-third-party-software/#modeller" % (self.executable, self.executable))
 
             self.run.info_single("Anvi'o found the default executable for MODELLER, `%s`, and will\
                                   use it." % self.executable, nl_before=1)
