@@ -293,6 +293,58 @@
                 </div>
             </div>
         </div>
+
+        <!-- LOAD STATE -->
+        <div class="modal fade" id="modLoadState">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                        <h4 class="modal-title">Load State</h4>
+                    </div>
+
+                    <div class="modal-body">
+                        <select class="form-control" size="10" id="loadState_list" ondblclick="loadState();" onchange="$('#loadState_lastmodified').html('Last modified: ' + $('#loadState_list option:selected').attr('lastmodified')); "></select>
+                        <br />
+                        <div id="loadState_lastmodified">Last modified: n/a</div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="loadState();">Load</button>
+                        <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SAVE STATE -->
+        <div class="modal fade" id="modSaveState">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                        <h4 class="modal-title">Save State</h4>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <select class="form-control" id="saveState_list" size="10" onchange="$('#saveState_name').val(this.value);" ondblclick="saveState();"></select>
+                        </div>
+                        <div class="form-group">
+                                <label class="col-md-2 settings-label label-big" for="saveState_name">Name: </label>  
+                                <div class="col-md-10">
+                                    <input type="text" id="saveState_name" class="form-control" />
+                                </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="saveState();">Save</button>
+                        <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 
