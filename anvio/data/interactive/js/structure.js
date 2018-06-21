@@ -8,7 +8,7 @@ var residue_info;
 var column_info;
 var sample_groups;
 var pdb_content;
-var cached_orientation_matrix = null;
+var cached_orientation_matrices = {};
 
 var color_legend = {};
 var size_legend = {};
@@ -173,7 +173,7 @@ function apply_orientation_matrix_to_all_stages(orientationMatrix) {
     for (let group in stages) {
         stages[group].viewerControls.orient(orientationMatrix); 
     }
-    cached_orientation_matrix = orientationMatrix;
+    cached_orientation_matrices[$('#gene_callers_id_list').val()] = orientationMatrix;
 }
 
 async function create_ngl_views(fetch_variability = true) {
@@ -276,8 +276,8 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 });
             }
 
-            if (cached_orientation_matrix) {
-                stage.viewerControls.orient(cached_orientation_matrix);
+            if (cached_orientation_matrices.hasOwnProperty($('#gene_callers_id_list').val())) {
+                stage.viewerControls.orient(cached_orientation_matrices[$('#gene_callers_id_list').val()]);
             } else {
                 component.autoView();
             }
