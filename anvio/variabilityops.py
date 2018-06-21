@@ -1589,6 +1589,11 @@ class VariabilitySuper(VariabilityFilter, object):
         # add all known residue info sources to columns_to_report
         C = {'text': str, 'real': float, 'integer': int}
         redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa', 'amino_acid', 'codon', 'codon_number']
+
+        # append mandatory columns
+        self.columns_to_report['structural'].extend([(x, C[y]) for x, y in zip(t.structure_residue_info_table_structure, t.structure_residue_info_table_types) if x not in redundant_columns])
+
+        # append non-mandatory columns
         for source in t.residue_info_sources:
             self.columns_to_report['structural'].extend([(x, C[y]) for x, y in zip(t.residue_info_sources[source]["structure"], t.residue_info_sources[source]["types"]) if x not in redundant_columns])
 
