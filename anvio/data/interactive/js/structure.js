@@ -1044,6 +1044,87 @@ function serializeState() {
         'auxiliary': serializeAuxiliaryInputs()
     };
 
-    console.log(state);
+    return state;
 }
 
+function showLoadStateWindow()
+{
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all',
+        success: function(state_list) {
+            $('#loadState_list').empty();
+
+            for (let state_name in state_list) {
+                $('#loadState_list').append('<option lastmodified="' + state_list[state_name]['last_modified'] + '">' + state_name + '</option>');
+            }
+
+            $('#modLoadState').modal('show');
+        }
+    });
+}
+
+function showSaveStateWindow()
+{
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all',
+        success: function(state_list) {
+            $('#saveState_list').empty();
+
+            for (let state_name in state_list) {
+                var _select = "";
+                if (state_name == current_state_name)
+                {
+                    _select = ' selected="selected"'; 
+                }
+                $('#saveState_list').append('<option ' + _select + '>' + state_name + '</option>');
+            }
+
+            $('#modSaveState').modal('show');
+            if ($('#saveState_list').val() === null) {
+                $('#saveState_name').val('default');
+            } else {
+                $('#saveState_list').trigger('change');
+            }
+        }
+    });
+}
+
+function saveState() 
+{
+    var name = $('#saveState_name').val();
+
+    if (name.length==0) {
+        $('#saveState_name').focus();
+        return;
+    }
+
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/state/save/' + name,
+        data: {
+            'content': JSON.stringify(serializeState(), null, 4)
+        },
+        success: function(response) {
+            if (typeof response != 'object') {
+                response = JSON.parse(response);
+            }
+
+            if (response['status_code']==0)
+            {
+                //toastr.error("Failed, Interface running in read only mode.");
+            }
+            else if (response['status_code']==1)
+            {
+                // successfull
+                $('#modSaveState').modal('hide');
+
+                //toastr.success("State '" + current_state_name + "' successfully saved.");
+            }
+        }
+    });
+}
