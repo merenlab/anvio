@@ -351,10 +351,14 @@ function createCharts(state){
 
     let gc_content_array = [];
     let gc_overlay_color = '#00FF00';
+    let gc_content_window_size = 100;
+    let gc_content_step_size = 10;
 
     if (typeof sessionStorage.gc_overlay_settings !== 'undefined') {
         let gc_overlay_settings = JSON.parse(sessionStorage.gc_overlay_settings);
-        gc_content_array = computeGCContent(parseInt(gc_overlay_settings['gc_window_size']), parseInt(gc_overlay_settings['gc_step_size']));
+        gc_content_window_size = parseInt(gc_overlay_settings['gc_window_size']);
+        gc_content_step_size = parseInt(gc_overlay_settings['gc_step_size']);
+        gc_content_array = computeGCContent(gc_content_window_size, gc_content_step_size);
         gc_overlay_color = gc_overlay_settings['gc_overlay_color'];
     }
 
@@ -375,6 +379,8 @@ function createCharts(state){
                         variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
                         gc_content: gc_content_array,
+                        'gc_content_window_size': gc_content_window_size,
+                        'gc_content_step_size': gc_content_step_size,
                         'gc_overlay_color': gc_overlay_color,
                         id: j++,
                         width: width,
@@ -475,6 +481,8 @@ function Chart(options){
     this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
     this.gc_content = options.gc_content;
+    this.gc_content_window_size = options.gc_content_window_size;
+    this.gc_content_step_size = options.gc_content_step_size;
     this.gc_overlay_color = options.gc_overlay_color;
     this.width = options.width;
     this.height = options.height;
@@ -538,7 +546,7 @@ function Chart(options){
 
     // .x() needs to stay as a arrow function, it has reference to scope.
     this.gc_line = d3.svg.line()
-                            .x((d, i) => { return xS((i / this.gc_content.length) * this.coverage.length); })
+                            .x((d, i) => { return xS((this.gc_content_window_size / 2) + (i * this.gc_content_step_size)); })
                             .y(function(d) { return (yGC(d) < 0) ? 0 : yGC(d); });
 
     /*
