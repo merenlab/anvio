@@ -187,17 +187,17 @@
                         <span class="settings-header" style="margin-left: 10px;"><h5>Backbone</h5></span>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Show: </label>  
-                            <div class="col-md-8"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(); " checked="checked" /></div>
+                            <div class="col-md-8"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
                         </div>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Color: </label>  
-                            <div class="col-md-8"><div class="colorpicker" id="backbone_color" color="#386496" onchange="create_ngl_views();" style="background-color: #386496;"></div>
+                            <div class="col-md-8"><div class="colorpicker" id="backbone_color" color="#386496" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #386496;"></div>
                             </div>
                         </div>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Style: </label>  
                             <div class="col-md-8">
-                                <select id="backbone_type" onchange="create_ngl_views();">
+                                <select id="backbone_type" onchange="create_ngl_views(fetch_variability=false);">
                                     <option>cartoon</option>
                                     <option>ribbon</option>
                                 </select>
@@ -207,13 +207,13 @@
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Show: </label>  
                             <div class="col-md-8">
-                                <input type="checkbox" id="show_surface" onclick="create_ngl_views(); " />
+                                <input type="checkbox" id="show_surface" onclick="create_ngl_views(fetch_variability=false); " />
                             </div>
                         </div>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Coloring: </label>  
                             <div class="col-md-8">
-                                <select id="surface_type" onchange="create_ngl_views();">
+                                <select id="surface_type" onchange="create_ngl_views(fetch_variability=false);">
                                     <option>plain</option>
                                     <option>electrostatic</option>
                                     <option>hydrophobicity</option>
@@ -224,17 +224,17 @@
                         </div>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Opacity: </label>  
-                            <div class="col-md-8"><input type="text" id="surface_opacity" value="0.3" onblur="create_ngl_views(); " /></div>
+                            <div class="col-md-8"><input type="text" id="surface_opacity" value="0.3" onblur="create_ngl_views(fetch_variability=false); " /></div>
                         </div>
                         <span class="settings-header" style="margin-left: 10px;"><h5>Ball-Stick</h5></span>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Show: </label>  
-                            <div class="col-md-8"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(); " /></div>
+                            <div class="col-md-8"><input type="checkbox" id="show_ballstick" onclick="create_ngl_views(fetch_variability=false); " /></div>
                         </div>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">When: </label>  
                             <div class="col-md-8">
-                                <select id="show_ballstick_when" onchange="create_ngl_views();">
+                                <select id="show_ballstick_when" onchange="create_ngl_views(fetch_variability=false);">
                                     <option>always</option>
                                     <option>hovered residue</option>
                                     <option>hovered residue + contacts</option>
@@ -250,7 +250,7 @@
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">When: </label>  
                             <div class="col-md-8">
-                                <select id="show_tooltip_when" onchange="create_ngl_views();">
+                                <select id="show_tooltip_when" onchange="create_ngl_views(fetch_variability=false);">
                                     <option>variant residues</option>
                                     <option>all residues</option>
                                 </select>
@@ -259,7 +259,7 @@
                         <span class="settings-header" style="margin-left: 10px;"><h5>Residue Labels</h5></span>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Show: </label>  
-                            <div class="col-md-8"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(); " /></div>
+                            <div class="col-md-8"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(fetch_variability=false); " /></div>
                         </div>
                     </div>
                     <div id="tab_summary" role="tabpanel" class="tab-pane fade">
