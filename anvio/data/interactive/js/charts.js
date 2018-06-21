@@ -168,18 +168,20 @@ function computeGCContent(window_size, step_size) {
     let gc_array = [];
     let padding = parseInt(window_size / 2);
 
-    for (let i=padding; i < sequence.length - padding; i = i + step_size) {
-        let gc_count = 0;
+    if (step_size > 0) {
+        for (let i=padding; i < sequence.length - padding; i = i + step_size) {
+            let gc_count = 0;
 
-        for (let j=i; j < i + window_size; j++) {
-            let pos = j - padding;
+            for (let j=i; j < i + window_size; j++) {
+                let pos = j - padding;
 
-            if (sequence[pos] == 'C' || sequence[pos] == 'G' || sequence[pos] == 'c' || sequence[pos] == 'g') {
-                gc_count++;
+                if (sequence[pos] == 'C' || sequence[pos] == 'G' || sequence[pos] == 'c' || sequence[pos] == 'g') {
+                    gc_count++;
+                }
             }
-        }
 
-        gc_array.push(gc_count / window_size);
+            gc_array.push(gc_count / window_size);
+        }
     }
 
     return gc_array;
