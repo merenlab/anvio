@@ -1179,6 +1179,9 @@ function loadState()
         cache: false,
         url: '/state/get/' + state_name,
         success: function(response) {
+            $('#controls').empty();
+            $('#sample_groups').empty();
+            
             state = JSON.parse(response['content']);
             current_state_name = state_name;
 
