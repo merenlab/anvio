@@ -1299,6 +1299,9 @@ class StructureInteractive(VariabilitySuper):
         self.no_variability = A('no_variability', bool)
         self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
 
+        # states
+        self.states_table = TablesForStates(self.structure_db_path)
+
         # For now, only true if self.variability_table_path. Otherwise variability is computed on the fly
         self.store_full_variability_in_memory = True if self.variability_table_path else False
         self.sample_groups_provided = True if self.profile_db_path else False
