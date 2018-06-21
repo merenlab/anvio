@@ -1067,6 +1067,7 @@ function serializeState() {
         'engine': $('[name=engine]:checked').val(),
         'category': $('#sample_groups_list').val(),
         'sample_groups_backup': sample_groups_backup,
+        'cached_orientation_matrices': cached_orientation_matrices,
         'filter_backup': filter_backup,
         'color_legend': color_legend,
         'size_legend': size_legend,
