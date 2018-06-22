@@ -1469,17 +1469,6 @@ Drawer.prototype.draw_stack_bar_layers = function() {
 
         for (var i=0; i < this.tree.leaves.length; i++) {
             q = this.tree.leaves[i];
-
-            let total = 0;
-            for (var j=0; j < this.layerdata_dict[q.label][layer.index].length; j++)
-            {
-                total = total + parseFloat(this.layerdata_dict[q.label][layer.index][j]);
-            }
-
-            if (total == 0) {
-                continue;
-            }
-
             var offset = 0;
             for (var j=0; j < this.layerdata_dict[q.label][layer.index].length; j++)
             {
