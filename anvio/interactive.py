@@ -1875,6 +1875,7 @@ class StructureInteractive(VariabilitySuper):
                 # if not, we profile from scratch, passing as an argument our gene of interest
                 self.args.engine = engine
                 self.args.genes_of_interest_set = set([gene_callers_id])
+                self.args.compute_gene_coverage_stats = True
                 var = variability_engines[engine](self.args, p=terminal.Progress(verbose=False), r=terminal.Run(verbose=False))
                 var.stealth_filtering = True
 
