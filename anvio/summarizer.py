@@ -54,7 +54,7 @@ from anvio.errors import ConfigError
 from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
-from anvio.tables.miscdata import TableForLayerAdditionalData
+from anvio.tables.miscdata import TableForLayerAdditionalData, MiscDataTableFactory
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -153,6 +153,30 @@ class SummarizerSuperClass(object):
             filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
         else:
             self.output_directory = "SUMMARY"
+
+
+    def report_misc_data_files(self, target_table='layers'):
+        if target_table == 'layer_orders':
+            raise ConfigError("Report misc data files do not know how to work with layer orders yet :/")
+
+        run_obj = terminal.Run(verbose=False)
+
+        db_path = self.pan_db_path if self.summary_type == 'pan' else self.profile_db_path
+        additional_data = MiscDataTableFactory(argparse.Namespace(pan_or_profile_db=db_path, target_data_table=target_table), r=run_obj)
+
+        data_groups, data_dict = additional_data.get_all()
+        for data_group in data_groups:
+            output_file_obj = self.get_output_file_handle(sub_directory='misc_data_%s' % target_table, prefix='%s.txt' % data_group)
+            output_file_path = output_file_obj.name
+            output_file_obj.close()
+            MiscDataTableFactory(argparse.Namespace(pan_or_profile_db=db_path, target_data_table=target_table, target_data_group=data_group), r=run_obj).export(output_file_path=output_file_path)
+
+        if 'misc_data' not in self.summary:
+            self.summary['misc_data'] = {}
+
+        data_groups_reported = list(data_groups.keys())
+        self.summary['misc_data'][target_table] = data_groups
+        self.run.info('Misc data reported for %s' % target_table, ', '.join(data_groups_reported) if data_groups else 'None', nl_before=1)
 
 
     def sanity_check(self):
@@ -556,6 +580,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from the superclass!
 
         self.generate_gene_clusters_file(collection_dict)
+
+        self.report_misc_data_files(target_table='layers')
+        self.report_misc_data_files(target_table='items')
 
         if self.debug:
             import json
@@ -1093,6 +1120,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary['num_not_shown_hmm_items'] = dict([(hmm_search_source, len(self.hmm_sources_info[hmm_search_source]['genes']) - self.summary['max_shown_header_items']) for hmm_search_type, hmm_search_source in self.hmm_searches_header])
 
         self.summary['files'] = {}
+        self.summary['misc_data'] = {}
         self.summary['collection'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from ProfileSuperclass!
         self.summary['collection_profile_items'] = [] if not len(list(self.collection_profile.values())) else list(self.collection_profile.values())[0].keys()
@@ -1146,12 +1174,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             output_file_obj = self.get_output_file_handle(prefix='bins_summary.txt')
             utils.store_dict_as_TAB_delimited_file(summary_of_bins, None, headers=['bins'] + properties, file_obj=output_file_obj)
 
-            # store layers additional data (we call it samples summary here, it is confusing in the code,
-            # but will be less confusing to the user).
-            samples_summary_obj = self.get_output_file_handle(prefix='samples_summary.txt')
-            samples_summary_output_path = samples_summary_obj.name
-            samples_summary_obj.close()
-            TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).export(output_file_path=samples_summary_output_path)
+            self.report_misc_data_files(target_table='layers')
+            self.report_misc_data_files(target_table='items')
 
             # save merged matrices for bins x samples
             for table_name in self.summary['collection_profile_items']:
