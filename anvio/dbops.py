@@ -296,7 +296,7 @@ class ContigsSuperclass(object):
             self.run.info_single("FYI: A subset of split sequences are being initialized (%d of %d the contigs database\
                                   knows about, to be precise). Nothing to worry about. Probably." \
                                                 % (len(split_names_of_interest), len(self.splits_basic_info)),
-                                  mc="cyan", nl_after=1)
+                                  mc="cyan", nl_after=1, nl_before=1)
             self.progress.new('Computing split sequences from contigs')
         else:
             split_names_of_interest = list(self.splits_basic_info.keys())
@@ -1997,10 +1997,6 @@ class ProfileSuperclass(object):
             self.split_names = utils.get_all_item_names_from_the_database(self.contigs_db_path)
         else:
             self.split_names = utils.get_all_item_names_from_the_database(self.profile_db_path)
-
-        if self.split_names == self.split_names_of_interest:
-            # the user is being silly. nick that split_names_of_interest
-            self.split_names_of_interest = None
 
         split_names_missing = (self.split_names_of_interest - self.split_names) if self.split_names_of_interest else None
         if self.split_names_of_interest and len(split_names_missing):

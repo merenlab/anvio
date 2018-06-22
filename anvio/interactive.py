@@ -11,6 +11,7 @@ import textwrap
 import pandas as pd
 
 import anvio
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.hmmops as hmmops
@@ -472,6 +473,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # if the user is using an existing profile database, we need to make sure that it is not associated
         # with a contigs database, since it would mean that it is a full anvi'o profile database and should
         # not be included in manual operations.
+        tree_order_found_in_db = False
+        item_orders_in_db = None
         if filesnpaths.is_file_exists(self.profile_db_path, dont_raise=True):
             profile_db = ProfileDatabase(self.profile_db_path)
             if profile_db.meta['contigs_db_hash']:
@@ -481,13 +484,27 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     for you. Simply type in a new profile database path (it can be a file name\
                                     that doesn't exist).")
 
-        if not self.tree and not self.view_data_path:
-            raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file? What is it that\
-                               anvi'o supposed to visualize? :(")
+            # if there is a profile database, let's check whether there are any item orders available in it.
+            # we will later put this in p_meta down below:
+            item_orders_in_db = profile_db.db.get_table_as_dict(t.item_orders_table_name)
+            for item_order in item_orders_in_db:
+                if item_orders_in_db[item_order]['type'] == 'basic':
+                    try:
+                        item_orders_in_db[item_order]['data'] = item_orders_in_db[item_order]['data'].split(',')
+                    except:
+                        self.progress.end()
+                        raise ConfigError("Something is wrong with the basic order `%s` in this profile database :(" % (item_order))
+                elif item_orders_in_db[item_order]['type'] == 'newick':
+                    tree_order_found_in_db = item_order
 
-        if not self.tree:
-            self.run.warning("You haven't declared a tree file. Anvi'o will do its best to come up with an\
-                              organization of your items.")
+
+        if not self.tree and not self.view_data_path and not tree_order_found_in_db:
+            raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file, and no tree order in the\
+                               database? What is it that anvi'o supposed to visualize? :(")
+
+        if not self.tree and not tree_order_found_in_db:
+            self.run.warning("You haven't declared a tree file and there was no tree order in the database. Anvi'o will\
+                              do its best to come up with an organization of your items.")
 
         if self.view:
             raise ConfigError("You can't use '--view' parameter when you are running the interactive interface\
@@ -503,6 +520,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             filesnpaths.is_file_exists(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
             self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
+        elif tree_order_found_in_db:
+            self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(item_orders_in_db[tree_order_found_in_db]['data']))
         else:
             self.displayed_item_names_ordered = sorted(utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:])
 
@@ -523,9 +542,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.default_view = self.p_meta['default_view']
 
         # set some default organizations of data:
-        self.p_meta['item_orders'] = {}
-        self.p_meta['available_item_orders'] = []
-        self.p_meta['default_item_order'] = []
+        if not item_orders_in_db:
+            self.p_meta['item_orders'] = {}
+            self.p_meta['available_item_orders'] = []
+            self.p_meta['default_item_order'] = []
+        else:
+            self.p_meta['item_orders'] = item_orders_in_db
+            self.p_meta['available_item_orders'] = sorted(list(item_orders_in_db.keys()))
+            self.p_meta['default_item_order'] = tree_order_found_in_db or self.p_meta['available_item_orders'][0]
 
         # if we have a tree, let's make arrangements for it:
         if self.tree:

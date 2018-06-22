@@ -313,6 +313,8 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('select');
             }
             menu.push('divider');
+            menu.push('reroot');
+            menu.push('divider');
 
             if (this.layer) {
                 menu.push('select_layer');

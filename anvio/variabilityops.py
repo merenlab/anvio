@@ -2053,7 +2053,6 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
 
     def compute_synonymity(self):
-        is_synonymous = constants.is_synonymous
         coding_codons = constants.coding_codons
 
         number_of_pairs = len(coding_codons)*(len(coding_codons)+1)//2
@@ -2306,7 +2305,6 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
 
         self.args = args
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
-        null = lambda x: x
         self.variability_table_path = A('variability_profile', str)
         self.engine = A('engine', str)
 
