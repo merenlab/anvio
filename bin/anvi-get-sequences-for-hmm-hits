@@ -115,7 +115,7 @@ def main(args):
             hmmops.SequencesForHMMHits(args.contigs_db).list_available_hmm_sources()
 
         if args.list_available_gene_names:
-            hmmops.SequencesForHMMHits(args.contigs_db).list_available_gene_names()
+            hmmops.SequencesForHMMHits(args.contigs_db).list_available_gene_names(sources=list(hmm_sources))
 
         if (args.profile_db and not args.collection_name) or (args.collection_name and not args.profile_db):
             raise ConfigError("You can't use this program with a profile database but without a collection name,\

@@ -128,10 +128,22 @@ class SequencesForHMMHits:
         sys.exit(0)
 
 
-    def list_available_gene_names(self, dont_quit=False):
+    def list_available_gene_names(self, sources=[], dont_quit=False):
         self.check_init()
- 
-        for source in self.sources:
+
+        if sources:
+            if not isinstance(sources, list):
+                raise ConfigError('HMM sources must be of type `list`.')
+
+            missing_sources = [s for s in sources if s not in self.hmm_hits_info]
+            if len(missing_sources):
+                raise ConfigError("Some of the HMM sources you are looking for are not known\
+                                   to this database: %s." % (', '.join(['"%s"' % s for s in missing_sources])))
+            hmm_sources = sources
+        else:
+            hmm_sources = self.sources
+
+        for source in hmm_sources:
             t = self.hmm_hits_info[source]
             run.info_single('%s [type: %s]: %s' % (source, t['search_type'], ', '.join(sorted(t['genes'].split(',')))), nl_after = 2)
 

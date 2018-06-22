@@ -228,7 +228,7 @@ class ContigsSuperclass(object):
         self.progress.end()
 
         if len(splits_taxonomy_table):
-            self.run.info('Taxonomy', 'Initiated for taxonomic level for "%s"' % t_level)
+            self.run.info('Splits taxonomy', 'Initiated for taxonomic level for "%s"' % t_level)
 
 
     def init_contig_sequences(self, min_contig_length=0):
