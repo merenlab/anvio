@@ -550,7 +550,6 @@ class BottleApplication(Bottle):
         data['coverage'] = []
         for layer in layers:
             coverage_list = coverages[layer].tolist()
-            # gene -+ 100 gap if possible
             data['coverage'].append(coverage_list[focus_region_start:focus_region_end])
 
         data['sequence'] = self.interactive.split_sequences[split_name][focus_region_start:focus_region_end]
@@ -563,8 +562,32 @@ class BottleApplication(Bottle):
         for layer in layers:
             progress.update('Formatting variability data: "%s"' % layer)
             data['layers'].append(layer)
-            data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
-            data['variability'].append(split_variability_info_dict[layer]['variability'])
+
+            # filter and substract offset variability, and competing nucleotide information.
+            variability_dict_original = copy.deepcopy(split_variability_info_dict[layer]['variability'])
+            variability_dict = {}
+            for nucleotide_pos_in_codon in variability_dict_original:
+                variability_dict[nucleotide_pos_in_codon] = {}
+                for pos in variability_dict_original[nucleotide_pos_in_codon]:
+                    if pos < focus_region_start or pos > focus_region_end:
+                        continue
+
+                    variability_dict[nucleotide_pos_in_codon][pos - focus_region_start] = variability_dict_original[nucleotide_pos_in_codon][pos]
+
+            competing_nucleotides_dict_original = copy.deepcopy(split_variability_info_dict[layer]['competing_nucleotides'])
+            competing_nucleotides_dict = {}
+            for pos in competing_nucleotides_dict_original:
+                if pos < focus_region_start or pos > focus_region_end:
+                    continue
+
+                entry = competing_nucleotides_dict_original[pos]
+                entry['pos_in_split'] = pos
+                entry['pos'] = pos - focus_region_start
+
+                competing_nucleotides_dict[entry['pos']] = entry
+
+            data['competing_nucleotides'].append(competing_nucleotides_dict)
+            data['variability'].append(variability_dict)
 
         levels_occupied = {1: []}
         for entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
