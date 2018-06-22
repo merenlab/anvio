@@ -73,12 +73,25 @@ function searchFunctions() {
                 search_column = 'Annotation';
 
                 for (var i=0; i < data['results'].length; i++) {
-                    var _gene_caller_id = data['results'][i][0];
-                    var _source         = data['results'][i][1];
-                    var _accession      = data['results'][i][2];
-                    var _annotation     = data['results'][i][3];
-                    var _search_term    = data['results'][i][4];
-                    var _split_name     = data['results'][i][5];
+                    console.log(mode);
+                    if (mode == 'pan') {
+                        var _gene_caller_id = data['results'][i][0];
+                        var _genome_name    = data['results'][i][1];
+                        var _source         = data['results'][i][2];
+                        var _accession      = data['results'][i][3];
+                        var _annotation     = data['results'][i][4];
+                        var _search_term    = data['results'][i][5];
+                        var _split_name     = data['results'][i][6];                        
+                    }
+                    else
+                    {
+                        var _gene_caller_id = data['results'][i][0];
+                        var _source         = data['results'][i][1];
+                        var _accession      = data['results'][i][2];
+                        var _annotation     = data['results'][i][3];
+                        var _search_term    = data['results'][i][4];
+                        var _split_name     = data['results'][i][5];
+                    }
 
                     var _beginning = _annotation.toLowerCase().indexOf(_search_term.toLowerCase());
                     _annotation = [_annotation.slice(0, _beginning), 
