@@ -1709,6 +1709,14 @@ D = {
              'help': "If provided, no measures of sequence heterogeneity (from short read data) will be overlayed\
                       on structures."}
                 ),
+    'compute-gene-coverage-stats': (
+            ['--compute-gene-coverage-stats'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "If provided, gene coverage statistics will be appended to the table for each entry.\
+                      This is very useful information, but will not be included by default because it is an\
+                      expensive opeation, and you a busy person."}
+                ),
 }
 
 # two functions that works with the dictionary above.
