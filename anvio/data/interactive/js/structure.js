@@ -549,9 +549,23 @@ function draw_variability() {
     let gene_callers_id = $('#gene_callers_id_list').val();
     let engine = $('[name=engine]:checked').val();
 
+    if (Object.keys(stages).length == 0)
+        return;
+
     for (let group in variability) {
+        if (!stages.hasOwnProperty(group))
+            return;
+
         let data = variability[group];
-        let component = stages[group].compList[0];
+        let compList = stages[group].compList;
+
+        if (compList.length == 0)
+            return;
+
+        let component = compList[0];
+
+        if (!component)
+            return;
 
         component.reprList.slice(0).forEach((rep) => {
             if (rep.name == 'spacefill') {
