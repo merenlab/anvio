@@ -52,8 +52,9 @@ if __name__ == '__main__':
     groupS.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
     groupV.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {"required": False}))
     groupV.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {"required": False}))
-    groupV.add_argument(*anvio.A('variability-profile'), **anvio.K('variability-profile')) # FIXME make allowable
-    groupV.add_argument(*anvio.A('no-variability'), **anvio.K('no-variability'))
+    groupV.add_argument(*anvio.A('variability-profile'), **anvio.K('variability-profile'))
+    #groupV.add_argument(*anvio.A('no-variability'), **anvio.K('no-variability')) #FIXME making this compatible
+                                                                                  #with the code hardly seems worth it
     groupR.add_argument(*anvio.A('splits-of-interest'), **anvio.K('splits-of-interest'))
     groupR.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupR.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id', bin_id_dict))
