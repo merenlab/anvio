@@ -166,17 +166,17 @@
     </section>
 
 
-    <!-- BINS PANEL -->
+    <!-- SUMMARY of BINS PANEL -->
     <section>
         <div class="container">
             <div class="panel panel-info" id="bins_panel">
                 <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
+                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary of Bins ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
                 </div>
 
                 <div id="collapse-bins" class="panel-collapse collapse">
                     <div class="panel-body">
-                        <p style="color: #AAAAAA; padding: 20px;">Summary of of each bin. You can download the information below also as a <a href="{{ files|lookup:'bins_summary' }}">TAB-delimited file</a>. Here is another TAB-delimited file that reports <a href="{{ files|lookup:'samples_summary' }}">data for each single profile (such as number of reads mapped, etc)</a>.</p>
+                        <p style="color: #AAAAAA; padding: 20px;">Summary of of each bin. You can download the information below also as a <a href="{{ files|lookup:'bins_summary' }}">TAB-delimited file</a>. Here is another TAB-delimited file that reports <a href="{{ files|lookup:'misc_data_layers' }}">data for each single profile (such as number of reads mapped, etc)</a>.</p>
 
                         <div class="panel panel-default">
                             <div class="panel-body">
@@ -675,6 +675,38 @@
         </div>
     </section>
     {% endif %}
+
+
+    <!-- MISC DATA PANEL -->
+    <section>
+        <div class="container">
+            <div class="panel panel-info" id="misc_data_panel">
+                <div class="panel-heading">
+                    <h1 class="panel-title">Misc Data</h1>
+                </div>
+
+                <div class="panel-body">
+                    <p style="color: #222222; padding-left: 10px; padding-top: 10px; font-size: larger;"><b>For layers</b></p>
+                    {% if misc_data|lookup:"layers" %}
+                    <p style="color: #222222; padding-left: 20px;">The directory <a href="misc_data_layers/">misc data layers</a> contains TAB-delimited files for additional data stored under the following data group names for each <b>sample/layer</b> found in the merged database: {% for layer_data_group in misc_data|lookup:"layers" %}{{ layer_data_group }}{% if forloop.last %}.{% else %}, {% endif %}{% endfor %}</p>
+                    {% if misc_data|lookup:"layers" %}
+                    <p style="color: #222222; padding-left: 20px;">The <b>default</b> data group, which often is added by anvi'o automatically and contains important information, contained these keys: {% for key in misc_data|lookup:"layers"|lookup:"default" %}<b>{{ key }}</b>{% if forloop.last %}.{% else %}, {% endif %}{% endfor %}</p>
+                    {% endif %}
+                    {% else %}
+                    <p style="color: #442222; padding-left: 20px;">None found :/</p>
+                    {% endif %}
+
+                    <p style="color: #222222; padding-left: 10px; padding-top: 10px; font-size: larger;"><b>For items</b></p>
+                    {% if misc_data|lookup:"items" %}
+                    <p style="color: #222222; padding-left: 20px;">The directory <a href="misc_data_items/">misc data items</a> contains TAB-delimited files for additional data stored under the following data group names for each <b>item</b> found in the merged database: {% for item_data_group in misc_data|lookup:"layers" %}{{ item_data_group }}{% if forloop.last %}.{% else %}, {% endif %}{% endfor %}</p>
+                    {% else %}
+                    <p style="color: #442222; padding-left: 20px;">None found :(</p>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </section>
 
 
     <div style="margin-bottom:200px"></div>
