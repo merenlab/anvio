@@ -1100,7 +1100,6 @@ function serializeState() {
         'engine': $('[name=engine]:checked').val(),
         'category': $('#sample_groups_list').val(),
         'sample_groups_backup': sample_groups_backup,
-        'cached_orientation_matrices': cached_orientation_matrices,
         'filter_backup': filter_backup,
         'color_legend': color_legend,
         'size_legend': size_legend,
@@ -1205,6 +1204,7 @@ function loadState()
         cache: false,
         url: '/state/get/' + state_name,
         success: function(response) {
+            cached_orientation_matrices = {};
             $('#controls').empty();
             $('#controls').removeAttr('created-for-gene-caller-id');
             $('#controls').removeAttr('created-for-engine')
@@ -1215,15 +1215,12 @@ function loadState()
             current_state_name = state_name;
 
             sample_groups_backup = state['sample_groups_backup'];
-            console.log(sample_groups_backup);
-            cached_orientation_matrices = state['cached_orientation_matrices'];
             filter_backup = state['filter_backup'];
             color_legend = state['color_legend'];
             size_legend = state['size_legend'];
 
             if($(`#sample_groups_list option[id='${state['category']}']`).length > 0) {
                 $('#sample_groups_list').val(state['category']);
-                load_sample_group_widget(state['category'], trigger_create_ngl_views=false);
             }
             
             if($(`[name=engine][value='${state['engine']}']`).length > 0) {
