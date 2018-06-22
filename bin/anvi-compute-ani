@@ -134,6 +134,7 @@ if __name__ == '__main__':
                                      ANI. If Pan Database is given anvi'o will write computed output\
                                      to misc data tables of Pan Database.")
 
+    parser.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     parser.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
     parser.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
