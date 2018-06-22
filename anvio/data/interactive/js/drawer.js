@@ -1191,17 +1191,8 @@ Drawer.prototype.draw_layer_backgrounds = function() {
             _opacity = parseFloat(this.settings['background-opacity']);
         }
 
-        if (layer.is_stackbar) {
-            // we draw background as a last item of stack bar so we won't have to create
-            // path for last item. we just save one path. just one. but everything counts.
-            // the loop in draw_stack_bar function has one missing indice for this reason
-            let bars = getLayerName(layer.index).split(';')
-            _bgcolor = stack_bar_colors[layer.index][bars[bars.length - 1]];
-            _opacity = 1;
-        }
-
         // draw backgrounds
-        if (this.settings['tree-type']=='phylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text') || layer.is_stackbar))
+        if (this.settings['tree-type']=='phylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
         {
             drawPhylogramRectangle('layer_background_' + layer.order,
                 'all',
@@ -1215,7 +1206,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         }
 
 
-        if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text') || layer.is_stackbar))
+        if (this.settings['tree-type'] == 'circlephylogram' && ((layer.is_numerical && layer.get_visual_attribute('type') == 'bar') || (layer.is_categorical && layer.get_visual_attribute('type') == 'text')))
         {
             var _first = this.tree.leaves[0];
             var _last = this.tree.leaves[this.tree.leaves.length - 1];
@@ -1480,7 +1471,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
             q = this.tree.leaves[i];
 
             let total = 0;
-            for (var j=0; j < this.layerdata_dict[q.label][layer.index].length - 1; j++)
+            for (var j=0; j < this.layerdata_dict[q.label][layer.index].length; j++)
             {
                 total = total + parseFloat(this.layerdata_dict[q.label][layer.index][j]);
             }
@@ -1490,7 +1481,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
             }
 
             var offset = 0;
-            for (var j=0; j < this.layerdata_dict[q.label][layer.index].length - 1; j++)
+            for (var j=0; j < this.layerdata_dict[q.label][layer.index].length; j++)
             {
                 if (this.settings['tree-type'] == 'phylogram') {
                     if (q.order == 0) {
@@ -1565,7 +1556,6 @@ Drawer.prototype.draw_stack_bar_layers = function() {
         let layer_name = getLayerName(layer.index);
         let bars = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
 
-        // see comment in draw_layer_backgrounds 
         for (var j = path_cache.length - 1; j >= 0; j--) {
             var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
