@@ -21,23 +21,35 @@ __email__ = "ozcanesen@gmail.com"
 
 
 class PyANI:
-    def __init__(self, args={}, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, args={}, run=terminal.Run(), progress=terminal.Progress(), program_name='average_nucleotide_identity.py'):
         self.run = run
         self.progress = progress
-        self.program_name = 'average_nucleotide_identity.py'
-        utils.is_program_exists(self.program_name)
+        self.program_name = program_name 
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads') or 1
         self.method = A('method') or 'ANIb'
         self.log_file_path = os.path.abspath(A('log_file') or filesnpaths.get_temp_file_path())
 
+        self.check_programs()
+
         self.run.warning("Anvi'o will use 'PyANI' by Pritchard et al. (DOI: 10.1039/C5AY02550H) to compute ANI. If you publish your findings, \
                             please do not forget to properly credit their work.", lc='green', header="CITATION")
 
         self.run.info('[PyANI] Num threads to use', self.num_threads)
         self.run.info('[PyANI] Alignment method', self.method)
-        self.run.info('[PyANI] Log file path', self.log_file_path)
+        self.run.info('[PyANI] Log file path', self.log_file_path, nl_after=1)
+
+
+    def check_programs(self):
+        utils.is_program_exists(self.program_name)
+
+        if self.method == 'ANIb':
+            utils.is_program_exists('blastn')
+        elif self.method == 'ANIblastall':
+            utils.is_program_exists('blastall')
+        elif self.method == 'ANIm':
+            utils.is_program_exists('nucmer')
 
 
     def run_command(self, input_path):
