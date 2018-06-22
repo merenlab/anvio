@@ -1454,6 +1454,8 @@ class StructureInteractive(VariabilitySuper):
 
     def get_column_info(self, gene_callers_id, engine):
         var = self.variability_storage[gene_callers_id][engine]['var_object']
+        if var.data.empty:
+            return []
 
         FIND_MIN = lambda c: var.data[c].min() if c in var.data.columns else 0
         FIND_MAX = lambda c: var.data[c].max() if c in var.data.columns else 1
@@ -1906,7 +1908,7 @@ class StructureInteractive(VariabilitySuper):
                 # we convert counts to frequencies so high-covered samples do not skew averaging
                 # across samples
                 var.process_functions.append((var.convert_counts_to_frequencies, {}))
-                var.process()
+                var.process(exit_if_data_empty=False)
 
             gene_var[engine]['var_object'] = var
             self.run.info_single('%s for gene %s are loaded' % ('SAAVs' if engine == 'AA' else 'SCVs', gene_callers_id),
@@ -2044,6 +2046,9 @@ class StructureInteractive(VariabilitySuper):
            1234        B          0.9
         """
         var.merged = copy.deepcopy(var.data)
+        if var.merged.empty:
+            return
+
         var.filter_data(name = 'merged', criterion = 'sample_id', subset_filter = sample_group_to_merge)
 
         columns_and_types_dict = {e['name']: e['data_type'] for e in column_info if not e.get('merged_only')}
