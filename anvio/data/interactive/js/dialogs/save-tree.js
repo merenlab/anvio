@@ -20,6 +20,11 @@
 
 
 function SaveTreeDialog() {
+    if (!(mode == 'full' || mode == 'pan' || mode == 'manual')) {
+        toastr.warning('Saving modified tree functionality is not available for this mode.');
+        return;
+    }
+
     this.current_tree_name = last_settings['order-by'];
 
     this.dialog = document.createElement('div');
