@@ -234,10 +234,11 @@ ContextMenu = function(options) {
             'title': 'Rotate',
             'action': (node, layer, param) => {
                 new_tree = new Tree();
-                new_tree.Parse(samples_order_dict[last_settings['samples-order']]['newick'], false);
+                new_tree.Parse(samplesClusteringData['newick'], false);
                 new_tree.nodes[this.node.id].Rotate();
-                samples_order_dict[last_settings['samples-order']]['newick'] = new_tree.Serialize();
-                $('#samples_order').val(last_settings['samples-order']).trigger('change');
+                samplesClusteringData['newick'] = new_tree.Serialize();
+                $('#samples_order').val('custom').trigger('change');
+                $('#samples_tree_modified_warning').show();
                 drawTree();
             }
         },
@@ -251,13 +252,14 @@ ContextMenu = function(options) {
                     cache: false,
                     url: '/data/reroot_tree',
                     data: {
-                        'newick': samples_order_dict[last_settings['samples-order']]['newick'],
+                        'newick': samplesClusteringData['newick'],
                         'left_most': left_most.label,
                         'right_most': right_most.label  
                     },
                     success: function(data) {
-                        samples_order_dict[last_settings['samples-order']]['newick'] = data['newick'];
-                        $('#samples_order').val(last_settings['samples-order']).trigger('change');
+                        samplesClusteringData['newick'] = data['newick'];
+                        $('#samples_order').val('custom').trigger('change');
+                        $('#samples_tree_modified_warning').show();
                         drawTree();
                     }
                 });

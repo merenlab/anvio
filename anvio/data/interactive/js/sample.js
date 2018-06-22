@@ -5,6 +5,8 @@ var samples_stack_bar_stats = {};
 var samples_information_dict;
 var samples_order_dict;
 
+var samplesClusteringData = {'newick': '', 'basic': null};
+
 function get_newick_leaf_order(newick)
 {
     var _order_list = [];
@@ -31,20 +33,20 @@ $(document).ready(function() {
     $('#samples_order').change(function() {
         $('#btn_redraw_samples').prop('disabled', true);
 
-        if (this.value == 'custom') 
-            return;
+        if (samples_order_dict.hasOwnProperty(this.value)) {
+            samplesClusteringData = samples_order_dict[this.value];
+        }
 
-        var organization = samples_order_dict[this.value];
         var samples_new_order;
 
         // get new sample order
-        if (organization['basic'] != null && organization['basic'] != "")
+        if (samplesClusteringData['basic'] != null && samplesClusteringData['basic'] != "")
         {
-            samples_new_order = organization['basic'].split(',');
+            samples_new_order = samplesClusteringData['basic'].split(',');
         }
         else
         {
-            samples_new_order = get_newick_leaf_order(organization['newick']);
+            samples_new_order = get_newick_leaf_order(samplesClusteringData['newick']);
         }
         $.map(samples_new_order, $.trim);
 
@@ -802,10 +804,10 @@ function drawSamplesTree(settings, sample_xy)
     createBin('samples', 'samples_tree');
     var samples_order = settings['samples-order'];
 
-    if (!samples_order_dict.hasOwnProperty(samples_order) || samples_order_dict[samples_order]['newick'] == null || samples_order_dict[samples_order]['newick'] == '')
+    if (samplesClusteringData['newick'] == null || samplesClusteringData['newick'] == '')
         return;
 
-    var newick = samples_order_dict[samples_order]['newick'];
+    var newick = samplesClusteringData['newick'];
     var t = new Tree();
     t.Parse(newick, settings['samples-edge-length-normalization']);
     t.ComputeDepths();
