@@ -296,7 +296,7 @@ class BottleApplication(Bottle):
                         item_lengths[gene_cluster] += len(self.interactive.gene_clusters[gene_cluster][genome])
 
             functions_sources = []
-            if self.interactive.mode == 'full':
+            if self.interactive.mode == 'full' or self.interactive.mode == 'gene':
                 functions_sources = list(self.interactive.gene_function_call_sources)
             elif self.interactive.mode == 'pan':
                 functions_sources = list(self.interactive.gene_clusters_function_sources)
