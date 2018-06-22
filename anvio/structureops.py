@@ -409,6 +409,9 @@ class Structure(object):
             # Append info to tables
             self.append_gene_info_to_tables(modeller_out, residue_info_dataframe)
 
+            # Append metadata to self
+            self.update_structure_database_meta_table(has_structure)
+
             if self.full_modeller_output:
                 self.dump_results_to_full_output()
 
@@ -416,9 +419,6 @@ class Structure(object):
 
         if not has_structure[True]:
             raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
-
-        # add metadata
-        self.update_structure_database_meta_table(has_structure)
 
         self.structure_db.disconnect()
 
