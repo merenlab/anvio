@@ -1856,9 +1856,8 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         # fill in additional fields for new entries. compute_additional_fields takes a list of
         # entry_ids to consider for self.data, which here is provided from new_entries (what I'm
         # saying is new_entries is not passed, only the entry_id's in new_entries
-        self.compute_additional_fields(list(new_entries["entry_id"]))
-
         self.progress.end()
+        self.compute_additional_fields(list(new_entries["entry_id"]))
 
         self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode")
 
