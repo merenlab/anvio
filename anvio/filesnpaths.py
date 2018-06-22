@@ -56,6 +56,8 @@ def is_proper_newick(newick_data, dont_raise=False):
             raise FilesNPathsError("Your tree doesn't seem to be properly formatted. Here is what ETE had\
                                     to say about this: '%s'. Pity :/" % e)
 
+    return True
+
 
 def is_file_exists(file_path, dont_raise=False):
     if not file_path:
