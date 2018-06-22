@@ -12,7 +12,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.fastalib import ReadFasta
 from anvio.drivers import driver_modules
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError, HDF5Error
+from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -77,9 +77,3 @@ if __name__ == '__main__':
     except DictIOError as e:
         print(e)
         sys.exit(-3)
-    except SamplesError as e:
-        print(e)
-        sys.exit(-4)
-    except HDF5Error as e:
-        print(e)
-        sys.exit(-5)
