@@ -1431,8 +1431,8 @@ class StructureInteractive(VariabilitySuper):
     def get_column_info(self, gene_callers_id, engine):
         var = self.variability_storage[gene_callers_id][engine]['var_object']
 
-        FIND_MIN = lambda c: var.data[c].min()
-        FIND_MAX = lambda c: var.data[c].max()
+        FIND_MIN = lambda c: var.data[c].min() if c in var.data.columns else 0
+        FIND_MAX = lambda c: var.data[c].max() if c in var.data.columns else 1
 
         info = [
             {
