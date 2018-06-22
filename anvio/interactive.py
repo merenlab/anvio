@@ -344,7 +344,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     else:
                         if '!' in layer:
                             stackbar_name = layer.split('!')[0]
-                            item_layer_data_tuple.append((float(self.items_additional_data_dict[item][layer]) / (1.0 * float(sum_stackbar_items[stackbar_name][item])), item))
+                            if float(sum_stackbar_items[stackbar_name][item]) != 0.0:
+                                item_layer_data_tuple.append((float(self.items_additional_data_dict[item][layer]) / (1.0 * float(sum_stackbar_items[stackbar_name][item])), item))
+                            else:
+                                item_layer_data_tuple.append((0.0, item))
                         else:
                             item_layer_data_tuple.append((layer_type(self.items_additional_data_dict[item][layer]), item))
 
