@@ -366,7 +366,15 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
             if predicted_key_type == "stackedbar":
                 stackbar_name = data_key.split('!')[0]
-                layer_name_layer_data_tuples = [(float(additional_data_dict[layer][data_key]) / (1.0 * sum_stackbar_items[stackbar_name][layer]) if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
+                layer_name_layer_data_tuples = []
+                for layer in additional_data_dict:
+                    if additional_data_dict[layer][data_key]:
+                        if sum_stackbar_items[stackbar_name][layer] == 0:
+                            layer_name_layer_data_tuples.append((0, layer))
+                        else:
+                            layer_name_layer_data_tuples.append(((float(additional_data_dict[layer][data_key]) / (1.0 * sum_stackbar_items[stackbar_name][layer])), layer))
+                    else:
+                        layer_name_layer_data_tuples.append((self.nulls_per_type[predicted_key_type], layer))
             else:
                 layer_name_layer_data_tuples = [(additional_data_dict[layer][data_key] if additional_data_dict[layer][data_key] else self.nulls_per_type[predicted_key_type], layer) for layer in additional_data_dict]
 

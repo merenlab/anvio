@@ -641,9 +641,11 @@ function drawSamplesLayers(settings) {
                     _sum = _sum + stack_bar_items[_j];
                 }
 
-                for (var _j=0; _j < stack_bar_items.length; _j++)
-                {
-                    stack_bar_items[_j] = stack_bar_items[_j] / _sum;
+                if (_sum > 0) {
+                    for (var _j=0; _j < stack_bar_items.length; _j++)
+                    {
+                        stack_bar_items[_j] = stack_bar_items[_j] / _sum;
+                    }
                 }
 
                 var offset = 0;
