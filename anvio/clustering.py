@@ -2,7 +2,6 @@
 # pylint: disable=line-too-long
 """Clustering operations and helper functions"""
 
-import os
 import numpy as np
 import pandas as pd
 
