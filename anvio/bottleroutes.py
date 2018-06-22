@@ -355,26 +355,34 @@ class BottleApplication(Bottle):
             overwrite = True if request.forms.get('overwrite') == 'true' else False
             name = request.forms.get('name')
             data = request.forms.get('data')
+            tree_type = request.forms.get('tree_type')
             additional = request.forms.get('additional')
             
-            self.interactive.p_meta['item_orders'][name] = {'type': 'newick', 'data': data, 'additional': additional}
+            if tree_type == 'samples':
+                if name in self.interactive.layers_order_data_dict:
+                    raise Exception("Tree name '%s' already exists, overwriting currently not supported." % name)
 
-            anvio_db = db.DB(self.interactive.pan_db_path or self.interactive.profile_db_path, None, ignore_version=True)
-            orders_in_database = anvio_db.get_table_as_dict(t.item_orders_table_name)
-
-            if overwrite:
-                if name not in orders_in_database:
-                    raise Exception('You wanted to overwrite "%s", but this order does not exists in database.' % name)
-
-                anvio_db._exec('''UPDATE %s SET "data" = ?, "additional" = ? WHERE "name" LIKE ?''' % t.item_orders_table_name, (data, additional, name))
+                self.interactive.layers_order_data_dict[name] = {'newick': data, 'basic': ''}
+                TableForLayerOrders(self.interactive.args).add({name: {'data_type': 'newick', 'data_value': data}})
             else:
-                if name in orders_in_database:
-                    raise Exception('Order "%s" already in database, If you want to overwrite please use overwrite option.' % name)
+                self.interactive.p_meta['item_orders'][name] = {'type': 'newick', 'data': data, 'additional': additional}
 
-                anvio_db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.item_orders_table_name, (name, 'newick', data, additional))
+                anvio_db = db.DB(self.interactive.pan_db_path or self.interactive.profile_db_path, None, ignore_version=True)
+                orders_in_database = anvio_db.get_table_as_dict(t.item_orders_table_name)
 
-            anvio_db.set_meta_value('available_item_orders', ",".join(anvio_db.get_single_column_from_table(t.item_orders_table_name, 'name')))
-            anvio_db.disconnect()
+                if overwrite:
+                    if name not in orders_in_database:
+                        raise Exception('You wanted to overwrite "%s", but this order does not exists in database.' % name)
+
+                    anvio_db._exec('''UPDATE %s SET "data" = ?, "additional" = ? WHERE "name" LIKE ?''' % t.item_orders_table_name, (data, additional, name))
+                else:
+                    if name in orders_in_database:
+                        raise Exception('Order "%s" already in database, If you want to overwrite please use overwrite option.' % name)
+
+                    anvio_db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.item_orders_table_name, (name, 'newick', data, additional))
+
+                anvio_db.set_meta_value('available_item_orders', ",".join(anvio_db.get_single_column_from_table(t.item_orders_table_name, 'name')))
+                anvio_db.disconnect()
 
             return json.dumps({'status': 0, 'message': 'New order "%s" successfully saved to the database.' % name})
 
