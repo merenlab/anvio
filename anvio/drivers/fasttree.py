@@ -1,16 +1,12 @@
 # coding: utf-8
 """Interface to FastTree."""
 
-import os
-import io
 from subprocess import Popen, PIPE
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import ConfigError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -41,7 +37,7 @@ class FastTree:
         fasttree = Popen(self.command, stdout=PIPE, stdin=PIPE, stderr=PIPE)
         output = fasttree.communicate(input=input_file.read())
         input_file.close()
-        
+
         output_stdout = output[0].decode().rstrip()
         output_stderr = output[1].decode().splitlines()
 
@@ -63,8 +59,10 @@ class FastTree:
                     run.info(line[0], line[1].strip())
                 else:
                     run.info("Info", ":".join(line))
-            
+
         if filesnpaths.is_proper_newick(output_stdout):
             output_file = open(output_file_path, 'w')
-            output_file.write(output_stdout)
+            output_file.write(output_stdout + '\n')
             output_file.close()
+
+            run.info('FastTree output newick file', output_file_path, mc='green', nl_before=1, nl_after=1)
