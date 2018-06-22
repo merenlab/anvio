@@ -531,6 +531,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.num_positions_from_each_split = A('num_positions_from_each_split', int) or 0
         # output
         self.quince_mode = A('quince_mode', bool)
+        self.compute_gene_coverage_stats = A('compute_gene_coverage_stats', bool)
         self.output_file_path = A('output_file', null)
         self.only_if_structure = A('only_if_structure', bool)
         self.skip_sanity_check = A('skip_sanity_check', bool) or False
@@ -1214,6 +1215,8 @@ class VariabilitySuper(VariabilityFilter, object):
         N, and treats it like any other item in self.items. This means it can be the consensus
         value, or be one of the items in competing_nts, etc.
         """
+        self.progress.new("Computing additional fields")
+        self.progress.update("...")
 
         # First, we just make sure that whatever operations we have performed on self.data, we have
         # not altered the types of coverage values from int. I am learning that with pandas
@@ -1282,6 +1285,8 @@ class VariabilitySuper(VariabilityFilter, object):
         for m in self.substitution_scoring_matrices:
             substitution_scoring_matrix = utils.convert_SSM_to_single_accession(self.substitution_scoring_matrices[m])
             self.data.loc[entry_ids, m] = self.data.loc[entry_ids, self.competing_items].apply(lambda x: substitution_scoring_matrix.get(x, None))
+
+        self.progress.end()
 
 
     def report_change_in_entry_number(self, num_before, num_after, reason="unknown reason"):
@@ -1601,12 +1606,17 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def compute_gene_coverage_fields(self):
+        if not self.compute_gene_coverage_stats:
+            return
 
         # Initialize the profile super FIXME This bastard spits out 
         #       Auxiliary Data ...............................: Found: SAR11/AUXILIARY-DATA.db (v. 2)
         #       Profile Super ................................: Initialized with all 1393 splits: SAR11/PROFILE.db (v. 27)
         # and it isn't silenced even if self.Run(verbose=False) is passed to the VariabilitySuper class
         profile_super = dbops.ProfileSuperclass(argparse.Namespace(profile_db = self.profile_db_path))
+
+        self.progress.new('Computing gene coverage stats')
+        self.progress.update('... {consider --skip-gene-coverage-stats if taking too long}')
 
         # obtain gene coverage info per gene/sample combo
         gene_cov_dict = {}
@@ -1637,6 +1647,8 @@ class VariabilitySuper(VariabilityFilter, object):
         # this guy piggybacks in this method
         self.data['mean_normalized_coverage'] = self.data['coverage'] / self.data['gene_coverage']
         self.data.loc[self.data['gene_coverage'] == -1, 'mean_normalized_coverage'] = -1
+
+        self.progress.end()
 
 
     def get_gene_length(self, gene_callers_id):
