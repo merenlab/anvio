@@ -221,11 +221,12 @@ class MODELLER:
         if not matches_after_filter:
             self.progress.end()
             self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal \
-                              to {}%. The best match (ID: {}, chain: {}) was {:.2f}%. No structure will be modelled.".\
+                              to {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a\
+                              proper percent identicalness of {:.2f}%. No structure will be modelled.".\
                               format(self.corresponding_gene_call,
                                      self.percent_identical_cutoff,
-                                     id_of_max_pident[0],
                                      id_of_max_pident[1],
+                                     id_of_max_pident[0],
                                      max_pident_found))
             raise self.EndModeller
 
