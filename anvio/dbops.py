@@ -1998,10 +1998,6 @@ class ProfileSuperclass(object):
         else:
             self.split_names = utils.get_all_item_names_from_the_database(self.profile_db_path)
 
-        if self.split_names == self.split_names_of_interest:
-            # the user is being silly. nick that split_names_of_interest
-            self.split_names_of_interest = None
-
         split_names_missing = (self.split_names_of_interest - self.split_names) if self.split_names_of_interest else None
         if self.split_names_of_interest and len(split_names_missing):
             self.progress.end()
