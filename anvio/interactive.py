@@ -1840,9 +1840,7 @@ class StructureInteractive(VariabilitySuper):
         elif not self.profile_db_path and not self.variability_table_path:
             raise ConfigError("You have to provide either a variability table generated from\
                                anvi-gen-variability-profile, or a profile and contigs database from\
-                               which sequence variability will be computed. Alternatively, you can give\
-                               the --no-variability flag, but anvi'o will be extremely condescending\
-                               in messages to follow.")
+                               which sequence variability will be computed.")
 
         if self.variability_table_path:
             run.warning("You opted to work with a variability table previously generated from\
