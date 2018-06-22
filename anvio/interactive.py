@@ -1676,7 +1676,7 @@ class StructureInteractive(VariabilitySuper):
             if engine == 'NT':
                 self.run.warning("You passed a variabilty table of SNVs (`--engine NT`). We did not\
                                   develop this program with the intention of displaying NT variants\
-                                  yet it very randomly works and we're pretty happy about out. So\
+                                  yet it very randomly works and we're pretty happy about it. So\
                                   have fun, yet understand some features won't work.")
             return [engine]
         elif self.saavs_only:

@@ -196,8 +196,14 @@ class Structure(object):
         self.deviation                = A('deviation', null)
         self.very_fast                = A('very_fast', bool)
 
-        # check outputs are writable
+        # check database output
+        if not self.output_db_path:
+            self.output_db_path = "STRUCTURE.db"
+        if not self.output_db_path.endswith('.db'):
+            raise ConfigError("The structure database output file (`-o / --output`) must end with '.db'")
         filesnpaths.is_output_file_writable(self.output_db_path)
+
+        # check modeller output
         if self.full_modeller_output:
             self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=False)
 
