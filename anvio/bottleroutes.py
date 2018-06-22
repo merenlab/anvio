@@ -281,7 +281,7 @@ class BottleApplication(Bottle):
                 autodraw = True
 
             collection_dict = None
-            if self.interactive.collection_autoload:
+            if self.interactive.mode != 'collection' and self.interactive.mode != 'refine' and self.interactive.collection_autoload:
                 collection_dict = json.loads(self.get_collection_dict(self.interactive.collection_autoload))
                 autodraw = True
 
