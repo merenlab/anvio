@@ -747,7 +747,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             item_order_name = ':'.join([view, self.distance, self.linkage])
             self.p_meta['available_item_orders'].append(item_order_name)
-            self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': clustering.get_newick_tree_data_for_dict(d['dict'], distance=self.distance, linkage=self.linkage)}
+
+            if len(d['dict']) == 1:
+                clustering_data = '(%s);' % list(d['dict'].keys())[0]
+            else:
+                clustering_data = clustering.get_newick_tree_data_for_dict(d['dict'],
+                                                                           distance=self.distance,
+                                                                           linkage=self.linkage)
+
+            self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': clustering_data}
 
             # clustering is done, we can get prepared for the expansion of the view dict
             # with new layers. Note that these layers are going to be filled later.
