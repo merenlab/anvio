@@ -863,11 +863,11 @@ class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalDa
                                must contain the `target_data_table` variable.")
 
         if target_data_table == 'items':
-            TableForItemAdditionalData.__init__(self, args)
+            TableForItemAdditionalData.__init__(self, args, r=self.run, p=self.progress)
         elif target_data_table == 'layers':
-            TableForLayerAdditionalData.__init__(self, args)
+            TableForLayerAdditionalData.__init__(self, args, r=self.run, p=self.progress)
         elif target_data_table == 'layer_orders':
-            TableForLayerOrders.__init__(self, args)
+            TableForLayerOrders.__init__(self, args, r=self.run, p=self.progress)
         else:
             raise ConfigError("MiscDataTableFactory does not know about target data tables for '%s' :(\
                                You can go to the online documentation, or you can try either 'items', 'layers',\
