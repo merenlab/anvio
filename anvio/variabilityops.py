@@ -1352,7 +1352,7 @@ class VariabilitySuper(VariabilityFilter, object):
         np.seterr(invalid='ignore')
 
         if not self.quince_mode:
-            self.run.warning("Only some comprehensive variability score computations can only be done without `--quince-mode`")
+            self.run.warning("Only some comprehensive variability metrics can be computed without `--quince-mode`")
 
         self.progress.new("Comprehensive stats")
         self.progress.update("Those that don't require --quince-mode")
