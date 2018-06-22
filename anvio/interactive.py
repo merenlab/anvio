@@ -2095,6 +2095,8 @@ class StructureInteractive(VariabilitySuper):
 
 
     def wrangle_merged_variability(self, var):
+        if var.merged.empty:
+            return
         # determine top n items and frequencies per variant
         self.num_reported_frequencies = 5
         for i, s in var.merged[var.items].iterrows():
