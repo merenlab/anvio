@@ -54,6 +54,8 @@ def restore_names_in_dict(input_dict, conversion_dict):
 
 
 def main(args):
+    program = pyani.PyANI(args)
+
     filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
 
     genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
@@ -75,7 +77,6 @@ def main(args):
         hash_to_name[db_hash] = genome_name
         utils.export_sequences_from_contigs_db(db_path, os.path.join(temp_dir, db_hash + '.fa'))
 
-    program = pyani.PyANI(args)
     results = program.run_command(temp_dir)
     results = restore_names_in_dict(results, hash_to_name)
 
