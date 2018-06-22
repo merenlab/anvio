@@ -631,7 +631,7 @@ function Chart(options){
                                     return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
                                             <h3>Content</h3> \
                                             <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
-                                                <tr><td>Position in split</td><td>' + d.value['pos'] +'</td></tr> \
+                                                <tr><td>Position in split</td><td>' + ((gene_mode) ? d.value['pos_in_split'] : d.value['pos']) +'</td></tr> \
                                                 <tr><td>Position in contig</td><td>' + d.value['pos_in_contig'] +'</td></tr> \
                                                 <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
                                                 <tr><td>Consensus</td><td>' + d.value['consensus'] +'</td></tr> \
