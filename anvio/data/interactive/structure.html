@@ -112,7 +112,7 @@
                             <div id="color_numerical_panel">
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Min Value: </label>  
-                                    <div class="col-md-8"><input type="input" id="color_min" value="0"></div>
+                                    <div class="col-md-8"><input type="input" id="color_min" onblur="draw_variability(); " value="0"></div>
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Start Color: </label>  
@@ -120,7 +120,7 @@
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Max Value: </label>  
-                                    <div class="col-md-8"><input type="input" id="color_max" value="1"></div>
+                                    <div class="col-md-8"><input type="input" id="color_max" onblur="draw_variability(); " value="1"></div>
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">End Color: </label>
@@ -160,19 +160,19 @@
                             <div id="size_numerical_panel">
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Min Value: </label>  
-                                    <div class="col-md-8"><input type="input" id="size_min" value="0"></div>
+                                    <div class="col-md-8"><input type="input" id="size_min" onblur="draw_variability(); " value="0"></div>
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Size Start: </label>  
-                                    <div class="col-md-8"><input type="input" id="size_start" value="0.4"></div>
+                                    <div class="col-md-8"><input type="input" id="size_start" onblur="draw_variability(); " value="0.4"></div>
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Max Value: </label>  
-                                    <div class="col-md-8"><input type="input" id="size_max" value="1"></div>
+                                    <div class="col-md-8"><input type="input" id="size_max" onblur="draw_variability(); " value="1"></div>
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Size End: </label>  
-                                    <div class="col-md-8"><input type="input" id="size_end" value="1.4"></div>
+                                    <div class="col-md-8"><input type="input" id="size_end" onblur="draw_variability(); " value="1.4"></div>
                                 </div>
                                 <div class="clearfix"></div>
                                 <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_size_error">Max Value must be greater than Min Value.</div>
