@@ -296,7 +296,7 @@ class ContigsSuperclass(object):
             self.run.info_single("FYI: A subset of split sequences are being initialized (%d of %d the contigs database\
                                   knows about, to be precise). Nothing to worry about. Probably." \
                                                 % (len(split_names_of_interest), len(self.splits_basic_info)),
-                                  mc="cyan", nl_after=1)
+                                  mc="cyan", nl_after=1, nl_before=1)
             self.progress.new('Computing split sequences from contigs')
         else:
             split_names_of_interest = list(self.splits_basic_info.keys())
