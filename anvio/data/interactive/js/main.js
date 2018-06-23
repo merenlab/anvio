@@ -1312,6 +1312,7 @@ function buildLayersTable(order, settings)
 
         $('#table_layers .drag-icon').on('mousedown', function() {
             samplesClusteringData = {'newick': '', 'basic': null};
+            $('#samples_tree_modified_warning').hide();
             $('#samples_order').val('custom').trigger('change');
         });
     }
