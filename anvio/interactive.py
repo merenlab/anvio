@@ -1323,7 +1323,7 @@ class StructureInteractive(VariabilitySuper):
         # genes
         self.available_gene_caller_ids = A('gene_caller_ids', null)
         self.available_genes_path = A('genes_of_interest', null)
-        self.available_genes = A('available_genes', set) or set([])
+        self.available_genes = A('available_genes', list) or []
         # samples
         self.available_samples_path = A('samples_of_interest', null)
         self.available_samples = A('available_samples', set) or set([])
@@ -1359,7 +1359,7 @@ class StructureInteractive(VariabilitySuper):
             self.process_full_variability()
 
         # default gene is the first gene of interest
-        self.profile_gene_variability_data(list(self.available_genes)[0])
+        self.profile_gene_variability_data(self.available_genes[0])
 
         self.available_samples = self.get_available_samples()
         self.sample_groups = self.create_sample_groups_dict()
@@ -1760,7 +1760,7 @@ class StructureInteractive(VariabilitySuper):
                              display.".format(", ".join([str(x) for x in some_to_report])))
 
         else:
-            available_genes = set(structure_db.genes_with_structure)
+            available_genes = list(structure_db.genes_with_structure)
 
         # if full variability table is loaded, we further demand variability exists for the genes
         if self.full_variability:
@@ -1774,7 +1774,7 @@ class StructureInteractive(VariabilitySuper):
         self.args.gene_caller_ids = None
         self.args.genes_of_interest = None
 
-        return available_genes
+        return sorted(available_genes)
 
 
     def get_available_samples(self, available_samples_path=""):
