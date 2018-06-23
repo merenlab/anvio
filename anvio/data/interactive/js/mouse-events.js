@@ -209,7 +209,7 @@ function mouseMoveHandler(event) {
     }
 
     if (event.target.id == 'path_samples')
-    {   
+    {
         // samples tooltip
         var sample_name = event.target.getAttribute('sample-name');
         var sample_group = event.target.getAttribute('sample-group');
@@ -236,29 +236,31 @@ function mouseMoveHandler(event) {
                 layer_pos = layer_counter;
             }
 
-            message += `<tr style="${highlight_row ? 'background-color: rgb(232, 202, 207);' : ''}"><td>` + pretty_name + '</td><td>';
-
             if (layer_name.indexOf('!') > -1) { // stack bar
+                message += `<tr style="${highlight_row ? 'background-color: #dddddd;' : ''}"><td>` + pretty_name + '</td><td>';
+
                 let stack_names = layer_name.split('!')[1].split(';');
                 let stack_items = samples_information_dict[group][sample_name][layer_name].split(';');
-                message += '<table>';
+                message += '<table class="table table-striped">';
                 for (let j = stack_names.length - 1; j >= 0; j--) {
                     let bar_name = stack_names[j];
-                    message += `<tr><td><div class="colorpicker" style="background-color: ${samples_stack_bar_colors[group][layer_name][bar_name]}"></div>${bar_name}</td><td style="white-space: nowrap;">${stack_items[j]}</td></tr>`;
+                    bar_name = bar_name.replace('Unknown_t_', '').replace('_', ' ');
+                    message += `<tr><td><div class="colorpicker" style="background-color: ${samples_stack_bar_colors[group][layer_name][bar_name]}"></div>&nbsp;${bar_name}</td><td style="white-space: nowrap;">${stack_items[j]}</td></tr>`;
                 }
                 message += '</table>';
             } else {
+                message += `<tr style="${highlight_row ? 'background-color: rgb(232, 202, 207);' : ''}"><td>` + pretty_name + '</td><td>';
                 message += samples_information_dict[group][sample_name][layer_name];
             }
 
             message += '</td></tr>';
-            
 
             // since we skip hidden layer groups, we can not use 'i' to refer layer position.
             layer_counter++;
         }
 
-        write_mouse_table(message, "Layers", layer_pos);
+        write_mouse_table(message, sample_name, layer_pos);
+
         return;
     }
 

@@ -818,7 +818,7 @@ function createLegendColorPanel(legend_id) {
         }
 
         if (legend['source'].indexOf('stack') > -1) {
-            _name = _name + ' <span title="' + legend['stats'][_name] + '">(Total: ' + readableNumber(legend['stats'][_name]) + ')</span>';
+            _name = _name.replace('Unknown_t_', '').replace('_', ' ') + ' <span title="' + legend['stats'][_name] + '">(Total: ' + readableNumber(legend['stats'][_name]) + ')</span>';
         } else {
             _name = _name + ' (' + legend['stats'][_name] + ')';
         }
