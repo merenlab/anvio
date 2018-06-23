@@ -869,6 +869,7 @@ function drawSamplesTree(settings, sample_xy)
             {
                 var _message = "Error: Layer additional order '" + samples_order + "' has leaf named '" + q.label + "' but it is not a valid layer name. Falling back to custom order. Maybe that layer is hidden??";
                 toastr.warning(_message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                samplesClusteringData = {'newick': '', 'basic': null};
                 $('#samples_order').val('custom').trigger('change');
                 return;
             }
