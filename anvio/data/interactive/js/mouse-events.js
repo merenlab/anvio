@@ -244,7 +244,7 @@ function mouseMoveHandler(event) {
                 message += '<table>';
                 for (let j = stack_names.length - 1; j >= 0; j--) {
                     let bar_name = stack_names[j];
-                    message += `<tr><td><div class="colorpicker" style="background-color: ${samples_stack_bar_colors[group][layer_name][bar_name]}"></div>${bar_name}</td><td>${stack_items[j]}</td></tr>`;
+                    message += `<tr><td><div class="colorpicker" style="background-color: ${samples_stack_bar_colors[group][layer_name][bar_name]}"></div>${bar_name}</td><td style="white-space: nowrap;">${stack_items[j]}</td></tr>`;
                 }
                 message += '</table>';
             } else {
