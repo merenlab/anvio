@@ -19,11 +19,17 @@
  */
 
 
-function SaveTreeDialog() {
+function SaveTreeDialog(tree_type) {
     if (!(mode == 'full' || mode == 'pan' || mode == 'manual')) {
         toastr.warning('Saving modified tree functionality is not available for this mode.');
         return;
     }
+
+    if (typeof tree_type === 'undefined') {
+        tree_type = 'items';
+    }
+
+    this.tree_type = tree_type
 
     this.current_tree_name = last_settings['order-by'];
 
@@ -34,7 +40,7 @@ function SaveTreeDialog() {
             <div class="modal-content">
                 <div class="modal-header">
                     <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
-                    <h4 class="modal-title">Save Tree</h4>
+                    <h4 class="modal-title">Save Tree ${this.tree_type=='samples' ? ` (Layers) ` : ``}</h4>
                 </div>
 
                 <div class="modal-body">
@@ -44,12 +50,14 @@ function SaveTreeDialog() {
                             <input type="text" id="tree_name" value="New tree">
                         </div>
                     </div>
+                    ${this.tree_type!='samples' ? `
                     <div class="col-md-12">
                         <label class="col-md-4 settings-label"><input type="radio" name="overwrite[]" value="yes">Overwrite the current tree</label>  
                         <div class="col-md-8">
                             ${getClusteringPrettyName(this.current_tree_name)}
                         </div>
                     </div>
+                    ` : ``}
                 </div>
 
                 <div class="modal-footer">
@@ -76,14 +84,20 @@ function SaveTreeDialog() {
 
 SaveTreeDialog.prototype.SaveTree = function() {
     let new_tree_name;
-    let overwrite = this.dialog.querySelectorAll('input[type="radio"]')[1].checked;
+    let overwrite = !this.dialog.querySelectorAll('input[type="radio"]')[0].checked;
 
     if (overwrite) 
     {
         new_tree_name = this.current_tree_name;
     } else {
-        let parts = this.current_tree_name.split(':');
-        new_tree_name = this.dialog.querySelector('#tree_name').value + ':' + parts[1] + ':' + parts[2];
+        if (this.tree_type == 'items') {
+            let parts = this.current_tree_name.split(':');
+            new_tree_name = this.dialog.querySelector('#tree_name').value + ':' + parts[1] + ':' + parts[2];
+        }
+        else
+        {
+            new_tree_name = this.dialog.querySelector('#tree_name').value;   
+        }
     }
 
     $.ajax({
@@ -91,19 +105,27 @@ SaveTreeDialog.prototype.SaveTree = function() {
         cache: false,
         url: '/data/save_tree',
         data: {
+            'tree_type': this.tree_type,
             'overwrite': overwrite,
             'name': new_tree_name,
-            'data': clusteringData,
+            'data': (this.tree_type == 'samples') ? samplesClusteringData['newick'] : clusteringData,
             'additional': JSON.stringify({'collapsedNodes': collapsedNodes})
         },
         success: function(data) {
             if (data['status'] == 0) {
                 toastr.success(data['message'], "Server");
 
-                $('#tree_modified_warning').hide();
-                $('#trees_container').append(`<option val="${new_tree_name}">${getClusteringPrettyName(new_tree_name)}</option>`);
-                $('#trees_container').val(getClusteringPrettyName(new_tree_name));
-
+                if (this.tree_type == 'samples') {
+                    samples_order_dict[new_tree_name] = {'newick': samplesClusteringData['newick'], 'basic': ''};
+                    $('#samples_order').append(`<option val="${new_tree_name}">${new_tree_name}</option>`);
+                    $('#samples_order').val(new_tree_name);
+                    $('#samples_tree_modified_warning').hide();
+                } else {
+                    $('#tree_modified_warning').hide();
+                    $('#trees_container').append(`<option val="${new_tree_name}">${getClusteringPrettyName(new_tree_name)}</option>`);
+                    $('#trees_container').val(getClusteringPrettyName(new_tree_name));
+                }
+                
                 $(this.dialog).modal('hide');
                 this.dialog.remove();
             } else {

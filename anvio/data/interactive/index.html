@@ -424,6 +424,12 @@
                                         <select id="samples_order" class="form-control input-xs">
                                             <!-- JS FILLS HERE -->
                                         </select>
+                                        <div id="samples_tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                            The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
+                                            <br />
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog('samples');">Save tree</button>
+                                            <button type="button" class="btn btn-xs" onclick="restoreOriginalTree('samples');">Clear</button>
+                                        </div>
                                          <button type="button" class="btn btn-default btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span>Generate new phylogenetic tree</button>
                                     </div>
                             </div>
