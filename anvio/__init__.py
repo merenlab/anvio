@@ -1768,20 +1768,13 @@ def set_version():
            t.genomes_storage_vesion, \
            t.structure_db_version
 
-def get_version_tuples():
-    return [("Anvi'o version", __version__),
-            ("Profile DB version", __profile__version__),
-            ("Contigs DB version", __contigs__version__),
-            ("Structure DB version", __structure__version__),
-            ("Pan DB version", __pan__version__),
-            ("Genome data storage version", __genomes_storage_version__),
-            ("Auxiliary data storage version", __auxiliary_data_version__)]
 
 def get_version_tuples():
     return [("Anvi'o version", '%s', __version__),
             ("Codename", __codename__),
             ("Profile DB version", __profile__version__),
             ("Contigs DB version", __contigs__version__),
+            ("Structure DB version", __structure__version__),
             ("Pan DB version", __pan__version__),
             ("Genome data storage version", __genomes_storage_version__),
             ("Auxiliary data storage version", __auxiliary_data_version__)]
