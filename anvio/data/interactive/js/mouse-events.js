@@ -244,8 +244,8 @@ function mouseMoveHandler(event) {
                 message += '<table class="table table-striped">';
                 for (let j = stack_names.length - 1; j >= 0; j--) {
                     let bar_name = stack_names[j];
-                    bar_name = bar_name.replace('Unknown_t_', '').replace('_', ' ');
-                    message += `<tr><td><div class="colorpicker" style="background-color: ${samples_stack_bar_colors[group][layer_name][bar_name]}"></div>&nbsp;${bar_name}</td><td style="white-space: nowrap;">${stack_items[j]}</td></tr>`;
+                    let bar_pretty_name = bar_name.replace('Unknown_t_', '').replace('_', ' ');
+                    message += `<tr><td><div class="colorpicker" style="background-color: ${samples_stack_bar_colors[group][layer_name][bar_name]}"></div>&nbsp;${bar_pretty_name}</td><td style="white-space: nowrap;">${stack_items[j]}</td></tr>`;
                 }
                 message += '</table>';
             } else {
