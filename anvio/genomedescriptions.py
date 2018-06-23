@@ -112,25 +112,30 @@ class GenomeDescriptions(object):
 
     def get_HMM_sources_common_to_all_genomes(self, dont_raise=False):
         """Returns True if all HMM sources in all genomes are comparable"""
-        hmm_sources_found = set([])
+
+        hmm_sources_info_per_genome = {}
+
+        # first recover hmm sources info per genome
         for genome_name in self.genomes:
             if 'hmm_sources_info' not in self.genomes[genome_name]:
                 # someone did not run the expensive `init` function. but we can recover this
                 # here quitte cheaply
                 contigs_db = dbops.ContigsDatabase(self.genomes[genome_name]['contigs_db_path'])
                 hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
-                for hmm_source in hmm_sources_info:
-                    hmm_sources_info[hmm_source]['genes'] = sorted([g.strip() for g in hmm_sources_info[hmm_source]['genes'].split(',')])
             else:
                 hmm_sources_info = self.genomes[genome_name]['hmm_sources_info']
 
+            hmm_sources_info_per_genome[genome_name] = hmm_sources_info
+
+        hmm_sources_found = set([])
+        for genome_name in self.genomes:
             [hmm_sources_found.add(s) for s in hmm_sources_info.keys()]
 
         # find out hmm_sources that occur in all genomes
         hmm_sources_in_all_genomes = copy.deepcopy(hmm_sources_found)
         for genome_name in self.genomes:
             for hmm_source in hmm_sources_found:
-                if hmm_source not in hmm_sources_info and hmm_source in hmm_sources_in_all_genomes:
+                if hmm_source not in hmm_sources_info_per_genome[genome_name] and hmm_source in hmm_sources_in_all_genomes:
                     hmm_sources_in_all_genomes.remove(hmm_source)
 
         if not len(hmm_sources_in_all_genomes):
@@ -428,7 +433,7 @@ class GenomeDescriptions(object):
         if not self.full_init:
             # if this is not full init, stop the sanity check here.
             self.run.warning("You (or the programmer) requested genome descriptions for your internal and/or external\
-                              genomes to be loaded without a 'full init'. There is nothong for you to be concerned.\
+                              genomes to be loaded without a 'full init'. There is nothing for you to be concerned.\
                               This is just a friendly reminder to make sure if something goes terribly wrong (like your\
                               computer sets itself on fire), this may be the reason.")
             return
