@@ -867,8 +867,8 @@ function drawSamplesTree(settings, sample_xy)
         {
             if (!sample_xy.hasOwnProperty(q.label))
             {
-                var _message = "Error: Sample order '" + samples_order + "' has leaf named '" + q.label + "' but it is not a valid layer name. Falling back to custom order.";
-                console.log(_message);
+                var _message = "Error: Layer additional order '" + samples_order + "' has leaf named '" + q.label + "' but it is not a valid layer name. Falling back to custom order. Maybe that layer is hidden??";
+                toastr.warning(_message, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
                 $('#samples_order').val('custom').trigger('change');
                 return;
             }
