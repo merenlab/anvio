@@ -248,25 +248,43 @@ class ProgramsNetwork(AnvioPrograms):
 
 
     def report_network(self):
-        all_items = set([i.name for program in self.programs for i in program.provides + program.requires])
-        all_programs = set([program.name for program in self.programs])
+        item_names_seen = set([])
+        all_items = []
+        for program in self.programs:
+            for item in program.provides + program.requires:
+                if not item.name in item_names_seen:
+                    all_items.append(item)
+                    item_names_seen.add(item.name)
 
-        network_dict = {"nodes": [], "links": []}
+        network_dict = {"graph": [], "nodes": [], "links": [], "directed": True, "multigraph": False}
 
-        for item_name in all_items:
-            network_dict["nodes"].append({"id": item_name, "group": 2})
+        node_indices = {}
 
-        for program_name in all_programs:
-            network_dict["nodes"].append({"id": program_name, "group": 1})
+        index = 0
+        for item in all_items:
+            network_dict["nodes"].append({"size": 90,
+                                          "score": 0.5 if item.optional else 1,
+                                          "id": item.name,
+                                          "type": "square"})
+            node_indices[item.name] = index
+            index += 1
+
+        for program in self.programs:
+            network_dict["nodes"].append({"size": 80,
+                                          "score": 0.1,
+                                          "id": program.name,
+                                          "type": "circle"})
+            node_indices[program.name] = index
+            index += 1
 
         for item in all_items:
             for program in self.programs:
                 for item_provided in program.provides:
-                    if item_provided.name == item:
-                        network_dict["links"].append({"source": program.name, "target": item, "value": 1})
+                    if item_provided.name == item.name:
+                        network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[item.name]})
                 for item_needed in program.requires:
-                    if item_needed.name == item:
-                        network_dict["links"].append({"source": item, "target": program.name, "value": 1})
+                    if item_needed.name == item.name:
+                        network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[item.name]})
 
         open(self.output_file_path, 'w').write(json.dumps(network_dict, indent=2))
 
