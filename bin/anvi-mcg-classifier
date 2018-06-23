@@ -5,6 +5,7 @@
 import sys
 
 import anvio
+import anvio.filesnpaths as filesnpaths
 import anvio.summarizer as summarizer
 from anvio.mcgclassifier import MetagenomeCentricGeneClassifier
 
@@ -39,11 +40,11 @@ def main(args):
         if len(missing_bins):
             raise ConfigError("Some bin names you declared do not appear to be in the collection %s. \
                                 These are the bins that are missing: %s, these are the bins that are \
-                                actually in your collection: %s" % (collection_name,missing_bins,bin_names_in_collection))
+                                actually in your collection: %s" % (args.collection_name, missing_bins, bin_names_in_collection))
     elif args.bin_id:
         if args.bin_id not in bin_names_in_collection:
             raise ConfigError("The bin you declared, %s, does not appear to be in the collection %s." \
-                              % (args.bin_id, collection_name))
+                              % (args.bin_id, args.collection_name))
         bin_names_of_interest = [args.bin_id]
     else:
         bin_names_of_interest = bin_names_in_collection

@@ -7,7 +7,6 @@ import argparse
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 

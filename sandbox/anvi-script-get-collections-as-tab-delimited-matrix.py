@@ -11,7 +11,7 @@ import argparse
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.terminal as terminal 
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 

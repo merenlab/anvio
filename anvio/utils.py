@@ -154,7 +154,7 @@ def get_total_memory_usage():
 
 def get_predicted_type_of_items_in_a_dict(d, key):
     """Gets a dictionary `d` and a `key` in it, and returns a type function.
-    
+
     It is a bit counter intuitive. dictionary should look like this:
 
         d = {'x': {'key': item, (...)},
@@ -547,7 +547,7 @@ def summarize_alignment(sequence):
     """Takes an alignment, and returns its summary.
 
         >>> alignment = '----AA---TTTT-----CC-GGGGGGGG----------------ATCG--'
-        >>> sequence = alignment.replace('-') 
+        >>> sequence = alignment.replace('-')
         >>> summarize_alignment(alilgnment)
         '-|4|2|3|4|5|2|1|8|16|4|2'
         >>> summary = summarize_alignment(alignment)
@@ -762,7 +762,7 @@ def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_di
         and why should it be in summarizer?!? that makes no sense. And also mcg-classifier doesn't want
         to initialize summarizer, it wants to be able to just get the gene_level_coverage_stats_dict as
         input and then deal with it.
-        
+
         There is also an option to as to get the data back as a pandas dataframe.
     """
     legal_keys = {'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std'}
@@ -793,7 +793,7 @@ def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_di
         d[gene_callers_id] = {}
         for sample_name in samples_of_interest:
             d[gene_callers_id][sample_name] = gene_level_coverage_stats_dict[gene_callers_id][sample_name][key]
-    
+
     if as_pandas:
         # This option is used by the mcg-classifier.
         import pandas as pd
@@ -1073,7 +1073,7 @@ def get_contigs_splits_dict(split_ids, splits_basic_info):
 
 
 def get_variabile_item_frequencies(e, engine='NT'):
-    """ 
+    """
     e is a row from variable_nucleotide_positions table defined in tables.
     this function extends dictionary with consensus and departure from consensus.
     """
@@ -1136,14 +1136,14 @@ def convert_sequence_indexing(index, source="M0", destination="M1"):
     ORF starts with has the index 0 (M0). This is in contrast to the rest of the
     world, in which the methionine is indexed by 1 (M1). This function converts
     between the two.
-    
+
     index : integer, numpy array, pandas series, list
         The sequence index/indices you are converting.
     source : string
-        The convention you are converting from. Must be either "M0" (anvio) or 
+        The convention you are converting from. Must be either "M0" (anvio) or
         "M1" (not anvio)
     destination : string
-        The convention you are converting to. Must be either "M0" (anvio) or 
+        The convention you are converting to. Must be either "M0" (anvio) or
         "M1" (not anvio)
     """
     convert = lambda x, a: [i + a for i in x] if type(x) == list else x + a
@@ -1409,7 +1409,7 @@ def get_BLAST_tabular_output_as_dict(tabular_output_path, target_id_parser_func=
 
         results_dict[query_id] = {'hit': target_id, 'evalue': e_value}
 
-    return results_dict 
+    return results_dict
 
 
 def store_dict_as_FASTA_file(d, output_file_path, wrap_from=200):
@@ -1872,7 +1872,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                    'singlecopy:archaea', etc. Anvi'o utilizes single-copy sources to assess the completion of MAGs
                    later.
        - reference.txt: Where is it coming from?
-       - target.txt: the target term. see `anvio_hmm_target_term_to_alphabet_and_context` for details. 
+       - target.txt: the target term. see `anvio_hmm_target_term_to_alphabet_and_context` for details.
        - noise_cutoff_terms.txt: how the noisy hits should be dealt with? see this for details: https://github.com/merenlab/anvio/issues/498
 
        For an example HMM source directory, take a look at an example in the codebase:
@@ -1976,7 +1976,7 @@ def check_misc_data_keys_for_format(data_keys_list):
         key_violates_new_rule = obsolete_stackedbar_keys[0]
         main_key, data_items = key_violates_new_rule.split('!')
         new_rule_compatible_data_keys = ['%s!%s' % (main_key, d) for d in data_items.split(';')]
-    
+
         raise ConfigError("Oh no :( We recently changed the description of the stacked bar data type, and your input data\
                            file still has the older version. Here is the list of those that are violating the new format:\
                            %s. To avoid this issue and to turn them into the new format, you could take '%s', and present\
@@ -2280,7 +2280,7 @@ def download_file(url, output_file_path, progress=progress, run=run):
 
 
 def download_protein_structures(protein_code_list, output_dir):
-    """ 
+    """
     Downloads protein structures using Biopython. protein_code_list is a list
     of 4-letter protein codes. Returns list of successful downloads
     """

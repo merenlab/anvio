@@ -1,9 +1,7 @@
 # -*- coding: utf-8
 """A simple anvi'server API."""
 
-import os
 import json
-import textwrap
 import requests
 
 from anvio.terminal import Run
@@ -42,7 +40,7 @@ class AnviServerAPI:
         self.cookie = None
 
     def login(self):
-        r = self.request(path='/accounts/login/', 
+        r = self.request(path='/accounts/login/',
                          method='post',
                          data= {'username': self.user, 'password': self.password},
                          allow_redirects = False)
@@ -74,11 +72,11 @@ class AnviServerAPI:
             cookies.update({'csrftoken': token })
 
         try:
-            return requests.request(method, 
-                                    self.get_url(path), 
-                                    data = data, 
-                                    files = files, 
-                                    cookies = cookies, 
+            return requests.request(method,
+                                    self.get_url(path),
+                                    data = data,
+                                    files = files,
+                                    cookies = cookies,
                                     allow_redirects = allow_redirects)
         except Exception as e:
             raise AnviServerError(str(e))

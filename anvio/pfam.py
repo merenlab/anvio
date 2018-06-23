@@ -90,7 +90,7 @@ class PfamSetup(object):
         self.run.info("Database URL", self.database_url)
 
         for file_name in self.files:
-            utils.download_file(self.database_url + '/' + file_name, 
+            utils.download_file(self.database_url + '/' + file_name,
                 os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
 
         self.confirm_downloaded_files()
@@ -100,7 +100,7 @@ class PfamSetup(object):
     def confirm_downloaded_files(self):
         checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
         checksums = {}
-        
+
         for line in checksums_file.split('\n'):
             checksum, file_name = [item.strip() for item in line.strip().split()]
             checksums[file_name] = checksum
@@ -108,7 +108,7 @@ class PfamSetup(object):
         for file_name in self.files:
             if not filesnpaths.is_file_exists(os.path.join(self.pfam_data_dir, file_name), dont_raise=True):
                  # TO DO: Fix messages :(
-                raise ConfigError("Have missing file %s, please run --reset" % file_name)               
+                raise ConfigError("Have missing file %s, please run --reset" % file_name)
 
             hash_on_disk = utils.get_file_md5(os.path.join(self.pfam_data_dir, file_name))
             expected_hash = checksums[file_name]
@@ -120,10 +120,10 @@ class PfamSetup(object):
 
     def decompress_files(self):
         # Decompressing Pfam-A.hmm.gz is not necessary, HMMer class works with .gz
-        
+
         for file_name in ['Pfam.version.gz', 'Pfam-A.clans.tsv.gz']:
             full_path = os.path.join(self.pfam_data_dir, file_name)
-            
+
             utils.gzip_decompress_file(full_path)
             os.remove(full_path)
 
@@ -177,7 +177,7 @@ class Pfam(object):
 
     def load_catalog(self):
         catalog_path = os.path.join(self.pfam_data_dir, 'Pfam-A.clans.tsv')
-        self.function_catalog = utils.get_TAB_delimited_file_as_dictionary(catalog_path, 
+        self.function_catalog = utils.get_TAB_delimited_file_as_dictionary(catalog_path,
             column_names=['accession', 'clan', 'unknown_column1', 'unknown_column2', 'function'])
 
 
@@ -227,7 +227,6 @@ class Pfam(object):
                 'accession': hmm_hit['gene_hmm_id'],
                 'function': self.get_function_from_catalog(hmm_hit['gene_hmm_id']),
                 'e_value': hmm_hit['e_value'],
-
             }
 
             counter += 1

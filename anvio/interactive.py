@@ -129,7 +129,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
         for group_name in self.layers_additional_data_keys:
-            layer_orders = TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({}, 
+            layer_orders = TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({},
                 self.layers_additional_data_keys[group_name], self.layers_additional_data_dict[group_name]) if a_db_is_found else {}
             for order_name in layer_orders:
                 self.layers_order_data_dict['%s :: %s' % (group_name, order_name)] = layer_orders[order_name]

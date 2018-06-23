@@ -9,7 +9,7 @@ import textwrap
 import argparse
 
 import anvio.tables as t
-import anvio.terminal as terminal 
+import anvio.terminal as terminael
 import anvio.dbops as dbops
 
 progress = terminal.Progress()

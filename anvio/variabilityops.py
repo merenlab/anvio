@@ -1609,7 +1609,7 @@ class VariabilitySuper(VariabilityFilter, object):
         if not self.compute_gene_coverage_stats:
             return
 
-        # Initialize the profile super FIXME This bastard spits out 
+        # Initialize the profile super FIXME This bastard spits out
         #       Auxiliary Data ...............................: Found: SAR11/AUXILIARY-DATA.db (v. 2)
         #       Profile Super ................................: Initialized with all 1393 splits: SAR11/PROFILE.db (v. 27)
         # and it isn't silenced even if self.Run(verbose=False) is passed to the VariabilitySuper class
@@ -1867,7 +1867,7 @@ class QuinceModeWrapperForFancyEngines(object):
 
        This wrapper exists outside of the actual classes for these engines since
        the way they recover these frequencies is pretty much identical except one
-       place where the engine needs to be specifically. 
+       place where the engine needs to be specifically.
     """
     def __init__(self):
         if self.engine not in ['CDN', 'AA']:

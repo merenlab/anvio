@@ -6,11 +6,15 @@
 import os
 import time
 import shutil
+import numpy as np
+import pandas as pd
+
+from Bio.PDB import DSSP
+from Bio.PDB import PDBParser
 
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -18,14 +22,8 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.drivers.MODELLER as MODELLER
 
-import numpy as np
-import pandas as pd
-
-from collections import OrderedDict
-from anvio.errors import ConfigError, ModellerScriptError
+from anvio.errors import ConfigError
 from anvio.dbops import ContigsSuperclass
-from Bio.PDB import PDBParser
-from Bio.PDB import DSSP
 
 
 class StructureDatabase(object):

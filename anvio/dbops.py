@@ -1191,12 +1191,12 @@ class PanSuperclass(object):
                                zero sense to anvi'o too :/ Maybe you forgot to provide a genomes storage?")
 
         gene_clusters_functions_summary_dict = {}
-        
+
         self.progress.new('Summarizing functions for gene clusters')
         self.progress.update('Creating a dictionary')
         for gene_cluster in self.gene_clusters_functions_dict:
             gene_clusters_functions_summary_dict[gene_cluster] = {}
-            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = None 
+            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = None
             max_votes = 0
             for genome in self.gene_clusters_functions_dict[gene_cluster]:
                 for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster][genome]:
@@ -1211,7 +1211,7 @@ class PanSuperclass(object):
                             if gene_clusters_functions_summary_dict[gene_cluster][f] > max_votes:
                                 # The function has the votes!
                                 max_votes = gene_clusters_functions_summary_dict[gene_cluster][f]
-                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = f 
+                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = f
 
         self.progress.end()
 
@@ -1551,7 +1551,7 @@ class PanSuperclass(object):
            Although this seems to be a memory-intensive way of doing it, it will offer some
            flexibility to interface operations.
 
-                >>> 
+                >>>
                 >>> pan = dbops.PanSuperclass(args)
                 >>> pan.init_gene_clusters()
                 >>>
