@@ -23,6 +23,17 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = [('internal', 'optional', 'single', 'MERGED-PROFILE.db'),
+                ('internal', 'optional', 'single', 'SINGLE-PROFILE.db'),
+                ('internal', 'optional', 'single', 'CONTIGS.db'),
+                ('internal', 'optional', 'single', 'BIN'),
+                ('external', 'optional', 'single', 'DATA.txt'),
+                ('external', 'optional', 'single', 'DENDROGRAM.newick'),
+                ('external', 'optional', 'single', 'PHYLOGENY.newick')]
+__provides__ = [('internal', 'optional', 'multiple', 'COLLECTION'),
+                ('internal', 'optional', 'multiple', 'BIN'),
+                ('internal', 'default', 'single', 'INTERACTIVE DISPLAY'),
+                ('external', 'optional', 'multiple', 'SVG')]
 
 
 run = terminal.Run()
