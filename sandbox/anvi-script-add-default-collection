@@ -7,7 +7,6 @@ import argparse
 
 import anvio
 import anvio.utils as utils
-import anvio.dbops as dbops
 import anvio.terminal as terminal
 
 from anvio.tables import splits_info_table_name

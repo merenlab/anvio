@@ -12,7 +12,7 @@
 import sys
 import argparse
 
-import anvio.terminal as terminal 
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -70,7 +70,7 @@ def main(itep_clusters_path, output_file_path):
         values_dict = itep_clusters[cluster_id]
         values = [str(values_dict[g]) if g in values_dict else '0' for g in genomes_found]
         output_file.write('\t'.join([cluster_id] + values) + '\n')
-    
+
     output_file.close()
     progress.end()
 

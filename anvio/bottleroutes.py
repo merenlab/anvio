@@ -973,7 +973,7 @@ class BottleApplication(Bottle):
                 requested_sources = None
 
             items, full_report = self.interactive.search_for_functions(request.forms.get('terms'), requested_sources)
-            
+
             items_unique = set([])
             for search_term in items:
                 items_unique = items_unique.union(set(items[search_term]))

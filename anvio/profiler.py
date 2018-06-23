@@ -607,7 +607,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             del contig.coverage
             del contig
 
-        # we are closing this object here for clarity, although we 
+        # we are closing this object here for clarity, although w
         # are not really closing it since the code never reaches here
         # and the worker is killed by its parent:
         bam_file.close()

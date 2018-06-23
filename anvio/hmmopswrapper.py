@@ -6,7 +6,7 @@
 
 import anvio.terminal as terminal
 
-from anvio.genomedescriptions import GenomeDescriptions 
+from anvio.genomedescriptions import GenomeDescriptions
 from anvio.hmmops import SequencesForHMMHits
 
 
