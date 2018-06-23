@@ -246,7 +246,7 @@ function initData() {
             });
 
             let available_orders = Object.keys(samples_order_dict).sort();
-            $('#samples_order').append(new Option('custom'));
+            $('#samples_order').append(new Option('custom', 'custom'));
             available_orders.forEach(function(order)
             {
                 var order_name = order;
@@ -255,6 +255,7 @@ function initData() {
 
                 $('#samples_order').append(new Option(order_name, order));
             });
+            $('#samples_order').val('custom').trigger('change');
 
             // Populate function sources checkboxes in search functions panel.
             if (response.functions_sources.length > 0) {
@@ -1279,6 +1280,7 @@ function buildLayersTable(order, settings)
                     }
 
                     if (layer_names_in_samples.indexOf(layer_name) > -1) {
+                        samplesClusteringData = {'newick': '', 'basic': null};
                         $('#samples_order').val('custom').trigger('change');
                     }
                 }
@@ -1309,6 +1311,8 @@ function buildLayersTable(order, settings)
         });
 
         $('#table_layers .drag-icon').on('mousedown', function() {
+            samplesClusteringData = {'newick': '', 'basic': null};
+            $('#samples_tree_modified_warning').hide();
             $('#samples_order').val('custom').trigger('change');
         });
     }
@@ -2279,8 +2283,9 @@ function processState(state_name, state) {
         }
     }
 
-    if (state.hasOwnProperty('samples-order'))
-        $('#samples_order').val(state['samples-order']);
+    if (state.hasOwnProperty('samples-order') && $(`#samples_order option[value='${state['samples-order']}']`).length > 0) {
+        $('#samples_order').val(state['samples-order']).trigger('change');
+    }
 
     buildLayersTable(layer_order, views[current_view]);
     buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
@@ -2304,7 +2309,15 @@ function processState(state_name, state) {
 }
 
 
-function restoreOriginalTree() {
+function restoreOriginalTree(type) {
+    if (type == 'samples') {
+        samplesClusteringData = {'newick': '', 'basic': null};
+        $('#samples_order').val('custom').trigger('change');
+        $('#samples_tree_modified_warning').hide();
+        drawTree();
+        return;
+    }
+
     $.when()
      .then(onTreeClusteringChange)
      .then(
