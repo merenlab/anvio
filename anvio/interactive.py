@@ -218,7 +218,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # we would like to visualize them as additional layers. following function is inherited from
         # Contigs DB superclass and will fill self.hmm_searches_dict if appropriate data is found in
         # search tables:
-        if self.mode == 'full':
+        if self.mode == 'full' or self.mode == 'refine':
             self.init_non_singlecopy_gene_hmm_sources(self.displayed_item_names_ordered, return_each_gene_as_a_layer=self.split_hmm_layers)
 
         # take care of additional layers, and update ordering information for items
