@@ -236,6 +236,7 @@ if __name__ == '__main__':
                                         database or an individual contigs database. This is for people who want to use this just\
                                         with a bunch of FASTA files with their genomes.")
     groupC.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+    groupC.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
 
     groupD = parser.add_argument_group('HMM STUFF', "This is where you can specify an HMM source, and/or a list of genes to filter\
                                         your results.")
