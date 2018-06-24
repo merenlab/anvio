@@ -186,7 +186,7 @@ function mouseMoveHandler(event) {
 
         write_mouse_table(`<tr><td>Label</td><td>${node.label ? node.label : 'N/A'}</td></tr>
                            <tr><td>Support</td><td>${node.branch_support}</td></tr>
-                           <tr><td>Edge length</td><td>${node.original_edge_length}</td></tr>`, 'Layers order branch', 0);
+                           <tr><td>Edge length</td><td>${node.original_edge_length}</td></tr>`, 'Layers order branch', '', 0);
 
         while (_q != null)
         {
@@ -259,7 +259,10 @@ function mouseMoveHandler(event) {
             layer_counter++;
         }
 
-        write_mouse_table(message, sample_name, layer_pos);
+        write_mouse_table(message, 
+            sample_name, 
+            (layer_name_hover.indexOf('!') > -1) ? layer_name_hover.split('!')[0] : layer_name_hover, 
+            layer_pos);
 
         return;
     }
@@ -275,7 +278,7 @@ function mouseMoveHandler(event) {
     if (!p.IsLeaf()) {
         write_mouse_table(`<tr><td>Label</td><td>${p.label ? p.label : 'N/A'}</td></tr>
                            <tr><td>Support</td><td>${p.branch_support}</td></tr>
-                           <tr><td>Edge length</td><td>${p.original_edge_length}</td></tr>`, 'Branch', 0);
+                           <tr><td>Edge length</td><td>${p.original_edge_length}</td></tr>`, 'Branch', '', 0);
     }
 
     var layer_id_exp = event.target.parentNode.id.match(/\d+/);
@@ -285,7 +288,7 @@ function mouseMoveHandler(event) {
     var target_node = drawer.tree.nodes[p.id];
 
     if (target_node.collapsed) {
-        write_mouse_table(target_node.label, 'CollapsedNode', 0);
+        write_mouse_table(target_node.label, 'CollapsedNode', '', 0);
         return;
     }
 
@@ -304,12 +307,24 @@ function mouseMoveHandler(event) {
         }
     }
 
-    write_mouse_table(message, target_node.label, layer_id);
+    write_mouse_table(message, 
+        target_node.label, 
+        getPrettyLayerTitle(tooltip_arr[layer_id - 1].split('>')[1].split('<')[0]), 
+        layer_id);
 }
 
 
-function write_mouse_table(content, item_name, layer_id) {
+function write_mouse_table(content, item_name, layer_name, layer_id) {
     $('#cell_item_name').html(item_name);
+
+    if (layer_name && layer_name.length > 0) {
+        $('#cell_layer_name').closest('tr').show();
+        $('#cell_layer_name').html(layer_name);
+    } else {
+        $('#cell_layer_name').closest('tr').hide();
+        $('#cell_layer_name').html('');
+    }
+
     $('#tooltip_content').html(content);
 
     if ($('#tooltip_content').height() + 300 > $(window).height()) {
