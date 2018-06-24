@@ -1770,8 +1770,7 @@ def set_version():
 
 
 def get_version_tuples():
-    return [("Anvi'o version", '%s', __version__),
-            ("Codename", __codename__),
+    return [("Anvi'o version", "%s (v%s)" % (__codename__, __version__)),
             ("Profile DB version", __profile__version__),
             ("Contigs DB version", __contigs__version__),
             ("Structure DB version", __structure__version__),
