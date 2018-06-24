@@ -1084,17 +1084,20 @@ class BottleApplication(Bottle):
 
                 args.description = description_path
 
-            if request.forms.get('include_samples') == "true":
-                # FIXME: this will break
-                if len(self.interactive.layers_order_data_dict):
-                    layers_order_data_path = filesnpaths.get_temp_file_path()
-                    utils.store_dict_as_TAB_delimited_file(self.interactive.layers_order_data_dict, layers_order_data_path, headers=['attributes', 'basic', 'newick'])
-                    args.layers_order_data_path = layers_order_data_path
+            # FIX ME: this broke
+            # if request.forms.get('include_samples') == "true":
+            #     # FIXME: this will break
+            #     if len(self.interactive.layers_order_data_dict):
+            #         layers_order_data_path = filesnpaths.get_temp_file_path()
+            #         print(layers_order_data_path)
+            #         utils.store_dict_as_TAB_delimited_file(self.interactive.layers_order_data_dict, layers_order_data_path, headers=['attributes', 'basic', 'newick'])
+            #         args.layers_order_data_path = layers_order_data_path
 
-                if len(self.interactive.layers_additional_data_dict):
-                    layers_additional_data_path = filesnpaths.get_temp_file_path()
-                    utils.store_dict_as_TAB_delimited_file(self.interactive.layers_additional_data_dict, layers_additional_data_path)
-                    args.layers_additional_data_file = layers_additional_data_path
+            #     if len(self.interactive.layers_additional_data_dict):
+            #         layers_additional_data_path = filesnpaths.get_temp_file_path()
+            #         print(layers_additional_data_path)
+            #         utils.store_dict_as_TAB_delimited_file(self.interactive.layers_additional_data_dict, layers_additional_data_path)
+            #         args.layers_additional_data_file = layers_additional_data_path
 
             collection_name = request.forms.get('collection')
             if collection_name in self.interactive.collections.collections_dict:
