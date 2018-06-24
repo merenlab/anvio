@@ -25,7 +25,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = [('internal', 'mandatory', 'single', anvio.I('contigs-db')),
-                ('external', 'mandatory', 'single', anvio.I('bam')),]
+                ('external', 'mandatory', 'single', anvio.I('bam-file')),]
 __provides__ = [('external', 'default', 'single', anvio.I('codon-frequencies-txt')),
                 ('external', 'default', 'single', anvio.I('aa-frequencies-txt')),]
 

@@ -1772,7 +1772,7 @@ ANVIO_ITEMS = {'pan-db': 'PAN DB',
 
 def I(item_id):
     if item_id not in ANVIO_ITEMS:
-        raise Exception("*** anvi'o does not know about item '%s' :(" % item_id) 
+        raise Exception("*** anvi'o does not know about item '%s' :(" % item_id)
 
     return ANVIO_ITEMS[item_id]
 
