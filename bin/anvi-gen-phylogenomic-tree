@@ -22,6 +22,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
+__requires__ = [('external', 'mandatory', 'single', anvio.I('concatenated-gene-alignment-fasta'))]
+__provides__ = [('external', 'default', 'single', anvio.I('phylogeny')),]
 
 
 run = terminal.Run()
