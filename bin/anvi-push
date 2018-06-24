@@ -41,8 +41,9 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('description'), **anvio.K('description'))
     groupB.add_argument(*anvio.A('bins'), **anvio.K('bins'))
     groupB.add_argument(*anvio.A('bins-info'), **anvio.K('bins-info'))
-    groupB.add_argument(*anvio.A('layers-information-file'), **anvio.K('layers-information-file'))
-    groupB.add_argument(*anvio.A('layers-order-file'), **anvio.K('layers-order-file'))
+    # FIX ME: bring these back
+    # groupB.add_argument(*anvio.A('layers-information-file'), **anvio.K('layers-information-file'))
+    # groupB.add_argument(*anvio.A('layers-order-file'), **anvio.K('layers-order-file'))
 
     groupC = parser.add_argument_group("RISKY CLICKS", "As the name suggests!")
     groupC.add_argument(*anvio.A('delete-if-exists'), **anvio.K('delete-if-exists'))
