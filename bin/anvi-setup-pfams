@@ -15,7 +15,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
-__provides__ = [('internal', 'default', 'single', anvio.I('pfams-data')),]
+__provides__ = [('internal', 'default', 'single', 'pfams-data'),]
 
 
 if __name__ == '__main__':

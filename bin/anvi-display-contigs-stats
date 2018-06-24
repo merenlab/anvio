@@ -21,10 +21,10 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
-__requires__ = [('internal', 'mandatory', 'multiple', anvio.I('contigs-db'))]
-__provides__ = [('external', 'optional', 'single', anvio.I('contigs-stats')),
-                ('internal', 'default', 'single', anvio.I('interactive')),
-                ('external', 'optional', 'single', anvio.I('svg'))]
+__requires__ = [('internal', 'mandatory', 'multiple', 'contigs-db')]
+__provides__ = [('external', 'optional', 'single', 'contigs-stats'),
+                ('internal', 'default', 'single', 'interactive'),
+                ('external', 'optional', 'single', 'svg')]
 
 run = terminal.Run()
 progress = terminal.Progress()

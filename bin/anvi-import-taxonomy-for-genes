@@ -19,9 +19,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('internal', 'mandatory', 'single', anvio.I('contigs-db')),
-                ('external', 'mandatory', 'single', anvio.I('gene-taxonomy-txt')),]
-__provides__ = [('internal', 'default', 'single', anvio.I('gene-taxonomy')),]
+__requires__ = [('internal', 'mandatory', 'single', 'contigs-db'),
+                ('external', 'mandatory', 'single', 'gene-taxonomy-txt'),]
+__provides__ = [('internal', 'default', 'single', 'gene-taxonomy'),]
 
 
 run = terminal.Run()
