@@ -9,7 +9,7 @@ import copy
 import platform
 import pkg_resources
 
-anvio_codename = 'rosalind'
+anvio_codename = 'margaret'
 
 DEBUG = '--debug' in sys.argv
 
