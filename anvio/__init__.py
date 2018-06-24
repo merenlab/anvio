@@ -1733,6 +1733,42 @@ def K(param_id, params_dict={}):
 
     return kwargs
 
+ANVIO_ITEMS = {'pan-db': 'PAN DB',
+               'contigs-db': 'CONTIGS DB',
+               'contigs-fasta': 'CONTIGS FASTA',
+               'bam-file': 'SAMPLE BAM',
+               'locus-fasta': 'LOCUS FASTA',
+               'structure-db': 'STRUCTURE DB',
+               'single-profile-db': 'SINGLE PROFILE DB',
+               'merged-profile-db': 'MERGED PROFILE DB',
+               'genomes-storage-db': 'GENOMES STORAGE DB',
+               'contigs-stats': 'CONTIGS STATS',
+               'svg': 'SVG',
+               'bin': 'BIN',
+               'collection': 'COLLECTION',
+               'collection-txt': 'COLLECTION TXT',
+               'misc-data-items-txt': 'ITEMS DATA TXT',
+               'misc-data-layers-txt': 'LAYERS DATA TXT',
+               'misc-data-layer-orders-txt': 'LAYER ORDERS DATA TXT',
+               'dendrogram': 'DENDROGRAM NEWICK',
+               'phylogeny': 'PHYLOGENY NEWICK',
+               'gene-calls-txt': 'GENE CALLS TXT',
+               'functions-txt': 'FUNCTIONS TXT',
+               'interactive': 'INTERACTIVE DISPLAY',
+               'view-data': 'VIEW DATA TXT',
+               'external-genomes': 'EXTERNAL GENOMES TXT',
+               'internal-genomes': 'INTERNAL GENOMES TXT',
+               'ani': 'ANI ESTIMATES',
+               'variability-profile': 'VARIABILITY PROFILE',
+               'summary': 'STATIC SUMMARY HTML'
+               }
+
+def I(item_id):
+    if item_id not in ANVIO_ITEMS:
+        raise Exception("*** anvi'o does not know about item '%s' :(" % item_id) 
+
+    return ANVIO_ITEMS[item_id]
+
 
 # The rest of this file is composed of code that responds to '-v' or '--version' calls from clients,
 # and provides access to the database version numbers for all anvi'o modules.
