@@ -30,11 +30,11 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Ozcan Esen"
 __email__ = "ozcanesen@gmail.com"
-__requires__ = [('external', 'optional', 'single', anvio.I('external-genomes')),
-                ('external', 'optional', 'single', anvio.I('internal-genomes')),
-                ('internal', 'optional', 'single', anvio.I('pan-db'))]
-__provides__ = [('external', 'default', 'multiple', anvio.I('ani')),
-                ('internal', 'optional', 'multiple', anvio.I('ani'))]
+__requires__ = [('external', 'optional', 'single', 'external-genomes'),
+                ('external', 'optional', 'single', 'internal-genomes'),
+                ('internal', 'optional', 'single', 'pan-db')]
+__provides__ = [('external', 'default', 'multiple', 'ani'),
+                ('internal', 'optional', 'multiple', 'ani')]
 
 run = terminal.Run()
 

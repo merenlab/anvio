@@ -16,9 +16,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('internal', 'mandatory', 'single', anvio.I('contigs-db')),
-                ('internal', 'mandatory', 'single', anvio.I('cogs-data')),]
-__provides__ = [('internal', 'default', 'single', anvio.I('functions')),]
+__requires__ = [('internal', 'mandatory', 'single', 'contigs-db'),
+                ('internal', 'mandatory', 'single', 'cogs-data'),]
+__provides__ = [('internal', 'default', 'single', 'functions'),]
 
 
 run = terminal.Run()

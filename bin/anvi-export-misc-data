@@ -18,12 +18,12 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('internal', 'optional', 'single', anvio.I('pan-db')),
-                ('internal', 'optional', 'single', anvio.I('merged-profile-db')),
-                ('internal', 'optional', 'single', anvio.I('single-profile-db'))]
-__provides__ = [('external', 'default', 'single', anvio.I('misc-data-items-txt')),
-                ('external', 'default', 'single', anvio.I('misc-data-layers-txt')),
-                ('external', 'default', 'single', anvio.I('misc-data-layer-orders-txt'))]
+__requires__ = [('internal', 'optional', 'single', 'pan-db'),
+                ('internal', 'optional', 'single', 'merged-profile-db'),
+                ('internal', 'optional', 'single', 'single-profile-db')]
+__provides__ = [('external', 'default', 'single', 'misc-data-items-txt'),
+                ('external', 'default', 'single', 'misc-data-layers-txt'),
+                ('external', 'default', 'single', 'misc-data-layer-orders-txt')]
 
 
 run = terminal.Run()

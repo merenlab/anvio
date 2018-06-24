@@ -21,10 +21,10 @@ __maintainer__ = "Alon Shaiber"
 __email__ = "alon.shaiber@gmail.com"
 __resources__ = [("An example usage of the program in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/")]
 __tags__ = ["pangenomics", "functions"]
-__requires__ = [('internal', 'mandatory', 'single', anvio.I('misc-data-layers-category')),
-                ('internal', 'mandatory', 'single', anvio.I('pan-db')),
-                ('internal', 'optional', 'single', anvio.I('genomes-storage-db')),]
-__provides__ = [('external', 'default', 'single', anvio.I('functional-enrichment-txt')),]
+__requires__ = [('internal', 'mandatory', 'single', 'misc-data-layers-category'),
+                ('internal', 'mandatory', 'single', 'pan-db'),
+                ('internal', 'optional', 'single', 'genomes-storage-db'),]
+__provides__ = [('external', 'default', 'single', 'functional-enrichment-txt'),]
 
 
 run = terminal.Run()
