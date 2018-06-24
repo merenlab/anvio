@@ -256,14 +256,14 @@ class ProgramsNetwork(AnvioPrograms):
                     all_items.append(item)
                     item_names_seen.add(item.name)
 
-        network_dict = {"graph": [], "nodes": [], "links": [], "directed": True, "multigraph": False}
+        network_dict = {"graph": [], "nodes": [], "links": [], "directed": False, "multigraph": False}
 
         node_indices = {}
 
         index = 0
         for item in all_items:
             network_dict["nodes"].append({"size": 90,
-                                          "score": 0.5 if item.optional else 1,
+                                          "score": 0.5 if item.internal else 1,
                                           "id": item.name,
                                           "type": "square"})
             node_indices[item.name] = index
