@@ -187,16 +187,23 @@ class Program:
         for x in factory:
             for internal, optional, single, item_name in program_data[x]:
                 item = Item(item_name)
-                item.internal = True if internal == 'internal' else False
                 item.optional = True if optional == 'optional' else False
                 item.single = True if single == 'single' else False
+                # FIXME: item internal/external status is not context dependent
+                # and this should be described in ANVIO_ITEMS dict and assigned
+                # in the Item class down below and not here:
+                item.internal = True if internal == 'internal' else False
 
                 factory[x].append(item)
 
 
 class Item:
-    def __init__(self, name, internal=True, optional=True, single=True):
-        self.name = name
+    def __init__(self, item_id, internal=True, optional=True, single=True):
+        item = anvio.I(item_id)
+        self.name = item['name']
+        self.type = item['type']
+
+        # attributes set by the context master
         self.internal = internal
         self.single = single
         self.optional = optional
@@ -272,12 +279,15 @@ class ProgramsNetwork(AnvioPrograms):
         node_indices = {}
 
         index = 0
+        types_seen = set(["PROGRAM"])
         for item in all_items:
+            types_seen.add(item.type)
             network_dict["nodes"].append({"size": items_seen[item.name],
                                           "score": 0.5 if item.internal else 1,
                                           "color": '#00AA00' if item.internal else "#AA0000",
                                           "id": item.name,
-                                          "type": "square" if item.internal else "diamond"})
+                                          "internal": True if item.internal else False,
+                                          "type": item.type})
             node_indices[item.name] = index
             index += 1
 
@@ -286,7 +296,7 @@ class ProgramsNetwork(AnvioPrograms):
                                           "score": 0.1,
                                           "color": "#AAAA00",
                                           "id": program.name,
-                                          "type": "circle"})
+                                          "type": "PROGRAM"})
             node_indices[program.name] = index
             index += 1
 
@@ -302,6 +312,7 @@ class ProgramsNetwork(AnvioPrograms):
         open(self.output_file_path, 'w').write(json.dumps(network_dict, indent=2))
 
         self.run.info('JSON description of network', self.output_file_path)
+        self.run.info('Item types seen', ', '.join(sorted(list(types_seen))))
 
 
 class ProgramsVignette(AnvioPrograms):
