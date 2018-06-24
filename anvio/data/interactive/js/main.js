@@ -1560,6 +1560,36 @@ function showGenSummaryWindow() {
     });
 }
 
+function showCollectionDetails(list) {
+
+    var cname = $(list).val();
+
+    if (cname=='' || typeof cname === 'undefined')
+    {
+        // clear details
+        var tbl = '<div class="col-md-12">Collection Details</div><hr>' +
+            '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>n/a</b></div>' +
+            '<div class="col-md-8">Number of Bins:</div><div class="col-md-4"><b>n/a</b></div>';
+
+        $('.collection-details').html(tbl);
+
+        return;
+    }
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/collections?timestamp=' + new Date().getTime(),
+        success: function(data) {
+            var tbl = '<div class="col-md-12">Collection Details</div><hr>' +
+                '<div class="col-md-8">Number of Splits:</div><div class="col-md-4"><b>' + data[cname]['num_splits'] + '</b></div>' +
+                '<div class="col-md-8">Number of Bins:</div><div class="col-md-4"><b>' + data[cname]['num_bins'] + '</b></div>';
+
+            $('.collection-details').html(tbl);
+        }
+    });
+}
+
 function showCompleteness(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
