@@ -6,6 +6,8 @@ import os
 import glob
 import json
 
+from collections import Counter
+
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -249,12 +251,21 @@ class ProgramsNetwork(AnvioPrograms):
 
     def report_network(self):
         item_names_seen = set([])
+        items_seen = Counter({})
         all_items = []
         for program in self.programs:
             for item in program.provides + program.requires:
+                items_seen[item.name] += 1
                 if not item.name in item_names_seen:
                     all_items.append(item)
                     item_names_seen.add(item.name)
+
+        programs_seen = Counter({})
+        for item in all_items:
+            for program in self.programs:
+                for program_item in program.provides + program.requires:
+                    if item.name == program_item.name:
+                        programs_seen[program.name] += 1
 
         network_dict = {"graph": [], "nodes": [], "links": [], "directed": False, "multigraph": False}
 
@@ -262,16 +273,18 @@ class ProgramsNetwork(AnvioPrograms):
 
         index = 0
         for item in all_items:
-            network_dict["nodes"].append({"size": 90,
+            network_dict["nodes"].append({"size": items_seen[item.name],
                                           "score": 0.5 if item.internal else 1,
+                                          "color": '#00AA00' if item.internal else "#AA0000",
                                           "id": item.name,
-                                          "type": "square"})
+                                          "type": "square" if item.internal else "diamond"})
             node_indices[item.name] = index
             index += 1
 
         for program in self.programs:
-            network_dict["nodes"].append({"size": 80,
+            network_dict["nodes"].append({"size": programs_seen[program.name],
                                           "score": 0.1,
+                                          "color": "#AAAA00",
                                           "id": program.name,
                                           "type": "circle"})
             node_indices[program.name] = index
