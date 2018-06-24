@@ -259,7 +259,7 @@ function mouseMoveHandler(event) {
             layer_counter++;
         }
 
-        write_mouse_table(message, "Layers", layer_pos);
+        write_mouse_table(message, sample_name, layer_pos);
 
         return;
     }
