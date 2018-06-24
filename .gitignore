@@ -9,3 +9,4 @@ anvio/extensions/concoct/vbgmm.c
 anvio/data/misc/COG/
 anvio/data/misc/MODELLER/db/
 smtp_config.ini
+.snakemake
