@@ -587,8 +587,8 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .modal-dialog.modal-sm h3::before {
     display: block;
-    width: 220px;
-    height: 220px;
+    width: 280px;
+    height: 280px;
     margin-right: auto;
     margin-left: auto;
     margin-bottom: 8px;
@@ -596,6 +596,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     content: "";
     background: url("../images/logo.png") no-repeat 0 0;
     background-size: 100%;
+}
+
+.modal-dialog.modal-sm {
+    width: 320px;
 }
 
 .menu-disabled {
