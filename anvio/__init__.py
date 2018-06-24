@@ -1786,7 +1786,6 @@ ANVIO_ITEMS = {'pan-db': 'PAN DB',
                'summary': 'STATIC SUMMARY HTML',
                'split-bins': 'SPLIT BINS',
                'state-json': 'INTERACTIVE STATE JSON',
-               'state': 'INTERACTIVE STATE',
                }
 
 def I(item_id):
