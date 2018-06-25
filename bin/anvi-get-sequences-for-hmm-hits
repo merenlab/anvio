@@ -61,7 +61,7 @@ __requires__ = [('internal', 'mandatory', 'single', 'contigs-db'),
                 ('internal', 'optional', 'single', 'profile-db'),
                 ('external', 'optional', 'single', 'external-genomes'),
                 ('external', 'optional', 'single', 'internal-genomes'),
-                ('internal', 'mandatory', 'single', 'hmm-source'),]
+                ('internal', 'mandatory', 'single', 'hmm-profile'),]
 __provides__ = [('external', 'default', 'single', 'genes-fasta'),
                 ('external', 'optional', 'single', 'concatenated-gene-alignment-fasta'),]
 
