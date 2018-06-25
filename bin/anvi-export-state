@@ -20,8 +20,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = [('internal', 'optional', 'single', 'pan-db'),
-                ('internal', 'optional', 'single', 'merged-profile-db'),
-                ('internal', 'optional', 'single', 'single-profile-db')]
+                ('internal', 'optional', 'single', 'profile-db')]
 __provides__ = [('external', 'default', 'single', 'state-json'),]
 
 

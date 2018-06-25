@@ -19,8 +19,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = [('internal', 'optional', 'single', 'pan-db'),
-                ('internal', 'optional', 'single', 'merged-profile-db'),
-                ('internal', 'optional', 'single', 'single-profile-db')]
+                ('internal', 'optional', 'single', 'profile-db')]
 __provides__ = [('external', 'default', 'single', 'misc-data-items-txt'),
                 ('external', 'default', 'single', 'misc-data-layers-txt'),
                 ('external', 'default', 'single', 'misc-data-layer-orders-txt')]

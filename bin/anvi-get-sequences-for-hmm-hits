@@ -58,8 +58,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = [('internal', 'mandatory', 'single', 'contigs-db'),
-                ('internal', 'optional', 'single', 'single-profile-db'),
-                ('internal', 'optional', 'single', 'merged-profile-db'),
+                ('internal', 'optional', 'single', 'profile-db'),
                 ('external', 'optional', 'single', 'external-genomes'),
                 ('external', 'optional', 'single', 'internal-genomes'),
                 ('internal', 'mandatory', 'single', 'hmm-source'),]

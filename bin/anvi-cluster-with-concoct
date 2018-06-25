@@ -23,7 +23,7 @@ __resources__ = [("Original CONCOCT paper by Alneberg et al.", "https://www.natu
                  ("An example usage of the program in the context of the Infant Gut Dataset by Sharon et al.", "http://merenlab.org/tutorials/infant-gut/#from-fragmentation-to-conflation-error-a-meren-lab-heuristic-to-fight-back"),
                  ("The use of this program in the context of initial binning of TARA population genomes", "http://merenlab.org/data/2017_Delmont_et_al_HBDs/#initial-automated-binning-with-concoct")]
 __tags__ = ["profile_db", "clustering", "collections"]
-__requires__ = [('internal', 'mandatory', 'single', 'merged-profile-db'),
+__requires__ = [('internal', 'mandatory', 'single', 'profile-db'),
                 ('internal', 'mandatory', 'single', 'contigs-db')]
 __provides__ = [('internal', 'default', 'single', 'collection'),
                 ('internal', 'default', 'multiple', 'bin')]
