@@ -1,3 +1,11 @@
+# v5, "margaret" is out! (25.06.2018) #
+We are happy to announce #anvio v5, "margaret":
+
+This release adds more than 10,000 lines of code to v4, and makes available new tools for those who study metagenomes and pangenomes, and are interested in microbial evolution, ecology, and biochemistry.
+
+Please see the release notes [here](https://github.com/merenlab/anvio/releases/tag/v5), and see why you _must_ update your installation yourself! 😇
+***
+
 # v4, "rosalind" is out! (24.02.2018) #
 This version adds about 15,000 new lines of code since the previous, while removing about 7,500, streamlining the anvi'o codebase while making available a plethora of improvements and new toys!
 
