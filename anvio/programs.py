@@ -200,6 +200,7 @@ class Program:
 class Item:
     def __init__(self, item_id, internal=True, optional=True, single=True):
         item = anvio.I(item_id)
+        self.id = item_id
         self.name = item['name']
         self.type = item['type']
 
@@ -262,10 +263,10 @@ class ProgramsNetwork(AnvioPrograms):
         all_items = []
         for program in self.programs:
             for item in program.provides + program.requires:
-                items_seen[item.name] += 1
-                if not item.name in item_names_seen:
+                items_seen[item.id] += 1
+                if not item.id in item_names_seen:
                     all_items.append(item)
-                    item_names_seen.add(item.name)
+                    item_names_seen.add(item.id)
 
         programs_seen = Counter({})
         for item in all_items:
@@ -282,13 +283,14 @@ class ProgramsNetwork(AnvioPrograms):
         types_seen = set(["PROGRAM"])
         for item in all_items:
             types_seen.add(item.type)
-            network_dict["nodes"].append({"size": items_seen[item.name],
+            network_dict["nodes"].append({"size": items_seen[item.id],
                                           "score": 0.5 if item.internal else 1,
                                           "color": '#00AA00' if item.internal else "#AA0000",
-                                          "id": item.name,
+                                          "id": item.id,
+                                          "name": item.name,
                                           "internal": True if item.internal else False,
                                           "type": item.type})
-            node_indices[item.name] = index
+            node_indices[item.id] = index
             index += 1
 
         for program in self.programs:
@@ -296,6 +298,7 @@ class ProgramsNetwork(AnvioPrograms):
                                           "score": 0.1,
                                           "color": "#AAAA00",
                                           "id": program.name,
+                                          "name": program.name,
                                           "type": "PROGRAM"})
             node_indices[program.name] = index
             index += 1
@@ -303,11 +306,11 @@ class ProgramsNetwork(AnvioPrograms):
         for item in all_items:
             for program in self.programs:
                 for item_provided in program.provides:
-                    if item_provided.name == item.name:
-                        network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[item.name]})
+                    if item_provided.id == item.id:
+                        network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[item.id]})
                 for item_needed in program.requires:
-                    if item_needed.name == item.name:
-                        network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[item.name]})
+                    if item_needed.id == item.id:
+                        network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[item.id]})
 
         open(self.output_file_path, 'w').write(json.dumps(network_dict, indent=2))
 
