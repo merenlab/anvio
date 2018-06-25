@@ -20,6 +20,8 @@ __email__ = "a.murat.eren@gmail.com"
 __requires__ = [('internal', 'optional', 'single', 'pan-db'),
                 ('internal', 'optional', 'single', 'profile-db'),
                 ('external', 'optional', 'single', 'misc-data-items-txt'),
+                ('external', 'optional', 'single', 'dendrogram'),
+                ('external', 'optional', 'single', 'phylogeny'),
                 ('external', 'optional', 'single', 'misc-data-layers-txt'),
                 ('external', 'optional', 'single', 'misc-data-layer-orders-txt')]
 __provides__ = [('external', 'optional', 'single', 'misc-data-items'),

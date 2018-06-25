@@ -23,6 +23,7 @@ __email__ = "a.murat.eren@gmail.com"
 __requires__ = [('internal', 'optional', 'single', 'pan-db'),
                 ('internal', 'optional', 'single', 'profile-db'),
                 ('external', 'mandatory', 'single', 'state-json')]
+__provides__ = [('internal', 'mandatory', 'single', 'state')]
 
 
 run = terminal.Run()
