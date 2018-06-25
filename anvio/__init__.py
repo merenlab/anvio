@@ -1785,6 +1785,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB'},
                'aa-frequencies-txt': {'name': 'AA FREQUENCIES', 'type': 'TXT'},
                'summary': {'name': 'STATIC SUMMARY', 'type': 'SUMMARY'},
                'split-bins': {'name': 'SPLIT BINS', 'type': 'CONCEPT'},
+               'state': {'name': 'INTERACTIVE STATE', 'type': 'CONCEPT'},
                'state-json': {'name': 'INTERACTIVE STATE', 'type': 'JSON'}}
 
 def I(item_id):
