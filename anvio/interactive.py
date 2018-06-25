@@ -1415,7 +1415,7 @@ class StructureInteractive(VariabilitySuper):
         # whose only purpose is to enable a dictionary comprehension. Imagine how many lines this
         # would be using native python.
         df = pd.DataFrame(additional_layer_dict).T.fillna("NA").reset_index().rename(columns={"index":"samples"})
-        d.update({col: {val: list(df.loc[df[col]==val, "samples"]) for val in df[col].unique()} for col in df.columns}) # V/\
+        d.update({col: {val: list(df.loc[df[col]==val, "samples"]) for val in numpy.sort(df[col].unique())} for col in df.columns}) # V/\
 
         return d
 
@@ -1947,7 +1947,7 @@ class StructureInteractive(VariabilitySuper):
         gene_callers_id = int(options['gene_callers_id'])
         column_info = self.variability_storage[gene_callers_id][selected_engine]['column_info']
 
-        self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'))
+        self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'), discard_previous_if_exists=True)
         output = {}
 
         list_of_filter_functions = []
