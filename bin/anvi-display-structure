@@ -23,8 +23,7 @@ __email__ = "ozcanesen@gmail.com"
 __requires__ = [('internal', 'mandatory', 'single', 'structure-db'),
                 ('external', 'optional', 'single', 'variability-profile'),
                 ('internal', 'optional', 'single', 'contigs-db'),
-                ('internal', 'optional', 'single', 'single-profile-db'),
-                ('internal', 'optional', 'single', 'merged-profile-db')]
+                ('internal', 'optional', 'single', 'profile-db')]
 __provides__ = [('internal', 'default', 'single', 'interactive'),
                 ('external', 'optional', 'single', 'summary')]
 
