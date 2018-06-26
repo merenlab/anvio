@@ -1733,68 +1733,6 @@ def K(param_id, params_dict={}):
 
     return kwargs
 
-ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB'},
-               'contigs-db': {'name': 'CONTIGS', 'type': 'DB'},
-               'contigs-fasta': {'name': 'CONTIGS', 'type': 'FASTA'},
-               'concatenated-gene-alignment-fasta': {'name': 'CONCATENATED GENE ALIGNMENT', 'type': 'FASTA'},
-               'short-reads-fasta': {'name': 'SHORT READS', 'type': 'FASTA'},
-               'genes-fasta': {'name': 'GENES', 'type': 'FASTA'},
-               'bam-file': {'name': 'BAM FILE', 'type': 'BAM'},
-               'raw-bam-file': {'name': 'RAW BAM FILE', 'type': 'BAM'},
-               'locus-fasta': {'name': 'LOCUS', 'type': 'FASTA'},
-               'structure-db': {'name': 'STRUCTURE', 'type': 'DB'},
-               'single-profile-db': {'name': 'SINGLE PROFILE', 'type': 'DB'},
-               'profile-db': {'name': 'PROFILE', 'type': 'DB'},
-               'genomes-storage-db': {'name': 'GENOMES STORAGE', 'type': 'DB'},
-               'contigs-stats': {'name': 'CONTIGS STATS', 'type': 'STATS'},
-               'svg': {'name': 'SVG', 'type': 'SVG'},
-               'bin': {'name': 'BIN', 'type': 'BIN'},
-               'collection': {'name': 'COLLECTION', 'type': 'COLLECTION'},
-               'collection-txt': {'name': 'COLLECTION', 'type': 'TXT'},
-               'hmm-source': {'name': 'HMM SOURCE', 'type': 'HMM'},
-               'hmm-profile': {'name': 'HMM PROFILE', 'type': 'CONCEPT'},
-               'cogs-data': {'name': 'COGs DATA', 'type': 'DATA'},
-               'pfams-data': {'name': 'PFAMs DATA', 'type': 'DATA'},
-               'misc-data-items-txt': {'name': 'ITEMS DATA', 'type': 'TXT'},
-               'misc-data-items': {'name': 'ITEMS DATA', 'type': 'CONCEPT'},
-               'misc-data-layers-txt': {'name': 'LAYERS DATA', 'type': 'TXT'},
-               'misc-data-layers': {'name': 'LAYERS DATA', 'type': 'CONCEPT'},
-               'misc-data-layers-category': {'name': 'LAYERS DATA CATEGORY', 'type': 'CONCEPT'},
-               'misc-data-layer-orders': {'name': 'LAYER ORDERS DATA', 'type': 'CONCEPT'},
-               'misc-data-layer-orders-txt': {'name': 'LAYER ORDERS DATA', 'type': 'TXT'},
-               'dendrogram': {'name': 'DENDROGRAM', 'type': 'NEWICK'},
-               'metapangenome': {'name': 'METAPANGENOME', 'type': 'CONCEPT'},
-               'oligotypes': {'name': 'OLIGOTYPES', 'type': 'CONCEPT'},
-               'linkmers-txt': {'name': 'LINKMERS', 'type': 'TXT'},
-               'phylogeny': {'name': 'PHYLOGENY', 'type': 'NEWICK'},
-               'gene-calls-txt': {'name': 'GENE CALLS', 'type': 'TXT'},
-               'functions': {'name': 'GENE FUNCTIONS', 'type': 'CONCEPT'},
-               'functions-txt': {'name': 'GENE FUNCTIONS', 'type': 'TXT'},
-               'functional-enrichment-txt': {'name': 'ENRICHED FUNCTIONS', 'type': 'TXT'},
-               'interactive': {'name': 'INTERACTIVE DISPLAY', 'type': 'DISPLAY'},
-               'view-data': {'name': 'VIEW DATA', 'type': 'TXT'},
-               'layer-taxonomy': {'name': 'LAYER TAXONOMY', 'type': 'CONCEPT'},
-               'layer-taxonomy-txt': {'name': 'LAYER TAXONOMY', 'type': 'TXT'},
-               'gene-taxonomy': {'name': 'GENE TAXONOMY', 'type': 'CONCEPT'},
-               'gene-taxonomy-txt': {'name': 'GENE TAXONOMY', 'type': 'TXT'},
-               'external-genomes': {'name': 'EXTERNAL GENOMES', 'type': 'TXT'},
-               'internal-genomes': {'name': 'INTERNAL GENOMES', 'type': 'TXT'},
-               'ani': {'name': 'ANI ESTIMATES', 'type': 'CONCEPT'},
-               'variability-profile': {'name': 'VARIABILITY PROFILE', 'type': 'CONCEPT'},
-               'codon-frequencies-txt': {'name': 'CODON FREQUENCIES', 'type': 'TXT'},
-               'aa-frequencies-txt': {'name': 'AA FREQUENCIES', 'type': 'TXT'},
-               'summary': {'name': 'STATIC SUMMARY', 'type': 'SUMMARY'},
-               'split-bins': {'name': 'SPLIT BINS', 'type': 'CONCEPT'},
-               'state': {'name': 'INTERACTIVE STATE', 'type': 'CONCEPT'},
-               'state-json': {'name': 'INTERACTIVE STATE', 'type': 'JSON'}}
-
-def I(item_id):
-    if item_id not in ANVIO_ITEMS:
-        raise Exception("*** anvi'o does not know about item '%s' :(" % item_id)
-
-    return ANVIO_ITEMS[item_id]
-
-
 # The rest of this file is composed of code that responds to '-v' or '--version' calls from clients,
 # and provides access to the database version numbers for all anvi'o modules.
 
