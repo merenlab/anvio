@@ -261,7 +261,12 @@ class Program:
 
 class Item:
     def __init__(self, item_id, internal=True, optional=True, single=True):
-        item = anvio.I(item_id)
+        if item_id not in ANVIO_ITEMS:
+            raise ConfigError("Ehem. Anvi'o does not know about item '%s'. There are two was this could happen:\
+                               one, you made a type (easy to fix), two, you just added a new program into anvi'o\
+                               but have not yet updated `anvio/programs.py`." % item_id)
+
+        item = ANVIO_ITEMS[item_id]
         self.id = item_id
         self.name = item['name']
         self.type = item['type']
