@@ -247,16 +247,7 @@ class Program:
                    'provides': self.provides}
 
         for x in factory:
-            for internal, optional, single, item_name in program_data[x]:
-                item = Item(item_name)
-                item.optional = True if optional == 'optional' else False
-                item.single = True if single == 'single' else False
-                # FIXME: item internal/external status is not context dependent
-                # and this should be described in ANVIO_ITEMS dict and assigned
-                # in the Item class down below and not here:
-                item.internal = True if internal == 'internal' else False
-
-                factory[x].append(item)
+            [factory[x].append(Item(item_name)) for item_name in program_data[x]]
 
 
 class Item:
@@ -270,9 +261,9 @@ class Item:
         self.id = item_id
         self.name = item['name']
         self.type = item['type']
+        self.internal = item['internal']
 
         # attributes set by the context master
-        self.internal = internal
         self.single = single
         self.optional = optional
 
