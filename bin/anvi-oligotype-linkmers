@@ -22,8 +22,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('external', 'mandatory', 'single', 'linkmers-txt'),]
-__provides__ = [('external', 'default', 'single', 'oligotypes'),]
+__requires__ = ['linkmers-txt',]
+__provides__ = ['oligotypes',]
 
 
 run = terminal.Run()

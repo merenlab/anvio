@@ -14,9 +14,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
-__requires__ = [('internal', 'mandatory', 'single', 'contigs-db'),
-                ('internal', 'mandatory', 'single', 'pfams-data'),]
-__provides__ = [('internal', 'default', 'single', 'functions'),]
+__requires__ = ['contigs-db', 'pfams-data',]
+__provides__ = ['functions',]
 
 
 if __name__ == '__main__':

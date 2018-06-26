@@ -23,9 +23,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('internal', 'mandatory', 'single', 'single-profile-db'),
-                ('external', 'mandatory', 'single', 'layer-taxonomy-txt'),]
-__provides__ = [('internal', 'default', 'single', 'layer-taxonomy'),]
+__requires__ = ['single-profile-db', 'layer-taxonomy-txt',]
+__provides__ = ['layer-taxonomy',]
 
 
 run = terminal.Run()

@@ -28,12 +28,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('internal', 'mandatory', 'single', 'profile-db'),
-                ('internal', 'mandatory', 'single', 'contigs-db'),
-                ('internal', 'mandatory', 'single', 'collection'),
-                ('internal', 'mandatory', 'single', 'pan-db'),
-                ('internal', 'mandatory', 'single', 'genomes-storage-db'),]
-__provides__ = [('external', 'default', 'single', 'summary'),]
+__requires__ = ['profile-db', 'contigs-db', 'collection', 'pan-db', 'genomes-storage-db',]
+__provides__ = ['summary',]
 
 
 run = terminal.Run()

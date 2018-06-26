@@ -17,16 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('internal', 'optional', 'single', 'pan-db'),
-                ('internal', 'optional', 'single', 'profile-db'),
-                ('external', 'optional', 'single', 'misc-data-items-txt'),
-                ('external', 'optional', 'single', 'dendrogram'),
-                ('external', 'optional', 'single', 'phylogeny'),
-                ('external', 'optional', 'single', 'misc-data-layers-txt'),
-                ('external', 'optional', 'single', 'misc-data-layer-orders-txt')]
-__provides__ = [('external', 'optional', 'single', 'misc-data-items'),
-                ('external', 'default', 'single', 'misc-data-layers'),
-                ('external', 'default', 'single', 'misc-data-layer-orders')]
+__requires__ = ['pan-db', 'profile-db', 'misc-data-items-txt', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt']
+__provides__ = ['misc-data-items', 'misc-data-layers', 'misc-data-layer-orders']
 
 
 def main(args):

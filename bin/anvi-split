@@ -19,10 +19,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('internal', 'mandatory', 'single', 'profile-db'),
-                ('internal', 'mandatory', 'single', 'contigs-db'),
-                ('internal', 'mandatory', 'single', 'collection'),]
-__provides__ = [('external', 'default', 'single', 'split-bins'),]
+__requires__ = ['profile-db', 'contigs-db', 'collection',]
+__provides__ = ['split-bins',]
 
 
 if __name__ == '__main__':

@@ -20,8 +20,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('external', 'mandatory', 'single', 'raw-bam-file'),]
-__provides__ = [('external', 'default', 'single', 'bam-file'),]
+__requires__ = ['raw-bam-file',]
+__provides__ = ['bam-file',]
 
 
 progress = terminal.Progress()

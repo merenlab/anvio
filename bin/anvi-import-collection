@@ -23,11 +23,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('internal', 'optional', 'single', 'contigs-db'),
-                ('internal', 'optional', 'single', 'profile-db'),
-                ('internal', 'optional', 'single', 'pan-db'),
-                ('external', 'optional', 'single', 'collection-txt'),]
-__provides__ = [('internal', 'default', 'single', 'collection'),]
+__requires__ = ['contigs-db', 'profile-db', 'pan-db', 'collection-txt',]
+__provides__ = ['collection',]
 
 
 run = terminal.Run()
