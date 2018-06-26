@@ -57,13 +57,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('internal', 'mandatory', 'single', 'contigs-db'),
-                ('internal', 'optional', 'single', 'profile-db'),
-                ('external', 'optional', 'single', 'external-genomes'),
-                ('external', 'optional', 'single', 'internal-genomes'),
-                ('internal', 'mandatory', 'single', 'hmm-profile'),]
-__provides__ = [('external', 'default', 'single', 'genes-fasta'),
-                ('external', 'optional', 'single', 'concatenated-gene-alignment-fasta'),]
+__requires__ = ['contigs-db', 'profile-db', 'external-genomes', 'internal-genomes', 'hmm-profile']
+__provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
 
 
 run = terminal.Run()

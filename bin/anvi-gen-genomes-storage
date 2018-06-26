@@ -19,9 +19,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('external', 'optional', 'single', 'external-genomes'),
-                ('external', 'optional', 'single', 'internal-genomes')]
-__provides__ = [('external', 'default', 'single', 'genomes-storage-db'),]
+__requires__ = ['external-genomes', 'internal-genomes']
+__provides__ = ['genomes-storage-db']
 
 
 run = terminal.Run()

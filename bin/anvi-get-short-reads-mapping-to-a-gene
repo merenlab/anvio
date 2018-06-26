@@ -20,9 +20,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = [('internal', 'mandatory', 'single', 'contigs-db'),
-                ('external', 'mandatory', 'multiple', 'bam-file'),]
-__provides__ = [('external', 'default', 'single', 'short-reads-fasta'),]
+__requires__ = ['contigs-db', 'bam-file',]
+__provides__ = ['short-reads-fasta',]
 
 
 run = terminal.Run()

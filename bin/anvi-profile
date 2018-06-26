@@ -17,9 +17,8 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
 __resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
-__requires__ = [('external', 'mandatory', 'single', 'bam-file'),
-                ('internal', 'mandatory', 'single', 'contigs-db')]
-__provides__ = [('internal', 'default', 'single', 'single-profile-db')]
+__requires__ = ['bam-file', 'contigs-db']
+__provides__ = ['single-profile-db']
 
 
 if __name__ == '__main__':

@@ -20,12 +20,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
-__requires__ = [('internal', 'mandatory', 'single', 'structure-db'),
-                ('external', 'optional', 'single', 'variability-profile'),
-                ('internal', 'optional', 'single', 'contigs-db'),
-                ('internal', 'optional', 'single', 'profile-db')]
-__provides__ = [('internal', 'default', 'single', 'interactive'),
-                ('external', 'optional', 'single', 'summary')]
+__requires__ = ['structure-db', 'variability-profile', 'contigs-db', 'profile-db']
+__provides__ = ['interactive', 'summary']
 
 
 
