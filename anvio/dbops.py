@@ -1476,7 +1476,7 @@ class PanSuperclass(object):
         self.run.warning(msg, "GENE CLUSTER FILTERS", lc="cyan")
         self.run.info('All gene clusters (%d)' % len(all_gene_clusters), M(all_gene_clusters))
         self.run.info('Gene clusters that passed the filter (%d)' % (len(gene_clusters_to_keep)), M(gene_clusters_to_keep), mc='green')
-        self.run.info('Genes clusters that filed the filter (%d)' % (len(gene_clusters_to_remove)), M(gene_clusters_to_remove) if gene_clusters_to_remove else 'None.', nl_after=1, mc='red')
+        self.run.info('Genes clusters that failed the filter (%d)' % (len(gene_clusters_to_remove)), M(gene_clusters_to_remove) if gene_clusters_to_remove else 'None.', nl_after=1, mc='red')
 
         if len(gene_clusters_to_remove):
             for gene_cluster_name in gene_clusters_to_remove:
