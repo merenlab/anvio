@@ -110,7 +110,7 @@ class Kaiju(Parser):
 
         if not self.just_do_it:
             raise ConfigError("Anvi'o assumes you used this exact parameter during your kaiju run: \
-                               '-r superkingdom,phylum,order,class,family,genus,species'. If you\
+                               '-r superkingdom,phylum,class,order,family,genus,species'. If you\
                                haven't, you will run into trouble later. If you are positive that\
                                you did include that parameter to your run, re-run this program with\
                                `--just-do-it` flag.")

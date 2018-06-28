@@ -5,7 +5,6 @@ import sys
 import argparse
 
 import anvio.db as db
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 
@@ -18,6 +17,9 @@ progress = terminal.Progress()
 current_version = '20'
 next_version    = '21'
 
+item_orders_table_name               = 'item_orders'
+item_orders_table_structure         = ['name', 'type', 'data']
+item_orders_table_types             = ['text', 'text', 'text']
 
 def migrate(db_path):
     if db_path is None:
@@ -35,7 +37,7 @@ def migrate(db_path):
     progress.update('...')
 
     try:
-        profile_db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
+        profile_db.create_table(item_orders_table_name, item_orders_table_structure, item_orders_table_types)
     except:
         pass
 
@@ -44,7 +46,7 @@ def migrate(db_path):
     # move clustering data into the new table
     for clustering in clusterings:
         newick = clusterings[clustering]['newick']
-        profile_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % t.item_orders_table_name, tuple([clustering, 'newick', newick]))
+        profile_db._exec('''INSERT INTO %s VALUES (?,?,?)''' % item_orders_table_name, tuple([clustering, 'newick', newick]))
 
     # update keys
     for old_key, new_key in [('available_clusterings', 'available_item_orders'),
