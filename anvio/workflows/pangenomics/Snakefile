@@ -27,10 +27,9 @@ if not slave_mode:
     M = PangenomicsWorkflow(argparse.Namespace(config=config))
     M.init()
     dirs_dict = M.dirs_dict
-
-# in order to generate the contigs databases we include the snakefile for the generation of contigs databases
-# include statement must come after we get an instance of PangenomicsWorkflow class
-include: w.get_workflow_snake_file_path('contigs')
+    # in order to generate the contigs databases we include the snakefile for the generation of contigs databases
+    # include statement must come after we get an instance of PangenomicsWorkflow class
+    include: w.get_workflow_snake_file_path('contigs')
 
 project_name = M.get_param_value_from_config("project_name")
 if not project_name:

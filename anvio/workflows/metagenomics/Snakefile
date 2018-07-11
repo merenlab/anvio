@@ -82,10 +82,9 @@ if not slave_mode:
     M = MetagenomicsWorkflow(argparse.Namespace(config=config))
     M.init()
     dirs_dict = M.dirs_dict
-
-# in order to generate the contigs databases we include the snakefile
-# for the generation of contigs databases
-include: w.get_workflow_snake_file_path('contigs')
+    # in order to generate the contigs databases we include the snakefile
+    # for the generation of contigs databases
+    include: w.get_workflow_snake_file_path('contigs')
 
 # sanity check for requested assembly
 # make sure that the user is not requesting multiple assemblers
