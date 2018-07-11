@@ -41,7 +41,7 @@ class MetaPanWorkflow(MetagenomicsWorkflow, PangenomicsWorkflow, ContigsDBWorkfl
 
         self.rules.extend([])
 
-        self.general_params.extend([])
+        self.general_params.extend(['metapangenome_fastas_txt'])
 
         rule_acceptable_params_dict = {}
 
@@ -58,4 +58,4 @@ class MetaPanWorkflow(MetagenomicsWorkflow, PangenomicsWorkflow, ContigsDBWorkfl
                                "PROFILE_DIR": "05_ANVIO_PROFILE",
                                "MERGE_DIR": "06_MERGED"})
 
-        self.default_config.update({})
+        self.default_config.update({'metapangenome_fastas_txt': 'metapangenome-fastas.txt'})
