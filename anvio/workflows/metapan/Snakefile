@@ -1,54 +1,8 @@
 # -*- coding: utf-8
 
 '''
-    This is a snakemake for the metagenomics workflow in the Meren Lab using
-    anvi'o.
-
-    It includes the following steps:
-    Quality filtering
-    Assembly using megahit
-    Mapping of metagenomes to assemblies using bowtie2
-    generating anvio contigs database (including running hmm profile)
-    generating anvio profile database
-
-    The following files must exist in the working directory:
-    config.json - this file contains essential configuration information for
-    the pipeline.
-
-    samples.txt -
-        TAB-delimited file to describe where samples are. The
-        header line should be "sample", "r1", and "r2". Each
-        row should list the sample name in the first column,
-        and full path for r1 and r2.
-
-
-
-    An example run of this workflow on the barhal server:
-    $ snakemake --snakefile merenlab-metagenomics-pipeline.snakefile \
-                --cluster-config cluster.json --cluster 'clusterize  \
-                -n {threads} -log {log}' --jobs 4 --latency-wait 100 -p
-
-    Or without --cluster-config and on one line:
-
-    $ snakemake $METAPIPE/merenlab-metagenomics-pipeline.snakefile --cluster 'clusterize -n {threads} -log {log}' --jobs 4 --latency-wait 100 -p
-
-    Note on rule order: whenever the order of rule execution was ambiguous
-        mypreferred approach was to use the rule dependencies. See:
-        http://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#rule-dependencies
-
-    Note on cluster configuration: because multiple rules require the
-    number of threads as input (for example anvi-profile, megahit), and I
-    couldn't find a way to make the number of threads from the
-    cluster.config file available within rules, then instead I define the
-    number of threads within each rule. I'm aware it's less elegant than
-    having all cluster configuration in the cluster.json file, and would
-    love to learn about an alternative solution if you have one.
-
-    Note on log files: in order for the stdout and stderr to be written
-    into log files, I have added `>> {log} 2>&1` to each shell command. if
-    running on a cluster, I suggested including something like this in
-    your `--cluster` command: `--log {log}`.
 '''
+
 import os
 import anvio
 import argparse
@@ -60,7 +14,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.workflows.metagenomics import MetagenomicsWorkflow
+from anvio.workflows.metapan import MetaPanWorkflow
 from anvio.tables.miscdata import TableForLayerAdditionalData
 
 __author__ = "Alon Shaiber"
@@ -74,38 +28,25 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-slave_mode= False if 'workflows/metagenomics' in workflow.included[0] else True
+slave_mode= False if 'workflows/metapangenomics' in workflow.included[0] else True
 
 if not slave_mode:
     # it is important that this comes before the include statement since
     # M is defined here and will also be used in the contigs workflow
-    M = MetagenomicsWorkflow(argparse.Namespace(config=config))
+    M = MetaPanWorkflow(argparse.Namespace(config=config))
     M.init()
     dirs_dict = M.dirs_dict
+    # include the workflow dependencies
+    # TODO: a better way to do this would be to have a dependencies variable under self
+    # and then to include all dependencies
+    include: w.get_workflow_snake_file_path('pangenomics')
+    include: w.get_workflow_snake_file_path('metagenomics')
+    include: w.get_workflow_snake_file_path('contigs')
 
-# in order to generate the contigs databases we include the snakefile
-# for the generation of contigs databases
-include: w.get_workflow_snake_file_path('contigs')
 
-# sanity check for requested assembly
-# make sure that the user is not requesting multiple assemblers
-available_assemblers = M.get_assembly_software_list()
-number_of_assemblers_in_config_file = 0
-assembly_software_in_config = list()
-for a in available_assemblers:
-    if M.get_param_value_from_config([a, 'run']) == True:
-        number_of_assemblers_in_config_file += 1
-        assembly_software_in_config.append(a)
-if number_of_assemblers_in_config_file > 1:
-    raise ConfigError("This workflow supports the usage of only one assembly "\
-                        "software, yet all the following software are " \
-                        "included in your config file: %s. Please include only one." % assembly_software_in_config)
-
-# loading the samples.txt file
-# The default samples file is samples.txt
-samples_txt_file = M.get_param_value_from_config(['samples_txt'])
-# getting the samples information (names, [group], path to r1, path to r2) from samples.txt
-samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
+# loading the metapangenome_fastas.txt file
+metapangenome_fastas_txt = M.get_param_value_from_config(['metapangenome_fastas_txt'])
+metapangenome_fastas_information = pd.read_csv(metapangenome_fastas_txt, sep='\t', index_col=False)
 
 # FIXME: sanity check of every input file should be done in the backend, and not in
 #        the snakemake recipe.
