@@ -360,7 +360,7 @@ rule emapper:
 
 rule anvi_script_run_eggnog_mapper:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/anvi_script_run_eggnog_mapper.log"
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_run_eggnog_mapper.log"
     input:
         eggnog_output = rules.emapper.output,
         contigs = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"
