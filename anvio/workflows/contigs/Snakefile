@@ -129,7 +129,6 @@ def input_for_run_remove_human_dna_using_centrifuge(wildcards):
 
     if M.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
         # by default, reformat fasta is ran
-        contigs = rules.anvi_script_reformat_fasta.output.contigs
 
     return contigs
 
