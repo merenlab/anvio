@@ -612,7 +612,7 @@ rule bowtie_build:
 
 def input_for_bowtie(wildcards):
     '''Creating a dictionary containing the input files for bowtie.'''
-    d = {'build_output': rules.bowtie_build.output}
+    d = {'build_output': dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs.1.bt2".format(group=wildcards.group)}
     # add the fastq files paths to the dictionary:
     d.update(get_fastq(wildcards))
     return d
