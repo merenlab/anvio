@@ -470,11 +470,14 @@ def get_workflow_snake_file_path(workflow):
 
     return snakefile_path
 
-def sanity_check_for_args(workflow_object, args, workflow_name):
+def init_workflow_super_class(workflow_object, args, workflow_name):
     '''
         if a regular instance of workflow object is being generated, we
         expect it to have a parameter `args`. if there is no `args` given, we
-        assume the class is being inherited as a base class from within another
+        assume the class is being inherited as a base class from within another.
+
+        For a regular instance of a workflow this function will set the args
+        and init the WorkflowSuperClass.
     '''
     if args:
         if len(workflow_object.__dict__):
@@ -483,6 +486,7 @@ def sanity_check_for_args(workflow_object, args, workflow_name):
                                This is not alright." % type(workflow_object))
         workflow_object.args = args
         workflow_object.name = workflow_name
+        WorkflowSuperClass.__init__(workflow_object)
     else:
         if not len(workflow_object.__dict__):
             raise ConfigError("When you are *not* inheriting %s from within\

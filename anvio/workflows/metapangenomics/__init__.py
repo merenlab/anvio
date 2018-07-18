@@ -9,7 +9,7 @@ import anvio
 import anvio.terminal as terminal
 
 from anvio.workflows import WorkflowSuperClass
-from anvio.workflows import sanity_check_for_args
+from anvio.workflows import init_workflow_super_class
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.workflows.metagenomics import MetagenomicsWorkflow
 from anvio.workflows.pangenomics import PangenomicsWorkflow
@@ -30,7 +30,7 @@ progress = terminal.Progress()
 
 class MetaPangenomicsWorkflow(MetagenomicsWorkflow, PangenomicsWorkflow, ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        sanity_check_for_args(self, args, workflow_name='metapangenomics')
+        init_workflow_super_class(self, args, workflow_name='metapangenomics')
 
         self.run = run
         self.progress = progress

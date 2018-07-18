@@ -13,7 +13,7 @@ cp $files/workflows/contigs/fasta.txt $output_dir/workflow_test/
 cp $files/workflows/pangenomics/config.json $output_dir/workflow_test/
 cd $output_dir/workflow_test
 
-INFO "Creating a default config for pangenomics workflow"
+INFO "Creating a default config for metapangenomics workflow"
 anvi-run-workflow -w metapangenomics --get-default-config default-config.json
 exit
 INFO "Listing dependencies for pangenomics workflow"
