@@ -10,6 +10,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.workflows.metagenomics import MetagenomicsWorkflow
 from anvio.workflows.pangenomics import PangenomicsWorkflow
+from anvio.workflows.metapangenomics import MetaPangenomicsWorkflow
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -26,7 +27,8 @@ pp = terminal.pretty_print
 
 workflows_dict = {'contigs': ContigsDBWorkflow,
                   'metagenomics': MetagenomicsWorkflow,
-                  'pangenomics': PangenomicsWorkflow}
+                  'pangenomics': PangenomicsWorkflow,
+                  'metapangenomics': MetaPangenomicsWorkflow}
 
 
 def main(args):
