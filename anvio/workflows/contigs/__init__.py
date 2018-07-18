@@ -8,8 +8,8 @@
 import anvio
 import anvio.terminal as terminal
 
+from anvio.workflows import sanity_check_for_args
 from anvio.workflows import WorkflowSuperClass
-from anvio.errors import ConfigError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -23,25 +23,7 @@ __email__ = "alon.shaiber@gmail.com"
 
 class ContigsDBWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        # if a regular instance of `ContigsDBWorkflow` is being generated, we
-        # expect it to have a parameter `args`. if there is no `args` given, we
-        # assume the class is being inherited as a base class from within another
-        if args:
-            if len(self.__dict__):
-                raise ConfigError("Something is wrong. You are ineriting `ContigsDBWorkflow` from \
-                                   within another class, yet you are providing an `args` parameter.\
-                                   This is not alright.")
-            self.args = args
-            self.name = 'contigs'
-        else:
-            if not len(self.__dict__):
-                raise ConfigError("When you are *not* inheriting `ContigsDBWorkflow` from within\
-                                   a super class, you must provide an `args` parameter.")
-
-            if 'name' not in self.__dict__:
-                raise ConfigError("The super class trying to inherit `ContigsDBWorkflow` does not\
-                                   have a set `self.name`. Which means there may be other things\
-                                   wrong with it, hence anvi'o refuses to continue.")
+        sanity_check_for_args(self, args, workflow_name='contigs')
 
         self.run = run
         self.progress = progress
