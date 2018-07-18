@@ -470,6 +470,27 @@ def get_workflow_snake_file_path(workflow):
 
     return snakefile_path
 
+def sanity_check_for_args(workflow_object, args, workflow_name):
+    '''
+        if a regular instance of workflow object is being generated, we
+        expect it to have a parameter `args`. if there is no `args` given, we
+        assume the class is being inherited as a base class from within another
+    '''
+    if args:
+        if len(workflow_object.__dict__):
+            raise ConfigError("Something is wrong. You are ineriting %s from \
+                               within another class, yet you are providing an `args` parameter.\
+                               This is not alright." % type(workflow_object))
+        workflow_object.args = args
+        workflow_object.name = workflow_name
+    else:
+        if not len(workflow_object.__dict__):
+            raise ConfigError("When you are *not* inheriting %s from within\
+                               a super class, you must provide an `args` parameter." % type(workflow_object))
+        if 'name' not in workflow_object.__dict__:
+            raise ConfigError("The super class trying to inherit %s does not\
+                               have a set `self.name`. Which means there may be other things\
+                               wrong with it, hence anvi'o refuses to continue." % type(workflow_object))
 
 def warning_for_param(config, rule, param, wildcard, our_default=None):
     value = A([rule, param], config)
