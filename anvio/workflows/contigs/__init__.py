@@ -8,7 +8,7 @@
 import anvio
 import anvio.terminal as terminal
 
-from anvio.workflows import sanity_check_for_args
+from anvio.workflows import init_workflow_super_class
 from anvio.workflows import WorkflowSuperClass
 
 
@@ -23,13 +23,10 @@ __email__ = "alon.shaiber@gmail.com"
 
 class ContigsDBWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        sanity_check_for_args(self, args, workflow_name='contigs')
-
         self.run = run
         self.progress = progress
 
-        # initialize the base class
-        WorkflowSuperClass.__init__(self)
+        init_workflow_super_class(self, args, workflow_name='contigs')
 
         self.rules.extend(['anvi_script_reformat_fasta', 'remove_human_dna_using_centrifuge',
                            'anvi_gen_contigs_database', 'export_gene_calls_for_centrifuge', 'centrifuge',
