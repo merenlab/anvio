@@ -50,14 +50,12 @@ def is_conserved(r1, r2):
         return True
     return False
 
-
-def compute_homogeneity_index(gene_cluster_sequences):
+def compute_functional_index(gene_cluster_sequences):
     #gene_cluster_sequences is a list of sequences from a single gene cluster
-    #This only considers genomes that have genes in this cluster.
     num_sequences = len(gene_cluster_sequences)
-    if num_sequences == 1:
+    if num_sequences == 1: 
         return 100
-    elif num_sequences == 0:
+    elif num_sequences == 0: #this is an error condition
         return 0
     
     length = len(gene_cluster_sequences[0])
@@ -91,5 +89,74 @@ def compute_homogeneity_index(gene_cluster_sequences):
                         similarity += 0
     index = (similarity / max) * 100
     return index
-                
+
+def label_gaps(gene_sequences): #1 indicates gaps
+    matrix = []
+    for row in gene_sequences:
+        array = []
+        for residue in row:
+            if residue == "-":
+                array.append("1")
+            else:
+                array.append("0")
+        matrix.append(array)
+
+    return matrix
+
+def find_state_change_probabilities(column):
+    gap_to_gap = 0
+    gap_to_residue = 0
+    residue_to_gap = 0
+    residue_to_residue = 0
+    total = len(column)
+    if total == 1:
+        return 0 #singletons will have 0 functional homogeneity
+    count = 0
+
+    for index1 in range(total - 1): #This entropy check is faulty
+        r1 = column[index1]
+        for index2 in range(index1, (total - 1)):
+            r2 = column[index2 + 1]
+            count += 1
+            if r1 == "1":
+                if r2 == "1":
+                    gap_to_gap += 1
+                else:
+                    gap_to_residue += 1
+            else:
+                if r2 == "1":
+                    residue_to_gap += 1
+                else:
+                    residue_to_residue += 1
+
+    prob_gap_to_gap = gap_to_gap / (total - 1)
+    prob_gap_to_residue = gap_to_residue / (total - 1)
+    prob_residue_to_gap = residue_to_gap / (total - 1)
+    prob_residue_to_residue = residue_to_residue / (total - 1)
+
+    return prob_gap_to_residue + prob_residue_to_gap
+
+def compute_structural_index(gene_cluster_sequences):
+    grid = label_gaps(gene_cluster_sequences)
+
+    length = len(grid[0])
+    entropy = []
+
+    for col in range(length):
+        column = []
+        for row in range(len(gene_cluster_sequences)):
+            column.append(grid[row][col])
+        entropy.append(find_state_change_probabilities(column))
+    
+    return 100 -((sum(entropy) / len(entropy)) * 100)
+
+
+def compute_homogeneity_index(gene_cluster_sequences, num_genomes, num_unique): #will expand on this soon
+    functional = compute_functional_index(gene_cluster_sequences)
+
+    diff = num_genomes - num_unique #Can I use this to modify the functional index? Should we ignore paralogs 
+
+    structural = compute_structural_index(gene_cluster_sequences)
+    print(structural)
+    return functional 
 

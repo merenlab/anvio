@@ -584,19 +584,28 @@ class Pangenome(object):
          sequences = pan_gene_clusters.get_sequences_for_gene_clusters(gene_cluster_names=names)
 
          cluster_sequences = []
+         num_unique = 0
          for gene_cluster in sequences:
              genes_in_cluster = sequences[gene_cluster]
              for name in genes_in_cluster:
                  genes = genes_in_cluster[name]
+                 num_unique += 1
                  for gene in genes:
                      cluster_sequences.append(genes[gene])
 
-             index = homogeneityindex.compute_homogeneity_index(cluster_sequences)
-             self.additional_view_data[gene_cluster]['Homogeneity Index'] = index
+             #index = homogeneityindex.compute_homogeneity_index(cluster_sequences, len(self.genomes), num_unique)
+             index1 = homogeneityindex.compute_structural_index(cluster_sequences)
+             index2 = homogeneityindex.compute_functional_index(cluster_sequences)
+             #self.additional_view_data[gene_cluster]['Homogeneity Index'] = index
+             self.additional_view_data[gene_cluster]['Functional Homogeneity Index'] = index2
+             self.additional_view_data[gene_cluster]['Structural Homogeneity Index'] = index1
              cluster_sequences = []
+             num_unique = 0
          self.progress.end()
          
-         miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Homogeneity Index'], skip_check_names=True)
+         #miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Homogeneity Index'], skip_check_names=True)
+         miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Functional Homogeneity Index'], skip_check_names=True)
+         miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Structural Homogeneity Index'], skip_check_names=True)
     
     def populate_layers_additional_data_and_orders(self):
         self.progress.new('Layers additional data and orders')
