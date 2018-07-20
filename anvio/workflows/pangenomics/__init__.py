@@ -32,9 +32,6 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.run = run
         self.progress = progress
 
-        # know thyself.
-        self.name = 'pangenomics'
-
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
 

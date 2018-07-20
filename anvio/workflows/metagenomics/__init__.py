@@ -34,9 +34,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.run = run
         self.progress = progress
 
-        # know thyself.
-        self.name = 'metagenomics'
-
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
 
