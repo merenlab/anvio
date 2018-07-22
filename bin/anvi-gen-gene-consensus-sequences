@@ -46,6 +46,10 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('EXTRAS', 'Parameters that will help you to do a very precise analysis.\
                                                   If you declare nothing from this bunch, you will get "everything"\
                                                   to play with, which is not necessarily a good thing...')
+    groupE.add_argument(*anvio.A('engine'), **anvio.K('engine'))
+    groupE.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode', {'help': "Use this flag to output consensus\
+                                                                                      sequences of contigs, instead of the\
+                                                                                      default, which is genes"}))
 
 
     args = anvio.get_args(parser)
