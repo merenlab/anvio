@@ -2102,6 +2102,7 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
         self.genes_of_interest_path = A('genes_of_interest', null)
         self.gene_caller_ids = A('gene_caller_ids', null)
         self.genes_of_interest = A('genes_of_interest', null)
+        self.compress_samples = A('compress_samples', null)
         self.tab_delimited_output = A('tab_delimited', null)
 
         self.sequence_name_key = 'gene_caller_id' if not self.contigs_mode else 'contig_name'
@@ -2113,7 +2114,14 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
         if self.engine != 'NT':
             raise ConfigError("Currently the only available variability engine for this is 'NT'. You provided %s" % self.engine)
 
-        args.min_departure_from_reference = 0.5 # if < 0.5, consensus is guaranteed to be reference
+        if self.compress_samples:
+            args.quince_mode = True
+            self.run.warning("You supplied --compress-samples, so coverage at each variant position for all sample needs to be\
+                              calculated. This will take significantly longer.")
+        else:
+            args.min_departure_from_reference = 0.5 # if < 0.5, consensus is guaranteed to be reference
+                                                    # shortcut only used when not compressing samples
+
         if self.engine == 'NT':
             NucleotidesEngine.__init__(self, args=args, r=self.run, p=self.progress)
         elif self.engine == 'AA':
@@ -2129,6 +2137,25 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
 
     def populate_seqeunce_variants_in_samples_dict(self):
         """Populates the main dictionary that keeps track of variants for each sample."""
+        if self.compress_samples:
+            # self data needs to be collapsed
+            num_samples = self.data['sample_id'].nunique()
+            coverage_columns = self.items + ['coverage']
+            not_coverage_columns = ['reference',
+                                    'codon_order_in_gene',
+                                    'base_pos_in_codon',
+                                    'pos_in_contig',
+                                    'contig_name',
+                                    'sample_id',
+                                    'corresponding_gene_call']
+
+            array = self.data[coverage_columns].values
+            collapsed_coverage_counts = array.reshape((array.shape[0]//num_samples, num_samples, array.shape[1])).sum(axis=1)
+            data_append = self.data[not_coverage_columns].drop_duplicates(subset='pos_in_contig').reset_index(drop=True)
+            self.data = pd.DataFrame(collapsed_coverage_counts, columns=coverage_columns).reset_index(drop=True)
+            self.data[data_append.columns] = data_append
+            self.data['sample_id'] = 'merged'
+            self.data['consensus'] = self.data[self.items].idxmax(axis=1)
 
         # no data no play.
         if not len(self.data):
