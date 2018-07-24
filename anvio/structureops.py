@@ -54,7 +54,7 @@ class StructureDatabase(object):
         self.db = db.DB(self.file_path, self.version, new_database = create_new)
 
         if create_new:
-            # structure of the residue info table depend on annotation sources used
+            # structure of the residue info table depend on residue annotation sources used
             self.residue_info_structure, self.residue_info_types = self.get_residue_info_table_structure(residue_info_structure_extras, residue_info_types_extras)
             self.table_names = self.create_tables()
         else:
@@ -85,7 +85,7 @@ class StructureDatabase(object):
     def get_residue_info_table_structure(self, residue_info_structure_extras, residue_info_types_extras):
         """
         The structure (i.e. column numbers and labels) of the residue_info table depend on
-        annotation sources used, and are taken from residue_info_structure_extras.
+        residue annotation sources used, and are taken from residue_info_structure_extras.
         """
         # If residue_info_structure_extras was sloppily passed to this class, it may have
         # some items already in t.structure_residue_info_table_name. So we delete them if they exist
@@ -211,9 +211,9 @@ class Structure(object):
         self.sanity_check()
 
         # residue annotation
-        self.annotation_sources_info = self.get_annotation_sources_info()
+        self.residue_annotation_sources_info = self.get_residue_annotation_sources_info()
         self.residue_info_table_structure, self.residue_info_table_types = self.get_residue_info_table_structure()
-        self.res_annotation_df = pd.DataFrame({})
+        self.residue_annotation_df = pd.DataFrame({})
 
         # initialize StructureDatabase
         self.structure_db = StructureDatabase(self.output_db_path,
@@ -228,16 +228,16 @@ class Structure(object):
 
     def get_residue_info_table_structure(self):
         """
-        Table structure is dependent on which annotation sources are available or of interest.
+        Table structure is dependent on which residue annotation sources are available or of interest.
         That's why it is defined on the fly when db is created. To generate on the fly, the columns
-        from each source are added, but only if skip=False for the annotation source.  codon_order_in_gene
-        is ignored Since it is common to each annotation source and is already present in
+        from each source are added, but only if skip=False for the residue annotation source.  codon_order_in_gene
+        is ignored Since it is common to each residue annotation source and is already present in
         t.structure_residue_info_table_structure.
         """
         structure = []
         types = []
 
-        for source, info in self.annotation_sources_info.items():
+        for source, info in self.residue_annotation_sources_info.items():
             if not info["skip"] and info.get("structure"):
                 d = {k: v for k, v in info["structure"].items() if k != "codon_order_in_gene"}
                 structure.extend([x for x in d.keys()])
@@ -245,15 +245,15 @@ class Structure(object):
         return structure, types
 
 
-    def get_annotation_sources_info(self):
+    def get_residue_annotation_sources_info(self):
         """
-        The annotation_sources_info is a dictionary spelling out all column names relevant to each
+        The residue_annotation_sources_info is a dictionary spelling out all column names relevant to each
         annotation source, the method which returns the annotation dataframe, and the boolean
         stating whether or not the annotation source will be called. Those without a `structure` key
         are necessarily run and the columns they produce are statically present in
         t.structure_residue_info_table_structure
         """
-        annotation_sources_info = {
+        residue_annotation_sources_info = {
             "DSSP": {
                 "method"    : self.run_DSSP,
                 "skip"      : self.skip_DSSP,
@@ -269,7 +269,7 @@ class Structure(object):
                 "skip"      : False,
                 },
             }
-        return annotation_sources_info
+        return residue_annotation_sources_info
 
 
     def sanity_check(self):
@@ -367,8 +367,8 @@ class Structure(object):
     def process(self):
         """
         """
-        # will be empty if all sources in self.annotation_sources_info have "skip": True
-        residue_annotation_methods = [info["method"] for _, info in self.annotation_sources_info.items() if not info["skip"]]
+        # will be empty if all sources in self.residue_annotation_sources_info have "skip": True
+        residue_annotation_methods = [info["method"] for _, info in self.residue_annotation_sources_info.items() if not info["skip"]]
 
         # which genes had structures and which did not. this information is added to the structure database self table
         has_structure = {True: [], False: []}
@@ -433,7 +433,7 @@ class Structure(object):
             self.structure_db.db.set_meta_value('deviation', self.deviation)
             self.structure_db.db.set_meta_value('max_number_templates', self.max_number_templates)
             self.structure_db.db.set_meta_value('num_models', self.num_models)
-            for key, val in self.annotation_sources_info.items():
+            for key, val in self.residue_annotation_sources_info.items():
                 self.structure_db.db.set_meta_value("skip_" + key, str(int(val["skip"])))
 
         else:
@@ -447,23 +447,22 @@ class Structure(object):
 
 
     def run_residue_annotation_for_gene(self, residue_annotation_methods, corresponding_gene_call, pdb_filepath):
-        # res_annotation_for_gene is a dataframe that stores annotations made by all
-        # annotation methods (e.g.  DSSP) for the current corresponding_gene_call. Each time an annotation
-        # source is ran, its results are appended as columns to res_annotation_for_gene.
-        # All annotation sources must have the index called "codon_order_in_gene" whose values are
-        # anvi'o-indexed, i.e. the methionine has index 0. Each annotation source does NOT have
-        # to annotate each residue in the gene.
-
-        res_annotation_for_gene = pd.DataFrame({})
+        # residue_annotation_for_gene is a dataframe that stores residue annotations made by all residue
+        # annotation methods (e.g.  DSSP) for the current corresponding_gene_call. Each time a
+        # resideu annotation source is ran, its results are appended as columns to
+        # residue_annotation_for_gene.  All annotation sources must have the index called
+        # "codon_order_in_gene" whose values are anvi'o-indexed, i.e. the methionine has index 0.
+        # Each annotation source does NOT have to annotate each residue in the gene.
+        residue_annotation_for_gene = pd.DataFrame({})
         for method in residue_annotation_methods:
-            res_annotation_for_gene = pd.concat([res_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1)
+            residue_annotation_for_gene = pd.concat([residue_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1)
 
         # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
-        res_annotation_for_gene.insert(0, "entry_id", list(range(res_annotation_for_gene.shape[0])))
-        res_annotation_for_gene.insert(1, "corresponding_gene_call", corresponding_gene_call)
-        res_annotation_for_gene.insert(2, "codon_order_in_gene", res_annotation_for_gene.index)
+        residue_annotation_for_gene.insert(0, "entry_id", list(range(residue_annotation_for_gene.shape[0])))
+        residue_annotation_for_gene.insert(1, "corresponding_gene_call", corresponding_gene_call)
+        residue_annotation_for_gene.insert(2, "codon_order_in_gene", residue_annotation_for_gene.index)
 
-        return res_annotation_for_gene
+        return residue_annotation_for_gene
 
 
     def dump_results_to_full_output(self):
@@ -566,7 +565,7 @@ class Structure(object):
         """
 
         one_to_three = {v: k for k, v in constants.AA_to_single_letter_code.items()}
-        columns = list(self.annotation_sources_info["DSSP"]["structure"].keys())
+        columns = list(self.residue_annotation_sources_info["DSSP"]["structure"].keys())
 
         # convert biopython object to dictionary d
         d = {}
@@ -705,8 +704,8 @@ class StructureUpdate(Structure):
         self.sanity_check_for_adding_genes()
 
         # residue annotation
-        self.annotation_sources_info = self.get_annotation_sources_info()
-        self.res_annotation_df = pd.DataFrame({})
+        self.residue_annotation_sources_info = self.get_residue_annotation_sources_info()
+        self.residue_annotation_df = pd.DataFrame({})
 
         if self.full_modeller_output:
             self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=True)

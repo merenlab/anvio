@@ -1482,6 +1482,16 @@ class StructureInteractive(VariabilitySuper):
                 'max': 1,
             },
             {
+                'name': 'n2n1ratio',
+                'title': 'Ratio of 2nd to 1st',
+                'as_perspective': True,
+                'as_filter': 'slider',
+                'data_type': 'float',
+                'step': 0.01,
+                'min': float(FIND_MIN('n2n1ratio')),
+                'max': float(FIND_MAX('n2n1ratio'))
+            },
+            {
                 'name': 'prevalence',
                 'title': 'Prevalence',
                 'as_perspective': True,
