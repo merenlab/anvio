@@ -70,7 +70,7 @@ if __name__ == '__main__':
                                         a standard anvi'o profile, you will need a contigs database to go with it. If you\
                                         are working with a pan profile, then you will need to provide a genomes storage.\
                                         Don't worry too much, because anvi'o will warn you gently if you make a mistake.")
-    groupC = parser.add_argument_group('STANDARD PROFILE SPEFIFIC PARAMS', "Parameters that are only relevant to standard\
+    groupC = parser.add_argument_group('STANDARD PROFILE SPECIFIC PARAMS', "Parameters that are only relevant to standard\
                                         profile summaries (declaring or not declaring them will not change anything if you\
                                         are summarizing a pan profile).")
     groupD = parser.add_argument_group('COMMONS', "Common parameters for both pan and standard profile summaries.")
