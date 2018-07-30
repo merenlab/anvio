@@ -898,7 +898,29 @@ rule anvi_merge:
                    {params.overwrite_output_destinations} >> {log} 2>&1")
 
 
+def input_for_import_kraken_hll_taxonomy(wildcards):
+    ''' configure input for import_percent_of_reads_mapped.'''
+    if self.kraken_annotation_dict:
+        # if the user supplied a file with kraken annotations then use it
+        self.kraken_annotation_dict[wildcards.sample]['path']
+
+
+rule import_kraken_hll_taxonomy:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_kraken_hll_taxonomy.log"
+    input: input_for_import_kraken_hll_taxonomy
+    output: touch(os.path.join(dirs_dict["PROFILE_DIR"], "{group}-{sample}-import-kraken-hll-taxonomy.done")
+    params:
+    threads: M.T(config, 'import_kraken_hll_taxonomy')
+    resources: nodes = M.T(config, 'import_kraken_hll_taxonomy')
+    shell:
     """
+        anvi-import-taxonomy-for-layers -p {input.profile} \
+                                        -i {input.krakenhll_tax} \
+                                        --parser kraken_hll >> {log} 2>&1
+    """
+
+
 rule import_percent_of_reads_mapped:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_percent_of_reads_mapped.log"
