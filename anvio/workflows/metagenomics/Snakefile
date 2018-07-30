@@ -101,19 +101,8 @@ if number_of_assemblers_in_config_file > 1:
                         "software, yet all the following software are " \
                         "included in your config file: %s. Please include only one." % assembly_software_in_config)
 
-# loading the samples.txt file
-# The default samples file is samples.txt
-samples_txt_file = M.get_param_value_from_config(['samples_txt'])
-# getting the samples information (names, [group], path to r1, path to r2) from samples.txt
-samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
-
-# FIXME: sanity check of every input file should be done in the backend, and not in
-#        the snakemake recipe.
-if 'sample' not in samples_information.columns.values:
-    raise ConfigError("You know what. This '%s' file does not look anything like\
-                       a samples file." % samples_txt_file)
 # get a list of the sample names
-sample_names = list(samples_information['sample'])
+sample_names = list(M.samples_information['sample'])
 
 references_mode = M.get_param_value_from_config('references_mode', repress_default=True)
 fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
@@ -136,12 +125,12 @@ if fasta_txt_file and not references_mode:
                    fasta_txt" % fasta_txt_file)
 
 # Collecting information regarding groups.
-if "group" in samples_information.columns:
+if "group" in M.samples_information.columns:
     # if groups were specified then members of a groups will be co-assembled.
-    group_names = list(samples_information['group'].unique())
+    group_names = list(M.samples_information['group'].unique())
     # creating a dictionary with groups as keys and number of samples in
     # the groups as values
-    group_sizes = samples_information['group'].value_counts().to_dict()
+    group_sizes = M.samples_information['group'].value_counts().to_dict()
 
     if references_mode:
         # sanity check to see that groups specified in samples.txt match
@@ -174,7 +163,7 @@ else:
         run.warning("No groups were specified in your samples_txt. This is fine.\
                      But we thought you should know. Any assembly will be performed\
                      on individual samples (i.e. NO co-assembly).")
-        samples_information['group'] = samples_information['sample']
+        M.samples_information['group'] = M.samples_information['sample']
         group_names = list(sample_names)
         group_sizes = dict.fromkeys(group_names,1)
 
@@ -250,8 +239,8 @@ rule iu_gen_configs:
 
 def get_raw_fastq(wildcards):
     ''' return a dict with the path to the raw fastq files'''
-    r1 = list(samples_information[samples_information["sample"] == wildcards.sample]['r1'])[0].split(',')
-    r2 = list(samples_information[samples_information["sample"] == wildcards.sample]['r2'])[0].split(',')
+    r1 = list(M.samples_information[M.samples_information["sample"] == wildcards.sample]['r1'])[0].split(',')
+    r2 = list(M.samples_information[M.samples_information["sample"] == wildcards.sample]['r2'])[0].split(',')
     return {'r1': r1, 'r2': r2}
 
 
@@ -435,7 +424,7 @@ rule fq2fa:
 rule merge_fastas_for_co_assembly:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log"
-    input: lambda wildcards: expand("{DIR}/{sample}-merged-reads.fa", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
+    input: lambda wildcards: expand("{DIR}/{sample}-merged-reads.fa", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
     output: temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa")
     threads: M.T('merge_fastas_for_co_assembly')
     resources: nodes = M.T('merge_fastas_for_co_assembly')
@@ -512,15 +501,15 @@ def input_for_megahit(wildcards):
     if run_qc:
         # by default, use the output of the qc
         if run_gzip_fastqs:
-            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
-            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
+            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
+            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
         else:
-            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
-            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
+            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
+            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
         d = {'r1': r1, 'r2': r2}
     else:
-        r1 = list(samples_information[samples_information["group"] == wildcards.group]['r1'])
-        r2 = list(samples_information[samples_information["group"] == wildcards.group]['r2'])
+        r1 = list(M.samples_information[M.samples_information["group"] == wildcards.group]['r1'])
+        r2 = list(M.samples_information[M.samples_information["group"] == wildcards.group]['r2'])
     return {'r1': r1, 'r2': r2}
 
 
@@ -751,12 +740,12 @@ def input_for_anvi_merge(wildcards):
     if M.get_param_value_from_config(['all_against_all']):
         # If the user specified 'all against all' in the configs file
         # the end product would be a merge of all samples per group
-        profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(samples_information['sample']), group=wildcards.group)
+        profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(M.samples_information['sample']), group=wildcards.group)
 
     else:
         # The default behaviour is to only merge (and hence map and profile)
         # together samples that belong to the same group.
-        profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(samples_information[samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
+        profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(M.samples_information[M.samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
 
     return profiles
 
@@ -767,10 +756,10 @@ def percent_of_reads_mapped_imported_flag_input(wildcards):
         regards to percent_of_reads_mapped_imported_flag_input.
     '''
     if M.get_param_value_from_config(['all_against_all']):
-        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(samples_information['sample']), group=wildcards.group)
+        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(M.samples_information['sample']), group=wildcards.group)
 
     else:
-        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(samples_information[samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
+        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(M.samples_information[M.samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
 
     if not run_import_percent_of_reads_mapped:
         percent_of_reads_mapped_imported_flag = ancient(dirs_dict["CONTIGS_DIR"] + "/%s-contigs.db" % wildcards.group)
@@ -909,6 +898,7 @@ rule anvi_merge:
                    {params.overwrite_output_destinations} >> {log} 2>&1")
 
 
+    """
 rule import_percent_of_reads_mapped:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_percent_of_reads_mapped.log"
