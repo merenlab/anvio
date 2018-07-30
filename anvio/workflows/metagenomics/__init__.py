@@ -6,8 +6,11 @@
 
 
 import anvio
+import pandas as pd
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
 
@@ -34,6 +37,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # know thyself.
         self.name = 'metagenomics'
+        self.samples_information = {}
+        self.kraken_annotation_dict = {}
 
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
@@ -101,6 +106,50 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True}})
+
+
+    def init(self):
+        super().init()
+
+        # loading the samples.txt file
+        samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+        filesnpaths.is_file_exists(samples_txt_file)
+        # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
+        self.samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
+
+        if 'sample' not in self.samples_information.columns.values:
+            raise ConfigError("You know what. This '%s' file does not look anything like\
+                               a samples file." % samples_txt_file)
+
+        self.sanity_check_for_kraken_txt()
+
+
+    def sanity_check_for_kraken_txt(self):
+        '''Making sure the sample names and file paths the provided kraken.txt file are valid'''
+        kraken_txt = self.get_param_value_from_config['kraken_txt']
+        from anvio import utils as u
+        if kraken_txt:
+            kraken_annotation_dict = u.get_TAB_delimited_file_as_dictionary(kraken_txt)
+            if next(iter(next(iter(kraken_annotation_dict.values())).keys())) is not "path":
+                raise ConfigError("Your kraken annotation file, '%s', is not formatted properly \
+                                   anvi'o expected it to have two columns only and the second column \
+                                   should have a header 'path'." % kraken_txt)
+            samples_in_kraken_txt = set(kraken_annotation_dict.keys())
+            # get a list of the sample names
+            sample_names = set(self.samples_information['sample'])
+
+            wrong_samples_in_kraken_txt = samples_in_kraken_txt - sample_names
+            if wrong_samples_in_kraken_txt:
+                raise ConfigError("Your kraken annotation file, '%s', contains samples that \
+                                   are not in your samples_txt file, '%s'. Here is an example \
+                                   of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), wrong_samples_in_kraken_txt[0]))
+
+            missing_samples_in_kraken_txt = sample_names - samples_in_kraken_txt
+            if missing_samples_in_kraken_txt:
+                raise ConfigError("Your kraken annotation file, '%s', is missing samples that \
+                                   are in your samples_txt file, '%s'. This is not allowed. \
+                                   Here is an example of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), wrong_samples_in_kraken_txt[0]))
+        self.kraken_annotation_dict = kraken_annotation_dict
 
 
     def get_assembly_software_list(self):
