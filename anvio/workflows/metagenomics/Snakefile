@@ -964,7 +964,7 @@ rule import_kraken_hll_taxonomy:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_kraken_hll_taxonomy.log"
     input: unpack(input_for_import_kraken_hll_taxonomy)
-    output: touch(os.path.join(dirs_dict["PROFILE_DIR"], "/{group}/{sample}/import_kraken_hll_taxonomy.done"))
+    output: touch(os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}/import_kraken_hll_taxonomy.done"))
     params: min_abundance = M.get_rule_param('import_kraken_hll_taxonomy', '--min-abundance')
     threads: M.T('import_kraken_hll_taxonomy')
     resources: nodes = M.T('import_kraken_hll_taxonomy')
