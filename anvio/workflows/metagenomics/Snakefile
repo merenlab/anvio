@@ -898,26 +898,78 @@ rule anvi_merge:
                    {params.overwrite_output_destinations} >> {log} 2>&1")
 
 
+rule krakenhll:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{sample}-krakenhll.log"
+    input: unpack(get_fastq)
+    output: os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", "{sample}.krakenhll")
+    params:
+        db = M.get_rule_param("krakenhll", "--db"),
+        gzip_compressed = M.get_rule_param("krakenhll", "--gzip-compressed"),
+        additional_params = M.get_rule_param("additional_params")
+    threads: M.T('krakenhll')
+    resources: M.T('krakenhll')
+    shell: " >> {log} 2>&1"
+        """
+            krakenhll \
+                     {params.db} \
+                     --threads {threads} \
+                     --fastq-input \
+                     {params.gzip_compressed} \
+                     --paired \
+                     --output {output} \
+                     {input.r1} \
+                     {input.r2} \
+                     {params.additional_params}
+        """
+
+
+rule krakenhll_mpa_report:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{sample}-krakenhll_mpa_report.log"
+    input: os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", "{sample}.krakenhll")
+    # TODO: do we need to keep the krakenhll_tax files or should they be temp files?
+    # If we don't keep them, then we can just get rid of the TAXONOMY_DIR and make this into a shadow rule
+    output: os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", "{sample}.krakenhll_tax")
+    # FIXME: I need to see if more params should be available for krakenhll_mpa_report
+    params: db = M.get_rule_param("krakenhll", "--db")
+    threads: M.T('krakenhll_mpa_report')
+    resources: nodes = M.T('krakenhll_mpa_report')
+    shell:
+    """
+        krakenhll-mpa-report {params.db} \
+                             --header-line {input} \
+                             > {output}
+    """
+
+
 def input_for_import_kraken_hll_taxonomy(wildcards):
     ''' configure input for import_percent_of_reads_mapped.'''
+    D = {}
+    D['profile'] = os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}/PROFILE.db")
+
     if self.kraken_annotation_dict:
         # if the user supplied a file with kraken annotations then use it
-        self.kraken_annotation_dict[wildcards.sample]['path']
+        D['krakenhll_tax'] = self.kraken_annotation_dict[wildcards.sample]['path']
+    else:
+        # if the user didn't provide a file, then annotation needs to run
+        D['krakenhll_tax'] = os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", "{sample}.krakenhll_tax")
 
 
 rule import_kraken_hll_taxonomy:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_kraken_hll_taxonomy.log"
-    input: input_for_import_kraken_hll_taxonomy
+    input: unpack(input_for_import_kraken_hll_taxonomy)
     output: touch(os.path.join(dirs_dict["PROFILE_DIR"], "{group}-{sample}-import-kraken-hll-taxonomy.done")
-    params:
-    threads: M.T(config, 'import_kraken_hll_taxonomy')
-    resources: nodes = M.T(config, 'import_kraken_hll_taxonomy')
+    params: min_abundance = M.get_rule_param('import_kraken_hll_taxonomy', '--min-abundance')
+    threads: M.T('import_kraken_hll_taxonomy')
+    resources: nodes = M.T('import_kraken_hll_taxonomy')
     shell:
     """
         anvi-import-taxonomy-for-layers -p {input.profile} \
                                         -i {input.krakenhll_tax} \
-                                        --parser kraken_hll >> {log} 2>&1
+                                        --parser kraken_hll \
+                                        {params.min_abundance} >> {log} 2>&1
     """
 
 
