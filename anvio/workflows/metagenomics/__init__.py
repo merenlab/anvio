@@ -48,9 +48,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'anvi_gen_contigs_database', 'anvi_export_gene_calls', 'centrifuge',\
                      'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud', \
-                     'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped'])
+                     'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped'\
+                     'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy'])
 
-        self.general_params.extend(["samples_txt", "references_mode", "all_against_all"])
+        self.general_params.extend(["samples_txt", "references_mode", "all_against_all", \
+                                    "kraken_txt"])
 
         rule_acceptable_params_dict = {}
 
@@ -84,15 +86,24 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                      "--enforce-hierarchical-clustering", "--distance", "--linkage",
                                                      "--skip-concoct-binning", "--overwrite-output-destinations"]
         rule_acceptable_params_dict['import_percent_of_reads_mapped'] = ["run"]
+        rule_acceptable_params_dict['krakenhll'] = ["additional_params", "run"]
+        rule_acceptable_params_dict['krakenhll_mpa_report'] = ["additional_params"]
+        rule_acceptable_params_dict['import_kraken_hll_taxonomy'] = ["--min-abundance"]
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
+
+        forbidden_params = {}
+        forbidden_params['krakenhll'] = ['--fastq-input', '--paired', '--output']
+
+        self.forbidden_params.update(forbidden_params)
 
         self.dirs_dict.update({"QC_DIR": "01_QC",
                                "FASTA_DIR": "02_FASTA",
                                "CONTIGS_DIR": "03_CONTIGS",
                                "MAPPING_DIR": "04_MAPPING",
                                "PROFILE_DIR": "05_ANVIO_PROFILE",
-                               "MERGE_DIR": "06_MERGED"})
+                               "MERGE_DIR": "06_MERGED",
+                               "TAXONOMY_DIR": "07_TAXONOMY"})
 
         self.default_config.update({'samples_txt': "samples.txt",
                                     'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 11},
@@ -105,7 +116,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "anvi_init_bam": {"threads": 4},
                                     "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
-                                    "import_percent_of_reads_mapped": {"run": True}})
+                                    "import_percent_of_reads_mapped": {"run": True},
+                                    "krakenhll": {"--gzip-compressed": True, "additional_params": "--preload"}})
 
 
     def init(self):
@@ -121,13 +133,14 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             raise ConfigError("You know what. This '%s' file does not look anything like\
                                a samples file." % samples_txt_file)
 
-        self.sanity_check_for_kraken_txt()
+        self.sanity_check_for_kraken()
 
 
-    def sanity_check_for_kraken_txt(self):
+    def sanity_check_for_kraken(self):
         '''Making sure the sample names and file paths the provided kraken.txt file are valid'''
         kraken_txt = self.get_param_value_from_config['kraken_txt']
         from anvio import utils as u
+        
         if kraken_txt:
             kraken_annotation_dict = u.get_TAB_delimited_file_as_dictionary(kraken_txt)
             if next(iter(next(iter(kraken_annotation_dict.values())).keys())) is not "path":
