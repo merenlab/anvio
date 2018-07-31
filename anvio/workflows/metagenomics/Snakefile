@@ -939,11 +939,11 @@ rule krakenhll_mpa_report:
     threads: M.T('krakenhll_mpa_report')
     resources: nodes = M.T('krakenhll_mpa_report')
     shell:
-    """
-        krakenhll-mpa-report {params.db} \
-                             --header-line {input} \
-                             > {output}
-    """
+        """
+            krakenhll-mpa-report {params.db} \
+                                 --header-line {input} \
+                                 > {output}
+        """
 
 
 def input_for_import_kraken_hll_taxonomy(wildcards):
