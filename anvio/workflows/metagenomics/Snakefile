@@ -949,14 +949,14 @@ rule krakenhll_mpa_report:
 def input_for_import_kraken_hll_taxonomy(wildcards):
     ''' configure input for import_percent_of_reads_mapped.'''
     D = {}
-    D['profile'] = os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}/PROFILE.db")
+    D['profile'] = os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.sample, "PROFILE.db")
 
     if M.kraken_annotation_dict:
         # if the user supplied a file with kraken annotations then use it
         D['krakenhll_tax'] = M.kraken_annotation_dict[wildcards.sample]['path']
     else:
         # if the user didn't provide a file, then annotation needs to run
-        D['krakenhll_tax'] = os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", "{sample}.krakenhll_tax")
+        D['krakenhll_tax'] = os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", wildcards.sample + ".krakenhll_tax")
     return D
 
 
