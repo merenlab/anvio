@@ -257,21 +257,20 @@ class WorkflowSuperClass:
         return c
 
 
-    def check_additional_params(self, rules):
+    def check_additional_params(self, rule):
         ''' Check if the user is trying to use additional_params to set a param that is hard coded'''
-        for rule in list(rules):
-            params = []
-            if 'additional_params' in self.config[rule].keys() and self.forbidden_params.get(rule):
-                # if the rule has 'additional_params' we need to make sure
-                # that the user didn't include forbidden params there as well
-                params = self.config[rule]['additional_params'].split(' ')
+        params = []
+        if 'additional_params' in self.config[rule].keys() and self.forbidden_params.get(rule):
+            # if the rule has 'additional_params' we need to make sure
+            # that the user didn't include forbidden params there as well
+            params = self.config[rule]['additional_params'].split(' ')
 
-                bad_params = [p for p in self.forbidden_params.get(rule) if p in params]
-                if bad_params:
-                    raise ConfigError("You are not allowed to set the following parameter/s: \
-                                       %s for rule %s. These parameters are hard-coded. If you \
-                                       are confused or upset please refer to an anvi'o developer \
-                                       or a friend for support." % (', '.join(bad_params), rule))
+            bad_params = [p for p in self.forbidden_params.get(rule) if p in params]
+            if bad_params:
+                raise ConfigError("You are not allowed to set the following parameter/s: \
+                                   %s for rule %s. These parameters are hard-coded. If you \
+                                   are confused or upset please refer to an anvi'o developer \
+                                   or a friend for support." % (', '.join(bad_params), rule))
         
     def check_rule_params(self):
         for rule in self.rules:
