@@ -228,7 +228,7 @@ rule iu_gen_configs:
     log: dirs_dict["LOGS_DIR"] + "/iu_gen_configs.log"
     # the input file is marked as 'ancient' so snakemake wouldn't run it
     # just because a new path-to-raw-fastq-files.txt file was created.
-    input: ancient(samples_txt_file)
+    input: ancient(M.get_param_value_from_config(['samples_txt']))
     output: expand("{DIR}/{sample}.ini", DIR=dirs_dict["QC_DIR"], sample=sample_names)
     params:
         dir=dirs_dict["QC_DIR"],
