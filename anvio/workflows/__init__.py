@@ -259,7 +259,7 @@ class WorkflowSuperClass:
 
     def check_additional_params(self, rules):
         ''' Check if the user is trying to use additional_params to set a param that is hard coded'''
-        for rule in rules:
+        for rule in list(rules):
             params = []
             if 'additional_params' in self.config[rule].keys() and self.forbidden_params.get(rule):
                 # if the rule has 'additional_params' we need to make sure
