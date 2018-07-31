@@ -189,6 +189,8 @@ run_qc = M.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == 
 
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True
 
+run_krakenhll = M.get_param_value_from_config(['krakenhll', 'run']) == True
+
 run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
 run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
@@ -750,21 +752,21 @@ def input_for_anvi_merge(wildcards):
     return profiles
 
 
-def percent_of_reads_mapped_imported_flag_input(wildcards):
+def configure_flag_files_for_anvi_merge_optional_inputs(wildcards, flag_file_name, run_flag):
     '''
         this function creates the input to anvi_merge rule with
         regards to percent_of_reads_mapped_imported_flag_input.
     '''
     if M.get_param_value_from_config(['all_against_all']):
-        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(M.samples_information['sample']), group=wildcards.group)
+        flag_files = expand(os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}", flag_file_name), sample=list(M.samples_information['sample']), group=wildcards.group)
 
     else:
-        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(M.samples_information[M.samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
+        flag_files = expand(os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}", flag_file_name), sample=list(M.samples_information[M.samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
 
-    if not run_import_percent_of_reads_mapped:
-        percent_of_reads_mapped_imported_flag = ancient(dirs_dict["CONTIGS_DIR"] + "/%s-contigs.db" % wildcards.group)
+    if not run_flag:
+        flag_files = ancient(dirs_dict["CONTIGS_DIR"] + "/%s-contigs.db" % wildcards.group)
 
-    return percent_of_reads_mapped_imported_flag
+    return flag_files
 
 
 def create_fake_output_files(_message, output):
@@ -822,7 +824,8 @@ rule anvi_merge:
         # marking the contigs.db as ancient in order to ignore timestamps.
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         profiles = input_for_anvi_merge,
-        percent_of_reads_mapped_imported_flag = percent_of_reads_mapped_imported_flag_input
+        percent_of_reads_mapped_imported_flag = configure_flag_files_for_anvi_merge_optional_inputs('import_percent_of_reads_mapped.done', run_import_percent_of_reads_mapped),
+        kraken_flag = configure_flag_files_for_anvi_merge_optional_inputs("import_kraken_hll_taxonomy.done", run_krakenhll)
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
         runlog = dirs_dict["MERGE_DIR"] + "/{group}/RUNLOG.txt"
@@ -960,7 +963,7 @@ rule import_kraken_hll_taxonomy:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_kraken_hll_taxonomy.log"
     input: unpack(input_for_import_kraken_hll_taxonomy)
-    output: touch(os.path.join(dirs_dict["PROFILE_DIR"], "{group}-{sample}-import-kraken-hll-taxonomy.done")
+    output: touch(os.path.join(dirs_dict["PROFILE_DIR"], "/{group}/{sample}/import_kraken_hll_taxonomy.done")
     params: min_abundance = M.get_rule_param('import_kraken_hll_taxonomy', '--min-abundance')
     threads: M.T('import_kraken_hll_taxonomy')
     resources: nodes = M.T('import_kraken_hll_taxonomy')
