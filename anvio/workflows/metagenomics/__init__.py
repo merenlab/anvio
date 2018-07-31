@@ -140,8 +140,20 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def sanity_check_for_kraken(self):
         '''Making sure the sample names and file paths the provided kraken.txt file are valid'''
         kraken_txt = self.get_param_value_from_config('kraken_txt')
+
+        if self.config['krakenhll']['run']:
+            if not self.config['krakenhll']['--db']:
+                raise ConfigError('In order to run krakenhll, you must provide a path to \
+                                   a database using the --db parameter in the config file.')
         
         if kraken_txt:
+            if self.config['krakenhll']['run'] == False:
+                raise ConfigError("You supplied a kraken_txt file, %s, but you set krakenhll \
+                                   not to run in the config file. anvi'o is confused and \
+                                   is officially going on a strike." % kraken_txt)
+            # if a kraken_txt was supplied then let's run kraken by default
+            self.config['krakenhll']['run'] = True
+
             kraken_annotation_dict = u.get_TAB_delimited_file_as_dictionary(kraken_txt)
             if next(iter(next(iter(kraken_annotation_dict.values())).keys())) is not "path":
                 raise ConfigError("Your kraken annotation file, '%s', is not formatted properly \
