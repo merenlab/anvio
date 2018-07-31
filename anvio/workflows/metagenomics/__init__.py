@@ -10,6 +10,7 @@ import pandas as pd
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio import utils as u
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
@@ -138,8 +139,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
     def sanity_check_for_kraken(self):
         '''Making sure the sample names and file paths the provided kraken.txt file are valid'''
-        kraken_txt = self.get_param_value_from_config['kraken_txt']
-        from anvio import utils as u
+        kraken_txt = self.get_param_value_from_config('kraken_txt')
         
         if kraken_txt:
             kraken_annotation_dict = u.get_TAB_delimited_file_as_dictionary(kraken_txt)
@@ -162,7 +162,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                 raise ConfigError("Your kraken annotation file, '%s', is missing samples that \
                                    are in your samples_txt file, '%s'. This is not allowed. \
                                    Here is an example of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), wrong_samples_in_kraken_txt[0]))
-        self.kraken_annotation_dict = kraken_annotation_dict
+            self.kraken_annotation_dict = kraken_annotation_dict
 
 
     def get_assembly_software_list(self):
