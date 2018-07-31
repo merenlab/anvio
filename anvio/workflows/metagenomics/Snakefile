@@ -957,6 +957,7 @@ def input_for_import_kraken_hll_taxonomy(wildcards):
     else:
         # if the user didn't provide a file, then annotation needs to run
         D['krakenhll_tax'] = os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", "{sample}.krakenhll_tax")
+    return D
 
 
 rule import_kraken_hll_taxonomy:
