@@ -951,9 +951,9 @@ def input_for_import_kraken_hll_taxonomy(wildcards):
     D = {}
     D['profile'] = os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}/PROFILE.db")
 
-    if self.kraken_annotation_dict:
+    if M.kraken_annotation_dict:
         # if the user supplied a file with kraken annotations then use it
-        D['krakenhll_tax'] = self.kraken_annotation_dict[wildcards.sample]['path']
+        D['krakenhll_tax'] = M.kraken_annotation_dict[wildcards.sample]['path']
     else:
         # if the user didn't provide a file, then annotation needs to run
         D['krakenhll_tax'] = os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", "{sample}.krakenhll_tax")
