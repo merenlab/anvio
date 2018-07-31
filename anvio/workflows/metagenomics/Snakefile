@@ -969,12 +969,12 @@ rule import_kraken_hll_taxonomy:
     threads: M.T('import_kraken_hll_taxonomy')
     resources: nodes = M.T('import_kraken_hll_taxonomy')
     shell:
-    """
-        anvi-import-taxonomy-for-layers -p {input.profile} \
-                                        -i {input.krakenhll_tax} \
-                                        --parser kraken_hll \
-                                        {params.min_abundance} >> {log} 2>&1
-    """
+        """
+            anvi-import-taxonomy-for-layers -p {input.profile} \
+                                            -i {input.krakenhll_tax} \
+                                            --parser kraken_hll \
+                                            {params.min_abundance} >> {log} 2>&1
+        """
 
 
 rule import_percent_of_reads_mapped:
