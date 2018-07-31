@@ -87,7 +87,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                      "--enforce-hierarchical-clustering", "--distance", "--linkage",
                                                      "--skip-concoct-binning", "--overwrite-output-destinations"]
         rule_acceptable_params_dict['import_percent_of_reads_mapped'] = ["run"]
-        rule_acceptable_params_dict['krakenhll'] = ["additional_params", "run"]
+        rule_acceptable_params_dict['krakenhll'] = ["additional_params", "run", "--db", "--gzip-compressed"]
         rule_acceptable_params_dict['krakenhll_mpa_report'] = ["additional_params"]
         rule_acceptable_params_dict['import_kraken_hll_taxonomy'] = ["--min-abundance"]
 
