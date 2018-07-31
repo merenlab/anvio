@@ -48,7 +48,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'anvi_gen_contigs_database', 'anvi_export_gene_calls', 'centrifuge',\
                      'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud', \
-                     'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped'\
+                     'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped', \
                      'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy'])
 
         self.general_params.extend(["samples_txt", "references_mode", "all_against_all", \
