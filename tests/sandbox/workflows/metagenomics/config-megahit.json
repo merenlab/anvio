@@ -7,7 +7,7 @@
         "--gzip-compressed": true,
         "additional_params": "--preload",
         "run": true,
-        "--db": "",
+        "--db": "/fake/db",
         "threads": ""
     },
     "anvi_run_hmms": {
