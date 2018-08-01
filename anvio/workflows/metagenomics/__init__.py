@@ -141,21 +141,22 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         '''Making sure the sample names and file paths the provided kraken.txt file are valid'''
         kraken_txt = self.get_param_value_from_config('kraken_txt')
 
-        if self.config['krakenhll']['run']:
-            if not self.config['krakenhll']['--db']:
-                raise ConfigError('In order to run krakenhll, you must provide a path to \
-                                   a database using the --db parameter in the config file.')
-        
         if kraken_txt:
-            if self.config['krakenhll']['run'] == False:
+            if self.get_param_value_from_config(['krakenhll', 'run']) == False:
                 raise ConfigError("You supplied a kraken_txt file, %s, but you set krakenhll \
                                    not to run in the config file. anvi'o is confused and \
                                    is officially going on a strike." % kraken_txt)
+
+            if 'krakenhll' not in self.config:
+                raise ConfigError('You provided a kraken_txt, but you didnt set any parameters \
+                                   for krakenhll. As a minimum, you must provide the path to \
+                                   the krakenhll database using the --db parameter in the config file.')
+
             # if a kraken_txt was supplied then let's run kraken by default
             self.config['krakenhll']['run'] = True
 
             kraken_annotation_dict = u.get_TAB_delimited_file_as_dictionary(kraken_txt)
-            if next(iter(next(iter(kraken_annotation_dict.values())).keys())) is not "path":
+            if next(iter(next(iter(kraken_annotation_dict.values())).keys())) != "path":
                 raise ConfigError("Your kraken annotation file, '%s', is not formatted properly \
                                    anvi'o expected it to have two columns only and the second column \
                                    should have a header 'path'." % kraken_txt)
@@ -167,7 +168,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             if wrong_samples_in_kraken_txt:
                 raise ConfigError("Your kraken annotation file, '%s', contains samples that \
                                    are not in your samples_txt file, '%s'. Here is an example \
-                                   of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), wrong_samples_in_kraken_txt[0]))
+                                   of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), next(iter(wrong_samples_in_kraken_txt))))
 
             missing_samples_in_kraken_txt = sample_names - samples_in_kraken_txt
             if missing_samples_in_kraken_txt:
@@ -176,6 +177,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                    Here is an example of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), wrong_samples_in_kraken_txt[0]))
             self.kraken_annotation_dict = kraken_annotation_dict
 
+        if self.get_param_value_from_config(['krakenhll', 'run']):
+            if not self.get_param_value_from_config(['krakenhll', '--db']):
+                raise ConfigError('In order to run krakenhll, you must provide a path to \
+                                   a database using the --db parameter in the config file.')
+        
 
     def get_assembly_software_list(self):
         return ['megahit', 'idba_ud']
