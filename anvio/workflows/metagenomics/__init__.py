@@ -118,7 +118,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True},
-                                    "krakenhll": {"--gzip-compressed": True, "additional_params": "--preload"}})
+                                    "krakenhll": {"threads": 12, "--gzip-compressed": True, "additional_params": "--preload"}})
 
 
     def init(self):
