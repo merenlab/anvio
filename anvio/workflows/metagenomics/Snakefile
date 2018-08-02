@@ -191,6 +191,8 @@ run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_perc
 
 run_krakenhll = M.get_param_value_from_config(['krakenhll', 'run']) == True
 
+run_virsorter = M.get_param_value_from_config(['virsorter', 'run'])
+
 run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
 run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
@@ -1041,7 +1043,37 @@ rule import_percent_of_reads_mapped:
                                           -t layers \
                                           --just-do-it
                 """)
-
+            
+if M.get_param_value_from_config(['virsorter', 'run']) == True:            
+    rule virsorter:
+        '''
+            Search for viral sequences using VIRSorter on your contigs file.
+            
+            All files created by VIRSorter are stored in a temporary folder.
+            Only the VIRSorter_affi-contigs.tab and VIRSorter_global-phage-signal.csv 
+            files kept for later analysis.
+        '''
+        log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
+        input: unpack(get_fasta)
+        params:
+            "run": "",
+            "--dataset": "",
+            cp = M.get_rule_param("virsorter", "--cp"),
+            db = M.get_rule_param("virsorter", "--db"),
+            wdir = M.get_rule_param("virsorter", "--wdir")
+            ncpu = M.get_rule_param("virsorter", "--ncpu"),
+            virome = M.get_rule_param("virsorter", "--virome"),
+            data_dir = M.get_rule_param("virsorter", "--data-dir"),
+            diamond = M.get_rule_param("virsorter", "--diamond"),
+            keep_db = M.get_rule_param("virsorter", "--keep-db"),
+            no_c = M.get_rule_param("virsorter", "--no_c"),
+         # Notice that virsorter requires a directory to be specified.
+         # for output files and does not care if that directory exists
+         # or not. If the directory exists, virsorter will not overwrite 
+         # but rather just add files. 
+           
+    rule parse_virsorter
+    
 if not slave_mode:
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
