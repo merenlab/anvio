@@ -1051,7 +1051,7 @@ if M.get_param_value_from_config(['virsorter', 'run']) == True:
             
             All files created by VIRSorter are stored in a temporary folder.
             Only the VIRSorter_affi-contigs.tab and VIRSorter_global-phage-signal.csv 
-            files kept for later analysis.
+            files are kept for later analysis.
         '''
         log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
         input: unpack(get_fasta)
@@ -1067,12 +1067,96 @@ if M.get_param_value_from_config(['virsorter', 'run']) == True:
             diamond = M.get_rule_param("virsorter", "--diamond"),
             keep_db = M.get_rule_param("virsorter", "--keep-db"),
             no_c = M.get_rule_param("virsorter", "--no_c"),
-         # Notice that virsorter requires a directory to be specified.
+         # Notice that virsorter requires a directory to be specified
          # for output files and does not care if that directory exists
          # or not. If the directory exists, virsorter will not overwrite 
-         # but rather just add files. 
-           
+         # but rather just add files. Otherwise it will create directory. 
+            
+    rule export_table_for_virsorter
+        '''
+            Generates one of the essential files we will need to visualize 
+            VirSorter split-level annotations in anvi’o
+        '''    
+        log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
+        input:
+        params:
+            table = M.get_rule_param("export_table_for_virsorter", "--table"),
+            list_fields = M.get_rule_param("export_table_for_virsorter", "--list--fields"),
+            output_file = M.get_rule_param("export_table_for_virsorter", "--output-file")
+    
+    rule export_gene_calls_for_virsorter
+        '''
+            Generate gene-level annotations for hallmark genes and import 
+            those into anvi’o (think capsid proteins, terminases, etc.).  
+            Need to also run this command to export your gene calls from  
+            anvi’o contigs database:
+        '''    
+            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
+            input:
+            params:
+                contigs_db = M.get_rule_param("export_gene_calls_for_virsorter", "--contigs-db"),
+                output_file = M.get_rule_param("export_gene_calls_for_virsorter", "--output-file")
+      
     rule parse_virsorter
+        '''
+            Parse the VirSorter output file and create files to import into
+            anvi'o dbs. 
+            
+            If you want to import hallmark gene functions into anvi’o, you’ll 
+            need two mapping files (one for each VirSorter database)
+        '''    
+            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
+            input:
+            params:
+                affi_file = M.get_rule_param("parse_virsorter", "--affi-file"),
+                global_file = M.get_rule_param("parse_virsorter", "--global-file"),
+                db = M.get_rule_param("parse_virsorter", "--db"),
+                splits_info = M.get_rule_param("parse_virsorter", "--splits-info"),
+                anvio_gene_calls = M.get_rule_param("parse_virsorter", "--anvio-gene-calls"),
+                hallmark_functions = M.get_rule_param("parse_virsorter", "--hallmark-functions"),
+                addl_info = M.get_rule_param("parse_virsorter", "--addl-info"),
+                phage_collection = M.get_rule_param("parse_virsorter", "--phage-collection"),
+                output_functions = M.get_rule_param("parse_virsorter", "--output-functions"),
+                min_phage_length = M.get_rule_param("parse_virsorter", "--min-phage-length"),
+                exclude_cat3 = M.get_rule_param("parse_virsorter", "--exclude-cat3"),
+                exclude_prophages = M.get_rule_param("parse_virsorter", "--exclude-prophages")
+                
+    rule import_misc_data_virsorter          
+            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
+            input:
+            params:
+                pan_or_profile_db = M.get_rule_param("import_misc_data_virsorter", "--pan-or-profile-db"),
+                target_data_table = M.get_rule_param("import_misc_data_virsorter", "--target-data-table"),
+                target_data_group = M.get_rule_param("import_misc_data_virsorter", "--target-data-group"),
+                transpose = M.get_rule_param("import_misc_data_virsorter", "--transpose"),
+                just_do_it = M.get_rule_param("import_misc_data_virsorter", "--just-do-it")
+            
+    rule import_collection_virsorter      
+            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
+            input: unpack(get_fasta)
+            params:
+                contigs_db = M.get_rule_param("import_collection_virsorter", "--contigs-db"),
+                pan_or_profile_db = M.get_rule_param("import_collection_virsorter", "--pan-or-profile-db"),
+                collection_name = M.get_rule_param("import_collection_virsorter", "--collection-name"),
+                bins_info = M.get_rule_param("import_collection_virsorter", "--bins-info"),
+                contigs_mode = M.get_rule_param("import_collection_virsorter", "--contigs-mode")
+
+    rule import_functions_virsorter
+            '''
+            If --hallmark-functions was specified for --anvio-gene-calls and, 
+            you’ll also get an output file called “virsorter_annotations.txt” 
+            containing gene annotations for all hallmark genes inside all contigs 
+            predicted as phage or prophage by VirSorter. You can import it into anvi’o like this:
+            '''    
+            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
+            input:
+            params:
+                contigs_db = M.get_rule_param("import_functions_virsorter", "--contigs-db"),
+                parser = M.get_rule_param("import_functions_virsorter", "--parser"),
+                input_files = M.get_rule_param("import_functions_virsorter", "--input-files"),
+                drop_previous_annotations = M.get_rule_param("import_functions_virsorter", "--drop-previous-annotations")
+
+    
     
 if not slave_mode:
     # check if all program dependencies are met. for this line to be effective,
