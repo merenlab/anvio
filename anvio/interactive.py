@@ -1063,6 +1063,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.items_additional_data_keys, self.items_additional_data_dict = [], {}
 
         for view in views_of_interest:
+            # don't bother if this is a single profile
+            if not self.p_meta['merged']:
+                continue
+
             data_value = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'],
                                                                   distance=self.distance,
                                                                   linkage=self.linkage,
