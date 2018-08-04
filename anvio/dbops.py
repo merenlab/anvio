@@ -2722,6 +2722,21 @@ class ContigsDatabase:
                                     with such short contigs, but the length of each contig must be at least as long as your `k` for\
                                     k-mer analyis. You can use the script `anvi-script-reformat-fasta` to get rid of very short\
                                     contigs if you like." % (contigs_fasta, kmer_size, len(fasta.seq)))
+
+            try:
+                int(fasta.id)
+                is_int = True
+            except:
+                is_int = False
+
+            if is_int:
+                self.progress.end()
+                raise ConfigError("At least one of the contigs in your FASTA file (well, this one to be precise: '%s') looks like\
+                                   a number. For reasons we can't really justify, anvi'o does not like those numeric names, and hereby\
+                                   asks you to make sure every contig name contains at least one alphanumeric character :/ Meanwhile we,\
+                                   the anvi'o developers, are both surprised by and thankful for your endless patience with such eccentric\
+                                   requests. You the real MVP." % fasta.id)
+
         fasta.close()
         self.progress.end()
 
