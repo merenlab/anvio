@@ -78,10 +78,18 @@ class SequencesForHMMHits:
         # get data from HMM tables based on sources of interest
         self.progress.update('Getting data from HMM tables for %d source(s)' % len(self.sources))
         where_clause_for_sources = "source in (%s)" % ', '.join(['"%s"' % s for s in self.sources])
-        self.hmm_hits = contigs_db.get_some_rows_from_table_as_dict(t.hmm_hits_table_name, \
-                                                                    where_clause=where_clause_for_sources)
-        self.hmm_hits_splits = contigs_db.get_some_rows_from_table_as_dict(t.hmm_hits_splits_table_name, \
-                                                                    where_clause=where_clause_for_sources)
+        self.hmm_hits = contigs_db.get_some_rows_from_table_as_dict(t.hmm_hits_table_name,
+                                                                    where_clause=where_clause_for_sources,
+                                                                    error_if_no_data=False)
+        self.hmm_hits_splits = contigs_db.get_some_rows_from_table_as_dict(t.hmm_hits_splits_table_name,
+                                                                    where_clause=where_clause_for_sources,
+                                                                    error_if_no_data=False)
+
+        if not len(self.hmm_hits):
+            # there are HMMs but no hits. FINE.
+            self.progress.end()
+            contigs_db.disconnect()
+            return
 
         gene_caller_ids_of_interest = set([e['gene_callers_id'] for e in self.hmm_hits.values()])
         where_clause_for_genes = "gene_callers_id in (%s)" % ', '.join(['%d' % g for g in gene_caller_ids_of_interest])
