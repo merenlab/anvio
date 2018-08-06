@@ -191,11 +191,11 @@ run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_perc
 
 run_krakenhll = M.get_param_value_from_config(['krakenhll', 'run']) == True
 
-run_virsorter = M.get_param_value_from_config(['virsorter', 'run'])
-
 run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
 run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
+
+run_virsorter = M.get_param_value_from_config(['virsorter', 'run'])
 
 if not references_mode and not (run_idba_ud or run_megahit):
     # Sanity check for assembly mode
@@ -1067,6 +1067,7 @@ if M.get_param_value_from_config(['virsorter', 'run']) == True:
             diamond = M.get_rule_param("virsorter", "--diamond"),# Use diamond (in "--more-sensitive" mode) instead of blastp
             keep_db = M.get_rule_param("virsorter", "--keep-db"),
             no_c = M.get_rule_param("virsorter", "--no_c"), #use in case of blank files, special case perl problem
+            
          # Notice that virsorter requires a directory to be specified
          # for output files and does not care if that directory exists
          # or not. If the directory exists, virsorter will not overwrite 
