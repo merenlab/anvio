@@ -1054,7 +1054,7 @@ if M.get_param_value_from_config(['virsorter', 'run']) == True:
             files are kept for later analysis.
         '''
         log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
-        input: #fna = M.get_rule_param("virsorter", "--fna"),# THIS is the input file
+        input: #fna = M.get_rule_param("virsorter", "--fna"),# THIS is the input file. Needs to be contigs.fa
         params:
             "run": "",                 
             dataset = M.get_rule_param("virsorter", "--dataset"),
@@ -1066,7 +1066,7 @@ if M.get_param_value_from_config(['virsorter', 'run']) == True:
             data_dir = M.get_rule_param("virsorter", "--data-dir"), # Path to "virsorter-data" directory 
             diamond = M.get_rule_param("virsorter", "--diamond"),# Use diamond (in "--more-sensitive" mode) instead of blastp
             keep_db = M.get_rule_param("virsorter", "--keep-db"),
-            no_c = M.get_rule_param("virsorter", "--no_c"), #use in case of blank files, special case perl problem
+            no_c = M.get_rule_param("virsorter", "--no_c"), #use in case of blank files, special case perl problem. Is there a way to rerun with this flag if job fails?
             
          # Notice that virsorter requires a directory to be specified
          # for output files and does not care if that directory exists
@@ -1081,7 +1081,7 @@ if M.get_param_value_from_config(['virsorter', 'run']) == True:
         log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
         input: #contigs.db
         params:
-            table = M.get_rule_param("export_table_for_virsorter", "--table"), # Need to be this -> splits_basic_info
+            table = M.get_rule_param("export_table_for_virsorter", "--table"), # Needs to be this -> splits_basic_info
             list_fields = M.get_rule_param("export_table_for_virsorter", "--list--fields"),
             output_file = M.get_rule_param("export_table_for_virsorter", "--output-file")
     
