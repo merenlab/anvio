@@ -195,7 +195,6 @@ run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
 run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
 
-run_virsorter = M.get_param_value_from_config(['virsorter', 'run'])
 
 if not references_mode and not (run_idba_ud or run_megahit):
     # Sanity check for assembly mode
@@ -1044,89 +1043,13 @@ rule import_percent_of_reads_mapped:
                                           --just-do-it
                 """)
 
-if M.get_param_value_from_config(['virsorter', 'run']) == True:
-    rule run_virsorter: #wrapper_phage_contigs_sorter_iPlant.pl
-        '''
-            Search for viral sequences using VIRSorter on your contigs file.
 
-            All files created by VIRSorter are stored in a temporary folder.
-            Only the VIRSorter_affi-contigs.tab and VIRSorter_global-phage-signal.csv
-            files are needed for later analysis.
-        '''
-        log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
-        input: #fna = M.get_rule_param("run_virsorter", "--fna"),# THIS is the input file. Needs to be contigs.fa
-        params:
-            "run": "",
-            dataset = M.get_rule_param("run_virsorter", "--dataset"),
-            cp = M.get_rule_param("run_virsorter", "--cp"),
-            db = M.get_rule_param("run_virsorter", "--db"), # Either "1" (DEFAULT Refseqdb) or "2" (Viromedb)
-            wdir = M.get_rule_param("run_virsorter", "--wdir") # working directory
-            ncpu = M.get_rule_param("run_virsorter", "--ncpu"), # cpu, default 4
-            virome = M.get_rule_param("run_virsorter", "--virome"),
-            data_dir = M.get_rule_param("run_virsorter", "--data-dir"), # Path to "virsorter-data" directory
-            diamond = M.get_rule_param("run_virsorter", "--diamond"),# Use diamond (in "--more-sensitive" mode) instead of blastp
-            keep_db = M.get_rule_param("run_virsorter", "--keep-db"),
-            no_c = M.get_rule_param("run_virsorter", "--no_c"), #use in case of blank files, special case perl problem. Is there a way to rerun with this flag if job fails?
-
-         # Notice that virsorter requires a directory to be specified
-         # for output files and does not care if that directory exists
-         # or not. If the directory exists, virsorter will not overwrite
-         # but rather just add files. Otherwise it will create directory.
-
-    rule export_table_for_virsorter #anvi-export-table
-        '''
-            Generates one of the essential files we will need to visualize
-            VirSorter split-level annotations in anvi’o
-        '''
-        log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
-        input: #contigs.db
-        params:
-            table = M.get_rule_param("export_table_for_virsorter", "--table"), # Needs to be this -> splits_basic_info
-            list_fields = M.get_rule_param("export_table_for_virsorter", "--list--fields"),
-            output_file = M.get_rule_param("export_table_for_virsorter", "--output-file")
-
-    rule export_gene_calls_for_virsorter #anvi-export-gene-calls
-        '''
-            Generate gene-level annotations for hallmark genes and import
-            those into anvi’o (think capsid proteins, terminases, etc.).
-            Need to run this command to export your gene calls from
-            anvi’o contigs database: OPTIONAL but needed for
-            rule parse_virsorter M.get_rule_param("parse_virsorter", "--anvio-gene-calls")
-        '''
-            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
-            input: #contigs.db
-            params:
-                contigs_db = M.get_rule_param("export_gene_calls_for_virsorter", "--contigs-db"),
-                output_file = M.get_rule_param("export_gene_calls_for_virsorter", "--output-file")
-
-    rule parse_virsorter #virsorter_to_anvio.py
-        '''
-            Parse the VirSorter output file and create files to import into
-            anvi'o dbs.
-
-            If you want to import hallmark gene functions into anvi’o, you’ll
-            need two mapping files (one for each VirSorter database)
-        '''
-            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
-            input: #--affi-file and --global-file
-            params:
-                affi_file = M.get_rule_param("parse_virsorter", "--affi-file"), #this is output from rule virsorter
-                global_file = M.get_rule_param("parse_virsorter", "--global-file"),#this is output from rule virsorter
-                db = M.get_rule_param("parse_virsorter", "--db"), #Enter 1 for RefSeq, 2 for RefSeq+viromes.
-                splits_info = M.get_rule_param("parse_virsorter", "--splits-info"), # output of rule export_table_for_virsorter
-                anvio_gene_calls = M.get_rule_param("parse_virsorter", "--anvio-gene-calls"), # output of rule export_gene_calls_for_virsorter
-                hallmark_functions = M.get_rule_param("parse_virsorter", "--hallmark-functions"), #REQUIRED if you want an output functions file. Needs to correspond to db 1 or 2
-                addl_info = M.get_rule_param("parse_virsorter", "--addl-info"), #for importing to PROFILE.db
-                phage_collection = M.get_rule_param("parse_virsorter", "--phage-collection"), #for importing collections into CONTIGS.db
-                output_functions = M.get_rule_param("parse_virsorter", "--output-functions"), #for importing functions into CONTIGS.db
-                min_phage_length = M.get_rule_param("parse_virsorter", "--min-phage-length"),
-                exclude_cat3 = M.get_rule_param("parse_virsorter", "--exclude-cat3"),#Optional
-                exclude_prophages = M.get_rule_param("parse_virsorter", "--exclude-prophages") #Optional
-
+if run_virsorter:
+    # Notice that run_virsorter is defined in the contigs workflow.
     rule import_misc_data_virsorter #anvi-import-misc-data
         ''' Import virsorter_additional_info.txt into PROFILE.db'''
 
-            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
+            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log"
             input: #from rule parse_virsorter: params addl_info
             params:
                 pan_or_profile_db = M.get_rule_param("import_misc_data_virsorter", "--pan-or-profile-db"), #provide
@@ -1138,7 +1061,7 @@ if M.get_param_value_from_config(['virsorter', 'run']) == True:
     rule import_collection_virsorter  #anvi-import-collection
         ''' Import virsorter_collection.txt'''
 
-            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
+            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log"
             input: #from rule parse_virsorter: params phage_collection
             params:
                 contigs_db = M.get_rule_param("import_collection_virsorter", "--contigs-db"), #Provide
@@ -1146,23 +1069,6 @@ if M.get_param_value_from_config(['virsorter', 'run']) == True:
                 collection_name = M.get_rule_param("import_collection_virsorter", "--collection-name"), #Must provide a collection name
                 bins_info = M.get_rule_param("import_collection_virsorter", "--bins-info"), #Not used?
                 contigs_mode = M.get_rule_param("import_collection_virsorter", "--contigs-mode")#Not used?
-
-    rule import_functions_virsorter #anvi-import-functions
-        '''Import virsorter_annotations.txt
-            If --hallmark-functions was specified for --anvio-gene-calls, you’ll
-            also get an output file called “virsorter_annotations.txt” containing
-            gene annotations for all hallmark genes inside all contigs
-            predicted as phage or prophage by VirSorter. You can import it into anvi’o
-            like this:
-        '''
-            log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log
-            input: #from rule parse_virsorter: params output_functions
-            params:
-                contigs_db = M.get_rule_param("import_functions_virsorter", "--contigs-db"),
-                parser = M.get_rule_param("import_functions_virsorter", "--parser"),
-                input_files = M.get_rule_param("import_functions_virsorter", "--input-files"),
-                drop_previous_annotations = M.get_rule_param("import_functions_virsorter", "--drop-previous-annotations")
-
 
 
 if not slave_mode:
