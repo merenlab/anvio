@@ -2053,6 +2053,7 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.progress = p
 
         self.engine = 'CDN'
+        self.skip_synonymity = args.skip_synonymity
 
         # Init Meta
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
@@ -2066,6 +2067,10 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
 
     def compute_synonymity(self):
+        """This method is currently prohibitively slow for large datasets."""
+        if self.skip_synonymity:
+            return
+
         coding_codons = constants.coding_codons
 
         number_of_pairs = len(coding_codons)*(len(coding_codons)+1)//2
