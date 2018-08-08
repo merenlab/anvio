@@ -2053,7 +2053,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.progress = p
 
         self.engine = 'CDN'
-        self.skip_synonymity = args.skip_synonymity
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.skip_synonymity = A('skip_synonymity', null)
 
         # Init Meta
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
