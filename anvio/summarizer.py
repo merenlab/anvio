@@ -28,7 +28,6 @@ import os
 import sys
 import gzip
 import glob
-import math
 import numpy
 import shutil
 import hashlib
@@ -417,11 +416,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         for c in categories:
             self.progress.update("Working on category '%s'" % c)
             group_size = len(categories_to_genomes_dict[c])
-            group_portion = group_size / number_of_genomes
 
-            # see details below
-            weighting_normalization_factor = number_of_genomes * (group_portion * math.log2(group_portion)\
-                                                + (1 - group_portion) * math.log2(1 - group_portion))
 
             for f in functions_names:
                 occurrence_in_group = functions_in_categories.loc[c, f]
@@ -429,14 +424,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 portion_occurrence_in_group = occurrence_in_group / group_size
                 portion_occurrence_outside_of_group = occurrence_outside_of_group / (number_of_genomes - group_size)
                 enrichment = portion_occurrence_in_group - portion_occurrence_outside_of_group
-
-                # the more genomes we have in each group when making the comparisson
-                # the stronger the results are. In order to allow to compare results from
-                # different categories, we also return this weighted score. The normalization
-                # factor is simply the number of genomes multiplied by the entropy of the two compared
-                # groups. the rational is that having more genomes is only helping the comparisson if the
-                # genomes represent both compared groups, and that's where the entropy comes in.
-                weighted_enrichment = -1 * enrichment * weighting_normalization_factor
 
                 if (abs(enrichment) >= min_function_enrichment) and (max(portion_occurrence_outside_of_group, portion_occurrence_in_group) >= min_portion_occurrence_of_function_in_group):
                     if c not in enrichment_dict:
@@ -446,7 +433,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                         enrichment_dict[c][f] = {}
 
                     enrichment_dict[c][f]["enrichment_score"] = enrichment
-                    enrichment_dict[c][f]["weighted_enrichment_score"] = weighted_enrichment
                     enrichment_dict[c][f]["portion_occurrence_in_group"] = portion_occurrence_in_group
                     enrichment_dict[c][f]["portion_occurrence_outside_of_group"] = portion_occurrence_outside_of_group
                     enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
@@ -459,27 +445,15 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                         if enrichment_dict[c][f]["portion_occurrence_outside_of_group"] == 1:
                             enrichment_dict[c][f]["core"] = True
 
-        import scipy
         import statsmodels.stats.multitest as multitest
-        genome_names = set(self.genome_names)
-        wilcoxon_p_values = []
         z_test_p_values = []
         for c in categories:
             group_size = len(categories_to_genomes_dict[c])
             outgroup_size = number_of_genomes - group_size
 
             self.progress.update("Working on statistics for category '%s'" % c)
-            group_genomes = categories_to_genomes_dict[c]
-            outgroup_genomes = genome_names - group_genomes
 
             for f in functions_names:
-                x = occurrence_of_functions_in_pangenome_dataframe.loc[group_genomes,f].astype(int)
-                y = occurrence_of_functions_in_pangenome_dataframe.loc[outgroup_genomes,f].astype(int)
-                wilcoxon = scipy.stats.ranksums(x, y)
-                enrichment_dict[c][f]["wilcoxon_p_value"] = wilcoxon.pvalue
-                wilcoxon_p_values.append(wilcoxon.pvalue)
-                enrichment_dict[c][f]["wilcoxon_statistic"] = wilcoxon.statistic
-
                 enrichment_dict[c][f]["z_test_statistic"], enrichment_dict[c][f]["z_test_p_value"] = \
                                                         get_z_test_statistic(enrichment_dict[c][f]["portion_occurrence_in_group"], \
                                                                              enrichment_dict[c][f]["portion_occurrence_outside_of_group"], \
@@ -489,12 +463,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 z_test_p_values.append(enrichment_dict[c][f]["z_test_p_value"])
 
             # correction for multiple comparrisons
-            reject, corrected_p_values_wilcoxon, foo1, foo2 = multitest.multipletests(wilcoxon_p_values, method='fdr_bh')
             reject, corrected_p_values_z_test, foo1, foo2 = multitest.multipletests(z_test_p_values, method='fdr_bh')
 
             i = 0
             for f in functions_names:
-                enrichment_dict[c][f]['wilcoxon_corrected_p_value'] = corrected_p_values_wilcoxon[i]
                 enrichment_dict[c][f]['z_test_corrected_p_value'] = corrected_p_values_z_test[i]
                 i += 1
 
