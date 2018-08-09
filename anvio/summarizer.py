@@ -1936,7 +1936,7 @@ def get_z_test_statistic(p1, p2, n1, n2):
     p1 = max(p1, 1/n1) # in case p1 is zero
     p2 = max(p2, 1/n2)
     p1 = min(p1, 1 - 1/n1) # in case p1 is 1
-    p2 = min(p2, 1 - 2/n2)
+    p2 = min(p2, 1 - 1/n2)
 
     p = (n1*p1 + n2*p2) / (n1 + n2)
 
