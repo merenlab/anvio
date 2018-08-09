@@ -1946,6 +1946,6 @@ def get_z_test_statistic(p1, p2, n1, n2):
 
 
 def get_p_value_for_z_test(z):
-    return norm.cdf(-abs(z)) + norm.sf(abs(z))
+    return 2*norm.cdf(-abs(z))
 
 
