@@ -37,6 +37,7 @@ import argparse
 import textwrap
 import pandas as pd
 
+from scipy.stats import norm
 from collections import Counter
 
 import anvio
@@ -461,8 +462,12 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         import scipy
         import statsmodels.stats.multitest as multitest
         genome_names = set(self.genome_names)
-        p_values = []
+        wilcoxon_p_values = []
+        z_test_p_values = []
         for c in categories:
+            group_size = len(categories_to_genomes_dict[c])
+            outgroup_size = number_of_genomes - group_size
+
             self.progress.update("Working on statistics for category '%s'" % c)
             group_genomes = categories_to_genomes_dict[c]
             outgroup_genomes = genome_names - group_genomes
@@ -472,14 +477,25 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 y = occurrence_of_functions_in_pangenome_dataframe.loc[outgroup_genomes,f].astype(int)
                 wilcoxon = scipy.stats.ranksums(x, y)
                 enrichment_dict[c][f]["wilcoxon_p_value"] = wilcoxon.pvalue
-                p_values.append(wilcoxon.pvalue)
+                wilcoxon_p_values.append(wilcoxon.pvalue)
                 enrichment_dict[c][f]["wilcoxon_statistic"] = wilcoxon.statistic
 
+                enrichment_dict[c][f]["z_test_statistic"], enrichment_dict[c][f]["z_test_p_value"] = \
+                                                        get_z_test_statistic(enrichment_dict[c][f]["portion_occurrence_in_group"], \
+                                                                             enrichment_dict[c][f]["portion_occurrence_outside_of_group"], \
+                                                                             group_size, \
+                                                                             outgroup_size)
+
+                z_test_p_values.append(enrichment_dict[c][f]["z_test_p_value"])
+
             # correction for multiple comparrisons
-            reject, corrected_p_values, foo1, foo2 = multitest.multipletests(p_values, method='fdr_bh')
+            reject, corrected_p_values_wilcoxon, foo1, foo2 = multitest.multipletests(wilcoxon_p_values, method='fdr_bh')
+            reject, corrected_p_values_z_test, foo1, foo2 = multitest.multipletests(z_test_p_values, method='fdr_bh')
+
             i = 0
             for f in functions_names:
-                enrichment_dict[c][f]['wilcoxon_corrected_p_value'] = corrected_p_values[i]
+                enrichment_dict[c][f]['wilcoxon_corrected_p_value'] = corrected_p_values_wilcoxon[i]
+                enrichment_dict[c][f]['z_test_corrected_p_value'] = corrected_p_values_z_test[i]
                 i += 1
 
         if output_file_path:
@@ -1900,4 +1916,36 @@ class Bin:
         output_file_obj = self.get_output_file_handle(output_file_name_posfix)
         output_file_obj.write('%s\n' % content)
         output_file_obj.close()
+
+
+def get_z_test_statistic(p1, p2, n1, n2):
+    '''
+        Compute a two sample z-test statistic
+
+        If one group has no hits (e.g. p1=0) then we compute an upper bound
+        for the p-value by pretending that it had one hit.
+
+        If one group has 100% hits (e.g. p1=1) then we compute an upper bound
+        for the p-value by pretending that p1=1-1/n1 hits
+    '''
+    if p1 == 0 and p2 == 0:
+        return (0, 0)
+
+    # This is done in order to estimate an upper bound 
+    # for the p-value
+    p1 = max(p1, 1/n1) # in case p1 is zero
+    p2 = max(p2, 1/n2)
+    p1 = min(p1, 1 - 1/n1) # in case p1 is 1
+    p2 = min(p2, 1 - 2/n2)
+
+    p = (n1*p1 + n2*p2) / (n1 + n2)
+
+    z = (p1 - p2) / numpy.sqrt(p*(1 - p) * (1/n1 + 1/n2))
+    p_value = get_p_value_for_z_test(z)
+    return (z, p_value)
+
+
+def get_p_value_for_z_test(z):
+    return norm.cdf(-abs(z)) + norm.sf(abs(z))
+
 
