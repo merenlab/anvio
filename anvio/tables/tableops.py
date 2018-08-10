@@ -190,7 +190,6 @@ class Table(object):
                              contigs database, and will unlikely affect anything major. This warning will go away when\
                              anvi'o can seamlessly work with multiple gene callers (which we are looking forward to\
                              implement in the future)." % len(blank_seq_ids_not_reported))
->>>>>>> Stashed changes
 
         self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table) - len(blank_seq_ids_not_reported)))
         self.run.info('FASTA', output_file_path)
