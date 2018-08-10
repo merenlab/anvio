@@ -1,0 +1,49 @@
+# -*- coding: utf-8
+
+import argparse
+import pandas as pd
+
+import anvio
+import anvio.workflows as w
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.workflows.contigs import ContigsDBWorkflow
+
+__author__ = "Alon Shaiber"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Alon Shaiber"
+__email__ = "alon.shaiber@gmail.com"
+
+run = terminal.Run()
+
+slave_mode = False if 'workflows/phylogenomics' in workflow.included[0] else True
+if not slave_mode:
+    # don't be confused, child. when things come to this point, the variable `config`
+    # is already magically filled in by snakemake:
+    M = PhylogenomicsWorkflow(argparse.Namespace(config=config, slave_mode=slave_mode))
+    M.init()
+    dirs_dict = M.dirs_dict
+
+localrules: generate_phylogeny
+
+group_names = []
+fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
+
+if fasta_txt_file:
+    filesnpaths.is_file_exists(fasta_txt_file)
+    fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
+    group_names = list(fasta_information.keys())
+    references_mode = True
+
+rule generate_phylogeny:
+    input: 
+
+if not slave_mode:
+    # check if all program dependencies are met. for this line to be effective,
+    # there should be an initial dry run step (which is the default behavior of
+    # the `WorkflowSuperClass`, so you are most likely covered).
+    M.check_workflow_program_dependencies(workflow)
