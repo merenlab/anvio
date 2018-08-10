@@ -183,12 +183,14 @@ class Table(object):
         if len(blank_seq_ids_not_reported):
             self.run.warning("%d entries in the sequences table had blank sequences :/ This is related to the issue\
                              at https://github.com/merenlab/anvio/issues/565. If this is like mid-2018 and you still\
-                             get this warning, please find an anvi'o developer and make them feel embarrassed. If it\
-                             is earlier than take this as a simple warning that some gene calls in your downstream\
-                             analyses may have no sequences, and that's OK. This is a very minor issue due to on-the-fly\
-                             addition of Ribosomal RNA gene calls to the contigs database, and will likely will not\
-                             affect anything major. This warning will go away when anvi'o can seamlessly work with\
-                             multiple gene callers (which we are looking forward to implement in the future)." % len(blank_seq_ids_not_reported))
+                             are getting this warning, please find an anvi'o developer and make them feel embarrassed.\
+                             If it is earlier than that, then take this as a simple warning to remember that some gene\
+                             calls in your downstream analyses may have no amino acid sequences, and that's actuall OK.\
+                             This is a very minor issue due to on-the-fly addition of Ribosomal RNA gene calls to the\
+                             contigs database, and will unlikely affect anything major. This warning will go away when\
+                             anvi'o can seamlessly work with multiple gene callers (which we are looking forward to\
+                             implement in the future)." % len(blank_seq_ids_not_reported))
+>>>>>>> Stashed changes
 
         self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table) - len(blank_seq_ids_not_reported)))
         self.run.info('FASTA', output_file_path)
