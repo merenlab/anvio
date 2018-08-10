@@ -1,5 +1,6 @@
 # -*- coding: utf-8
 
+import os
 import argparse
 import pandas as pd
 
@@ -41,6 +42,76 @@ if fasta_txt_file:
 
 rule generate_phylogeny:
     input: 
+
+rule anvi_get_sequences_for_hmm_hits:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "anvi_get_sequences_for_hmm_hits.log")
+    input: unpack(M.input_for_anvi_get_sequences_for_hmm_hits)
+    output: os.path.join(dirs_dict["PHYLO_DIR"], "proteins.fa")
+    params:
+        internal_genomes_argument = lambda wildcards: "--internal-genomes " + M.internal_genomes_file if M.internal_genomes_file else "",
+        external_genomes_argument = lambda wildcards: "--external-genomes " + M.external_genomes_file if M.external_genomes_file else "",
+        return_best_hit = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit')
+        separator = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--separator')
+        align_with = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--align-with')
+        min_num_bins_gene_occurs = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--min-num-bins-gene-occurs')
+        max_num_genes_missing_from_bin = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--max-num-genes-missing-from-bin')
+        concatenate_genes = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--concatenate-genes')
+        get_aa_sequences = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--get-aa-sequences')
+        gene_names = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names')
+        hmm_sources = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--hmm-sources')
+    threads: M.T('anvi_get_sequences_for_hmm_hits')
+    resources: nodes = M.T('anvi_get_sequences_for_hmm_hits')
+    shell:
+        """
+            anvi-get-sequences-for-hmm-hits {params.internal_genomes_argument} {params.external_genomes_argument} \
+                                            {params.return_best_hit} {params.separator} {params.align_with} \
+                                            {params.min_num_bins_gene_occurs} {params.max_num_genes_missing_from_bin} \
+                                            {params.concatenate_genes} {params.get_aa_sequences} {params.gene_names} \
+                                            {params.hmm_sources} >> {log} 2>&1
+        """
+
+
+rule trimal:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "trimal.log")
+    input: os.path.join(dirs_dict["PHYLO_DIR"], "proteins.fa")
+    output: os.path.join(dirs_dict["PHYLO_DIR"], "proteins_GAPS_REMOVED.fa")
+    params:
+        gt = M.get_rule_param('trimal', '-gt'),
+        additional_params = M.get_rule_param('trimal', 'additional_params')
+    threads: M.T('trimal')
+    resources: nodes = M.T('trimal')
+    shell:
+        """
+        trimal -in {input} \
+               -out {output} \
+               {params.gt} \
+               {params.additional_params} >> {log} 2>&1
+        """
+
+
+rule iqtree_omp:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "iqtree_omp.log")
+    input: os.path.join(dirs_dict["PHYLO_DIR"], "proteins_GAPS_REMOVED.fa")
+    output: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name'))
+    params:
+        m = M.get_rule_param('iqtree_omp', '-m'),
+        bb = M.get_rule_param('iqtree_omp', '-bb')
+        additional_params = M.get_rule_param('iqtree_omp', 'additional_params')
+    threads: M.T('iqtree_omp')
+    resources: nodes = M.T('iqtree_omp')
+    shell:
+        """
+        iqtree-omp -s {input} \
+                   -nt {threads} \
+                   {params.m} \
+                   {params.bb} \
+                   {params.additional_params} \
+                   -o {output} >> {log} 2>&1
+        """
+
 
 if not slave_mode:
     # check if all program dependencies are met. for this line to be effective,

@@ -7,6 +7,7 @@
 
 import anvio
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows import WorkflowSuperClass
 from anvio.errors import ConfigError
@@ -20,6 +21,8 @@ __version__ = anvio.__version__
 __maintainer__ = "Alon Shaiber"
 __email__ = "alon.shaiber@gmail.com"
 
+run = terminal.Run()
+progress = terminal.Progress()
 
 class PhylogenomicsWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
@@ -46,16 +49,63 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         self.run = run
         self.progress = progress
 
+        self.input_for_anvi_get_sequences_for_hmm_hits = {}
+        self.internal_genomes_file = ''
+        self.external_genomes_file = ''
+
         # initialize the base class
         WorkflowSuperClass.__init__(self)
 
-        self.rules.extend([])
+        self.rules.extend(['anvi_get_sequences_for_hmm_hits', 'trimal'])
 
-        self.general_params.extend([])
+        self.general_params.extend(['project_name'])
 
-        self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
-                               "CONTIGS_DIR": "02_CONTIGS"})
+        self.dirs_dict.update({"PHYLO_DIR": "01_PHYLOGENOMICS"})
 
-        self.default_config.update({})
+        self.default_config.update({'anvi_get_sequences_for_hmm_hits': {'--return-best-hit': True,
+                                                                        '--align-with': 'famsa',
+                                                                        '--concatenate-genes': True,
+                                                                        '--get-aa-sequences': True,
+                                                                        '--hmm-sources': 'Campbell_et_al'},
+                                    'trimal': {'-gt': 0.5},
+                                    'iqtree_omp': {'threads': 8, '-m': 'WAG', '-bb': 1000}})
 
-        self.rule_acceptable_params_dict[''] = []
+        get_sequences_params = ['--external-genomes', '--internal-genomes', '--return-best-hit', \
+                                '--separator', '--align-with', '--min-num-bins-gene-occurs', \
+                                '--max-num-genes-missing-from-bin', '--concatenate-genes', \
+                                '--get-aa-sequences', '--gene-names', '--hmm-sources']
+        self.rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits'] = get_sequences_params
+        self.rule_acceptable_params_dict['trimal'] = ['-gt', 'additional_params']
+        self.rule_acceptable_params_dict['iqtree_omp'] = ['-m', '-bb', 'additional_params']
+
+
+    def init(self):
+        ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
+        super().init()
+
+        internal_genomes_file = self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--internal-genomes')
+        external_genomes_file = self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--external-genomes')
+
+        if not internal_genomes_file and not external_genomes_file:
+            raise ConfigError('You must provide either an external genomes file or internal genomes file \
+                               for the rule anvi_get_sequences_for_hmm_hits')
+
+        # here we do a little trick to make sure the rule can expect either one or both
+        self.input_for_anvi_get_sequences_for_hmm_hits = {"internal_genomes_file": external_genomes_file,
+                                                          "external_genomes_file": internal_genomes_file}
+
+        if internal_genomes_file:
+            filesnpaths.is_file_exists(internal_genomes_file)
+            self.input_for_anvi_get_sequences_for_hmm_hits['internal_genomes_file'] = internal_genomes_file
+            self.internal_genomes_file = internal_genomes_file
+
+        if external_genomes_file:
+            filesnpaths.is_file_exists(external_genomes_file)
+            self.input_for_anvi_get_sequences_for_hmm_hits['external_genomes_file'] = external_genomes_file
+            self.external_genomes_file = external_genomes_file
+
+        if self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit') != True:
+            run.warning('You changed the value for --return-best-hit for the rule anvi_get_sequences_for_hmm_hits \
+                         to something other than the default value, which is "true", while we allow you to do it \
+                         this is likely to break things, we trust that you know what you are doing, but advise you \
+                         to proceed with caution.')
