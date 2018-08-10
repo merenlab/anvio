@@ -182,7 +182,7 @@ class Table(object):
 
         if len(blank_seq_ids_not_reported):
             self.run.warning("%d entries in the sequences table had blank sequences :/ This is related to the issue\
-                             at https://github.com/merenlab/anvio/issues/565. If this is like mid-2018 and you still\
+                             at https://github.com/merenlab/anvio/issues/565. If this is like mid-2019 and you still\
                              are getting this warning, please find an anvi'o developer and make them feel embarrassed.\
                              If it is earlier than that, then take this as a simple warning to remember that some gene\
                              calls in your downstream analyses may have no amino acid sequences, and that's actuall OK.\
