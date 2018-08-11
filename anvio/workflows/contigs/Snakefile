@@ -55,7 +55,8 @@ run_anvi_run_ncbi_cogs = M.get_param_value_from_config(["anvi_run_ncbi_cogs", "r
 # default is NOT running anvi-script-run-eggnog-mapper
 run_anvi_script_run_eggnog_mapper = M.get_param_value_from_config(["anvi_script_run_eggnog_mapper", "run"]) == True
 
-run_virsorter = M.get_param_value_from_config(['virsorter', 'run']) == True
+# default is IDONTKNOW running virsorter
+run_classify_with_virsorter = M.get_param_value_from_config(['virsorter', 'run']) == True
 
 # sanity check for centrifuge db
 if run_taxonomy_with_centrifuge:
@@ -64,6 +65,13 @@ if run_taxonomy_with_centrifuge:
                           "provide a path for the centrifuge db in the "\
 
                           "config file. See documentation for more details.")
+        
+# sanity check for virsorter db
+if run_classify_with_virsorter:
+    if not M.get_param_value_from_config(["virsorter", "data-dir") #Is this correct
+        raise ConfigError("If you plan to run virsorter, then you must " \
+                         "provide a path for the virsorter db in the " \
+                         "config file. See documentation for more details." )
 
 def get_raw_fasta(wildcards):
     '''
@@ -373,9 +381,8 @@ rule anvi_script_run_eggnog_mapper:
     resources: nodes = M.T('anvi_script_run_eggnog_mapper')
     shell: "anvi-script-run-eggnog-mapper -c {input.contigs} --annotation {input.eggnog_output} {params.use_version}  >> {log} 2>&1"
 
-
-if run_virsorter:
-    rule run_virsorter: #wrapper_phage_contigs_sorter_iPlant.pl
+if run_classify_with_virsorter:
+    rule run_virsorter: 
         '''
             Search for viral sequences using VIRSorter on your contigs file.
 
@@ -384,26 +391,46 @@ if run_virsorter:
             files are needed for later analysis.
         '''
         log: dirs_dict["LOGS_DIR"] + "/{group}-virsorter.log"
-        input: #fna = M.get_rule_param("run_virsorter", "--fna"),# THIS is the input file. Needs to be contigs.fa
+        input: rules.anvi_script_reformat_fasta.output # Could this work?
+        output: # There are a lot of output files but we only need these 2. Was not sure how to specify temp dir
+            signal = dirs_dict["VIRSORTER_DIR"] + "/{group}/VIRSorter_global-phage-signal.csv" # Not sure if we need to add {group} prefix to all output files & directories
+            affi = dirs_dict["VIRSORTER_DIR"] + "/{group}/Metric_files/VIRSorter_affi-contigs.tab"
         params:
             "run": "",
-            dataset = M.get_rule_param("run_virsorter", "--dataset"),
-            cp = M.get_rule_param("run_virsorter", "--cp"),
+            dataset = M.get_rule_param("run_virsorter", "--dataset"), # Code dataset (DEFAULT "VIRSorter")
+            cp = M.get_rule_param("run_virsorter", "--cp"), # for Custom phage sequence
             db = M.get_rule_param("run_virsorter", "--db"), # Either "1" (DEFAULT Refseqdb) or "2" (Viromedb)
             wdir = M.get_rule_param("run_virsorter", "--wdir") # working directory
             ncpu = M.get_rule_param("run_virsorter", "--ncpu"), # cpu, default 4
-            virome = M.get_rule_param("run_virsorter", "--virome"),
+            virome = M.get_rule_param("run_virsorter", "--virome"), # Enable virome decontamination mode for viral datasets. See documentation. 
             data_dir = M.get_rule_param("run_virsorter", "--data-dir"), # Path to "virsorter-data" directory
             diamond = M.get_rule_param("run_virsorter", "--diamond"),# Use diamond (in "--more-sensitive" mode) instead of blastp
-            keep_db = M.get_rule_param("run_virsorter", "--keep-db"),
+            keep_db = M.get_rule_param("run_virsorter", "--keep-db"), # Keeps the new HMM and BLAST databases
             no_c = M.get_rule_param("run_virsorter", "--no_c"), #use in case of blank files, special case perl problem. Is there a way to rerun with this flag if job fails?
-
+        threads: M.T('virsorter') # Assume this should be the rule name and not the actual command?
+        resources: nodes = M.T('virsorter'), #same here
+        #For the shell command I will include all params but note the ones that are 'standard'
+        shell: w.r("wrapper_phage_contigs_sorter_iPlant.pl -f {input} 
+                                                           {param.db} \ # standard
+                                                           {param.wdir} \ # standard
+                                                           {param.ncpu} \ # standard
+                                                           {param.data_dir} \ # standard
+                                                           {param.diamond} \ # standard
+                                                           {param.cp} \
+                                                           {param.virome} \
+                                                           {param.keep_db} \
+                                                           {params.dataset} \
+                                                           {params.no_c} \ # set if a perl problem arises
+                                                           {params.description} >> {log} 2>&1")
+         # As pre rule anvi_gen_contigs_database, depending on whether human 
+         # contamination using centrifuge was done or not, the input to this 
+         # rule will be the raw (reformatted) assembly or the filtered.
          # Notice that virsorter requires a directory to be specified
          # for output files and does not care if that directory exists
          # or not. If the directory exists, virsorter will not overwrite
          # but rather just add files. Otherwise it will create directory.
 
-    rule export_table_for_virsorter #anvi-export-table
+     rule export_table_for_virsorter #anvi-export-table
         '''
             Generates one of the essential files we will need to visualize
             VirSorter split-level annotations in anvi’o
@@ -431,7 +458,7 @@ if run_virsorter:
 
     rule parse_virsorter #virsorter_to_anvio.py
         '''
-            Parse the VirSorter output file and create files to import into
+            Parse the VirSorter output and create files to import into
             anvi'o dbs.
 
             If you want to import hallmark gene functions into anvi’o, you’ll
