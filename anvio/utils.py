@@ -2303,7 +2303,7 @@ def download_protein_structures(protein_code_list, output_dir):
 
         # raise warning if structure was not downloaded
         if not filesnpaths.is_file_exists(get_protein_path(protein_code), dont_raise=True):
-            run.warning("The protein {} could not be downloaded.".format(protein_code))
+            run.warning("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
             protein_code_list.remove(protein_code)
 
     progress.end()

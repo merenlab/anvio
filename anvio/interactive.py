@@ -1040,7 +1040,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         for view in views_of_interest:
             item_order_name = view
-            newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], linkage=self.linkage, distance=self.distance)
+            newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'],
+                                                                        linkage=self.linkage,
+                                                                        distance=self.distance)
 
             self.p_meta['available_item_orders'].append(item_order_name)
             self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
@@ -1063,6 +1065,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.items_additional_data_keys, self.items_additional_data_dict = [], {}
 
         for view in views_of_interest:
+            # don't bother if this is a single profile
+            if not self.p_meta['merged']:
+                continue
+
             data_value = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'],
                                                                   distance=self.distance,
                                                                   linkage=self.linkage,
