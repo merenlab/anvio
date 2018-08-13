@@ -65,10 +65,10 @@ if run_taxonomy_with_centrifuge:
                           "provide a path for the centrifuge db in the "\
 
                           "config file. See documentation for more details.")
-        
+
 # sanity check for virsorter db
 if run_classify_with_virsorter:
-    if not M.get_param_value_from_config(["virsorter", "data-dir") #Is this correct and does it make sense here?
+    if not M.get_param_value_from_config(["virsorter", "data-dir"): #Is this correct and does it make sense here?
         raise ConfigError("If you plan to run virsorter, then you must " \
                          "provide a path for the virsorter db in the " \
                          "config file. See documentation for more details." )
