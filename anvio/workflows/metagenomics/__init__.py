@@ -44,15 +44,16 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
 
-        self.rules.extend(['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',\
-                     'fq2fa', 'merge_fastas_for_co_assembly', 'megahit',\
-                     'anvi_gen_contigs_database', 'anvi_export_gene_calls', 'centrifuge',\
-                     'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
-                     'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud', \
-                     'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped', \
-                     'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy'])
+        self.rules.extend(['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',
+                     'fq2fa', 'merge_fastas_for_co_assembly', 'megahit',
+                     'anvi_gen_contigs_database', 'anvi_export_gene_calls', 'centrifuge',
+                     'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
+                     'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',
+                     'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped',
+                     'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy',
+                     'import_collection_virsorter', 'import_misc_data_virsorter'])
 
-        self.general_params.extend(["samples_txt", "references_mode", "all_against_all", \
+        self.general_params.extend(["samples_txt", "references_mode", "all_against_all",
                                     "kraken_txt"])
 
         rule_acceptable_params_dict = {}
@@ -181,7 +182,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             if not self.get_param_value_from_config(['krakenhll', '--db']):
                 raise ConfigError('In order to run krakenhll, you must provide a path to \
                                    a database using the --db parameter in the config file.')
-        
+
 
     def get_assembly_software_list(self):
         return ['megahit', 'idba_ud']
