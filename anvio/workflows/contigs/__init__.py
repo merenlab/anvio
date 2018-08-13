@@ -55,7 +55,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
                            'emapper', 'anvi_script_run_eggnog_mapper', 'run_virsorter',
                            'export_table_for_virsorter', 'export_gene_calls_for_virsorter',
-                           'parse_virsorter', ''])
+                           'parse_virsorter', 'import_functions_virsorter'])
 
         self.general_params.extend(["fasta_txt"])
 
@@ -69,7 +69,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True},
                                     "emapper": {"--database": "bact", "--usemem": True, "--override": True},
-                                    "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"}})
+                                    "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"},
+                                    "run_virsorter": {"run": False}})
 
         self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--sensitive', '--temporary-dir-path', '--search-with']
 
@@ -86,6 +87,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                     ['run', '--simplify-names', '--keep-ids', '--exclude-ids', '--min-len']
 
         self.rule_acceptable_params_dict['remove_human_dna_using_centrifuge'] = ['run']
+
+        self.rule_acceptable_params_dict['run_virsorter'] = ['run']
 
         gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
                               '--ignore-internal-stop-codons', '--skip-mindful-splitting',\

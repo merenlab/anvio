@@ -55,8 +55,8 @@ run_anvi_run_ncbi_cogs = M.get_param_value_from_config(["anvi_run_ncbi_cogs", "r
 # default is NOT running anvi-script-run-eggnog-mapper
 run_anvi_script_run_eggnog_mapper = M.get_param_value_from_config(["anvi_script_run_eggnog_mapper", "run"]) == True
 
-# default is I-DONT-KNOW running virsorter
-run_classify_with_virsorter = M.get_param_value_from_config(['virsorter', 'run']) == True
+# default is NOT running virsorter
+run_classify_with_virsorter = M.get_param_value_from_config(['run_virsorter', 'run']) == True
 
 # sanity check for centrifuge db
 if run_taxonomy_with_centrifuge:
