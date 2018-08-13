@@ -63,7 +63,6 @@ if run_taxonomy_with_centrifuge:
     if not M.get_param_value_from_config(["centrifuge", "db"]):
         raise ConfigError("If you plan to run centrifuge, then you must "\
                           "provide a path for the centrifuge db in the "\
-
                           "config file. See documentation for more details.")
 
 # sanity check for virsorter db
@@ -382,7 +381,7 @@ rule anvi_script_run_eggnog_mapper:
     shell: "anvi-script-run-eggnog-mapper -c {input.contigs} --annotation {input.eggnog_output} {params.use_version}  >> {log} 2>&1"
 
 if run_classify_with_virsorter:
-    rule run_virsorter: 
+    rule run_virsorter:
         '''
             Search for viral sequences using VIRSorter on your contigs file.
 
@@ -395,7 +394,7 @@ if run_classify_with_virsorter:
         output: # There are a lot of output files but we only need these 2. Was not sure how to specify temp dir
             global_file = dirs_dict["VIRSORTER_DIR"] + "/{group}/VIRSorter_global-phage-signal.csv" # Not sure if we need to add {group} prefix to all output files & directories
             affi_file = dirs_dict["VIRSORTER_DIR"] + "/{group}/Metric_files/VIRSorter_affi-contigs.tab"
-            #I made these two variables (global_file & affi_file) the same as the params for rule parse_virsorter                           
+            #I made these two variables (global_file & affi_file) the same as the params for rule parse_virsorter
         params:
             "run": "",
             dataset = M.get_rule_param("run_virsorter", "--dataset"), # Code dataset (DEFAULT "VIRSorter")
@@ -403,7 +402,7 @@ if run_classify_with_virsorter:
             db = M.get_rule_param("run_virsorter", "--db"), # Either "1" (DEFAULT Refseqdb) or "2" (Viromedb)
             wdir = M.get_rule_param("run_virsorter", "--wdir") # working directory
             ncpu = M.get_rule_param("run_virsorter", "--ncpu"), # cpu, default 4
-            virome = M.get_rule_param("run_virsorter", "--virome"), # Enable virome decontamination mode for viral datasets. See documentation. 
+            virome = M.get_rule_param("run_virsorter", "--virome"), # Enable virome decontamination mode for viral datasets. See documentation.
             data_dir = M.get_rule_param("run_virsorter", "--data-dir"), # Path to "virsorter-data" directory
             diamond = M.get_rule_param("run_virsorter", "--diamond"),# Use diamond (in "--more-sensitive" mode) instead of blastp
             keep_db = M.get_rule_param("run_virsorter", "--keep-db"), # Keeps the new HMM and BLAST databases
