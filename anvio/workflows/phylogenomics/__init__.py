@@ -56,7 +56,7 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         # initialize the base class
         WorkflowSuperClass.__init__(self)
 
-        self.rules.extend(['anvi_get_sequences_for_hmm_hits', 'trimal', 'iqtree_omp'])
+        self.rules.extend(['anvi_get_sequences_for_hmm_hits', 'trimal', 'iqtree'])
 
         self.general_params.extend(['project_name'])
 
@@ -68,7 +68,7 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
                                                                         '--get-aa-sequences': True,
                                                                         '--hmm-sources': 'Campbell_et_al'},
                                     'trimal': {'-gt': 0.5},
-                                    'iqtree_omp': {'threads': 8, '-m': 'WAG', '-bb': 1000}})
+                                    'iqtree': {'threads': 8, '-m': 'WAG', '-bb': 1000}})
 
         get_sequences_params = ['--external-genomes', '--internal-genomes', '--return-best-hit', \
                                 '--separator', '--align-with', '--min-num-bins-gene-occurs', \
@@ -76,7 +76,7 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
                                 '--get-aa-sequences', '--gene-names', '--hmm-sources']
         self.rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits'] = get_sequences_params
         self.rule_acceptable_params_dict['trimal'] = ['-gt', 'additional_params']
-        self.rule_acceptable_params_dict['iqtree_omp'] = ['-m', '-bb', 'additional_params']
+        self.rule_acceptable_params_dict['iqtree'] = ['-m', '-bb', 'additional_params']
 
 
     def init(self):

@@ -75,32 +75,32 @@ rule trimal:
     resources: nodes = M.T('trimal')
     shell:
         """
-        trimal -in {input} \
-               -out {output} \
-               {params.gt} \
-               {params.additional_params} >> {log} 2>&1
+            trimal -in {input} \
+                   -out {output} \
+                   {params.gt} \
+                   {params.additional_params} >> {log} 2>&1
         """
 
 
-rule iqtree_omp:
+rule iqtree:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "iqtree_omp.log")
+    log: os.path.join(dirs_dict["LOGS_DIR"], "iqtree.log")
     input: os.path.join(dirs_dict["PHYLO_DIR"], "proteins_GAPS_REMOVED.fa")
     output: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name'))
     params:
-        m = M.get_rule_param('iqtree_omp', '-m'),
-        bb = M.get_rule_param('iqtree_omp', '-bb'),
-        additional_params = M.get_rule_param('iqtree_omp', 'additional_params')
-    threads: M.T('iqtree_omp')
-    resources: nodes = M.T('iqtree_omp')
+        m = M.get_rule_param('iqtree', '-m'),
+        bb = M.get_rule_param('iqtree', '-bb'),
+        additional_params = M.get_rule_param('iqtree', 'additional_params')
+    threads: M.T('iqtree')
+    resources: nodes = M.T('iqtree')
     shell:
         """
-        iqtree-omp -s {input} \
-                   -nt {threads} \
-                   {params.m} \
-                   {params.bb} \
-                   {params.additional_params} \
-                   -o {output} >> {log} 2>&1
+            iqtree -s {input} \
+                       -nt {threads} \
+                       {params.m} \
+                       {params.bb} \
+                       {params.additional_params} \
+                       -o {output} >> {log} 2>&1
         """
 
 
