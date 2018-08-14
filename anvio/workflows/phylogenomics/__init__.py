@@ -56,7 +56,7 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         # initialize the base class
         WorkflowSuperClass.__init__(self)
 
-        self.rules.extend(['anvi_get_sequences_for_hmm_hits', 'trimal'])
+        self.rules.extend(['anvi_get_sequences_for_hmm_hits', 'trimal', 'iqtree_omp'])
 
         self.general_params.extend(['project_name'])
 
