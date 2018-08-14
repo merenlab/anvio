@@ -83,7 +83,8 @@ def get_raw_fasta(wildcards):
 rule generate_and_annotate_contigs_db:
     input: expand(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done", group=group_names)
 
-rule anvi_script_reformat_fasta:
+
+rule anvi_script_reformat_fasta_prefix_only:
     '''
         Reformating the headers of the contigs fasta files.
 
@@ -93,33 +94,61 @@ rule anvi_script_reformat_fasta:
         contigs would look like this:
         > MYSAMPLE01_000000000001
         > MYSAMPLE01_000000000002
+
+        We do it in two steps in this workflow with the rules:
+        anvi_script_reformat_fasta_prefix_only and anvi_script_reformat_fasta_min_length
+        The first rule anvi_script_reformat_fasta_prefix_only does all the formating
+        of headers without considering the min_len parameter. The second rule takes
+        the output of the first rule as input and considers the min_len param.
+        The reasoning is that this way we have a fasta file that includes all the contigs
+        from the raw fasta file, but with headers that match the fasta final fasta file.
+        Hence, if later we decide we want to include shorter contigs, we can do it using
+        the output of anvi_script_reformat_fasta_prefix_only and the headers would be consistant.
     '''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta.log"
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta_prefix_only.log"
     input:
         contigs = get_raw_fasta
     output:
         # write protecting the contigs fasta file using protected() because
         # runnig the assembly is probably the most time consuming step and
         # we don't want anyone accidentaly deleting or changing this file.
-        contigs = protected(dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa"),
+        contigs = protected(dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-prefix-formatted-only.fa"),
         report = dirs_dict["FASTA_DIR"] + "/{group}/{group}-reformat-report.txt"
     params:
         prefix = "{group}",
         simplify_names = M.get_rule_param("anvi_script_reformat_fasta", "--simplify-names"),
         keep_ids = M.get_rule_param("anvi_script_reformat_fasta", "--keep-ids"),
         exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids"),
-        min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
     shell: w.r("""anvi-script-reformat-fasta {input} \
                                              -o {output.contigs} \
                                              -r {output.report} \
                                              --prefix {params.prefix} \
-                                             {params.min_len} \
                                              {params.exclude_ids} \
                                              {params.keep_ids} \
                                              {params.simplify_names} >> {log} 2>&1""")
+
+
+rule anvi_script_reformat_fasta:
+    '''
+        See docummentation for anvi_script_reformat_fasta_prefix_only
+    '''
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta.log"
+    input:
+        contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-prefix-formatted-only.fa"
+    output:
+        contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa"
+    params:
+        prefix = "{group}",
+        min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
+    threads: M.T('anvi_script_reformat_fasta')
+    resources: nodes = M.T('anvi_script_reformat_fasta'),
+    shell: w.r("""anvi-script-reformat-fasta {input} \
+                                             -o {output.contigs} \
+                                             {params.min_len} >> {log} 2>&1""")
 
 
 def input_for_run_remove_human_dna_using_centrifuge(wildcards):
