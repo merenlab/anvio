@@ -997,10 +997,12 @@ async function generate_summary() {
     for (let group in stages) {
         zip.file(`images/${group}/merged.png`, await make_image(group));
 
-        // generate per sample.
-        for (let i=0; i < serialized_groups[group].length; i++) {
-            let sample_id = serialized_groups[group][i];
-            zip.file(`images/${group}/${sample_id}.png`, await make_image(group, sample_id));
+        if (!$('#merged_view_only').is(':checked')) {
+            // generate per sample.
+            for (let i=0; i < serialized_groups[group].length; i++) {
+                let sample_id = serialized_groups[group][i];
+                zip.file(`images/${group}/${sample_id}.png`, await make_image(group, sample_id));
+            }
         }
     }
 
