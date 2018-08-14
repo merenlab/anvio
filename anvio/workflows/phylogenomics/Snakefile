@@ -31,17 +31,8 @@ if not slave_mode:
 
 localrules: generate_phylogeny
 
-group_names = []
-fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
-
-if fasta_txt_file:
-    filesnpaths.is_file_exists(fasta_txt_file)
-    fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
-    group_names = list(fasta_information.keys())
-    references_mode = True
-
 rule generate_phylogeny:
-    input: 
+    input: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name'))
 
 rule anvi_get_sequences_for_hmm_hits:
     version: 1.0
@@ -51,14 +42,14 @@ rule anvi_get_sequences_for_hmm_hits:
     params:
         internal_genomes_argument = lambda wildcards: "--internal-genomes " + M.internal_genomes_file if M.internal_genomes_file else "",
         external_genomes_argument = lambda wildcards: "--external-genomes " + M.external_genomes_file if M.external_genomes_file else "",
-        return_best_hit = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit')
-        separator = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--separator')
-        align_with = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--align-with')
-        min_num_bins_gene_occurs = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--min-num-bins-gene-occurs')
-        max_num_genes_missing_from_bin = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--max-num-genes-missing-from-bin')
-        concatenate_genes = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--concatenate-genes')
-        get_aa_sequences = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--get-aa-sequences')
-        gene_names = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names')
+        return_best_hit = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit'),
+        separator = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--separator'),
+        align_with = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--align-with'),
+        min_num_bins_gene_occurs = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--min-num-bins-gene-occurs'),
+        max_num_genes_missing_from_bin = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--max-num-genes-missing-from-bin'),
+        concatenate_genes = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--concatenate-genes'),
+        get_aa_sequences = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--get-aa-sequences'),
+        gene_names = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names'),
         hmm_sources = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--hmm-sources')
     threads: M.T('anvi_get_sequences_for_hmm_hits')
     resources: nodes = M.T('anvi_get_sequences_for_hmm_hits')
@@ -98,7 +89,7 @@ rule iqtree_omp:
     output: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name'))
     params:
         m = M.get_rule_param('iqtree_omp', '-m'),
-        bb = M.get_rule_param('iqtree_omp', '-bb')
+        bb = M.get_rule_param('iqtree_omp', '-bb'),
         additional_params = M.get_rule_param('iqtree_omp', 'additional_params')
     threads: M.T('iqtree_omp')
     resources: nodes = M.T('iqtree_omp')
