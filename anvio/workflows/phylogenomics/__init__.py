@@ -83,8 +83,8 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
         super().init()
 
-        internal_genomes_file = self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--internal-genomes')
-        external_genomes_file = self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--external-genomes')
+        internal_genomes_file = self.get_param_value_from_config(['anvi_get_sequences_for_hmm_hits', '--internal-genomes'])
+        external_genomes_file = self.get_param_value_from_config(['anvi_get_sequences_for_hmm_hits', '--external-genomes'])
 
         if not internal_genomes_file and not external_genomes_file:
             raise ConfigError('You must provide either an external genomes file or internal genomes file \
