@@ -104,7 +104,7 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
             self.input_for_anvi_get_sequences_for_hmm_hits['external_genomes_file'] = external_genomes_file
             self.external_genomes_file = external_genomes_file
 
-        if self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit') != True:
+        if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit'):
             run.warning('You changed the value for --return-best-hit for the rule anvi_get_sequences_for_hmm_hits \
                          to something other than the default value, which is "true", while we allow you to do it \
                          this is likely to break things, we trust that you know what you are doing, but advise you \
