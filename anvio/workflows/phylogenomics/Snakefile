@@ -37,7 +37,7 @@ rule generate_phylogeny:
 rule anvi_get_sequences_for_hmm_hits:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "anvi_get_sequences_for_hmm_hits.log")
-    input: unpack(lambda wildcards M.input_for_anvi_get_sequences_for_hmm_hits) # The lambda function here is just a trick. from some reason without it, snakemake can't unpack the dict
+    input: unpack(lambda: wildcards M.input_for_anvi_get_sequences_for_hmm_hits) # The lambda function here is just a trick. from some reason without it, snakemake can't unpack the dict
     output: os.path.join(dirs_dict["PHYLO_DIR"], "proteins.fa")
     params:
         internal_genomes_argument = lambda wildcards: "--internal-genomes " + M.internal_genomes_file if M.internal_genomes_file else "",
