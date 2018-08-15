@@ -1069,6 +1069,13 @@ D = {
              'type': str,
              'help': "Varaibility engine. The default is '%(default)s'."}
                 ),
+    'skip-synonymity': (
+            ['--skip-synonymity'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Computing synonymity can be an expensive operation for large data sets. Provide this flag to skip\
+                      computing synonymity. It only makes sense to provide this flag when using --engine CDN."}
+                ),
     'transpose': (
             ['--transpose'],
             {'default': False,

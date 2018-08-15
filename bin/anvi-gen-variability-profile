@@ -57,6 +57,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('max-departure-from-consensus'), **anvio.K('max-departure-from-consensus'))
     groupE.add_argument(*anvio.A('min-occurrence-of-variable-positions'), **anvio.K('min-occurrence-of-variable-positions'))
     groupE.add_argument(*anvio.A('only-if-structure'), **anvio.K('only-if-structure'))
+    groupE.add_argument(*anvio.A('skip-synonymity'), **anvio.K('skip-synonymity'))
 
     args = anvio.get_args(parser)
 

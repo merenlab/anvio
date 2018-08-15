@@ -37,6 +37,7 @@ if __name__ == '__main__':
     groupG = parser.add_argument_group('GENES', 'Specifying which genes you want to be modelled.')
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style.')
     groupE = parser.add_argument_group('MODELLER EXECUTABLE', 'Which executable program to use for MODELLER, e.g. mod9.19')
+    groupM = parser.add_argument_group('MISCALLANEOUS', 'Other stuff')
 
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     groupD.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
@@ -51,7 +52,7 @@ if __name__ == '__main__':
 
     groupG.add_argument("--genes-to-add", "-a", type=str, help = \
                         """Gene caller ids to remove from your structure database. Multiple of them \
-                           can be declared by separating with comma (e.g. --genes-to-remove 2,4,5,6).""")
+                           can be declared by separating with comma (e.g. --genes-to-add 2,4,5,6).""")
 
     groupG.add_argument("--genes-to-add-file", "-A", type=str, help = \
                         """A file of gene caller ids to remove from your structure database. Each line \
@@ -60,7 +61,11 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('dump-dir'), **anvio.K('dump-dir'))
 
     groupE.add_argument("--modeller-executable", type=str, help = \
-                        """ The MODELLER program to use. For example, `mod9.19`. The default is `mod9.19`""")
+                        """The MODELLER program to use. For example, `mod9.19`. The default is `mod9.19`""")
+
+    groupM.add_argument("--skip-genes-if-already-present", action='store_true', help = \
+                        """If you try to add a gene that is already present, instead of complaining it will \
+                           be skipped.""")
 
     args = parser.parse_args()
 
