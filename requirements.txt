@@ -1,7 +1,7 @@
 numpy
 cython
 bottle==0.12.13
-pysam==0.14.1
+pysam>=0.14.1
 ete3==3.1.1
 scipy>=0.13.3
 scikit-learn>=0.19.1
@@ -16,4 +16,4 @@ pandas>=0.20.1
 matplotlib>=2.2.0
 pyani==0.2.7
 statsmodels==0.9.0
-snakemake==4.7.0
+snakemake>=4.7.0
