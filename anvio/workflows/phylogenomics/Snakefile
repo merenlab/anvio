@@ -59,7 +59,7 @@ rule anvi_get_sequences_for_hmm_hits:
                                             {params.return_best_hit} {params.separator} {params.align_with} \
                                             {params.min_num_bins_gene_occurs} {params.max_num_genes_missing_from_bin} \
                                             {params.concatenate_genes} {params.get_aa_sequences} {params.gene_names} \
-                                            {params.hmm_sources} >> {log} 2>&1
+                                            {params.hmm_sources} -o {output} >> {log} 2>&1
         """
 
 
