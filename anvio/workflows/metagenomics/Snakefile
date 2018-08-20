@@ -206,6 +206,8 @@ if not references_mode and not (run_idba_ud or run_megahit):
                        if you do mean to use assembly, please set 'run: true' for one of the,\
                        following available assemblers: %s" % ', '.join(available_assemblers))
 
+ruleorder: import_percent_of_reads_mapped > import_kraken_hll_taxonomy
+
 rule metagenomics_workflow_target_rule:
     '''
         The target rule for the workflow.
@@ -948,27 +950,22 @@ rule krakenhll_mpa_report:
 
 def input_for_import_kraken_hll_taxonomy(wildcards):
     ''' configure input for import_percent_of_reads_mapped.'''
-    D = {}
-    D['profile'] = os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.sample, "PROFILE.db")
-
     if M.kraken_annotation_dict:
         # if the user supplied a file with kraken annotations then use it
-        D['krakenhll_tax'] = M.kraken_annotation_dict[wildcards.sample]['path']
+        krakenhll_tax = M.kraken_annotation_dict[wildcards.sample]['path']
     else:
         # if the user didn't provide a file, then annotation needs to run
-        D['krakenhll_tax'] = os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", wildcards.sample + ".krakenhll_tax")
+        krakenhll_tax = os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", wildcards.sample + ".krakenhll_tax")
 
-    if run_import_percent_of_reads_mapped:
-        # we include percent_of_reads_mapped_imported_flag as input here so that kraken and import_percent_of_reads_mapped will never run in parallel.
-        # If they run in parallel it could cause trouble as they will try to write to the contigs database at the same time. very bad.
-            D['percent_of_reads_mapped_imported_flag'] = os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.sample, "import_percent_of_reads_mapped.done"),
-    return D
+    return krakenhll_tax
 
 
 rule import_kraken_hll_taxonomy:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_kraken_hll_taxonomy.log"
-    input: unpack(input_for_import_kraken_hll_taxonomy)
+    input:
+        profile = ancient(os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.sample, "PROFILE.db")),
+        krakenhll_tax = input_for_import_kraken_hll_taxonomy
     output: touch(os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}/import_kraken_hll_taxonomy.done"))
     params: min_abundance = M.get_rule_param('import_kraken_hll_taxonomy', '--min-abundance')
     threads: M.T('import_kraken_hll_taxonomy')
@@ -986,7 +983,7 @@ rule import_percent_of_reads_mapped:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_percent_of_reads_mapped.log"
     input:
-        profile = rules.anvi_profile.output.profile
+        profile = ancient(rules.anvi_profile.output.profile)
     output:
         flag = touch(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done"),
         total_num_reads_txt = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/total-num-reads.txt"),
