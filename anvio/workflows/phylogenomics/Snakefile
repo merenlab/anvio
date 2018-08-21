@@ -86,7 +86,7 @@ rule iqtree:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "iqtree.log")
     input: os.path.join(dirs_dict["PHYLO_DIR"], "proteins_GAPS_REMOVED.fa")
-    output: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name'))
+    output: os.path.join(dirs_dict["PHYLO_DIR"], "proteins_GAPS_REMOVED.fa" + ".contree")
     params:
         m = M.get_rule_param('iqtree', '-m'),
         bb = M.get_rule_param('iqtree', '-bb'),
@@ -99,8 +99,7 @@ rule iqtree:
                        -nt {threads} \
                        {params.m} \
                        {params.bb} \
-                       {params.additional_params} \
-                       -o {output} >> {log} 2>&1
+                       {params.additional_params} >> {log} 2>&1
         """
 
 
