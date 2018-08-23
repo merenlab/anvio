@@ -32,13 +32,13 @@ if not slave_mode:
 localrules: generate_phylogeny
 
 rule generate_phylogeny:
-    input: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name'))
+    input: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name') + "proteins_GAPS_REMOVED.fa" + ".contree")
 
 rule anvi_get_sequences_for_hmm_hits:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "anvi_get_sequences_for_hmm_hits.log")
     input: unpack(lambda wildcards: M.input_for_anvi_get_sequences_for_hmm_hits) # The lambda function here is just a trick. from some reason without it, snakemake can't unpack the dict
-    output: os.path.join(dirs_dict["PHYLO_DIR"], "proteins.fa")
+    output: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name') + "proteins.fa")
     params:
         internal_genomes_argument = lambda wildcards: "--internal-genomes " + M.internal_genomes_file if M.internal_genomes_file else "",
         external_genomes_argument = lambda wildcards: "--external-genomes " + M.external_genomes_file if M.external_genomes_file else "",
@@ -66,8 +66,8 @@ rule anvi_get_sequences_for_hmm_hits:
 rule trimal:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "trimal.log")
-    input: os.path.join(dirs_dict["PHYLO_DIR"], "proteins.fa")
-    output: os.path.join(dirs_dict["PHYLO_DIR"], "proteins_GAPS_REMOVED.fa")
+    input: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name') + "proteins.fa")
+    output: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name') + "proteins_GAPS_REMOVED.fa")
     params:
         gt = M.get_rule_param('trimal', '-gt'),
         additional_params = M.get_rule_param('trimal', 'additional_params')
@@ -85,8 +85,8 @@ rule trimal:
 rule iqtree:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "iqtree.log")
-    input: os.path.join(dirs_dict["PHYLO_DIR"], "proteins_GAPS_REMOVED.fa")
-    output: os.path.join(dirs_dict["PHYLO_DIR"], "proteins_GAPS_REMOVED.fa" + ".contree")
+    input: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name') + "proteins_GAPS_REMOVED.fa")
+    output: os.path.join(dirs_dict["PHYLO_DIR"], M.get_param_value_from_config('project_name') + "proteins_GAPS_REMOVED.fa" + ".contree")
     params:
         m = M.get_rule_param('iqtree', '-m'),
         bb = M.get_rule_param('iqtree', '-bb'),
