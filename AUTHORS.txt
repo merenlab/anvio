@@ -14,7 +14,7 @@ Gökmen Göksel, Koding Inc.
 Faruk Uzun, Monera
 Gökmen Görgen, Radity
 Mahmoud Yousef, University of Chicago
-Mike Lee, University of Southern California
+Mike Lee, NASA Ames Research Center
 Doğan Can Kilment, Makroser
 S. Çağlar Onur, DigitalOcean
 John Eppley, University of Hawaiʻi at Mānoa
