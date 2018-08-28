@@ -134,6 +134,13 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             raise ConfigError("You know what. This '%s' file does not look anything like\
                                a samples file." % samples_txt_file)
 
+        for sample in self.samples_information['sample']:
+            try:
+                u.check_sample_id(sample)
+            except ConfigError as e:
+                raise ConfigError("While processing the samples txt file ('%s'), anvi'o ran into the following error: \
+                                   %s" % (samples_txt_file, e))
+
         self.sanity_check_for_kraken()
 
 

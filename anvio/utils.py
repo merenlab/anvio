@@ -1269,10 +1269,11 @@ def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_di
 def check_sample_id(sample_id):
     if sample_id:
         if sample_id[0] in constants.digits:
-            raise ConfigError("Sample names can't start with digits. Long story. Please specify a sample name\
+            raise ConfigError("Sample name ('%s') is not a valid name. Sample names can't start with digits.\
+                                Long story. Please specify a sample name\
                                 that starts with an ASCII letter (you may want to check '-s' parameter to set\
                                 a sample name if your client permits (otherwise you are going to have to edit\
-                                your input files)).")
+                                your input files))." % sample_id)
 
         allowed_chars_for_samples = constants.allowed_chars.replace('-', '').replace('.', '')
         if len([c for c in sample_id if c not in allowed_chars_for_samples]):
