@@ -265,7 +265,7 @@ if run_taxonomy_with_centrifuge:
         output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-gene-calls.fa")
         threads: M.T('export_gene_calls_for_centrifuge')
         resources: nodes = M.T('export_gene_calls_for_centrifuge'),
-        shell: "anvi-get-dna-sequences-for-gene-calls -c {input} -o {output} >> {log} 2>&1"
+        shell: "anvi-get-sequences-for-gene-calls -c {input} -o {output} >> {log} 2>&1"
 
 
     rule centrifuge:
