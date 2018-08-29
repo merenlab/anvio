@@ -487,6 +487,7 @@ D = {
     'hmm-source': (
             ['--hmm-source'],
             {'metavar': 'SOURCE NAME',
+             'default': None,
              'help': "Use a specific HMM source. You can use '--list-hmm-sources' flag to see\
                       a list of available resources. The default is '%(default)s'."}
                 ),
