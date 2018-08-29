@@ -1034,20 +1034,19 @@ rule import_percent_of_reads_mapped:
                     anvi-export-misc-data -p {input.profile} \
                                           -t layers \
                                           -o {output.layers_additional_data}
+                  """)
 
-                    # do an awk one-liner to add a third column, 'percent mapped'.
-                    awk '{{if(NR==1) \
-                             {{print $0 "\tpercent_mapped"}} \
-                          else \
-                              {{print $0 "\t" ($2 * 100 / $4)}}}}' \
-                        {output.layers_additional_data} > {output.layers_additional_data_updated}
+            additional_data = pd.read_csv(output.layers_additional_data, sep='\t', index_col=1)
+            additional_data['percent_mapped'] = 100 * additional_data['total_reads_mapped'] / additional_data['total_num_reads']
+            additional_data.to_csv(output.layers_additional_data_updated, sep='\t')
 
+            shell("""
                     # import the new file with three columns
                     anvi-import-misc-data {output.layers_additional_data_updated} \
                                           -p {input.profile} \
                                           -t layers \
                                           --just-do-it
-                """)
+                  """)
 
 if not slave_mode:
     # check if all program dependencies are met. for this line to be effective,
