@@ -1027,13 +1027,13 @@ rule import_percent_of_reads_mapped:
                     anvi-import-misc-data {output.total_num_reads_txt} \
                                           -p {input.profile} \
                                           -t layers \
-                                          --just-do-it
+                                          --just-do-it >> {log} 2>&1
 
                     # get the layers additional data table, which has two columns
                     # now.
                     anvi-export-misc-data -p {input.profile} \
                                           -t layers \
-                                          -o {output.layers_additional_data}
+                                          -o {output.layers_additional_data} >> {log} 2>&1
                   """)
 
             additional_data = pd.read_csv(output.layers_additional_data, sep='\t', index_col=1)
@@ -1045,7 +1045,7 @@ rule import_percent_of_reads_mapped:
                     anvi-import-misc-data {output.layers_additional_data_updated} \
                                           -p {input.profile} \
                                           -t layers \
-                                          --just-do-it
+                                          --just-do-it >> {log} 2>&1
                   """)
 
 if not slave_mode:
