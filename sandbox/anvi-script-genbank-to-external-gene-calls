@@ -65,6 +65,10 @@ def genbank_to_anvio(args):
 	      if any(exclusion_term in note for exclusion_term in note_terms_to_exclude):
 	        continue
 
+	      # dumping if overlapping translation frame
+	    if "transl_except" in gene.qualifiers:
+	        continue
+
 	    num += 1 # iteration for unique "gene_callers_id" for each
 
 	      # cleaning up gene coordinates to more easily parse:
