@@ -327,6 +327,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
         min_function_enrichment = A('min_function_enrichment')
+        core_threshold = A('core_threshold')
+        fdr = A('false_detection_rate')
         min_portion_occurrence_of_function_in_group = A('min_portion_occurrence_of_function_in_group')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
 
@@ -414,69 +416,68 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         number_of_genomes = len(categories_dict.keys())
 
         enrichment_dict = {}
+        z_test_p_values = {}
         for c in categories:
             self.progress.update("Working on category '%s'" % c)
             group_size = len(categories_to_genomes_dict[c])
-
+            outgroup_size = number_of_genomes - group_size
+            z_test_p_values[c] = []
 
             for f in functions_names:
                 occurrence_in_group = functions_in_categories.loc[c, f]
                 occurrence_outside_of_group = (total_occurrence_of_functions[f] - functions_in_categories.loc[c, f])
                 portion_occurrence_in_group = occurrence_in_group / group_size
                 portion_occurrence_outside_of_group = occurrence_outside_of_group / (number_of_genomes - group_size)
-                enrichment = portion_occurrence_in_group - portion_occurrence_outside_of_group
+                enrichment, p_value = get_z_test_statistic(portion_occurrence_in_group, \
+                                                           portion_occurrence_outside_of_group, \
+                                                           group_size, \
+                                                           outgroup_size)
 
-                if (abs(enrichment) >= min_function_enrichment) and (max(portion_occurrence_outside_of_group, portion_occurrence_in_group) >= min_portion_occurrence_of_function_in_group):
-                    if c not in enrichment_dict:
-                        enrichment_dict[c] = {}
+                z_test_p_values[c].append(p_value)
 
-                    if f not in enrichment_dict[c]:
-                        enrichment_dict[c][f] = {}
+                if c not in enrichment_dict:
+                    enrichment_dict[c] = {}
 
-                    enrichment_dict[c][f]["enrichment_score"] = enrichment
-                    enrichment_dict[c][f]["portion_occurrence_in_group"] = portion_occurrence_in_group
-                    enrichment_dict[c][f]["portion_occurrence_outside_of_group"] = portion_occurrence_outside_of_group
-                    enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
-                    enrichment_dict[c][f]["occurrence_outside_of_group"] = occurrence_outside_of_group
-                    enrichment_dict[c][f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
-                    enrichment_dict[c][f]["core_in_group"] = False
-                    enrichment_dict[c][f]["core"] = False
-                    if enrichment_dict[c][f]["portion_occurrence_in_group"] == 1:
-                        enrichment_dict[c][f]["core_in_group"] = True
-                        if enrichment_dict[c][f]["portion_occurrence_outside_of_group"] == 1:
-                            enrichment_dict[c][f]["core"] = True
+                if f not in enrichment_dict[c]:
+                    enrichment_dict[c][f] = {}
+
+                enrichment_dict[c][f]["enrichment_score"] = enrichment
+                enrichment_dict[c][f]["p_value"] = p_value
+                enrichment_dict[c][f]["portion_occurrence_in_group"] = portion_occurrence_in_group
+                enrichment_dict[c][f]["portion_occurrence_outside_of_group"] = portion_occurrence_outside_of_group
+                enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
+                enrichment_dict[c][f]["occurrence_outside_of_group"] = occurrence_outside_of_group
+                enrichment_dict[c][f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
+                enrichment_dict[c][f]["core_in_group"] = False
+                enrichment_dict[c][f]["core"] = False
+                if enrichment_dict[c][f]["portion_occurrence_in_group"] >= core_threshold:
+                    enrichment_dict[c][f]["core_in_group"] = True
+                    if enrichment_dict[c][f]["portion_occurrence_outside_of_group"] >= core_threshold:
+                        enrichment_dict[c][f]["core"] = True
 
         import statsmodels.stats.multitest as multitest
-        z_test_p_values = []
-        for c in categories:
-            group_size = len(categories_to_genomes_dict[c])
-            outgroup_size = number_of_genomes - group_size
+        for c in enrichment_dict:
 
             self.progress.update("Working on statistics for category '%s'" % c)
-
-            for f in functions_names:
-                enrichment_dict[c][f]["z_test_statistic"], enrichment_dict[c][f]["z_test_p_value"] = \
-                                                        get_z_test_statistic(enrichment_dict[c][f]["portion_occurrence_in_group"], \
-                                                                             enrichment_dict[c][f]["portion_occurrence_outside_of_group"], \
-                                                                             group_size, \
-                                                                             outgroup_size)
-
-                z_test_p_values.append(enrichment_dict[c][f]["z_test_p_value"])
-
             # correction for multiple comparrisons
-            reject, corrected_p_values_z_test, foo1, foo2 = multitest.multipletests(z_test_p_values, method='fdr_bh')
+            reject, corrected_p_values_z_test, foo1, foo2 = multitest.multipletests(z_test_p_values[c], method='fdr_bh', alpha=fdr)
 
             i = 0
-            for f in functions_names:
-                enrichment_dict[c][f]['z_test_corrected_p_value'] = corrected_p_values_z_test[i]
+            if len(corrected_p_values_z_test) != len(enrichment_dict[c].keys()):
+                raise ConfigError('This should never happen, contact Alon Shaiber now.')
+            for f in enrichment_dict[c]:
+                enrichment_dict[c][f]['corrected_p_value'] = corrected_p_values_z_test[i]
                 i += 1
 
         if output_file_path:
             self.progress.update('Generating the output file')
             enrichment_data_frame = self.get_enrichment_dict_as_dataframe(enrichment_dict, functional_annotation_source)
+            if min_function_enrichment > 0 or min_portion_occurrence_of_function_in_group > 0:
+                enrichment_data_frame = enrichment_data_frame[enrichment_data_frame['enrichment_score'] > min_function_enrichment]
+                enrichment_data_frame = enrichment_data_frame[enrichment_data_frame['portion_occurrence_in_group'] > min_portion_occurrence_of_function_in_group]
 
             # sort according to enrichment
-            enrichment_data_frame.sort_values(by=['category', 'z_test_statistic'], axis=0, ascending=False, inplace=True)
+            enrichment_data_frame.sort_values(by=['category', 'enrichment_score'], axis=0, ascending=False, inplace=True)
 
             enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.2f')
 
@@ -1891,6 +1892,10 @@ class Bin:
         output_file_obj.close()
 
 
+def benjamini_hochberg_procdure(p_values, fdr=0.05):
+    '''
+        Returns a new threshold for significance according to the Benjamini Hoechberg
+        '''
 def get_z_test_statistic(p1, p2, n1, n2):
     '''
         Compute a two sample z-test statistic
