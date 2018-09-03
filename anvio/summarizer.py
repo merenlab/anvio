@@ -28,7 +28,6 @@ import os
 import sys
 import gzip
 import glob
-import math
 import numpy
 import shutil
 import hashlib
@@ -37,6 +36,7 @@ import argparse
 import textwrap
 import pandas as pd
 
+from scipy.stats import norm
 from collections import Counter
 
 import anvio
@@ -327,6 +327,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
         min_function_enrichment = A('min_function_enrichment')
+        core_threshold = A('core_threshold')
+        fdr = A('false_detection_rate')
         min_portion_occurrence_of_function_in_group = A('min_portion_occurrence_of_function_in_group')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
 
@@ -414,78 +416,65 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         number_of_genomes = len(categories_dict.keys())
 
         enrichment_dict = {}
+        z_test_p_values = {}
         for c in categories:
             self.progress.update("Working on category '%s'" % c)
             group_size = len(categories_to_genomes_dict[c])
-            group_portion = group_size / number_of_genomes
-
-            # see details below
-            weighting_normalization_factor = number_of_genomes * (group_portion * math.log2(group_portion)\
-                                                + (1 - group_portion) * math.log2(1 - group_portion))
+            outgroup_size = number_of_genomes - group_size
+            z_test_p_values[c] = []
 
             for f in functions_names:
                 occurrence_in_group = functions_in_categories.loc[c, f]
                 occurrence_outside_of_group = (total_occurrence_of_functions[f] - functions_in_categories.loc[c, f])
                 portion_occurrence_in_group = occurrence_in_group / group_size
                 portion_occurrence_outside_of_group = occurrence_outside_of_group / (number_of_genomes - group_size)
-                enrichment = portion_occurrence_in_group - portion_occurrence_outside_of_group
+                enrichment, p_value = get_z_test_statistic(portion_occurrence_in_group, \
+                                                           portion_occurrence_outside_of_group, \
+                                                           group_size, \
+                                                           outgroup_size)
 
-                # the more genomes we have in each group when making the comparisson
-                # the stronger the results are. In order to allow to compare results from
-                # different categories, we also return this weighted score. The normalization
-                # factor is simply the number of genomes multiplied by the entropy of the two compared
-                # groups. the rational is that having more genomes is only helping the comparisson if the
-                # genomes represent both compared groups, and that's where the entropy comes in.
-                weighted_enrichment = -1 * enrichment * weighting_normalization_factor
+                z_test_p_values[c].append(p_value)
 
-                if (abs(enrichment) >= min_function_enrichment) and (max(portion_occurrence_outside_of_group, portion_occurrence_in_group) >= min_portion_occurrence_of_function_in_group):
-                    if c not in enrichment_dict:
-                        enrichment_dict[c] = {}
+                if c not in enrichment_dict:
+                    enrichment_dict[c] = {}
 
-                    if f not in enrichment_dict[c]:
-                        enrichment_dict[c][f] = {}
+                if f not in enrichment_dict[c]:
+                    enrichment_dict[c][f] = {}
 
-                    enrichment_dict[c][f]["enrichment_score"] = enrichment
-                    enrichment_dict[c][f]["weighted_enrichment_score"] = weighted_enrichment
-                    enrichment_dict[c][f]["portion_occurrence_in_group"] = portion_occurrence_in_group
-                    enrichment_dict[c][f]["portion_occurrence_outside_of_group"] = portion_occurrence_outside_of_group
-                    enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
-                    enrichment_dict[c][f]["occurrence_outside_of_group"] = occurrence_outside_of_group
-                    enrichment_dict[c][f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
-                    enrichment_dict[c][f]["core_in_group"] = False
-                    enrichment_dict[c][f]["core"] = False
-                    if enrichment_dict[c][f]["portion_occurrence_in_group"] == 1:
-                        enrichment_dict[c][f]["core_in_group"] = True
-                        if enrichment_dict[c][f]["portion_occurrence_outside_of_group"] == 1:
-                            enrichment_dict[c][f]["core"] = True
+                enrichment_dict[c][f]["enrichment_score"] = enrichment
+                enrichment_dict[c][f]["p_value"] = p_value
+                enrichment_dict[c][f]["portion_occurrence_in_group"] = portion_occurrence_in_group
+                enrichment_dict[c][f]["portion_occurrence_outside_of_group"] = portion_occurrence_outside_of_group
+                enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
+                enrichment_dict[c][f]["occurrence_outside_of_group"] = occurrence_outside_of_group
+                enrichment_dict[c][f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
+                enrichment_dict[c][f]["core_in_group"] = False
+                enrichment_dict[c][f]["core"] = False
+                if enrichment_dict[c][f]["portion_occurrence_in_group"] >= core_threshold:
+                    enrichment_dict[c][f]["core_in_group"] = True
+                    if enrichment_dict[c][f]["portion_occurrence_outside_of_group"] >= core_threshold:
+                        enrichment_dict[c][f]["core"] = True
 
-        import scipy
         import statsmodels.stats.multitest as multitest
-        genome_names = set(self.genome_names)
-        p_values = []
-        for c in categories:
+        for c in enrichment_dict:
+
             self.progress.update("Working on statistics for category '%s'" % c)
-            group_genomes = categories_to_genomes_dict[c]
-            outgroup_genomes = genome_names - group_genomes
-
-            for f in functions_names:
-                x = occurrence_of_functions_in_pangenome_dataframe.loc[group_genomes,f].astype(int)
-                y = occurrence_of_functions_in_pangenome_dataframe.loc[outgroup_genomes,f].astype(int)
-                wilcoxon = scipy.stats.ranksums(x, y)
-                enrichment_dict[c][f]["wilcoxon_p_value"] = wilcoxon.pvalue
-                p_values.append(wilcoxon.pvalue)
-                enrichment_dict[c][f]["wilcoxon_statistic"] = wilcoxon.statistic
-
             # correction for multiple comparrisons
-            reject, corrected_p_values, foo1, foo2 = multitest.multipletests(p_values, method='fdr_bh')
+            reject, corrected_p_values_z_test, foo1, foo2 = multitest.multipletests(z_test_p_values[c], method='fdr_bh', alpha=fdr)
+
             i = 0
-            for f in functions_names:
-                enrichment_dict[c][f]['wilcoxon_corrected_p_value'] = corrected_p_values[i]
+            if len(corrected_p_values_z_test) != len(enrichment_dict[c].keys()):
+                raise ConfigError('This should never happen, contact Alon Shaiber now.')
+            for f in enrichment_dict[c]:
+                enrichment_dict[c][f]['corrected_p_value'] = corrected_p_values_z_test[i]
                 i += 1
 
         if output_file_path:
             self.progress.update('Generating the output file')
             enrichment_data_frame = self.get_enrichment_dict_as_dataframe(enrichment_dict, functional_annotation_source)
+            if min_function_enrichment > 0 or min_portion_occurrence_of_function_in_group > 0:
+                enrichment_data_frame = enrichment_data_frame[enrichment_data_frame['enrichment_score'] > min_function_enrichment]
+                enrichment_data_frame = enrichment_data_frame[enrichment_data_frame['portion_occurrence_in_group'] > min_portion_occurrence_of_function_in_group]
 
             # sort according to enrichment
             enrichment_data_frame.sort_values(by=['category', 'enrichment_score'], axis=0, ascending=False, inplace=True)
@@ -1901,4 +1890,40 @@ class Bin:
         output_file_obj = self.get_output_file_handle(output_file_name_posfix)
         output_file_obj.write('%s\n' % content)
         output_file_obj.close()
+
+
+def benjamini_hochberg_procdure(p_values, fdr=0.05):
+    '''
+        Returns a new threshold for significance according to the Benjamini Hoechberg
+        '''
+def get_z_test_statistic(p1, p2, n1, n2):
+    '''
+        Compute a two sample z-test statistic
+
+        If one group has no hits (e.g. p1=0) then we compute an upper bound
+        for the p-value by pretending that it had one hit.
+
+        If one group has 100% hits (e.g. p1=1) then we compute an upper bound
+        for the p-value by pretending that p1=1-1/n1 hits
+    '''
+    if p1 == 0 and p2 == 0:
+        return (0, 0)
+
+    # This is done in order to estimate an upper bound 
+    # for the p-value
+    p1 = max(p1, 1/n1) # in case p1 is zero
+    p2 = max(p2, 1/n2)
+    p1 = min(p1, 1 - 1/n1) # in case p1 is 1
+    p2 = min(p2, 1 - 1/n2)
+
+    p = (n1*p1 + n2*p2) / (n1 + n2)
+
+    z = (p1 - p2) / numpy.sqrt(p*(1 - p) * (1/n1 + 1/n2))
+    p_value = get_p_value_for_z_test(z)
+    return (z, p_value)
+
+
+def get_p_value_for_z_test(z):
+    return 2*norm.cdf(-abs(z))
+
 

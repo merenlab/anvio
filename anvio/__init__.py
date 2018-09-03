@@ -396,14 +396,28 @@ D = {
              'help': "Takes a value between 0 and 1, where 1 means that only functions that occur in all members of\
                       one of the compared groups will be included in the output. Default is %(default).1f."}
                 ),
+    'false-detection-rate': (
+            ['--false-detection-rate', '--FDR'],
+            {'metavar': 'PORTION',
+             'default': 0.05,
+             'type': float,
+             'help': "Takes a value between 0 and 1, to determine the false detection rate that will be used \
+                      for the Benjamini–Hochberg procedure. Default is %(default).1f."}
+                ),
+    'core-threshold': (
+            ['--core-threshold'],
+            {'metavar': 'PORTION',
+             'default': 1,
+             'type': float,
+             'help': "Takes a value between 0 and 1, where 1 means that only functions occuring in all genomes \
+                     of a group would be considered as core functions of that group. Default is %(default).1f."}
+                ),
     'min-function-enrichment': (
             ['-E', '--min-function-enrichment'],
             {'metavar': 'PORTION',
              'default': 0,
              'type': float,
-             'help': "Takes a value between 0 and 1, where 1 means that the output will include only functions\
-                     that occur in all members of one group and in none of the members of the other group.\
-                     Default is %(default).1f."}
+             'help': "Only report functions for which the min enrichment is above the provided value. Default is %(default).1f."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
