@@ -9,7 +9,6 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError, FilesNPathsError
 
 
-
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -46,23 +45,23 @@ def genbank_to_anvio(args):
     location_terms_to_exclude = ["join", "<", ">"] # dumping gene if "location" section contains any of these: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
 
     for rec in recs:
-      output_fasta.write(">" + rec.name  + "\n" + str(rec.seq) + "\n") # writing out fasta pulled from genbank file, ready for anvi'o
+        output_fasta.write(">" + rec.name  + "\n" + str(rec.seq) + "\n") # writing out fasta pulled from genbank file, ready for anvi'o
 
-      genes = [gene for gene in rec.features if gene.type =="CDS"] # focusing on features annotated as "CDS" by NCBI's PGAP
+        genes = [gene for gene in rec.features if gene.type =="CDS"] # focusing on features annotated as "CDS" by NCBI's PGAP
 
-      for gene in genes:
-        location = str(gene.location)
+        for gene in genes:
+            location = str(gene.location)
 
-        # dumping gene if "location" section contains any of these terms set above: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
+          # dumping gene if "location" section contains any of these terms set above: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
         if any(exclusion_term in location for exclusion_term in location_terms_to_exclude):
-          continue
+            continue
 
         if "note" in gene.qualifiers:
-          note = str(gene.qualifiers["note"][0])
+            note = str(gene.qualifiers["note"][0])
 
-            # dumping gene if noted as any of these in the "note" section set above
-          if any(exclusion_term in note for exclusion_term in note_terms_to_exclude):
-            continue
+              # dumping gene if noted as any of these in the "note" section set above
+            if any(exclusion_term in note for exclusion_term in note_terms_to_exclude):
+                continue
 
           # dumping if overlapping translation frame
         if "transl_except" in gene.qualifiers:
@@ -81,25 +80,25 @@ def genbank_to_anvio(args):
 
           # setting strand to "f" or "r":
         if gene.strand == 1:
-          strand="f"
+            strand="f"
         else:
-          strand="r"
+            strand="r"
 
           # for accession, storing protein id if it has one, else the the locus tag, else "None"
         if "protein_id" in gene.qualifiers:
-          acc = gene.qualifiers["protein_id"][0]
+            acc = gene.qualifiers["protein_id"][0]
         elif "locus_tag" in gene.qualifiers:
-          acc = gene.qualifiers["locus_tag"][0]
+            acc = gene.qualifiers["locus_tag"][0]
         else:
-          acc = "None"
+            acc = "None"
 
           # storing gene product annotation
         function = gene.qualifiers["product"][0]
 
           # if present, adding gene name to product annotation:
         if "gene" in gene.qualifiers:
-          gene_name=str(gene.qualifiers["gene"][0])
-          function = function + " (" + gene_name + ")"
+            gene_name=str(gene.qualifiers["gene"][0])
+            function = function + " (" + gene_name + ")"
 
         output_gene_calls.write(str(num) + "\t" + rec.name + "\t" + str(start) + "\t" + str(end) + "\t" + str(strand) + "\t" + "0" + "\t" + str(source) +"\t" + str(version) + "\n")
         output_functions.write(str(num) + "\t" + str(source) + "\t" + acc + "\t" + function + "\t" + "0" + "\n")
@@ -115,7 +114,7 @@ if __name__ == '__main__':
     import re
 
     parser = argparse.ArgumentParser(description="This script takes a genbank file and converts it into the\
-                                                  format required for importing external gene calls and functions into anvi'o.")
+                                                format required for importing external gene calls and functions into anvi'o.")
 
     parser.add_argument('-i', '--input_gb', action='store', dest='input_gb', required=True,
                         help='input Genbank file (e.g. typically"*.gbk", "*.gb", "*.gbff")')
