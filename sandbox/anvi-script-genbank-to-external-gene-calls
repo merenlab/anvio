@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+import sys
+
 import anvio
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -45,16 +46,14 @@ def genbank_to_anvio(args):
 	location_terms_to_exclude = ["join", "<", ">"] # dumping gene if "location" section contains any of these: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
 
 	for rec in recs:
-
 	  output_fasta.write(">" + rec.name  + "\n" + str(rec.seq) + "\n") # writing out fasta pulled from genbank file, ready for anvi'o
 
 	  genes = [gene for gene in rec.features if gene.type =="CDS"] # focusing on features annotated as "CDS" by NCBI's PGAP
 
 	  for gene in genes:
-
 	    location = str(gene.location)
 
-	      # dumping gene if "location" section contains any of these terms set above: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
+	    # dumping gene if "location" section contains any of these terms set above: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
 	    if any(exclusion_term in location for exclusion_term in location_terms_to_exclude):
 	      continue
 
@@ -115,15 +114,12 @@ if __name__ == '__main__':
     from Bio import SeqIO
     import re
 
-    parser = argparse.ArgumentParser(description="This script takes a genbank file and converts it into the format required for\
-    											  importing external gene calls and functions into anvi'o.")
+    parser = argparse.ArgumentParser(description="This script takes a genbank file and converts it into the\
+                                                  format required for importing external gene calls and functions into anvi'o.")
 
-    required = parser.add_argument_group('required arguments')
-
-    required.add_argument('-i', '--input_gb', action='store', dest='input_gb', required=True, 
+    parser.add_argument('-i', '--input_gb', action='store', dest='input_gb', required=True,
     	                  help='input Genbank file (e.g. typically"*.gbk", "*.gb", "*.gbff")')
-
-    parser.add_argument('-s', '--annotation_source', action='store', dest='annotation_source', default='NCBI_PGAP', 
+    parser.add_argument('-s', '--annotation_source', action='store', dest='annotation_source', default='NCBI_PGAP',
     	                help='annotation source (default: "NCBI_PGAP")')
     parser.add_argument("-v", "--annotation_version", action="store", dest="annotation_version", default="v4.6",\
 						help='Annotation source version (default: "v4.6")')
@@ -147,5 +143,3 @@ if __name__ == '__main__':
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
-
-
