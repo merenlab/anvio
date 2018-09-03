@@ -1892,10 +1892,6 @@ class Bin:
         output_file_obj.close()
 
 
-def benjamini_hochberg_procdure(p_values, fdr=0.05):
-    '''
-        Returns a new threshold for significance according to the Benjamini Hoechberg
-        '''
 def get_z_test_statistic(p1, p2, n1, n2):
     '''
         Compute a two sample z-test statistic
