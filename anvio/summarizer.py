@@ -36,7 +36,6 @@ import argparse
 import textwrap
 import pandas as pd
 
-from scipy.stats import norm
 from collections import Counter
 
 import anvio
@@ -428,7 +427,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 occurrence_outside_of_group = (total_occurrence_of_functions[f] - functions_in_categories.loc[c, f])
                 portion_occurrence_in_group = occurrence_in_group / group_size
                 portion_occurrence_outside_of_group = occurrence_outside_of_group / (number_of_genomes - group_size)
-                enrichment, p_value = get_z_test_statistic(portion_occurrence_in_group, \
+                enrichment, p_value = utils.get_two_sample_z_test_statistic(portion_occurrence_in_group, \
                                                            portion_occurrence_outside_of_group, \
                                                            group_size, \
                                                            outgroup_size)
@@ -1892,34 +1891,5 @@ class Bin:
         output_file_obj.close()
 
 
-def get_z_test_statistic(p1, p2, n1, n2):
-    '''
-        Compute a two sample z-test statistic
-
-        If one group has no hits (e.g. p1=0) then we compute an upper bound
-        for the p-value by pretending that it had one hit.
-
-        If one group has 100% hits (e.g. p1=1) then we compute an upper bound
-        for the p-value by pretending that p1=1-1/n1 hits
-    '''
-    if p1 == 0 and p2 == 0:
-        return (0, 0)
-
-    # This is done in order to estimate an upper bound 
-    # for the p-value
-    p1 = max(p1, 1/n1) # in case p1 is zero
-    p2 = max(p2, 1/n2)
-    p1 = min(p1, 1 - 1/n1) # in case p1 is 1
-    p2 = min(p2, 1 - 1/n2)
-
-    p = (n1*p1 + n2*p2) / (n1 + n2)
-
-    z = (p1 - p2) / numpy.sqrt(p*(1 - p) * (1/n1 + 1/n2))
-    p_value = get_p_value_for_z_test(z)
-    return (z, p_value)
-
-
-def get_p_value_for_z_test(z):
-    return 2*norm.cdf(-abs(z))
 
 
