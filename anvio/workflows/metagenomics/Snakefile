@@ -1039,6 +1039,15 @@ rule import_percent_of_reads_mapped:
                   """)
 
             additional_data = pd.read_csv(output.layers_additional_data, sep='\t', index_col=None)
+            if 'total_reads_mapped' not in additional_data.columns:
+                raise ConfigError('The layers additional data for %s doesn\'t contain a column
+                                   "total_reads_mapped". This is really weird, and we cannot
+                                   think of why this happened (maybe you deleted it somehow?).
+                                   Feel free to contact an anvio developer in order to troubleshoot
+                                   this. Otherwise, if you wish to continue, you can just skip this
+                                   step by setting the "run" parameter for the rule import_percent_of_reads_mapped
+                                   to "false".' % input.profile)
+
             additional_data['percent_mapped'] = 100 * additional_data['total_reads_mapped'] / additional_data['total_num_reads']
             additional_data.to_csv(output.layers_additional_data_updated, sep='\t', index=False)
 
