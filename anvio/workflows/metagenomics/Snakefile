@@ -900,7 +900,9 @@ rule anvi_merge:
         else:
             shell("anvi-merge {input.profiles} -o {params.output_dir} -c {input.contigs} \
                    {params.sample_name} {params.skip_concoct_binning} \
-                   {params.overwrite_output_destinations} >> {log} 2>&1")
+                   {params.overwrite_output_destinations} {params.description} \
+                   {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering} \
+                   {params.distance} {params.linkage} >> {log} 2>&1")
 
 
 rule krakenhll:
