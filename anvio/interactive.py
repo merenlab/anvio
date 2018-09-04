@@ -1860,7 +1860,7 @@ class StructureInteractive(VariabilitySuper):
 
         if self.variability_table_path:
             run.warning("You opted to work with a variability table previously generated from\
-                         anvi-gen-varability-profile. As a word of caution, keep in mind that any\
+                         anvi-gen-variability-profile. As a word of caution, keep in mind that any\
                          filters applied when the table was generated now persist in the\
                          following visualizations.")
             if not self.profile_db_path:
