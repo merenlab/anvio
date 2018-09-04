@@ -418,6 +418,7 @@ class Structure(object):
             raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
 
         self.structure_db.disconnect()
+        self.run_info("Structure database", self.output_db_path)
 
 
     def update_structure_database_meta_table(self, has_structure):
