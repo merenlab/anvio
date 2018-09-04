@@ -390,7 +390,7 @@ D = {
                 ),
     'min-portion-occurrence-of-function-in-group': (
             ['-P', '--min-portion-occurrence-of-function-in-group'],
-            {'metavar': 'PORTION',
+            {'metavar': 'FLOAT',
              'default': 0,
              'type': float,
              'help': "Takes a value between 0 and 1, where 1 means that only functions that occur in all members of\
@@ -398,7 +398,7 @@ D = {
                 ),
     'false-detection-rate': (
             ['--false-detection-rate', '--FDR'],
-            {'metavar': 'PORTION',
+            {'metavar': 'FLOAT',
              'default': 0.05,
              'type': float,
              'help': "Takes a value between 0 and 1, to determine the false detection rate that will be used \
@@ -406,7 +406,7 @@ D = {
                 ),
     'core-threshold': (
             ['--core-threshold'],
-            {'metavar': 'PORTION',
+            {'metavar': 'FLOAT',
              'default': 1,
              'type': float,
              'help': "Takes a value between 0 and 1, where 1 means that only functions occuring in all genomes \
@@ -414,7 +414,7 @@ D = {
                 ),
     'min-function-enrichment': (
             ['-E', '--min-function-enrichment'],
-            {'metavar': 'PORTION',
+            {'metavar': 'FLOAT',
              'default': 0,
              'type': float,
              'help': "Only report functions for which the min enrichment is above the provided value. Default is %(default).1f."}
