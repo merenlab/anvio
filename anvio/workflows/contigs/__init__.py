@@ -70,7 +70,20 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True},
                                     "emapper": {"--database": "bact", "--usemem": True, "--override": True},
                                     "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"},
-                                    "run_virsorter": {"run": False}})
+                                    "run_virsorter": {"run": False, "threads": 4}, 
+                                    "export_table_for_virsorter": {"run": False, "--table": "splits_basic_info", 
+                                                                   "--output-file": "{group}-splits_basic_info.txt",
+                                                                   "--list--fields": False}
+                                    "export_gene_calls_for_virsorter": {"--output-file": "{group}-all_gene_calls.txt"}
+                                    "parse_virsorter": {"--affi-file": "{group}/Metric_files/VIRSorter_affi-contigs.tab" , 
+                                                        "--global-file": "{group}/VIRSorter_global-phage-signal.csv",
+                                                        "--db": DEPENDS ON db CHOICE IN run_virsorter, 
+                                                        "--splits-info": "{group}-splits_basic_info.txt",
+                                                        "--anvio-gene-calls": "{group}-all_gene_calls.txt",
+                                                        "--hallmark-functions": DEPENDS ON db CHOICE IN run_virsorter,
+                                                        "--addl-info": "{group}-virsorter_additional_info.txt", 
+                                                        "--phage-collection": "{group}-virsorter_collection.txt",
+                                                        "--output-functions": "{group}-virsorter_functions.txt"})
 
         self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--sensitive', '--temporary-dir-path', '--search-with']
 
@@ -88,8 +101,16 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict['remove_human_dna_using_centrifuge'] = ['run']
 
-        self.rule_acceptable_params_dict['run_virsorter'] = ['run']
-
+        self.rule_acceptable_params_dict['run_virsorter'] = ['run', '--dataset', '--cp', '--db', '--wdir', '--ncpu', 
+                                                             '--virome', '--data-dir', '--diamond', '--keep-db', '--no_c']
+        
+        self.rule_acceptable_params_dict['export_table_for_virsorter'] = []
+        
+        self.rule_acceptable_params_dict['export_gene_calls_for_virsorter'] = []
+         
+        self.rule_acceptable_params_dict['parse_virsorter'] = ['--min-phage-length', '--exclude-cat3', 
+                                                               '--exclude-prophages']
+            
         gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
                               '--ignore-internal-stop-codons', '--skip-mindful-splitting',\
                               '--contigs-fasta', '--project-name',\
