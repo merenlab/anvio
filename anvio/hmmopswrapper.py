@@ -4,11 +4,16 @@
     HMM related operations.
 """
 
+import argparse
+
 import anvio.terminal as terminal
+import anvio.ccollections as ccollections
 
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.hmmops import SequencesForHMMHits
 
+
+from anvio.errors import ConfigError
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -33,15 +38,46 @@ class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDe
         self.load_genomes_descriptions(skip_functions=True, init=False)
         hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes()
 
+        num_internal_genomes = len(set([g['profile_db_path'] for g in self.genomes.values() if 'profile_db_path' in g]))
+        collection_names = set([g['collection_id'] for g in self.genomes.values() if 'collection_id' in g])
+
+        self.run.warning("SequencesForHMMHitsWrapperForMultipleContigs class is speaking (yes, the class is\
+                          quite aware of its very long name thankyouverymuch). Of the total %d genome descriptions\
+                          it was given, %d seem to represent internal genomes with bins in collection(s) '%s'. Anvi'o\
+                          will make sure HMM hits to be used for downstream analyses are only those that match to contigs\
+                          that were included in those selections." % (len(self.genomes), num_internal_genomes, ', '.join(collection_names)), lc="green")
+
+
         # very hacky code follows. here we generate a self SequencesForHMMHits object,
         # and we will fill everything in it with slightly modified information so multiple
         # contigs databases could be processed by this talented class seamlessly.
         hmm_hits_splits_counter = 0
         for genome_name in self.genomes:
-            contigs_db_path = self.genomes[genome_name]['contigs_db_path']
-            contigs_db_hash = self.genomes[genome_name]['contigs_db_hash']
+            g = self.genomes[genome_name]
+            contigs_db_path = g['contigs_db_path']
+            contigs_db_hash = g['contigs_db_hash']
 
-            current = SequencesForHMMHits(contigs_db_path, sources = hmm_sources)
+            # here we check if the genome descriptions contain reference to a collection name,
+            # because if it is the case, we need to focus only on hmm hits that are relevant
+            # to splits in this collection:
+            if 'collection_id' in g:
+                if ('bin_id' not in g) or ('profile_db_path' not in g):
+                    raise ConfigError("There is something VERY weird going on. Your genome descriptions object contains\
+                                       a collection name, yet it doesn't know anything about a bin name or profile database\
+                                       path. While this is very interesting because it should never happen, anvi'o will say\
+                                       goodbye and abruptly quit in confusion :(")
+
+                # setup an args object, and recover the split names of interest
+                args = argparse.Namespace(profile_db=g['profile_db_path'],
+                                          contigs_db=g['contigs_db_path'],
+                                          bin_id=g['bin_id'],
+                                          collection_name=g['collection_id'])
+                split_names_of_interest=ccollections.GetSplitNamesInBins(args).get_split_names_only()
+
+                # current hmm hits now will match to the collection
+                current = SequencesForHMMHits(contigs_db_path, sources = hmm_sources, split_names_of_interest=split_names_of_interest)
+            else:
+                current = SequencesForHMMHits(contigs_db_path, sources = hmm_sources)
 
             for hmm_hit_id in current.hmm_hits:
                 hit = current.hmm_hits[hmm_hit_id]

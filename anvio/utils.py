@@ -1269,10 +1269,11 @@ def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_di
 def check_sample_id(sample_id):
     if sample_id:
         if sample_id[0] in constants.digits:
-            raise ConfigError("Sample names can't start with digits. Long story. Please specify a sample name\
+            raise ConfigError("Sample name ('%s') is not a valid name. Sample names can't start with digits.\
+                                Long story. Please specify a sample name\
                                 that starts with an ASCII letter (you may want to check '-s' parameter to set\
                                 a sample name if your client permits (otherwise you are going to have to edit\
-                                your input files)).")
+                                your input files))." % sample_id)
 
         allowed_chars_for_samples = constants.allowed_chars.replace('-', '').replace('.', '')
         if len([c for c in sample_id if c not in allowed_chars_for_samples]):
@@ -2182,6 +2183,39 @@ def is_blank_profile(db_path):
     database.disconnect()
 
     return True if blank == 1 else False
+
+
+def get_two_sample_z_test_statistic(p1, p2, n1, n2):
+    '''
+        Compute a two sample z-test statistic
+
+        If one group has no hits (e.g. p1=0) then we compute an upper bound
+        for the p-value by pretending that it had one hit.
+
+        If one group has 100% hits (e.g. p1=1) then we compute an upper bound
+        for the p-value by pretending that p1=1-1/n1 hits
+    '''
+    import numpy
+    if p1 == 0 and p2 == 0:
+        return (0, 0)
+
+    # This is done in order to estimate an upper bound
+    # for the p-value
+    p1 = max(p1, 1/n1) # in case p1 is zero
+    p2 = max(p2, 1/n2)
+    p1 = min(p1, 1 - 1/n1) # in case p1 is 1
+    p2 = min(p2, 1 - 1/n2)
+
+    p = (n1*p1 + n2*p2) / (n1 + n2)
+
+    z = (p1 - p2) / numpy.sqrt(p*(1 - p) * (1/n1 + 1/n2))
+    p_value = get_p_value_for_z_test(z)
+    return (z, p_value)
+
+
+def get_p_value_for_z_test(z):
+    from scipy.stats import norm
+    return 2*norm.cdf(-abs(z))
 
 
 def is_pan_db(db_path):

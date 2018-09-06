@@ -206,6 +206,8 @@ if not references_mode and not (run_idba_ud or run_megahit):
                        if you do mean to use assembly, please set 'run: true' for one of the,\
                        following available assemblers: %s" % ', '.join(available_assemblers))
 
+ruleorder: import_percent_of_reads_mapped > import_kraken_hll_taxonomy
+
 rule metagenomics_workflow_target_rule:
     '''
         The target rule for the workflow.
@@ -898,7 +900,9 @@ rule anvi_merge:
         else:
             shell("anvi-merge {input.profiles} -o {params.output_dir} -c {input.contigs} \
                    {params.sample_name} {params.skip_concoct_binning} \
-                   {params.overwrite_output_destinations} >> {log} 2>&1")
+                   {params.overwrite_output_destinations} {params.description} \
+                   {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering} \
+                   {params.distance} {params.linkage} >> {log} 2>&1")
 
 
 rule krakenhll:
@@ -949,8 +953,6 @@ rule krakenhll_mpa_report:
 def input_for_import_kraken_hll_taxonomy(wildcards):
     ''' configure input for import_percent_of_reads_mapped.'''
     D = {}
-    D['profile'] = os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.sample, "PROFILE.db")
-
     if M.kraken_annotation_dict:
         # if the user supplied a file with kraken annotations then use it
         D['krakenhll_tax'] = M.kraken_annotation_dict[wildcards.sample]['path']
@@ -961,14 +963,16 @@ def input_for_import_kraken_hll_taxonomy(wildcards):
     if run_import_percent_of_reads_mapped:
         # we include percent_of_reads_mapped_imported_flag as input here so that kraken and import_percent_of_reads_mapped will never run in parallel.
         # If they run in parallel it could cause trouble as they will try to write to the contigs database at the same time. very bad.
-            D['percent_of_reads_mapped_imported_flag'] = os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.sample, "import_percent_of_reads_mapped.done"),
+        D['percent_of_reads_mapped_imported_flag'] = os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.sample, "import_percent_of_reads_mapped.done"),
     return D
 
 
 rule import_kraken_hll_taxonomy:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_kraken_hll_taxonomy.log"
-    input: unpack(input_for_import_kraken_hll_taxonomy)
+    input:
+        unpack(input_for_import_kraken_hll_taxonomy),
+        profile = ancient(os.path.join(dirs_dict["PROFILE_DIR"], "{group}", "{sample}", "PROFILE.db"))
     output: touch(os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}/import_kraken_hll_taxonomy.done"))
     params: min_abundance = M.get_rule_param('import_kraken_hll_taxonomy', '--min-abundance')
     threads: M.T('import_kraken_hll_taxonomy')
@@ -986,7 +990,7 @@ rule import_percent_of_reads_mapped:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_percent_of_reads_mapped.log"
     input:
-        profile = rules.anvi_profile.output.profile
+        profile = ancient(os.path.join(dirs_dict["PROFILE_DIR"], "{group}", "{sample}", "PROFILE.db"))
     output:
         flag = touch(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done"),
         total_num_reads_txt = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/total-num-reads.txt"),
@@ -1025,27 +1029,35 @@ rule import_percent_of_reads_mapped:
                     anvi-import-misc-data {output.total_num_reads_txt} \
                                           -p {input.profile} \
                                           -t layers \
-                                          --just-do-it
+                                          --just-do-it >> {log} 2>&1
 
                     # get the layers additional data table, which has two columns
                     # now.
                     anvi-export-misc-data -p {input.profile} \
                                           -t layers \
-                                          -o {output.layers_additional_data}
+                                          -o {output.layers_additional_data} >> {log} 2>&1
+                  """)
 
-                    # do an awk one-liner to add a third column, 'percent mapped'.
-                    awk '{{if(NR==1) \
-                             {{print $0 "\tpercent_mapped"}} \
-                          else \
-                              {{print $0 "\t" ($2 * 100 / $4)}}}}' \
-                        {output.layers_additional_data} > {output.layers_additional_data_updated}
+            additional_data = pd.read_csv(output.layers_additional_data, sep='\t', index_col=None)
+            if 'total_reads_mapped' not in additional_data.columns:
+                raise ConfigError('The layers additional data for %s doesn\'t contain a column \
+                                   "total_reads_mapped". This is really weird, and we cannot \
+                                   think of why this happened (maybe you deleted it somehow?). \
+                                   Feel free to contact an anvio developer in order to troubleshoot \
+                                   this. Otherwise, if you wish to continue, you can just skip this \
+                                   step by setting the "run" parameter for the rule import_percent_of_reads_mapped \
+                                   to "false".' % input.profile)
 
+            additional_data['percent_mapped'] = 100 * additional_data['total_reads_mapped'] / additional_data['total_num_reads']
+            additional_data.to_csv(output.layers_additional_data_updated, sep='\t', index=False)
+
+            shell("""
                     # import the new file with three columns
                     anvi-import-misc-data {output.layers_additional_data_updated} \
                                           -p {input.profile} \
                                           -t layers \
-                                          --just-do-it
-                """)
+                                          --just-do-it >> {log} 2>&1
+                  """)
 
 if not slave_mode:
     # check if all program dependencies are met. for this line to be effective,

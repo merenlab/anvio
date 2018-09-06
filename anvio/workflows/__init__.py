@@ -271,7 +271,8 @@ class WorkflowSuperClass:
                                    %s for rule %s. These parameters are hard-coded. If you \
                                    are confused or upset please refer to an anvi'o developer \
                                    or a friend for support." % (', '.join(bad_params), rule))
-        
+
+
     def check_rule_params(self):
         for rule in self.rules:
             if rule in self.config:
@@ -443,7 +444,7 @@ def B(config, _rule, _param, default=''):
         if isinstance(val, bool):
             # the param is a flag so no need for a value
             val = ''
-        return _param + ' ' + val
+        return _param + ' ' + str(val)
     else:
         return ''
 
