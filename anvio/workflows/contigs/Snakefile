@@ -436,8 +436,8 @@ if run_classify_with_virsorter:
             diamond = M.get_rule_param("run_virsorter", "--diamond"),# Use diamond (in "--more-sensitive" mode) instead of blastp
             keep_db = M.get_rule_param("run_virsorter", "--keep-db"), # Keeps the new HMM and BLAST databases
             no_c = M.get_rule_param("run_virsorter", "--no_c"), #use in case of blank files, special case perl problem. Is there a way to rerun with this flag if job fails?
-        threads: M.T('virsorter') # Assume this should be the rule name and not the actual command?
-        resources: nodes = M.T('virsorter'), #same here
+        threads: M.T('run_virsorter') # Assume this should be the rule name and not the actual command?
+        resources: nodes = M.T('run_virsorter'), #same here
         #For the shell command I will include all params but note the ones that are 'standard'
         shell: w.r("wrapper_phage_contigs_sorter_iPlant.pl -f {input} 
                                                            {param.db} \ # standard
@@ -451,12 +451,12 @@ if run_classify_with_virsorter:
                                                            {params.dataset} \
                                                            {params.no_c} \ # set if a perl problem arises
                                                            {params.description} >> {log} 2>&1")
-         # As pre rule anvi_gen_contigs_database, depending on whether human 
+         # As per rule anvi_gen_contigs_database, depending on whether human 
          # contamination using centrifuge was done or not, the input to this 
          # rule will be the raw (reformatted) assembly or the filtered.
          # Notice that virsorter requires a directory to be specified
          # for output files and does not care if that directory exists
-         # or not. If the directory exists, virsorter will not overwrite
+         # or not. If the directory exists, virsorter will NOT overwrite
          # but rather just add files. Otherwise it will create directory.
 
      rule export_table_for_virsorter #anvi-export-table
