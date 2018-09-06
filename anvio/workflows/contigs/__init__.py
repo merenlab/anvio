@@ -74,8 +74,10 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "export_table_for_virsorter": {"run": False, "--table": "splits_basic_info", 
                                                                    "--output-file": "{group}-splits_basic_info.txt",
                                                                    "--list--fields": False}
-                                    "export_gene_calls_for_virsorter": {"--output-file": "{group}-all_gene_calls.txt"}
-                                    "parse_virsorter": {"--affi-file": "{group}/Metric_files/VIRSorter_affi-contigs.tab" , 
+                                    "export_gene_calls_for_virsorter": {"run": False, 
+                                                                        "--output-file": "{group}-all_gene_calls.txt"}
+                                    "parse_virsorter": {"run": False, 
+                                                        "--affi-file": "{group}/Metric_files/VIRSorter_affi-contigs.tab" , 
                                                         "--global-file": "{group}/VIRSorter_global-phage-signal.csv",
                                                         "--db": DEPENDS ON db CHOICE IN run_virsorter, 
                                                         "--splits-info": "{group}-splits_basic_info.txt",
@@ -83,7 +85,10 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                                         "--hallmark-functions": DEPENDS ON db CHOICE IN run_virsorter,
                                                         "--addl-info": "{group}-virsorter_additional_info.txt", 
                                                         "--phage-collection": "{group}-virsorter_collection.txt",
-                                                        "--output-functions": "{group}-virsorter_functions.txt"})
+                                                        "--output-functions": "{group}-virsorter_functions.txt"}
+                                    "import_functions_virsorter": {"run": False, 
+                                                                   "--parser":, 
+                                                                   "--input-files": "{group}-virsorter_functions.txt"}})
 
         self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--sensitive', '--temporary-dir-path', '--search-with']
 
@@ -104,12 +109,13 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.rule_acceptable_params_dict['run_virsorter'] = ['run', '--dataset', '--cp', '--db', '--wdir', '--ncpu', 
                                                              '--virome', '--data-dir', '--diamond', '--keep-db', '--no_c']
         
-        self.rule_acceptable_params_dict['export_table_for_virsorter'] = []
+        self.rule_acceptable_params_dict['export_table_for_virsorter'] = [] #Seems like these would be auto if run_virsorter is exectuted
         
         self.rule_acceptable_params_dict['export_gene_calls_for_virsorter'] = []
          
-        self.rule_acceptable_params_dict['parse_virsorter'] = ['--min-phage-length', '--exclude-cat3', 
-                                                               '--exclude-prophages']
+        self.rule_acceptable_params_dict['parse_virsorter'] = ['--min-phage-length', '--exclude-cat3', '--exclude-prophages']
+        
+        self.rule_acceptable_params_dict['import_functions_virsorter'] = ['--drop-previous-annotations']
             
         gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
                               '--ignore-internal-stop-codons', '--skip-mindful-splitting',\
