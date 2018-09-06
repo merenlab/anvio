@@ -107,7 +107,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "MAPPING_DIR": "04_MAPPING",
                                "PROFILE_DIR": "05_ANVIO_PROFILE",
                                "MERGE_DIR": "06_MERGED",
-                               "TAXONOMY_DIR": "07_TAXONOMY"})
+                               "TAXONOMY_DIR": "07_TAXONOMY",
+                               "VIRSORTER_DIR": "08_VIRSORTER"})
 
         self.default_config.update({'samples_txt': "samples.txt",
                                     'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 11},
