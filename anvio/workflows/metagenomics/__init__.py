@@ -91,6 +91,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['krakenhll'] = ["additional_params", "run", "--db", "--gzip-compressed"]
         rule_acceptable_params_dict['krakenhll_mpa_report'] = ["additional_params"]
         rule_acceptable_params_dict['import_kraken_hll_taxonomy'] = ["--min-abundance"]
+        rule_acceptable_params_dict['import_misc_data_virsorter'] = ["--just-do-it"] # left blank otherwise because defaults should be set
+        rule_acceptable_params_dict['import_collection_virsorter'] = ["--collection-name"] # User can specify or default set
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
