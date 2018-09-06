@@ -123,7 +123,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True},
                                     "krakenhll": {"threads": 12, "--gzip-compressed": True, "additional_params": "--preload"},
-                                    "import_misc_data_virsorter": {"--target-data-table": "items"},
+                                    "import_misc_data_virsorter": {"--target-data-table": "items", 
+                                                                   "--target-data-group":, "--transpose":},
                                     "import_collection_virsorter":{"--collection-name": "VIRSORTER"})
 
 
