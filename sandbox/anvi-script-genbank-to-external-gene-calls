@@ -101,7 +101,12 @@ def genbank_to_anvio(args):
                 function = function + " (" + gene_name + ")"
 
             output_gene_calls.write(str(num) + "\t" + rec.name + "\t" + str(start) + "\t" + str(end) + "\t" + str(strand) + "\t" + "0" + "\t" + str(source) +"\t" + str(version) + "\n")
-            output_functions.write(str(num) + "\t" + str(source) + "\t" + acc + "\t" + function + "\t" + "0" + "\n")
+            
+            # not writing gene out to functions table if no annotation
+            if "hypothetical protein" in function:
+                continue
+            else:
+                output_functions.write(str(num) + "\t" + str(source) + "\t" + acc + "\t" + function + "\t" + "0" + "\n")
 
     input_gb.close()
     output_fasta.close()
