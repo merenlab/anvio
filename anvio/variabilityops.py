@@ -523,6 +523,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # filtering
         self.min_scatter = A('min_scatter', int) or 0
         self.min_occurrence = A('min_occurrence', int) or 1
+        self.min_coverage = A('min_coverage', int) or 0
         self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', int) or 0
         self.min_departure_from_reference = A('min_departure_from_reference', float) or 0
         self.max_departure_from_reference = A('max_departure_from_reference', float) or 1
@@ -2373,17 +2374,18 @@ class VariabilityNetwork:
 
 
 class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
-    def __init__(self, args={}, p=progress, r=run):
+    def __init__(self, args={}, p=progress, r=run, dont_process=False):
         self.progress = p
         self.run = r
 
         self.args = args
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        self.columns_to_load = A('columns_to_load', list)
         self.variability_table_path = A('variability_profile', str)
         self.engine = A('engine', str)
 
         if not self.variability_table_path:
-            raise ConfigError("You must declare a variability table filepath.")
+            raise ConfigError("VariabilityData :: You must declare a variability table filepath.")
 
         # determine the engine type of the variability table
         inferred_engine = utils.get_variability_table_engine_type(self.variability_table_path)
@@ -2404,6 +2406,16 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         else:
             pass
 
+        if not dont_process:
+            self.process_external_table()
+
+
+    def load_data(self):
+        """load the variability data (output of anvi-gen-variabliity-profile)"""
+        self.data = pd.read_csv(self.variability_table_path, sep="\t", usecols=self.columns_to_load)
+
+
+    def process_external_table(self):
         # load the data
         self.load_data()
 
@@ -2418,11 +2430,6 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
             self.load_structure_data()
 
         self.init_commons()
-
-
-    def load_data(self):
-        """load the variability data (output of anvi-gen-variabliity-profile)"""
-        self.data = pd.read_csv(self.variability_table_path, sep="\t")
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
