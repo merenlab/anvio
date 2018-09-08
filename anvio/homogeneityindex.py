@@ -1,15 +1,16 @@
 """
-homogeneityindex.py: code for determining homogeneity index
+homogeneityindex.py: code for determining homogeneity indices
 
-Homogeneity index is a numerical score between 0 and 100 that indicates the relative homogeneity of genes within a gene cluster
+The Homogeneity Indices calculate the relative homogeneity of all of the genomes in each gene cluster.
+It is divided into functional and geometric homogeneity.
 
 Author: Mahmoud Yousef
 """
 
 conserved_groups = {
-    'Nonpolar': ['L','V','I','M','C','H','P'],
-    'Aromatic': ['F','W'],
-    'Positive': ['K','R'],
+    'Nonpolar': ['L','V','I','M','C','H','A'],
+    'Aromatic': ['F','W','Y'],
+    'Bases': ['K','R','H'],
     'Neutral Amines': ['Q, N'],
     'Acids': ['D','E'],
     'Polar and Nonpolar': ['H','Y'],
@@ -26,7 +27,7 @@ for key in ['A','I','L','V','M','C']:
 for key in ['F','W']:
     residue_id[key] = 'Aromatic'
 for key in ['K','R']:
-    residue_id[key] = 'Positive'
+    residue_id[key] = 'Bases'
 for key in ['Q', 'N']:
     residue_id[key] = 'Neutral Amines'
 for key in ['D','E']:
@@ -48,36 +49,50 @@ def is_conserved(r1, r2):
     conserved_group = conserved_groups[group]
     if r2 in conserved_group:
         return True
+    if group == 'Polar and Nonpolar': #they fall in more than one group, multiple tests needed
+        if r1 == 'H' and (r2 in conserved_groups['Nonpolar'] or r2 in conserved_groups['Bases']):
+            return True
+        if r1 == 'Y' and (r2 in conserved_groups['Aromatic']):
+            return True
     return False
 
-def compute_functional_index(gene_cluster_sequences):
-    #gene_cluster_sequences is a list of sequences from a single gene cluster
-    num_sequences = len(gene_cluster_sequences)
-    if num_sequences == 1: 
-        return 100
-    elif num_sequences == 0: #this is an error condition
-        return 0
-    
-    length = len(gene_cluster_sequences[0])
-    similarity = 0
-    max = 0
-    for j in range(0, length):
-        residues = []
-        for k in range(0, num_sequences):
-            residues.append(gene_cluster_sequences[k][j])
-        for a in range(0,len(residues)):
-            for b in range(0,len(residues)):
-                if a >= b:
-                    continue
-                r1 = residues[a]
-                r2 = residues[b]
-                if r1 == "-":
-                    max += 1
-                    if r2 == "-":
-                        similarity += 1
-                    else:
-                        similarity += 0
-                else:
+class HomogeneityCalculator(object):
+    def __init__(self, gene_clusters_dict, quick_homogeneity=False):
+        self.gene_clusters_dict = gene_clusters_dict
+        self.quick_homogeneity = quick_homogeneity
+        self.functional = {}
+        self.geometric = {}
+
+        self.cluster_sizes = {}
+        self.total_functional = 0
+        self.total_geometric = 0
+        #the above are foundations for potential future capabilities
+
+
+    def compute_functional_index(self, gene_cluster_sequences):
+        #gene_cluster_sequences is a list of sequences from a single gene cluster
+        num_sequences = len(gene_cluster_sequences)
+        if num_sequences == 1: 
+            return 100
+        elif num_sequences == 0: #this is an error condition
+            return 0
+        
+        length = len(gene_cluster_sequences[0])
+        similarity = 0
+        max = 0
+        for spot in range(0, length):
+            residues = []
+            for sequence in range(0, num_sequences):
+                residues.append(gene_cluster_sequences[sequence][spot])
+            for a in range(0,len(residues)):
+                for b in range(0,len(residues)):
+                    if a >= b:
+                        continue
+                    r1 = residues[a]
+                    r2 = residues[b]
+                    if r1 == "-":
+                        r1 = residues[b]
+                        r2 = "-"
                     max += 3
                     if r1 == r2 and (r1 != 'X' and r1 != 'J' and r1 != 'B' and r1 != 'Z'):
                         similarity += 3
@@ -87,76 +102,97 @@ def compute_functional_index(gene_cluster_sequences):
                         similarity += 1
                     else:
                         similarity += 0
-    index = (similarity / max) * 100
-    return index
-
-def label_gaps(gene_sequences): #1 indicates gaps
-    matrix = []
-    for row in gene_sequences:
-        array = []
-        for residue in row:
-            if residue == "-":
-                array.append("1")
-            else:
-                array.append("0")
-        matrix.append(array)
-
-    return matrix
-
-def find_state_change_probabilities(column):
-    gap_to_gap = 0
-    gap_to_residue = 0
-    residue_to_gap = 0
-    residue_to_residue = 0
-    total = len(column)
-    if total == 1:
-        return 0 #singletons will have 0 functional homogeneity
-    count = 0
-
-    for index1 in range(total - 1): #This entropy check is faulty
-        r1 = column[index1]
-        for index2 in range(index1, (total - 1)):
-            r2 = column[index2 + 1]
-            count += 1
-            if r1 == "1":
-                if r2 == "1":
-                    gap_to_gap += 1
-                else:
-                    gap_to_residue += 1
-            else:
-                if r2 == "1":
-                    residue_to_gap += 1
-                else:
-                    residue_to_residue += 1
-
-    prob_gap_to_gap = gap_to_gap / (total - 1)
-    prob_gap_to_residue = gap_to_residue / (total - 1)
-    prob_residue_to_gap = residue_to_gap / (total - 1)
-    prob_residue_to_residue = residue_to_residue / (total - 1)
-
-    return prob_gap_to_residue + prob_residue_to_gap
-
-def compute_structural_index(gene_cluster_sequences):
-    grid = label_gaps(gene_cluster_sequences)
-
-    length = len(grid[0])
-    entropy = []
-
-    for col in range(length):
-        column = []
-        for row in range(len(gene_cluster_sequences)):
-            column.append(grid[row][col])
-        entropy.append(find_state_change_probabilities(column))
-    
-    return 100 -((sum(entropy) / len(entropy)) * 100)
+        index = (similarity / max) * 100
+        return index
 
 
-def compute_homogeneity_index(gene_cluster_sequences, num_genomes, num_unique): #will expand on this soon
-    functional = compute_functional_index(gene_cluster_sequences)
+    def label_gaps(self, gene_sequences, bygene = False): #1 indicates gaps
+        if bygene == False:
+            array = [0] * len(gene_sequences[0])
+            for i in range(len(gene_sequences)):
+                for j in range(len(gene_sequences[0])):
+                    if gene_sequences[i][j] == "-":
+                        array[j] = ((array[j]) << 1) + 1
+                    else:
+                        array[j] = ((array[j]) << 1) + 0
+        else: #array will be ordered by gene, rather than by column
+            array = [0] * len(gene_sequences)
+            for i in range(len(gene_sequences[0])):
+                for j in range(len(gene_sequences)):
+                    if gene_sequences[j][i] == "-":
+                        array[j] = ((array[j]) << 1) + 1
+                    else:
+                        array[j] = ((array[j]) << 1) + 0
 
-    diff = num_genomes - num_unique #Can I use this to modify the functional index? Should we ignore paralogs 
+        return array
+        #now we have an array of binary numbers that represent the gap-residue pattern of each column
 
-    structural = compute_structural_index(gene_cluster_sequences)
-    print(structural)
-    return functional 
 
+    def compute_geometric_index(self, gene_cluster_sequences, quick_homogeneity=False): 
+        num_genes = len(gene_cluster_sequences)
+        if num_genes == 1:
+            return 100
+        
+        grid = self.label_gaps(gene_cluster_sequences)
+        length = len(grid)
+        residue_uniformity = []
+
+        for col in range(length):
+            differences = []
+            for counter in range(length):
+                if col == counter:
+                    continue
+                diff = grid[col] ^ grid[counter]
+                runsum = 0
+                for i in range(num_genes):
+                    if abs(diff) % 2 == 0:
+                        runsum += 1
+                    diff = diff >> 1
+                differences.append(runsum / num_genes)
+            residue_uniformity.append(sum(differences) / len(differences))
+        
+        by_residue = 100 * (sum(residue_uniformity) / len(residue_uniformity))
+
+        if quick_homogeneity:
+            return by_residue
+        grid2 = self.label_gaps(gene_cluster_sequences, bygene=True)
+        length = len(grid2)
+        gene_uniformity = []
+
+        for gene in range(length):
+            differences = []
+            for counter in range(length):
+                if gene == counter:
+                    continue
+                diff = grid2[gene] ^ grid2[counter]
+                runsum = 0
+                for i in range(len(gene_cluster_sequences[0])):
+                    if abs(diff) % 2 == 0:
+                        runsum += 1
+                    diff = diff >> 1
+                differences.append(runsum / len(grid))
+            gene_uniformity.append(sum(differences) / len(differences))
+
+        by_gene = 100 * (sum(gene_uniformity) / len(gene_uniformity))
+
+        index = (by_residue + by_gene) / 2
+        return index
+
+
+    def compute_for_all_clusters(self):
+        cluster_sequences = []
+        sequences = self.gene_clusters_dict
+        quick_homogeneity = self.quick_homogeneity
+
+        for gene_cluster in sequences:
+            genes_in_cluster = sequences[gene_cluster]
+            for name in genes_in_cluster:
+                genes = genes_in_cluster[name]
+                for gene in genes:
+                    cluster_sequences.append(genes[gene])
+            self.functional[gene_cluster] = self.compute_functional_index(cluster_sequences)
+            self.geometric[gene_cluster] = self.compute_geometric_index(cluster_sequences, quick_homogeneity)
+            #self.cluster_sizes[gene_cluster] = len(cluster_sequences)
+            cluster_sequences = []
+        
+        return self.functional, self.geometric

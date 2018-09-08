@@ -29,6 +29,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccolections
 import anvio.genomestorage as genomestorage
 import anvio.auxiliarydataops as auxiliarydataops
+import anvio.homogeneityindex as homogeneityindex
 
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
@@ -1022,6 +1023,26 @@ class PanSuperclass(object):
         self.progress.end()
 
         return sequences
+
+
+    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([])):
+        if gene_cluster_names is None:
+            self.run.warning('Anvi\'o compute_homogeneity_indices_for_gene_clusters did not receive any names of \
+            gene clusters to examine. It is likely that you (or the programmer) either did not provide proper gene \
+            cluster names, or provided them in an incorrect format. If you are sure that you have provided the \
+            gene cluster names correctly, then please contact a member of the Meren Lab. In the meanwhile, anvi\'o \
+            will not be computing homogeneity indices')
+            return None, None
+
+        sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=False)
+        
+        if self.args.quick_homogeneity:
+            self.run.warning('Performing quick homogeneity calculations (skipping horizontal geometric calculations)\
+                              per the \'--quick-homogeneity\' flag')
+        homogeneity_calculator = homogeneityindex.HomogeneityCalculator(sequences, quick_homogeneity=self.args.quick_homogeneity)
+        functional, geometric = homogeneity_calculator.compute_for_all_clusters()
+
+        return functional, geometric
 
 
     def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), \

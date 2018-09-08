@@ -22,7 +22,6 @@ import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.tables.miscdata as miscdata
-import anvio.homogeneityindex as homogeneityindex
 
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
@@ -65,6 +64,8 @@ class Pangenome(object):
         self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
         self.skip_alignments = A('skip_alignments')
+        self.skip_homogeneity = self.args.skip_homogeneity
+        self.quick_homogeneity = self.args.quick_homogeneity
         self.align_with = A('align_with')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = anvio.DEBUG
@@ -574,39 +575,30 @@ class Pangenome(object):
 
 
     def populate_gene_cluster_homogeneity_index(self, gene_clusters_dict):
-         if self.skip_alignments:
-             self.run.warning('Skipping homogeneity calculations because clusters are not alligned.')
-             return
-         self.progress.new('Gene cluster homogeneity') #I don't know why this doesn't work
-         self.progress.update('Copmputing homogeneity indices')
-         pan_gene_clusters = dbops.PanSuperclass(args = self.args)
-         names = set(list(gene_clusters_dict.keys()))
-         sequences = pan_gene_clusters.get_sequences_for_gene_clusters(gene_cluster_names=names)
+        if self.skip_alignments:
+            self.run.warning('Skipping homogeneity calculations because clusters are not alligned.')
+            return
+        elif self.skip_homogeneity:
+            self.run.warning('Skipping homogeneity calculations per the \'--skip-homogeneity\' flag')
+            return
+        
+        self.progress.new('Gene cluster homogeneity') #I don't know why this doesn't work
+        self.progress.update('Computing homogeneity for all gene clusters')
+        pan_gene_clusters = dbops.PanSuperclass(args = self.args)
+        names = set(list(gene_clusters_dict.keys()))
 
-         cluster_sequences = []
-         num_unique = 0
-         for gene_cluster in sequences:
-             genes_in_cluster = sequences[gene_cluster]
-             for name in genes_in_cluster:
-                 genes = genes_in_cluster[name]
-                 num_unique += 1
-                 for gene in genes:
-                     cluster_sequences.append(genes[gene])
+        functional, geometric = pan_gene_clusters.compute_homogeneity_indices_for_gene_clusters(names)
 
-             #index = homogeneityindex.compute_homogeneity_index(cluster_sequences, len(self.genomes), num_unique)
-             index1 = homogeneityindex.compute_structural_index(cluster_sequences)
-             index2 = homogeneityindex.compute_functional_index(cluster_sequences)
-             #self.additional_view_data[gene_cluster]['Homogeneity Index'] = index
-             self.additional_view_data[gene_cluster]['Functional Homogeneity Index'] = index2
-             self.additional_view_data[gene_cluster]['Structural Homogeneity Index'] = index1
-             cluster_sequences = []
-             num_unique = 0
-         self.progress.end()
+        for gene_cluster in names:
+            self.additional_view_data[gene_cluster]['Functional Homogeneity Index'] = functional[gene_cluster]
+            self.additional_view_data[gene_cluster]['Geometric Homogeneity Index'] = geometric[gene_cluster]
+        
+        self.progress.end()
          
-         #miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Homogeneity Index'], skip_check_names=True)
-         miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Functional Homogeneity Index'], skip_check_names=True)
-         miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Structural Homogeneity Index'], skip_check_names=True)
-    
+        miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Functional Homogeneity Index'], skip_check_names=True)
+        miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Geometric Homogeneity Index'], skip_check_names=True)
+
+
     def populate_layers_additional_data_and_orders(self):
         self.progress.new('Layers additional data and orders')
         self.progress.update('Copmputing the hierarchical clustering of the (transposed) view data')
@@ -922,7 +914,7 @@ class Pangenome(object):
 
         # work with gene cluster homogeneity index
         self.populate_gene_cluster_homogeneity_index(gene_clusters_dict)
-
+        
         # done
         self.run.info('log file', self.run.log_file_path)
         self.run.quit()
