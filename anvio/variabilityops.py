@@ -523,6 +523,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # filtering
         self.min_scatter = A('min_scatter', int) or 0
         self.min_occurrence = A('min_occurrence', int) or 1
+        self.min_coverage = A('min_coverage', int) or 0
         self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', int) or 0
         self.min_departure_from_reference = A('min_departure_from_reference', float) or 0
         self.max_departure_from_reference = A('max_departure_from_reference', float) or 1
@@ -543,6 +544,8 @@ class VariabilitySuper(VariabilityFilter, object):
         self.table_provided = False if self.data.empty else True
         self.load_all_genes = True
         self.load_all_samples = True
+        self.min_departure_from_reference_filtered = False
+        self.max_departure_from_reference_filtered = False
         self.substitution_scoring_matrices = None
         self.merged_split_coverage_values = None
         self.unique_pos_identifier = 0
@@ -953,7 +956,7 @@ class VariabilitySuper(VariabilityFilter, object):
            splits_of_interest, sample_ids_of_interest, and genes_of_interest. For example, what if
            genes_of_interest = set([0]) in a profile database with 50,000 genes? Why is splits of interest
            not included here? Because split_name is not a column in the variable codon table."""
-        R = lambda x, y: self.run.info("%s that variability data will be generated for" % \
+        R = lambda x, y: self.run.info("%s that variability data will be fetched for" % \
                          (x.capitalize() if len(y)<200 else "Num of "+x), ", ".join([str(z) for z in y]) if len(y)<200 else len(y))
 
         conditions = {}
@@ -961,10 +964,21 @@ class VariabilitySuper(VariabilityFilter, object):
             conditions['sample_id'] = ' IN (%s)' % ','.join(['"{}"'.format(x) for x in self.sample_ids_of_interest])
             R("sample ids", self.sample_ids_of_interest)
             self.load_all_samples = False
+
         if self.genes_of_interest:
             conditions['corresponding_gene_call'] = ' IN (%s)' % ','.join(['{}'.format(x) for x in self.genes_of_interest])
             R("gene ids", self.genes_of_interest)
             self.load_all_genes = False
+
+        if self.min_departure_from_reference > 0:
+            self.run.info("Only fetch entries with min departure from reference", self.min_departure_from_reference)
+            conditions['departure_from_reference'] = ' >= {}'.format(self.min_departure_from_reference)
+            self.min_departure_from_reference_filtered = True
+
+        if self.max_departure_from_reference < 1:
+            self.run.info("variability data fetched only for entries with max departure from reference", self.min_departure_from_reference)
+            conditions['departure_from_reference'] = ' <= {}'.format(self.max_departure_from_reference)
+            self.max_departure_from_reference_filtered = True
 
         if not conditions:
             return ""
@@ -1128,9 +1142,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
         self.filter_data(criterion = "departure_from_reference",
                          min_filter = self.min_departure_from_reference,
-                         min_condition = self.min_departure_from_reference > 0,
+                         min_condition = self.min_departure_from_reference > 0 and not self.min_departure_from_reference_filtered,
                          max_filter = self.max_departure_from_reference,
-                         max_condition = self.max_departure_from_reference < 1)
+                         max_condition = self.max_departure_from_reference < 1 and not self.max_departure_from_reference_filtered)
 
         if self.engine == 'NT':
             self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
@@ -2040,6 +2054,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.progress = p
 
         self.engine = 'CDN'
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.skip_synonymity = A('skip_synonymity', null)
 
         # Init Meta
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
@@ -2053,6 +2070,10 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
 
     def compute_synonymity(self):
+        """This method is currently prohibitively slow for large datasets."""
+        if self.skip_synonymity:
+            return
+
         coding_codons = constants.coding_codons
 
         number_of_pairs = len(coding_codons)*(len(coding_codons)+1)//2
@@ -2085,25 +2106,64 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
         self.engine = A('engine', null)
+        self.contigs_mode = A('contigs_mode', null)
+        self.genes_of_interest_path = A('genes_of_interest', null)
+        self.gene_caller_ids = A('gene_caller_ids', null)
+        self.genes_of_interest = A('genes_of_interest', null)
+        self.compress_samples = A('compress_samples', null)
         self.tab_delimited_output = A('tab_delimited', null)
+
+        self.sequence_name_key = 'gene_caller_id' if not self.contigs_mode else 'contig_name'
 
         if not self.engine:
             raise ConfigError("You somehow managed to call the ConsensusSequences class with an args object that does not\
                                contain an engine variable. Not appropriate.")
 
-        if self.engine not in variability_engines:
-            raise ConfigError("Anvi'o does not know how to make sene of the variability engine '%s :/" % self.engine)
+        if self.engine != 'NT':
+            raise ConfigError("Currently the only available variability engine for this is 'NT'. You provided %s" % self.engine)
+
+        if self.compress_samples:
+            args.quince_mode = True
+            self.run.warning("You supplied --compress-samples, so coverage at each variant position for all sample needs to be\
+                              calculated. This will take significantly longer.")
+        else:
+            args.min_departure_from_reference = 0.5 # if < 0.5, consensus is guaranteed to be reference
+                                                    # shortcut only used when not compressing samples
 
         if self.engine == 'NT':
             NucleotidesEngine.__init__(self, args=args, r=self.run, p=self.progress)
         elif self.engine == 'AA':
             AminoAcidsEngine.__init__(self, args=args, r=self.run, p=self.progress)
 
+        if self.contigs_mode:
+            if self.gene_caller_ids or self.genes_of_interest_path:
+                raise ConfigError("You can't use --contigs-mode with --gene-caller-ids or --genes-of-interest")
+            self.splits_of_interest = set(list(self.splits_basic_info.keys()))
+
         self.sequence_variants_in_samples_dict = {}
 
 
     def populate_seqeunce_variants_in_samples_dict(self):
         """Populates the main dictionary that keeps track of variants for each sample."""
+        if self.compress_samples:
+            # self data needs to be collapsed
+            num_samples = self.data['sample_id'].nunique()
+            coverage_columns = self.items + ['coverage']
+            not_coverage_columns = ['reference',
+                                    'codon_order_in_gene',
+                                    'base_pos_in_codon',
+                                    'pos_in_contig',
+                                    'contig_name',
+                                    'sample_id',
+                                    'corresponding_gene_call']
+
+            array = self.data[coverage_columns].values
+            collapsed_coverage_counts = array.reshape((array.shape[0]//num_samples, num_samples, array.shape[1])).sum(axis=1)
+            data_append = self.data[not_coverage_columns].drop_duplicates(subset='pos_in_contig').reset_index(drop=True)
+            self.data = pd.DataFrame(collapsed_coverage_counts, columns=coverage_columns).reset_index(drop=True)
+            self.data[data_append.columns] = data_append
+            self.data['sample_id'] = 'merged'
+            self.data['consensus'] = self.data[self.items].idxmax(axis=1)
 
         # no data no play.
         if not len(self.data):
@@ -2112,21 +2172,30 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
                                an error much earler). Two, you are a programmer and failed to call the 'process()' on your\
                                instance from this class. Do you see how the second option is much more likely? :/")
 
-        # learn about the gene seqeunces per gene call.
-        gene_sequences = {}
-        for gene_callers_id in self.genes_of_interest:
-            _, d = self.get_sequences_for_gene_callers_ids([gene_callers_id])
-            gene_sequences[gene_callers_id] = d[gene_callers_id]['sequence'].lower()
+        # learn about the sequences, either contigs or genes
+        if self.contigs_mode:
+            self.init_contig_sequences()
+            sequences = {name: sequence['sequence'].lower() for name, sequence in self.contig_sequences.items()}
+        else:
+            sequences = {}
+            for gene_callers_id in self.genes_of_interest:
+                _, d = self.get_sequences_for_gene_callers_ids([gene_callers_id])
+                sequences[gene_callers_id] = d[gene_callers_id]['sequence'].lower()
 
         # here we populate a dictionary with all the right items but witout any real data.
         sample_names = set(self.data['sample_id'])
         for sample_name in sample_names:
             self.sequence_variants_in_samples_dict[sample_name] = {}
-
-            for gene_callers_id in self.genes_of_interest:
-                self.sequence_variants_in_samples_dict[sample_name][gene_callers_id] = {'sequence_as_list': list(gene_sequences[gene_callers_id]),
-                                                                                        'num_changes': 0, 'gene_callers_id': gene_callers_id,
-                                                                                        'in_pos_1': 0, 'in_pos_2': 0, 'in_pos_3': 0}
+            for sequence_name in sequences:
+                self.sequence_variants_in_samples_dict[sample_name][sequence_name] = {
+                    'sequence_as_list': list(sequences[sequence_name]),
+                    'num_changes': 0,
+                    self.sequence_name_key: None,
+                    'in_pos_0': 0,
+                    'in_pos_1': 0,
+                    'in_pos_2': 0,
+                    'in_pos_3': 0
+                }
 
         # here we will go through every single variant in our data, and correct replace
         # some items in sequences for each sample based on variability infomration.
@@ -2135,9 +2204,10 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
         for idx, entry in self.data.iterrows():
             sample_name = entry['sample_id']
             gene_callers_id = entry['corresponding_gene_call']
+            sequence_name = entry['contig_name'] if self.contigs_mode else gene_callers_id
 
             # the dict item we will be playing with
-            d = self.sequence_variants_in_samples_dict[sample_name][gene_callers_id]
+            d = self.sequence_variants_in_samples_dict[sample_name][sequence_name]
 
             reference = entry['reference']
             consensus = entry['consensus']
@@ -2145,10 +2215,13 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
             if reference != consensus:
                 codon_order = entry['codon_order_in_gene']
                 base_pos_in_codon = entry['base_pos_in_codon']
-
-                nt_position_to_update = ((codon_order * 3) + base_pos_in_codon) - 1
+                if self.contigs_mode:
+                    nt_position_to_update = entry['pos_in_contig']
+                else:
+                    nt_position_to_update = ((codon_order * 3) + base_pos_in_codon) - 1
 
                 # update the entry.
+                d[self.sequence_name_key] = sequence_name
                 d['sequence_as_list'][nt_position_to_update] = consensus
                 d['num_changes'] += 1
                 d['in_pos_%d' % base_pos_in_codon] += 1
@@ -2156,17 +2229,18 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
         self.progress.end()
 
 
-    def get_formatted_consensus_sequence_entry(self, key, sample_name, gene_callers_id):
-        """Gets a sample naem and gene callers id, returns a well-formatted dict for sequence
+    def get_formatted_consensus_sequence_entry(self, key, sample_name, sequence_name):
+        """Gets a sample name and gene callers id, returns a well-formatted dict for sequence
            entry using the `self.sequence_variants_in_samples_dict`.
 
            `key` must be unique string identifier."""
 
-        F = self.sequence_variants_in_samples_dict[sample_name][gene_callers_id]
+        F = self.sequence_variants_in_samples_dict[sample_name][sequence_name]
         return {'key': key,
                 'sample_name':  sample_name,
-                'gene_caller_id': gene_callers_id,
+                self.sequence_name_key: sequence_name,
                 'num_changes': F['num_changes'],
+                'in_pos_0': F['in_pos_0'],
                 'in_pos_1': F['in_pos_1'],
                 'in_pos_2': F['in_pos_2'],
                 'in_pos_3': F['in_pos_3'],
@@ -2183,8 +2257,8 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
         output_d = {}
         counter = 1
         for sample_name in self.sequence_variants_in_samples_dict:
-            for gene_callers_id in self.sequence_variants_in_samples_dict[sample_name]:
-                d = self.get_formatted_consensus_sequence_entry('e%.7d' % (counter), sample_name, gene_callers_id)
+            for sequence_name in self.sequence_variants_in_samples_dict[sample_name]:
+                d = self.get_formatted_consensus_sequence_entry('e%.7d' % (counter), sample_name, sequence_name)
                 counter += 1
 
                 if self.tab_delimited_output:
@@ -2192,15 +2266,16 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
                 else:
                     key = '|'.join([d['key'],
                                     'sample_name:%s' % d['sample_name'],
-                                    'gene_caller_id:%d' % d['gene_caller_id'],
+                                    '{}:{}'.format(self.sequence_name_key, d[self.sequence_name_key]),
                                     'num_changes:%s' % d['num_changes'],
+                                    'in_pos_0:%d' % d['in_pos_0'],
                                     'in_pos_1:%d' % d['in_pos_1'],
                                     'in_pos_2:%d' % d['in_pos_2'],
                                     'in_pos_3:%d' % d['in_pos_3']])
                     output_d[key] = d['sequence']
 
         if self.tab_delimited_output:
-            utils.store_dict_as_TAB_delimited_file(output_d, self.output_file_path, headers=['entry_id', 'sample_name', 'gene_caller_id', 'num_changes', 'in_pos_1', 'in_pos_2', 'in_pos_3', 'sequence'])
+            utils.store_dict_as_TAB_delimited_file(output_d, self.output_file_path, headers=['entry_id', 'sample_name', self.sequence_name_key, 'num_changes', 'in_pos_0', 'in_pos_1', 'in_pos_2', 'in_pos_3', 'sequence'])
         else:
             utils.store_dict_as_FASTA_file(output_d, self.output_file_path)
 
@@ -2299,17 +2374,18 @@ class VariabilityNetwork:
 
 
 class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
-    def __init__(self, args={}, p=progress, r=run):
+    def __init__(self, args={}, p=progress, r=run, dont_process=False):
         self.progress = p
         self.run = r
 
         self.args = args
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        self.columns_to_load = A('columns_to_load', list)
         self.variability_table_path = A('variability_profile', str)
         self.engine = A('engine', str)
 
         if not self.variability_table_path:
-            raise ConfigError("You must declare a variability table filepath.")
+            raise ConfigError("VariabilityData :: You must declare a variability table filepath.")
 
         # determine the engine type of the variability table
         inferred_engine = utils.get_variability_table_engine_type(self.variability_table_path)
@@ -2330,6 +2406,16 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         else:
             pass
 
+        if not dont_process:
+            self.process_external_table()
+
+
+    def load_data(self):
+        """load the variability data (output of anvi-gen-variabliity-profile)"""
+        self.data = pd.read_csv(self.variability_table_path, sep="\t", usecols=self.columns_to_load)
+
+
+    def process_external_table(self):
         # load the data
         self.load_data()
 
@@ -2344,11 +2430,6 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
             self.load_structure_data()
 
         self.init_commons()
-
-
-    def load_data(self):
-        """load the variability data (output of anvi-gen-variabliity-profile)"""
-        self.data = pd.read_csv(self.variability_table_path, sep="\t")
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}

@@ -101,19 +101,8 @@ if number_of_assemblers_in_config_file > 1:
                         "software, yet all the following software are " \
                         "included in your config file: %s. Please include only one." % assembly_software_in_config)
 
-# loading the samples.txt file
-# The default samples file is samples.txt
-samples_txt_file = M.get_param_value_from_config(['samples_txt'])
-# getting the samples information (names, [group], path to r1, path to r2) from samples.txt
-samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
-
-# FIXME: sanity check of every input file should be done in the backend, and not in
-#        the snakemake recipe.
-if 'sample' not in samples_information.columns.values:
-    raise ConfigError("You know what. This '%s' file does not look anything like\
-                       a samples file." % samples_txt_file)
 # get a list of the sample names
-sample_names = list(samples_information['sample'])
+sample_names = list(M.samples_information['sample'])
 
 references_mode = M.get_param_value_from_config('references_mode', repress_default=True)
 fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
@@ -136,12 +125,12 @@ if fasta_txt_file and not references_mode:
                    fasta_txt" % fasta_txt_file)
 
 # Collecting information regarding groups.
-if "group" in samples_information.columns:
+if "group" in M.samples_information.columns:
     # if groups were specified then members of a groups will be co-assembled.
-    group_names = list(samples_information['group'].unique())
+    group_names = list(M.samples_information['group'].unique())
     # creating a dictionary with groups as keys and number of samples in
     # the groups as values
-    group_sizes = samples_information['group'].value_counts().to_dict()
+    group_sizes = M.samples_information['group'].value_counts().to_dict()
 
     if references_mode:
         # sanity check to see that groups specified in samples.txt match
@@ -174,7 +163,7 @@ else:
         run.warning("No groups were specified in your samples_txt. This is fine.\
                      But we thought you should know. Any assembly will be performed\
                      on individual samples (i.e. NO co-assembly).")
-        samples_information['group'] = samples_information['sample']
+        M.samples_information['group'] = M.samples_information['sample']
         group_names = list(sample_names)
         group_sizes = dict.fromkeys(group_names,1)
 
@@ -200,6 +189,8 @@ run_qc = M.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == 
 
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True
 
+run_krakenhll = M.get_param_value_from_config(['krakenhll', 'run']) == True
+
 run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
 run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
@@ -214,6 +205,8 @@ if not references_mode and not (run_idba_ud or run_megahit):
                        \"name-of-your-fasta-txt-file\"' to your config file. Otherwise,\
                        if you do mean to use assembly, please set 'run: true' for one of the,\
                        following available assemblers: %s" % ', '.join(available_assemblers))
+
+ruleorder: import_percent_of_reads_mapped > import_kraken_hll_taxonomy
 
 rule metagenomics_workflow_target_rule:
     '''
@@ -237,7 +230,7 @@ rule iu_gen_configs:
     log: dirs_dict["LOGS_DIR"] + "/iu_gen_configs.log"
     # the input file is marked as 'ancient' so snakemake wouldn't run it
     # just because a new path-to-raw-fastq-files.txt file was created.
-    input: ancient(samples_txt_file)
+    input: ancient(M.get_param_value_from_config(['samples_txt']))
     output: expand("{DIR}/{sample}.ini", DIR=dirs_dict["QC_DIR"], sample=sample_names)
     params:
         dir=dirs_dict["QC_DIR"],
@@ -250,8 +243,8 @@ rule iu_gen_configs:
 
 def get_raw_fastq(wildcards):
     ''' return a dict with the path to the raw fastq files'''
-    r1 = list(samples_information[samples_information["sample"] == wildcards.sample]['r1'])[0].split(',')
-    r2 = list(samples_information[samples_information["sample"] == wildcards.sample]['r2'])[0].split(',')
+    r1 = list(M.samples_information[M.samples_information["sample"] == wildcards.sample]['r1'])[0].split(',')
+    r2 = list(M.samples_information[M.samples_information["sample"] == wildcards.sample]['r2'])[0].split(',')
     return {'r1': r1, 'r2': r2}
 
 
@@ -435,7 +428,7 @@ rule fq2fa:
 rule merge_fastas_for_co_assembly:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log"
-    input: lambda wildcards: expand("{DIR}/{sample}-merged-reads.fa", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
+    input: lambda wildcards: expand("{DIR}/{sample}-merged-reads.fa", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
     output: temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa")
     threads: M.T('merge_fastas_for_co_assembly')
     resources: nodes = M.T('merge_fastas_for_co_assembly')
@@ -512,15 +505,15 @@ def input_for_megahit(wildcards):
     if run_qc:
         # by default, use the output of the qc
         if run_gzip_fastqs:
-            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
-            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
+            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
+            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
         else:
-            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
-            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=list(samples_information[samples_information["group"] == wildcards.group]["sample"]))
+            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
+            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
         d = {'r1': r1, 'r2': r2}
     else:
-        r1 = list(samples_information[samples_information["group"] == wildcards.group]['r1'])
-        r2 = list(samples_information[samples_information["group"] == wildcards.group]['r2'])
+        r1 = list(M.samples_information[M.samples_information["group"] == wildcards.group]['r1'])
+        r2 = list(M.samples_information[M.samples_information["group"] == wildcards.group]['r2'])
     return {'r1': r1, 'r2': r2}
 
 
@@ -751,31 +744,31 @@ def input_for_anvi_merge(wildcards):
     if M.get_param_value_from_config(['all_against_all']):
         # If the user specified 'all against all' in the configs file
         # the end product would be a merge of all samples per group
-        profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(samples_information['sample']), group=wildcards.group)
+        profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(M.samples_information['sample']), group=wildcards.group)
 
     else:
         # The default behaviour is to only merge (and hence map and profile)
         # together samples that belong to the same group.
-        profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(samples_information[samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
+        profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(M.samples_information[M.samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
 
     return profiles
 
 
-def percent_of_reads_mapped_imported_flag_input(wildcards):
+def configure_flag_files_for_anvi_merge_optional_inputs(wildcards, flag_file_name, run_flag):
     '''
         this function creates the input to anvi_merge rule with
         regards to percent_of_reads_mapped_imported_flag_input.
     '''
     if M.get_param_value_from_config(['all_against_all']):
-        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(samples_information['sample']), group=wildcards.group)
+        flag_files = expand(os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}", flag_file_name), sample=list(M.samples_information['sample']), group=wildcards.group)
 
     else:
-        percent_of_reads_mapped_imported_flag = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done", sample=list(samples_information[samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
+        flag_files = expand(os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}", flag_file_name), sample=list(M.samples_information[M.samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
 
-    if not run_import_percent_of_reads_mapped:
-        percent_of_reads_mapped_imported_flag = ancient(dirs_dict["CONTIGS_DIR"] + "/%s-contigs.db" % wildcards.group)
+    if not run_flag:
+        flag_files = ancient(dirs_dict["CONTIGS_DIR"] + "/%s-contigs.db" % wildcards.group)
 
-    return percent_of_reads_mapped_imported_flag
+    return flag_files
 
 
 def create_fake_output_files(_message, output):
@@ -833,7 +826,8 @@ rule anvi_merge:
         # marking the contigs.db as ancient in order to ignore timestamps.
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         profiles = input_for_anvi_merge,
-        percent_of_reads_mapped_imported_flag = percent_of_reads_mapped_imported_flag_input
+        percent_of_reads_mapped_imported_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, 'import_percent_of_reads_mapped.done', run_import_percent_of_reads_mapped),
+        kraken_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, "import_kraken_hll_taxonomy.done", run_krakenhll)
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
         runlog = dirs_dict["MERGE_DIR"] + "/{group}/RUNLOG.txt"
@@ -906,14 +900,97 @@ rule anvi_merge:
         else:
             shell("anvi-merge {input.profiles} -o {params.output_dir} -c {input.contigs} \
                    {params.sample_name} {params.skip_concoct_binning} \
-                   {params.overwrite_output_destinations} >> {log} 2>&1")
+                   {params.overwrite_output_destinations} {params.description} \
+                   {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering} \
+                   {params.distance} {params.linkage} >> {log} 2>&1")
+
+
+rule krakenhll:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{sample}-krakenhll.log"
+    input: unpack(get_fastq)
+    output: os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", "{sample}.krakenhll")
+    params:
+        db = M.get_rule_param("krakenhll", "--db"),
+        gzip_compressed = M.get_rule_param("krakenhll", "--gzip-compressed"),
+        additional_params = M.get_param_value_from_config(["krakenhll", "additional_params"])
+    threads: M.T('krakenhll')
+    resources: nodes = M.T('krakenhll')
+    shell: " >> {log} 2>&1"
+        """
+            krakenhll \
+                     {params.db} \
+                     --threads {threads} \
+                     --fastq-input \
+                     {params.gzip_compressed} \
+                     --paired \
+                     --output {output} \
+                     {input.r1} \
+                     {input.r2} \
+                     {params.additional_params}
+        """
+
+
+rule krakenhll_mpa_report:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{sample}-krakenhll_mpa_report.log"
+    input: os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", "{sample}.krakenhll")
+    # TODO: do we need to keep the krakenhll_tax files or should they be temp files?
+    # If we don't keep them, then we can just get rid of the TAXONOMY_DIR and make this into a shadow rule
+    output: os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", "{sample}.krakenhll_tax")
+    # FIXME: I need to see if more params should be available for krakenhll_mpa_report
+    params: db = M.get_rule_param("krakenhll", "--db")
+    threads: M.T('krakenhll_mpa_report')
+    resources: nodes = M.T('krakenhll_mpa_report')
+    shell:
+        """
+            krakenhll-mpa-report {params.db} \
+                                 --header-line {input} \
+                                 > {output}
+        """
+
+
+def input_for_import_kraken_hll_taxonomy(wildcards):
+    ''' configure input for import_percent_of_reads_mapped.'''
+    D = {}
+    if M.kraken_annotation_dict:
+        # if the user supplied a file with kraken annotations then use it
+        D['krakenhll_tax'] = M.kraken_annotation_dict[wildcards.sample]['path']
+    else:
+        # if the user didn't provide a file, then annotation needs to run
+        D['krakenhll_tax'] = os.path.join(dirs_dict["TAXONOMY_DIR"], "KRAKEN_HLL", wildcards.sample + ".krakenhll_tax")
+
+    if run_import_percent_of_reads_mapped:
+        # we include percent_of_reads_mapped_imported_flag as input here so that kraken and import_percent_of_reads_mapped will never run in parallel.
+        # If they run in parallel it could cause trouble as they will try to write to the contigs database at the same time. very bad.
+        D['percent_of_reads_mapped_imported_flag'] = os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.sample, "import_percent_of_reads_mapped.done"),
+    return D
+
+
+rule import_kraken_hll_taxonomy:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_kraken_hll_taxonomy.log"
+    input:
+        unpack(input_for_import_kraken_hll_taxonomy),
+        profile = ancient(os.path.join(dirs_dict["PROFILE_DIR"], "{group}", "{sample}", "PROFILE.db"))
+    output: touch(os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}/import_kraken_hll_taxonomy.done"))
+    params: min_abundance = M.get_rule_param('import_kraken_hll_taxonomy', '--min-abundance')
+    threads: M.T('import_kraken_hll_taxonomy')
+    resources: nodes = M.T('import_kraken_hll_taxonomy')
+    shell:
+        """
+            anvi-import-taxonomy-for-layers -p {input.profile} \
+                                            -i {input.krakenhll_tax} \
+                                            --parser kraken_hll \
+                                            {params.min_abundance} >> {log} 2>&1
+        """
 
 
 rule import_percent_of_reads_mapped:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_percent_of_reads_mapped.log"
     input:
-        profile = rules.anvi_profile.output.profile
+        profile = ancient(os.path.join(dirs_dict["PROFILE_DIR"], "{group}", "{sample}", "PROFILE.db"))
     output:
         flag = touch(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done"),
         total_num_reads_txt = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/total-num-reads.txt"),
@@ -952,27 +1029,35 @@ rule import_percent_of_reads_mapped:
                     anvi-import-misc-data {output.total_num_reads_txt} \
                                           -p {input.profile} \
                                           -t layers \
-                                          --just-do-it
+                                          --just-do-it >> {log} 2>&1
 
                     # get the layers additional data table, which has two columns
                     # now.
                     anvi-export-misc-data -p {input.profile} \
                                           -t layers \
-                                          -o {output.layers_additional_data}
+                                          -o {output.layers_additional_data} >> {log} 2>&1
+                  """)
 
-                    # do an awk one-liner to add a third column, 'percent mapped'.
-                    awk '{{if(NR==1) \
-                             {{print $0 "\tpercent_mapped"}} \
-                          else \
-                              {{print $0 "\t" ($2 * 100 / $4)}}}}' \
-                        {output.layers_additional_data} > {output.layers_additional_data_updated}
+            additional_data = pd.read_csv(output.layers_additional_data, sep='\t', index_col=None)
+            if 'total_reads_mapped' not in additional_data.columns:
+                raise ConfigError('The layers additional data for %s doesn\'t contain a column \
+                                   "total_reads_mapped". This is really weird, and we cannot \
+                                   think of why this happened (maybe you deleted it somehow?). \
+                                   Feel free to contact an anvio developer in order to troubleshoot \
+                                   this. Otherwise, if you wish to continue, you can just skip this \
+                                   step by setting the "run" parameter for the rule import_percent_of_reads_mapped \
+                                   to "false".' % input.profile)
 
+            additional_data['percent_mapped'] = 100 * additional_data['total_reads_mapped'] / additional_data['total_num_reads']
+            additional_data.to_csv(output.layers_additional_data_updated, sep='\t', index=False)
+
+            shell("""
                     # import the new file with three columns
                     anvi-import-misc-data {output.layers_additional_data_updated} \
                                           -p {input.profile} \
                                           -t layers \
-                                          --just-do-it
-                """)
+                                          --just-do-it >> {log} 2>&1
+                  """)
 
 if not slave_mode:
     # check if all program dependencies are met. for this line to be effective,

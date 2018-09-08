@@ -231,10 +231,10 @@ def gen_output_directory(output_directory, progress=Progress(verbose=False), run
 
     if os.path.exists(output_directory) and delete_if_exists and not is_dir_empty(output_directory):
         try:
-            run.warning('filesnpaths::gen_output_directory: the client asked the existing directory \
-                         "%s" to be removed.. Just so you know :/ (You have 5 seconds to press\
-                         CTRL + C).' % output_directory)
-            time.sleep(5)
+            run.warning('The existing directory "%s" is about to be removed... (You have \
+                         20 seconds to press CTRL + C). [filesnpaths::gen_output_directory]' % output_directory,
+                         header = '!!! READ THIS NOW !!!')
+            time.sleep(20)
             shutil.rmtree(output_directory)
         except:
             progress.end()

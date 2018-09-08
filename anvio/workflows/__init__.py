@@ -80,6 +80,7 @@ class WorkflowSuperClass:
         self.general_params = []
         self.default_config = {}
         self.rules_dependencies = {}
+        self.forbidden_params = {}
 
 
     def init(self):
@@ -256,6 +257,22 @@ class WorkflowSuperClass:
         return c
 
 
+    def check_additional_params(self, rule):
+        ''' Check if the user is trying to use additional_params to set a param that is hard coded'''
+        params = []
+        if 'additional_params' in self.config[rule].keys() and self.forbidden_params.get(rule):
+            # if the rule has 'additional_params' we need to make sure
+            # that the user didn't include forbidden params there as well
+            params = self.config[rule]['additional_params'].split(' ')
+
+            bad_params = [p for p in self.forbidden_params.get(rule) if p in params]
+            if bad_params:
+                raise ConfigError("You are not allowed to set the following parameter/s: \
+                                   %s for rule %s. These parameters are hard-coded. If you \
+                                   are confused or upset please refer to an anvi'o developer \
+                                   or a friend for support." % (', '.join(bad_params), rule))
+
+
     def check_rule_params(self):
         for rule in self.rules:
             if rule in self.config:
@@ -264,6 +281,8 @@ class WorkflowSuperClass:
                     raise ConfigError("some of the parameters in your config file for rule %s are not familiar to us. \
                                 Here is a list of the wrong parameters: %s. The only acceptable \
                                 parameters for this rule are %s." % (rule, wrong_params, self.rule_acceptable_params_dict[rule]))
+
+                self.check_additional_params(rule)
 
 
     def save_empty_config_in_json_format(self, file_path='empty_config.json'):
@@ -425,7 +444,7 @@ def B(config, _rule, _param, default=''):
         if isinstance(val, bool):
             # the param is a flag so no need for a value
             val = ''
-        return _param + ' ' + val
+        return _param + ' ' + str(val)
     else:
         return ''
 
