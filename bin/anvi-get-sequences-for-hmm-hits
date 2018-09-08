@@ -78,6 +78,11 @@ def main(args):
                                hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
                                is not that kind of a platform :/")
 
+    if args.concatenate_genes:
+        # test whether we know about the aligner early on
+        from anvio.drivers import Aligners
+        Aligners().select(args.align_with)
+
     if args.max_num_genes_missing_from_bin and not args.gene_names and not args.list_available_gene_names:
         raise ConfigError("You can only use --max-num-genes-missing-from-bin flag if you already know what gene names you are\
                            interested in (just to make sure you know what you are doing).")

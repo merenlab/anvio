@@ -62,7 +62,7 @@
         "run": "",
         "threads": ""
     },
-    "export_gene_calls": {
+    "anvi_get_sequences_for_gene_calls": {
         "threads": ""
     },
     "anvi_import_taxonomy": {
