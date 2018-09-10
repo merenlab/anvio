@@ -670,6 +670,7 @@ function drawSamplesLayers(settings) {
                     rect.setAttribute('sample-name', sample_name);
                     rect.setAttribute('sample-group', group);
                     rect.setAttribute('layer-name', samples_layer_name);
+                    rect.setAttribute('bar-name', bar_name);
 
                     offset = offset + size;
                 }
