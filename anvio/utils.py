@@ -1220,6 +1220,7 @@ def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
 
     return list_of_AAs
 
+
 def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict):
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call)
 

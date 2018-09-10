@@ -5,6 +5,7 @@ Calculates pN/pS, the metagenomic analogy of dN/dS
 Citations: doi:10.1038/nature11711, doi:10.7717/peerj.2959 (and references therein)
 """
 
+import os
 import sys
 import time
 import argparse
@@ -13,6 +14,11 @@ import numpy as np
 import pandas as pd
 
 import anvio
+
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.variabilityops import variability_engines, VariabilityData
@@ -27,7 +33,16 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 
 
+progress = terminal.Progress()
+run = terminal.Run()
+
+
 def calculate_pN_pS_ratio(args):
+
+    # load contigs db
+    filesnpaths.is_file_exists(args.contigs_db)
+    contigs_db = dbops.ContigsSuperclass(args, r=run, p=progress)
+    contigs_db.init_contig_sequences()
 
     var_dict = {}
     columns_to_keep = ['corresponding_gene_call', 'sample_id', 'engine']
@@ -40,10 +55,10 @@ def calculate_pN_pS_ratio(args):
         var = VariabilityData(args)
 
         # filter by departure_from_consensus
-        var.filter_data(criterion='departure_from_consensus', verbose=True)
+        var.filter_data(criterion='departure_from_consensus', verbose=False)
 
         # filter by departure_from_consensus
-        var.filter_data(criterion='coverage', verbose=True)
+        var.filter_data(criterion='coverage', verbose=False)
 
         # add label for engine
         var.data['engine'] = engine
@@ -60,30 +75,46 @@ def calculate_pN_pS_ratio(args):
     genes = df['corresponding_gene_call'].unique()
     samples = df['sample_id'].unique()
 
-    # creation of table
+    # creation of SAAV count table, sSCV count table, and SAAV_to_sSCV ratio table
     i = 0
-    start_time = time.time()
-    d = {sample: [] for sample in samples}
+    SAAV = {sample: [] for sample in samples}
+    sSCV = {sample: [] for sample in samples}
+    SAAV_to_sSCV = {sample: [] for sample in samples}
+    progress.new("Calculating SAAV and sSCV counts")
     for gene in genes:
-        # store this df because its used as many times as there are samples
-        temp1 = df[df['corresponding_gene_call'] == gene]
-
+        temp = df[df['corresponding_gene_call'] == gene]
         for sample in samples:
-            temp2 = temp1[temp1['sample_id'] == sample]
-            counts = temp2['engine'].value_counts()
+            counts = temp.loc[temp['sample_id'] == sample, 'engine'].value_counts()
 
+            SAAV[sample].append(counts.get('AA', 0))
+            sSCV[sample].append(counts.get('CDN', 0) - counts.get('AA', 0)) # fully synonymous only
             if counts.get('CDN', 0) < args.minimum_num_variants:
-                d[sample].append(np.nan)
+                SAAV_to_sSCV[sample].append(np.nan)
             else:
-                d[sample].append(counts.get('AA', 0) / (counts['CDN'] - counts.get('AA', 0)))
+                with np.errstate(divide='ignore'):
+                    SAAV_to_sSCV[sample].append(counts.get('AA', 0) / (counts['CDN'] - counts.get('AA', 0)))
 
         if i % 100 == 0:
-            print('Processed {} of {} genes. {}m{}s elapsed.'.format(i, len(genes), int((time.time()-start_time) // 60), int((time.time()-start_time) % 60)))
+            progress.update('Processed {} of {} genes.'.format(i, len(genes)))
         i += 1
+    progress.end()
 
-    d = pd.DataFrame(d)
-    d.index = genes
-    d.to_csv('fixme', sep="\t", index = True, index_label = "gene_callers_id")
+    # make tables dataframes
+    sSCV = pd.DataFrame(sSCV); sSCV.index = genes
+    SAAV = pd.DataFrame(SAAV); SAAV.index = genes
+    SAAV_to_sSCV = pd.DataFrame(SAAV_to_sSCV); SAAV_to_sSCV.index = genes
+
+    # calc potential synonymity for each gene
+    non_syn_potential, syn_potential = {}, {}
+    for gene in genes:
+        gene_call = contigs_db.genes_in_contigs_dict[gene]
+        codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
+        non_syn_potential[gene], syn_potential[gene] = utils.get_synonymous_and_non_synonymous_potential(sequences_dict[gene]['sequence'])
+
+    # write it to folder
+    SAAV_to_sSCV.to_csv(os.path.join(args.output, "pN_pS_ratio.txt"), sep="\t", index = True, index_label = "gene_callers_id")
+    sSCV.to_csv(os.path.join(args.output, "sSCV_counts.txt"), sep="\t", index = True, index_label = "gene_callers_id")
+    SAAV.to_csv(os.path.join(args.output, "SAAV_counts.txt"), sep="\t", index = True, index_label = "gene_callers_id")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extract information for variable positions')
@@ -103,7 +134,10 @@ if __name__ == '__main__':
                                                        achievement.')
 
     groupV.add_argument('-a', '--saav-table', help='Filepath to the SAAV table.')
-    groupV.add_argument('-c', '--scv-table', help='Filepath to the SCV table.')
+    groupV.add_argument('-b', '--scv-table', help='Filepath to the SCV table.')
+    groupV.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db',
+                                                     {'help':'Filepath to the contigs database used \
+                                                      to generate variability tables.'}))
     groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus',
                                                      {'default': 0.1, 'help': 'Variants (either SCVs or \
                                                        SAAVs) will be ignored if they have a departure \
