@@ -20,7 +20,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.variabilityops import variability_engines, VariabilityData
 
 
@@ -37,17 +37,13 @@ progress = terminal.Progress()
 run = terminal.Run()
 
 
-def calculate_pN_pS_ratio(args):
-
-    # load contigs db
-    filesnpaths.is_file_exists(args.contigs_db)
-    contigs_db = dbops.ContigsSuperclass(args, r=run, p=progress)
-    contigs_db.init_contig_sequences()
-
+def load_variability(args):
+    progress.new("Loading variability")
     var_dict = {}
     columns_to_keep = ['corresponding_gene_call', 'sample_id', 'engine']
     args.columns_to_load = ['corresponding_gene_call', 'sample_id', 'coverage', 'departure_from_consensus']
     for engine, table_path in {'AA': args.saav_table, 'CDN': args.scv_table}.items():
+        progress.update("Working on {}".format({'AA':'SAAVs', 'CDN':'SCVs'}[engine]))
 
         # init variability table as VariabilityData class object
         args.engine = engine
@@ -68,12 +64,44 @@ def calculate_pN_pS_ratio(args):
 
         var_dict[engine] = var
 
+    progress.update('Combining both engine data types')
     # concat the two engine-specific dataframes into a master dataframe
     df = pd.concat([var_dict['CDN'].data, var_dict['AA'].data], ignore_index=True)
 
+    progress.end()
+    return df
+
+
+def load_contigs_db(args):
+    filesnpaths.is_file_exists(args.contigs_db)
+    contigs_db = dbops.ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+    contigs_db.init_contig_sequences()
+    return contigs_db
+
+
+def report(args, pNpS, SAAV, sSCV):
+    # write it to folder
+    pNpS.to_csv(os.path.join(args.output_dir, "pN_pS_ratio.txt"), sep="\t", index = True, index_label = "gene_callers_id")
+    sSCV.to_csv(os.path.join(args.output_dir, "sSCV_counts.txt"), sep="\t", index = True, index_label = "gene_callers_id")
+    SAAV.to_csv(os.path.join(args.output_dir, "SAAV_counts.txt"), sep="\t", index = True, index_label = "gene_callers_id")
+
+    run.info_single("Done! Contents have been output to the directory '{}'.".format(args.output_dir),
+                    nl_before=1,
+                    nl_after=1)
+
+
+def calculate_pN_pS_ratio(args):
+    # gen output
+    filesnpaths.check_output_directory(args.output_dir)
+    filesnpaths.gen_output_directory(args.output_dir)
+
+    # load contigs db and variability tables
+    contigs_db = load_contigs_db(args)
+    var_dataframe = load_variability(args)
+
     # only genes and samples that are have at least one SCV / SAAV are known to the program
-    genes = df['corresponding_gene_call'].unique()
-    samples = df['sample_id'].unique()
+    genes = var_dataframe['corresponding_gene_call'].unique()
+    samples = var_dataframe['sample_id'].unique()
 
     # creation of SAAV count table, sSCV count table, and SAAV_to_sSCV ratio table
     i = 0
@@ -82,7 +110,7 @@ def calculate_pN_pS_ratio(args):
     SAAV_to_sSCV = {sample: [] for sample in samples}
     progress.new("Calculating SAAV and sSCV counts")
     for gene in genes:
-        temp = df[df['corresponding_gene_call'] == gene]
+        temp = var_dataframe[var_dataframe['corresponding_gene_call'] == gene]
         for sample in samples:
             counts = temp.loc[temp['sample_id'] == sample, 'engine'].value_counts()
 
@@ -105,16 +133,18 @@ def calculate_pN_pS_ratio(args):
     SAAV_to_sSCV = pd.DataFrame(SAAV_to_sSCV); SAAV_to_sSCV.index = genes
 
     # calc potential synonymity for each gene
-    non_syn_potential, syn_potential = {}, {}
-    for gene in genes:
+    potential_synonymity_ratio = np.zeros(len(genes))
+    for i, gene in enumerate(genes):
         gene_call = contigs_db.genes_in_contigs_dict[gene]
         codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
-        non_syn_potential[gene], syn_potential[gene] = utils.get_synonymous_and_non_synonymous_potential(sequences_dict[gene]['sequence'])
+        syn_potential, non_syn_potential = utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene)
+        potential_synonymity_ratio[i] = syn_potential / non_syn_potential
 
-    # write it to folder
-    SAAV_to_sSCV.to_csv(os.path.join(args.output, "pN_pS_ratio.txt"), sep="\t", index = True, index_label = "gene_callers_id")
-    sSCV.to_csv(os.path.join(args.output, "sSCV_counts.txt"), sep="\t", index = True, index_label = "gene_callers_id")
-    SAAV.to_csv(os.path.join(args.output, "SAAV_counts.txt"), sep="\t", index = True, index_label = "gene_callers_id")
+    # normalize the SAAV_to_sSCV ratio by the potential synonymity ratio to make pN/pS
+    pNpS = SAAV_to_sSCV.multiply(potential_synonymity_ratio, axis=0)
+
+    report(args, pNpS, SAAV, sSCV)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extract information for variable positions')
@@ -129,6 +159,8 @@ if __name__ == '__main__':
                                                        use the same settings during both commands except \
                                                        for changing --engine AA to --engine CDN and the \
                                                        output filename.')
+    groupO = parser.add_argument_group('OUTPUT',      'The output of this program is a folder \
+                                                       directory with several tables.')
     groupE = parser.add_argument_group('TUNABLES',    'Successfully tune one or more of these \
                                                        parameters to unlock the "Advanced anvi\'an" \
                                                        achievement.')
@@ -155,12 +187,15 @@ if __name__ == '__main__':
                                                        help='If the coverage value at a codon \
                                                        is less than this amount, any SAAVs or SCVs \
                                                        associated with it will be ignored.')
-    groupE.add_argument('-o', '--output', required=True, help='Output filepath.')
+    groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required':True}))
 
     args = anvio.get_args(parser)
 
     try:
         calculate_pN_pS_ratio(args)
     except ConfigError as e:
+        print(e)
+        sys.exit(1)
+    except FilesNPathsError as e:
         print(e)
         sys.exit(1)

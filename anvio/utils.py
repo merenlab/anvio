@@ -862,6 +862,39 @@ def get_GC_content_for_sequence(sequence):
     return Composition(sequence).GC_content
 
 
+def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_it=False):
+    """
+    When calculating pN/pS or dN/dS, the number of variants classified as synonymous or non
+    synonymous need to be normalized by the sequence's potential for synonymous and
+    non-synonymous changes. That is calculated by mutating each position to the other 3
+    nucleotides and calculating whether the mutation is synonymous or non synonymous. Each
+    mutation gets a score of 1/3, since there are 3 possible mutations for each site. If the
+    sequence is of length L, the nonsynonymous and synonymous potentials sum to L.
+
+    list_of_codons_in_gene is a list of the codons as they appear in the gene sequence, e.g.
+    ['ATG', ..., 'TAG'], which can be generated from utils.get_list_of_codons_for_gene_call
+    """
+    if not any([list_of_codons_in_gene[-1] == x for x in ['TAG', 'TAA', 'TGA']]) and not just_do_it:
+        raise ConfigError("get_synonymous_and_non_synonymous_potential :: sequence does not end \
+                           with a stop codon and is therefore probably not what you want. If you \
+                           want to continue anyways, use the just_do_it flag")
+
+    synonymous_potential = 0
+    for codon in list_of_codons_in_gene:
+        for i, nt in enumerate(codon):
+            for mutant_nt in [m for m in 'ACGT' if m != nt]:
+
+                mutant_codon = list(codon)
+                mutant_codon[i] = mutant_nt
+                mutant_codon = ''.join(mutant_codon)
+
+                if constants.codon_to_AA[mutant_codon] == constants.codon_to_AA[codon]:
+                    synonymous_potential += 1/3
+
+    non_synonymous_potential = 3 * len(list_of_codons_in_gene) - synonymous_potential
+    return synonymous_potential, non_synonymous_potential
+
+
 def get_N50(contig_lengths):
     h, S = sum(contig_lengths) / 2.0, 0
 
