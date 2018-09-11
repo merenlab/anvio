@@ -214,10 +214,13 @@ function mouseMoveHandler(event) {
         var sample_name = event.target.getAttribute('sample-name');
         var sample_group = event.target.getAttribute('sample-group');
         var layer_name_hover = event.target.getAttribute('layer-name');
+        var stack_bar_name_hover = event.target.getAttribute('bar-name');
 
         var message = "";
         var layer_pos = 0;
         var layer_counter=0;
+        let layer_stackbar_pos = -1;
+
         for (var i=0; i < last_settings['samples-layer-order'].length; i++)
         {
             var layer_name = last_settings['samples-layer-order'][i]['layer_name'];
@@ -245,7 +248,16 @@ function mouseMoveHandler(event) {
                 for (let j = stack_names.length - 1; j >= 0; j--) {
                     let bar_name = stack_names[j];
                     let bar_pretty_name = bar_name.replace('Unknown_t_', '').replace('_', ' ');
-                    message += `<tr><td><div class="colorpicker" style="background-color: ${samples_stack_bar_colors[group][layer_name][bar_name]}"></div>&nbsp;${bar_pretty_name}</td><td style="white-space: nowrap;">${stack_items[j]}</td></tr>`;
+                    message += `<tr>
+                                    <td style="${(highlight_row && bar_name == stack_bar_name_hover) ? 'background-color: rgb(232, 202, 207);' : ''}">
+                                        <div class="colorpicker" style="background-color: ${samples_stack_bar_colors[group][layer_name][bar_name]}"></div>&nbsp;${bar_pretty_name}
+                                    </td>
+                                    <td style="white-space: nowrap; ${(highlight_row && bar_name == stack_bar_name_hover) ? 'background-color: rgb(232, 202, 207);' : ''}">${stack_items[j]}</td>
+                                </tr>`;
+
+                    if (highlight_row && bar_name == stack_bar_name_hover) {
+                        layer_stackbar_pos = stack_names.length - j;
+                    }         
                 }
                 message += '</table>';
             } else {
@@ -262,7 +274,8 @@ function mouseMoveHandler(event) {
         write_mouse_table(message, 
             sample_name, 
             (layer_name_hover.indexOf('!') > -1) ? layer_name_hover.split('!')[0] : layer_name_hover, 
-            layer_pos);
+            layer_pos,
+            layer_stackbar_pos);
 
         return;
     }
@@ -314,7 +327,7 @@ function mouseMoveHandler(event) {
 }
 
 
-function write_mouse_table(content, item_name, layer_name, layer_id) {
+function write_mouse_table(content, item_name, layer_name, layer_id, stackbar_layer_id) {
     $('#cell_item_name').html(item_name);
 
     if (layer_name && layer_name.length > 0) {
@@ -328,7 +341,14 @@ function write_mouse_table(content, item_name, layer_name, layer_id) {
     $('#tooltip_content').html(content);
 
     if ($('#tooltip_content').height() + 300 > $(window).height()) {
-        $('#mouse_hover_scroll').css('top', Math.min(0, ($(window).height()-300) / 2 + -1 * $('#tooltip_content tr').eq(layer_id).position()['top']));
+        let top = 0;
+        if (stackbar_layer_id && stackbar_layer_id > -1) {
+            top = $('#tooltip_content tr').eq(layer_id).find('tr').eq(stackbar_layer_id).position()['top'];
+        } else {
+            top = $('#tooltip_content tr').eq(layer_id).position()['top'];
+        }
+
+        $('#mouse_hover_scroll').css('top', Math.min(0, ($(window).height()-300) / 2 + -1 * top));
     } else {
         $('#mouse_hover_scroll').css('top', 0);
     } 
