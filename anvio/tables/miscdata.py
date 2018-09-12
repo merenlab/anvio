@@ -61,7 +61,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         self.nulls_per_type = {'str': '',
                                'int': 0,
                                'float': 0,
-                               'stackedbar': None,
+                               'stackedbar': 0,
                                'unknown': None}
 
 
@@ -352,7 +352,8 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                     if layer not in sum_stackbar_items[stackbar_name]:
                         sum_stackbar_items[stackbar_name][layer] = 0.0
 
-                    sum_stackbar_items[stackbar_name][layer] += float(additional_data_dict[layer][data_key])
+                    if additional_data_dict[layer][data_key]:
+                        sum_stackbar_items[stackbar_name][layer] += float(additional_data_dict[layer][data_key])
 
         for data_key in additional_data_keys:
             if '!' in data_key:
