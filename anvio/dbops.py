@@ -971,7 +971,7 @@ class PanSuperclass(object):
                               contigs database may differ from its DNA seqeunce. For those rare instances, the alignment summary for the amino acid\
                               sequence can no longer be used to make sense of the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for\
                               more informaiton). What needs to be done is to do another alignment on the fly. But as you probably already guessed,\
-                              anvi'o will not do that for you, and instad will report your DNA sequences for your genes in your gene clusters\
+                              anvi'o will not do that for you, and instead will report your DNA sequences for your genes in your gene clusters\
                               unaligned. If you really really think anvi'o should do it you have two options: if you are a member of the MerenLab,\
                               re-open and fix the issue #772. If you are not a member, then send us an e-mail.")
             skip_alignments = True
@@ -1027,11 +1027,12 @@ class PanSuperclass(object):
 
     def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([])):
         if gene_cluster_names is None:
-            self.run.warning('Anvi\'o compute_homogeneity_indices_for_gene_clusters did not receive any names of \
-            gene clusters to examine. It is likely that you (or the programmer) either did not provide proper gene \
-            cluster names, or provided them in an incorrect format. If you are sure that you have provided the \
-            gene cluster names correctly, then please contact a member of the Meren Lab. In the meanwhile, anvi\'o \
-            will not be computing homogeneity indices')
+            self.run.warning("Anvi'o compute_homogeneity_indices_for_gene_clusters did not receive any names of \
+                              gene clusters to examine. It is likely that you (or the programmer) either did not\
+                              provide proper gene cluster names, or provided them in an incorrect format. If you\
+                              are sure that you have provided the gene cluster names correctly, then please contact\
+                              a member of the MerenLab. In the meanwhile, anvi'o will not be computing homogeneity\
+                              indices")
             return None, None
 
         sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=False)
@@ -1040,9 +1041,34 @@ class PanSuperclass(object):
             self.run.warning('Performing quick homogeneity calculations (skipping horizontal geometric calculations)\
                               per the \'--quick-homogeneity\' flag')
         homogeneity_calculator = homogeneityindex.HomogeneityCalculator(sequences, quick_homogeneity=self.args.quick_homogeneity)
-        functional, geometric = homogeneity_calculator.compute_for_all_clusters()
+        functional, geometric = homogeneity_calculator.get_homogeneity_dicts()
 
         return functional, geometric
+
+
+    def write_gene_cluster_homogeneity_indices_to_file(self, functional_dict=None, geometric_dict=None, gene_cluster_names=set([]), \
+                                                        output_file_path=None):
+        if (functional_dict is None and geometric_dict is None) or gene_cluster_names is None:
+            raise ConfigError("Anvi'o write_gene_cluster_homogeneity_indices_to_file did not receive any homogeneity indices to write to a file. \
+                                This should not be happening under a normal workflow, because anvi'o does not call this function without computing \
+                                homogeneity indices first. Please take a look at your input and at any other messages from anvi'o to fix this problem. \
+                                (this is likely the result of gene cluster names that are not a part of the respective pangenome)")
+
+        if output_file_path:
+            filesnpaths.is_output_file_writable(output_file_path)
+
+        output_file = open(output_file_path, 'w')
+
+        self.progress.new('Writing gene cluster homogeneity indices to file')
+        output_file.write("Gene Cluster \t Functional \t Geometric\n")
+        for gene_cluster in gene_cluster_names:
+            output_file.write("%s \t %.2f \t\t %.2f\n" % (gene_cluster, functional_dict[gene_cluster], geometric_dict[gene_cluster]))
+
+        self.progress.end()
+        output_file.close()
+
+        self.run.info('Num gene clusters reported', len(gene_cluster_names))
+        self.run.info('Output file', output_file_path, mc='green')
 
 
     def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), \

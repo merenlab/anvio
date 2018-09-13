@@ -71,12 +71,8 @@ def main(args):
         raise ConfigError('The homogeneity index algorithm has probably alerted you that an error has occured. Please \
                            refer to that error to understand why this failed')
 
-    #check this last part
-    run.info_single("Gene Cluster \t Functional \t Geometric\n")
-    for gene_cluster in gene_cluster_ids:
-        run.info_single("%s \t %.2f \t\t %.2f" % (gene_cluster, functional[gene_cluster], geometric[gene_cluster]))
-
-    print()
+    pan.write_gene_cluster_homogeneity_indices_to_file(functional_dict = functional, geometric_dict = geometric, gene_cluster_names = gene_cluster_ids, \
+                                                        output_file_path=args.output_file)
 
 
 if __name__ == '__main__':
@@ -85,17 +81,21 @@ if __name__ == '__main__':
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+
+    groupB = parser.add_argument_group('OUTPUT', "You get to chose an output file name to report things. The default will be\
+                                       an ugly name. So, be explicit.")
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     
-    groupB = parser.add_argument_group('SELECTION', "Which gene clusters should be analyzed. You can ask for a single gene cluster,\
+    groupC = parser.add_argument_group('SELECTION', "Which gene clusters should be analyzed. You can ask for a single gene cluster,\
                                        or multiple ones listed in a file, or you can use a collection and bin name to list gene clusters\
                                        of interest.")
-    groupB.add_argument(*anvio.A('gene-cluster-id'), **anvio.K('gene-cluster-id'))
-    groupB.add_argument(*anvio.A('gene-cluster-ids-file'), **anvio.K('gene-cluster-ids-file'))
-    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupC.add_argument(*anvio.A('gene-cluster-id'), **anvio.K('gene-cluster-id'))
+    groupC.add_argument(*anvio.A('gene-cluster-ids-file'), **anvio.K('gene-cluster-ids-file'))
+    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
 
-    groupC = parser.add_argument_group('Optional Parameters',"Optional stuff available for you to use")
-    groupC.add_argument('--quick-homogeneity',default=False, action='store_true', dest='quick_homogeneity',help="By default, anvi'o will use a homogeneity\
+    groupD = parser.add_argument_group('Optional Parameters',"Optional stuff available for you to use")
+    groupD.add_argument('--quick-homogeneity',default=False, action='store_true', dest='quick_homogeneity',help="By default, anvi'o will use a homogeneity\
                         algorithm that checks for horizontal and vertical geometric homogeneity (along with functional). With this\
                         flag, you can tell anvi'o to skip horizontal geometric homogeneity calculations. It will be less accurate but quicker.")
 
