@@ -2313,10 +2313,6 @@ function processState(state_name, state) {
         }
     }
 
-    if (state.hasOwnProperty('samples-order') && $(`#samples_order option[value='${state['samples-order']}']`).length > 0) {
-        $('#samples_order').val(state['samples-order']).trigger('change');
-    }
-
     buildLayersTable(layer_order, views[current_view]);
     buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
 
@@ -2331,6 +2327,11 @@ function processState(state_name, state) {
     }
 
     toggleSampleGroups();
+
+    if (state.hasOwnProperty('samples-order') && $(`#samples_order option[value='${state['samples-order']}']`).length > 0) {
+        $('#samples_order').val(state['samples-order']).trigger('change');
+    }
+
     buildLegendTables();
 
     current_state_name = state_name;
