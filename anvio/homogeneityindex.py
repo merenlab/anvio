@@ -146,8 +146,7 @@ class HomogeneityCalculator(object):
                 if col == counter:
                     continue
                 diff = bin(binary_matrix_by_residue[col] ^ binary_matrix_by_residue[counter])[2:].zfill(num_genes)
-                number_of_similarities = len([similarities for similarities in diff[-num_genes:]\
-                                             if similarities=='0'])
+                number_of_similarities = diff[-num_genes:].count('0')
                 #Let's explain what happened - we converted diff into a binary number. .zfill ensured that we have the sufficient number of digits.
                 #This line of code creates an array - similariies - containing all of the digits that are 0 (equal to each other in the ^ expresson)
                 #number_of_similarities is the length of that array - effectively, the number of 0s in the binary number
@@ -168,8 +167,7 @@ class HomogeneityCalculator(object):
                 if gene == counter:
                     continue
                 diff = bin(binary_matrix_by_gene[gene] ^ binary_matrix_by_gene[counter])[2:].zfill(num_residues)
-                number_of_similarities = len([similarities for similarities in diff[-num_residues:]\
-                             if similarities=='0'])
+                number_of_similarities = diff[-num_residues:].count('0')
                 differences.append(number_of_similarities / num_residues)
             gene_uniformity.append(sum(differences) / len(differences))
 
