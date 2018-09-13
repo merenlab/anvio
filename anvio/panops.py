@@ -582,11 +582,11 @@ class Pangenome(object):
             self.run.warning('Skipping homogeneity calculations per the \'--skip-homogeneity\' flag')
             return
         
-        self.progress.new('Gene cluster homogeneity') #I don't know why this doesn't work
-        self.progress.update('Computing homogeneity for all gene clusters')
         pan_gene_clusters = dbops.PanSuperclass(args = self.args)
         names = set(list(gene_clusters_dict.keys()))
 
+        self.progress.new('Gene cluster homogeneity') #I don't know why this doesn't work
+        self.progress.update('Computing homogeneity for all gene clusters')
         functional, geometric = pan_gene_clusters.compute_homogeneity_indices_for_gene_clusters(names)
 
         for gene_cluster in names:

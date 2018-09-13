@@ -44,9 +44,11 @@ residue_id['B'] = 'B'
 residue_id['Z'] = 'Z'
 residue_id['J'] = 'J'
 
+
 def is_conserved(r1, r2):
     group = residue_id[r1]
     conserved_group = conserved_groups[group]
+
     if r2 in conserved_group:
         return True
     if group == 'Polar and Nonpolar': #they fall in more than one group, multiple tests needed
@@ -55,6 +57,7 @@ def is_conserved(r1, r2):
         if r1 == 'Y' and (r2 in conserved_groups['Aromatic']):
             return True
     return False
+
 
 class HomogeneityCalculator(object):
     def __init__(self, gene_clusters_dict, quick_homogeneity=False):
@@ -128,6 +131,7 @@ class HomogeneityCalculator(object):
         #now we have an array of binary numbers that represent the gap-residue pattern of each column
 
 
+    @profile
     def compute_geometric_index(self, gene_cluster_sequences, quick_homogeneity=False): 
         num_genes = len(gene_cluster_sequences)
         if num_genes == 1:
@@ -143,11 +147,12 @@ class HomogeneityCalculator(object):
                 if col == counter:
                     continue
                 diff = grid[col] ^ grid[counter]
-                runsum = 0
-                for i in range(num_genes):
-                    if abs(diff) % 2 == 0:
-                        runsum += 1
-                    diff = diff >> 1
+                runsum = len([ones for ones in bin(diff).zfill(num_genes)[-num_genes:] if ones=='0'])
+                #runsum = 0
+                #for i in range(num_genes):
+                #    if abs(diff) % 2 == 0:
+                #        runsum += 1
+                #    diff = diff >> 1
                 differences.append(runsum / num_genes)
             residue_uniformity.append(sum(differences) / len(differences))
         
@@ -155,6 +160,7 @@ class HomogeneityCalculator(object):
 
         if quick_homogeneity:
             return by_residue
+
         grid2 = self.label_gaps(gene_cluster_sequences, bygene=True)
         length = len(grid2)
         gene_uniformity = []
@@ -165,11 +171,12 @@ class HomogeneityCalculator(object):
                 if gene == counter:
                     continue
                 diff = grid2[gene] ^ grid2[counter]
-                runsum = 0
-                for i in range(len(gene_cluster_sequences[0])):
-                    if abs(diff) % 2 == 0:
-                        runsum += 1
-                    diff = diff >> 1
+                runsum = len([ones for ones in bin(diff).zfill(len(grid))[-len(grid):] if ones=='0'])
+                #runsum = 0
+                #for i in range(len(gene_cluster_sequences[0])):
+                #    if abs(diff) % 2 == 0:
+                #        runsum += 1
+                #    diff = diff >> 1
                 differences.append(runsum / len(grid))
             gene_uniformity.append(sum(differences) / len(differences))
 
@@ -179,20 +186,20 @@ class HomogeneityCalculator(object):
         return index
 
 
-    def compute_for_all_clusters(self):
-        cluster_sequences = []
-        sequences = self.gene_clusters_dict
-        quick_homogeneity = self.quick_homogeneity
+    def get_homogeneity_dicts(self):
+        """desc"""
 
-        for gene_cluster in sequences:
-            genes_in_cluster = sequences[gene_cluster]
-            for name in genes_in_cluster:
-                genes = genes_in_cluster[name]
-                for gene in genes:
-                    cluster_sequences.append(genes[gene])
-            self.functional[gene_cluster] = self.compute_functional_index(cluster_sequences)
-            self.geometric[gene_cluster] = self.compute_geometric_index(cluster_sequences, quick_homogeneity)
-            #self.cluster_sizes[gene_cluster] = len(cluster_sequences)
+        for gene_cluster in self.gene_clusters_dict:
             cluster_sequences = []
+            genes_in_cluster = self.gene_clusters_dict[gene_cluster]
+
+            for genome_name in genes_in_cluster:
+                gene_caller_ids = genes_in_cluster[genome_name]
+                for gene_caller_id in gene_caller_ids:
+                    cluster_sequences.append(gene_caller_ids[gene_caller_id])
+
+            self.functional[gene_cluster] = self.compute_functional_index(cluster_sequences)
+            self.geometric[gene_cluster] = self.compute_geometric_index(cluster_sequences, self.quick_homogeneity)
+            #self.cluster_sizes[gene_cluster] = len(cluster_sequences)
         
         return self.functional, self.geometric
