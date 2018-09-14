@@ -102,7 +102,6 @@ if __name__ == '__main__':
                         flag, you can tell anvi'o to skip horizontal geometric homogeneity calculations. It will be less accurate but quicker.")
     groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
-    #consider providing an output set of selections
     args = anvio.get_args(parser)
 
     try:
