@@ -71,6 +71,8 @@ def main(args):
         raise ConfigError('The homogeneity index algorithm has probably alerted you that an error has occured. Please \
                            refer to that error to understand why this failed')
 
+    if args.output_file is None:
+        args.output_file = 'an-ugly-default-file-name-because-user-did-not-use-the-output-file-path-parameter.txt'
     pan.write_gene_cluster_homogeneity_indices_to_file(functional_dict = functional, geometric_dict = geometric, gene_cluster_names = gene_cluster_ids, \
                                                         output_file_path=args.output_file)
 

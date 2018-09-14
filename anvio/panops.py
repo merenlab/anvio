@@ -576,7 +576,7 @@ class Pangenome(object):
 
     def populate_gene_cluster_homogeneity_index(self, gene_clusters_dict):
         if self.skip_alignments:
-            self.run.warning('Skipping homogeneity calculations because clusters are not alligned.')
+            self.run.warning('Skipping homogeneity calculations because gene clusters are not alligned.')
             return
         elif self.skip_homogeneity:
             self.run.warning('Skipping homogeneity calculations per the \'--skip-homogeneity\' flag')
@@ -585,15 +585,14 @@ class Pangenome(object):
         pan_gene_clusters = dbops.PanSuperclass(args = self.args)
         names = set(list(gene_clusters_dict.keys()))
 
-        self.progress.new('Gene cluster homogeneity') #I don't know why this doesn't work
-        self.progress.update('Computing homogeneity for all gene clusters')
-        functional, geometric = pan_gene_clusters.compute_homogeneity_indices_for_gene_clusters(names)
+        functional, geometric = pan_gene_clusters.compute_homogeneity_indices_for_gene_clusters(names, self.num_threads)
+
+        if functional is None and geometric is None:
+            return
 
         for gene_cluster in names:
             self.additional_view_data[gene_cluster]['Functional Homogeneity Index'] = functional[gene_cluster]
             self.additional_view_data[gene_cluster]['Geometric Homogeneity Index'] = geometric[gene_cluster]
-        
-        self.progress.end()
          
         miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Functional Homogeneity Index'], skip_check_names=True)
         miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Geometric Homogeneity Index'], skip_check_names=True)

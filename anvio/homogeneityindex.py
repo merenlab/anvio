@@ -1,66 +1,27 @@
+# -*- coding: utf-8
+# pylint: disable=line-too-long
 """
-homogeneityindex.py: code for determining homogeneity indices
-
-The Homogeneity Indices calculate the relative homogeneity of all of the genomes in each gene cluster.
-It is divided into functional and geometric homogeneity.
-
-Author: Mahmoud Yousef
+    A class to compute homogeneity indices for a dictionary of gene clusters using a novel algorithm
 """
 
-conserved_amino_acid_groups = {
-    'Nonpolar': ['L','V','I','M','C','H','A'],
-    'Aromatic': ['F','W','Y'],
-    'Bases': ['K','R','H'],
-    'Neutral Amines': ['Q, N'],
-    'Acids': ['D','E'],
-    'Polar and Nonpolar': ['H','Y'],
-    'Mostly nonpolar': ['S','T'],
-    'B': ['B','N','D'],
-    'Z': ['Z','Q','E'],
-    'J': ['J','L','I'],
-    'None': []
-}
+import anvio
 
-amino_acid_property_group = {}
-for key in ['A','I','L','V','M','C']:
-    amino_acid_property_group[key] = 'Nonpolar'
-for key in ['F','W']:
-    amino_acid_property_group[key] = 'Aromatic'
-for key in ['K','R']:
-    amino_acid_property_group[key] = 'Bases'
-for key in ['Q', 'N']:
-    amino_acid_property_group[key] = 'Neutral Amines'
-for key in ['D','E']:
-    amino_acid_property_group[key] = 'Acids'
-for key in ['H','Y']:
-    amino_acid_property_group[key] = 'Polar and Nonpolar'
-for key in ['S','T']:
-    amino_acid_property_group[key] = 'Mostly nonpolar'
-for key in ['G','P','X']:
-    amino_acid_property_group[key] = 'None'
-amino_acid_property_group['B'] = 'B'
-amino_acid_property_group['Z'] = 'Z'
-amino_acid_property_group['J'] = 'J'
+import anvio.utils as utils
+import anvio.terminal as terminal
 
-
-def is_amino_acid_functionally_conserved(amino_acid_residue_1, amino_acid_residue_2):
-    group = amino_acid_property_group[amino_acid_residue_1]
-    conserved_group = conserved_amino_acid_groups[group]
-
-    if amino_acid_residue_2 in conserved_group:
-        return True
-    if group == 'Polar and Nonpolar': #they fall in more than one group, multiple tests needed
-        if amino_acid_residue_1 == 'H' and (amino_acid_residue_2 in conserved_amino_acid_groups['Nonpolar'] \
-                                            or amino_acid_residue_2 in conserved_amino_acid_groups['Bases']):
-            return True
-        if amino_acid_residue_1 == 'Y' and (amino_acid_residue_2 in conserved_amino_acid_groups['Aromatic']):
-            return True
-    return False
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
 
 
 class HomogeneityCalculator(object):
-    def __init__(self, gene_clusters_dict, quick_homogeneity=False):
-        self.gene_clusters_dict = gene_clusters_dict
+    def __init__(self, quick_homogeneity=False):
+        self.run = terminal.Run()
+        self.progress = terminal.Progress()
         self.quick_homogeneity = quick_homogeneity
         self.functional = {}
         self.geometric = {}
@@ -72,7 +33,11 @@ class HomogeneityCalculator(object):
 
 
     def compute_functional_index(self, gene_cluster_sequences):
-        #gene_cluster_sequences is a list of sequences from a single gene cluster
+        """Given an array of aligned gene sequences of a gene cluster, computes the functional homogeneity index.
+           Every amino acid residue of the same residual position in all genes is checked and assigned a similarity score
+           based on how biochemically close the two residues are. Greater similarity scores indicate greater biochemical similarities
+           between the two residues (as an extension, a greater functional index indicates greater biochemical similarities between the
+           functional outcome of these genes)."""
         num_sequences = len(gene_cluster_sequences)
         if num_sequences == 1: 
             return 100
@@ -97,7 +62,7 @@ class HomogeneityCalculator(object):
                     if amino_acid_residue_1 == amino_acid_residue_2 and (amino_acid_residue_1 != 'X' and amino_acid_residue_1 != 'J' \
                                                                         and amino_acid_residue_1 != 'B' and amino_acid_residue_1 != 'Z'):
                         similarity_score += 3
-                    elif is_amino_acid_functionally_conserved(amino_acid_residue_1,amino_acid_residue_2):
+                    elif utils.is_amino_acid_functionally_conserved(amino_acid_residue_1,amino_acid_residue_2):
                         similarity_score += 2
                     elif amino_acid_residue_2 != "-":
                         similarity_score += 1
@@ -107,7 +72,11 @@ class HomogeneityCalculator(object):
         return functional_index
 
 
-    def convert_sequences_to_binary_array(self, gene_sequences, bygene = False): #1 indicates gaps
+    def convert_sequences_to_binary_array(self, gene_sequences, bygene = False):
+        """This function takes an array of aligned gene sequences of a gene cluster and converts it to a binary array.
+           Gaps are represented by 1s. For efficiency purposes, arrays are stored as single-dimensional arrays of binary numbers
+           and can be ordered either by residue (every array entry represents a residue position in all genes) or by gene (every
+           array entry represents a gene)."""
         num_genes = len(gene_sequences)
         num_residues = len(gene_sequences[0])
         if not bygene: #array will be ordered by residue column
@@ -132,6 +101,11 @@ class HomogeneityCalculator(object):
 
 
     def compute_geometric_index(self, gene_cluster_sequences, quick_homogeneity=False): 
+        """This function calculates the geometric homogeneity index for a gene cluster. gene_cluster_sequences is an array of
+           aligned gene sequences of that gene cluster.
+           This function will compute vertical (residue-level) homogeneity as well as horizontal (gene-level) homogeneity by default.
+           Adding to the arguments list 'quick_homogeneity=True' will skip horizontal homogeneity calculations. This will be faster, but
+           the resulting geometric index will not factor in the spread of alignment gaps across genes"""
         num_genes = len(gene_cluster_sequences)
         if num_genes == 1:
             return 100
@@ -145,7 +119,7 @@ class HomogeneityCalculator(object):
             for counter in range(num_residues):
                 if col == counter:
                     continue
-                diff = bin(binary_matrix_by_residue[col] ^ binary_matrix_by_residue[counter])[2:].zfill(num_genes)
+                diff = bin(binary_matrix_by_residue[col] ^ binary_matrix_by_residue[counter])[2:].zfill(num_genes) #this has been converted to a string
                 number_of_similarities = diff[-num_genes:].count('0')
                 #Let's explain what happened - we converted diff into a binary number. .zfill ensured that we have the sufficient number of digits.
                 #This line of code creates an array - similariies - containing all of the digits that are 0 (equal to each other in the ^ expresson)
@@ -177,12 +151,19 @@ class HomogeneityCalculator(object):
         return geometric_index
 
 
-    def get_homogeneity_dicts(self):
-        """desc"""
+    def get_homogeneity_dicts(self, gene_clusters_dict):
+        """The main function called by dbops.PanSuperClass. It retrieves the gene clusters dictionary passed to
+            the HomogeneityCalculator intiatior and calculates functional and geometric indices for each.
+            This function returns two dictionaries - functional and geometric - with the following structure:
+                {gene_cluster_id_1: index_1,
+                 gene_cluster_id_2: index_2,
+                 etc...
+                 }
+            Note that this function assumes that all gene sequences have been aligned properly"""
 
-        for gene_cluster in self.gene_clusters_dict:
+        for gene_cluster in gene_clusters_dict:
             cluster_sequences = []
-            genes_in_cluster = self.gene_clusters_dict[gene_cluster]
+            genes_in_cluster = gene_clusters_dict[gene_cluster]
 
             for genome_name in genes_in_cluster:
                 gene_caller_ids = genes_in_cluster[genome_name]
