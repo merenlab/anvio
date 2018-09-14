@@ -119,7 +119,10 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                     # what the hell, user?
                     return
 
-                database._exec('''DELETE from %s WHERE data_key="%s" and data_group="%s"''' % (self.table_name, key, self.target_data_group))
+                if 'data_group' in database.get_table_structure(self.table_name):
+                    database._exec('''DELETE from %s WHERE data_key="%s" and data_group="%s"''' % (self.table_name, key, self.target_data_group))
+                else:
+                    database._exec('''DELETE from %s WHERE data_key="%s"''' % (self.table_name, key))
 
             self.run.warning("Data from the table '%s' for the following data keys in data group '%s' \
                               removed from the database: '%s'. #SAD." % (self.target_table, self.target_data_group, ', '.join(data_keys_list)))
