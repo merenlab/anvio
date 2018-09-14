@@ -17,8 +17,8 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Mahmoud Yousef"
+__email__ = "mahmoudyousef@uchicago.edu"
 
 
 run = terminal.Run()
@@ -27,6 +27,7 @@ progress = terminal.Progress()
 def main(args):
     if args.gene_cluster_id and args.gene_cluster_ids_file:
         raise ConfigError('You should either declare a single gene cluster name, or gene cluster names in a file')
+
     if (args.gene_cluster_id or args.gene_cluster_ids_file) and args.collection_name:
         raise ConfigError('You can either declare specific list of gene clusters to work with (through `--gene-cluster-id` or `--gene-cluster-ids-file`) or\
                            go the collection way using parameters `--collection-name` and `--bin-name`. Those are not to be\
@@ -73,6 +74,7 @@ def main(args):
 
     if args.output_file is None:
         args.output_file = 'an-ugly-default-file-name-because-user-did-not-use-the-output-file-path-parameter.txt'
+
     pan.write_gene_cluster_homogeneity_indices_to_file(functional_dict = functional, geometric_dict = geometric, gene_cluster_names = gene_cluster_ids, \
                                                         output_file_path=args.output_file)
 
