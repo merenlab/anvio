@@ -1129,15 +1129,17 @@ class PanSuperclass(object):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
-        output_file = open(output_file_path, 'w')
-
         self.progress.new('Writing gene cluster homogeneity indices to file')
-        output_file.write("Gene Cluster \t Functional \t Geometric\n")
+        self.progress.update("...")
+
+        output_file = open(output_file_path, 'w')
+        output_file.write("gene_cluster\tfunctional\tgeometric\n")
+        
         for gene_cluster in gene_cluster_names:
             output_file.write("%s \t %.2f \t %.2f\n" % (gene_cluster, functional_dict[gene_cluster], geometric_dict[gene_cluster]))
 
-        self.progress.end()
         output_file.close()
+        self.progress.end()
 
         self.run.info('Num gene clusters reported', len(gene_cluster_names))
         self.run.info('Output file', output_file_path, mc='green')
