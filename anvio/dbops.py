@@ -13,6 +13,7 @@ import numpy
 import random
 import argparse
 import textwrap
+import multiprocessing
 
 from io import StringIO
 from collections import Counter
@@ -1025,7 +1026,7 @@ class PanSuperclass(object):
         return sequences
 
 
-    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([])):
+    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), num_threads = 1):
         if gene_cluster_names is None:
             self.run.warning("Anvi'o compute_homogeneity_indices_for_gene_clusters did not receive any names of \
                               gene clusters to examine. It is likely that you (or the programmer) either did not\
@@ -1035,15 +1036,86 @@ class PanSuperclass(object):
                               indices")
             return None, None
 
-        sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=False)
-        
         if self.args.quick_homogeneity:
             self.run.warning('Performing quick homogeneity calculations (skipping horizontal geometric calculations)\
                               per the \'--quick-homogeneity\' flag')
-        homogeneity_calculator = homogeneityindex.HomogeneityCalculator(sequences, quick_homogeneity=self.args.quick_homogeneity)
-        functional, geometric = homogeneity_calculator.get_homogeneity_dicts()
 
-        return functional, geometric
+        sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=False)
+
+        homogeneity_calculator = homogeneityindex.HomogeneityCalculator(quick_homogeneity=self.args.quick_homogeneity)
+        
+        self.progress.new('Computing gene cluster homogeneity indices')
+        self.progress.update('Initializing %d threads...' % num_threads)
+
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+
+        for gene_cluster_name in gene_cluster_names:
+            input_queue.put(gene_cluster_name)
+
+        functional_dict = {}
+        geometric_dict = {}
+
+        workers = []
+        for i in range(num_threads):
+            worker = multiprocessing.Process(target=PanSuperclass.homogeneity_worker,
+                    args =(input_queue, output_queue, sequences, homogeneity_calculator, self.run))
+            workers.append(worker)
+            worker.start()
+
+        received_gene_clusters = 0
+        while received_gene_clusters < len(sequences):
+            try:
+                homogeneity_dict = output_queue.get()
+                if homogeneity_dict:
+                    functional_dict[homogeneity_dict['gene cluster']] = homogeneity_dict['functional']
+                    geometric_dict[homogeneity_dict['gene cluster']] = homogeneity_dict['geometric']
+
+                received_gene_clusters += 1
+                self.progress.update('Processed %d gene clusters using %d threads' % (received_gene_clusters, num_threads))
+            except KeyboardInterrupt:
+                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
+                break
+
+        for worker in workers:
+            worker.terminate()
+        self.progress.end()
+
+        return functional_dict, geometric_dict
+
+
+    @staticmethod
+    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, homogeneity_calculator, run):
+        r = terminal.Run()
+        r.verbose = False
+
+        while True:
+            gene_cluster_name = input_queue.get(True)
+            funct_index = {}
+            geo_index = {}
+            indices_dict = {}
+            gene_cluster = {}
+            gene_cluster[gene_cluster_name] = gene_clusters_dict[gene_cluster_name]
+
+            try:
+                funct_index, geo_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
+            except:
+                run.warning("Homogeneity indices computation for gene cluster %s failed. This is due to one of three reasons:\n \
+                            1)This gene cluster is named incorrectly, does not exist in the database, or is formatted into the input dictionary incorrectly\n \
+                            2)There is an alignment mistake in the gene cluster, and not all genes are aligned to be the same lenght\n \
+                            3)The Homogeneity Calculator was initialized incorrectly.\n As you can see, this is a rare circumstance. \
+                            Anvi'o will report error values of -1 for this gene cluster's homogeneity indices, but we highly recommend that you \
+                            take a look at your data to catch the mistake before moving forward" % gene_cluster_name)
+                funct_index[gene_cluster_name] = -1
+                geo_index[gene_cluster_name] = -1
+
+            indices_dict['gene cluster'] = gene_cluster_name
+            indices_dict['functional'] = funct_index[gene_cluster_name]
+            indices_dict['geometric'] = geo_index[gene_cluster_name]
+
+            output_queue.put(indices_dict)
+
 
 
     def write_gene_cluster_homogeneity_indices_to_file(self, functional_dict=None, geometric_dict=None, gene_cluster_names=set([]), \
@@ -1062,7 +1134,7 @@ class PanSuperclass(object):
         self.progress.new('Writing gene cluster homogeneity indices to file')
         output_file.write("Gene Cluster \t Functional \t Geometric\n")
         for gene_cluster in gene_cluster_names:
-            output_file.write("%s \t %.2f \t\t %.2f\n" % (gene_cluster, functional_dict[gene_cluster], geometric_dict[gene_cluster]))
+            output_file.write("%s \t %.2f \t %.2f\n" % (gene_cluster, functional_dict[gene_cluster], geometric_dict[gene_cluster]))
 
         self.progress.end()
         output_file.close()
