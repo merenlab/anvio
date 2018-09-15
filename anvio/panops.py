@@ -590,12 +590,12 @@ class Pangenome(object):
         if functional is None and geometric is None:
             return
 
-            self.additional_view_data[gene_cluster]['Functional Homogeneity Index'] = functional[gene_cluster]
-            self.additional_view_data[gene_cluster]['Geometric Homogeneity Index'] = geometric[gene_cluster]
-         
-        miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Functional Homogeneity Index'], skip_check_names=True)
-        miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Geometric Homogeneity Index'], skip_check_names=True)
+        d = {}
         for gene_cluster in gene_cluster_names:
+            d[gene_cluster] = {'functional_homogeneity_index': functional[gene_cluster],
+                               'geometric_homogeneity_index': geometric[gene_cluster]}
+
+        miscdata.TableForItemAdditionalData(self.args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index'], skip_check_names=True)
 
 
     def populate_layers_additional_data_and_orders(self):
