@@ -1136,7 +1136,7 @@ class PanSuperclass(object):
         output_file.write("gene_cluster\tfunctional\tgeometric\n")
         
         for gene_cluster in gene_cluster_names:
-            output_file.write("%s \t %.2f \t %.2f\n" % (gene_cluster, functional_dict[gene_cluster], geometric_dict[gene_cluster]))
+            output_file.write("%s\t%.2f\t%.2f\n" % (gene_cluster, functional_dict[gene_cluster], geometric_dict[gene_cluster]))
 
         output_file.close()
         self.progress.end()
