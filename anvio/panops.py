@@ -586,15 +586,12 @@ class Pangenome(object):
         pan = dbops.PanSuperclass(args=self.args)
         gene_cluster_names = set(list(gene_clusters_dict.keys()))
 
-        functional, geometric = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_names=gene_cluster_names, num_threads=self.num_threads)
+        d = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_names=gene_cluster_names, num_threads=self.num_threads)
 
-        if functional is None and geometric is None:
+        if d is None:
+            self.run.warning("Anvi'o received an empty dictionary for homogeneity indices. Not good :/ Returning empty handed,\
+                              without updating anything in the pan database...")
             return
-
-        d = {}
-        for gene_cluster in gene_cluster_names:
-            d[gene_cluster] = {'functional_homogeneity_index': functional[gene_cluster],
-                               'geometric_homogeneity_index': geometric[gene_cluster]}
 
         miscdata.TableForItemAdditionalData(self.args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index'], skip_check_names=True)
 
