@@ -64,6 +64,8 @@ class Pangenome(object):
         self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
         self.skip_alignments = A('skip_alignments')
+        self.skip_homogeneity = self.args.skip_homogeneity
+        self.quick_homogeneity = self.args.quick_homogeneity
         self.align_with = A('align_with')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = anvio.DEBUG
@@ -572,6 +574,30 @@ class Pangenome(object):
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
+    def populate_gene_cluster_homogeneity_index(self, gene_clusters_dict):
+        if self.skip_alignments:
+            self.run.warning('Skipping homogeneity calculations because gene clusters are not alligned.')
+            return
+        elif self.skip_homogeneity:
+            self.run.warning('Skipping homogeneity calculations per the \'--skip-homogeneity\' flag')
+            return
+        
+        pan_gene_clusters = dbops.PanSuperclass(args = self.args)
+        names = set(list(gene_clusters_dict.keys()))
+
+        functional, geometric = pan_gene_clusters.compute_homogeneity_indices_for_gene_clusters(names, self.num_threads)
+
+        if functional is None and geometric is None:
+            return
+
+        for gene_cluster in names:
+            self.additional_view_data[gene_cluster]['Functional Homogeneity Index'] = functional[gene_cluster]
+            self.additional_view_data[gene_cluster]['Geometric Homogeneity Index'] = geometric[gene_cluster]
+         
+        miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Functional Homogeneity Index'], skip_check_names=True)
+        miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Geometric Homogeneity Index'], skip_check_names=True)
+
+
     def populate_layers_additional_data_and_orders(self):
         self.progress.new('Layers additional data and orders')
         self.progress.update('Copmputing the hierarchical clustering of the (transposed) view data')
@@ -885,6 +911,9 @@ class Pangenome(object):
         # populate layers additional data and orders
         self.populate_layers_additional_data_and_orders()
 
+        # work with gene cluster homogeneity index
+        self.populate_gene_cluster_homogeneity_index(gene_clusters_dict)
+        
         # done
         self.run.info('log file', self.run.log_file_path)
         self.run.quit()
