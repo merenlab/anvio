@@ -1102,12 +1102,13 @@ class PanSuperclass(object):
             try:
                 funct_index, geo_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
             except:
-                run.warning("Homogeneity indices computation for gene cluster %s failed. This is due to one of three reasons:\n \
-                            1)This gene cluster is named incorrectly, does not exist in the database, or is formatted into the input dictionary incorrectly\n \
-                            2)There is an alignment mistake in the gene cluster, and not all genes are aligned to be the same lenght\n \
-                            3)The Homogeneity Calculator was initialized incorrectly.\n As you can see, this is a rare circumstance. \
-                            Anvi'o will report error values of -1 for this gene cluster's homogeneity indices, but we highly recommend that you \
-                            take a look at your data to catch the mistake before moving forward" % gene_cluster_name)
+                run.warning("Homogeneity indices computation for gene cluster %s failed. This can happen due to one of three reasons: \
+                             (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted into the input \
+                             dictionary incorrectly, (2) there is an alignment mistake in the gene cluster, and not all genes are aligned\
+                             to be the same lenght; or (3) the homogeneity calculator was initialized incorrectly. As you can see, this \
+                             is a rare circumstance, and anvi'o will set this gene cluster's homogeneity indices to `-1` so things can\
+                             move on, but we highly recommend you to take a look at your data to make sure you are satisfied with your\
+                             analysis." % gene_cluster_name)
                 funct_index[gene_cluster_name] = -1
                 geo_index[gene_cluster_name] = -1
 
@@ -1118,14 +1119,12 @@ class PanSuperclass(object):
             output_queue.put(indices_dict)
 
 
-
     def write_gene_cluster_homogeneity_indices_to_file(self, functional_dict=None, geometric_dict=None, gene_cluster_names=set([]), \
                                                         output_file_path=None):
         if (functional_dict is None and geometric_dict is None) or gene_cluster_names is None:
-            raise ConfigError("Anvi'o write_gene_cluster_homogeneity_indices_to_file did not receive any homogeneity indices to write to a file. \
-                                This should not be happening under a normal workflow, because anvi'o does not call this function without computing \
-                                homogeneity indices first. Please take a look at your input and at any other messages from anvi'o to fix this problem. \
-                                (this is likely the result of gene cluster names that are not a part of the respective pangenome)")
+            raise ConfigError("The function `write_gene_cluster_homogeneity_indices_to_file` did not receive all necessary information to\
+                               generate an output file, which should not happen under normal operations :( Anvi'o hopes you will figure\
+                               out how you ended here one way or another.")
 
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
