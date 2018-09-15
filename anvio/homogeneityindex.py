@@ -14,8 +14,8 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Mahmoud Yousef"
+__email__ = "mahmoudyousef@uchicago.edu"
 
 
 class HomogeneityCalculator(object):
