@@ -32,7 +32,7 @@ def main(args):
         raise ConfigError('You can either declare specific list of gene clusters to work with (through `--gene-cluster-id` or `--gene-cluster-ids-file`) or\
                            go the collection way using parameters `--collection-name` and `--bin-name`. Those are not to be\
                            mixed.')
-    
+
     gene_cluster_ids = set([])
     if args.collection_name:
         progress.new('Initializing gene clusters')
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     groupB = parser.add_argument_group('OUTPUT', "You get to chose an output file name to report things. The default will be\
                                        an ugly name. So, be explicit.")
     groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    
+
     groupC = parser.add_argument_group('SELECTION', "Which gene clusters should be analyzed. You can ask for a single gene cluster,\
                                        or multiple ones listed in a file, or you can use a collection and bin name to list gene clusters\
                                        of interest.")
