@@ -1115,32 +1115,6 @@ class PanSuperclass(object):
             output_queue.put(indices_dict)
 
 
-    def write_gene_cluster_homogeneity_indices_to_file(self, functional_dict=None, geometric_dict=None, gene_cluster_names=set([]), \
-                                                        output_file_path=None):
-        if (functional_dict is None and geometric_dict is None) or gene_cluster_names is None:
-            raise ConfigError("The function `write_gene_cluster_homogeneity_indices_to_file` did not receive all necessary information to\
-                               generate an output file, which should not happen under normal operations :( Anvi'o hopes you will figure\
-                               out how you ended here one way or another.")
-
-        if output_file_path:
-            filesnpaths.is_output_file_writable(output_file_path)
-
-        self.progress.new('Writing gene cluster homogeneity indices to file')
-        self.progress.update("...")
-
-        output_file = open(output_file_path, 'w')
-        output_file.write("gene_cluster\tfunctional_homogeneity_index\tgeometric_homogeneity_index\n")
-        
-        for gene_cluster in gene_cluster_names:
-            output_file.write("%s\t%.2f\t%.2f\n" % (gene_cluster, functional_dict[gene_cluster], geometric_dict[gene_cluster]))
-
-        output_file.close()
-        self.progress.end()
-
-        self.run.info('Num gene clusters reported', len(gene_cluster_names))
-        self.run.info('Output file', output_file_path, mc='green')
-
-
     def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), \
                                                   skip_alignments=False, output_file_path=None, report_DNA_sequences=False):
         if output_file_path:
