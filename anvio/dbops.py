@@ -1052,9 +1052,6 @@ class PanSuperclass(object):
         for gene_cluster_name in gene_cluster_names:
             input_queue.put(gene_cluster_name)
 
-        functional_dict = {}
-        geometric_dict = {}
-
         workers = []
         for i in range(num_threads):
             worker = multiprocessing.Process(target=PanSuperclass.homogeneity_worker,
@@ -1062,13 +1059,14 @@ class PanSuperclass(object):
             workers.append(worker)
             worker.start()
 
+        results_dict = {}
         received_gene_clusters = 0
         while received_gene_clusters < len(sequences):
             try:
                 homogeneity_dict = output_queue.get()
                 if homogeneity_dict:
-                    functional_dict[homogeneity_dict['gene cluster']] = homogeneity_dict['functional']
-                    geometric_dict[homogeneity_dict['gene cluster']] = homogeneity_dict['geometric']
+                    results_dict[homogeneity_dict['gene cluster']] = {'functional_homogeneity_index': homogeneity_dict['functional'],
+                                                                      'geometric_homogeneity_index': homogeneity_dict['geometric']}
 
                 received_gene_clusters += 1
                 self.progress.update('Processed %d gene clusters using %d threads' % (received_gene_clusters, num_threads))
@@ -1081,7 +1079,7 @@ class PanSuperclass(object):
 
         self.progress.end()
 
-        return functional_dict, geometric_dict
+        return results_dict
 
 
     @staticmethod
