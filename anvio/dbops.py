@@ -1133,7 +1133,7 @@ class PanSuperclass(object):
         self.progress.update("...")
 
         output_file = open(output_file_path, 'w')
-        output_file.write("gene_cluster\tfunctional\tgeometric\n")
+        output_file.write("gene_cluster\tfunctional_homogeneity_index\tgeometric_homogeneity_index\n")
         
         for gene_cluster in gene_cluster_names:
             output_file.write("%s\t%.2f\t%.2f\n" % (gene_cluster, functional_dict[gene_cluster], geometric_dict[gene_cluster]))
