@@ -13,6 +13,7 @@ import numpy
 import random
 import argparse
 import textwrap
+import multiprocessing
 
 from io import StringIO
 from collections import Counter
@@ -29,6 +30,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccolections
 import anvio.genomestorage as genomestorage
 import anvio.auxiliarydataops as auxiliarydataops
+import anvio.homogeneityindex as homogeneityindex
 
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
@@ -970,7 +972,7 @@ class PanSuperclass(object):
                               contigs database may differ from its DNA seqeunce. For those rare instances, the alignment summary for the amino acid\
                               sequence can no longer be used to make sense of the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for\
                               more informaiton). What needs to be done is to do another alignment on the fly. But as you probably already guessed,\
-                              anvi'o will not do that for you, and instad will report your DNA sequences for your genes in your gene clusters\
+                              anvi'o will not do that for you, and instead will report your DNA sequences for your genes in your gene clusters\
                               unaligned. If you really really think anvi'o should do it you have two options: if you are a member of the MerenLab,\
                               re-open and fix the issue #772. If you are not a member, then send us an e-mail.")
             skip_alignments = True
@@ -1022,6 +1024,95 @@ class PanSuperclass(object):
         self.progress.end()
 
         return sequences
+
+
+    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), num_threads=1):
+        if gene_cluster_names is None:
+            self.run.warning("The function `compute_homogeneity_indices_for_gene_clusters` did not receive any gene\
+                              cluster names to work with. If you are a programmer, you should know that you are\
+                              doing it wrong. If you are a user, please get in touch with a programmer because this\
+                              is not normal. This funciton will now return prematurely without computing anything :(")
+            return None
+
+        if self.args.quick_homogeneity:
+            self.run.warning("Performing quick homogeneity calculations (skipping horizontal geometric calculations)\
+                              per the '--quick-homogeneity' flag")
+
+        sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=False)
+
+        homogeneity_calculator = homogeneityindex.HomogeneityCalculator(quick_homogeneity=self.args.quick_homogeneity)
+        
+        self.progress.new('Computing gene cluster homogeneity indices')
+        self.progress.update('Initializing %d threads...' % num_threads)
+
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+
+        for gene_cluster_name in gene_cluster_names:
+            input_queue.put(gene_cluster_name)
+
+        workers = []
+        for i in range(num_threads):
+            worker = multiprocessing.Process(target=PanSuperclass.homogeneity_worker,
+                                             args=(input_queue, output_queue, sequences, homogeneity_calculator, self.run))
+            workers.append(worker)
+            worker.start()
+
+        results_dict = {}
+        received_gene_clusters = 0
+        while received_gene_clusters < len(sequences):
+            try:
+                homogeneity_dict = output_queue.get()
+                if homogeneity_dict:
+                    results_dict[homogeneity_dict['gene cluster']] = {'functional_homogeneity_index': homogeneity_dict['functional'],
+                                                                      'geometric_homogeneity_index': homogeneity_dict['geometric']}
+
+                received_gene_clusters += 1
+                self.progress.update('Processed %d gene clusters using %d threads' % (received_gene_clusters, num_threads))
+            except KeyboardInterrupt:
+                print("Recieved SIGINT, terminating all processes...")
+                break
+
+        for worker in workers:
+            worker.terminate()
+
+        self.progress.end()
+
+        return results_dict
+
+
+    @staticmethod
+    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, homogeneity_calculator, run):
+        r = terminal.Run()
+        r.verbose = False
+
+        while True:
+            gene_cluster_name = input_queue.get(True)
+            funct_index = {}
+            geo_index = {}
+            indices_dict = {}
+            gene_cluster = {}
+            gene_cluster[gene_cluster_name] = gene_clusters_dict[gene_cluster_name]
+
+            try:
+                funct_index, geo_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
+            except:
+                run.warning("Homogeneity indices computation for gene cluster %s failed. This can happen due to one of three reasons: \
+                             (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted into the input \
+                             dictionary incorrectly, (2) there is an alignment mistake in the gene cluster, and not all genes are aligned\
+                             to be the same lenght; or (3) the homogeneity calculator was initialized incorrectly. As you can see, this \
+                             is a rare circumstance, and anvi'o will set this gene cluster's homogeneity indices to `-1` so things can\
+                             move on, but we highly recommend you to take a look at your data to make sure you are satisfied with your\
+                             analysis." % gene_cluster_name)
+                funct_index[gene_cluster_name] = -1
+                geo_index[gene_cluster_name] = -1
+
+            indices_dict['gene cluster'] = gene_cluster_name
+            indices_dict['functional'] = funct_index[gene_cluster_name]
+            indices_dict['geometric'] = geo_index[gene_cluster_name]
+
+            output_queue.put(indices_dict)
 
 
     def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), \
