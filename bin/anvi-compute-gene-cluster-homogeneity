@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import argparse
+
+import anvio
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.summarizer as summarizer
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Mahmoud Yousef"
+__email__ = "mahmoudyousef@uchicago.edu"
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+def main(args):
+    if args.gene_cluster_id and args.gene_cluster_ids_file:
+        raise ConfigError('You should either declare a single gene cluster name, or gene cluster names in a file')
+
+    if (args.gene_cluster_id or args.gene_cluster_ids_file) and args.collection_name:
+        raise ConfigError('You can either declare specific list of gene clusters to work with (through `--gene-cluster-id` or `--gene-cluster-ids-file`) or\
+                           go the collection way using parameters `--collection-name` and `--bin-name`. Those are not to be\
+                           mixed.')
+    
+    gene_cluster_ids = set([])
+    if args.collection_name:
+        progress.new('Initializing gene clusters')
+        progress.update('...')
+        pan = summarizer.PanSummarizer(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        progress.end()
+
+        if not args.bin_id:
+            raise ConfigError("When you use a collection name, you must also declare a bin id :/")
+
+        pan.collections.is_bin_in_collection(collection_name=args.collection_name, bin_name=args.bin_id)
+        collection_dict = pan.collections.get_collection_dict(args.collection_name)
+        gene_cluster_ids = set(collection_dict[args.bin_id])
+
+        run.info('Mode', 'Reporting homogeneity for gene clusters in the collection %s and bin %s.' % (args.collection_name, args.bin_id))
+    elif (args.gene_cluster_id or args.gene_cluster_ids_file):
+        if args.gene_cluster_id:
+            gene_cluster_ids = set([args.gene_cluster_id])
+            run.info('Mode', 'Reporting homogeneity for a single gene cluster.')
+        else:
+            columns = utils.get_columns_of_TAB_delim_file(args.gene_cluster_ids_file, include_first_column=True)
+            if len(columns) != 1:
+                raise ConfigError("The input file for gene cluster IDs must contain a single column. It seems yours has %d :/" % len(columns))
+
+            gene_cluster_ids = set([p.strip('\n') for p in open(args.gene_cluster_ids_file, 'rU').readlines()])
+            run.info('Mode', 'Reporting homogeneity for a list of gene clusters from an input file.')
+    else:
+        raise ConfigError('You did not report any gene clusters to analyze homogeneity. Anvi\'o will not try to predict \
+                           which gene clusters you want to analyze. Please run \'anvi-compute-homogeneity -h\' to see the usage \
+                           for this script')
+
+    pan = dbops.PanSuperclass(args)
+    pan.init_gene_clusters(gene_cluster_ids)
+    functional, geometric = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_ids, args.num_threads)
+
+    if functional is None and geometric is None:
+        raise ConfigError('The homogeneity index algorithm has probably alerted you that an error has occured. Please \
+                           refer to that error to understand why this failed')
+
+    if args.output_file is None:
+        args.output_file = 'an-ugly-default-file-name-because-user-did-not-use-the-output-file-path-parameter.txt'
+
+    pan.write_gene_cluster_homogeneity_indices_to_file(functional_dict = functional, geometric_dict = geometric, gene_cluster_names = gene_cluster_ids, \
+                                                        output_file_path=args.output_file)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Compute homogeneity for gene clusters")
+
+    groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+
+    groupB = parser.add_argument_group('OUTPUT', "You get to chose an output file name to report things. The default will be\
+                                       an ugly name. So, be explicit.")
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    
+    groupC = parser.add_argument_group('SELECTION', "Which gene clusters should be analyzed. You can ask for a single gene cluster,\
+                                       or multiple ones listed in a file, or you can use a collection and bin name to list gene clusters\
+                                       of interest.")
+    groupC.add_argument(*anvio.A('gene-cluster-id'), **anvio.K('gene-cluster-id'))
+    groupC.add_argument(*anvio.A('gene-cluster-ids-file'), **anvio.K('gene-cluster-ids-file'))
+    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+
+    groupD = parser.add_argument_group('Optional Parameters',"Optional stuff available for you to use")
+    groupD.add_argument('--quick-homogeneity',default=False, action='store_true', dest='quick_homogeneity',help="By default, anvi'o will use a homogeneity\
+                        algorithm that checks for horizontal and vertical geometric homogeneity (along with functional). With this\
+                        flag, you can tell anvi'o to skip horizontal geometric homogeneity calculations. It will be less accurate but quicker.")
+    groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
