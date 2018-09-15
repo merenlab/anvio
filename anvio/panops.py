@@ -578,8 +578,9 @@ class Pangenome(object):
         if self.skip_alignments:
             self.run.warning('Skipping homogeneity calculations because gene clusters are not alligned.')
             return
-        elif self.skip_homogeneity:
-            self.run.warning('Skipping homogeneity calculations per the \'--skip-homogeneity\' flag')
+
+        if self.skip_homogeneity:
+            self.run.warning("Skipping homogeneity calculations per the '--skip-homogeneity' flag.")
             return
         
         pan = dbops.PanSuperclass(args=self.args)
