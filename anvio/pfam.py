@@ -6,6 +6,7 @@
 """
 import os
 import gzip
+import shutil
 import requests
 from io import BytesIO
 
@@ -233,3 +234,12 @@ class Pfam(object):
 
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
         gene_function_calls_table.create(functions_dict)
+
+        if anvio.DEBUG:
+            run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up\
+                         later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+        else:
+            run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
+                             like to keep it for testing purposes)', nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_directory_path)
+            hmmer.clean_tmp_dirs()
