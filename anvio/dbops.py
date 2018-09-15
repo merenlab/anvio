@@ -1026,7 +1026,7 @@ class PanSuperclass(object):
         return sequences
 
 
-    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), num_threads = 1):
+    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), num_threads=1):
         if gene_cluster_names is None:
             self.run.warning("Anvi'o compute_homogeneity_indices_for_gene_clusters did not receive any names of \
                               gene clusters to examine. It is likely that you (or the programmer) either did not\
@@ -1037,8 +1037,8 @@ class PanSuperclass(object):
             return None, None
 
         if self.args.quick_homogeneity:
-            self.run.warning('Performing quick homogeneity calculations (skipping horizontal geometric calculations)\
-                              per the \'--quick-homogeneity\' flag')
+            self.run.warning("Performing quick homogeneity calculations (skipping horizontal geometric calculations)\
+                              per the '--quick-homogeneity' flag")
 
         sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=False)
 
@@ -1060,7 +1060,7 @@ class PanSuperclass(object):
         workers = []
         for i in range(num_threads):
             worker = multiprocessing.Process(target=PanSuperclass.homogeneity_worker,
-                    args =(input_queue, output_queue, sequences, homogeneity_calculator, self.run))
+                                             args=(input_queue, output_queue, sequences, homogeneity_calculator, self.run))
             workers.append(worker)
             worker.start()
 
