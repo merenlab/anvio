@@ -1075,11 +1075,12 @@ class PanSuperclass(object):
                 received_gene_clusters += 1
                 self.progress.update('Processed %d gene clusters using %d threads' % (received_gene_clusters, num_threads))
             except KeyboardInterrupt:
-                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
+                print("Recieved SIGINT, terminating all processes...")
                 break
 
         for worker in workers:
             worker.terminate()
+
         self.progress.end()
 
         return functional_dict, geometric_dict
