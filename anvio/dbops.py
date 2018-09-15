@@ -1028,13 +1028,11 @@ class PanSuperclass(object):
 
     def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), num_threads=1):
         if gene_cluster_names is None:
-            self.run.warning("Anvi'o compute_homogeneity_indices_for_gene_clusters did not receive any names of \
-                              gene clusters to examine. It is likely that you (or the programmer) either did not\
-                              provide proper gene cluster names, or provided them in an incorrect format. If you\
-                              are sure that you have provided the gene cluster names correctly, then please contact\
-                              a member of the MerenLab. In the meanwhile, anvi'o will not be computing homogeneity\
-                              indices")
-            return None, None
+            self.run.warning("The function `compute_homogeneity_indices_for_gene_clusters` did not receive any gene\
+                              cluster names to work with. If you are a programmer, you should know that you are\
+                              doing it wrong. If you are a user, please get in touch with a programmer because this\
+                              is not normal. This funciton will now return prematurely without computing anything :(")
+            return None
 
         if self.args.quick_homogeneity:
             self.run.warning("Performing quick homogeneity calculations (skipping horizontal geometric calculations)\
