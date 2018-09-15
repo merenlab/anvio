@@ -9,6 +9,8 @@ import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 
+
+
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -40,9 +42,9 @@ class HomogeneityCalculator(object):
            functional outcome of these genes)."""
         num_sequences = len(gene_cluster_sequences)
         if num_sequences == 1: 
-            return 100
+            return 1.0
         elif num_sequences == 0: #this is an error condition
-            return 0
+            return 0.0
         
         num_residues = len(gene_cluster_sequences[0])
         similarity_score = 0
@@ -68,7 +70,9 @@ class HomogeneityCalculator(object):
                         similarity_score += 1
                     else:
                         similarity_score += 0
-        functional_index = (similarity_score / max_score) * 100
+
+        functional_index = similarity_score / max_score
+
         return functional_index
 
 
@@ -108,7 +112,7 @@ class HomogeneityCalculator(object):
            the resulting geometric index will not factor in the spread of alignment gaps across genes"""
         num_genes = len(gene_cluster_sequences)
         if num_genes == 1:
-            return 100
+            return 1.0
         
         binary_matrix_by_residue = self.convert_sequences_to_binary_array(gene_cluster_sequences)
         num_residues = len(binary_matrix_by_residue)
@@ -127,7 +131,7 @@ class HomogeneityCalculator(object):
                 differences.append(number_of_similarities / num_genes)
             residue_uniformity.append(sum(differences) / len(differences))
         
-        by_residue = 100 * (sum(residue_uniformity) / len(residue_uniformity))
+        by_residue = sum(residue_uniformity) / len(residue_uniformity)
 
         if quick_homogeneity:
             return by_residue
@@ -145,9 +149,10 @@ class HomogeneityCalculator(object):
                 differences.append(number_of_similarities / num_residues)
             gene_uniformity.append(sum(differences) / len(differences))
 
-        by_gene = 100 * (sum(gene_uniformity) / len(gene_uniformity))
+        by_gene = sum(gene_uniformity) / len(gene_uniformity)
 
         geometric_index = (by_residue + by_gene) / 2
+
         return geometric_index
 
 
