@@ -1266,6 +1266,12 @@ D = {
                       connects to the server. If you have other plans, and want to start the server\
                       without calling the browser, this is the flag you need."}
                 ),
+    'store-in-db': (
+            ['--store-in-db'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Store analysis results into the database directly."}
+                ),
     'skip-store-in-db': (
             ['--skip-store-in-db'],
             {'default': False,

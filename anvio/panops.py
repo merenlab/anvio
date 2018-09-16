@@ -578,24 +578,22 @@ class Pangenome(object):
         if self.skip_alignments:
             self.run.warning('Skipping homogeneity calculations because gene clusters are not alligned.')
             return
-        elif self.skip_homogeneity:
-            self.run.warning('Skipping homogeneity calculations per the \'--skip-homogeneity\' flag')
+
+        if self.skip_homogeneity:
+            self.run.warning("Skipping homogeneity calculations per the '--skip-homogeneity' flag.")
             return
         
-        pan_gene_clusters = dbops.PanSuperclass(args = self.args)
-        names = set(list(gene_clusters_dict.keys()))
+        pan = dbops.PanSuperclass(args=self.args)
+        gene_cluster_names = set(list(gene_clusters_dict.keys()))
 
-        functional, geometric = pan_gene_clusters.compute_homogeneity_indices_for_gene_clusters(names, self.num_threads)
+        d = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_names=gene_cluster_names, num_threads=self.num_threads)
 
-        if functional is None and geometric is None:
+        if d is None:
+            self.run.warning("Anvi'o received an empty dictionary for homogeneity indices. Not good :/ Returning empty handed,\
+                              without updating anything in the pan database...")
             return
 
-        for gene_cluster in names:
-            self.additional_view_data[gene_cluster]['Functional Homogeneity Index'] = functional[gene_cluster]
-            self.additional_view_data[gene_cluster]['Geometric Homogeneity Index'] = geometric[gene_cluster]
-         
-        miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Functional Homogeneity Index'], skip_check_names=True)
-        miscdata.TableForItemAdditionalData(self.args).add(self.additional_view_data, ['Geometric Homogeneity Index'], skip_check_names=True)
+        miscdata.TableForItemAdditionalData(self.args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index'], skip_check_names=True)
 
 
     def populate_layers_additional_data_and_orders(self):
