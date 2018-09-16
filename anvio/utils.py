@@ -2061,11 +2061,6 @@ def get_missing_programs_for_hmm_analysis():
 def get_db_type(db_path):
     filesnpaths.is_file_exists(db_path)
     database = db.DB(db_path, None, ignore_version=True)
-    # try:
-    #     
-    # except:
-    #     raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
-    #                         it is not at all..' % db_path)
 
     tables = database.get_table_names()
     if 'self' not in tables:
