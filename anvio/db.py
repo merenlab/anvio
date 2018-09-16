@@ -54,12 +54,7 @@ class DB:
             self.create_self()
             self.set_version(client_version)
         else:
-            try:
-                self.version = self.get_version()
-            except:
-                raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
-                                    it is not at all..' % self.db_path)
-
+            self.version = self.get_version()
             if str(self.version) != str(client_version) and not ignore_version:
                 if int(self.version) > int(client_version):
                     raise ConfigError("Bad news of the day: the database at %s was generated with an anvi'o version that is 'newer' than\
