@@ -644,6 +644,42 @@ D = {
                       'min-num-genomes-gene-cluster-occurs X' where X is the total number of your genomes, would give you the\
                       single-copy gene cluters in your pan genome."}
                 ),
+    'min-functional-homogeneity-index': (
+            ['--min-functional-homogeneity-index'],
+            {'default': -1,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This filter will remove genoe clusters from your report. If you say '--min-functional-homogeneity-index 0.3', \
+                      every gene cluster with a functional homogeneity index less than 0.3 will be removed from your analysis. This \
+                      can be useful if you only want to look at gene clusters that are highly conserved in resulting funciton"}
+                ),
+    'max-functional-homogeneity-index': (
+            ['--max-functional-homogeneity-index'],
+            {'default': 1,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This filter will remove genoe clusters from your report. If you say '--max-functional-homogeneity-index 0.5', \
+                      every gene cluster with a functional homogeneity index greater than 0.5 will be removed from your analysis. This \
+                      can be useful if you only want to look at gene clusters that don't seem to be functionally conserved"}
+                ),
+    'min-geometric-homogeneity-index': (
+            ['--min-geometric-homogeneity-index'],
+            {'default': -1,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This filter will remove genoe clusters from your report. If you say '--min-geometric-homogeneity-index 0.3', \
+                      every gene cluster with a geometric homogeneity index less than 0.3 will be removed from your analysis. This \
+                      can be useful if you only want to look at gene clusters that are highly conserved in geometric configuration"}
+                ),
+    'max-geometric-homogeneity-index': (
+            ['--max-geometric-homogeneity-index'],
+            {'default': 1,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This filter will remove genoe clusters from your report. If you say '--max-geometric-homogeneity-index 0.5', \
+                      every gene cluster with a geometric homogeneity index greater than 0.5 will be removed from your analysis. This \
+                      can be useful if you only want to look at gene clusters that have many not be as conserved as others"}
+                ),
     'add-into-items-additional-data-table': (
             ['--add-into-items-additional-data-table'],
             {'default': None,
