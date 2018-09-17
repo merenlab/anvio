@@ -126,6 +126,11 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('min-num-genes-from-each-genome'), **anvio.K('min-num-genes-from-each-genome'))
     groupD.add_argument(*anvio.A('max-num-genes-from-each-genome'), **anvio.K('max-num-genes-from-each-genome'))
     groupD.add_argument(*anvio.A('max-num-gene-clusters-missing-from-genome'), **anvio.K('max-num-gene-clusters-missing-from-genome'))
+    groupD.add_argument(*anvio.A('min-functional-homogeneity-index'), **anvio.K('min-functional-homogeneity-index'))
+    groupD.add_argument(*anvio.A('max-functional-homogeneity-index'), **anvio.K('max-functional-homogeneity-index'))
+    groupD.add_argument(*anvio.A('min-geometric-homogeneity-index'), **anvio.K('min-geometric-homogeneity-index'))
+    groupD.add_argument(*anvio.A('max-geometric-homogeneity-index'), **anvio.K('max-geometric-homogeneity-index'))
+
     groupD.add_argument(*anvio.A('add-into-items-additional-data-table'), **anvio.K('add-into-items-additional-data-table'))
 
     groupE = parser.add_argument_group('OTHER STUFF', "Yes. Stuff that are not like the ones above.")
