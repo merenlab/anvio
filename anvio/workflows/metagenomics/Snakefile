@@ -716,6 +716,7 @@ rule anvi_profile:
         contigs_of_interest = M.get_rule_param("anvi_profile", "--contigs-of-interest"),
         queue_size = M.get_rule_param("anvi_profile", "--queue-size"),
         write_buffer_size = M.get_rule_param("anvi_profile", "--write-buffer-size"),
+        max_contig_length = M.get_rule_param("anvi_profile", "--max-contig-length")
     threads: M.T('anvi_profile')
     resources: nodes = M.T('anvi_profile'),
     shell:
@@ -728,7 +729,7 @@ rule anvi_profile:
                              {params.skip_hierarchical_clustering} {params.distance} \
                              {params.linkage} {params.min_mean_coverage} \
                              {params.min_coverage_for_variability} {params.contigs_of_interest} \
-                             {params.queue_size} {params.write_buffer_size} >> {log} 2>&1
+                             {params.queue_size} {params.write_buffer_size} {params.max_contig_length} >> {log} 2>&1
         """
 
 
@@ -916,7 +917,7 @@ rule krakenhll:
         additional_params = M.get_param_value_from_config(["krakenhll", "additional_params"])
     threads: M.T('krakenhll')
     resources: nodes = M.T('krakenhll')
-    shell: " >> {log} 2>&1"
+    shell:
         """
             krakenhll \
                      {params.db} \
@@ -927,7 +928,7 @@ rule krakenhll:
                      --output {output} \
                      {input.r1} \
                      {input.r2} \
-                     {params.additional_params}
+                     {params.additional_params} >> {log} 2>&1
         """
 
 
@@ -946,7 +947,7 @@ rule krakenhll_mpa_report:
         """
             krakenhll-mpa-report {params.db} \
                                  --header-line {input} \
-                                 > {output}
+                                 > {output} 2 > {log}
         """
 
 
