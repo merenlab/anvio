@@ -1771,6 +1771,15 @@ class Bin:
         self.store_data_in_file('original_split_names.txt', '\n'.join(self.split_names))
 
         fasta_file = self.get_output_file_handle('contigs.fa')
+        fasta_file.write(self.get_bin_sequence())
+        fasta_file.close()
+
+        self.store_data_in_file('num_contigs.txt', '%d' % self.bin_info_dict['num_contigs'])
+        self.store_data_in_file('total_length.txt', '%d' % self.bin_info_dict['total_length'])
+
+
+    def get_bin_sequence(self):
+        output = ""
 
         # this dict will keep all the contig ids found in this bin with split names ordered:
         contigs_represented = utils.get_contigs_splits_dict(self.split_names, self.summary.splits_basic_info)
@@ -1780,7 +1789,6 @@ class Bin:
         for contig_id in contigs_represented:
             splits_order = list(contigs_represented[contig_id].keys())
 
-            self.progress.update('Creating the FASTA file :: Identifying sequential blocks ...')
             # this is critical: sequential_blocks is a list of one ore more lists, where each item of this list
             # describes a range of splits that follow each other to represent a coherent
             # chunk of the parent sequence (if all splits from a contig is selected into this bin,
@@ -1788,7 +1796,6 @@ class Bin:
             sequential_blocks = ccollections.GetSequentialBlocksOfSplits(splits_order).process()
 
             for sequential_block in sequential_blocks:
-                self.progress.update('Creating the FASTA file :: Identifying the portion of contig represented ...')
                 first_split = contigs_represented[contig_id][sequential_block[0]]
                 last_split = contigs_represented[contig_id][sequential_block[-1]]
 
@@ -1808,21 +1815,16 @@ class Bin:
                     appendix = '_partial_%d_%d' % (contig_sequence_start_in_splits, contig_sequence_end_in_splits)
 
                 sequence = ''
-                self.progress.update('Creating the FASTA file :: Reconstructing contig sequence from splits ...')
                 for split_order in sequential_block:
                     sequence += self.summary.split_sequences[contigs_represented[contig_id][split_order]]
 
                 fasta_id = contig_id + appendix
                 self.contig_lengths.append(len(sequence))
+                
+                output += '>%s\n' % fasta_id
+                output += '%s\n' % textwrap.fill(sequence, 80, break_on_hyphens=False)
 
-                self.progress.update('Creating the FASTA file :: Writing contig sequence into file ...')
-                fasta_file.write('>%s\n' % fasta_id)
-                fasta_file.write('%s\n' % textwrap.fill(sequence, 80, break_on_hyphens=False))
-
-        fasta_file.close()
-
-        self.store_data_in_file('num_contigs.txt', '%d' % self.bin_info_dict['num_contigs'])
-        self.store_data_in_file('total_length.txt', '%d' % self.bin_info_dict['total_length'])
+        return output
 
 
     def set_taxon_calls(self):
