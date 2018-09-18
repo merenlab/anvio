@@ -1146,7 +1146,7 @@ class BottleApplication(Bottle):
         try:
             parameters = {}
             for key in request.forms:
-                parameters[key] = int(request.forms.get(key))
+                parameters[key] = float(request.forms.get(key))
 
             gene_clusters_dict, _ = self.interactive.filter_gene_clusters_from_gene_clusters_dict(copy.deepcopy(self.interactive.gene_clusters), **parameters)
             return json.dumps({'status': 0, 'gene_clusters_list': list(gene_clusters_dict.keys())})
