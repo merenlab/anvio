@@ -917,7 +917,7 @@ rule krakenhll:
         additional_params = M.get_param_value_from_config(["krakenhll", "additional_params"])
     threads: M.T('krakenhll')
     resources: nodes = M.T('krakenhll')
-    shell: " >> {log} 2>&1"
+    shell:
         """
             krakenhll \
                      {params.db} \
@@ -928,7 +928,7 @@ rule krakenhll:
                      --output {output} \
                      {input.r1} \
                      {input.r2} \
-                     {params.additional_params}
+                     {params.additional_params} >> {log} 2>&1
         """
 
 
@@ -947,7 +947,7 @@ rule krakenhll_mpa_report:
         """
             krakenhll-mpa-report {params.db} \
                                  --header-line {input} \
-                                 > {output}
+                                 > {output} 2 > {log}
         """
 
 
