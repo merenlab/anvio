@@ -324,21 +324,23 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('divider');       
             }
 
-            if (mode == 'gene') {
+            if (mode == 'gene' && inspection_available) {
                 menu.push('inspect_context');
                 menu.push('inspect_gene');
                 menu.push('inspect_context_quick');
                 menu.push('inspect_gene_quick');
+                menu.push('divider');
             }
             else if (mode == 'pan') {
                 menu.push('inspect_geneclusters');
+                menu.push('divider');
             }
-            else {
+            else if (inspection_available) {
                 menu.push('inspect_split');
                 menu.push('inspect_split_quick');
+                menu.push('divider');
             }
 
-            menu.push('divider');
             if (mode == 'pan') {
                 menu.push('get_AA_sequences_for_gene_cluster');
             }
@@ -347,7 +349,7 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('hmm_Ribosomal_S3_C');
                 menu.push('hmm_Ribosomal_L10');
             }
-            else {
+            else if (sequences_available) {
                 menu.push('get_split_sequence');
                 menu.push('blastn_nr');
                 menu.push('blastx_nr');

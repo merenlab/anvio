@@ -69,6 +69,8 @@ var session_id;
 var mode;
 var server_mode = false;
 var samples_tree_hover = false;
+var inspection_available = false;
+var sequences_available = false;
 var bbox;
 
 var request_prefix = getParameterByName('request_prefix');
@@ -195,14 +197,14 @@ function initData() {
                 setTimeout(checkBackgroundProcess, 5000);
             }
 
+            inspection_available = response.inspection_available;
             if(!response.inspection_available){
                 toastr.info("Inspection of data items is not going to be available for this project.");
-                $('.menuItemInspect').addClass('menu-disabled');
             }
 
+            sequences_available = response.sequences_available;
             if(!response.sequences_available && mode != "collection" && mode != "pan"){
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
-                $('.menuItemSequence').addClass('menu-disabled');
             }
 
             if (response.read_only)
