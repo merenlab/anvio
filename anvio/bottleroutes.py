@@ -301,6 +301,9 @@ class BottleApplication(Bottle):
             elif self.interactive.mode == 'pan':
                 functions_sources = list(self.interactive.gene_clusters_function_sources)
 
+            inspection_available = self.interactive.auxiliary_profile_data_available
+            if self.interactive.p_meta['blank']:
+                inspection_available = False
 
             return json.dumps( { "title":                              self.interactive.title,
                                  "description":                        self.interactive.p_meta['description'],
@@ -317,7 +320,7 @@ class BottleApplication(Bottle):
                                  "layers_information_default_order":   self.interactive.layers_additional_data_keys,
                                  "check_background_process":           True,
                                  "autodraw":                           autodraw,
-                                 "inspection_available":               self.interactive.auxiliary_profile_data_available,
+                                 "inspection_available":               inspection_available,
                                  "sequences_available":                True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
                                  "functions_initialized":              self.interactive.gene_function_calls_initiated,
                                  "functions_sources":                  functions_sources,
