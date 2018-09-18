@@ -297,6 +297,7 @@ class MultipleRuns:
                      ('version', 'The version number'),
                      ('num_splits', 'The number of splits'),
                      ('min_contig_length', 'The minimum contig length (-M) values'),
+                     ('max_contig_length', 'The maximum contig length (--max-contig-length) values'),
                      ('min_coverage_for_variability', 'The minimum coverage values to report variability (-V)'),
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
                      ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
@@ -454,6 +455,7 @@ class MultipleRuns:
         C = lambda x: list(self.profile_dbs_info_dict.values())[0][x]
         self.contigs_db_hash = C('contigs_db_hash')
         self.min_contig_length = C('min_contig_length')
+        self.max_contig_length = C('max_contig_length')
         self.num_contigs = C('num_contigs')
         self.num_splits = C('num_splits')
         self.min_coverage_for_variability = C('min_coverage_for_variability')
@@ -496,6 +498,7 @@ class MultipleRuns:
                        'contigs_ordered': not self.skip_hierarchical_clustering,
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
+                       'max_contig_length': self.max_contig_length,
                        'SNVs_profiled': self.SNVs_profiled,
                        'SCVs_profiled': self.SCVs_profiled,
                        'num_contigs': self.num_contigs,
