@@ -1041,7 +1041,7 @@ class PanSuperclass(object):
         sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=False)
 
         homogeneity_calculator = homogeneityindex.HomogeneityCalculator(quick_homogeneity=self.args.quick_homogeneity)
-        
+
         self.progress.new('Computing gene cluster homogeneity indices')
         self.progress.update('Initializing %d threads...' % num_threads)
 
@@ -1471,7 +1471,7 @@ class PanSuperclass(object):
 
     def filter_gene_clusters_from_gene_clusters_dict(self, gene_clusters_dict, min_num_genomes_gene_cluster_occurs=0,
              max_num_genomes_gene_cluster_occurs=sys.maxsize, min_num_genes_from_each_genome=0, max_num_genes_from_each_genome=sys.maxsize,
-             min_functional_homogeneity_index=-1, max_functional_homogeneity_index=1, min_geometric_homogeneity_index=-1, 
+             min_functional_homogeneity_index=-1, max_functional_homogeneity_index=1, min_geometric_homogeneity_index=-1,
              max_geometric_homogeneity_index=1):
         """This takes in your `gene_clusters_dict`, and removes gene_clusters based on their occurrences across genomes.
 
@@ -1499,6 +1499,11 @@ class PanSuperclass(object):
         min_num_genes_from_each_genome = check(min_num_genes_from_each_genome, '--min-num-genes-from-each-genome')
         max_num_genes_from_each_genome = check(max_num_genes_from_each_genome, '--max-num-genes-from-each-genome')
 
+        # check whether homogeneity data is available in the database:
+        available_additional_data_keys = TableForItemAdditionalData(self.args).get_available_data_keys()
+        functional_homogeneity_info_is_available = 'functional_homogeneity_index' in available_additional_data_keys
+        geometric_homogeneity_info_is_available = 'geometric_homogeneity_index' in available_additional_data_keys
+
         if min_num_genomes_gene_cluster_occurs < 0 or max_num_genomes_gene_cluster_occurs < 0:
             raise ConfigError("When you ask for a negative value for the the minimum or maximum number of genomes a gene cluster is expected\
                                to be found, you are pushing the boundaries of physics instead of biology. Let's focus on one field of science\
@@ -1521,7 +1526,7 @@ class PanSuperclass(object):
 
         if max_functional_homogeneity_index > 1 or max_geometric_homogeneity_index > 1:
             raise ConfigError("Geometric and Functional homogeneity indices have a maximum possible value of 1. Your parameters exceed this hard upper limit.\
-                               Please check your parameters.") 
+                               Please check your parameters.")
 
         if max_functional_homogeneity_index < min_functional_homogeneity_index or max_geometric_homogeneity_index < min_geometric_homogeneity_index:
             raise ConfigError("Please. Check your parameters. Make sure that minimum values are less than (or equal to) maximum values. We beg you")
