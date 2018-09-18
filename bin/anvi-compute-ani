@@ -5,6 +5,7 @@
 import os
 import sys
 import shutil
+import hashlib
 import argparse
 
 import anvio
@@ -12,6 +13,7 @@ import anvio.db as db
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.clustering as clustering
+import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
 
@@ -69,13 +71,43 @@ def main(args):
 
     hash_to_name = {}
     genome_names = set([])
+    summaries = {}
+
     for genome_name in genome_desc.genomes:
         genome_names.add(genome_name)
-        db_path = genome_desc.genomes[genome_name]['contigs_db_path']
-        db_hash = genome_desc.genomes[genome_name]['contigs_db_hash']
+        contigs_db_path = genome_desc.genomes[genome_name]['contigs_db_path']
+        hash_for_output_file = hashlib.sha256(genome_name.encode('utf-8')).hexdigest()
+        hash_to_name[hash_for_output_file] = genome_name
 
-        hash_to_name[db_hash] = genome_name
-        utils.export_sequences_from_contigs_db(db_path, os.path.join(temp_dir, db_hash + '.fa'))
+        if 'bin_id' in genome_desc.genomes[genome_name]:
+            # Internal genome
+            bin_id = genome_desc.genomes[genome_name]['bin_id']
+            collection_id = genome_desc.genomes[genome_name]['collection_id']
+            profile_db_path = genome_desc.genomes[genome_name]['profile_db_path']
+
+            if not genome_name in summaries:
+                summaries[genome_name] = {}
+
+            if not collection_id in summaries[genome_name]:
+                class Args: None
+                summary_args = Args()
+                
+                summary_args.profile_db = profile_db_path
+                summary_args.contigs_db = contigs_db_path
+                summary_args.collection_name = collection_id
+                
+                summary = summarizer.ProfileSummarizer(summary_args, r=terminal.Run(verbose=False))
+                summary.init()
+
+                summaries[genome_name][collection_id] = summary
+
+            bin_summary = summarizer.Bin(summaries[genome_name][collection_id], bin_id)
+
+            with open(os.path.join(temp_dir, hash_for_output_file + '.fa'), 'w') as fasta:
+                fasta.write(bin_summary.get_bin_sequence())
+        else:
+            # External genome
+            utils.export_sequences_from_contigs_db(contigs_db_path, os.path.join(temp_dir, hash_for_output_file + '.fa'))
 
     results = program.run_command(temp_dir)
     results = restore_names_in_dict(results, hash_to_name)
