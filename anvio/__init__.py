@@ -1502,6 +1502,15 @@ D = {
                       time it will take to analyze all contigs. You can use --list-contigs parameter to have an idea how\
                       many contigs would be discarded for a given M."}
                 ),
+    'max-contig-length': (
+            ['--max-contig-length'],
+            {'metavar': 'INT',
+             'default': 0,
+             'type': int,
+             'help': "Just like the minimum contig length parameter, but to set a maximum. Basically this will remove\
+                      any contig longer than a certain value. Why would anyone need this? Who knows. But if you ever\
+                      do, it is here."}
+                ),
     'min-mean-coverage': (
             ['-X', '--min-mean-coverage'],
             {'metavar': 'INT',
