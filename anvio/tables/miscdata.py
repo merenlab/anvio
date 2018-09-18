@@ -510,9 +510,28 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                is as frustrated as you are right now :(" %\
                                     (self.target_table, self.target_data_group, ', '.join(['"%s"' % d for d in self.available_group_names])))
 
+    def get_available_data_keys(self):
+        """Will only return the additional data keys so the client can do some controls."""
+
+        if not self.target_data_group:
+            raise ConfigError("The target data group is not set. Which should never be the case at this stage. You shall\
+                               not break anvi'o and go back to where you came from, devil :(")
+
+        self.progress.new('Recovering additional keys and data for %s' % self.target_table)
+        self.progress.update('...')
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True, \
+                        where_clause="""data_group LIKE '%s'""" % self.target_data_group)
+        database.disconnect()
+
+        self.progress.end()
+
+        return additional_data_keys_in_db
+
 
     def get(self, additional_data_keys_requested=[]):
-        """Will return the additional data keys and the dict."""
+        """Will return the additional data keys as well as the data dict."""
 
         if not self.target_data_group:
             raise ConfigError("It seems the target data group is not set, which makes zero sense and should never happen\
@@ -523,13 +542,12 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             raise ConfigError("The `get` function in AdditionalDataBaseClass is upset with you. You could change that\
                                by making sure you request additional data keys with a variable of type `list`.")
 
-        self.progress.new('Recovering additional keys and data for %s' % self.target_table)
+        additional_data_keys_in_db = self.get_available_data_keys()
+
+        self.progress.new('Recovering additional data for %s' % self.target_table)
         self.progress.update('...')
+
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-
-        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True, \
-                        where_clause="""data_group LIKE '%s'""" % self.target_data_group)
-
         if not len(additional_data_keys_requested):
             additional_data_keys = additional_data_keys_in_db
             additional_data = database.get_some_rows_from_table_as_dict(self.table_name,
