@@ -181,6 +181,7 @@ class BinSplitter(summarizer.Bin):
         bin_contigs_db.db.update_meta_value('total_length', self.total_length)
         bin_contigs_db.db.update_meta_value('creation_date', bin_contigs_db.get_date())
         bin_contigs_db.db.update_meta_value('contigs_db_hash', self.contigs_db_hash)
+        bin_contigs_db.db.update_meta_value('project_name', self.bin_id)
 
         # the empty contigs db is ready
         bin_contigs_db.disconnect()
