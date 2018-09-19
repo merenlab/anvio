@@ -91,11 +91,11 @@ def main(args):
             if not collection_id in summaries[genome_name]:
                 class Args: None
                 summary_args = Args()
-                
+
                 summary_args.profile_db = profile_db_path
                 summary_args.contigs_db = contigs_db_path
                 summary_args.collection_name = collection_id
-                
+
                 summary = summarizer.ProfileSummarizer(summary_args, r=terminal.Run(verbose=False))
                 summary.init()
 
