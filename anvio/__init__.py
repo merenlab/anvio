@@ -1806,7 +1806,6 @@ def K(param_id, params_dict={}):
 
     return kwargs
 
-
 # The rest of this file is composed of code that responds to '-v' or '--version' calls from clients,
 # and provides access to the database version numbers for all anvi'o modules.
 
