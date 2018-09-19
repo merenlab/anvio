@@ -123,10 +123,6 @@ class TablesForCollections(Table):
             db_entries = self.process_contigs(collection_name, collection_dict)
             database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_contigs_table_name, db_entries)
 
-        import time
-        while True:
-            time.sleep(1)
-
         database.disconnect()
 
         num_bins = len(bin_names)
