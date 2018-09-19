@@ -61,7 +61,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         self.nulls_per_type = {'str': '',
                                'int': 0,
                                'float': 0,
-                               'stackedbar': None,
+                               'stackedbar': 0,
                                'unknown': None}
 
 
@@ -119,7 +119,10 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                     # what the hell, user?
                     return
 
-                database._exec('''DELETE from %s WHERE data_key="%s" and data_group="%s"''' % (self.table_name, key, self.target_data_group))
+                if 'data_group' in database.get_table_structure(self.table_name):
+                    database._exec('''DELETE from %s WHERE data_key="%s" and data_group="%s"''' % (self.table_name, key, self.target_data_group))
+                else:
+                    database._exec('''DELETE from %s WHERE data_key="%s"''' % (self.table_name, key))
 
             self.run.warning("Data from the table '%s' for the following data keys in data group '%s' \
                               removed from the database: '%s'. #SAD." % (self.target_table, self.target_data_group, ', '.join(data_keys_list)))
@@ -352,7 +355,8 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                     if layer not in sum_stackbar_items[stackbar_name]:
                         sum_stackbar_items[stackbar_name][layer] = 0.0
 
-                    sum_stackbar_items[stackbar_name][layer] += float(additional_data_dict[layer][data_key])
+                    if additional_data_dict[layer][data_key]:
+                        sum_stackbar_items[stackbar_name][layer] += float(additional_data_dict[layer][data_key])
 
         for data_key in additional_data_keys:
             if '!' in data_key:
@@ -506,9 +510,28 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                is as frustrated as you are right now :(" %\
                                     (self.target_table, self.target_data_group, ', '.join(['"%s"' % d for d in self.available_group_names])))
 
+    def get_available_data_keys(self):
+        """Will only return the additional data keys so the client can do some controls."""
+
+        if not self.target_data_group:
+            raise ConfigError("The target data group is not set. Which should never be the case at this stage. You shall\
+                               not break anvi'o and go back to where you came from, devil :(")
+
+        self.progress.new('Recovering additional keys and data for %s' % self.target_table)
+        self.progress.update('...')
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True, \
+                        where_clause="""data_group LIKE '%s'""" % self.target_data_group)
+        database.disconnect()
+
+        self.progress.end()
+
+        return additional_data_keys_in_db
+
 
     def get(self, additional_data_keys_requested=[]):
-        """Will return the additional data keys and the dict."""
+        """Will return the additional data keys as well as the data dict."""
 
         if not self.target_data_group:
             raise ConfigError("It seems the target data group is not set, which makes zero sense and should never happen\
@@ -519,13 +542,12 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             raise ConfigError("The `get` function in AdditionalDataBaseClass is upset with you. You could change that\
                                by making sure you request additional data keys with a variable of type `list`.")
 
-        self.progress.new('Recovering additional keys and data for %s' % self.target_table)
+        additional_data_keys_in_db = self.get_available_data_keys()
+
+        self.progress.new('Recovering additional data for %s' % self.target_table)
         self.progress.update('...')
+
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-
-        additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True, \
-                        where_clause="""data_group LIKE '%s'""" % self.target_data_group)
-
         if not len(additional_data_keys_requested):
             additional_data_keys = additional_data_keys_in_db
             additional_data = database.get_some_rows_from_table_as_dict(self.table_name,

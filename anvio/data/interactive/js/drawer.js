@@ -251,7 +251,7 @@ Drawer.prototype.generate_tooltips = function() {
             else if (layer_types[pindex] == 1) {
                 let stack_names = layerdata[0][pindex].split('!')[1].split(';');
                 let stack_items = layerdata[index][pindex].split(';');
-
+                let layer_title = layerdata[0][pindex];
                 message = '<td>' + layer_title.split('!')[0] + '</td><td><table>';
                 for (let j = stack_names.length - 1; j >= 0; j--) {
                     let bar_name = stack_names[j]; 

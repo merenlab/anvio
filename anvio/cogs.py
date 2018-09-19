@@ -384,7 +384,7 @@ class COGsSetup:
 
         blast_db_path = J(self.COG_data_dir, 'DB_BLAST')
         if os.path.exists(blast_db_path):
-            formatted_db_paths['blastp'] = J(blast_db_path, 'COG')
+            formatted_db_paths['blastp'] = J(blast_db_path, 'COG/COG.fa')
 
         return formatted_db_paths
 
@@ -558,8 +558,7 @@ class COGsSetup:
             diamond = Diamond(temp_fasta_path)
             diamond.num_threads = self.num_threads
             diamond.run.log_file_path = log_file_path
-            diamond.target_db_path = output_db_path
-            diamond.makedb()
+            diamond.makedb(output_db_path)
         else:
             self.run.warning("Diamond does not seem to be installed on this system, so anvi'o is not going to\
                               generate a search database for it. Remember this when/if things go South.")
@@ -577,10 +576,9 @@ class COGsSetup:
             self.run.info('BLAST log', log_file_path)
 
             blast = BLAST(temp_fasta_path)
-            blast.target_db_path = output_db_path
             blast.run.log_file_path = log_file_path
             blast.num_threads = self.num_threads
-            blast.makedb()
+            blast.makedb(os.path.join(output_db_path, 'COG.fa'))
         else:
             self.run.warning("BLAST tools do not seem to be installed on this system, so anvi'o is not going to\
                               generate a search database for them to be used. Keep this in mind for later.")

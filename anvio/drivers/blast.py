@@ -50,6 +50,8 @@ class BLAST:
 
         if not self.target_fasta:
             self.target_fasta = self.query_fasta
+        elif self.target_db_path:
+            self.target_fasta = self.target_db_path
 
         self.search_program = search_program
         self.search_output_path = 'blast-search-results.txt'
@@ -94,20 +96,20 @@ class BLAST:
                                Please check the log file here: '%s'" % (process, self.run.log_file_path))
 
 
-    def makedb(self):
+    def makedb(self, output_db_path=None):
         self.progress.new('BLAST')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
 
         cmd_line = ['makeblastdb',
                     '-in', self.target_fasta,
                     '-dbtype', 'prot',
-                    '-out', self.target_fasta]
+                    '-out', output_db_path or self.target_fasta]
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
-        expected_output = self.target_fasta + '.phr'
+        expected_output = (output_db_path or self.target_fasta) + '.phr'
         self.check_output(expected_output, 'makeblastdb')
 
         self.run.info('blast makeblast cmd', cmd_line, quiet=True)
@@ -115,9 +117,6 @@ class BLAST:
 
 
     def blast(self):
-        self.progress.new('BLAST')
-        self.progress.update('running search (using %s with %d thread(s)) ...' % (self.search_program, self.num_threads))
-
         cmd_line = [self.search_program,
                     '-query', self.query_fasta,
                     '-db', self.target_fasta,
@@ -129,7 +128,10 @@ class BLAST:
         if self.max_target_seqs:
             cmd_line += ['-max_target_seqs', self.max_target_seqs]
 
-        self.run.info('blast %s cmd' % self.search_program, cmd_line, quiet=True)
+        self.run.info('NCBI %s cmd' % self.search_program, ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+
+        self.progress.new('BLAST')
+        self.progress.update('running search (using %s with %d thread(s)) ...' % (self.search_program, self.num_threads))
 
         utils.run_command(cmd_line, self.run.log_file_path)
 

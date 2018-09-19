@@ -30,7 +30,7 @@ if __name__ == '__main__':
     groupS = parser.add_argument_group('FOCUS', 'What do we want? A consensus sequence for a gene, or a list of\
                                                  genes. From where do we want it? All samples, by default. When\
                                                  do we want it? Whenever it is convenient.')
-    groupS.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id'))
+    groupS.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
     groupS.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     groupS.add_argument(*anvio.A('samples-of-interest'), **anvio.K('samples-of-interest'))
 
@@ -47,6 +47,13 @@ if __name__ == '__main__':
                                                   If you declare nothing from this bunch, you will get "everything"\
                                                   to play with, which is not necessarily a good thing...')
     groupE.add_argument(*anvio.A('engine'), **anvio.K('engine'))
+    groupE.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode', {'help': "Use this flag to output consensus\
+                                                                                      sequences of contigs, instead of the\
+                                                                                      default, which is genes"}))
+    parser.add_argument('--compress-samples', action='store_true', required=False,
+                        help="Normally all samples with variation will have their own consensus sequence. If this flag\
+                              is provided, the coverages from each sample of interest will be summed and only a single\
+                              consenus sequence for each gene/contig will be output.")
 
 
     args = anvio.get_args(parser)

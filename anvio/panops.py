@@ -64,6 +64,8 @@ class Pangenome(object):
         self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
         self.skip_alignments = A('skip_alignments')
+        self.skip_homogeneity = self.args.skip_homogeneity
+        self.quick_homogeneity = self.args.quick_homogeneity
         self.align_with = A('align_with')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = anvio.DEBUG
@@ -572,6 +574,28 @@ class Pangenome(object):
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
 
 
+    def populate_gene_cluster_homogeneity_index(self, gene_clusters_dict):
+        if self.skip_alignments:
+            self.run.warning('Skipping homogeneity calculations because gene clusters are not alligned.')
+            return
+
+        if self.skip_homogeneity:
+            self.run.warning("Skipping homogeneity calculations per the '--skip-homogeneity' flag.")
+            return
+        
+        pan = dbops.PanSuperclass(args=self.args)
+        gene_cluster_names = set(list(gene_clusters_dict.keys()))
+
+        d = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_names=gene_cluster_names, num_threads=self.num_threads)
+
+        if d is None:
+            self.run.warning("Anvi'o received an empty dictionary for homogeneity indices. Not good :/ Returning empty handed,\
+                              without updating anything in the pan database...")
+            return
+
+        miscdata.TableForItemAdditionalData(self.args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index'], skip_check_names=True)
+
+
     def populate_layers_additional_data_and_orders(self):
         self.progress.new('Layers additional data and orders')
         self.progress.update('Copmputing the hierarchical clustering of the (transposed) view data')
@@ -885,6 +909,9 @@ class Pangenome(object):
         # populate layers additional data and orders
         self.populate_layers_additional_data_and_orders()
 
+        # work with gene cluster homogeneity index
+        self.populate_gene_cluster_homogeneity_index(gene_clusters_dict)
+        
         # done
         self.run.info('log file', self.run.log_file_path)
         self.run.quit()

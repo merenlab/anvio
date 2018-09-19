@@ -390,20 +390,34 @@ D = {
                 ),
     'min-portion-occurrence-of-function-in-group': (
             ['-P', '--min-portion-occurrence-of-function-in-group'],
-            {'metavar': 'PORTION',
+            {'metavar': 'FLOAT',
              'default': 0,
              'type': float,
              'help': "Takes a value between 0 and 1, where 1 means that only functions that occur in all members of\
                       one of the compared groups will be included in the output. Default is %(default).1f."}
                 ),
+    'false-detection-rate': (
+            ['--false-detection-rate', '--FDR'],
+            {'metavar': 'FLOAT',
+             'default': 0.05,
+             'type': float,
+             'help': "Takes a value between 0 and 1, to determine the false detection rate that will be used \
+                      for the Benjamini–Hochberg procedure. Default is %(default).1f."}
+                ),
+    'core-threshold': (
+            ['--core-threshold'],
+            {'metavar': 'FLOAT',
+             'default': 1,
+             'type': float,
+             'help': "Takes a value between 0 and 1, where 1 means that only functions occuring in all genomes \
+                     of a group would be considered as core functions of that group. Default is %(default).1f."}
+                ),
     'min-function-enrichment': (
             ['-E', '--min-function-enrichment'],
-            {'metavar': 'PORTION',
+            {'metavar': 'FLOAT',
              'default': 0,
              'type': float,
-             'help': "Takes a value between 0 and 1, where 1 means that the output will include only functions\
-                     that occur in all members of one group and in none of the members of the other group.\
-                     Default is %(default).1f."}
+             'help': "Only report functions for which the min enrichment is above the provided value. Default is %(default).1f."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
@@ -487,6 +501,7 @@ D = {
     'hmm-source': (
             ['--hmm-source'],
             {'metavar': 'SOURCE NAME',
+             'default': None,
              'help': "Use a specific HMM source. You can use '--list-hmm-sources' flag to see\
                       a list of available resources. The default is '%(default)s'."}
                 ),
@@ -628,6 +643,42 @@ D = {
                       appropriate phylogenomic analyses. For instance, using '--max-num-genes-from-each-genome 1' and \
                       'min-num-genomes-gene-cluster-occurs X' where X is the total number of your genomes, would give you the\
                       single-copy gene cluters in your pan genome."}
+                ),
+    'min-functional-homogeneity-index': (
+            ['--min-functional-homogeneity-index'],
+            {'default': -1,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This filter will remove genoe clusters from your report. If you say '--min-functional-homogeneity-index 0.3', \
+                      every gene cluster with a functional homogeneity index less than 0.3 will be removed from your analysis. This \
+                      can be useful if you only want to look at gene clusters that are highly conserved in resulting funciton"}
+                ),
+    'max-functional-homogeneity-index': (
+            ['--max-functional-homogeneity-index'],
+            {'default': 1,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This filter will remove genoe clusters from your report. If you say '--max-functional-homogeneity-index 0.5', \
+                      every gene cluster with a functional homogeneity index greater than 0.5 will be removed from your analysis. This \
+                      can be useful if you only want to look at gene clusters that don't seem to be functionally conserved"}
+                ),
+    'min-geometric-homogeneity-index': (
+            ['--min-geometric-homogeneity-index'],
+            {'default': -1,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This filter will remove genoe clusters from your report. If you say '--min-geometric-homogeneity-index 0.3', \
+                      every gene cluster with a geometric homogeneity index less than 0.3 will be removed from your analysis. This \
+                      can be useful if you only want to look at gene clusters that are highly conserved in geometric configuration"}
+                ),
+    'max-geometric-homogeneity-index': (
+            ['--max-geometric-homogeneity-index'],
+            {'default': 1,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This filter will remove genoe clusters from your report. If you say '--max-geometric-homogeneity-index 0.5', \
+                      every gene cluster with a geometric homogeneity index greater than 0.5 will be removed from your analysis. This \
+                      can be useful if you only want to look at gene clusters that have many not be as conserved as others"}
                 ),
     'add-into-items-additional-data-table': (
             ['--add-into-items-additional-data-table'],
@@ -1069,6 +1120,13 @@ D = {
              'type': str,
              'help': "Varaibility engine. The default is '%(default)s'."}
                 ),
+    'skip-synonymity': (
+            ['--skip-synonymity'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Computing synonymity can be an expensive operation for large data sets. Provide this flag to skip\
+                      computing synonymity. It only makes sense to provide this flag when using --engine CDN."}
+                ),
     'transpose': (
             ['--transpose'],
             {'default': False,
@@ -1243,6 +1301,12 @@ D = {
              'help': "The default behavior is to start the local server, and fire up a browser that\
                       connects to the server. If you have other plans, and want to start the server\
                       without calling the browser, this is the flag you need."}
+                ),
+    'store-in-db': (
+            ['--store-in-db'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Store analysis results into the database directly."}
                 ),
     'skip-store-in-db': (
             ['--skip-store-in-db'],
@@ -1437,6 +1501,15 @@ D = {
                       but we advise to never go below 1,000. You also should remember that the lower you go, the more\
                       time it will take to analyze all contigs. You can use --list-contigs parameter to have an idea how\
                       many contigs would be discarded for a given M."}
+                ),
+    'max-contig-length': (
+            ['--max-contig-length'],
+            {'metavar': 'INT',
+             'default': 0,
+             'type': int,
+             'help': "Just like the minimum contig length parameter, but to set a maximum. Basically this will remove\
+                      any contig longer than a certain value. Why would anyone need this? Who knows. But if you ever\
+                      do, it is here."}
                 ),
     'min-mean-coverage': (
             ['-X', '--min-mean-coverage'],

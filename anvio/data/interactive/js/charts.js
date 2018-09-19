@@ -238,7 +238,7 @@ function showSetMaxValuesDialog() {
 
         if (!(state['layers'].hasOwnProperty(layer_name) && parseFloat(state['layers'][layer_name]['height']) == 0)) {
             var max_val
-            var actual_max_val = Math.max.apply(null, coverage[layer_index]);;
+            var actual_max_val = GetMaxMin(coverage[layer_index])['Max'];
             if (has_max_coverage_values) {
                 max_val = max_coverage_values[j];
             } else {
@@ -502,8 +502,9 @@ function Chart(options){
                             .domain([0, this.coverage.length]);
    
 
-    this.minCoverage = Math.min.apply(null, this.coverage);
-    this.maxCoverage = Math.max.apply(null, this.coverage);
+    let cov_min_max = GetMaxMin(this.coverage);
+    this.minCoverage = cov_min_max['Min'];
+    this.maxCoverage = cov_min_max['Max'];
 
     // this.max_coverage comes from options, 0 means not available
     if (this.max_coverage == 0) {
@@ -512,8 +513,9 @@ function Chart(options){
         this.maxCoverageForyScale = this.max_coverage;
     }
 
-    this.maxGCContent = Math.max.apply(null, this.gc_content);
-    this.minGCContent = Math.min.apply(null, this.gc_content);
+    let gc_min_max = GetMaxMin(this.gc_content);
+    this.maxGCContent = gc_min_max['Min'];
+    this.minGCContent = gc_min_max['Max'];
 
     this.yScale = d3.scale.linear()
                             .range([this.height,0])

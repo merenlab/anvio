@@ -44,6 +44,8 @@ class Diamond:
 
         if not self.target_fasta:
             self.target_fasta = self.query_fasta
+        elif self.target_db_path:
+            self.target_fasta = self.target_db_path
 
         self.search_output_path = 'diamond-search-results'
         self.tabular_output_path = 'diamond-search-results.txt'
@@ -91,21 +93,21 @@ class Diamond:
                                 Please check the log file here: '%s." % (process, self.run.log_file_path))
 
 
-    def makedb(self):
+    def makedb(self, output_file_path=None):
         self.progress.new('DIAMOND')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
 
         cmd_line = ['diamond',
                     'makedb',
                     '--in', self.query_fasta,
-                    '-d', self.target_fasta,
+                    '-d', output_file_path or self.target_fasta,
                     '-p', self.num_threads]
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
-        expected_output = self.target_fasta + '.dmnd'
+        expected_output = (output_file_path or self.target_fasta) + '.dmnd'
         self.check_output(expected_output, 'makedb')
 
         self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
@@ -114,9 +116,6 @@ class Diamond:
 
     def blastp(self):
         self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
-
-        self.progress.new('DIAMOND')
-        self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
         cmd_line = ['diamond',
                     'blastp',
@@ -134,7 +133,10 @@ class Diamond:
         if self.evalue:
             cmd_line.extend(['--evalue', self.evalue])
 
-        self.run.info('diamond blastp cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
+        self.run.info('DIAMOND blastp cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+
+        self.progress.new('DIAMOND')
+        self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
