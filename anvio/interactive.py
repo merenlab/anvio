@@ -538,6 +538,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['views'] = {}
         self.p_meta['db_type'] = 'profile'
         self.p_meta['merged'] = True
+        self.p_meta['blank'] = True
         self.p_meta['default_view'] = 'single'
         self.default_view = self.p_meta['default_view']
 
