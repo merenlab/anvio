@@ -57,6 +57,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ['contigs-db', 'profile-db', 'external-genomes', 'internal-genomes', 'hmm-profile']
+__provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
 
 
 run = terminal.Run()
