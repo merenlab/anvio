@@ -54,7 +54,7 @@ class StructureDatabase(object):
         self.db = db.DB(self.file_path, self.version, new_database = create_new)
 
         if create_new:
-            # structure of the residue info table depend on annotation sources used
+            # structure of the residue info table depend on residue annotation sources used
             self.residue_info_structure, self.residue_info_types = self.get_residue_info_table_structure(residue_info_structure_extras, residue_info_types_extras)
             self.table_names = self.create_tables()
         else:
@@ -85,7 +85,7 @@ class StructureDatabase(object):
     def get_residue_info_table_structure(self, residue_info_structure_extras, residue_info_types_extras):
         """
         The structure (i.e. column numbers and labels) of the residue_info table depend on
-        annotation sources used, and are taken from residue_info_structure_extras.
+        residue annotation sources used, and are taken from residue_info_structure_extras.
         """
         # If residue_info_structure_extras was sloppily passed to this class, it may have
         # some items already in t.structure_residue_info_table_name. So we delete them if they exist
@@ -211,9 +211,9 @@ class Structure(object):
         self.sanity_check()
 
         # residue annotation
-        self.annotation_sources_info = self.get_annotation_sources_info()
+        self.residue_annotation_sources_info = self.get_residue_annotation_sources_info()
         self.residue_info_table_structure, self.residue_info_table_types = self.get_residue_info_table_structure()
-        self.res_annotation_df = pd.DataFrame({})
+        self.residue_annotation_df = pd.DataFrame({})
 
         # initialize StructureDatabase
         self.structure_db = StructureDatabase(self.output_db_path,
@@ -228,16 +228,16 @@ class Structure(object):
 
     def get_residue_info_table_structure(self):
         """
-        Table structure is dependent on which annotation sources are available or of interest.
+        Table structure is dependent on which residue annotation sources are available or of interest.
         That's why it is defined on the fly when db is created. To generate on the fly, the columns
-        from each source are added, but only if skip=False for the annotation source.  codon_order_in_gene
-        is ignored Since it is common to each annotation source and is already present in
+        from each source are added, but only if skip=False for the residue annotation source.  codon_order_in_gene
+        is ignored Since it is common to each residue annotation source and is already present in
         t.structure_residue_info_table_structure.
         """
         structure = []
         types = []
 
-        for source, info in self.annotation_sources_info.items():
+        for source, info in self.residue_annotation_sources_info.items():
             if not info["skip"] and info.get("structure"):
                 d = {k: v for k, v in info["structure"].items() if k != "codon_order_in_gene"}
                 structure.extend([x for x in d.keys()])
@@ -245,15 +245,15 @@ class Structure(object):
         return structure, types
 
 
-    def get_annotation_sources_info(self):
+    def get_residue_annotation_sources_info(self):
         """
-        The annotation_sources_info is a dictionary spelling out all column names relevant to each
+        The residue_annotation_sources_info is a dictionary spelling out all column names relevant to each
         annotation source, the method which returns the annotation dataframe, and the boolean
         stating whether or not the annotation source will be called. Those without a `structure` key
         are necessarily run and the columns they produce are statically present in
         t.structure_residue_info_table_structure
         """
-        annotation_sources_info = {
+        residue_annotation_sources_info = {
             "DSSP": {
                 "method"    : self.run_DSSP,
                 "skip"      : self.skip_DSSP,
@@ -269,7 +269,7 @@ class Structure(object):
                 "skip"      : False,
                 },
             }
-        return annotation_sources_info
+        return residue_annotation_sources_info
 
 
     def sanity_check(self):
@@ -363,12 +363,11 @@ class Structure(object):
 
         return genes_of_interest
 
-
     def process(self):
         """
         """
-        # will be empty if all sources in self.annotation_sources_info have "skip": True
-        residue_annotation_methods = [info["method"] for _, info in self.annotation_sources_info.items() if not info["skip"]]
+        # will be empty if all sources in self.residue_annotation_sources_info have "skip": True
+        residue_annotation_methods = [info["method"] for _, info in self.residue_annotation_sources_info.items() if not info["skip"]]
 
         # which genes had structures and which did not. this information is added to the structure database self table
         has_structure = {True: [], False: []}
@@ -419,6 +418,7 @@ class Structure(object):
             raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
 
         self.structure_db.disconnect()
+        self.run.info("Structure database", self.output_db_path)
 
 
     def update_structure_database_meta_table(self, has_structure):
@@ -433,7 +433,7 @@ class Structure(object):
             self.structure_db.db.set_meta_value('deviation', self.deviation)
             self.structure_db.db.set_meta_value('max_number_templates', self.max_number_templates)
             self.structure_db.db.set_meta_value('num_models', self.num_models)
-            for key, val in self.annotation_sources_info.items():
+            for key, val in self.residue_annotation_sources_info.items():
                 self.structure_db.db.set_meta_value("skip_" + key, str(int(val["skip"])))
 
         else:
@@ -447,23 +447,22 @@ class Structure(object):
 
 
     def run_residue_annotation_for_gene(self, residue_annotation_methods, corresponding_gene_call, pdb_filepath):
-        # res_annotation_for_gene is a dataframe that stores annotations made by all
-        # annotation methods (e.g.  DSSP) for the current corresponding_gene_call. Each time an annotation
-        # source is ran, its results are appended as columns to res_annotation_for_gene.
-        # All annotation sources must have the index called "codon_order_in_gene" whose values are
-        # anvi'o-indexed, i.e. the methionine has index 0. Each annotation source does NOT have
-        # to annotate each residue in the gene.
-
-        res_annotation_for_gene = pd.DataFrame({})
+        # residue_annotation_for_gene is a dataframe that stores residue annotations made by all residue
+        # annotation methods (e.g.  DSSP) for the current corresponding_gene_call. Each time a
+        # resideu annotation source is ran, its results are appended as columns to
+        # residue_annotation_for_gene.  All annotation sources must have the index called
+        # "codon_order_in_gene" whose values are anvi'o-indexed, i.e. the methionine has index 0.
+        # Each annotation source does NOT have to annotate each residue in the gene.
+        residue_annotation_for_gene = pd.DataFrame({})
         for method in residue_annotation_methods:
-            res_annotation_for_gene = pd.concat([res_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1)
+            residue_annotation_for_gene = pd.concat([residue_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1)
 
         # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
-        res_annotation_for_gene.insert(0, "entry_id", list(range(res_annotation_for_gene.shape[0])))
-        res_annotation_for_gene.insert(1, "corresponding_gene_call", corresponding_gene_call)
-        res_annotation_for_gene.insert(2, "codon_order_in_gene", res_annotation_for_gene.index)
+        residue_annotation_for_gene.insert(0, "entry_id", list(range(residue_annotation_for_gene.shape[0])))
+        residue_annotation_for_gene.insert(1, "corresponding_gene_call", corresponding_gene_call)
+        residue_annotation_for_gene.insert(2, "codon_order_in_gene", residue_annotation_for_gene.index)
 
-        return res_annotation_for_gene
+        return residue_annotation_for_gene
 
 
     def dump_results_to_full_output(self):
@@ -566,7 +565,7 @@ class Structure(object):
         """
 
         one_to_three = {v: k for k, v in constants.AA_to_single_letter_code.items()}
-        columns = list(self.annotation_sources_info["DSSP"]["structure"].keys())
+        columns = list(self.residue_annotation_sources_info["DSSP"]["structure"].keys())
 
         # convert biopython object to dictionary d
         d = {}
@@ -648,21 +647,22 @@ class StructureUpdate(Structure):
         self.progress = progress
 
         # initialize self.arg parameters
-        A                         = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
-        null                      = lambda x: x
-        self.contigs_db_path      = A('contigs_db', null)
-        self.structure_db_path    = A('structure_db', null)
-        self.genes_to_remove      = A('genes_to_remove', null)
-        self.genes_to_remove_path = A('genes_to_remove_file', null)
-        self.genes_to_add         = A('genes_to_add', null)
-        self.genes_to_add_path    = A('genes_to_add_file', null)
-        self.full_modeller_output = A('dump_dir', null)
-        self.modeller_executable  = A('modeller_executable', null)
-        self.DSSP_executable      = None
+        A                                  = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
+        null                               = lambda x: x
+        self.contigs_db_path               = A('contigs_db', null)
+        self.structure_db_path             = A('structure_db', null)
+        self.genes_to_remove               = A('genes_to_remove', null)
+        self.genes_to_remove_path          = A('genes_to_remove_file', null)
+        self.genes_to_add                  = A('genes_to_add', null)
+        self.genes_to_add_path             = A('genes_to_add_file', null)
+        self.full_modeller_output          = A('dump_dir', null)
+        self.modeller_executable           = A('modeller_executable', null)
+        self.skip_genes_if_already_present = A('skip_genes_if_already_present', bool)
+        self.DSSP_executable               = None
 
         utils.is_contigs_db(self.contigs_db_path)
-        self.contigs_db           = dbops.ContigsDatabase(self.contigs_db_path)
-        self.contigs_db_hash      = self.contigs_db.meta['contigs_db_hash']
+        self.contigs_db      = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
 
         # init ContigsSuperClass
         self.contigs_super = ContigsSuperclass(self.args)
@@ -698,15 +698,25 @@ class StructureUpdate(Structure):
     def add_genes(self):
         # identify which genes user wants to model structures for
         self.genes_of_interest = self.get_genes_of_interest(self.genes_to_add_path, self.genes_to_add)
-        self.run.info("Gene caller ids to be added", ", ".join([str(x) for x in self.genes_of_interest]))
+
+        if self.skip_genes_if_already_present:
+            redundant_gene_caller_ids = [g for g in self.genes_of_interest if g in self.structure_db.genes_queried]
+            if redundant_gene_caller_ids:
+                self.run.info("Redundant gene caller ids that will be skipped", ",".join([str(x) for x in redundant_gene_caller_ids]))
+                self.genes_of_interest = [g for g in self.genes_of_interest if g not in redundant_gene_caller_ids]
+                if not self.genes_of_interest:
+                    raise ConfigError("Every gene you wanted to add is already in the database. Since you provided\
+                                       the --skip-genes-if-already-present flag, there is nothing to do :)")
+
+        self.run.info("Gene caller ids to be added", ",".join([str(x) for x in self.genes_of_interest]))
 
         self.get_MODELLER_params_used_when_db_was_created()
 
         self.sanity_check_for_adding_genes()
 
         # residue annotation
-        self.annotation_sources_info = self.get_annotation_sources_info()
-        self.res_annotation_df = pd.DataFrame({})
+        self.residue_annotation_sources_info = self.get_residue_annotation_sources_info()
+        self.residue_annotation_df = pd.DataFrame({})
 
         if self.full_modeller_output:
             self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=True)
@@ -736,7 +746,7 @@ class StructureUpdate(Structure):
         if remove == set(self.structure_db.genes_queried):
             raise ConfigError("You want to remove every gene in your structure database. No.")
 
-        self.run.info("Gene caller ids to be removed", ", ".join([str(x) for x in remove]))
+        self.run.info("Gene caller ids to be removed", ",".join([str(x) for x in remove]))
 
         # remove ids from the three meta-keys in which they can appear
         new_genes_queried = [x for x in self.structure_db.genes_queried if x not in remove]
@@ -814,18 +824,18 @@ class StructureUpdate(Structure):
                                "These gene caller ids you") + " want to add to the structure database\
                                are not known to the contigs database: {}. You have only 2 lives\
                                left. 2 more mistakes, and anvi'o will automatically uninstall\
-                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+                               itself. Yes, seriously :(".format(",".join([str(x) for x in bad_gene_caller_ids])))
 
         # check for genes that do already appear in the structure database
         redundant_gene_caller_ids = [g for g in self.genes_of_interest if g in self.structure_db.genes_queried]
-        if redundant_gene_caller_ids:
+        if redundant_gene_caller_ids and not self.skip_genes_if_already_present:
             raise ConfigError(("This gene caller id you" if len(redundant_gene_caller_ids) == 1 else \
                                "These gene caller ids you") + " want to add to the structure database\
                                is already in the structure database: {}. If you want to re-do the\
                                modelling, then first remove it with --genes-to-remove or\
                                --genes-to-remove-file (you can do it in the same\
                                anvi-update-genes-in-structure-database command).".\
-                                   format(", ".join([str(x) for x in redundant_gene_caller_ids])))
+                                   format(",".join([str(x) for x in redundant_gene_caller_ids])))
 
         # raise warning if number of genes is greater than 20
         if len(self.genes_of_interest) > 20:

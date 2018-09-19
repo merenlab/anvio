@@ -213,6 +213,41 @@ codon_to_codon_RC = Counter({'AAA': 'TTT', 'AAC': 'GTT', 'AAG': 'CTT', 'AAT': 'A
                              'TGA': 'TCA', 'TGC': 'GCA', 'TGG': 'CCA', 'TGT': 'ACA',
                              'TTA': 'TAA', 'TTC': 'GAA', 'TTG': 'CAA', 'TTT': 'AAA'})
 
+conserved_amino_acid_groups = {
+    'Nonpolar': ['L','V','I','M','C','H','A'],
+    'Aromatic': ['F','W','Y'],
+    'Bases': ['K','R','H'],
+    'Neutral Amines': ['Q, N'],
+    'Acids': ['D','E'],
+    'Polar and Nonpolar': ['H','Y'],
+    'Mostly nonpolar': ['S','T'],
+    'B': ['B','N','D'],
+    'Z': ['Z','Q','E'],
+    'J': ['J','L','I'],
+    'None': []
+}
+
+amino_acid_property_group = {}
+for key in ['A','I','L','V','M','C']:
+    amino_acid_property_group[key] = 'Nonpolar'
+for key in ['F','W']:
+    amino_acid_property_group[key] = 'Aromatic'
+for key in ['K','R']:
+    amino_acid_property_group[key] = 'Bases'
+for key in ['Q', 'N']:
+    amino_acid_property_group[key] = 'Neutral Amines'
+for key in ['D','E']:
+    amino_acid_property_group[key] = 'Acids'
+for key in ['H','Y']:
+    amino_acid_property_group[key] = 'Polar and Nonpolar'
+for key in ['S','T']:
+    amino_acid_property_group[key] = 'Mostly nonpolar'
+for key in ['G','P','X']:
+    amino_acid_property_group[key] = 'None'
+amino_acid_property_group['B'] = 'B'
+amino_acid_property_group['Z'] = 'Z'
+amino_acid_property_group['J'] = 'J'
+
 codons = sorted(list(set(codon_to_AA.keys())))
 coding_codons = [x for x in codons if codon_to_AA[x] != "STP"]
 

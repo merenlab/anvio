@@ -40,6 +40,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
     parser.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
+    parser.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)

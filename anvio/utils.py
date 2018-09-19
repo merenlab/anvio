@@ -173,6 +173,12 @@ def get_predicted_type_of_items_in_a_dict(d, key):
 
     not_float = False
     for item in items:
+        if type(item) == float:
+            return float
+
+        if type(item) == int:
+            return int
+
         try:
             float(item or 0)
         except ValueError:
@@ -862,6 +868,39 @@ def get_GC_content_for_sequence(sequence):
     return Composition(sequence).GC_content
 
 
+def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_it=False):
+    """
+    When calculating pN/pS or dN/dS, the number of variants classified as synonymous or non
+    synonymous need to be normalized by the sequence's potential for synonymous and
+    non-synonymous changes. That is calculated by mutating each position to the other 3
+    nucleotides and calculating whether the mutation is synonymous or non synonymous. Each
+    mutation gets a score of 1/3, since there are 3 possible mutations for each site. If the
+    sequence is of length L, the nonsynonymous and synonymous potentials sum to L.
+
+    list_of_codons_in_gene is a list of the codons as they appear in the gene sequence, e.g.
+    ['ATG', ..., 'TAG'], which can be generated from utils.get_list_of_codons_for_gene_call
+    """
+    if not any([list_of_codons_in_gene[-1] == x for x in ['TAG', 'TAA', 'TGA']]) and not just_do_it:
+        raise ConfigError("get_synonymous_and_non_synonymous_potential :: sequence does not end \
+                           with a stop codon and is therefore probably not what you want. If you \
+                           want to continue anyways, use the just_do_it flag")
+
+    synonymous_potential = 0
+    for codon in list_of_codons_in_gene:
+        for i, nt in enumerate(codon):
+            for mutant_nt in [m for m in 'ACGT' if m != nt]:
+
+                mutant_codon = list(codon)
+                mutant_codon[i] = mutant_nt
+                mutant_codon = ''.join(mutant_codon)
+
+                if constants.codon_to_AA[mutant_codon] == constants.codon_to_AA[codon]:
+                    synonymous_potential += 1/3
+
+    non_synonymous_potential = 3 * len(list_of_codons_in_gene) - synonymous_potential
+    return synonymous_potential, non_synonymous_potential
+
+
 def get_N50(contig_lengths):
     h, S = sum(contig_lengths) / 2.0, 0
 
@@ -1220,6 +1259,7 @@ def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
 
     return list_of_AAs
 
+
 def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict):
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call)
 
@@ -1243,6 +1283,22 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict):
         list_of_codons.append(constants.codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence)
 
     return list_of_codons
+
+
+def is_amino_acid_functionally_conserved(amino_acid_residue_1, amino_acid_residue_2):
+    """Checks if two amino acid residues are part of the same biochemical property group"""
+    group = constants.amino_acid_property_group[amino_acid_residue_1]
+    conserved_group = constants.conserved_amino_acid_groups[group]
+
+    if amino_acid_residue_2 in conserved_group:
+        return True
+    if group == 'Polar and Nonpolar': #they fall in more than one group, multiple tests needed
+        if amino_acid_residue_1 == 'H' and (amino_acid_residue_2 in constants.conserved_amino_acid_groups['Nonpolar'] \
+                                            or amino_acid_residue_2 in constants.conserved_amino_acid_groups['Bases']):
+            return True
+        if amino_acid_residue_1 == 'Y' and (amino_acid_residue_2 in constants.conserved_amino_acid_groups['Aromatic']):
+            return True
+    return False
 
 
 def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_dict):
@@ -1269,10 +1325,11 @@ def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_di
 def check_sample_id(sample_id):
     if sample_id:
         if sample_id[0] in constants.digits:
-            raise ConfigError("Sample names can't start with digits. Long story. Please specify a sample name\
+            raise ConfigError("Sample name ('%s') is not a valid name. Sample names can't start with digits.\
+                                Long story. Please specify a sample name\
                                 that starts with an ASCII letter (you may want to check '-s' parameter to set\
                                 a sample name if your client permits (otherwise you are going to have to edit\
-                                your input files)).")
+                                your input files))." % sample_id)
 
         allowed_chars_for_samples = constants.allowed_chars.replace('-', '').replace('.', '')
         if len([c for c in sample_id if c not in allowed_chars_for_samples]):
@@ -2184,6 +2241,39 @@ def is_blank_profile(db_path):
     return True if blank == 1 else False
 
 
+def get_two_sample_z_test_statistic(p1, p2, n1, n2):
+    '''
+        Compute a two sample z-test statistic
+
+        If one group has no hits (e.g. p1=0) then we compute an upper bound
+        for the p-value by pretending that it had one hit.
+
+        If one group has 100% hits (e.g. p1=1) then we compute an upper bound
+        for the p-value by pretending that p1=1-1/n1 hits
+    '''
+    import numpy
+    if p1 == 0 and p2 == 0:
+        return (0, 0)
+
+    # This is done in order to estimate an upper bound
+    # for the p-value
+    p1 = max(p1, 1/n1) # in case p1 is zero
+    p2 = max(p2, 1/n2)
+    p1 = min(p1, 1 - 1/n1) # in case p1 is 1
+    p2 = min(p2, 1 - 1/n2)
+
+    p = (n1*p1 + n2*p2) / (n1 + n2)
+
+    z = (p1 - p2) / numpy.sqrt(p*(1 - p) * (1/n1 + 1/n2))
+    p_value = get_p_value_for_z_test(z)
+    return (z, p_value)
+
+
+def get_p_value_for_z_test(z):
+    from scipy.stats import norm
+    return 2*norm.cdf(-abs(z))
+
+
 def is_pan_db(db_path):
     if get_db_type(db_path) != 'pan':
         raise ConfigError("'%s' is not an anvi'o pan database." % db_path)
@@ -2303,7 +2393,7 @@ def download_protein_structures(protein_code_list, output_dir):
 
         # raise warning if structure was not downloaded
         if not filesnpaths.is_file_exists(get_protein_path(protein_code), dont_raise=True):
-            run.warning("The protein {} could not be downloaded.".format(protein_code))
+            run.warning("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
             protein_code_list.remove(protein_code)
 
     progress.end()

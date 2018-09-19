@@ -3,6 +3,13 @@
         "threads": 5,
         "run": false
     },
+    "krakenhll": {
+        "--gzip-compressed": true,
+        "additional_params": "--preload",
+        "run": true,
+        "--db": "/fake/db",
+        "threads": ""
+    },
     "anvi_run_hmms": {
         "run": true,
         "threads": 20,

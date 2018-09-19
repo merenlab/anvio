@@ -52,6 +52,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.output_directory = A('output_dir')
         self.list_contigs_and_exit = A('list_contigs')
         self.min_contig_length = A('min_contig_length')
+        self.max_contig_length = A('max_contig_length') or sys.maxsize
         self.min_mean_coverage = A('min_mean_coverage')
         self.min_coverage_for_variability = A('min_coverage_for_variability')
         self.contigs_shall_be_clustered = A('cluster_contigs')
@@ -182,6 +183,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'contigs_ordered': self.contigs_shall_be_clustered,
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
+                       'max_contig_length': self.max_contig_length,
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
@@ -223,6 +225,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('blank', self.blank)
         self.run.info('split_length', self.a_meta['split_length'])
         self.run.info('min_contig_length', self.min_contig_length)
+        self.run.info('max_contig_length', self.max_contig_length)
         self.run.info('min_mean_coverage', self.min_mean_coverage)
         self.run.info('clustering_performed', self.contigs_shall_be_clustered)
         self.run.info('min_coverage_for_variability', self.min_coverage_for_variability)
@@ -234,6 +237,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
                           consideration anything below that. If you need to kill this an restart your\
                           analysis with another minimum contig length value, feel free to press CTRL+C." \
                                                 % (pp(self.min_contig_length)))
+
+        if self.max_contig_length < sys.maxsize:
+            self.run.warning("Your maximum contig length is set to %s base pairs. Which means anvi'o will remove\
+            any contigs that are longer than this value." % pp(self.max_contig_length))
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
@@ -430,28 +437,34 @@ class BAMProfiler(dbops.ContigsSuperclass):
             print('%-40s %s' % (tpl[1], pp(int(tpl[0]))))
 
 
-    def remove_contigs_that_are_shorter_than_min_contig_length(self):
-        """Removes contigs that are shorter than M"""
-        contigs_longer_than_M = set()
-        for i in range(0, len(self.contig_names)):
-            if self.contig_lengths[i] >= self.min_contig_length:
-                contigs_longer_than_M.add(i)
+    def remove_contigs_based_on_min_max_contig_length(self):
+        """Removes contigs that are shorter or longer than user defined values"""
 
-        if not len(contigs_longer_than_M):
-            raise ConfigError("0 contigs larger than %s nts." % pp(self.min_contig_length))
+        contigs_with_good_lengths = set()
+
+        for i in range(0, len(self.contig_names)):
+            if self.contig_lengths[i] >= self.min_contig_length and self.contig_lengths[i] <= self.max_contig_length:
+                contigs_with_good_lengths.add(i)
+
+        if not len(contigs_with_good_lengths):
+            filesnpaths.shutil.rmtree(self.output_directory)
+            raise ConfigError("Anvi'o applied your min/max lenght criteria for contigs to filter out the bad ones\
+                               and has bad news: not a single contig in your contigs database was greater than %s\
+                               and smaller than %s nts :( While at it, anvi'o removed your half-baked output directory,\
+                               too." % (pp(self.min_contig_length), pp(self.max_contig_length)))
         else:
-            self.contig_names = [self.contig_names[i] for i in contigs_longer_than_M]
-            self.contig_lengths = [self.contig_lengths[i] for i in contigs_longer_than_M]
+            self.contig_names = [self.contig_names[i] for i in contigs_with_good_lengths]
+            self.contig_lengths = [self.contig_lengths[i] for i in contigs_with_good_lengths]
             self.num_contigs = len(self.contig_names)    # we will store these two
             self.total_length = sum(self.contig_lengths) # into the db in a second.
 
-        contigs_longer_than_M = set(self.contig_names) # for fast access
+        contigs_with_good_lengths = set(self.contig_names) # for fast access
         self.split_names = set([])
         self.contig_name_to_splits = {}
         for split_name in sorted(self.splits_basic_info.keys()):
             parent = self.splits_basic_info[split_name]['parent']
 
-            if parent not in contigs_longer_than_M:
+            if parent not in contigs_with_good_lengths:
                 continue
 
             self.split_names.add(split_name)
@@ -491,7 +504,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.check_contigs_without_any_gene_calls(self.contig_names)
 
         # check for the -M parameter.
-        self.remove_contigs_that_are_shorter_than_min_contig_length()
+        self.remove_contigs_based_on_min_max_contig_length()
 
         # let's see whether the user screwed up to follow the simple instructions
         # mentioned here: http://merenlab.org/2015/05/01/anvio-tutorial/#preparation
@@ -539,7 +552,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('num_contigs', pp(self.num_contigs))
 
         # check for the -M parameter.
-        self.remove_contigs_that_are_shorter_than_min_contig_length()
+        self.remove_contigs_based_on_min_max_contig_length()
 
         self.run.info('num_contigs_after_M', self.num_contigs, display_only=True)
         self.run.info('num_contigs', self.num_contigs, quiet=True)
@@ -809,6 +822,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError("Minimum mean coverage must be 0 or larger.")
         if not self.min_contig_length >= 0:
             raise ConfigError("Minimum contig length must be 0 or larger.")
+        if not self.max_contig_length >= 100:
+            raise ConfigError("Maximum contig length can't be less than 100 base pairs.")
+        if self.min_contig_length >= self.max_contig_length:
+            raise ConfigError("Maximum contig length (%s) must be larger than the minimum\
+                               contig length (%s). Seriously though." % (pp(self.max_contig_length), pp(self.min_contig_length)))
 
         if self.num_threads < 1:
             raise ConfigError("Nice try. Obviously, number of threds can not be less than 1.")

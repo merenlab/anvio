@@ -13,6 +13,7 @@ import numpy
 import random
 import argparse
 import textwrap
+import multiprocessing
 
 from io import StringIO
 from collections import Counter
@@ -29,6 +30,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccolections
 import anvio.genomestorage as genomestorage
 import anvio.auxiliarydataops as auxiliarydataops
+import anvio.homogeneityindex as homogeneityindex
 
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
@@ -970,7 +972,7 @@ class PanSuperclass(object):
                               contigs database may differ from its DNA seqeunce. For those rare instances, the alignment summary for the amino acid\
                               sequence can no longer be used to make sense of the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for\
                               more informaiton). What needs to be done is to do another alignment on the fly. But as you probably already guessed,\
-                              anvi'o will not do that for you, and instad will report your DNA sequences for your genes in your gene clusters\
+                              anvi'o will not do that for you, and instead will report your DNA sequences for your genes in your gene clusters\
                               unaligned. If you really really think anvi'o should do it you have two options: if you are a member of the MerenLab,\
                               re-open and fix the issue #772. If you are not a member, then send us an e-mail.")
             skip_alignments = True
@@ -1022,6 +1024,95 @@ class PanSuperclass(object):
         self.progress.end()
 
         return sequences
+
+
+    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), num_threads=1):
+        if gene_cluster_names is None:
+            self.run.warning("The function `compute_homogeneity_indices_for_gene_clusters` did not receive any gene\
+                              cluster names to work with. If you are a programmer, you should know that you are\
+                              doing it wrong. If you are a user, please get in touch with a programmer because this\
+                              is not normal. This funciton will now return prematurely without computing anything :(")
+            return None
+
+        if self.args.quick_homogeneity:
+            self.run.warning("Performing quick homogeneity calculations (skipping horizontal geometric calculations)\
+                              per the '--quick-homogeneity' flag")
+
+        sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=gene_cluster_names, skip_alignments=False)
+
+        homogeneity_calculator = homogeneityindex.HomogeneityCalculator(quick_homogeneity=self.args.quick_homogeneity)
+
+        self.progress.new('Computing gene cluster homogeneity indices')
+        self.progress.update('Initializing %d threads...' % num_threads)
+
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+
+        for gene_cluster_name in gene_cluster_names:
+            input_queue.put(gene_cluster_name)
+
+        workers = []
+        for i in range(num_threads):
+            worker = multiprocessing.Process(target=PanSuperclass.homogeneity_worker,
+                                             args=(input_queue, output_queue, sequences, homogeneity_calculator, self.run))
+            workers.append(worker)
+            worker.start()
+
+        results_dict = {}
+        received_gene_clusters = 0
+        while received_gene_clusters < len(sequences):
+            try:
+                homogeneity_dict = output_queue.get()
+                if homogeneity_dict:
+                    results_dict[homogeneity_dict['gene cluster']] = {'functional_homogeneity_index': homogeneity_dict['functional'],
+                                                                      'geometric_homogeneity_index': homogeneity_dict['geometric']}
+
+                received_gene_clusters += 1
+                self.progress.update('Processed %d gene clusters using %d threads' % (received_gene_clusters, num_threads))
+            except KeyboardInterrupt:
+                print("Recieved SIGINT, terminating all processes...")
+                break
+
+        for worker in workers:
+            worker.terminate()
+
+        self.progress.end()
+
+        return results_dict
+
+
+    @staticmethod
+    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, homogeneity_calculator, run):
+        r = terminal.Run()
+        r.verbose = False
+
+        while True:
+            gene_cluster_name = input_queue.get(True)
+            funct_index = {}
+            geo_index = {}
+            indices_dict = {}
+            gene_cluster = {}
+            gene_cluster[gene_cluster_name] = gene_clusters_dict[gene_cluster_name]
+
+            try:
+                funct_index, geo_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
+            except:
+                run.warning("Homogeneity indices computation for gene cluster %s failed. This can happen due to one of three reasons: \
+                             (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted into the input \
+                             dictionary incorrectly, (2) there is an alignment mistake in the gene cluster, and not all genes are aligned\
+                             to be the same lenght; or (3) the homogeneity calculator was initialized incorrectly. As you can see, this \
+                             is a rare circumstance, and anvi'o will set this gene cluster's homogeneity indices to `-1` so things can\
+                             move on, but we highly recommend you to take a look at your data to make sure you are satisfied with your\
+                             analysis." % gene_cluster_name)
+                funct_index[gene_cluster_name] = -1
+                geo_index[gene_cluster_name] = -1
+
+            indices_dict['gene cluster'] = gene_cluster_name
+            indices_dict['functional'] = funct_index[gene_cluster_name]
+            indices_dict['geometric'] = geo_index[gene_cluster_name]
+
+            output_queue.put(indices_dict)
 
 
     def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), \
@@ -1379,7 +1470,9 @@ class PanSuperclass(object):
 
 
     def filter_gene_clusters_from_gene_clusters_dict(self, gene_clusters_dict, min_num_genomes_gene_cluster_occurs=0,
-             max_num_genomes_gene_cluster_occurs=sys.maxsize, min_num_genes_from_each_genome=0, max_num_genes_from_each_genome=sys.maxsize):
+             max_num_genomes_gene_cluster_occurs=sys.maxsize, min_num_genes_from_each_genome=0, max_num_genes_from_each_genome=sys.maxsize,
+             min_functional_homogeneity_index=-1, max_functional_homogeneity_index=1, min_geometric_homogeneity_index=-1,
+             max_geometric_homogeneity_index=1):
         """This takes in your `gene_clusters_dict`, and removes gene_clusters based on their occurrences across genomes.
 
            The `min_num_genomes_gene_cluster_occurs` parameter defines what is the minimum number of genomes you want a gene to
@@ -1395,7 +1488,8 @@ class PanSuperclass(object):
                 try:
                     param = int(param)
                 except ValueError:
-                    raise ConfigError("The parameter %s must occur should be of type int :/" % param_pretty)
+                    raise ConfigError("The parameter %s must occur should be of type int :/ It is of type %s" % (param_pretty,
+                                                                                                                 type(param)))
 
             return param
 
@@ -1404,6 +1498,11 @@ class PanSuperclass(object):
         max_num_genomes_gene_cluster_occurs = check(max_num_genomes_gene_cluster_occurs, '--max-num-genomes-gene-cluster-occurs')
         min_num_genes_from_each_genome = check(min_num_genes_from_each_genome, '--min-num-genes-from-each-genome')
         max_num_genes_from_each_genome = check(max_num_genes_from_each_genome, '--max-num-genes-from-each-genome')
+
+        # check whether homogeneity data is available in the database:
+        available_additional_data_keys = TableForItemAdditionalData(self.args).get_available_data_keys()
+        functional_homogeneity_info_is_available = 'functional_homogeneity_index' in available_additional_data_keys
+        geometric_homogeneity_info_is_available = 'geometric_homogeneity_index' in available_additional_data_keys
 
         if min_num_genomes_gene_cluster_occurs < 0 or max_num_genomes_gene_cluster_occurs < 0:
             raise ConfigError("When you ask for a negative value for the the minimum or maximum number of genomes a gene cluster is expected\
@@ -1421,6 +1520,17 @@ class PanSuperclass(object):
             raise ConfigError("Min number of genes for each gene cluster can't be larger than the .. pfft. Anvi'o refuses to continue with this\
                                error message. Check your parameters :(")
 
+        if (min_functional_homogeneity_index < 0 and min_functional_homogeneity_index != -1) or (min_geometric_homogeneity_index < 0 and min_geometric_homogeneity_index != -1):
+            raise ConfigError("Geometric and Functional homogeneity indices have a mininum value of 0, along with an error value of -1. You can either ask for\
+                               values of 0 or greater, or put in '-1'. These are hard limits.")
+
+        if max_functional_homogeneity_index > 1 or max_geometric_homogeneity_index > 1:
+            raise ConfigError("Geometric and Functional homogeneity indices have a maximum possible value of 1. Your parameters exceed this hard upper limit.\
+                               Please check your parameters.")
+
+        if max_functional_homogeneity_index < min_functional_homogeneity_index or max_geometric_homogeneity_index < min_geometric_homogeneity_index:
+            raise ConfigError("Please. Check your parameters. Make sure that minimum values are less than (or equal to) maximum values. We beg you")
+
         all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
 
         if max_num_genomes_gene_cluster_occurs == sys.maxsize:
@@ -1435,6 +1545,7 @@ class PanSuperclass(object):
                                that is not what you're doing." % (len(all_genomes), min_num_genomes_gene_cluster_occurs))
 
         gene_cluster_occurrences_accross_genomes, num_genes_contributed_per_genome = self.get_basic_gene_clusters_stats(gene_clusters_dict)
+        homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index'])
 
         gene_clusters_to_remove = set([])
         all_gene_clusters = set(list(gene_cluster_occurrences_accross_genomes.keys()))
@@ -1450,22 +1561,44 @@ class PanSuperclass(object):
                 gene_clusters_to_remove.add(gene_cluster_name)
                 continue
 
+            try:
+                if homogeneity_dict[gene_cluster_name]['functional_homogeneity_index'] < min_functional_homogeneity_index or homogeneity_dict[gene_cluster_name]['functional_homogeneity_index'] > max_functional_homogeneity_index:
+                    gene_clusters_to_remove.add(gene_cluster_name)
+                    continue
+
+                if homogeneity_dict[gene_cluster_name]['geometric_homogeneity_index'] < min_geometric_homogeneity_index or homogeneity_dict[gene_cluster_name]['geometric_homogeneity_index'] > max_geometric_homogeneity_index:
+                    gene_clusters_to_remove.add(gene_cluster_name)
+                    continue
+            except:
+                if min_functional_homogeneity_index == -1 and max_functional_homogeneity_index == 1 and min_geometric_homogeneity_index == -1 and max_geometric_homogeneity_index == 1:
+                    continue #No need to raise an error if the parameters are default/all at their bounds
+
+                raise ConfigError("Bad news: anvi'o was unable to retrieve homogeneity indices for gene cluster %s. This could be because homogeneity was not \
+                                   computed for this gene cluster when the pangenomic analysis was created. The good news is that you can fix that!\
+                                   Take a look at the anvi-compute-gene-cluster-homogeneity script")
+
         gene_clusters_to_keep = all_gene_clusters.difference(gene_clusters_to_remove)
 
         if not len(gene_clusters_to_keep):
             raise ConfigError("Bad news: the combination of your filters resulted in zero gene clusters :/ These are the filtesr anvi'o used: --min-num-genomes-gene-cluster-occurs %(min_oc)d,\
-                               --max-num-genomes-gene-cluster-occurs %(max_oc)d, --min-num-genes-from-each-genome %(min_g)d, and --max-num-genes-from-each-genome %(max_g)d. None of your \
-                               %(all_gcs)d gene clusters in your %(all_gs)d genomes that were included this analysis matched to this combination (please note that number of genomes\
-                               may be smaller than the actual number of genomes in the original pan genome if other filters were applied to the gene clusters dictionary prior)." % \
+                               --max-num-genomes-gene-cluster-occurs %(max_oc)d, --min-num-genes-from-each-genome %(min_g)d, --max-num-genes-from-each-genome %(max_g)d, \
+                               --min-functional-homogeneity-index %(min_fh)f, --max-functional-homogeneity-index %(max_fh)f, --min-geometric-homogeneity-index %(min_gh)f, \
+                               and --max-geometric-homogeneity-index %(max_gh)f. None of your %(all_gcs)d gene clusters in your %(all_gs)d genomes that were included this analysis \
+                               matched to this combination (please note that number of genomes may be smaller than the actual number of genomes in the original pan genome \
+                               if other filters were applied to the gene clusters dictionary prior)." % \
                                             {'min_oc': min_num_genomes_gene_cluster_occurs, 'max_oc': max_num_genomes_gene_cluster_occurs,
                                              'min_g': min_num_genes_from_each_genome, 'max_g': max_num_genes_from_each_genome,
+                                             'min_fh': min_functional_homogeneity_index, 'max_fh': max_functional_homogeneity_index,
+                                             'min_gh': min_geometric_homogeneity_index, 'max_gh': max_geometric_homogeneity_index,
                                              'all_gcs': len(all_gene_clusters), 'all_gs': len(all_genomes)})
 
         msg = "Based on --min-num-genomes-gene-cluster-occurs %d, --max-num-genomes-gene-cluster-occurs %d, \
-               --min-num-genes-from-each-genome %d, and --max-num-genes-from-each-genome %d (some of these \
-               may be default values, no need to panic)." \
+               --min-num-genes-from-each-genome %d, --max-num-genes-from-each-genome %d, --min-functional-homogeneity-index %0.3f, \
+               --max-functional-homogeneity-index %0.3f, --min-geometric-homogeneity-index %0.3f, and \
+               --max-geometric-homogeneity-index %0.3f (some of these may be default values, no need to panic)." \
                             % (min_num_genomes_gene_cluster_occurs, max_num_genomes_gene_cluster_occurs,
-                               min_num_genes_from_each_genome, max_num_genes_from_each_genome)
+                               min_num_genes_from_each_genome, max_num_genes_from_each_genome, min_functional_homogeneity_index,
+                               max_functional_homogeneity_index, min_geometric_homogeneity_index, max_functional_homogeneity_index)
 
         # Baris Metin: lambda functions are ugly.
         # Meren Urat : YOU'RE UGLY :(
@@ -1476,7 +1609,7 @@ class PanSuperclass(object):
         self.run.warning(msg, "GENE CLUSTER FILTERS", lc="cyan")
         self.run.info('All gene clusters (%d)' % len(all_gene_clusters), M(all_gene_clusters))
         self.run.info('Gene clusters that passed the filter (%d)' % (len(gene_clusters_to_keep)), M(gene_clusters_to_keep), mc='green')
-        self.run.info('Genes clusters that filed the filter (%d)' % (len(gene_clusters_to_remove)), M(gene_clusters_to_remove) if gene_clusters_to_remove else 'None.', nl_after=1, mc='red')
+        self.run.info('Genes clusters that failed the filter (%d)' % (len(gene_clusters_to_remove)), M(gene_clusters_to_remove) if gene_clusters_to_remove else 'None.', nl_after=1, mc='red')
 
         if len(gene_clusters_to_remove):
             for gene_cluster_name in gene_clusters_to_remove:
@@ -1583,6 +1716,10 @@ class PanSuperclass(object):
         max_num_genes_from_each_genome = A('max_num_genes_from_each_genome')
         min_num_genes_from_each_genome = A('min_num_genes_from_each_genome')
         max_num_genomes_gene_cluster_occurs = A('max_num_genomes_gene_cluster_occurs')
+        min_functional_homogeneity_index = A('min_functional_homogeneity_index')
+        max_functional_homogeneity_index = A('max_functional_homogeneity_index')
+        min_geometric_homogeneity_index = A('min_geometric_homogeneity_index')
+        max_geometric_homogeneity_index = A('max_geometric_homogeneity_index')
         add_into_items_additional_data_table = A('add_into_items_additional_data_table')
         gene_clusters_names_of_interest = A('gene_clusters_names_of_interest')
         just_do_it = A('just_do_it')
@@ -1605,7 +1742,11 @@ class PanSuperclass(object):
                                                                       min_num_genomes_gene_cluster_occurs,
                                                                       max_num_genomes_gene_cluster_occurs,
                                                                       min_num_genes_from_each_genome,
-                                                                      max_num_genes_from_each_genome)
+                                                                      max_num_genes_from_each_genome,
+                                                                      min_functional_homogeneity_index,
+                                                                      max_functional_homogeneity_index,
+                                                                      min_geometric_homogeneity_index,
+                                                                      max_geometric_homogeneity_index)
 
         # this is where we add the items in the resulting filtered dict into the items additonal data
         # table:
@@ -2710,18 +2851,33 @@ class ContigsDatabase:
             if not utils.check_contig_names(fasta.id, dont_raise=True):
                 self.progress.end()
                 raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines'\
-                                    requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take\
-                                    care of this issue, or read this section in the tutorial to understand the reason behind\
-                                    this requirement (anvi'o is very upset for making you do this): %s" % \
-                                        ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
+                                   requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take\
+                                   care of this issue, or read this section in the tutorial to understand the reason behind\
+                                   this requirement (anvi'o is very upset for making you do this): %s" % \
+                                       ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
 
             if len(fasta.seq) < kmer_size:
                 self.progress.end()
                 raise ConfigError("At least one of the contigs in your input FASTA '%s' is shorter than the k-mer size. The k\
-                                    is %d, and your contig is like %d :/ Anvi'o will not judge you for whatever you are doing\
-                                    with such short contigs, but the length of each contig must be at least as long as your `k` for\
-                                    k-mer analyis. You can use the script `anvi-script-reformat-fasta` to get rid of very short\
-                                    contigs if you like." % (contigs_fasta, kmer_size, len(fasta.seq)))
+                                   is %d, and your contig is like %d :/ Anvi'o will not judge you for whatever you are doing\
+                                   with such short contigs, but the length of each contig must be at least as long as your `k` for\
+                                   k-mer analyis. You can use the script `anvi-script-reformat-fasta` to get rid of very short\
+                                   contigs if you like." % (contigs_fasta, kmer_size, len(fasta.seq)))
+
+            try:
+                int(fasta.id)
+                is_int = True
+            except:
+                is_int = False
+
+            if is_int:
+                self.progress.end()
+                raise ConfigError("At least one of the contigs in your FASTA file (well, this one to be precise: '%s') looks like\
+                                   a number. For reasons we can't really justify, anvi'o does not like those numeric names, and hereby\
+                                   asks you to make sure every contig name contains at least one alphanumeric character :/ Meanwhile we,\
+                                   the anvi'o developers, are both surprised by and thankful for your endless patience with such eccentric\
+                                   requests. You the real MVP." % fasta.id)
+
         fasta.close()
         self.progress.end()
 

@@ -346,3 +346,13 @@ function get_comp_nt_color(nts){
     else
         return "black";
 }
+
+// https://stackoverflow.com/questions/16947100/max-min-of-large-array-in-js
+function GetMaxMin(input_array) {
+    var max = Number.MIN_VALUE, min = Number.MAX_VALUE;
+    for (var i = 0, len=input_array.length; i < len; i++) {
+        if (input_array[i] > max) max = input_array[i];
+        if (input_array[i] < min) min = input_array[i];
+    }
+    return { Max: max, Min: min};
+}
