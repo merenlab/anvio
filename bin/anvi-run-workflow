@@ -44,6 +44,10 @@ def main(args):
                            to learn what workflows are available, and you can use --get-default-config\
                            if you need help writing your config file.")
 
+    if args.workflow not in workflows_dict:
+        raise ConfigError("anvi'o is not familiar with a workflow %s, you can use --list-workflow to \
+                           learn what workflows are available." % args.workflow)
+
     M = workflows_dict[args.workflow](args)
     M.init()
     M.go()
