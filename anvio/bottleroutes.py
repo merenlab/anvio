@@ -303,11 +303,8 @@ class BottleApplication(Bottle):
                 functions_sources = list(self.interactive.gene_clusters_function_sources)
 
             inspection_available = self.interactive.auxiliary_profile_data_available
-<<<<<<< HEAD
-            if 'blank' in self.interactive.p_meta and self.interactive.p_meta['blank']:
-=======
+            
             if not self.interactive.mode == 'pan' and self.interactive.p_meta['blank']:
->>>>>>> 20dc429d82c21dcef7fb11a3eb9f53eb13ab07e0
                 inspection_available = False
 
             return json.dumps( { "title":                              self.interactive.title,
