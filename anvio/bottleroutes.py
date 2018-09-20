@@ -223,7 +223,7 @@ class BottleApplication(Bottle):
         try:
             news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md')
             news_items = news_markdown.text.split("***")
-            
+
             """ FORMAT
             # Title with spaces (01.01.1970) #
             Lorem ipsum, dolor sit amet
@@ -269,7 +269,7 @@ class BottleApplication(Bottle):
             default_order = self.interactive.p_meta['default_item_order']
             autodraw = False
             state_dict = None
-            
+
             if self.interactive.state_autoload:
                 state_dict = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
 
@@ -303,7 +303,11 @@ class BottleApplication(Bottle):
                 functions_sources = list(self.interactive.gene_clusters_function_sources)
 
             inspection_available = self.interactive.auxiliary_profile_data_available
+<<<<<<< HEAD
             if 'blank' in self.interactive.p_meta and self.interactive.p_meta['blank']:
+=======
+            if not self.interactive.mode == 'pan' and self.interactive.p_meta['blank']:
+>>>>>>> 20dc429d82c21dcef7fb11a3eb9f53eb13ab07e0
                 inspection_available = False
 
             return json.dumps( { "title":                              self.interactive.title,
@@ -361,7 +365,7 @@ class BottleApplication(Bottle):
             data = request.forms.get('data')
             tree_type = request.forms.get('tree_type')
             additional = request.forms.get('additional')
-            
+
             if tree_type == 'samples':
                 if name in self.interactive.layers_order_data_dict:
                     raise Exception("Tree name '%s' already exists, overwriting currently not supported." % name)
@@ -415,7 +419,7 @@ class BottleApplication(Bottle):
         if state_name in self.interactive.states_table.states:
             state = self.interactive.states_table.states[state_name]
             state_dict = json.loads(state['content'])
-            
+
             if self.interactive.mode == 'structure':
                 return json.dumps({'content': state['content']})
             else:
