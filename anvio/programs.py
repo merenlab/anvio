@@ -306,6 +306,10 @@ class ProgramsNetwork(AnvioPrograms):
             self.run.info_single("Of %d programs found, %d did contain provides and requires \
                                   statements." % (len(self.all_programs), len(programs_dict)),
                                   nl_after=1, nl_before=1)
+            if anvio.DEBUG:
+                absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_programs]) - set(programs_dict.keys())))
+                self.run.info_single("Here is a list of programs that do not contain any information\
+                                      about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
         else:
             raise ConfigError("None of the %d anvi'o programs found contained any provides or\
                                requires statements :/" % len(self.all_programs))
