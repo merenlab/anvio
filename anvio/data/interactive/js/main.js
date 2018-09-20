@@ -1911,7 +1911,7 @@ function generatePhylogeneticTree() {
     var gene_cluster_list = [];
     var gene_clusters_id = $('#phylogeny_gene_cluster').val();
     
-    for (const node of this.selections[gene_clusters_id].values()) {
+    for (const node of bins.selections[gene_clusters_id].values()) {
         if (node.IsLeaf()) {
             gene_cluster_list.push(node.label);
         } 
