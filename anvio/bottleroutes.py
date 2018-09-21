@@ -1159,10 +1159,12 @@ class BottleApplication(Bottle):
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
 
+
     def check_homogeneity_info(self):
         try:
-            func, geo = self.interactive.check_if_homogeneity_information_is_available()
-            return json.dumps({'status': 0, 'func_info': 1 if func else 0, 'geo_info': 1 if geo else 0})
+            return json.dumps({'status': 0,
+                               'functional_homogeneity_info_is_available': self.interactive.functional_homogeneity_info_is_available,
+                               'geometric_homogeneity_info_is_available': self.interactive.geometric_homogeneity_info_is_available})
         except:
             return json.dumps({'status': 1})
 
