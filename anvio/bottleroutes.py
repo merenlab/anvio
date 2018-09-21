@@ -14,6 +14,7 @@ import sys
 import copy
 import time
 import json
+import base64
 import random
 import argparse
 import requests
@@ -1168,4 +1169,15 @@ class BottleApplication(Bottle):
         new_root = tree.get_common_ancestor(left_most, right_most)
         tree.set_outgroup(new_root)
 
-        return json.dumps({'newick': tree.write(format=1)})
+        # Ete3 tree.write function replaces some charachters that we support in the interface.
+        # As a workaround we are going to encode node names with base32, after serialization
+        # we are going to decode them back.
+        for node in tree.traverse('preorder'):
+            node.name = 'base32' + base64.b32encode(node.name.encode('utf-8')).decode('utf-8')
+
+        new_newick = tree.write(format=1)
+
+        # ete also converts base32 padding charachter "=" to "_" so we need to replace it.
+        new_newick = re.sub(r"base32(\w+)", lambda m: base64.b32decode(m.group(1).replace('_','=')).decode('utf-8'), new_newick)
+
+        return json.dumps({'newick': new_newick})
