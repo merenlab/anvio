@@ -137,6 +137,7 @@ class BottleApplication(Bottle):
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
+        self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
 
 
     def run_application(self, ip, port):
@@ -303,6 +304,7 @@ class BottleApplication(Bottle):
                 functions_sources = list(self.interactive.gene_clusters_function_sources)
 
             inspection_available = self.interactive.auxiliary_profile_data_available
+            
             if not self.interactive.mode == 'pan' and self.interactive.p_meta['blank']:
                 inspection_available = False
 
@@ -1157,6 +1159,15 @@ class BottleApplication(Bottle):
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
+
+
+    def check_homogeneity_info(self):
+        try:
+            return json.dumps({'status': 0,
+                               'functional_homogeneity_info_is_available': self.interactive.functional_homogeneity_info_is_available,
+                               'geometric_homogeneity_info_is_available': self.interactive.geometric_homogeneity_info_is_available})
+        except:
+            return json.dumps({'status': 1})
 
 
     def reroot_tree(self):

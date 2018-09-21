@@ -324,6 +324,28 @@ function switchUserInterfaceMode(project, title) {
         $('#len_title').hide();
         $('.gene-filters-not-available-message').hide();
         $('.pan-filters button,input:checkbox').removeAttr('disabled')
+        $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/check_homogeneity_info',
+            success: function(data){
+                if (data['status'] == 1){
+                    $('#min_func').attr("disabled", 'disabled');
+                    $('#max_func').attr("disabled", 'disabled');
+                    $('#min_geo').attr("disabled", 'disabled');
+                    $('#max_geo').attr("disabled", 'disabled');
+                } else {
+                    if (data['functional_homogeneity_info_is_available'] == 0){
+                        $('#min_func').attr("disabled", 'disabled');
+                        $('#max_func').attr("disabled", 'disabled');
+                    }
+                    if (data['geometric_homogeneity_info_is_available'] == 0){
+                        $('#min_geo').attr("disabled", 'disabled');
+                        $('#max_geo').attr("disabled", 'disabled');
+                    }
+                }
+            }
+        })
     }
 
     if (server_mode) {
@@ -338,7 +360,7 @@ function switchUserInterfaceMode(project, title) {
     }
 }
 
-function setupDescriptionPanel(description) {  
+function setupDescriptionPanel(description) {
     $('#description-editor').val(description);
     $('#description-editor').markdown({
         'onShow': function (e) {
