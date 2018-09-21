@@ -858,6 +858,11 @@ class PanSuperclass(object):
         self.items_additional_data_dict = None
         self.items_additional_data_keys = None
 
+        # let's figure out whether this pan database has gene cluster homogeneity data available
+        k = TableForItemAdditionalData(self.args).get_available_data_keys()
+        self.functional_homogeneity_info_is_available = 'functional_homogeneity_index' in k
+        self.geometric_homogeneity_info_is_available = 'geometric_homogeneity_index' in k
+
         self.num_gene_clusters = None
         self.num_genes_in_gene_clusters = None
 
@@ -928,7 +933,11 @@ class PanSuperclass(object):
         else:
             self.run.warning("The pan database is being initialized without a genomes storage.")
 
+        F = lambda x: '[YES]' if x else '[NO]'
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
+        self.run.info('Gene cluster homogeneity estimates', 'Functional: %s; Geometric: %s' % \
+                         (F(self.functional_homogeneity_info_is_available), F(self.geometric_homogeneity_info_is_available)),
+                      mc="cyan")
 
 
     def get_sequences_for_gene_clusters(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, report_DNA_sequences=False):
@@ -1467,13 +1476,6 @@ class PanSuperclass(object):
                     num_gene_clusters_missing_per_genome[genome_name] += 1
 
         return num_gene_clusters_missing_per_genome
-
-
-    def check_if_homogeneity_information_is_available(self):
-        available_additional_data_keys = TableForItemAdditionalData(self.args).get_available_data_keys()
-        functional_homogeneity_info_is_available = 'functional_homogeneity_index' in available_additional_data_keys
-        geometric_homogeneity_info_is_available = 'geometric_homogeneity_index' in available_additional_data_keys
-        return functional_homogeneity_info_is_available, geometric_homogeneity_info_is_available
 
 
     def filter_gene_clusters_from_gene_clusters_dict(self, gene_clusters_dict, min_num_genomes_gene_cluster_occurs=0,
