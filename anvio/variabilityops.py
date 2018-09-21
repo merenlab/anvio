@@ -1380,7 +1380,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # sample_id). The reason for this is aesthetic but also required for vectorized operations that occur after
         # self.progress.update("Those that do require --quince-mode")
         self.data = self.data.sort_values(by=["unique_pos_identifier", "sample_id"])
-        coverage_table = self.data[self.items].T.astype(int).as_matrix()
+        coverage_table = self.data[self.items].T.astype(int).values
 
         # Now we compute the entropy, which is defined at a per position, per sample basis. There is a reason we
         # pass coverage_table instead of a normalized table. If we pass a normalized table scipy.stat.entropy complains
@@ -1862,7 +1862,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
         # concatenate new columns to self.data
         entries_before = len(self.data.index)
-        self.data = pd.concat([self.data, new_entries])
+        self.data = pd.concat([self.data, new_entries], sort=True)
         new_entries.set_index("entry_id", drop=False, inplace=True)
         self.data = self.data[column_order]
         entries_after = len(self.data.index)
@@ -2007,7 +2007,7 @@ class QuinceModeWrapperForFancyEngines(object):
 
         # concatenate new columns to self.data
         entries_before = len(self.data.index)
-        self.data = pd.concat([self.data, new_entries])
+        self.data = pd.concat([self.data, new_entries], sort=True)
         new_entries.set_index("entry_id", drop=False, inplace=True)
         self.data = self.data[column_order]
         entries_after = len(self.data.index)
