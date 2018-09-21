@@ -1508,9 +1508,9 @@ class PanSuperclass(object):
         min_num_genes_from_each_genome = check(min_num_genes_from_each_genome, '--min-num-genes-from-each-genome')
         max_num_genes_from_each_genome = check(max_num_genes_from_each_genome, '--max-num-genes-from-each-genome')
 
-        # check whether homogeneity data is available in the database:
-        functional_homogeneity_info_is_available, geometric_homogeneity_info_is_available = self.check_if_homogeneity_information_is_available()
-        if not functional_homogeneity_info_is_available:
+        # behave depending on the availability of homogeneity indices in the database. if either or both of the homogeneity indices are
+        # missing, we will force the parameters to remain as their defaults and keep the user posted.
+        if not self.functional_homogeneity_info_is_available:
             if min_functional_homogeneity_index != -1 or max_functional_homogeneity_index != 1:
                 self.run.warning("You are trying to filter your gene clusters by functional homogeneity, when your pan database does not\
                                   include information about functional homogeneity. You can always compute this index for all of your \
@@ -1518,7 +1518,8 @@ class PanSuperclass(object):
                                   You will not be able to filter your gene clusters by functional homogeneity at this time.")
                 min_functional_homogeneity_index = -1
                 max_functional_homogeneity_index = 1
-        if not geometric_homogeneity_info_is_available:
+
+        if not self.geometric_homogeneity_info_is_available:
             if min_geometric_homogeneity_index != -1 or max_geometric_homogeneity_index != 1:
                 self.run.warning("You are trying to filter your gene clusters by geometric homogeneity, when your pan database does not\
                                   include information about geometric homogeneity. You can always compute this index for all of your \
@@ -1526,7 +1527,6 @@ class PanSuperclass(object):
                                   You will not be able to filter your gene clusters by geometric homogeneity at this time.")
                 min_geometric_homogeneity_index = -1
                 max_geometric_homogeneity_index = 1
-        #If the information is not available, we force the parameters to become their default values and inform users of what they've done to themselves
 
         if min_num_genomes_gene_cluster_occurs < 0 or max_num_genomes_gene_cluster_occurs < 0:
             raise ConfigError("When you ask for a negative value for the the minimum or maximum number of genomes a gene cluster is expected\
@@ -1544,7 +1544,7 @@ class PanSuperclass(object):
             raise ConfigError("Min number of genes for each gene cluster can't be larger than the .. pfft. Anvi'o refuses to continue with this\
                                error message. Check your parameters :(")
 
-        if functional_homogeneity_info_is_available and geometric_homogeneity_info_is_available:
+        if self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available:
             if (min_functional_homogeneity_index < 0 and min_functional_homogeneity_index != -1) or (min_geometric_homogeneity_index < 0 and min_geometric_homogeneity_index != -1):
                 raise ConfigError("Geometric and Functional homogeneity indices have a mininum value of 0, along with an error value of -1. You can either ask for\
                                    values of 0 or greater, or put in '-1'. These are hard limits.")
@@ -1570,7 +1570,7 @@ class PanSuperclass(object):
                                that is not what you're doing." % (len(all_genomes), min_num_genomes_gene_cluster_occurs))
 
         gene_cluster_occurrences_accross_genomes, num_genes_contributed_per_genome = self.get_basic_gene_clusters_stats(gene_clusters_dict)
-        if functional_homogeneity_info_is_available and geometric_homogeneity_info_is_available:
+        if self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available:
             homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index'])
 
         gene_clusters_to_remove = set([])
