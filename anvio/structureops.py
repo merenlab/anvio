@@ -455,7 +455,7 @@ class Structure(object):
         # Each annotation source does NOT have to annotate each residue in the gene.
         residue_annotation_for_gene = pd.DataFrame({})
         for method in residue_annotation_methods:
-            residue_annotation_for_gene = pd.concat([residue_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1)
+            residue_annotation_for_gene = pd.concat([residue_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1, sort=True)
 
         # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
         residue_annotation_for_gene.insert(0, "entry_id", list(range(residue_annotation_for_gene.shape[0])))
