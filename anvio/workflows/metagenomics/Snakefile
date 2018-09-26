@@ -529,6 +529,7 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
         log: dirs_dict["LOGS_DIR"] + "/{group}-megahit.log"
         input: unpack(input_for_megahit)
         params:
+            temp_dir = dirs_dict["FASTA_DIR"] + "/{group}_TEMP",
             # the minimum length for contigs (smaller contigs will be discarded)
             min_contig_len = M.get_rule_param("megahit", "--min-contig-len"),
             min_count = M.get_rule_param("megahit", "--min-count"),
@@ -561,8 +562,6 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
         # to the final location.
         output:
             contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa")
-        params:
-            temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
         threads: M.T('megahit')
         resources: nodes = M.T('megahit'),
         # Making this rule a shadow rule so all extra files created by megahit
