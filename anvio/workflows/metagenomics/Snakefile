@@ -461,9 +461,9 @@ if run_idba_ud == True:
         input:
             fasta = dirs_dict["QC_DIR"] + "/{group}-merged.fa"
         output:
-            temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa")
         params:
+            temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             mink = M.get_rule_param("idba_ud", "--mink"),
             maxk = M.get_rule_param("idba_ud", "--maxk"),
             step = M.get_rule_param("idba_ud", "--step"),
@@ -485,7 +485,7 @@ if run_idba_ud == True:
         threads: M.T('idba_ud')
         resources: nodes = M.T('idba_ud')
         run:
-            cmd = "idba_ud -o {output.temp_dir} --read {input.fasta} --num_threads {threads} " + \
+            cmd = "idba_ud -o {params.temp_dir} --read {input.fasta} --num_threads {threads} " + \
                   "{params.mink} {params.maxk} {params.step} {params.inner_mink} " + \
                   "{params.inner_step} {params.prefix} {params.min_count} " + \
                   "{params.min_support} {params.seed_kmer} {params.min_contig} " + \
@@ -493,7 +493,8 @@ if run_idba_ud == True:
                   "{params.no_bubble} {params.no_local} {params.no_coverage} " + \
                   "{params.no_correct} {params.pre_correction} >> {log} 2>&1"
             shell(cmd)
-            shell("mv {output.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
+            shell("mv {params.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
+            shell("rm -rf {params.temp_dir}")
 
 
 def input_for_megahit(wildcards):
