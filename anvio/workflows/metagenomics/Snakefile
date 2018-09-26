@@ -583,7 +583,7 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
                 "{params.tmp_dir} {params._continue} {params.verbose} >> {log} 2>&1"
             print("Running: %s" % cmd)
             shell(cmd)
-            shell("mv {output.temp_dir}/final.contigs.fa {output.contigs} >> {log} 2>&1")
+            shell("mv {params.temp_dir}/final.contigs.fa {output.contigs} >> {log} 2>&1")
             shell("rm -rf {params.temp_dir}")
 
 
