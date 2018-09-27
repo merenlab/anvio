@@ -461,9 +461,9 @@ if run_idba_ud == True:
         input:
             fasta = dirs_dict["QC_DIR"] + "/{group}-merged.fa"
         output:
-            temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa")
         params:
+            temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             mink = M.get_rule_param("idba_ud", "--mink"),
             maxk = M.get_rule_param("idba_ud", "--maxk"),
             step = M.get_rule_param("idba_ud", "--step"),
@@ -485,7 +485,7 @@ if run_idba_ud == True:
         threads: M.T('idba_ud')
         resources: nodes = M.T('idba_ud')
         run:
-            cmd = "idba_ud -o {output.temp_dir} --read {input.fasta} --num_threads {threads} " + \
+            cmd = "idba_ud -o {params.temp_dir} --read {input.fasta} --num_threads {threads} " + \
                   "{params.mink} {params.maxk} {params.step} {params.inner_mink} " + \
                   "{params.inner_step} {params.prefix} {params.min_count} " + \
                   "{params.min_support} {params.seed_kmer} {params.min_contig} " + \
@@ -493,7 +493,8 @@ if run_idba_ud == True:
                   "{params.no_bubble} {params.no_local} {params.no_coverage} " + \
                   "{params.no_correct} {params.pre_correction} >> {log} 2>&1"
             shell(cmd)
-            shell("mv {output.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
+            shell("mv {params.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
+            shell("rm -rf {params.temp_dir}")
 
 
 def input_for_megahit(wildcards):
@@ -529,6 +530,7 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
         log: dirs_dict["LOGS_DIR"] + "/{group}-megahit.log"
         input: unpack(input_for_megahit)
         params:
+            temp_dir = dirs_dict["FASTA_DIR"] + "/{group}_TEMP",
             # the minimum length for contigs (smaller contigs will be discarded)
             min_contig_len = M.get_rule_param("megahit", "--min-contig-len"),
             min_count = M.get_rule_param("megahit", "--min-count"),
@@ -560,7 +562,6 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
         # once megahit is done running then the contigs database is moved
         # to the final location.
         output:
-            temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa")
         threads: M.T('megahit')
         resources: nodes = M.T('megahit'),
@@ -572,7 +573,7 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
             r2 = ','.join(input.r2)
 
             cmd = "megahit -1 %s -2 %s " % (r1, r2) + \
-                "-o {output.temp_dir} " + \
+                "-o {params.temp_dir} " + \
                 "-t {threads} " + \
                 "{params.min_contig_len} {params.min_count} {params.k_min} " + \
                 "{params.k_max} {params.k_step} {params.k_list} {params.no_mercy} " + \
@@ -583,7 +584,8 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
                 "{params.tmp_dir} {params._continue} {params.verbose} >> {log} 2>&1"
             print("Running: %s" % cmd)
             shell(cmd)
-            shell("mv {output.temp_dir}/final.contigs.fa {output.contigs} >> {log} 2>&1")
+            shell("mv {params.temp_dir}/final.contigs.fa {output.contigs} >> {log} 2>&1")
+            shell("rm -rf {params.temp_dir}")
 
 
 
