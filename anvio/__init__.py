@@ -9,6 +9,7 @@ import copy
 import platform
 import pkg_resources
 
+anvio_version = '5.2-master'
 anvio_codename = 'margaret'
 
 DEBUG = '--debug' in sys.argv
@@ -1817,20 +1818,6 @@ run = Run()
 
 
 def set_version():
-    anvio_version = 'unknown'
-
-    try:
-        anvio_version = pkg_resources.require("anvio")[0].version
-    except:
-        # maybe anvi'o is not installed but it is being run from the codebase dir?
-        # some hacky stuff to get version from the setup.py
-        try:
-            setup_py_path = os.path.normpath(os.path.dirname(os.path.abspath(__file__))) + '/../setup.py'
-            version_string = [l.strip() for l in open(setup_py_path).readlines() if l.strip().startswith('anvio_version')][0]
-            anvio_version = version_string.split('=')[1].strip().strip("'").strip('"')
-        except:
-            pass
-
     return anvio_version, \
            anvio_codename, \
            t.contigs_db_version, \
