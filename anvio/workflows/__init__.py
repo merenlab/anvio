@@ -333,7 +333,6 @@ class WorkflowSuperClass:
                 d[a] = {}
             f = d
             d = d[a]
-            print(d)
         f[a] = value
 
 
