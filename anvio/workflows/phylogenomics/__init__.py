@@ -58,7 +58,7 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
 
         self.rules.extend(['anvi_get_sequences_for_hmm_hits', 'trimal', 'iqtree'])
 
-        self.general_params.extend(['project_name'])
+        self.general_params.extend(['project_name', 'internal_genomes', 'external_genomes'])
 
         self.dirs_dict.update({"PHYLO_DIR": "01_PHYLOGENOMICS"})
 
@@ -70,7 +70,7 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
                                     'trimal': {'-gt': 0.5},
                                     'iqtree': {'threads': 8, '-m': 'WAG', '-bb': 1000}})
 
-        get_sequences_params = ['--external-genomes', '--internal-genomes', '--return-best-hit', \
+        get_sequences_params = ['--return-best-hit', \
                                 '--separator', '--align-with', '--min-num-bins-gene-occurs', \
                                 '--max-num-genes-missing-from-bin', '--concatenate-genes', \
                                 '--get-aa-sequences', '--gene-names', '--hmm-sources']
@@ -83,13 +83,11 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
         super().init()
 
-        internal_genomes_file = self.get_param_value_from_config(['anvi_get_sequences_for_hmm_hits', '--internal-genomes'])
-        external_genomes_file = self.get_param_value_from_config(['anvi_get_sequences_for_hmm_hits', '--external-genomes'])
+        internal_genomes_file = self.get_param_value_from_config('internal_genomes')
+        external_genomes_file = self.get_param_value_from_config('external_genomes')
 
         if not internal_genomes_file and not external_genomes_file:
-            raise ConfigError('You must provide either an external genomes file or internal genomes file \
-                               for the rule anvi_get_sequences_for_hmm_hits')
-
+            raise ConfigError('You must provide either an external genomes file or internal genomes file'
         # here we do a little trick to make sure the rule can expect either one or both
         self.input_for_anvi_get_sequences_for_hmm_hits = {"internal_genomes_file": external_genomes_file,
                                                           "external_genomes_file": internal_genomes_file}
