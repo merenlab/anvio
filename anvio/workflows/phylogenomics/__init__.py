@@ -87,7 +87,7 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         external_genomes_file = self.get_param_value_from_config('external_genomes')
 
         if not internal_genomes_file and not external_genomes_file:
-            raise ConfigError('You must provide either an external genomes file or internal genomes file'
+            raise ConfigError('You must provide either an external genomes file or internal genomes file')
         # here we do a little trick to make sure the rule can expect either one or both
         self.input_for_anvi_get_sequences_for_hmm_hits = {"internal_genomes_file": external_genomes_file,
                                                           "external_genomes_file": internal_genomes_file}
