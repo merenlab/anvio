@@ -21,7 +21,7 @@
 
 ContextMenu = function(options) {
     this.container = options.container;
-    this.event = event;
+    this.event = options.event;
     this.node = options.node;
     this.layer = options.layer;
     this.isSample = options.isSample;
