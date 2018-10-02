@@ -173,12 +173,6 @@ def get_predicted_type_of_items_in_a_dict(d, key):
 
     not_float = False
     for item in items:
-        if type(item) == float:
-            return float
-
-        if type(item) == int:
-            return int
-
         try:
             float(item or 0)
         except ValueError:
