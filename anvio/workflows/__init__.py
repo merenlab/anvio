@@ -176,9 +176,13 @@ class WorkflowSuperClass:
         args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name), \
                 '--configfile', self.config_file, '--dryrun']
 
-        if not self.print_dry_run_output:
+        if self.print_dry_run_output:
             # we only print the dry run to the stdout if the user asked for a dry run
-            args.extend(['--quiet'])
+            sys.argv.extend(['--printshellcmds'])
+            snakemake.main()
+            sys.exit(0)
+
+        args.extend(['--quiet'])
 
         if self.save_workflow_graph:
             args.extend(['--dag'])
