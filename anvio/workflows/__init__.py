@@ -53,6 +53,7 @@ class WorkflowSuperClass:
         self.save_workflow_graph = A('save_workflow_graph')
         self.list_dependencies = A('list_dependencies')
         self.dry_run_only = A('dry_run')
+        self.print_dry_run_output = A('dry_run')
         self.additional_params = A('additional_params')
 
         if self.additional_params:
@@ -173,7 +174,11 @@ class WorkflowSuperClass:
         self.progress.new('Bleep bloop')
         self.progress.update('Quick dry run for an initial sanity check ...')
         args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name), \
-                '--configfile', self.config_file, '--dryrun', '--quiet']
+                '--configfile', self.config_file, '--dryrun']
+
+        if not self.print_dry_run_output:
+            # we only print the dry run to the stdout if the user asked for a dry run
+            args.append('--quiet')
 
         if self.save_workflow_graph:
             args.extend(['--dag'])
