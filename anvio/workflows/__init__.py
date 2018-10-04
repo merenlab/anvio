@@ -178,7 +178,7 @@ class WorkflowSuperClass:
 
         if not self.print_dry_run_output:
             # we only print the dry run to the stdout if the user asked for a dry run
-            args.extend(['--quiet'])
+            args.append('--quiet')
 
         if self.save_workflow_graph:
             args.extend(['--dag'])
