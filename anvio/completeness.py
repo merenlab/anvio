@@ -138,14 +138,22 @@ class Completeness:
             percent_completion = numpy.mean([d[domain][s]['percent_completion'] for s in d[domain]])
             percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
 
-            substantive_completion = percent_completion - percent_redundancy
+            # the substantive_completion is related to issue https://github.com/merenlab/anvio/issues/941
+            substantive_completion = utils.get_substantive_completion(percent_completion, percent_redundancy)
             model_coverage = numpy.mean([d[domain][s]['model_coverage'] for s in d[domain]])
 
-            domain_specific_estimates.append((model_coverage, substantive_completion, domain, substantive_completion / 100.0), )
+            domain_specific_estimates.append((model_coverage,
+                                              substantive_completion,
+                                              domain,
+                                              (percent_completion - percent_redundancy) / 100.0), )
 
         domain_specific_estimates.sort(reverse=True)
 
-        best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][2], domain_specific_estimates[0][3]
+        if len(set([d[3] for d in domain_specific_estimates])) == 1:
+            # clearly none of the domains match with any level of real confidence
+            best_matching_domain, domain_matching_confidence = None, 0.0
+        else:
+            best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][2], domain_specific_estimates[0][3]
 
         return (best_matching_domain, domain_matching_confidence)
 
@@ -229,6 +237,9 @@ class Completeness:
 
         best_matching_domain, domain_matching_confidence = self.get_best_matching_domain(results_dict)
 
-        percent_completion, percent_redundancy = self.get_average_domain_completion_and_redundancy(results_dict, best_matching_domain)
+        if best_matching_domain:
+            percent_completion, percent_redundancy = self.get_average_domain_completion_and_redundancy(results_dict, best_matching_domain)
+        else:
+            percent_completion, percent_redundancy = 0.0, 0.0
 
         return (percent_completion, percent_redundancy, best_matching_domain, domain_matching_confidence, results_dict)
