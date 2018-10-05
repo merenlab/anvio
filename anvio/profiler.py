@@ -42,8 +42,10 @@ pp = terminal.pretty_print
 
 class BAMProfiler(dbops.ContigsSuperclass):
     """Creates an über class for BAM file operations"""
-    def __init__(self, args):
+    def __init__(self, args, r=terminal.Run(width=35), p=terminal.Progress()):
         self.args = args
+        self.progress = p
+        self.run = r
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.input_file_path = A('input_file')
@@ -51,7 +53,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.serialized_profile_path = A('serialized_profile')
         self.output_directory = A('output_dir')
         self.list_contigs_and_exit = A('list_contigs')
-        self.min_contig_length = A('min_contig_length')
+        self.min_contig_length = A('min_contig_length') or 0
         self.max_contig_length = A('max_contig_length') or sys.maxsize
         self.min_mean_coverage = A('min_mean_coverage')
         self.min_coverage_for_variability = A('min_coverage_for_variability')
@@ -65,9 +67,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
-        self.num_threads = int(A('num_threads'))
-        self.queue_size = int(A('queue_size'))
-        self.write_buffer_size = int(A('write_buffer_size'))
+        self.num_threads = int(A('num_threads') or 1)
+        self.queue_size = int(A('queue_size') if A('queue_size') is not None else 0)
+        self.write_buffer_size = int(A('write_buffer_size') if A('write_buffer_size') is not None else 500)
         self.total_length_of_all_contigs = 0
         self.total_coverage_values_for_all_contigs = 0
         self.description_file_path = A('description')
@@ -95,15 +97,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.blank and not self.skip_hierarchical_clustering:
             self.contigs_shall_be_clustered = True
 
-        if args.contigs_of_interest:
+        if A('contigs_of_interest'):
             filesnpaths.is_file_exists(args.contigs_of_interest)
             self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
                                                                            if c.strip() and not c.startswith('#')])
         else:
             self.contig_names_of_interest = None
-
-        self.progress = terminal.Progress()
-        self.run = terminal.Run(width=35)
 
         if self.list_contigs_and_exit:
             self.list_contigs()
@@ -264,7 +263,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # update layer additional data table content
         if self.layer_additional_data:
-            layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
+            layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path), r=self.run, p=self.progress)
             layer_additional_data_table.add({self.sample_id: self.layer_additional_data}, self.layer_additional_keys)
 
         if self.contigs_shall_be_clustered:
