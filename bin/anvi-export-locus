@@ -32,16 +32,22 @@
   for functional annotations: anvi-search-functions
 """
 
+import os
 import sys
-import anvio
 import argparse
+
+import anvio
+import anvio.db as db
+import anvio.tables as t
+import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.hmmops as hmmops
-import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.profiler as profiler
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -201,6 +207,13 @@ def main(args):
         else:
             filtered_partial_hits += 1
 
+        # split this into a new contigs database
+        split_contigs_database(args.contigs_db,
+                               gene_dict['contig'],
+                               first_gene_of_the_block,
+                               last_gene_of_the_block,
+                               project_name="%s_%.3d" % (args.output_file_prefix, entry_id))
+
     if filtered_partial_hits and args.remove_partial_hits:
         run.warning("%s hits were filtered because they were partial." % filtered_partial_hits)
 
@@ -210,6 +223,30 @@ def main(args):
 
     if entry_id == 0:
         run.warning('There were no hits for your search so no output file will be created.')
+
+
+def split_contigs_database(contigs_db_path, contig_name, first_gene, last_gene, project_name, rev_comp=False):
+    # generate a blank profile
+    profile_output_dir = project_name
+    args = argparse.Namespace(blank_profile=True,
+                              contigs_db=contigs_db_path,
+                              skip_hierarchical_clustering=True,
+                              output_dir=profile_output_dir,
+                              sample_name=project_name)
+    profiler.BAMProfiler(args, r=terminal.Run(verbose=False))._run()
+
+    # recover split names associated with the contig of interest
+    contigs_db = db.DB(args.contigs_db, None, ignore_version=True)
+    split_names = contigs_db.get_single_column_from_table(t.splits_info_table_name,
+                                                          "split",
+                                                          where_clause="parent='%s'" % contig_name)
+    contigs_db.disconnect()
+
+    # add the split names to the profile database
+    collections = TablesForCollections(os.path.join(project_name, 'PROFILE.db'), run=terminal.Run(verbose=False))
+    collections.append('default', {'default': split_names})
+
+    # split now :(
 
 
 if __name__ == '__main__':
