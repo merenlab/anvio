@@ -44,6 +44,7 @@ import anvio.dbops as dbops
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.profiler as profiler
+import anvio.splitter as splitter
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -226,14 +227,34 @@ def main(args):
 
 
 def split_contigs_database(contigs_db_path, contig_name, first_gene, last_gene, project_name, rev_comp=False):
-    # generate a blank profile
+    """The purpose of this function is to split a contigs datababe from another contigs database.
+
+       This function is primarily used by anvi-export-locus, whose primary function is to identify
+       a part of a contig that matches to a locus of interest. This function allow anvi-export-locus
+       to report an anvi'o contigs database with approprioate gene calls preserved, instead of a
+       FASTA file, which often becomes an anvi'o contigs database for further processing anyway.
+       To do this, the function implements a bunch of anvi'o tricks. First it generates a blank
+       profile database for the original contigs database. Then it adds a collection into it that
+       only describes a single contig of interest (along with all splits it carries), and so on.
+    """
+
+    # unless we are in debug mode, let's keep things quiet.
+    if anvio.DEBUG:
+        run_object = terminal.Run()
+    else:
+        run_object = terminal.Run(verbose=False)
+
+    # setup paths for the blank profile to be generated.
     profile_output_dir = project_name
+    profile_output_db_path = os.path.join(profile_output_dir, 'PROFILE.db')
+
+    # generate a blank profile
     args = argparse.Namespace(blank_profile=True,
                               contigs_db=contigs_db_path,
                               skip_hierarchical_clustering=True,
                               output_dir=profile_output_dir,
-                              sample_name=project_name)
-    profiler.BAMProfiler(args, r=terminal.Run(verbose=False))._run()
+                              sample_name=profile_output_dir)
+    profiler.BAMProfiler(args, r=run_object)._run()
 
     # recover split names associated with the contig of interest
     contigs_db = db.DB(args.contigs_db, None, ignore_version=True)
@@ -242,11 +263,28 @@ def split_contigs_database(contigs_db_path, contig_name, first_gene, last_gene, 
                                                           where_clause="parent='%s'" % contig_name)
     contigs_db.disconnect()
 
-    # add the split names to the profile database
-    collections = TablesForCollections(os.path.join(project_name, 'PROFILE.db'), run=terminal.Run(verbose=False))
+    # add the split names associated with the contigs database into the profile
+    # database as a collection
+    collections = TablesForCollections(os.path.join(profile_output_dir, 'PROFILE.db'), run=run_object)
     collections.append('default', {'default': split_names})
 
-    # split now :(
+    # the actual split!
+    split_dir_output_path = os.path.join(profile_output_dir, 'split')
+    output_contigs_db_path = os.path.join(split_dir_output_path, 'default', 'CONTIGS.db')
+    args = argparse.Namespace(contigs_db=contigs_db_path,
+                              profile_db=profile_output_db_path,
+                              collection_name='default',
+                              bin_name='default',
+                              output_dir=split_dir_output_path)
+    splitter.ProfileSplitter(args, run=run_object).process()
+
+    # remove genes that are not of interest
+    contigs_db = dbops.ContigsDatabase(output_contigs_db_path, run=run_object)
+    gene_calls = contigs_db.db.get_single_column_from_table(t.genes_in_contigs_table_name,
+                                                            "gene_callers_id")
+    gene_calls_to_remove = [g for g in gene_calls if g < first_gene or g > last_gene]
+    contigs_db.remove_gene_calls(gene_calls_to_remove)
+    contigs_db.disconnect()
 
 
 if __name__ == '__main__':
