@@ -304,9 +304,6 @@ class BottleApplication(Bottle):
                 functions_sources = list(self.interactive.gene_clusters_function_sources)
 
             inspection_available = self.interactive.auxiliary_profile_data_available
-            
-            if not self.interactive.mode == 'pan' and self.interactive.p_meta['blank']:
-                inspection_available = False
 
             return json.dumps( { "title":                              self.interactive.title,
                                  "description":                        self.interactive.p_meta['description'],
@@ -469,12 +466,15 @@ class BottleApplication(Bottle):
 
         layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
 
-        auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
-                                                                                 self.interactive.p_meta['contigs_db_hash'])
-        coverages = auxiliary_coverages_db.get(split_name)
-        auxiliary_coverages_db.close()
+        try:
+            auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
+                                                                                     self.interactive.p_meta['contigs_db_hash'])
+            coverages = auxiliary_coverages_db.get(split_name)
+            auxiliary_coverages_db.close()
 
-        data['coverage'] = [coverages[layer].tolist() for layer in layers]
+            data['coverage'] = [coverages[layer].tolist() for layer in layers]
+        except:
+            data['coverage'] = [[0] * self.interactive.splits_basic_info[split_name]['length']]
         data['sequence'] = self.interactive.split_sequences[split_name]
 
         ## get the variability information dict for split:
