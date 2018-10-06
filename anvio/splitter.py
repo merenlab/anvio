@@ -81,7 +81,7 @@ class ProfileSplitter:
         # anvi-split runs to work on bins in the same collection in parallel:
         self.args.delete_output_directory_if_exists = False
 
-        self.summary = summarizer.ProfileSummarizer(self.args)
+        self.summary = summarizer.ProfileSummarizer(self.args, r=self.run, p=self.progress)
         self.summary.init()
 
         self.bin_names_of_interest = sorted(self.summary.bin_ids)
