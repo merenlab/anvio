@@ -71,9 +71,6 @@ class ProfileSplitter:
         utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
-        if profile_db.meta['blank']:
-            raise ConfigError("The anvi-split workflow is not prepared to deal with blank profiles :/ Sorry!")
-
         if profile_db.meta['db_type'] != 'profile':
             raise ConfigError("Anvi'o was trying to split this profile, but it just realized that it is not a profile\
                                database. There is something wrong here.")
@@ -112,10 +109,16 @@ class ProfileSplitter:
         for bin_name in self.bin_names_of_interest:
             b = BinSplitter(bin_name, self.summary, self.args, run=self.run, progress=self.progress)
             b.do_contigs_db()
-            b.do_profile_db()
 
-            if self.summary.auxiliary_profile_data_available:
-                b.do_auxiliary_profile_data()
+            if self.summary.p_meta['blank']:
+                self.run.warning("It seems your profile database is a blank one. That's fine. Anvi'o assumes that your actual\
+                                  intention is to split your contigs database only. This warning message is here to make sure\
+                                  you will not be upset when you realize your split profile missing a profile database :(")
+            else:
+                b.do_profile_db()
+
+                if self.summary.auxiliary_profile_data_available:
+                    b.do_auxiliary_profile_data()
 
         self.run.info('Num bins processed', len(self.bin_names_of_interest))
         self.run.info("Output directory", self.output_directory)
