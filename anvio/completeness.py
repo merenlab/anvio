@@ -140,20 +140,18 @@ class Completeness:
 
             # the substantive_completion is related to issue https://github.com/merenlab/anvio/issues/941
             substantive_completion = utils.get_substantive_completion(percent_completion, percent_redundancy)
-            model_coverage = numpy.mean([d[domain][s]['model_coverage'] for s in d[domain]])
 
-            domain_specific_estimates.append((model_coverage,
-                                              substantive_completion,
+            domain_specific_estimates.append((substantive_completion,
                                               domain,
                                               (percent_completion - percent_redundancy) / 100.0), )
 
         domain_specific_estimates.sort(reverse=True)
 
-        if len(set([d[3] for d in domain_specific_estimates])) == 1:
+        if len(set([d[0] for d in domain_specific_estimates])) == 1:
             # clearly none of the domains match with any level of real confidence
             best_matching_domain, domain_matching_confidence = None, 0.0
         else:
-            best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][2], domain_specific_estimates[0][3]
+            best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][1], domain_specific_estimates[0][2]
 
         return (best_matching_domain, domain_matching_confidence)
 

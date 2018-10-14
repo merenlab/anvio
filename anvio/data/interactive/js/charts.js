@@ -300,6 +300,9 @@ function createCharts(state){
         // simply because the sample name does not appear among 'layers' found in the state variable.
         layers_ordered = layers;
         state['layers'][layers[0]] = state['layers']['mean_coverage'];
+    } else if (state['current-view'] == "blank_view") {
+        layers_ordered = layers;
+        state['layers'][layers[0]] = state['layers']['length'];
     } else {
         // this is the usual path for merged profiles:
         layers_ordered = state['layer-order'].filter(function (value) { if (layers.indexOf(value)>-1) return true; return false; });
