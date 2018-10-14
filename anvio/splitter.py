@@ -464,7 +464,7 @@ class LocusSplitter:
         self.hmm_sources = A('hmm_sources') or set([])
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.remove_partial_hits = A('remove_partial_hits')
-        self.reverse_complement_if_necessary = (not A('never_reverse_complement')) or True
+        self.reverse_complement_if_necessary = not A('never_reverse_complement')
         self.include_fasta_output = True
 
         if A('list_hmm_sources'):
@@ -620,7 +620,7 @@ class LocusSplitter:
         genes_in_contig_sorted = sorted(list(self.contigs_db.contig_name_to_genes[contig_name]))
 
         D = lambda: 1 if gene_call['direction'] == 'f' else -1
-        premature, reverse_complemented = False,  False
+        premature = False
 
         self.run.info("Contig name", contig_name)
         self.run.info("Contig length", self.contigs_db.contigs_basic_info[contig_name]['length'])
@@ -674,27 +674,12 @@ class LocusSplitter:
             locus_gene_calls_dict[g]['start'] -= excess
             locus_gene_calls_dict[g]['stop'] -= excess
 
-        # let's get the function calls dict as well
-        where_clause = "gene_callers_id in (%s)" % ', '.join(['"%d"' % g for g in range(first_gene_of_the_block, last_gene_of_the_block + 1)])
-        locus_function_calls_dict  = db.DB(self.input_contigs_db_path, None, ignore_version=True) \
-                                                    .get_some_rows_from_table_as_dict(t.gene_function_calls_table_name,
-                                                                                      where_clause=where_clause,
-                                                                                      error_if_no_data=False)
-
         self.run.info("Locus gene call start/stops excess (nts)", excess)
 
         if D() != 1 and self.reverse_complement_if_necessary:
-            self.run.info("Reverse-complementing the locus", True)
-            locus_sequence = utils.rev_comp(locus_sequence)
-            reverse_complemented = "True"
-
-            # FIXME: locus gene calls dict must be updated here:
-            #   turn every f -> r, every r -> f
-            #   reset gene caller id
-            #   adjust gene start stops
-            #   gene caller ids will have to be updated in locus_gene_function_calls_dict too
+            reverse_complement = True
         else:
-            reverse_complemented = "False"
+            reverse_complement = False
 
         # report a stupid FASTA file.
         if self.include_fasta_output:
@@ -712,24 +697,51 @@ class LocusSplitter:
                                          'locus:%s,%s' % (str(first_gene_of_the_block), str(last_gene_of_the_block)),
                                          'nt_positions_in_contig:%s:%s' % (str(locus_start), str(locus_stop)),
                                          'premature:%s' % str(premature),
-                                         'reverse_complemented:%s' % str(reverse_complemented)])
+                                         'reverse_complemented:%s' % str(reverse_complement)])
 
                 f.write('>%s\n' % locus_header)
-                f.write('%s\n' % locus_sequence)
+                f.write('%s\n' % utils.rev_comp(locus_sequence) if reverse_complement else locus_sequence)
 
         # report a fancy anvi'o contigs database
         self.store_locus_as_contigs_db(contig_name,
                                        locus_sequence,
                                        locus_gene_calls_dict,
-                                       locus_function_calls_dict,
-                                       output_path_prefix)
+                                       output_path_prefix,
+                                       reverse_complement)
 
 
-    def store_locus_as_contigs_db(self, contig_name, sequence, gene_calls, function_calls, output_path_prefix):
-        locus_output_db_path = output_path_prefix + ".db"
-        locus_sequence_fasta = output_path_prefix + "_sequence.fa"
-        locus_external_gene_calls = output_path_prefix + "_external_gene_calls.txt"
+    def reverse_complement_gene_calls_dict(self, gene_calls_dict, contig_sequence):
+        contig_length = len(contig_sequence)
+        gene_caller_ids = list(gene_calls_dict.keys())
 
+        gene_caller_id_conversion_dict = dict([(gene_caller_ids[i], gene_caller_ids[-i - 1]) for i in range(0, len(gene_caller_ids))])
+        G = lambda g: gene_caller_id_conversion_dict[g]
+
+        reverse_complemented_gene_calls = {}
+        for gene_callers_id in gene_calls_dict:
+            g = copy.deepcopy(gene_calls_dict[gene_callers_id])
+            g['start'], g['stop'] = contig_length - g['stop'], contig_length - g['start']
+            g['direction'] = 'f' if g['direction'] == 'r' else 'r'
+
+            reverse_complemented_gene_calls[G(gene_callers_id)] = g
+
+        return reverse_complemented_gene_calls, gene_caller_id_conversion_dict
+
+
+    def store_locus_as_contigs_db(self, contig_name, sequence, gene_calls, output_path_prefix, reverse_complement=False):
+        """Generates a contigs database and a blank profile for a given locus"""
+
+        temporary_files = []
+
+        # dealing with some output file business.
+        E = lambda e: output_path_prefix + e
+        locus_output_db_path = E(".db")
+        locus_sequence_fasta = E("_sequence.fa")
+        locus_external_gene_calls = E("_external_gene_calls.txt")
+        temporary_files.extend([locus_external_gene_calls, locus_sequence_fasta])
+
+        # we will generate a blank profile database at the end of this. let's get the directory
+        # business sorted.
         profile_output_dir = output_path_prefix + '-PROFILE'
         if os.path.exists(profile_output_dir):
             if self.overwrite_output_destinations:
@@ -737,8 +749,9 @@ class LocusSplitter:
             else:
                 raise ConfigError("The directory %s exists, which kinda messes things up here. Either remove\
                                    it manually, or use the flag  --overwrite-output-destinations so anvi'o can\
-                                   do it for you.")
+                                   do it for you." % profile_output_dir)
 
+        # sort out the contigs database output path
         if filesnpaths.is_file_exists(locus_output_db_path, dont_raise=True):
             if self.overwrite_output_destinations:
                 os.remove(locus_output_db_path)
@@ -747,26 +760,33 @@ class LocusSplitter:
                                    or use the --overwrite-output-destinations flag to give anvi'o full authority to wipe\
                                    your disk.")
 
-        with open(locus_sequence_fasta, 'w') as f:
-            f.write('>%s\n' % contig_name)
-            f.write('%s\n' % sequence)
+        # do we need to reverse complement this guy? if yes, we will take care of the contigs sequence and
+        # gene calls here, and remember this for later.
+        gene_caller_id_conversion_dict = dict([(g, g) for g in gene_calls])
+        if reverse_complement:
+            sequence = utils.rev_comp(sequence)
+            gene_calls, gene_caller_id_conversion_dict = self.reverse_complement_gene_calls_dict(gene_calls, sequence)
 
-        # store external gene calls
+        # write the sequene as a temporary FASTA file since the design of ContigsDatabase::create
+        # will work seamlessly with this approach:
+        with open(locus_sequence_fasta, 'w') as f:
+            f.write('>%s\n%s\n' % (contig_name, sequence))
+
+        # similarly, here we will store external gene calls so there will be no gene calling during
+        # the generation of the contigs database
         headers = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'source', 'version']
         utils.store_dict_as_TAB_delimited_file(gene_calls, locus_external_gene_calls, headers=headers)
 
+        # this is where magic happens. we ask anvi'o to create a contigs database for us.
         args = argparse.Namespace(contigs_fasta=locus_sequence_fasta,
-                                  project_name='project_name',
+                                  project_name=os.path.basename(output_path_prefix),
                                   split_length=sys.maxsize,
                                   kmer_size=4,
                                   external_gene_calls=locus_external_gene_calls)
         dbops.ContigsDatabase(locus_output_db_path, run=self.run_object).create(args)
 
-        gene_function_calls_table = TableForGeneFunctions(locus_output_db_path, run=self.run_object)
-        gene_function_calls_table.create(function_calls)
-
-
-        # generate a blank profile
+        # while we are at it, here we generate a blank profile, too. so visualization of the
+        # new contigs database for debugging or other purposes through anvi'o.
         args = argparse.Namespace(blank_profile=True,
                                   contigs_db=locus_output_db_path,
                                   skip_hierarchical_clustering=False,
@@ -774,10 +794,33 @@ class LocusSplitter:
                                   sample_name=os.path.basename(output_path_prefix))
         profiler.BAMProfiler(args, r=self.run_object)._run()
 
+        # so we have a contigs database! but there isn't much in it. the following where clause will
+        # help us read from the tables of the original contigs database, and store it into the
+        # new one throughout the following sections of the code.
+        where_clause = "gene_callers_id in (%s)" % ', '.join(['"%d"' % g for g in gene_calls])
+
+        # a lousy anonymous function to read data from tables given the gene calls of interest
+        R = lambda table_name: db.DB(self.input_contigs_db_path, None, ignore_version=True) \
+                                              .get_some_rows_from_table_as_dict(table_name,
+                                                                                where_clause=where_clause,
+                                                                                error_if_no_data=False)
+
+        G = lambda g: gene_caller_id_conversion_dict[g]
+
+        ############################################################################################
+        # DO FUNCTIONS
+        ###########################################################################################
+        function_calls = R(t.gene_function_calls_table_name)
+
+        if reverse_complement:
+            for entry_id in function_calls:
+                function_calls[entry_id]['gene_callers_id'] = G(function_calls[entry_id]['gene_callers_id'])
+
+        gene_function_calls_table = TableForGeneFunctions(locus_output_db_path, run=self.run_object)
+        gene_function_calls_table.create(function_calls)
+
+
         if anvio.DEBUG:
             self.run.info_single("Temp output files were kept for inspection due to --debug")
         else:
-            os.remove(locus_sequence_fasta)
-            os.remove(locus_external_gene_calls)
-
-
+            map(lambda x: os.remove(x), temporary_files)
