@@ -710,24 +710,6 @@ class LocusSplitter:
                                        reverse_complement)
 
 
-    def reverse_complement_gene_calls_dict(self, gene_calls_dict, contig_sequence):
-        contig_length = len(contig_sequence)
-        gene_caller_ids = list(gene_calls_dict.keys())
-
-        gene_caller_id_conversion_dict = dict([(gene_caller_ids[i], gene_caller_ids[-i - 1]) for i in range(0, len(gene_caller_ids))])
-        G = lambda g: gene_caller_id_conversion_dict[g]
-
-        reverse_complemented_gene_calls = {}
-        for gene_callers_id in gene_calls_dict:
-            g = copy.deepcopy(gene_calls_dict[gene_callers_id])
-            g['start'], g['stop'] = contig_length - g['stop'], contig_length - g['start']
-            g['direction'] = 'f' if g['direction'] == 'r' else 'r'
-
-            reverse_complemented_gene_calls[G(gene_callers_id)] = g
-
-        return reverse_complemented_gene_calls, gene_caller_id_conversion_dict
-
-
     def store_locus_as_contigs_db(self, contig_name, sequence, gene_calls, output_path_prefix, reverse_complement=False):
         """Generates a contigs database and a blank profile for a given locus"""
 
@@ -765,7 +747,7 @@ class LocusSplitter:
         gene_caller_id_conversion_dict = dict([(g, g) for g in gene_calls])
         if reverse_complement:
             sequence = utils.rev_comp(sequence)
-            gene_calls, gene_caller_id_conversion_dict = self.reverse_complement_gene_calls_dict(gene_calls, sequence)
+            gene_calls, gene_caller_id_conversion_dict = utils.rev_comp_gene_calls_dict(gene_calls, sequence)
 
         # write the sequene as a temporary FASTA file since the design of ContigsDatabase::create
         # will work seamlessly with this approach:
