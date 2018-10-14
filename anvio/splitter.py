@@ -626,7 +626,7 @@ class LocusSplitter:
         self.run.info("Contig length", self.contigs_db.contigs_basic_info[contig_name]['length'])
         self.run.info("Num genes in contig", len(genes_in_contig_sorted))
         self.run.info("Target gene call", gene_callers_id)
-        self.run.info("Target gene direction", "Forward" if D() == 1 else "Reverse")
+        self.run.info("Target gene direction", "Forward" if D() == 1 else "Reverse", mc = 'green' if D() == 1 else 'red')
 
         gene_1 = gene_callers_id - self.num_genes_list[0] * D()
         gene_2 = gene_callers_id + self.num_genes_list[1] * D()
@@ -648,7 +648,7 @@ class LocusSplitter:
             premature = True
 
         if premature and self.remove_partial_hits:
-            self.run.info_single("A premature locus is found .. the current configuration says 'skip'. Skipping.", mc="red")
+            self.run.info_single("A premature locus is found .. the current configuration says 'skip'. Skipping.", mc="red", nl_before=1)
             return
         elif premature and not self.remove_partial_hits:
             self.run.info_single("A premature locus is found .. the current configuration says 'whatevs'. Anvi'o will continue.", mc="yellow", nl_before=1, nl_after=1)
@@ -680,6 +680,8 @@ class LocusSplitter:
             reverse_complement = True
         else:
             reverse_complement = False
+
+        self.run.info('Reverse complementing everything', reverse_complement, mc='green')
 
         # report a stupid FASTA file.
         if self.include_fasta_output:
@@ -801,6 +803,8 @@ class LocusSplitter:
         gene_function_calls_table = TableForGeneFunctions(locus_output_db_path, run=self.run_object)
         gene_function_calls_table.create(function_calls)
 
+        self.run.info("Output contigs DB path", locus_output_db_path)
+        self.run.info("Output blank profile DB path", os.path.join(profile_output_dir, 'PROFILE.db'))
 
         if anvio.DEBUG:
             self.run.info_single("Temp output files were kept for inspection due to --debug")
