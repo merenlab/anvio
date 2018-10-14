@@ -319,9 +319,9 @@ class TablesForGeneCalls(Table):
                 gene_calls_in_contigs_dict[contig] = set([gene_callers_id])
 
         contigs_without_any_gene_calls = list(set(self.contigs_info.keys()) - set(gene_calls_in_contigs_dict.keys()))
-        run.info('Contigs with at least one gene call', '%d of %d (%.1f%%)' % (len(gene_calls_in_contigs_dict),
-                                                                               len(self.contigs_info),
-                                                                               len(gene_calls_in_contigs_dict) * 100.0 / len(self.contigs_info)))
+        self.run.info('Contigs with at least one gene call', '%d of %d (%.1f%%)' % (len(gene_calls_in_contigs_dict),
+                                                                                    len(self.contigs_info),
+                                                                                    len(gene_calls_in_contigs_dict) * 100.0 / len(self.contigs_info)))
 
         for contig in contigs_without_any_gene_calls:
             gene_calls_in_contigs_dict[contig] = set([])
