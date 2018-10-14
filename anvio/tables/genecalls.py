@@ -27,13 +27,11 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
 class TablesForGeneCalls(Table):
-    def __init__(self, db_path, contigs_fasta=None, run=run, progress=progress, debug=False):
+    def __init__(self, db_path, contigs_fasta=None, run=terminal.Run(), progress=terminal.Progress(), debug=False):
         self.run = run
         self.progress = progress
         self.db_path = db_path
@@ -226,7 +224,7 @@ class TablesForGeneCalls(Table):
 
 
     def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
-        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress, simple=True)
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress, simple=True)
 
         # get gene calls and amino acid sequences
         gene_calls_dict, amino_acid_sequences = self.run_gene_caller(gene_caller)
@@ -301,7 +299,7 @@ class TablesForGeneCalls(Table):
 
     def populate_genes_in_splits_tables(self, gene_calls_dict=None):
         utils.is_contigs_db(self.db_path)
-        Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
+        Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
         self.set_next_available_id(t.genes_in_splits_table_name)
         self.init_gene_calls_dict()
 
