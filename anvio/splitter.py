@@ -650,8 +650,8 @@ class LocusSplitter:
         if premature and self.remove_partial_hits:
             self.run.info_single("A premature locus is found .. the current configuration says 'skip'. Skipping.", mc="red")
             return
-        else:
-            self.run.info_single("A premature locus is found .. the current configuration says 'whatevs'. Anvi'o will continue.", mc="yellow")
+        elif premature and not self.remove_partial_hits:
+            self.run.info_single("A premature locus is found .. the current configuration says 'whatevs'. Anvi'o will continue.", mc="yellow", nl_before=1, nl_after=1)
 
         self.run.info("First and last gene of the locus (final)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
 
