@@ -169,8 +169,10 @@ def main(args):
         utils.is_pan_db(args.pan_db)
         pan = db.DB(args.pan_db, anvio.__pan__version__)
 
-        db_genome_names = set(pan.get_meta_value('external_genome_names').split(',') +
-            pan.get_meta_value('internal_genome_names').split(','))
+        db_genome_names = set([])
+        G = lambda g: pan.get_meta_value(g).strip().split(',')
+        for genome_name in G('external_genome_names') + G('internal_genome_names'):
+            db_genome_names.add(genome_name) if len(genome_name) else None
 
         found_only_in_db = db_genome_names.difference(genome_names)
         found_only_in_results = genome_names.difference(db_genome_names)
