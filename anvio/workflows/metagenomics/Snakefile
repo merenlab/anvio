@@ -359,33 +359,12 @@ rule gen_qc_report:
         u.store_dict_as_TAB_delimited_file(report_dict, output[0], headers= ["sample"] + report_column_headers)
 
 
-def fastq_input_for_fq2fa(wildcards):
-    ''' return the pair of uncompressed fastq files for a sample.
-
-        See the documentation for get_fastq to understand why we need this.
-        This function is different from get_fastq because in this case,
-        we use the uncompressed output of QC instead of the compressed,
-        because fq2fa expects uncompressed files.
-    '''
-    d = {}
-    if run_qc:
-        # by default, use the output of the qc
-        d['r1'] = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
-        d['r2'] = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=wildcards.sample)
-    else:
-        # if no qc is requested, use raw input
-        d = get_raw_fastq(wildcards)
-    return d
-
-
-def input_for_fq2fa(wildcards):
-    ''' this function is just to figure out if we need to gunzip the fastq or not'''
-    d = fastq_input_for_fq2fa(wildcards)
+def need_to_uncompress_fastqs(r1, r2):
     # Checking if any of the input files are compressed
     # this should only happen if QC is not performed in this snakemake session
     # because if QC is performed in this session then the output of iu-filter-quality-minoche
     # is not compressed and snakemake will schedule fq2fa rule before gzip rule
-    files_that_end_with_gz = [f for f in [list(d['r1']), list(d['r2'])] if f[0].endswith('.gz')]
+    files_that_end_with_gz = [f for f in [r1, r2] if f.endswith('.gz')]
     if len(files_that_end_with_gz) == 1:
         raise ConfigError("Something seems very bad: one of the pair fastq files\
                            is compressed and the other one is not. This is the \
@@ -393,46 +372,40 @@ def input_for_fq2fa(wildcards):
     elif len(files_that_end_with_gz) == 2:
         run.warning("The following fastq files are compressed and will now \
                      be uncompressed using gunzip: %s." % files_that_end_with_gz)
-        d['r1'] = dirs_dict["QC_DIR"] + "/%s.r1.fastq" % wildcards.sample
-        d['r2'] = dirs_dict["QC_DIR"] + "/%s.r2.fastq" % wildcards.sample
-
-    return d
-
-
-rule gunzip_for_fq2fa:
-    version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{sample}-gunzip_for_fq2fa.log"
-    input: unpack(fastq_input_for_fq2fa)
-    output:
-        r1 = temp(dirs_dict["QC_DIR"] + "/{sample}.r1.fastq"),
-        r2 = temp(dirs_dict["QC_DIR"] + "/{sample}.r2.fastq")
-    threads: w.T(config, 'gunzip_for_fq2fa', 1)
-    resources: nodes = w.T(config, 'gunzip_for_fq2fa', 1)
-    shell:
-        """
-            gunzip < {input.r1} > {output.r1}
-            gunzip < {input.r2} > {output.r2}
-        """
-
-
-rule fq2fa:
-    version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{sample}-fq2fa.log"
-    input: unpack(input_for_fq2fa)
-    output: temp(dirs_dict["QC_DIR"] + "/{sample}-merged-reads.fa")
-    threads: M.T('fq2fa')
-    resources: nodes = M.T('fq2fa')
-    shell: "fq2fa --merge {input} {output} >> {log} 2>&1"
+        return True
 
 
 rule merge_fastas_for_co_assembly:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log"
-    input: lambda wildcards: expand("{DIR}/{sample}-merged-reads.fa", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
+    input: unpack(fastq_input_for_assembly)
     output: temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa")
     threads: M.T('merge_fastas_for_co_assembly')
     resources: nodes = M.T('merge_fastas_for_co_assembly')
-    shell: "cat {input} > {output}"
+    run:
+        for r1, r2 in zip({input.r1}, {input.r2}):
+            if need_to_uncompress_fastqs(r1, r2):
+                # if ends with ".gz" then unzip fastq
+                r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
+                r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
+                shell("gunzip < %s > $s" % (r1, r1_unzipped))
+                shell("gunzip < %s > $s" % (r2, r2_unzipped))
+                r1 = r1_unzipped
+                r2 = r2_unzipped
+
+            # run fq2fa
+            fq2fa_output = os.path.join(dirs_dict["QC_DIR"], "%s_%s-merged.temp.fa" %s (r1, r2))
+            shell("fq2fa --merge %s %s %s >> %s 2>&1" % (r1, r2, fq2fa_output, log))
+
+            if need_to_uncompress_fastqs(r1, r2):
+                # if we had to unzip the fastq files then now we delete the unzipped file
+                shell("rm %s %s" % (r1_unzipped, r2_unzipped))
+
+            # concatenate
+            shell("cat %s >> %s" % (fq2fa_output, output) )
+
+            # delete individual fasta file
+            shell("rm %s" % fq2fa_output)
 
 
 # if idba_ud is used then we need to ensure the fastq files
@@ -497,7 +470,7 @@ if run_idba_ud == True:
             shell("rm -rf {params.temp_dir}")
 
 
-def input_for_megahit(wildcards):
+def fastq_input_for_assembly(wildcards):
     ''' Creating a dictionary containing the path to input fastq file.
         The reason we can't use get_fastq is because we need to get
         the fastq files for all samples that belong to a group, and
@@ -528,7 +501,7 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
         '''
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-megahit.log"
-        input: unpack(input_for_megahit)
+        input: unpack(fastq_input_for_assembly)
         params:
             temp_dir = dirs_dict["FASTA_DIR"] + "/{group}_TEMP",
             # the minimum length for contigs (smaller contigs will be discarded)
