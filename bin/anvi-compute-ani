@@ -58,12 +58,17 @@ def restore_names_in_dict(input_dict, conversion_dict):
 
 
 def main(args):
-    program = pyani.PyANI(args)
+    # some quick checks
+    if args.min_alignment_fraction < 0 or args.min_alignment_fraction > 1:
+        raise ConfigError("The minimum alignment fraction must be a value between 0.0 and 1.0. %.2f does\
+                           not work for anvi'o :/" % args.min_alignment_fraction)
 
     filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
 
     genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
     genome_desc.load_genomes_descriptions(skip_functions=True, init=False)
+
+    program = pyani.PyANI(args)
 
     temp_dir = filesnpaths.get_temp_directory_path()
 
@@ -114,6 +119,44 @@ def main(args):
     results = program.run_command(temp_dir)
     results = restore_names_in_dict(results, hash_to_name)
 
+    # let's go through the results dictionary to remove very weak hits.
+    if args.min_alignment_fraction:
+        if 'alignment_coverage' not in results:
+            raise ConfigError("You asked anvi'o to remove weak hits through the --min-alignment-fraction\
+                               parameter, but the results dictionary does not contain any information about\
+                               alignment fractions :/ These are the items anvi'o found instead: '%s'. Please let a\
+                               developer know about this if this doesn't make any sense." % (', '.join(results.keys())))
+
+        d = results['alignment_coverage']
+
+        # in this list we will keep the tuples of genome-genome associations
+        # that need to be set to zero in all result dicts:
+        genome_hits_to_zero = []
+        for g1 in d:
+            for g2 in d[g1]:
+                if float(d[g1][g2]) < args.min_alignment_fraction:
+                    genome_hits_to_zero.append((g1, g2), )
+
+        if len(genome_hits_to_zero):
+            g1, g2 = genome_hits_to_zero[0]
+            run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between two genomes if the hit\
+                         was produced by a weak alignment (i.e., in your own criterion of an alignment fraction of '%.2f').\
+                         Anvi'o found %d hits between your %d genomes, and is about to set percent identity estimates emerging\
+                         from those weak hits to 0 in all results. For instance, one of your genomes, '%s', was %.3f\
+                         identical to '%s', another one of your genomes, but the aligned fraction of %s to %s was only %.3f\
+                         and was below your threshold, and so the percent identity between them will be ignored for all\
+                         downstream reports you will find in anvi'o tables and visualizations. Anvi'o kindly invites you\
+                         to carefully think about potential implications of discarding hits based on an arbitrary alignment\
+                         fraction, but does not judge you because it is not perfect either." % \
+                                                (args.min_alignment_fraction, len(genome_hits_to_zero), len(d), g1, \
+                                                 float(results['percentage_identity'][g1][g2]), g2, g1, g2, \
+                                                 float(results['alignment_coverage'][g1][g2])))
+
+        # time to zero those values out:
+        for report_name in results:
+            for g1, g2 in genome_hits_to_zero:
+                results[report_name][g1][g2] = 0
+
     clusterings = {}
     for report_name in results:
         clusterings[report_name] = clustering.get_newick_tree_data_for_dict(results[report_name],
@@ -131,8 +174,10 @@ def main(args):
         utils.is_pan_db(args.pan_db)
         pan = db.DB(args.pan_db, anvio.__pan__version__)
 
-        db_genome_names = set(pan.get_meta_value('external_genome_names').split(',') +
-            pan.get_meta_value('internal_genome_names').split(','))
+        db_genome_names = set([])
+        G = lambda g: pan.get_meta_value(g).strip().split(',')
+        for genome_name in G('external_genome_names') + G('internal_genome_names'):
+            db_genome_names.add(genome_name) if len(genome_name) else None
 
         found_only_in_db = db_genome_names.difference(genome_names)
         found_only_in_results = genome_names.difference(db_genome_names)
@@ -146,14 +191,16 @@ def main(args):
                 anvi'o will add the ones that found in database anyway, but here is the list of missing ones: \
                 " + ", ".join(list(found_only_in_db)))
 
+        run.warning(None, header="MISC DATA MAGIC FOR YOUR PAN DB", lc='green')
         for report_name in results:
             target_data_group = 'ANI_%s' % (report_name)
             l_args = argparse.Namespace(pan_db=args.pan_db, just_do_it=True, target_data_group=target_data_group)
-            TableForLayerAdditionalData(l_args).add(results[report_name], list(results[report_name].keys()))
+            TableForLayerAdditionalData(l_args, r=terminal.Run(verbose=False)).add(results[report_name], list(results[report_name].keys()))
 
-            TableForLayerOrders(args).add({'ANI_' + report_name: {'data_type': 'newick',
+            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({'ANI_' + report_name: {'data_type': 'newick',
                                                                   'data_value': clusterings[report_name]}})
 
+            run.info_single("Additional data and order for %s are now in pan db" % target_data_group.replace('_', ' '), mc='green')
 
     if anvio.DEBUG:
         run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
@@ -181,8 +228,17 @@ if __name__ == '__main__':
                         misc data tables of your pangenome. Those data can then be shown as ANI heatmaps\
                         on the pan interactive interface through the 'layers' tab."}))
 
-    groupC = parser.add_argument_group('pyANI METHOD', "Tell anvi'o to tell pyANI what method you wish to use.")
-    groupC.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
+    groupC = parser.add_argument_group('FILTERING HITS', "These filters can save lives. Ask Luke.")
+    groupC.add_argument('--min-alignment-fraction', type=float, default=0.0, help="In some cases you may get\
+                        high raw ANI estimates between two genomes that have nothing to do with each other\
+                        simply because a fraction of their content may be aligned. Using this filter you can\
+                        eliminate ANI scores between two genomes if the alignment fraction is less than you\
+                        wish to trust. When you set a value, anvi'o will go through the ANI results, and set\
+                        percent identity scores between two genomes to 0 if their alignment coverage is less\
+                        than the parameter you describe here. The default is 0.0%, so every hit is reported.")
+
+    groupD = parser.add_argument_group('pyANI METHOD', "Tell anvi'o to tell pyANI what method you wish to use.")
+    groupD.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
                          You must have the necessary binary in path for whichever method you choose. According to\
                          the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
                          MUMmer (NUCmer) to align the input sequences. 'ANIb' uses BLASTN+ to align 1020nt fragments\
@@ -190,19 +246,19 @@ if __name__ == '__main__':
                          Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",\
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
 
-    groupD = parser.add_argument_group('HIERARCHICAL CLUSTERING', "Once pyANI is done with its magic, it reports ANI\
+    groupE = parser.add_argument_group('HIERARCHICAL CLUSTERING', "Once pyANI is done with its magic, it reports ANI\
                          between genomes as distance matrix files, which can be clustered into nice looking dendrograms\
                          to display the relationships between genomes nicely (in the anvi'o interface and elsewhere).\
                          Here you can set the distance metric and the linkage algorithm for that.")
-    groupD.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help': 'The distance metric for the hierarchical \
+    groupE.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help': 'The distance metric for the hierarchical \
                          clustering. The default is "%(default)s".'}))
-    groupD.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help': 'The linkage method for the hierarchical \
+    groupE.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help': 'The linkage method for the hierarchical \
                          clustering. The default is "%(default)s".'}))
 
-    groupE = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
-    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-    groupE.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
+    groupF = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
+    groupF.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupF.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupF.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
 
     args = anvio.get_args(parser)
 
