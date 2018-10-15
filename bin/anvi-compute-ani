@@ -235,7 +235,8 @@ if __name__ == '__main__':
                         eliminate ANI scores between two genomes if the alignment fraction is less than you\
                         wish to trust. When you set a value, anvi'o will go through the ANI results, and set\
                         percent identity scores between two genomes to 0 if their alignment coverage is less\
-                        than the parameter you describe here. The default is 0.0%, so every hit is reported.")
+                        than the parameter you describe here. The default is 0.0, so every hit is reported,\
+                        and you can set any value between 0.0 and 1.0.")
 
     groupD = parser.add_argument_group('pyANI METHOD', "Tell anvi'o to tell pyANI what method you wish to use.")
     groupD.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
