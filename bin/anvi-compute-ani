@@ -186,14 +186,16 @@ def main(args):
                 anvi'o will add the ones that found in database anyway, but here is the list of missing ones: \
                 " + ", ".join(list(found_only_in_db)))
 
+        run.warning(None, header="MISC DATA MAGIC FOR YOUR PAN DB", lc='green')
         for report_name in results:
             target_data_group = 'ANI_%s' % (report_name)
             l_args = argparse.Namespace(pan_db=args.pan_db, just_do_it=True, target_data_group=target_data_group)
-            TableForLayerAdditionalData(l_args).add(results[report_name], list(results[report_name].keys()))
+            TableForLayerAdditionalData(l_args, r=terminal.Run(verbose=False)).add(results[report_name], list(results[report_name].keys()))
 
-            TableForLayerOrders(args).add({'ANI_' + report_name: {'data_type': 'newick',
+            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({'ANI_' + report_name: {'data_type': 'newick',
                                                                   'data_value': clusterings[report_name]}})
 
+            run.info_single("Additional data and order for %s are now in pan db" % target_data_group.replace('_', ' '), mc='green')
 
     if anvio.DEBUG:
         run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
