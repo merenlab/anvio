@@ -58,12 +58,17 @@ def restore_names_in_dict(input_dict, conversion_dict):
 
 
 def main(args):
-    program = pyani.PyANI(args)
+    # some quick checks
+    if args.min_alignment_fraction < 0 or args.min_alignment_fraction > 1:
+        raise ConfigError("The minimum alignment fraction must be a value between 0.0 and 1.0. %.2f does\
+                           not work for anvi'o :/" % args.min_alignment_fraction)
 
     filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
 
     genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
     genome_desc.load_genomes_descriptions(skip_functions=True, init=False)
+
+    program = pyani.PyANI(args)
 
     temp_dir = filesnpaths.get_temp_directory_path()
 
