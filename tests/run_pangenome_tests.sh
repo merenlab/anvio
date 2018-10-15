@@ -32,6 +32,9 @@ anvi-gen-genomes-storage -e external-genomes.txt -o TEST-GENOMES.db
 INFO "Running the pangenome anaysis with default parameters"
 anvi-pan-genome -g TEST-GENOMES.db -o TEST/ -n TEST --use-ncbi-blast --description example_description.md
 
+INFO "Running ANI on genomes and storing results in the PAN database"
+anvi-compute-ani -e external-genomes.txt -o ANI_TEST --log-file ANI_LOG.txt -p TEST/TEST-PAN.db
+
 INFO "Running the pangenome analysis again utilizing previous search results"
 anvi-pan-genome -g TEST-GENOMES.db -o TEST/ -n ANOTHER_TEST --use-ncbi-blast --min-occurrence 2 --description example_description.md
 
