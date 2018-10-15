@@ -168,24 +168,41 @@ if __name__ == '__main__':
                                      ANI. If Pan Database is given anvi'o will write computed output\
                                      to misc data tables of Pan Database.")
 
-    parser.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
-    parser.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
-    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
-    parser.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
-    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    parser.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
-    parser.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
+    groupA = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
+    groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+
+    groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
+    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
+    groupB.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False, 'help': "This is\
+                        totally ooptional, but very useful when applicable. If you are running ANI for\
+                        genomes for which you already have an anvi'o pangeome, then you can show where\
+                        the pan database is and anvi'o would automatically add the results into the\
+                        misc data tables of your pangenome. Those data can then be shown as ANI heatmaps\
+                        on the pan interactive interface through the 'layers' tab."}))
+
+    groupC = parser.add_argument_group('pyANI METHOD', "Tell anvi'o to tell pyANI what method you wish to use.")
+    groupC.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
                          You must have the necessary binary in path for whichever method you choose. According to\
                          the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
                          MUMmer (NUCmer) to align the input sequences. 'ANIb' uses BLASTN+ to align 1020nt fragments\
                          of the input sequences. 'ANIblastall': uses the legacy BLASTN to align 1020nt fragments\
                          Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",\
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
-    parser.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help': 'The distance metric for the hierarchical \
+
+    groupD = parser.add_argument_group('HIERARCHICAL CLUSTERING', "Once pyANI is done with its magic, it reports ANI\
+                         between genomes as distance matrix files, which can be clustered into nice looking dendrograms\
+                         to display the relationships between genomes nicely (in the anvi'o interface and elsewhere).\
+                         Here you can set the distance metric and the linkage algorithm for that.")
+    groupD.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help': 'The distance metric for the hierarchical \
                          clustering. The default is "%(default)s".'}))
-    parser.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help': 'The linkage method for the hierarchical \
+    groupD.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help': 'The linkage method for the hierarchical \
                          clustering. The default is "%(default)s".'}))
-    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    groupE = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
+    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupE.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
 
     args = anvio.get_args(parser)
 
