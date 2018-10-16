@@ -828,4 +828,4 @@ class LocusSplitter:
         if anvio.DEBUG:
             self.run.info_single("Temp output files were kept for inspection due to --debug")
         else:
-            map(lambda x: os.remove(x), temporary_files)
+            [os.remove(f) for f in temporary_files]
