@@ -1,3 +1,4 @@
+=============================================
 PLEASE READ THIS BEFORE SUBMITTING YOUR ISSUE
 =============================================
 
@@ -11,11 +12,20 @@ That's OK. We are more than happy to help. But GitHub Issues is not the right pl
 
 THIS IS A TECHNICAL ISSUE
 ---------------------------------------------
-We thank you in advance for your report, and apologize for screwing things up so badly that you had to do this:
+We thank you in advance for your report. Please take a look at the items down below:
 
  * If this is a technical issue, please run the command `anvi-self-test --version` in your terminal and paste the output at the beginning of your report. If you fail to do this we will likely close the issue without addressing it, and wait for someone else to report it :(
+ 
+ * Paste your anvi-self-test output and other logs in between ``` like this (You can use the 'Preview' button to see how youre message will look like):
+ 
+     ```
+     Many many lines
+     coming from your logs
+     ```
 
  * If this is a technical issue, please mention which operating system you are using, and how did you install anvi'o.
+
+ * If this is a feature request, please do not forget to include why do you think the community may benefit from the addition of the proposed feature to anvi'o.
 
  * Remove this text before submitting your issue.
 
