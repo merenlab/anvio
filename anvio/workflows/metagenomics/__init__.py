@@ -38,19 +38,21 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # know thyself.
         self.name = 'metagenomics'
+
         self.samples_information = {}
         self.kraken_annotation_dict = {}
+        self.run_metaspades = None
 
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
 
         self.rules.extend(['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',\
-                     'fq2fa', 'merge_fastas_for_co_assembly', 'megahit',\
+                     'merge_fastqs_for_co_assembly', 'megahit', 'merge_fastas_for_co_assembly',\
                      'anvi_gen_contigs_database', 'anvi_export_gene_calls', 'centrifuge',\
                      'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud', \
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped', \
-                     'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy'])
+                     'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy', 'metaspades'])
 
         self.general_params.extend(["samples_txt", "references_mode", "all_against_all", \
                                     "kraken_txt"])
@@ -61,6 +63,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['iu_gen_configs'] = ["--r1-prefix", "--r2-prefix"]
         rule_acceptable_params_dict['iu_filter_quality_minoche'] = ['run', '--visualize-quality-curves', '--ignore-deflines', '--limit-num-pairs', '--print-qual-scores', '--store-read-fate']
         rule_acceptable_params_dict['gzip_fastqs'] = ["run"]
+        rule_acceptable_params_dict['metaspades'] = ["run", "additional_params", "use_scaffolds"]
         rule_acceptable_params_dict['megahit'] = ["run", "--min-contig-len", "--min-count", "--k-min",
                                                   "--k-max", "--k-step", "--k-list",
                                                   "--no-mercy", "--no-bubble", "--merge-level",
@@ -83,6 +86,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                         "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
                                                         "--contigs-of-interest", "--queue-size", "--write-buffer-size", "--max-contig-length"]
         rule_acceptable_params_dict['annotate_contigs_database'] = []
+        rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
+        rule_acceptable_params_dict['merge_fastqs_for_co_assembly'] = []
         rule_acceptable_params_dict['anvi_merge'] = ["--sample-name", "--description", "--skip-hierarchical-clustering",
                                                      "--enforce-hierarchical-clustering", "--distance", "--linkage",
                                                      "--skip-concoct-binning", "--overwrite-output-destinations"]
@@ -107,6 +112,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "TAXONOMY_DIR": "07_TAXONOMY"})
 
         self.default_config.update({'samples_txt': "samples.txt",
+                                    'metaspades': {"additional_params": "--only-assembler", "threads": 11},
                                     'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 11},
                                     'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 11},
                                     'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True, "threads": 2},
@@ -142,6 +148,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                    %s" % (samples_txt_file, e))
 
         self.sanity_check_for_kraken()
+
+        self.run_metaspades = self.get_param_value_from_config(['metaspades', 'run'])
+        self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
 
 
     def sanity_check_for_kraken(self):
@@ -188,7 +197,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             if not self.get_param_value_from_config(['krakenhll', '--db']):
                 raise ConfigError('In order to run krakenhll, you must provide a path to \
                                    a database using the --db parameter in the config file.')
-        
+
 
     def get_assembly_software_list(self):
-        return ['megahit', 'idba_ud']
+        return ['megahit', 'idba_ud', 'metaspades']
