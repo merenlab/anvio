@@ -7,6 +7,7 @@ import os
 import sys
 import gzip
 import time
+import copy
 import socket
 import shutil
 import psutil
@@ -59,9 +60,6 @@ progress.verbose = False
 
 run = Run()
 run.verbose = False
-
-def rev_comp(seq):
-    return seq.translate(constants.complements)[::-1]
 
 
 class Multiprocessing:
@@ -150,6 +148,28 @@ def get_total_memory_usage():
             pass
 
     return human_readable_file_size(mem)
+
+
+def rev_comp(seq):
+    return seq.translate(constants.complements)[::-1]
+
+
+def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence):
+    contig_length = len(contig_sequence)
+    gene_caller_ids = list(gene_calls_dict.keys())
+
+    gene_caller_id_conversion_dict = dict([(gene_caller_ids[-i - 1], i) for i in range(0, len(gene_caller_ids))])
+    G = lambda g: gene_caller_id_conversion_dict[g]
+
+    reverse_complemented_gene_calls = {}
+    for gene_callers_id in gene_calls_dict:
+        g = copy.deepcopy(gene_calls_dict[gene_callers_id])
+        g['start'], g['stop'] = contig_length - g['stop'], contig_length - g['start']
+        g['direction'] = 'f' if g['direction'] == 'r' else 'r'
+
+        reverse_complemented_gene_calls[G(gene_callers_id)] = g
+
+    return reverse_complemented_gene_calls, gene_caller_id_conversion_dict
 
 
 def get_predicted_type_of_items_in_a_dict(d, key):
@@ -752,16 +772,6 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
 
     df2 = pd.DataFrame(d, index=df.index)
     return pd.concat((df, df2), axis=1, sort=True)
-def get_substantive_completion(percent_completion, percent_redundancy):
-    # - WHAT IS THIS TYRANNY HERE?
-    # - Oh, please see the issue https://github.com/merenlab/anvio/issues/941
-    # - I SAW IT BUT I AM NOT SATISFIED
-    # - we are not satisfied either but such is life :(
-
-    percent_completion = percent_completion or 0.000001
-    percent_redundancy = percent_redundancy or 0.000001
-
-    return (percent_completion + percent_redundancy) / percent_redundancy
 
 
 def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):

@@ -134,24 +134,35 @@ class Completeness:
 
         domain_specific_estimates = []
 
+        if anvio.DEBUG:
+            self.run.warning(None, header="DATA FOR ESTIMTES")
+
         for domain in d:
             percent_completion = numpy.mean([d[domain][s]['percent_completion'] for s in d[domain]])
             percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
 
-            # the substantive_completion is related to issue https://github.com/merenlab/anvio/issues/941
-            substantive_completion = utils.get_substantive_completion(percent_completion, percent_redundancy)
+            if anvio.DEBUG:
+                self.run.info_single("domain: %s; %% comp: %.2f; %% red: %.2f" % (domain, percent_completion, percent_redundancy))
 
-            domain_specific_estimates.append((substantive_completion,
-                                              domain,
-                                              (percent_completion - percent_redundancy) / 100.0), )
+            # FIXME: this is a very shitty way of doing this and must be improved;
+            #        see the issue https://github.com/merenlab/anvio/issues/941 for details:
+            domain_specific_estimates.append((((percent_completion - percent_redundancy) / 100.0),
+                                              domain), )
 
         domain_specific_estimates.sort(reverse=True)
 
-        if len(set([d[0] for d in domain_specific_estimates])) == 1:
+        if anvio.DEBUG:
+            self.run.info("Raw estimates", domain_specific_estimates, nl_before=1)
+
+        if len(set([d[0] for d in domain_specific_estimates])) == 1 or domain_specific_estimates[0][0] < 0.01:
             # clearly none of the domains match with any level of real confidence
             best_matching_domain, domain_matching_confidence = None, 0.0
         else:
-            best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][1], domain_specific_estimates[0][2]
+            best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][1], domain_specific_estimates[0][0]
+
+        if anvio.DEBUG:
+            self.run.info("Best matching domain", best_matching_domain)
+            self.run.info("Matching domain confidence", domain_matching_confidence, nl_after=1)
 
         return (best_matching_domain, domain_matching_confidence)
 
