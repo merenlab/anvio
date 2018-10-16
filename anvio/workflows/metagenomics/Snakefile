@@ -179,8 +179,8 @@ if not references_mode and not (M.get_param_value_from_config(['anvi_script_refo
     # the megahit output is temporary, and if we dont run
     # reformat_fasta we will delete the output of meghit at the
     # end of the workflow without saving a copy.
-    raise ConfigError("You can't skip reformat_fasta in assembly mode "\
-                        "please change your config.json file")
+    raise ConfigError("You can't skip reformat_fasta in assembly mode \
+                        please change your config.json file")
 
 # by default fastq files will be zipped after qc is done
 run_gzip_fastqs = M.get_param_value_from_config(['gzip_fastqs', 'run']) == True
