@@ -2762,8 +2762,16 @@ class ContigsDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls']:
-                self.meta[key] = int(self.meta[key])
+            try:
+                for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls']:
+                    self.meta[key] = int(self.meta[key])
+            except KeyError:
+                raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very\
+                                   likely that the process that was trying to create this database failed, and left behind\
+                                   this unfinished thingy (if you would like to picture its state you an imagine the baby\
+                                   Voldemort at King's Cross). Well, anvi'o believes it is best if you make it go away with\
+                                   fire, and try whatever you were trying before you got this error one more time with a\
+                                   proper contigs database. End of sad news. Bye now." % self.db_path)
 
             self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
 
@@ -2819,6 +2827,67 @@ class ContigsDatabase:
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
 
         return self.db
+
+
+    def remove_gene_calls(self, gene_caller_ids_to_remove):
+        if not self.meta['genes_are_called']:
+            raise ConfigError("Well .. anvi'o can't remove gene calls from this contigs database since\
+                               genes were never called for it at the first place :(")
+
+        if not isinstance(gene_caller_ids_to_remove, list):
+            raise ConfigError("Gene caller ids to remove must be of type `list`.")
+
+        gene_calls_in_db = set(self.db.get_single_column_from_table(t.genes_in_contigs_table_name,
+                                                                    "gene_callers_id"))
+
+        missing_gene_calls = [g for g in gene_caller_ids_to_remove if g not in gene_calls_in_db]
+        if len(missing_gene_calls):
+            raise ConfigError("Your contigs database has %d genes, but it's missing %d of %d gene calls\
+                               you want to remove from it :/ This doesn't make sense. Here is one of those\
+                               gene calls that were not in your database: %d" % \
+                                    (len(gene_calls_in_db), len(missing_gene_calls), len(gene_caller_ids_to_remove), gene_caller_ids_to_remove[-1]))
+
+        self.run.warning('%d gene calls %d is being removed from your contigs \
+                          database' % (len(gene_calls_in_db), len(gene_caller_ids_to_remove)))
+
+        # tables from which the gene calls  to remove gene calls from:
+        tables_dict = {
+                    t.gene_function_calls_table_name: ('gene_callers_id', gene_caller_ids_to_remove),
+                    t.gene_amino_acid_sequences_table_name: ('gene_callers_id', gene_caller_ids_to_remove),
+                    t.genes_in_contigs_table_name: ('gene_callers_id', gene_caller_ids_to_remove),
+                    t.genes_in_splits_table_name: ('gene_callers_id', gene_caller_ids_to_remove),
+                    t.genes_taxonomy_table_name: ('gene_callers_id', gene_caller_ids_to_remove),
+                    t.hmm_hits_table_name: ('gene_callers_id', gene_caller_ids_to_remove),
+                }
+
+        self.remove_data_from_db(tables_dict)
+
+
+    def remove_data_from_db(self, tables_dict):
+        """This is quite an experimental function to clean up tables in contgis databases. Use with caution.
+
+           The expected tables dict should follow this structure:
+
+           >>> tables = {
+                            table_name: ('column_name', values_to_remove_list),
+                            table_name: ('column_name', values_to_remove_list),
+                            (...)
+                        }
+        """
+
+        table_names_in_db = self.db.get_table_names()
+
+        missing_table_names = [table_name for table_name in tables_dict if table_name not in table_names_in_db]
+        if len(missing_table_names):
+            raise ConfigError("Your tables dict contains table names that are not in the database. Like\
+                               these ones here: '%s'. WHO SENT YOU HERE? WHAT ARE YOU UP TO?" % (', '.join(missing_table_names)))
+
+        for table_name in tables_dict:
+            column = tables_dict[table_name][0]
+            variables_to_remove = tables_dict[table_name][1]
+            where_clause = '%s IN (%s)' % (column, ','.join(['{}'.format(x) for x in variables_to_remove]))
+
+            self.db.remove_some_rows_from_table(table_name, where_clause)
 
 
     def create(self, args):
@@ -2970,7 +3039,7 @@ class ContigsDatabase:
             # temporarily disconnect to perform gene calls
             self.db.disconnect()
 
-            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, debug=anvio.DEBUG)
+            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, run=self.run, progress=self.progress, debug=anvio.DEBUG)
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
             if external_gene_calls:

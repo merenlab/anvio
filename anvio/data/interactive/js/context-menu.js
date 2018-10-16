@@ -335,7 +335,7 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('inspect_geneclusters');
                 menu.push('divider');
             }
-            else if (inspection_available) {
+            else if (inspection_available && mode != 'collection') {
                 menu.push('inspect_split');
                 menu.push('inspect_split_quick');
                 menu.push('divider');

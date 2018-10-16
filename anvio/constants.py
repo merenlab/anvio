@@ -86,27 +86,6 @@ AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Tyr': {"C":9,  "H":11, "N":1, "O":3, "S":0},
                                  'Val': {"C":5,  "H":11, "N":1, "O":2, "S":0}})
 
-AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
-                                 'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
-                                 'Asn': {"C":4,  "H":8,  "N":2, "O":3, "S":0},
-                                 'Asp': {"C":4,  "H":7,  "N":1, "O":4, "S":0},
-                                 'Cys': {"C":3,  "H":7,  "N":1, "O":2, "S":1},
-                                 'Gln': {"C":5,  "H":10, "N":2, "O":3, "S":0},
-                                 'Glu': {"C":5,  "H":9,  "N":1, "O":4, "S":0},
-                                 'Gly': {"C":2,  "H":5,  "N":1, "O":2, "S":0},
-                                 'His': {"C":6,  "H":9,  "N":3, "O":2, "S":0},
-                                 'Ile': {"C":6,  "H":13, "N":1, "O":2, "S":0},
-                                 'Leu': {"C":6,  "H":13, "N":1, "O":2, "S":0},
-                                 'Lys': {"C":6,  "H":14, "N":2, "O":2, "S":0},
-                                 'Met': {"C":5,  "H":11, "N":1, "O":2, "S":1},
-                                 'Phe': {"C":9,  "H":11, "N":1, "O":2, "S":0},
-                                 'Pro': {"C":5,  "H":9,  "N":1, "O":2, "S":0},
-                                 'Ser': {"C":3,  "H":7,  "N":1, "O":3, "S":0},
-                                 'Thr': {"C":4,  "H":9,  "N":1, "O":3, "S":0},
-                                 'Trp': {"C":11, "H":12, "N":2, "O":2, "S":0},
-                                 'Tyr': {"C":9,  "H":11, "N":1, "O":3, "S":0},
-                                 'Val': {"C":5,  "H":11, "N":1, "O":2, "S":0}})
-
 # taken from http://prowl.rockefeller.edu/aainfo/volume.htm
 # volume reference: A.A. Zamyatin, Protein Volume in Solution, Prog. Biophys. Mol. Biol. 24(1972)107-123. 
 # surface area reference: C. Chotia, The Nature of the Accessible and Buried Surfaces in Proteins, J. Mol. Biol., 105(1975)1-14. 
@@ -217,7 +196,7 @@ conserved_amino_acid_groups = {
     'Nonpolar': ['L','V','I','M','C','H','A'],
     'Aromatic': ['F','W','Y'],
     'Bases': ['K','R','H'],
-    'Neutral Amines': ['Q, N'],
+    'Neutral Amines': ['Q', 'N'],
     'Acids': ['D','E'],
     'Polar and Nonpolar': ['H','Y'],
     'Mostly nonpolar': ['S','T'],
