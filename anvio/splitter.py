@@ -746,10 +746,18 @@ class LocusSplitter:
 
         # do we need to reverse complement this guy? if yes, we will take care of the contigs sequence and
         # gene calls here, and remember this for later.
-        gene_caller_id_conversion_dict = dict([(g, g) for g in gene_calls])
+        gene_calls_list = list(gene_calls.keys())
         if reverse_complement:
             sequence = utils.rev_comp(sequence)
             gene_calls, gene_caller_id_conversion_dict = utils.rev_comp_gene_calls_dict(gene_calls, sequence)
+        else:
+            gene_caller_id_conversion_dict = dict([(gene_calls_list[g], g) for g in range(0, len(gene_calls_list))])
+            new_gene_calls = {}
+            for g in range(0, len(gene_calls_list)):
+                gene_call = copy.deepcopy(gene_calls[gene_calls_list[g]])
+                new_gene_calls[g] = gene_call
+            gene_calls = new_gene_calls
+
 
         # write the sequene as a temporary FASTA file since the design of ContigsDatabase::create
         # will work seamlessly with this approach:
@@ -781,7 +789,7 @@ class LocusSplitter:
         # so we have a contigs database! but there isn't much in it. the following where clause will
         # help us read from the tables of the original contigs database, and store it into the
         # new one throughout the following sections of the code.
-        where_clause = "gene_callers_id in (%s)" % ', '.join(['"%d"' % g for g in gene_calls])
+        where_clause = "gene_callers_id in (%s)" % ', '.join(['"%d"' % g for g in gene_caller_id_conversion_dict])
 
         # a lousy anonymous function to read data from tables given the gene calls of interest
         R = lambda table_name: db.DB(self.input_contigs_db_path, None, ignore_version=True) \
@@ -796,9 +804,8 @@ class LocusSplitter:
         ###########################################################################################
         function_calls = R(t.gene_function_calls_table_name)
 
-        if reverse_complement:
-            for entry_id in function_calls:
-                function_calls[entry_id]['gene_callers_id'] = G(function_calls[entry_id]['gene_callers_id'])
+        for entry_id in function_calls:
+            function_calls[entry_id]['gene_callers_id'] = G(function_calls[entry_id]['gene_callers_id'])
 
         gene_function_calls_table = TableForGeneFunctions(locus_output_db_path, run=self.run_object)
         gene_function_calls_table.create(function_calls)
