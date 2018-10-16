@@ -375,6 +375,27 @@ def need_to_uncompress_fastqs(r1, r2):
         return True
 
 
+def fastq_input_for_assembly(wildcards):
+    ''' Creating a dictionary containing the path to input fastq file.
+        The reason we can't use get_fastq is because we need to get
+        the fastq files for all samples that belong to a group, and
+        get_fastq only gives the pair of fastq file for one sample
+    '''
+    if run_qc:
+        # by default, use the output of the qc
+        if run_gzip_fastqs:
+            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
+            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
+        else:
+            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
+            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
+        d = {'r1': r1, 'r2': r2}
+    else:
+        r1 = list(M.samples_information[M.samples_information["group"] == wildcards.group]['r1'])
+        r2 = list(M.samples_information[M.samples_information["group"] == wildcards.group]['r2'])
+    return {'r1': r1, 'r2': r2}
+
+
 rule merge_fastas_for_co_assembly:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log"
@@ -383,13 +404,16 @@ rule merge_fastas_for_co_assembly:
     threads: M.T('merge_fastas_for_co_assembly')
     resources: nodes = M.T('merge_fastas_for_co_assembly')
     run:
+        concatenate = False
+        if len(input.r1) > 1:
+            concatenate = True
         for r1, r2 in zip({input.r1}, {input.r2}):
             if need_to_uncompress_fastqs(r1, r2):
                 # if ends with ".gz" then unzip fastq
                 r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
                 r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
-                shell("gunzip < %s > $s" % (r1, r1_unzipped))
-                shell("gunzip < %s > $s" % (r2, r2_unzipped))
+                shell("gunzip < %s > $s 2> %s" % (r1, r1_unzipped, log))
+                shell("gunzip < %s > $s 2> %s" % (r2, r2_unzipped, log))
                 r1 = r1_unzipped
                 r2 = r2_unzipped
 
@@ -399,28 +423,52 @@ rule merge_fastas_for_co_assembly:
 
             if need_to_uncompress_fastqs(r1, r2):
                 # if we had to unzip the fastq files then now we delete the unzipped file
-                shell("rm %s %s" % (r1_unzipped, r2_unzipped))
+                shell("rm %s %s 2>%s" % (r1_unzipped, r2_unzipped, log))
+
+            if concatenate:
+                # concatenate
+                shell("cat %s >> %s 2>%s" % (fq2fa_output, output, log))
+                # delete individual fasta file
+                shell("rm %s 2>%s" % (fq2fa_output, log))
+            else:
+                shell("mv %s %s 2>%s" % (fq2fa_output, output, log))
+
+
+rule merge_fastqs_for_co_assembly:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastqs_for_co_assembly.log"
+    input: unpack(fastq_input_for_assembly)
+    output:
+        r1 = temp(os.path.join(dirs_dict["QC_DIR"], "{group}-merged_R1.fastq")),
+        r2 = temp(os.path.join(dirs_dict["QC_DIR"], "{group}-merged_R2.fastq"))
+    threads: M.T('merge_fastqs_for_co_assembly')
+    resources: nodes = M.T('merge_fastqs_for_co_assembly')
+    run:
+        for r1, r2 in zip({input.r1}, {input.r2}):
+            if need_to_uncompress_fastqs(r1, r2):
+                # if ends with ".gz" then unzip fastq
+                r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
+                r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
+                shell("gunzip < %s > $s 2>%s" % (r1, r1_unzipped, log))
+                shell("gunzip < %s > $s 2>%s" % (r2, r2_unzipped, log))
+                r1 = r1_unzipped
+                r2 = r2_unzipped
 
             # concatenate
-            shell("cat %s >> %s" % (fq2fa_output, output) )
+            shell("cat %s >> %s 2>%s" % (r1, output.r1, log))
+            shell("cat %s >> %s 2>%s" % (r2, output.r2, log))
 
-            # delete individual fasta file
-            shell("rm %s" % fq2fa_output)
+            if need_to_uncompress_fastqs(r1, r2):
+                # if we had to unzip the fastq files then now we delete the unzipped file
+                shell("rm %s %s 2>%s" % (r1_unzipped, r2_unzipped, log))
 
-
-# if idba_ud is used then we need to ensure the fastq files
-# will only be compressed AFTER fq2fa is done
-flag_file_for_gzip = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq"
-if run_idba_ud:
-    flag_file_for_gzip = rules.fq2fa.output
 
 rule gzip_fastqs:
     ''' Compressing the quality controlled fastq files'''
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{sample}-{R}-gzip.log"
     input:
-        fastq = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq",
-        run_gzip_flag = flag_file_for_gzip
+        fastq = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq"
     output: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq.gz"
     threads: M.T('gzip_fastqs')
     resources: nodes = M.T('gzip_fastqs'),
@@ -470,25 +518,58 @@ if run_idba_ud == True:
             shell("rm -rf {params.temp_dir}")
 
 
-def fastq_input_for_assembly(wildcards):
-    ''' Creating a dictionary containing the path to input fastq file.
-        The reason we can't use get_fastq is because we need to get
-        the fastq files for all samples that belong to a group, and
-        get_fastq only gives the pair of fastq file for one sample
+def input_for_metaspades(wildcards):
     '''
-    if run_qc:
-        # by default, use the output of the qc
-        if run_gzip_fastqs:
-            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
-            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
-        else:
-            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
-            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"]))
-        d = {'r1': r1, 'r2': r2}
+        The purpose of this functino is to figure out whether co-assembly is done.
+        if co-assembly is done then we need to first merge the fastq files
+    '''
+    input_file_dict = {}
+    d = fastq_input_for_assembly(wildcards)
+    if len(d['r1']) > 1:
+        input_file_dict = {'r1': temp(os.path.join(dirs_dict["QC_DIR"], wildcards.group + "-merged_R1.fastq")),\
+                           'r2': temp(os.path.join(dirs_dict["QC_DIR"], wildcards.group + "-merged_R2.fastq"))}
     else:
-        r1 = list(M.samples_information[M.samples_information["group"] == wildcards.group]['r1'])
-        r2 = list(M.samples_information[M.samples_information["group"] == wildcards.group]['r2'])
-    return {'r1': r1, 'r2': r2}
+        input_file_dict = {'r1': d['r1'],\
+                           'r2': d['r2']}
+    return input_file_dict
+
+
+if M.run_metaspades == True:
+    rule metaspades:
+        version: 1.0
+        log: dirs_dict["LOGS_DIR"] + "/{group}-metaspades.log"
+        input: unpack(input_for_metaspades)
+        output:
+            contigs = temp(os.path.join(dirs_dict["FASTA_DIR"], "{group}", "final.contigs.fa")),
+            # metaspades generates both contigs.fasta and scaffolds.fasta
+            # the user can choose which one will be used for the rest of the analysis
+            # the other (unused) file will still be kept in it's raw form just in case the user wants it.
+            raw_contigs_or_scaffold = os.path.join(dirs_dict["FASTA_DIR"], "{group}", "contigs.fasta") if M.use_scaffold_from_metaspades \
+                                               else os.path.join(dirs_dict["FASTA_DIR"], "{group}", "scaffolds.fasta")
+        params:
+            temp_dir = dirs_dict["FASTA_DIR"] + "/{group}_TEMP",
+            additional_params = M.get_param_value_from_config(["metaspades", "additional_params"])
+        threads: M.T('metaspades')
+        resources: nodes = M.T('metaspades')
+        run:
+            cmd = "metaspades.py -1 input.r1 -2 input.r2 " + \
+                  "-t {threads} " + \
+                  "{params.additional_params} " + \
+                  "-o {params.temp_dir} >> {log} 2>&1"
+
+            shell(cmd)
+
+            if M.use_scaffold_from_metaspades:
+                # we will use scaffolds for the rest of the analysis, but still keep the raw contigs output in case the user will want it later on.
+                use = "scaffolds.fasta"
+                keep = "contigs.fasta"
+            else:
+                # we will use contigs and keep the raw scaffolds output
+                use = "contigs.fasta"
+                keep = "scaffolds.fasta"
+
+            shell("mv %s %s" % (os.path.join(params.temp_dir, use), output.contigs))
+            shell("mv %s %s" % (os.path.join(params.temp_dir, keep), output.raw_contigs_or_scaffold))
 
 
 if M.get_param_value_from_config(['megahit', 'run']) == True:
