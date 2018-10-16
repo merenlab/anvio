@@ -752,16 +752,6 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
 
     df2 = pd.DataFrame(d, index=df.index)
     return pd.concat((df, df2), axis=1, sort=True)
-def get_substantive_completion(percent_completion, percent_redundancy):
-    # - WHAT IS THIS TYRANNY HERE?
-    # - Oh, please see the issue https://github.com/merenlab/anvio/issues/941
-    # - I SAW IT BUT I AM NOT SATISFIED
-    # - we are not satisfied either but such is life :(
-
-    percent_completion = percent_completion or 0.000001
-    percent_redundancy = percent_redundancy or 0.000001
-
-    return (percent_completion + percent_redundancy) / percent_redundancy
 
 
 def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):
