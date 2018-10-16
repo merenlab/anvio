@@ -806,6 +806,25 @@ class LocusSplitter:
         self.run.info("Output contigs DB path", locus_output_db_path)
         self.run.info("Output blank profile DB path", os.path.join(profile_output_dir, 'PROFILE.db'))
 
+        ############################################################################################
+        # DO AMINO ACID SEQUENCES -- we are using external gene calls to generate the new contigs
+        #                            database, but amino acid sequnces are kept in a different table
+        #                            and anvi'o checks whether provided gene calls resolve to amino
+        #                            acid sequences with proper starts and stops. if not, it skips
+        #                            them. but amino acid sequences for each gene call was stored
+        #                            in the original contigs database, and the best practice is to
+        #                            carry them into the new one. so here we will remove all data
+        #                            from the amino acid seqeunces table in the new database, and
+        #                            copy the contents from the original one.
+        ############################################################################################
+        amino_acid_sequences = R(t.gene_amino_acid_sequences_table_name)
+
+        entries = [(gene_caller_id_conversion_dict[g], amino_acid_sequences[g]['sequence']) for g in amino_acid_sequences]
+        db.DB(locus_output_db_path, None, ignore_version=True).insert_many(t.gene_amino_acid_sequences_table_name, entries=entries)
+
+        ############################################################################################
+        # REMOVE TEMP FILES
+        ###########################################################################################
         if anvio.DEBUG:
             self.run.info_single("Temp output files were kept for inspection due to --debug")
         else:
