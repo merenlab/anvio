@@ -195,7 +195,7 @@ run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
 run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
 
-if not references_mode and not (run_idba_ud or run_megahit):
+if not references_mode and number_of_assemblers_in_config_file!=1 :
     # Sanity check for assembly mode
     # Make sure that user specified an assembler
     raise ConfigError("You didn't specify any assembler for your metagenomes, and yet\
