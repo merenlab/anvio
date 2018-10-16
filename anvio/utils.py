@@ -158,7 +158,7 @@ def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence):
     contig_length = len(contig_sequence)
     gene_caller_ids = list(gene_calls_dict.keys())
 
-    gene_caller_id_conversion_dict = dict([(gene_caller_ids[i], gene_caller_ids[-i - 1]) for i in range(0, len(gene_caller_ids))])
+    gene_caller_id_conversion_dict = dict([(gene_caller_ids[-i - 1], i) for i in range(0, len(gene_caller_ids))])
     G = lambda g: gene_caller_id_conversion_dict[g]
 
     reverse_complemented_gene_calls = {}
