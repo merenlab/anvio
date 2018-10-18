@@ -552,7 +552,7 @@ if M.run_metaspades == True:
         threads: M.T('metaspades')
         resources: nodes = M.T('metaspades')
         run:
-            cmd = "metaspades.py -1 input.r1 -2 input.r2 " + \
+            cmd = "metaspades.py -1 {input.r1} -2 {input.r2} " + \
                   "-t {threads} " + \
                   "{params.additional_params} " + \
                   "-o {params.temp_dir} >> {log} 2>&1"
