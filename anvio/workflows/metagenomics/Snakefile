@@ -274,6 +274,12 @@ def get_fastq(sample):
     else:
         # if no QC and no reference based short read removal is requested, use raw input
         d = get_raw_fastq(sample)
+        if len(d['r1']) > 1 or len(d['r2']) >1:
+            raise('You are skipping QC, but some of your samples (for example %s) are composed of more than 1 pair of fastq files \
+                   this is not allowed. Please first merge all the fastq files corresponding to a single sample (or just use QC, and the \
+                   merging will be done for you).' % sample)
+        d = {'r1': d['r1'][0],
+             'r2': d['r2'][0]}
     return d
 
 
