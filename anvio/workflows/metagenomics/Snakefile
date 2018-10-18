@@ -373,6 +373,7 @@ def need_to_uncompress_fastqs(r1, r2):
         run.warning("The following fastq files are compressed and will now \
                      be uncompressed using gunzip: %s." % files_that_end_with_gz)
         return True
+    return False
 
 
 def fastq_input_for_assembly(wildcards):
