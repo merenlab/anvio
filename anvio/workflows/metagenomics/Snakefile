@@ -258,17 +258,21 @@ def get_fastq(sample):
         This helper function returns the appropriate paths according to the
         config file.
     '''
+    fastq_label = "-QUALITY_PASSED"
     if M.remove_short_reads_based_on_references:
+        fastq_label = "-FILTERED"
+
+    if M.remove_short_reads_based_on_references or run_qc:
         # by default, use the output of the reference based short read removal
         if run_gzip_fastqs:
-            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=sample)
-            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq.gz", DIR=dirs_dict["QC_DIR"], sample=sample)
+            r1 = os.path.join(dirs_dict["QC_DIR"], sample + fastq_label + "_R1.fastq.gz")
+            r2 = os.path.join(dirs_dict["QC_DIR"], sample + fastq_label + "_R2.fastq.gz")
         else:
-            r1 = expand("{DIR}/{sample}-QUALITY_PASSED_R1.fastq", DIR=dirs_dict["QC_DIR"], sample=sample)
-            r2 = expand("{DIR}/{sample}-QUALITY_PASSED_R2.fastq", DIR=dirs_dict["QC_DIR"], sample=sample)
+            r1 = os.path.join(dirs_dict["QC_DIR"], sample + fastq_label + "_R1.fastq")
+            r2 = os.path.join(dirs_dict["QC_DIR"], sample + fastq_label + "_R2.fastq")
         d = {'r1': r1, 'r2': r2}
     else:
-        # if no reference based short read removal is requested, use raw input
+        # if no QC and no reference based short read removal is requested, use raw input
         d = get_raw_fastq(sample)
     return d
 
@@ -279,7 +283,8 @@ def input_for_qc(sample):
     d.update(get_raw_fastq(sample))
     return d
 
-
+qc_output_r1 = os.path.join(dirs_dict["QC_DIR"], "{sample}-QUALITY_PASSED_R1.fastq")
+qc_output_r2 = os.path.join(dirs_dict["QC_DIR"], "{sample}-QUALITY_PASSED_R2.fastq")
 rule iu_filter_quality_minoche:
     ''' Run QC using iu-filter-quality-minoche '''
     version: 1.0
@@ -288,8 +293,10 @@ rule iu_filter_quality_minoche:
     # a new config file was produced.
     input: unpack(lambda wildcards: input_for_qc(wildcards.sample))
     output:
-        r1 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R1.fastq",
-        r2 = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_R2.fastq",
+        r1 = temp(qc_output_r1) if M.remove_short_reads_based_on_references \
+                                else qc_output_r1,
+        r2 = temp(qc_output_r2) if M.remove_short_reads_based_on_references \
+                                else qc_output_r2,
         stats = dirs_dict["QC_DIR"] + "/{sample}-STATS.txt"
     params:
         ignore_deflines = M.get_rule_param("iu_filter_quality_minoche", "--ignore-deflines"),

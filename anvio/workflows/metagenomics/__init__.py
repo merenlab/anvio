@@ -43,6 +43,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.kraken_annotation_dict = {}
         self.run_metaspades = None
         self.use_scaffold_from_metaspades = None
+        self.remove_short_reads_based_on_references = None
 
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
