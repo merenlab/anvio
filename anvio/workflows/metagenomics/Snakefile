@@ -307,6 +307,17 @@ rule iu_filter_quality_minoche:
         """
 
 
+rule remove_short_reads_based_on_references:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{sample}-remove_short_reads_based_on_references.log")
+    input:
+    output:
+    params:
+    threads: M.T('remove_short_reads_based_on_references')
+    resources: nodes = M.T('remove_short_reads_based_on_references')
+    shell: " >> {log} 2>&1"
+
+
 rule gen_qc_report:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/gen_qc_report.log"
