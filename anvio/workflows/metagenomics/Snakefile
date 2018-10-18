@@ -317,8 +317,8 @@ rule iu_filter_quality_minoche:
 rule remove_short_reads_based_on_references:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{sample}-remove_short_reads_based_on_references.log")
-    input: "something"
-    output: "something-else"
+    input: "something{sample}"
+    output: "something-else{sample}"
     params: "nothing"
     threads: M.T('remove_short_reads_based_on_references')
     resources: nodes = M.T('remove_short_reads_based_on_references')
