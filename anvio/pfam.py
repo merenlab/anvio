@@ -38,6 +38,9 @@ pp = terminal.pretty_print
 def read_remote_file(url, is_gzip=True):
     remote_file = requests.get(url)
 
+    if remote_file.status_code == 404:
+        raise Exception("'%s' returned 404 Not Found. " % url)
+
     if is_gzip:
         buf = BytesIO(remote_file.content)
         fg = gzip.GzipFile(fileobj=buf)
@@ -99,8 +102,12 @@ class PfamSetup(object):
 
 
     def confirm_downloaded_files(self):
-        checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
-        checksums = {}
+        try:
+            checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
+            checksums = {}
+        except:
+            self.run.warning("Checksum file '%s' is not available in FTP, Anvi'o won't be able to verify downloaded files." % (self.database_url + '/md5_checksums'))
+            return
 
         for line in checksums_file.split('\n'):
             checksum, file_name = [item.strip() for item in line.strip().split()]
