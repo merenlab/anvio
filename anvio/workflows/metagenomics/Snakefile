@@ -413,8 +413,8 @@ rule merge_fastas_for_co_assembly:
                 # if ends with ".gz" then unzip fastq
                 r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
                 r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
-                shell("gunzip < %s > $s 2> %s" % (r1, r1_unzipped, log))
-                shell("gunzip < %s > $s 2> %s" % (r2, r2_unzipped, log))
+                shell("gunzip < %s > %s 2> %s" % (r1, r1_unzipped, log))
+                shell("gunzip < %s > %s 2> %s" % (r2, r2_unzipped, log))
                 r1 = r1_unzipped
                 r2 = r2_unzipped
 
@@ -450,8 +450,8 @@ rule merge_fastqs_for_co_assembly:
                 # if ends with ".gz" then unzip fastq
                 r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
                 r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
-                shell("gunzip < %s > $s 2>%s" % (r1, r1_unzipped, log))
-                shell("gunzip < %s > $s 2>%s" % (r2, r2_unzipped, log))
+                shell("gunzip < %s > %s 2>%s" % (r1, r1_unzipped, log))
+                shell("gunzip < %s > %s 2>%s" % (r2, r2_unzipped, log))
                 r1 = r1_unzipped
                 r2 = r2_unzipped
 
