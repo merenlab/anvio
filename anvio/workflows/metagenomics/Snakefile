@@ -774,6 +774,7 @@ rule anvi_profile:
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
     output:
         profile = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db",
+        AUXILIARY_DATA = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/AUXILIARY-DATA.db",
         runlog = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/RUNLOG.txt"
     params:
         output_dir = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}",
@@ -908,6 +909,7 @@ rule anvi_merge:
         kraken_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, "import_kraken_hll_taxonomy.done", run_krakenhll)
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        AUXILIARY_DATA = dirs_dict["MERGE_DIR"] + "/{group}/AUXILIARY-DATA.db",
         runlog = dirs_dict["MERGE_DIR"] + "/{group}/RUNLOG.txt"
     threads: M.T('anvi_merge')
     resources: nodes = M.T('anvi_merge'),
