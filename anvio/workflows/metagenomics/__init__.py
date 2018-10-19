@@ -57,7 +57,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy', 'metaspades',\
                      'remove_short_reads_based_on_references'])
 
-        self.general_params.extend(["samples_txt", "references_mode", "all_against_all",\
+        self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
                                     "kraken_txt"])
 
         rule_acceptable_params_dict = {}
@@ -134,26 +134,40 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         super().init()
 
         # loading the samples.txt file
-        samples_txt_file = self.get_param_value_from_config(['samples_txt'])
-        filesnpaths.is_file_exists(samples_txt_file)
+        self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+        filesnpaths.is_file_exists(self.samples_txt_file)
         # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
-        self.samples_information = pd.read_csv(samples_txt_file, sep='\t', index_col=False)
+        self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
 
         if 'sample' not in self.samples_information.columns.values:
             raise ConfigError("You know what. This '%s' file does not look anything like\
-                               a samples file." % samples_txt_file)
+                               a samples file." % self.samples_txt_file)
 
         for sample in self.samples_information['sample']:
             try:
                 u.check_sample_id(sample)
             except ConfigError as e:
                 raise ConfigError("While processing the samples txt file ('%s'), anvi'o ran into the following error: \
-                                   %s" % (samples_txt_file, e))
+                                   %s" % (self.samples_txt_file, e))
 
-        self.sanity_check_for_kraken()
+        self.sanity_check()
 
         self.run_metaspades = self.get_param_value_from_config(['metaspades', 'run'])
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
+
+
+    def sanity_check(self):
+        self.sanity_check_for_samples_txt()
+        self.sanity_check_for_kraken()
+
+
+    def sanity_check_for_samples_txt(self):
+        fastq_file_names = list(self.samples_information['r1']) + list(self.samples_information['r2'])
+        bad_fastq_names = [s for s in fastq_file_names if (not s.endswith('.fastq') and not s.endswith('.fastq.gz'))]
+        if bad_fastq_names:
+            raise ConfigError("We require tha all fastq file names end with either '.fastq' \
+                               or '.fastq.gz'. Some or all of the file names in %s aren't formatted \
+                               accordingly. These are the file names we don't like: %s" % (self.samples_txt_file, ', '.join(bad_fastq_names)))
 
 
     def sanity_check_for_kraken(self):
