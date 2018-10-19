@@ -319,6 +319,30 @@ rule iu_filter_quality_minoche:
                                       {params.visualize_quality_curves} {params.ignore_deflines} >> {log} 2>&1
         """
 
+rule bowtie_build_for_removal_references:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{sample}-bowtie_build_for_removal_references.log")
+    input:
+    output:
+        o1 = expand(os.path.join(dirs_dict["MAPPING_DIR"], "{group}, {group}-contigs" + '.{i}.bt2'), i=[1,2,3,4], group="{group}"),
+        o2 = expand(dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + '.rev.{i}.bt2', i=[1,2], group="{group}")
+    params:
+        prefix = dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs"
+    threads: M.T('bowtie_build_for_removal_references')
+    resources: nodes = M.T('bowtie_build_for_removal_references')
+    shell: "bowtie2-build {input} {params.prefix} >> {log} 2>&1"
+
+
+rule map_to_removal_references:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{sample}-map_to_removal_references.log")
+    input:
+    output:
+    params:
+    threads: M.T('map_to_removal_references')
+    resources: M.T('map_to_removal_references')
+    shell: " >> {log} 2>&1"
+
 
 rule remove_short_reads_based_on_references:
     version: 1.0
@@ -328,7 +352,21 @@ rule remove_short_reads_based_on_references:
     params: "nothing"
     threads: M.T('remove_short_reads_based_on_references')
     resources: nodes = M.T('remove_short_reads_based_on_references')
-    shell: " >> {log} 2>&1"
+    run:
+        if M.use_references_for_estimation_but_skip_removal:
+            # The user wants to use the references to estimate their abundance
+            # but doesnt want to remove any reads
+            ids_to_remove = []
+        else:
+            # merge the ids from matching any reference
+            pass
+        if ids_to_remove:
+            # remove ids
+        else:
+            # don't remove ids, but make sure that the
+            # expexted output files are created
+
+        # generate relevant information for use in the qc_report
 
 
 rule gen_qc_report:
