@@ -428,7 +428,7 @@ rule merge_fastas_for_co_assembly:
         concatenate = False
         if len(input.r1) > 1:
             concatenate = True
-        for r1, r2 in zip({input.r1}, {input.r2}):
+        for r1, r2 in zip(input.r1, input.r2):
             if need_to_uncompress_fastqs(r1, r2):
                 # if ends with ".gz" then unzip fastq
                 r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
@@ -465,7 +465,7 @@ rule merge_fastqs_for_co_assembly:
     threads: M.T('merge_fastqs_for_co_assembly')
     resources: nodes = M.T('merge_fastqs_for_co_assembly')
     run:
-        for r1, r2 in zip({input.r1}, {input.r2}):
+        for r1, r2 in zip(input.r1, input.r2):
             if need_to_uncompress_fastqs(r1, r2):
                 # if ends with ".gz" then unzip fastq
                 r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
