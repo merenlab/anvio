@@ -2354,7 +2354,9 @@ def download_file(url, output_file_path, progress=progress, run=run):
         raise ConfigError("Something went wrong with your download attempt. Here is the\
                             problem: '%s'" % e)
 
-    file_size = int(response.headers['Content-Length'])
+    file_size = 0
+    if 'Content-Length' in response.headers:
+        file_size = int(response.headers['Content-Length'])
 
     f = open(output_file_path, 'wb')
 
@@ -2368,7 +2370,11 @@ def download_file(url, output_file_path, progress=progress, run=run):
         if buffer:
             downloaded_size += len(buffer)
             f.write(buffer)
-            progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
+
+            if file_size:
+                progress.update('%.1f%%' % (downloaded_size * 100.0 / file_size))
+            else:
+                progress.update('%s' % human_readable_file_size(downloaded_size))
         else:
             break
 
