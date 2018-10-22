@@ -448,6 +448,12 @@ def B(config, _rule, _param, default=''):
         return ''
 
 
+def D(debug_message, debug_log_file_path=".SNAKEMAKEDEBUG"):
+    with open(debug_log_file_path, 'a') as output:
+            output.write(terminal.get_date() + '\n')
+            output.write(debug_message + '\n\n')
+
+
 # a helper function to get the user defined number of threads for a rule
 def T(config, rule_name, N=1): return A([rule_name,'threads'], config, default_value=N)
 

@@ -56,3 +56,13 @@ anvi-run-workflow -w metagenomics --config config-idba_ud.json --save-workflow-g
 
 INFO "Running a dry run with idba_ud with no qc"
 anvi-run-workflow -w metagenomics --config config-idba_ud-no-qc.json --list-dependencies
+
+INFO "Running a dry run with metaspades using scaffolds"
+anvi-run-workflow -w metagenomics --config config-metaspades-no-qc-use-scaffolds.json --dry-run
+anvi-run-workflow -w metagenomics --config config-metaspades-no-qc-use-scaffolds.json --save-workflow-graph
+anvi-run-workflow -w metagenomics --config config-metaspades-no-qc-use-scaffolds.json --list-dependencies
+
+INFO "Running a dry run with metaspades"
+anvi-run-workflow -w metagenomics --config config-metaspades.json --dry-run
+anvi-run-workflow -w metagenomics --config config-metaspades.json --save-workflow-graph
+anvi-run-workflow -w metagenomics --config config-metaspades.json --list-dependencies
