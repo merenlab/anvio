@@ -6,7 +6,9 @@
 
 
 import anvio
+import anvio.utils as u
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows import WorkflowSuperClass
 from anvio.errors import ConfigError
@@ -45,6 +47,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.run = run
         self.progress = progress
+
+        self.group_names = []
 
         # initialize the base class
         WorkflowSuperClass.__init__(self)
@@ -93,3 +97,16 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                               '--ignore-internal-stop-codons']
 
         self.rule_acceptable_params_dict['anvi_gen_contigs_database'] = gen_contigs_params
+
+
+    def init(self):
+        super().init()
+
+        fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
+
+        if fasta_txt_file:
+            filesnpaths.is_file_exists(fasta_txt_file)
+            self.fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
+            self.group_names = list(self.fasta_information.keys())
+            self.references_mode = True
+
