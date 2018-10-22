@@ -101,86 +101,6 @@ if number_of_assemblers_in_config_file > 1:
                         "software, yet all the following software are " \
                         "included in your config file: %s. Please include only one." % assembly_software_in_config)
 
-# get a list of the sample names
-sample_names = list(M.samples_information['sample'])
-
-references_mode = M.get_param_value_from_config('references_mode', repress_default=True)
-fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
-if references_mode:
-    try:
-        filesnpaths.is_file_exists(fasta_txt_file)
-    except FilesNPathsError as e:
-        raise ConfigError('In references mode you must supply a fasta_txt file.')
-
-if not references_mode:
-    # if it is reference mode then the group names have been assigned in the contigs Snakefile
-    # if it is not reference mode and no groups are supplied in the samples_txt then group names are sample names
-    group_names = sample_names
-
-if fasta_txt_file and not references_mode:
-    raise ConfigError("In order to use reference fasta files you must set\
-                   \"'references_mode': true\" in your config file, yet\
-                   you didn't, but at the same time you supplied the following\
-                   fasta_txt: %s. So we don't know what to do with this\
-                   fasta_txt" % fasta_txt_file)
-
-# Collecting information regarding groups.
-if "group" in M.samples_information.columns:
-    # if groups were specified then members of a groups will be co-assembled.
-    group_names = list(M.samples_information['group'].unique())
-    # creating a dictionary with groups as keys and number of samples in
-    # the groups as values
-    group_sizes = M.samples_information['group'].value_counts().to_dict()
-
-    if references_mode:
-        # sanity check to see that groups specified in samples.txt match
-        # the names of fasta.
-        mismatch = set(group_names) - set(fasta_information.keys())
-        if mismatch:
-            raise ConfigError("Group names specified in the samples.txt \
-                               file must match the names of fasta \
-                               in the fasta.txt file. These are the \
-                               mismatches: %s" % mismatch)
-        groups_in_fasta_information_but_not_in_samples_txt = set(fasta_information.keys()) - set(group_names)
-        if groups_in_fasta_information_but_not_in_samples_txt:
-            run.warning('The following group names appear in your fasta_txt\
-                         but do not appear in your samples_txt. Maybe this is\
-                         ok with you, but we thought you should know. This means\
-                         that the metagenomics workflow will simply ignore these\
-                         groups.')
-
-else:
-    if references_mode:
-        # if the user didn't provide a group column in the samples.txt,
-        # in references mode the default is 'all_against_all'.
-        run.warning("No groups were provided in your samples_txt,\
-                     hence 'all_against_all' mode has been automatically\
-                     set to True.")
-        M.set_config_param('all_against_all', True)
-    else:
-        # if no groups were specified then each sample would be assembled
-        # separately
-        run.warning("No groups were specified in your samples_txt. This is fine.\
-                     But we thought you should know. Any assembly will be performed\
-                     on individual samples (i.e. NO co-assembly).")
-        M.samples_information['group'] = M.samples_information['sample']
-        group_names = list(sample_names)
-        group_sizes = dict.fromkeys(group_names,1)
-
-if M.get_param_value_from_config('all_against_all', repress_default=True):
-    # in all_against_all, the size of each group is as big as the number
-    # of samples.
-    group_sizes = dict.fromkeys(group_names,len(sample_names))
-
-
-if not references_mode and not (M.get_param_value_from_config(['anvi_script_reformat_fasta','run']) == True):
-    # in assembly mode (i.e. not in references mode) we always have
-    # to run reformat_fasta. The only reason for this is that
-    # the megahit output is temporary, and if we dont run
-    # reformat_fasta we will delete the output of meghit at the
-    # end of the workflow without saving a copy.
-    raise ConfigError("You can't skip reformat_fasta in assembly mode \
-                        please change your config.json file")
 
 # by default fastq files will be zipped after qc is done
 run_gzip_fastqs = M.get_param_value_from_config(['gzip_fastqs', 'run']) == True
@@ -195,7 +115,7 @@ run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
 run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
 
-if not references_mode and number_of_assemblers_in_config_file!=1 :
+if not M.references_mode and number_of_assemblers_in_config_file!=1 :
     # Sanity check for assembly mode
     # Make sure that user specified an assembler
     raise ConfigError("You didn't specify any assembler for your metagenomes, and yet\
@@ -215,9 +135,9 @@ rule metagenomics_workflow_target_rule:
         The final product of the workflow is an anvi'o merged profile directory
         for each group
     '''
-    input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=group_names),
-           contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=group_names),
-           qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=group_names)
+    input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=M.group_names),
+           contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
+           qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=M.group_names)
 
 
 rule iu_gen_configs:
@@ -231,7 +151,7 @@ rule iu_gen_configs:
     # the input file is marked as 'ancient' so snakemake wouldn't run it
     # just because a new path-to-raw-fastq-files.txt file was created.
     input: ancient(M.get_param_value_from_config(['samples_txt']))
-    output: expand("{DIR}/{sample}.ini", DIR=dirs_dict["QC_DIR"], sample=sample_names)
+    output: expand("{DIR}/{sample}.ini", DIR=dirs_dict["QC_DIR"], sample=M.sample_names)
     params:
         dir=dirs_dict["QC_DIR"],
         r1_prefix = M.get_rule_param("iu_gen_configs", "--r1-prefix"),
@@ -334,7 +254,7 @@ rule remove_short_reads_based_on_references:
 rule gen_qc_report:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/gen_qc_report.log"
-    input: expand(dirs_dict["QC_DIR"] + "/{sample}-STATS.txt", sample=sample_names)
+    input: expand(dirs_dict["QC_DIR"] + "/{sample}-STATS.txt", sample=M.sample_names)
     output: dirs_dict["QC_DIR"] + "/qc-report.txt"
     threads: M.T('gen_qc_report')
     resources: nodes = M.T('gen_qc_report')
@@ -439,7 +359,7 @@ rule merge_fastas_for_co_assembly:
                 r2 = r2_unzipped
 
             # run fq2fa
-            fq2fa_output = os.path.join(dirs_dict["QC_DIR"], "%s_%s-merged.temp.fa" %s (r1, r2))
+            fq2fa_output = os.path.join(dirs_dict["QC_DIR"], "R1_R2-merged.temp.fa")
             shell("fq2fa --merge %s %s %s >> %s 2>&1" % (r1, r2, fq2fa_output, log))
 
             if need_to_uncompress_fastqs(r1, r2):
@@ -759,7 +679,7 @@ def get_cluster_contigs_param(wildcards):
     else:
         # if profiling to individual assembly then clustering contigs
         # see --cluster-contigs in the help manu of anvi-profile
-        cluster_contigs = '--cluster-contigs' if group_sizes[wildcards.group] == 1 else ''
+        cluster_contigs = '--cluster-contigs' if M.group_sizes[wildcards.group] == 1 else ''
     return cluster_contigs
 
 
@@ -953,7 +873,7 @@ rule anvi_merge:
             # creating the expected output files for the rule
             create_fake_output_files(_message, output)
 
-        elif group_sizes[wildcards.group] == 1:
+        elif M.group_sizes[wildcards.group] == 1:
             # for individual assemblies, create a symlink to the profile database
             #shell("ln -s {params.profile_dir}/*/* -t {params.output_dir} >> {log} 2>&1")
             #shell("touch -h {params.profile_dir}/*/*")
