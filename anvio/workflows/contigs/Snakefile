@@ -31,15 +31,6 @@ if not slave_mode:
 
 localrules: annotate_contigs_database
 
-group_names = []
-fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
-
-if fasta_txt_file:
-    filesnpaths.is_file_exists(fasta_txt_file)
-    fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
-    group_names = list(fasta_information.keys())
-    references_mode = True
-
 # setting configuration for optional steps
 run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"]) == True
 
@@ -63,6 +54,10 @@ if run_taxonomy_with_centrifuge:
 
                           "config file. See documentation for more details.")
 
+# TODO: it would have been better to have this in tha backhand
+# there is no reason contigs workflow would be familiar with references mode.
+# it should be that this is set to the default for contigs workflow
+# and then in the case of assembly in metagenomics workflow then this value would be override
 def get_raw_fasta(wildcards):
     '''
         Define the path to the input fasta files.
@@ -72,16 +67,16 @@ def get_raw_fasta(wildcards):
         This function also deals with the different cases of "reference mode"
         Vs. "assembly mode".
     '''
-    if references_mode:
+    if M.references_mode:
         # in 'reference mode' the input is the reference fasta
-        contigs = fasta_information[wildcards.group]['path']
+        contigs = M.fasta_information[wildcards.group]['path']
     else:
         # by default the input fasta is the assembly output
         contigs = dirs_dict["FASTA_DIR"] + "/%s/final.contigs.fa" % wildcards.group
     return contigs
 
 rule generate_and_annotate_contigs_db:
-    input: expand(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done", group=group_names)
+    input: expand(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done", group=M.group_names)
 
 
 rule anvi_script_reformat_fasta_prefix_only:
