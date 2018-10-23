@@ -549,6 +549,7 @@ if M.run_metaspades == True:
 
             shell("mv %s %s" % (os.path.join(params.temp_dir, use), output.contigs))
             shell("mv %s %s" % (os.path.join(params.temp_dir, keep), output.raw_contigs_or_scaffold))
+            shell("rm -rf {params.temp_dir}")
 
 
 if M.get_param_value_from_config(['megahit', 'run']) == True:
