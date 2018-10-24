@@ -764,8 +764,13 @@ class BottleApplication(Bottle):
             bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': "anvi-interactive"}
 
         # the db here is either a profile db, or a pan db, but it can't be both:
-        db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
+        if self.interactive.mode == 'gene':
+            db_path = self.interactive.genes_db_path
+        else:
+            db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
+
         collections = TablesForCollections(db_path)
+
         try:
             collections.append(source, data, bins_info_dict)
         except ConfigError as e:
