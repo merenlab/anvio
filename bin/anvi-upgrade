@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import zipfile
+import requests
+from distutils.spawn import find_executable
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+class Upgrader(object):
+    def __init__(self, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
+
+        self.version = self.get_version()
+        self.releases = self.get_releases()
+        self.target_version = self.get_target_version()
+        self.dist = self.get_dist_info()
+
+        if self.version == self.target_version:
+            raise Exception('There is no new version to upgrade.')
+
+        self.working_dir = filesnpaths.get_temp_directory_path()
+
+
+    def get_releases(self):
+        releases = {}
+        for release in requests.get('https://api.github.com/repos/merenlab/anvio/releases').json():
+            releases[release['tag_name']] = release
+
+        return releases
+
+
+    def get_version(self):
+        version = '5.1' #anvio.__version__
+
+        if '-master' in version:
+            raise Exception("You are already using master version, in order to upgrade run `git pull`.")
+
+        return version
+
+
+    def get_dist_info(self):
+        dist = {}
+
+        bin_file = find_executable('anvi-profile')
+
+        with open(bin_file, 'r') as f:
+            shebang = f.readline().strip()
+            dist['shebang'] = shebang
+
+        dist['bin_path'] = os.path.dirname(bin_file)
+        dist['bin_stat'] = os.stat(bin_file)
+
+        dist['module_path'] = os.path.dirname(anvio.__file__)
+        dist['module_stat'] = os.stat(anvio.__file__)
+
+        script_file = find_executable('anvi-script-reformat-fasta')
+        dist['script_path'] = os.path.dirname(script_file)
+        dist['script_stat'] = os.stat(script_file)
+
+        return dist
+
+
+    def get_target_version(self):
+        version_parts = self.version.split('.')
+
+        if len(version_parts) > 1:
+            major, minor = int(version_parts[0]), int(version_parts[1])
+        else:
+            major, minor = int(version_parts[0]), 0
+
+        while ('v%d.%d' % (major, minor+1)) in self.releases:
+            minor += 1
+
+        return '%d.%d' % (major, minor)
+
+
+    def main(self):
+        self.get_dist_info()
+
+        current_url = self.releases['v' + self.version]['zipball_url']
+        current_zip_path = os.path.join(self.working_dir, self.version + '.zip')
+
+        target_url = self.releases['v' + self.target_version]['zipball_url']
+        target_zip_path = os.path.join(self.working_dir, self.target_version + '.zip')
+
+        utils.download_file(current_url, current_zip_path, progress=self.progress, run=self.run)
+        utils.download_file(target_url, target_zip_path, progress=self.progress, run=self.run)
+
+        with zipfile.ZipFile(current_zip_path, "r") as zip_ref:
+            zip_ref.extractall(current_zip_path[:-4])
+
+        with zipfile.ZipFile(target_zip_path, "r") as zip_ref:
+            zip_ref.extractall(target_zip_path[:-4])
+        
+
+if __name__ == '__main__':
+    upgrader = Upgrader()
+    upgrader.main()
