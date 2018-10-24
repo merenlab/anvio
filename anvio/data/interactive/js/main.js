@@ -288,7 +288,7 @@ function initData() {
                 $.when()
                  .then(drawTree)
                  .then(function() {
-                    if (response.collection !== null && mode !== 'refine' && mode !== 'gene')
+                    if (response.collection !== null && mode !== 'refine')
                     {
                         bins.ImportCollection(response.collection);
                     }
