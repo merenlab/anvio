@@ -2057,7 +2057,7 @@ class ProfileSuperclass(object):
         is to use the collections framework (the elegant way of doing this). For which, you need to
         set collection name:
 
-            >>> args.collection_name = 'collcetion_name'
+            >>> args.collection_name = 'collection_name'
             >>> args.bin_ids = 'bin_1,bin_2,bin_3' # if no bin_ids is provided, all bins will be used
             >>> p = ProfileSuperClass(args)
 
@@ -2086,6 +2086,8 @@ class ProfileSuperclass(object):
 
         self.auxiliary_profile_data_available = None
         self.auxiliary_data_path = None
+        self.genes_db_available = None
+        self.genes_db_path = None
 
         self.split_names = set([])
         self.item_orders = {}
@@ -2235,6 +2237,14 @@ class ProfileSuperclass(object):
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
                                                                                          self.p_meta['contigs_db_hash'])
 
+        if self.collection_name  and len(self.bin_names) == 1:
+            self.progress.update('Accessing the genes database')
+            self.genes_db_path = get_genes_database_path_for_profile_db(self.profile_db_path, self.collection_name, self.bin_names[0])
+            if not os.path.exists(self.genes_db_path):
+                self.genes_db_available = False
+            else:
+                self.genes_db_available = True
+
         self.progress.end()
 
         if init_gene_coverages:
@@ -2252,6 +2262,18 @@ class ProfileSuperclass(object):
             self.run.info('Profile Super', 'Initialized with all %d splits: %s (v. %s)' % (len(self.split_names),
                                                                                            self.profile_db_path,
                                                                                            anvio.__profile__version__))
+
+
+    def create_blank_genes_database(self):
+        if self.genes_db_available:
+            raise ConfigError("You can't create a blank genes database when there is already one :/")
+
+        meta_values = {'anvio': __version__,
+                       'contigs_db_hash': self.p_meta['contigs_db_hash']}
+
+        GenesDatabase(self.genes_db_path).create(meta_values=meta_values)
+        self.genes_db_available = True
+        self.genes_db_path = get_genes_database_path_for_profile_db(self.profile_db_path, collection_name=self.collection_name, bin_name=self.bin_id)
 
 
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False, callback=None, callback_interval=100):
@@ -2653,6 +2675,84 @@ class ProfileDatabase:
         self.disconnect()
 
         self.run.info('Profile database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+
+
+    def disconnect(self):
+        self.db.disconnect()
+
+
+class GenesDatabase:
+    """To create an empty genes database and/or access one.
+
+       This is an optional database that is always linked to a profile database, collection
+       name, and a bin id. The purpose of it is to store coverage an detection statistics of
+       genes within a bin across samples desribed within a profile database.
+
+       Besides the performance gain during the initialization of gene coverage values, this
+       database serves as a way to store collections and states that are specific to the
+       '--gene-mode' operations"""
+
+    def __init__(self, db_path, run=run, progress=progress, quiet=True):
+        self.db = None
+        self.db_path = db_path
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.init()
+
+
+    def init(self):
+        if os.path.exists(self.db_path):
+            utils.is_genes_db(self.db_path)
+            self.db = db.DB(self.db_path, anvio.__genes__version__)
+            meta_table = self.db.get_table_as_dict('self')
+            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+
+            for key in []:
+                try:
+                    self.meta[key] = int(self.meta[key])
+                except:
+                    pass
+
+            self.run.info('Genes database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
+        else:
+            self.db = None
+
+
+    def touch(self):
+        """Creates an empty genes database on disk, and sets `self.db` to access to it."""
+
+        is_db_ok_to_create(self.db_path, 'genes')
+
+        filesnpaths.gen_output_directory(os.path.dirname(self.db_path))
+
+        self.db = db.DB(self.db_path, anvio.__genes__version__, new_database=True)
+
+        # creating empty default tables
+        self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
+        self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
+        self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
+        self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
+        self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        self.db.set_meta_value('db_type', 'genes')
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
+
+        self.disconnect()
+
+        self.run.info('Genes database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
 
 
     def disconnect(self):
@@ -3359,7 +3459,13 @@ def is_db_ok_to_create(db_path, db_type):
 
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):
-    return  os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
+    return os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
+
+
+def get_genes_database_path_for_profile_db(profile_db_path, collection_name, bin_name):
+    if not collection_name or not bin_name:
+        raise ConfigError("Genes database must be associted with a collection name and a bin name :/")
+    return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 
 
 def get_description_in_db(anvio_db_path, run=run):
