@@ -2289,6 +2289,12 @@ def is_pan_db(db_path):
     return True
 
 
+def is_genes_db(db_path):
+    if get_db_type(db_path) != 'genes':
+        raise ConfigError("'%s' is not an anvi'o genes database." % db_path)
+    return True
+
+
 def is_profile_db_merged(profile_db_path):
     is_profile_db(profile_db_path)
 
