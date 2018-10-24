@@ -3,7 +3,6 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away.."""
 
-import os
 import sys
 import copy
 import platform
@@ -1823,6 +1822,7 @@ def set_version():
            t.contigs_db_version, \
            t.pan_db_version, \
            t.profile_db_version, \
+           t.genes_db_version, \
            t.auxiliary_data_version, \
            t.genomes_storage_vesion, \
            t.structure_db_version
@@ -1832,10 +1832,11 @@ def get_version_tuples():
     return [("Anvi'o version", "%s (v%s)" % (__codename__, __version__)),
             ("Profile DB version", __profile__version__),
             ("Contigs DB version", __contigs__version__),
-            ("Structure DB version", __structure__version__),
+            ("Genes DB version", __genes__version__),
+            ("Auxiliary data storage version", __auxiliary_data_version__),
             ("Pan DB version", __pan__version__),
             ("Genome data storage version", __genomes_storage_version__),
-            ("Auxiliary data storage version", __auxiliary_data_version__)]
+            ("Structure DB version", __structure__version__)]
 
 
 def print_version():
@@ -1853,6 +1854,7 @@ __codename__, \
 __contigs__version__, \
 __pan__version__, \
 __profile__version__, \
+__genes__version__, \
 __auxiliary_data_version__, \
 __genomes_storage_version__ , \
 __structure__version__ = set_version()
