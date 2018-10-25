@@ -209,6 +209,7 @@ def input_for_qc(sample):
     d.update(get_raw_fastq(sample))
     return d
 
+
 qc_output_r1 = os.path.join(dirs_dict["QC_DIR"], "{sample}-QUALITY_PASSED_R1.fastq")
 qc_output_r2 = os.path.join(dirs_dict["QC_DIR"], "{sample}-QUALITY_PASSED_R2.fastq")
 rule iu_filter_quality_minoche:
@@ -239,6 +240,7 @@ rule iu_filter_quality_minoche:
                                       {params.visualize_quality_curves} {params.ignore_deflines} >> {log} 2>&1
         """
 
+
 rule bowtie_build_for_removal_references:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{sample}-bowtie_build_for_removal_references.log")
@@ -257,9 +259,12 @@ rule bowtie_for_removal_references:
     """ Run mapping with bowtie2"""
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie_for_removal_references.log"
-    input: unpack(input_for_bowtie)
-    # setting the output as temp, since we only want to keep the bam file.
+    input:
+        'build_output': os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{group}-contigs.1.bt2"),
+        r1 = qc_output_r1,
+        r2 = qc_output_r2
     output:
+        # setting the output as temp, since we only want to keep the bam file.
         sam = temp(dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.sam")
     params:
         dir = dirs_dict["MAPPING_DIR"] + "/{sample}",
