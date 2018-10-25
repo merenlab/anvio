@@ -3,6 +3,7 @@
 
 import os
 import glob
+import uuid
 import zipfile
 import requests
 from distutils.spawn import find_executable
@@ -68,6 +69,21 @@ class Upgrader(object):
         dist['sandbox_stat'] = os.stat(script_file)
 
         return dist
+
+
+    def check_if_dist_writable(self):
+        rand_filename = uuid.uuid4()
+
+        for target in ['bin', 'module', 'sandbox']:
+            target_path = os.path.join(self.dist['%s_path' % target], rand_filename)
+
+            try:
+                with file(target_path, 'w') as f:
+                    f.write('test')
+
+                os.remove(target_path)
+            except:
+                raise Exception("This script can not write files in anvi'o installation directories, try running with 'sudo'")
 
 
     def get_target_version(self):
