@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 
 import os
+import glob
 import zipfile
 import requests
 from distutils.spawn import find_executable
@@ -63,8 +64,8 @@ class Upgrader(object):
         dist['module_stat'] = os.stat(anvio.__file__)
 
         script_file = find_executable('anvi-script-reformat-fasta')
-        dist['script_path'] = os.path.dirname(script_file)
-        dist['script_stat'] = os.stat(script_file)
+        dist['sandbox_path'] = os.path.dirname(script_file)
+        dist['sandbox_stat'] = os.stat(script_file)
 
         return dist
 
@@ -83,7 +84,7 @@ class Upgrader(object):
         return '%d.%d' % (major, minor)
 
 
-    def main(self):
+    def download(self):
         self.get_dist_info()
 
         current_url = self.releases['v' + self.version]['zipball_url']
@@ -96,12 +97,29 @@ class Upgrader(object):
         utils.download_file(target_url, target_zip_path, progress=self.progress, run=self.run)
 
         with zipfile.ZipFile(current_zip_path, "r") as zip_ref:
+            self.current_version_dir = current_zip_path[:-4] + '/' + zip_ref.namelist()[0]
             zip_ref.extractall(current_zip_path[:-4])
 
         with zipfile.ZipFile(target_zip_path, "r") as zip_ref:
+            self.target_version_dir = target_zip_path[:-4] + '/' + zip_ref.namelist()[0]
             zip_ref.extractall(target_zip_path[:-4])
-        
+
+
+    def check_dist_files(self):
+        for script_type in ['bin', 'sandbox']:
+            for file_name in glob.glob(os.path.join(self.current_version_dir, script_type, 'anvi-*')):
+                if not os.path.exists(os.path.join(self.dist['%s_path' % script_type], file_name)):
+                    raise("Anvi'o can not find bin script")
+
+        for path_name, sub_directories, file_list in os.walk(os.path.join(self.current_version_dir, 'anvio')):
+            relative_path = path_name[len(os.path.join(self.current_version_dir, 'anvio')) + 1:]
+
+            for file_name in file_list + sub_directories:
+                if not os.path.exists(os.path.join(self.dist['module_path'], relative_path, file_name)):
+                    raise("Anvi'o can not find bin script")
+
 
 if __name__ == '__main__':
     upgrader = Upgrader()
-    upgrader.main()
+    upgrader.download()
+    upgrader.check_dist_files()
