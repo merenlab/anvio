@@ -112,6 +112,9 @@ nt_position_info_table_name       = 'nt_position_info'
 nt_position_info_table_structure  = ['contig_name', 'position_info']
 nt_position_info_table_types      = [    'str'    ,      'blob'    ]
 
+gene_level_coverage_stats_table_name      = 'gene_level_coverage_stats'
+gene_level_coverage_stats_table_structure = ['entry_id', 'gene_callers_id', 'sample_name', 'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std', 'gene_coverage_values_per_nt', 'non_outlier_positions']
+gene_level_coverage_stats_table_types     = [ 'numeric',     'numeric'    ,     'text'   ,    'numeric'   ,  'numeric' ,         'numeric'          ,          'numeric'        ,             'blob'           ,          'blob'        ]
 
 ####################################################################################################
 #
