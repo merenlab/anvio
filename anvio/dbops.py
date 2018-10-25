@@ -2378,37 +2378,50 @@ class ProfileSuperclass(object):
 
             # we have nothing to do here anymore. and can return.
             return
-            callback()
-        else:
-            self.progress.new('Computing gene-level coverage stats ...')
-            self.progress.update('...')
-                self.store_gene_level_coverage_stats_into_genes_db(parameters)
 
-            num_splits, counter = len(split_names), 1
-            # go through all the split names
-            for split_name in split_names:
-                if num_splits > 10 and counter % 10 == 0:
+        # if we have not 'returned' yet it means we gotta go through this
+        self.init_split_coverage_values_per_nt_dict(split_names)
 
-                self.split_coverage_values_per_nt_dict[split_name] = self.split_coverage_values.get(split_name)
-                self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters))
+        self.progress.new('Computing gene-level coverage stats ...')
         self.progress.update('...')
 
-                if callback and counter % callback_interval == 0:
-                    callback()
-            split_names = self.split_names_of_interest
-
-                counter += 1
+        num_splits, counter = len(split_names), 1
+        # go through all the split names
+        for split_name in split_names:
+            if num_splits > 10 and counter % 10 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
-            self.progress.end()
+            self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters))
+
+            if callback and counter % callback_interval == 0:
+                callback()
+
+            counter += 1
+
+        self.progress.end()
+
+        if callback:
+            callback()
+        else:
+            if self.genes_db_path:
+                # we computer all the stuff, and we can as well store them into the genes db.
+                self.store_gene_level_coverage_stats_into_genes_db(parameters)
+
+
+    def init_split_coverage_values_per_nt_dict(self, split_names=None):
+        self.progress.new('Computing split coverage values per nt ...')
+        self.progress.update('...')
+
+        if not split_names:
+            split_names = self.split_names_of_interest
+
+        num_splits, counter = len(split_names), 1
+        for split_name in split_names:
+            if num_splits > 10 and counter % 10 == 0:
+                self.progress.update('%d of %d splits ...' % (counter, num_splits))
+
             self.split_coverage_values_per_nt_dict[split_name] = self.split_coverage_values.get(split_name)
 
-            if callback:
-                callback()
-            else:
-                if self.genes_db_path:
-                    # we computer all the stuff, and we can as well store them into the genes db.
-                    self.store_gene_level_coverage_stats_into_genes_db(parameters)
         self.progress.end()
 
 
