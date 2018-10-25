@@ -260,7 +260,7 @@ rule bowtie_for_removal_references:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie_for_removal_references.log"
     input:
-        'build_output': os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{group}-contigs.1.bt2"),
+        build_output: os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{group}-contigs.1.bt2"),
         r1 = qc_output_r1,
         r2 = qc_output_r2
     output:
