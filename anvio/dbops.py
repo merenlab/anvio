@@ -2098,7 +2098,6 @@ class ProfileSuperclass(object):
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         init_gene_coverages = A('init_gene_coverages')
-        populate_nt_level_coverage = A('populate_nt_level_coverage')
         outliers_threshold = A('outliers_threshold')
         zeros_are_outliers = A('zeros_are_outliers')
 
@@ -2248,7 +2247,7 @@ class ProfileSuperclass(object):
         self.progress.end()
 
         if init_gene_coverages:
-            self.init_gene_level_coverage_stats_dicts(outliers_threshold=outliers_threshold, populate_nt_level_coverage=populate_nt_level_coverage, zeros_are_outliers=zeros_are_outliers)
+            self.init_gene_level_coverage_stats_dicts(outliers_threshold=outliers_threshold, zeros_are_outliers=zeros_are_outliers)
 
         if self.auxiliary_profile_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__auxiliary_data_version__))
@@ -2276,7 +2275,6 @@ class ProfileSuperclass(object):
         self.genes_db_path = get_genes_database_path_for_profile_db(self.profile_db_path, collection_name=self.collection_name, bin_name=self.bin_id)
 
 
-    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, populate_nt_level_coverage=False, zeros_are_outliers=False, callback=None, callback_interval=100):
         """This function will populate both `self.split_coverage_values_per_nt_dict` and
            `self.gene_level_coverage_stats_dict`.
 
@@ -2354,7 +2352,7 @@ class ProfileSuperclass(object):
 
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
-                                      populate_nt_level_coverage=False, zeros_are_outliers=False, gene_caller_ids_of_interest=set([])):
+                                      zeros_are_outliers=False, gene_caller_ids_of_interest=set([])):
 
         # sanity check
         if not isinstance(gene_caller_ids_of_interest, set):
@@ -2417,15 +2415,14 @@ class ProfileSuperclass(object):
                     non_outlier_mean_coverage = numpy.mean(non_outliers)
                     non_outlier_coverage_std = numpy.std(non_outliers)
 
-                output[gene_callers_id][sample_name] = {'mean_coverage': mean_coverage,
-                                                         'detection': detection,
-                                                         'non_outlier_mean_coverage': non_outlier_mean_coverage,
-                                                         'non_outlier_coverage_std':  non_outlier_coverage_std}
-
-                # FIXME: these shouldn't be under gene_level_coverage_stats_dict see issue #688
-                if populate_nt_level_coverage == True:
-                    output[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = gene_coverage_values_per_nt
-                    output[gene_callers_id][sample_name]['non_outlier_positions'] = non_outlier_positions
+                output[gene_callers_id][sample_name] = {'gene_callers_id': gene_callers_id,
+                                                        'sample_name': sample_name,
+                                                        'mean_coverage': mean_coverage,
+                                                        'detection': detection,
+                                                        'non_outlier_mean_coverage': non_outlier_mean_coverage,
+                                                        'non_outlier_coverage_std':  non_outlier_coverage_std,
+                                                        'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
+                                                        'non_outlier_positions': non_outlier_positions}
 
         return output
 
