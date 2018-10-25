@@ -992,12 +992,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         ProfileSuperclass.__init__(self, self.args)
 
-        if not self.genes_db_available:
-            self.run.warning("You don't seem to have a genes database associated with your profile database.\
-                              Genes database is an optional anvi'o database to store gene-level coverage and\
-                              stats dicts. Anvi'o will attempt to create one for you.", lc="cyan")
-            self.create_blank_genes_database()
-
         self.init_gene_level_coverage_stats_dicts()
 
         # the gene_level_coverage_stats_dict contains a mixture of data, some of which are not relevant to

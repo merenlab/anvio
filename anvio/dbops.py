@@ -2330,6 +2330,11 @@ class ProfileSuperclass(object):
 
         self.progress.new('Computing gene-level coverage stats ...')
         self.progress.update('...')
+        elif self.genes_db_path and not self.genes_db_available:
+            self.run.warning("You don't seem to have a genes database associated with your profile database.\
+                              Genes database is an optional anvi'o database to store gene-level coverage and\
+                              stats dicts. Anvi'o will attempt to create one for you.", lc="cyan")
+            self.create_blank_genes_database()
 
         num_splits, counter = len(split_names), 1
         # go through all the split names
