@@ -11,6 +11,7 @@ import copy
 import json
 import numpy
 import random
+import hashlib
 import argparse
 import textwrap
 import multiprocessing
@@ -43,6 +44,7 @@ from anvio.tables.ntpositions import TableForNtPositions
 from anvio.tables.miscdata import TableForItemAdditionalData
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
+from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
 
@@ -2236,9 +2238,12 @@ class ProfileSuperclass(object):
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
                                                                                          self.p_meta['contigs_db_hash'])
 
-        if self.collection_name  and len(self.bin_names) == 1:
+        if self.collection_name and self.bin_names and len(self.bin_names) == 1:
             self.progress.update('Accessing the genes database')
-            self.genes_db_path = get_genes_database_path_for_profile_db(self.profile_db_path, self.collection_name, self.bin_names[0])
+            self.genes_db_path = get_genes_database_path_for_bin(self.profile_db_path,
+                                                                 self.collection_name,
+                                                                 self.bin_names[0],
+                                                                 self.split_names_of_interest)
             if not os.path.exists(self.genes_db_path):
                 self.genes_db_available = False
             else:
@@ -2268,19 +2273,46 @@ class ProfileSuperclass(object):
             raise ConfigError("You can't create a blank genes database when there is already one :/")
 
         meta_values = {'anvio': __version__,
-                       'contigs_db_hash': self.p_meta['contigs_db_hash']}
+                       'contigs_db_hash': self.p_meta['contigs_db_hash'],
+                       'collection_name': self.collection_name,
+                       'bin_name': self.bin_names[0]}
 
         GenesDatabase(self.genes_db_path).create(meta_values=meta_values)
         self.genes_db_available = True
-        self.genes_db_path = get_genes_database_path_for_profile_db(self.profile_db_path, collection_name=self.collection_name, bin_name=self.bin_id)
+        self.genes_db_path = self.genes_db_path
 
 
+    def store_gene_level_coverage_stats_into_genes_db(self, parameters):
+        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters)
+        table_for_gene_level_coverages.store(self.gene_level_coverage_stats_dict)
+
+
+    def init_gene_level_coverage_stats_from_genes_db(self, parameters):
+        if not (self.collection_name and len(self.bin_names) == 1):
+            raise ConfigError("The function `get_gene_level_coverage_stats_dicts_for_a_bin` can only be called from an instance\
+                               of the profile super class that is initalized with a collection name and a single bin.")
+
+        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters)
+        self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
+
+
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100):
         """This function will populate both `self.split_coverage_values_per_nt_dict` and
            `self.gene_level_coverage_stats_dict`.
 
            Note: if a `split_names_of_interest` argument is declared at the class level,
            this function will operate on those splits found in that set.
+
+           If there is a collection and a single bin name, then this function will work with
+           the genes database to read form or to write to.
            """
+
+        # let's get these paramters set
+        parameters = {
+            'min_cov_for_detection': min_cov_for_detection,
+            'outliers_threshold': outliers_threshold,
+            'zeros_are_outliers': zeros_are_outliers
+        }
 
         if self.p_meta['blank']:
             self.run.warning("Someone asked gene coverages to be initialized when working with a blank profile database.\
@@ -2316,44 +2348,48 @@ class ProfileSuperclass(object):
             self.run.warning('A subset of splits (%d of %d, to be precise) are requested to initiate gene-level coverage stats for.\
                               No need to worry, this is just a warning in case you are as obsessed as wanting to know everything\
                               there is to know.' % (len(self.split_names_of_interest), len(self.split_names)), overwrite_verbose=True)
-
         else:
             split_names = self.split_names
 
-        # we need to pass parameters to sub function as it is.
-        parameters = {
-            'min_cov_for_detection': min_cov_for_detection,
-            'outliers_threshold': outliers_threshold,
-            'populate_nt_level_coverage': populate_nt_level_coverage,
-            'zeros_are_outliers': zeros_are_outliers
-        }
-
-        self.progress.new('Computing gene-level coverage stats ...')
-        self.progress.update('...')
+        if self.genes_db_path and self.genes_db_available:
+            # THIS IS A SPECIAL CASE, where someone is initializing the gene-level coverage
+            # stats for a single bin. In this case anvi'o will want to work with a genes
+            # database to read from, or to populate one for later uses.
+            self.init_gene_level_coverage_stats_from_genes_db(parameters)
         elif self.genes_db_path and not self.genes_db_available:
             self.run.warning("You don't seem to have a genes database associated with your profile database.\
                               Genes database is an optional anvi'o database to store gene-level coverage and\
                               stats dicts. Anvi'o will attempt to create one for you.", lc="cyan")
             self.create_blank_genes_database()
 
-        num_splits, counter = len(split_names), 1
-        # go through all the split names
-        for split_name in split_names:
-            if num_splits > 10 and counter % 10 == 0:
-                self.progress.update('%d of %d splits ...' % (counter, num_splits))
+        if len(self.gene_level_coverage_stats_dict):
+            return
+        else:
+            self.progress.new('Computing gene-level coverage stats ...')
+            self.progress.update('...')
 
-            self.split_coverage_values_per_nt_dict[split_name] = self.split_coverage_values.get(split_name)
-            self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters))
+            num_splits, counter = len(split_names), 1
+            # go through all the split names
+            for split_name in split_names:
+                if num_splits > 10 and counter % 10 == 0:
+                    self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
-            if callback and counter % callback_interval == 0:
+                self.split_coverage_values_per_nt_dict[split_name] = self.split_coverage_values.get(split_name)
+                self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters))
+
+                if callback and counter % callback_interval == 0:
+                    callback()
+
+                counter += 1
+
+            self.progress.end()
+
+            if callback:
                 callback()
-
-            counter += 1
-
-        if callback:
-            callback()
-
-        self.progress.end()
+            else:
+                if self.genes_db_path:
+                    # we computer all the stuff, and we can as well store them into the genes db.
+                    self.store_gene_level_coverage_stats_into_genes_db(parameters)
 
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
@@ -2712,9 +2748,15 @@ class GenesDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in []:
+            for key in ['min_cov_for_detection', 'zeros_are_outliers', 'gene_level_coverages_stored']:
                 try:
                     self.meta[key] = int(self.meta[key])
+                except:
+                    pass
+
+            for key in ['outliers_threshold']:
+                try:
+                    self.meta[key] = float(self.meta[key])
                 except:
                     pass
 
@@ -2733,6 +2775,7 @@ class GenesDatabase:
         self.db = db.DB(self.db_path, anvio.__genes__version__, new_database=True)
 
         # creating empty default tables
+        self.db.create_table(t.gene_level_coverage_stats_table_name, t.gene_level_coverage_stats_table_structure, t.gene_level_coverage_stats_table_structure)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
@@ -2751,6 +2794,7 @@ class GenesDatabase:
             self.db.set_meta_value(key, meta_values[key])
 
         self.db.set_meta_value('creation_date', time.time())
+        self.db.set_meta_value('gene_level_coverages_stored', False)
 
         self.disconnect()
 
@@ -3464,10 +3508,15 @@ def get_auxiliary_data_path_for_profile_db(profile_db_path):
     return os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
 
 
-def get_genes_database_path_for_profile_db(profile_db_path, collection_name, bin_name):
+def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name, split_names):
     if not collection_name or not bin_name:
         raise ConfigError("Genes database must be associted with a collection name and a bin name :/")
-    return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
+
+    if not isinstance(split_names, set):
+        raise ConfigError("`get_genes_database_path_for_bin` speaking: split names must be type of set :/")
+
+    h = str(hashlib.sha224(''.join(sorted(list(split_names))).encode('utf-8')).hexdigest()[0:8])
+    return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s-%s.db' % (collection_name, bin_name, h))
 
 
 def get_description_in_db(anvio_db_path, run=run):
