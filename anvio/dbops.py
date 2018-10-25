@@ -2100,6 +2100,7 @@ class ProfileSuperclass(object):
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         init_gene_coverages = A('init_gene_coverages')
+        init_split_coverage_values_per_nt = A('init_split_coverage_values_per_nt')
         outliers_threshold = A('outliers_threshold')
         zeros_are_outliers = A('zeros_are_outliers')
 
@@ -2252,7 +2253,9 @@ class ProfileSuperclass(object):
         self.progress.end()
 
         if init_gene_coverages:
-            self.init_gene_level_coverage_stats_dicts(outliers_threshold=outliers_threshold, zeros_are_outliers=zeros_are_outliers)
+            self.init_gene_level_coverage_stats_dicts(outliers_threshold=outliers_threshold,
+                                                      zeros_are_outliers=zeros_are_outliers,
+                                                      init_split_coverage_values_per_nt=init_split_coverage_values_per_nt)
 
         if self.auxiliary_profile_data_available:
             self.run.info('Auxiliary Data', 'Found: %s (v. %s)' % (self.auxiliary_data_path, anvio.__auxiliary_data_version__))
@@ -2296,7 +2299,7 @@ class ProfileSuperclass(object):
         self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
-    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100):
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False):
         """This function will populate both `self.split_coverage_values_per_nt_dict` and
            `self.gene_level_coverage_stats_dict`.
 
@@ -2363,26 +2366,42 @@ class ProfileSuperclass(object):
             self.create_blank_genes_database()
 
         if len(self.gene_level_coverage_stats_dict):
+            # FIXME: the design here is a fucking mess and needs a fresh look. we need split coverage per nt values initiated to
+            #        to calculate the gene-level coverage stats. but if we have a genes database, gene-level coverage stats are
+            #        already computed, so we don't need it .. but if we are using MCGC, even if we have gene-level coverage stats
+            #        available, we need split coverages per-nt recalculated... that's why we have a miserable variable now called
+            #        `init_split_coverage_values_per_nt`, when populating this disctionary should somehow be handled intrinsically
+            #        by our otherwise talented superclass. we really sort this out in a more beautiful way, in my opinion. otherwise
+            #        we will get stuck somwhere that will take forever to dig ourselves out.
+            if init_split_coverage_values_per_nt:
+                self.init_split_coverage_values_per_nt_dict(split_names)
+
+            # we have nothing to do here anymore. and can return.
             return
+            callback()
         else:
             self.progress.new('Computing gene-level coverage stats ...')
             self.progress.update('...')
+                self.store_gene_level_coverage_stats_into_genes_db(parameters)
 
             num_splits, counter = len(split_names), 1
             # go through all the split names
             for split_name in split_names:
                 if num_splits > 10 and counter % 10 == 0:
-                    self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
                 self.split_coverage_values_per_nt_dict[split_name] = self.split_coverage_values.get(split_name)
                 self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters))
+        self.progress.update('...')
 
                 if callback and counter % callback_interval == 0:
                     callback()
+            split_names = self.split_names_of_interest
 
                 counter += 1
+                self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
             self.progress.end()
+            self.split_coverage_values_per_nt_dict[split_name] = self.split_coverage_values.get(split_name)
 
             if callback:
                 callback()
@@ -2390,6 +2409,7 @@ class ProfileSuperclass(object):
                 if self.genes_db_path:
                     # we computer all the stuff, and we can as well store them into the genes db.
                     self.store_gene_level_coverage_stats_into_genes_db(parameters)
+        self.progress.end()
 
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
