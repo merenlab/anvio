@@ -49,6 +49,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.progress = progress
 
         self.group_names = []
+        self.fasta_information = {}
 
         # initialize the base class
         WorkflowSuperClass.__init__(self)
