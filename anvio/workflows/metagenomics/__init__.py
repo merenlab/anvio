@@ -44,6 +44,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.run_metaspades = None
         self.use_scaffold_from_metaspades = None
         self.remove_short_reads_based_on_references = None
+        self.references_for_removal_txt = None
+        self.references_for_removal = {}
         self.references_mode = None
         self.fasta_txt_file = None
         self.samples_txt_file = None
@@ -60,7 +62,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped',\
                      'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy', 'metaspades',\
-                     'remove_short_reads_based_on_references'])
+                     'remove_short_reads_based_on_references', 'bowtie_for_removal_references', \
+                     'bowtie_build_for_removal_references', 'samtools_view_for_removal_references'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
                                     "kraken_txt"])
@@ -103,6 +106,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['krakenhll'] = ["additional_params", "run", "--db", "--gzip-compressed"]
         rule_acceptable_params_dict['krakenhll_mpa_report'] = ["additional_params"]
         rule_acceptable_params_dict['import_kraken_hll_taxonomy'] = ["--min-abundance"]
+        rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["run", "dont_remove_just_map", "references_for_removal_txt", "delimiter-for-iu-remove-ids-from-fastq"]
+        rule_acceptable_params_dict['bowtie_for_removal_references'] = rule_acceptable_params_dict['bowtie'].copy()
+        rule_acceptable_params_dict['samtools_view_for_removal_references'] = rule_acceptable_params_dict['samtools_view'].copy()
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -132,7 +138,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True},
-                                    "krakenhll": {"threads": 12, "--gzip-compressed": True, "additional_params": "--preload"}})
+                                    "bowtie_build_for_removal_references": {"threads": 2},
+                                    "bowtie_for_removal_references": {"additional_params": "--no-unal", "threads": 5},
+                                    "samtools_view_for_removal_references": {"additional_params": "-F 4", "threads": 4},
+                                    "krakenhll": {"threads": 12, "--gzip-compressed": True, "additional_params": "--preload"},
+                                    "remove_short_reads_based_on_references": {"delimiter-for-iu-remove-ids-from-fastq": " "}})
 
 
     def init(self):
@@ -151,6 +161,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.references_mode = self.get_param_value_from_config('references_mode', repress_default=True)
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
+
+        self.load_references_for_removal()
 
         self.sanity_check()
 
@@ -304,6 +316,37 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             if not self.get_param_value_from_config(['krakenhll', '--db']):
                 raise ConfigError('In order to run krakenhll, you must provide a path to \
                                    a database using the --db parameter in the config file.')
+
+
+    def load_references_for_removal(self):
+        """Load and perform some sanity checks on the references for removal"""
+        self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references', 'references_for_removal_txt'], repress_default=True)
+        self.references_for_removal = u.get_TAB_delimited_file_as_dictionary(self.references_for_removal_txt)
+
+        for sample in self.references_for_removal.keys():
+            try:
+                u.check_sample_id(sample)
+            except ConfigError as e:
+                raise ConfigError("While processing the references for removal txt file ('%s'), anvi'o ran into the following error: \
+                                   %s" % (self.samples_txt_file, e))
+
+        for ref_dict in self.references_for_removal.values():
+            if 'path' not in ref_dict:
+                raise ConfigError('Yor references for removal txt file is not formatted properly. It must have only two columns \
+                                   with the headers "reference" and "path".')
+            filesnpaths.is_file_fasta_formatted(ref_dict['path'])
+
+        if self.references_mode:
+            # Make sure that the user didn't give the same name to references and references_for_removal
+            ref_name_in_both = [r for r in self.references_for_removal if r in self.fasta_information]
+            if ref_name_in_both:
+                raise ConfigError('You must have unique names for your fasta files in your fasta txt file \
+                                   and your references for removal txt file. These are the names that appear \
+                                   in both: %s' % ', '.join(ref_name_in_both))
+        if self.references_for_removal_txt:
+            dont_remove = self.get_param_value_from_config(['remove_short_reads_based_on_references', 'dont_remove_just_map'])
+            if not dont_remove_just_map:
+                self.remove_short_reads_based_on_references = True
 
 
     def get_assembly_software_list(self):
