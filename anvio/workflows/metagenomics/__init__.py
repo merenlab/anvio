@@ -318,11 +318,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def load_references_for_removal(self):
         """Load and perform some sanity checks on the references for removal"""
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references', 'references_for_removal_txt'], repress_default=True)
-        try:
+        if self.references_for_removal_txt:
             self.references_for_removal = u.get_TAB_delimited_file_as_dictionary(self.references_for_removal_txt)
-        except FilesNPathsError:
-            pass
-
 
         for sample in self.references_for_removal.keys():
             try:
