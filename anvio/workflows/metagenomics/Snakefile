@@ -168,7 +168,7 @@ def get_raw_fastq(sample):
     return {'r1': r1, 'r2': r2}
 
 
-def get_fastq(sample):
+def get_fastq(sample, zipped=run_gzip_fastqs, post_reference_based_short_read_removal=M.remove_short_reads_based_on_references):
     ''' return the pair of compressed fastq files for a sample.
 
         There are two types of sources for the fastq:
@@ -179,12 +179,12 @@ def get_fastq(sample):
         config file.
     '''
     fastq_label = "-QUALITY_PASSED"
-    if M.remove_short_reads_based_on_references:
+    if post_reference_based_short_read_removal:
         fastq_label = "-FILTERED"
 
-    if M.remove_short_reads_based_on_references or run_qc:
+    if post_reference_based_short_read_removal or run_qc:
         # by default, use the output of the reference based short read removal
-        if run_gzip_fastqs:
+        if zipped:
             r1 = os.path.join(dirs_dict["QC_DIR"], sample + fastq_label + "_R1.fastq.gz")
             r2 = os.path.join(dirs_dict["QC_DIR"], sample + fastq_label + "_R2.fastq.gz")
         else:
@@ -194,7 +194,7 @@ def get_fastq(sample):
     else:
         # if no QC and no reference based short read removal is requested, use raw input
         d = get_raw_fastq(sample)
-        if len(d['r1']) > 1 or len(d['r2']) >1:
+        if len(d['r1']) > 1 or len(d['r2']) > 1:
             raise('You are skipping QC, but some of your samples (for example %s) are composed of more than 1 pair of fastq files \
                    this is not allowed. Please first merge all the fastq files corresponding to a single sample (or just use QC, and the \
                    merging will be done for you).' % sample)
@@ -255,14 +255,18 @@ rule bowtie_build_for_removal_references:
     shell: "bowtie2-build {input} {params.prefix} >> {log} 2>&1"
 
 
+def input_for_bowtie_build_for_removal_references(wildcards):
+    d = {'build_output': dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs.1.bt2".format(group=wildcards.group)}
+    # add the fastq files paths to the dictionary:
+    d.update(get_fastq(wildcards.sample, post_reference_based_short_read_removal=False))
+    return d
+
+
 rule bowtie_for_removal_references:
     """ Run mapping with bowtie2"""
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie_for_removal_references.log"
-    input:
-        build_output = os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{group}-contigs.1.bt2"),
-        r1 = qc_output_r1,
-        r2 = qc_output_r2
+    input: expand(input_for_bowtie_build_for_removal_references)
     output:
         # setting the output as temp, since we only want to keep the bam file.
         sam = temp(dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.sam")
@@ -291,15 +295,52 @@ rule samtools_view_for_removal_references:
     shell: "samtools view -bS {input} -o {output} {params.additional_params} >> {log} 2>&1"
 
 
+def need_to_uncompress_fastqs(r1, r2):
+    # Checking if any of the input files are compressed
+    # this should only happen if QC is not performed in this snakemake session
+    # because if QC is performed in this session then the output of iu-filter-quality-minoche
+    # is not compressed and snakemake will schedule fq2fa rule before gzip rule
+    files_that_end_with_gz = [f for f in [r1, r2] if f.endswith('.gz')]
+    if len(files_that_end_with_gz) == 1:
+        raise ConfigError("Something seems very bad: one of the pair fastq files\
+                           is compressed and the other one is not. This is the \
+                           compressed one: %s" % files_that_end_with_gz[0])
+    elif len(files_that_end_with_gz) == 2:
+        run.warning("The following fastq files are compressed and will now \
+                     be uncompressed using gunzip: %s." % files_that_end_with_gz)
+        return True
+
+
+def uncompress_fastqs_if_needed(r1, r2):
+    if need_to_uncompress_fastqs(r1, r2):
+        r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
+        r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
+        shell("gunzip < %s > %s 2> %s" % (r1, r1_unzipped, log))
+        shell("gunzip < %s > %s 2> %s" % (r2, r2_unzipped, log))
+        r1 = r1_unzipped
+        r2 = r2_unzipped
+    return r1, r2
+
+
+def input_for_remove_short_reads_based_on_references(wildcards):
+    d = {}
+    d['bam'] = expand(os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{sample}-RAW.bam"), group=list(M.references_for_removal.keys()), sample='{sample}')
+    d.update(get_fastq(wildcards.sample, post_reference_based_short_read_removal=False))
+
+
+gzip_suffix = '.gz' if gzip_fastqs else ''
 rule remove_short_reads_based_on_references:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{sample}-remove_short_reads_based_on_references.log")
-    input: expand(os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{sample}-RAW.bam"), group=list(M.references_for_removal.keys()), sample='{sample}')
+    input: expand(input_for_remove_short_reads_based_on_references)
     output:
-        ids_to_remove = os.path.join(dirs_dict["QC_DIR"], '{sample}-ids-to-remove'),
-        keep = ,
-        remove = 
-    params: "nothing"
+        ids_to_remove = os.path.join(dirs_dict["QC_DIR"], '{sample}-ids-to-removed'),
+        keep1 = os.path.join(dirs_dict["QC_DIR"], "{sample}-FILTERED_R1.fastq" + gzip_suffix) if not M.use_references_for_estimation_but_skip_removal else os.path.join(dirs_dict["QC_DIR"], '{sample}-ids-to-removed'),
+        remove1 = temp(os.path.join(dirs_dict["QC_DIR"], "{sample}.R1.fastq.removed")) if not M.use_references_for_estimation_but_skip_removal else os.path.join(dirs_dict["QC_DIR"], '{sample}-ids-to-removed'),
+        keep2 = os.path.join(dirs_dict["QC_DIR"], "{sample}-FILTERED_R2.fastq" + gzip_suffix) if not M.use_references_for_estimation_but_skip_removal else os.path.join(dirs_dict["QC_DIR"], '{sample}-ids-to-removed'),
+        remove2 = temp(os.path.join(dirs_dict["QC_DIR"], "{sample}.R2.fastq.removed")) if not M.use_references_for_estimation_but_skip_removal else os.path.join(dirs_dict["QC_DIR"], '{sample}-ids-to-removed'),
+    params:
+        delimiter = M.get_rule_param('remove_short_reads_based_on_references', 'delimiter-for-iu-remove-ids-from-fastq')
     threads: M.T('remove_short_reads_based_on_references')
     resources: nodes = M.T('remove_short_reads_based_on_references')
     run:
@@ -315,15 +356,19 @@ rule remove_short_reads_based_on_references:
             ids_to_remove = set(open(output.ids_to_remove).read().splitlines())
             shell('echo -e "%s" > output.ids_to_remove' %s '\n'.join(ids_to_remove))
         if ids_to_remove and M.remove_short_reads_based_on_references:
-            # find out if we need to uncompress things
+            r1, r2 = uncompress_fastqs_if_needed(input.r1, input.r2)
             # remove ids
-            iu-remove-ids-from-fastq 
-        else:
-            # don't remove ids, but make sure that the
-            # expexted output files are created
-            shell('touch {output.keep} {output.remove}')
-
-        # generate relevant information for use in the qc_report
+            d = {"1": r1, "2": r2}
+            output_prefix = dirs_dict["QC_DIR"]
+            for i in d:
+                shell('iu-remove-ids-from-fastq -i %s -l {output.ids_to_remove} -d {params.delimiter}' % d[i])
+                fastq_remove = os.path.join(dirs_dict["QC_DIR"], "{sample}.R" + i + ".fastq.removed")
+                shell('mv %s.removed %s' % (d[i], fastq_remove))
+                fastq_keep = os.path.join(dirs_dict["QC_DIR"], "{sample}-FILTERED_R" + i + ".fastq" + gzip_suffix)
+                if gzip_fastqs:
+                    shell("gzip < %s.survived > %s" % (d[i], fastq_keep))
+                else:
+                    shell("mv %s.survived %s" % (d[i], fastq_keep)))
 
 
 rule gen_qc_report:
@@ -378,23 +423,6 @@ rule gen_qc_report:
         u.store_dict_as_TAB_delimited_file(report_dict, output[0], headers= ["sample"] + report_column_headers)
 
 
-def need_to_uncompress_fastqs(r1, r2):
-    # Checking if any of the input files are compressed
-    # this should only happen if QC is not performed in this snakemake session
-    # because if QC is performed in this session then the output of iu-filter-quality-minoche
-    # is not compressed and snakemake will schedule fq2fa rule before gzip rule
-    files_that_end_with_gz = [f for f in [r1, r2] if f.endswith('.gz')]
-    if len(files_that_end_with_gz) == 1:
-        raise ConfigError("Something seems very bad: one of the pair fastq files\
-                           is compressed and the other one is not. This is the \
-                           compressed one: %s" % files_that_end_with_gz[0])
-    elif len(files_that_end_with_gz) == 2:
-        run.warning("The following fastq files are compressed and will now \
-                     be uncompressed using gunzip: %s." % files_that_end_with_gz)
-        return True
-    return False
-
-
 def fastq_input_for_assembly(wildcards):
     ''' Creating a dictionary containing the path to input fastq file.
         The reason we can't use get_fastq is because we need to get
@@ -424,14 +452,7 @@ rule merge_fastas_for_co_assembly:
         if len(input.r1) > 1:
             concatenate = True
         for r1, r2 in zip(input.r1, input.r2):
-            if need_to_uncompress_fastqs(r1, r2):
-                # if ends with ".gz" then unzip fastq
-                r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
-                r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
-                shell("gunzip < %s > %s 2> %s" % (r1, r1_unzipped, log))
-                shell("gunzip < %s > %s 2> %s" % (r2, r2_unzipped, log))
-                r1 = r1_unzipped
-                r2 = r2_unzipped
+            r1, r2 = uncompress_fastqs_if_needed(r1, r2)
 
             # run fq2fa
             fq2fa_output = os.path.join(dirs_dict["QC_DIR"], "R1_R2-merged.temp.fa")
@@ -461,14 +482,7 @@ rule merge_fastqs_for_co_assembly:
     resources: nodes = M.T('merge_fastqs_for_co_assembly')
     run:
         for r1, r2 in zip(input.r1, input.r2):
-            if need_to_uncompress_fastqs(r1, r2):
-                # if ends with ".gz" then unzip fastq
-                r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
-                r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
-                shell("gunzip < %s > %s 2>%s" % (r1, r1_unzipped, log))
-                shell("gunzip < %s > %s 2>%s" % (r2, r2_unzipped, log))
-                r1 = r1_unzipped
-                r2 = r2_unzipped
+            r1, r2 = uncompress_fastqs_if_needed(r1, r2)
 
             # concatenate
             shell("cat %s >> %s 2>%s" % (r1, output.r1, log))
