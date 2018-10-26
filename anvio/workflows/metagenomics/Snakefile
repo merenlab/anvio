@@ -309,6 +309,7 @@ def need_to_uncompress_fastqs(r1, r2):
         run.warning("The following fastq files are compressed and will now \
                      be uncompressed using gunzip: %s." % files_that_end_with_gz)
         return True
+    return False
 
 
 def uncompress_fastqs_if_needed(r1, r2):
@@ -326,6 +327,7 @@ def input_for_remove_short_reads_based_on_references(wildcards):
     d = {}
     d['bam'] = expand(os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{sample}-RAW.bam"), group=list(M.references_for_removal.keys()), sample='{sample}')
     d.update(get_fastq(wildcards.sample, post_reference_based_short_read_removal=False))
+    return d
 
 
 gzip_suffix = '.gz' if gzip_fastqs else ''
