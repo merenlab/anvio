@@ -123,16 +123,20 @@ class Upgrader(object):
 
     def check_dist_files(self):
         for script_type in ['bin', 'sandbox']:
-            for file_name in glob.glob(os.path.join(self.current_version_dir, script_type, 'anvi-*')):
+            for file_path in glob.glob(os.path.join(self.current_version_dir, script_type, 'anvi-*')):
+                file_name = os.path.basename(file_path)
+
                 if not os.path.exists(os.path.join(self.dist['%s_path' % script_type], file_name)):
-                    raise("Anvi'o can not find bin script")
+                    raise Exception("Anvi'o can not find bin script")
+
 
         for path_name, sub_directories, file_list in os.walk(os.path.join(self.current_version_dir, 'anvio')):
             relative_path = path_name[len(os.path.join(self.current_version_dir, 'anvio')) + 1:]
 
-            for file_name in file_list + sub_directories:
+            for file_path in file_list + sub_directories:
+                file_name = os.path.basename(file_path)
                 if not os.path.exists(os.path.join(self.dist['module_path'], relative_path, file_name)):
-                    raise("Anvi'o can not find bin script")
+                    raise Exception("Anvi'o can not find bin script")
 
 
 if __name__ == '__main__':
