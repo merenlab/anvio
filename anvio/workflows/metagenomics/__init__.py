@@ -126,22 +126,19 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "TAXONOMY_DIR": "07_TAXONOMY"})
 
         self.default_config.update({'samples_txt': "samples.txt",
-                                    'metaspades': {"additional_params": "--only-assembler", "threads": 11},
-                                    'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 11},
-                                    'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 11},
-                                    'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True, "threads": 2},
+                                    'metaspades': {"additional_params": "--only-assembler", "threads": 7},
+                                    'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 7},
+                                    'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 7},
+                                    'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True},
                                     "gzip_fastqs": {"run": True},
-                                    "bowtie_build": {"threads": 10},
-                                    "bowtie": {"additional_params": "--no-unal", "threads": 10},
-                                    "samtools_view": {"additional_params": "-F 4", "threads": 4},
-                                    "anvi_init_bam": {"threads": 4},
-                                    "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
+                                    "bowtie": {"additional_params": "--no-unal", "threads": 3},
+                                    "samtools_view": {"additional_params": "-F 4"},
+                                    "anvi_profile": {"threads": 3"--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True},
-                                    "bowtie_build_for_removal_references": {"threads": 2},
-                                    "bowtie_for_removal_references": {"additional_params": "--no-unal", "threads": 5},
-                                    "samtools_view_for_removal_references": {"additional_params": "-F 4", "threads": 4},
-                                    "krakenhll": {"threads": 12, "--gzip-compressed": True, "additional_params": "--preload"},
+                                    "bowtie_for_removal_references": {"additional_params": "--no-unal", "threads": 3},
+                                    "samtools_view_for_removal_references": {"additional_params": "-F 4"},
+                                    "krakenhll": {"threads": 3, "--gzip-compressed": True, "additional_params": "--preload"},
                                     "remove_short_reads_based_on_references": {"delimiter-for-iu-remove-ids-from-fastq": " "}})
 
 

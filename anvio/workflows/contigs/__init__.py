@@ -66,9 +66,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                "CONTIGS_DIR": "02_CONTIGS"})
 
         self.default_config.update({"fasta_txt": "fasta.txt",
-                                    "anvi_gen_contigs_database": {"--project-name": "{group}", "threads": 5},
-                                    "centrifuge": {"threads": 5},
-                                    "anvi_run_hmms": {"run": True, "threads": 20},
+                                    "anvi_gen_contigs_database": {"--project-name": "{group}"},
+                                    "centrifuge": {"threads": 2},
+                                    "anvi_run_hmms": {"run": True, "threads": 5},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True},
                                     "emapper": {"--database": "bact", "--usemem": True, "--override": True},

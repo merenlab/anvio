@@ -47,7 +47,7 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "PAN_DIR": "03_PAN"})
 
         self.default_config.update({"fasta_txt": "fasta.txt",
-                                    "anvi_pan_genome": {"threads": 20}})
+                                    "anvi_pan_genome": {"threads": 7}})
 
         pan_params = ["--project-name", "--genome-names", "--skip-alignments",\
                      "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
