@@ -133,7 +133,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "gzip_fastqs": {"run": True},
                                     "bowtie": {"additional_params": "--no-unal", "threads": 3},
                                     "samtools_view": {"additional_params": "-F 4"},
-                                    "anvi_profile": {"threads": 3"--sample-name": "{sample}", "--overwrite-output-destinations": True},
+                                    "anvi_profile": {"threads": 3, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True},
                                     "bowtie_for_removal_references": {"additional_params": "--no-unal", "threads": 3},
