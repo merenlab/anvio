@@ -11,7 +11,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio import utils as u
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
 
@@ -318,7 +318,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def load_references_for_removal(self):
         """Load and perform some sanity checks on the references for removal"""
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references', 'references_for_removal_txt'], repress_default=True)
-        self.references_for_removal = u.get_TAB_delimited_file_as_dictionary(self.references_for_removal_txt)
+        try:
+            self.references_for_removal = u.get_TAB_delimited_file_as_dictionary(self.references_for_removal_txt)
+        except FilesNPathsError:
+            pass
+
 
         for sample in self.references_for_removal.keys():
             try:
