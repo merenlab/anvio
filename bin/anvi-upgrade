@@ -121,22 +121,42 @@ class Upgrader(object):
             zip_ref.extractall(target_zip_path[:-4])
 
 
+    def check_dist_file_content(self, dist_file_path, original_file_path):
+        file_name = os.path.basename(dist_file_path)
+
+        if not os.path.exists(dist_file_path):
+            raise Exception("Anvi'o can not find bin script '%s'" % file_name)
+
+        with open(dist_file_path, 'r') as file1:
+            with open(original_file_path, 'r') as file2:
+                lines1 = [line.strip() for line in file1 if not line.startswith('#')]
+                lines2 = [line.strip() for line in file2 if not line.startswith('#')]
+
+                print(len(lines1), len(lines2))
+                if not len(lines1) == len(lines2):
+                    raise Exception('Number of lines not match in "%s"' % file_name)
+
+                if not lines1[1:] == lines2[1:]:
+                    raise Exception('File content does not match in "%s"' % file_name)
+
+
     def check_dist_files(self):
         for script_type in ['bin', 'sandbox']:
             for file_path in glob.glob(os.path.join(self.current_version_dir, script_type, 'anvi-*')):
                 file_name = os.path.basename(file_path)
+                dist_file_path = os.path.join(self.dist['%s_path' % script_type], file_name)
 
-                if not os.path.exists(os.path.join(self.dist['%s_path' % script_type], file_name)):
-                    raise Exception("Anvi'o can not find bin script")
-
+                self.check_dist_file_content(dist_file_path, file_path)
 
         for path_name, sub_directories, file_list in os.walk(os.path.join(self.current_version_dir, 'anvio')):
             relative_path = path_name[len(os.path.join(self.current_version_dir, 'anvio')) + 1:]
 
             for file_path in file_list + sub_directories:
                 file_name = os.path.basename(file_path)
-                if not os.path.exists(os.path.join(self.dist['module_path'], relative_path, file_name)):
-                    raise Exception("Anvi'o can not find bin script")
+                dist_file_path = os.path.join(self.dist['module_path'], relative_path, file_name)
+
+                self.check_dist_file_content(dist_file_path, file_path)
+
 
 
 if __name__ == '__main__':
