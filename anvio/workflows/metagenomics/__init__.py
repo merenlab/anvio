@@ -106,7 +106,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['krakenhll'] = ["additional_params", "run", "--db", "--gzip-compressed"]
         rule_acceptable_params_dict['krakenhll_mpa_report'] = ["additional_params"]
         rule_acceptable_params_dict['import_kraken_hll_taxonomy'] = ["--min-abundance"]
-        rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map", "references_for_removal_txt", "delimiter-for-iu-remove-ids-from-fastq"]
+        rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map", \
+                                                                                 "references_for_removal_txt", \
+                                                                                 "delimiter-for-iu-remove-ids-from-fastq"]
         rule_acceptable_params_dict['bowtie_for_removal_references'] = rule_acceptable_params_dict['bowtie'].copy()
         rule_acceptable_params_dict['samtools_view_for_removal_references'] = rule_acceptable_params_dict['samtools_view'].copy()
 
