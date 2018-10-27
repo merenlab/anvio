@@ -246,17 +246,20 @@ rule bowtie_build_for_removal_references:
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-bowtie_build_for_removal_references.log")
     input: lambda wildcards: M.references_for_removal[wildcards.group]['path']
     output:
-        o1 = expand(os.path.join(dirs_dict["MAPPING_DIR"], "{group}, {group}" + '.{i}.bt2'), i=[1,2,3,4], group="{group}"),
-        o2 = expand(dirs_dict["MAPPING_DIR"] + "/{group}/{group}" + '.rev.{i}.bt2', i=[1,2], group="{group}")
+        o1 = expand(os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], \
+                                 "{group}", "{group}" + '.{i}.bt2'), i=[1,2,3,4], group="{group}"),
+        o2 = expand(os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], \
+                                 "{group}", "{group}" + '.rev.{i}.bt2'), i=[1,2], group="{group}")
     params:
-        prefix = dirs_dict["MAPPING_DIR"] + "/{group}/{group}"
+        prefix = os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "{group}", "{group}")
     threads: M.T('bowtie_build_for_removal_references')
     resources: nodes = M.T('bowtie_build_for_removal_references')
     shell: "bowtie2-build {input} {params.prefix} >> {log} 2>&1"
 
 
 def input_for_bowtie_for_removal_references(wildcards):
-    d = {'build_output': dirs_dict["MAPPING_DIR"] + "/{group}/{group}.1.bt2".format(group=wildcards.group)}
+    d = {'build_output': os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], \
+                                      "{group}", "{group}.1.bt2").format(group=wildcards.group)}
     # add the fastq files paths to the dictionary:
     d.update(get_fastq(wildcards.sample, post_reference_based_short_read_removal=False))
     return d
@@ -269,9 +272,8 @@ rule bowtie_for_removal_references:
     input: unpack(input_for_bowtie_for_removal_references)
     output:
         # setting the output as temp, since we only want to keep the bam file.
-        sam = temp(dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.sam")
+        sam = temp(os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "{group}", "{sample}.sam"))
     params:
-        dir = dirs_dict["MAPPING_DIR"] + "/{sample}",
         bowtie_build_prefix = rules.bowtie_build_for_removal_references.params.prefix,
         additional_params = M.get_param_value_from_config(["bowtie_for_removal_references", "additional_params"])
     threads: M.T('bowtie_for_removal_references')
@@ -289,7 +291,7 @@ rule samtools_view_for_removal_references:
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-samtools_view_for_removal_references.log"
     input: rules.bowtie_for_removal_references.output.sam
     params: additional_params = M.get_param_value_from_config(["samtools_view_for_removal_references", "additional_params"])
-    output: dirs_dict["MAPPING_DIR"] + "/{group}/{sample}-RAW.bam"
+    output: os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "{group}", "{sample}.bam")
     threads: M.T('samtools_view_for_removal_references')
     resources: nodes = M.T('samtools_view_for_removal_references'),
     shell: "samtools view -bS {input} -o {output} {params.additional_params} >> {log} 2>&1"
@@ -325,7 +327,8 @@ def uncompress_fastqs_if_needed(r1, r2, log):
 
 def input_for_remove_short_reads_based_on_references(wildcards):
     d = {}
-    d['bam'] = expand(os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{sample}-RAW.bam"), group=list(M.references_for_removal.keys()), sample='{sample}')
+    d['bam'] = expand(os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "{group}", "{sample}.bam"), \
+                      group=list(M.references_for_removal.keys()), sample=wildcards.sample)
     d.update(get_fastq(wildcards.sample, post_reference_based_short_read_removal=False))
     return d
 
@@ -337,6 +340,9 @@ rule remove_short_reads_based_on_references:
     input: unpack(input_for_remove_short_reads_based_on_references)
     output:
         ids_to_remove = os.path.join(dirs_dict["QC_DIR"], '{sample}-ids-to-removed'),
+        # For each one of the four following outputs we have an alternative
+        # file name for the case that the user chose dont_remove_just_map
+        # These mock files end with '-mock-output'
         keep1 = os.path.join(dirs_dict["QC_DIR"], "{sample}-FILTERED_R1.fastq" + gzip_suffix) \
                     if M.remove_short_reads_based_on_references else temp(os.path.join(dirs_dict["QC_DIR"], '{sample}-mock-output1')),
         remove1 = temp(os.path.join(dirs_dict["QC_DIR"], "{sample}.R1.fastq.removed")) \
@@ -346,7 +352,7 @@ rule remove_short_reads_based_on_references:
         remove2 = temp(os.path.join(dirs_dict["QC_DIR"], "{sample}.R2.fastq.removed")) \
                     if M.remove_short_reads_based_on_references else temp(os.path.join(dirs_dict["QC_DIR"], '{sample}-mock-output4')),
     params:
-        delimiter = M.get_rule_param('remove_short_reads_based_on_references', 'delimiter-for-iu-remove-ids-from-fastq')
+        delimiter = M.get_param_value_from_config(['remove_short_reads_based_on_references', 'delimiter-for-iu-remove-ids-from-fastq'])
     threads: M.T('remove_short_reads_based_on_references')
     resources: nodes = M.T('remove_short_reads_based_on_references')
     run:
@@ -356,26 +362,31 @@ rule remove_short_reads_based_on_references:
             # but doesnt want to remove any reads
             ids_to_remove = []
         else:
-            for ref in references:
+            for bam in input.bam:
                 # merge the ids from matching any reference
-                shell('samtools view BAM_FILE | cut -f 1 >> %s 2>{log}' % output.ids_to_remove)
+                shell('samtools view %s | cut -f 1 >> %s 2>{log}' % (bam, output.ids_to_remove))
             ids_to_remove = set(open(output.ids_to_remove).read().splitlines())
-            shell('echo -e "%s" > {output.ids_to_remove}' % '\n'.join(ids_to_remove))
+            with open(output.ids_to_remove, 'w') as f:
+                for item in ids_to_remove:
+                    f.write("%s\n" % item)
         if M.remove_short_reads_based_on_references:
             if ids_to_remove:
                 r1, r2 = uncompress_fastqs_if_needed(input.r1, input.r2, log)
                 # remove ids
-                d = {"1": r1, "2": r2}
+                intermediate_fastq = {"1": r1, "2": r2}
+                output_fastq_files = {'remove': {'1': output.remove1, '2': output.remove2},\
+                                      'keep': {'1': output.keep1, '2': output.keep2}}
                 output_prefix = dirs_dict["QC_DIR"]
-                for i in d:
-                    shell('iu-remove-ids-from-fastq -i %s -l {output.ids_to_remove} -d {params.delimiter}' % d[i])
-                    fastq_remove = os.path.join(dirs_dict["QC_DIR"], "{sample}.R" + i + ".fastq.removed")
-                    shell('mv %s.removed %s' % (d[i], fastq_remove))
-                    fastq_keep = os.path.join(dirs_dict["QC_DIR"], "{sample}-FILTERED_R" + i + ".fastq" + gzip_suffix)
+                for i in intermediate_fastq:
+                    # first make sure that the expected output files don't already exist
+                    # if they exist, then we delete them, since they are probably left from previous failed run
+                    shell('rm -rf {fq}.removed {fq}.survived'.format(fq=intermediate_fastq[i]))
+                    shell('iu-remove-ids-from-fastq -i %s -l {output.ids_to_remove} -d "{params.delimiter}"' % intermediate_fastq[i])
+                    shell('mv %s.removed %s' % (intermediate_fastq[i], output_fastq_files['remove'][i]))
                     if run_gzip_fastqs:
-                        shell("gzip < %s.survived > %s" % (d[i], fastq_keep))
+                        shell("gzip < %s.survived > %s" % (intermediate_fastq[i], output_fastq_files['keep'][i]))
                     else:
-                        shell("mv %s.survived %s" % (d[i], fastq_keep))
+                        shell("mv %s.survived %s" % (intermediate_fastq[i], output_fastq_files['keep'][i]))
             else:
                 # No reads from this sample were mapped to references so we will just:
                 # change the name of the input fastq to the expected output fastq
@@ -726,7 +737,6 @@ rule bowtie:
     output:
         sam = temp(dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.sam")
     params:
-        dir = dirs_dict["MAPPING_DIR"] + "/{sample}",
         bowtie_build_prefix = rules.bowtie_build.params.prefix,
         additional_params = M.get_param_value_from_config(["bowtie", "additional_params"])
     threads: M.T('bowtie')
