@@ -123,7 +123,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "MAPPING_DIR": "04_MAPPING",
                                "PROFILE_DIR": "05_ANVIO_PROFILE",
                                "MERGE_DIR": "06_MERGED",
-                               "TAXONOMY_DIR": "07_TAXONOMY"})
+                               "TAXONOMY_DIR": "07_TAXONOMY",
+                               "SHORT_READ_FILTER_DIR": "01_SHORT_READ_FILTER"})
 
         self.default_config.update({'samples_txt': "samples.txt",
                                     'metaspades': {"additional_params": "--only-assembler", "threads": 7},
@@ -159,6 +160,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.references_mode = self.get_param_value_from_config('references_mode', repress_default=True)
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
 
+        self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references', 'references_for_removal_txt'], repress_default=True)
         if self.references_for_removal_txt:
             self.load_references_for_removal()
 
@@ -318,7 +320,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
     def load_references_for_removal(self):
         """Load and perform some sanity checks on the references for removal"""
-        self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references', 'references_for_removal_txt'], repress_default=True)
         self.references_for_removal = u.get_TAB_delimited_file_as_dictionary(self.references_for_removal_txt)
 
         for sample in self.references_for_removal.keys():
@@ -343,7 +344,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                    in both: %s' % ', '.join(ref_name_in_both))
         if self.references_for_removal_txt:
             dont_remove = self.get_param_value_from_config(['remove_short_reads_based_on_references', 'dont_remove_just_map'])
-            if not dont_remove_just_map:
+            if not dont_remove:
                 self.remove_short_reads_based_on_references = True
 
 
