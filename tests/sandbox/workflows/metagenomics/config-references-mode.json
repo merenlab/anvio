@@ -1,5 +1,9 @@
 {
     "fasta_txt": "fasta.txt",
+    "remove_short_reads_based_on_references": {
+        "delimiter-for-iu-remove-ids-from-fastq": " ",
+        "references_for_removal_txt": "mock_ref_for_removal.txt"
+    },
     "references_mode": true,
     "output_dirs": {
         "FASTA_DIR": "02_FASTA_references_mode",
