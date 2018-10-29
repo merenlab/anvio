@@ -167,12 +167,19 @@ def is_file_plain_text(file_path, dont_raise=False):
 
     try:
         open(os.path.abspath(file_path), 'rU').read(512)
-        return True
     except IsADirectoryError:
-        raise FilesNPathsError("There must be a misunderstnding... %s is a directory .. as far as a file\
-                                can be from being a plain text file :(" % file_path)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("There must be a misunderstnding... %s is a directory .. as far as a file\
+                                    can be from being a plain text file :(" % file_path)
     except UnicodeDecodeError:
-        raise FilesNPathsError("The file at '%s' does not seem to be plain a text file :/" % file_path)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("The file at '%s' does not seem to be plain a text file :/" % file_path)
+
+    return True
 
 
 def is_program_exists(program):
