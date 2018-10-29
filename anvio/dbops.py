@@ -2243,8 +2243,7 @@ class ProfileSuperclass(object):
             self.progress.update('Accessing the genes database')
             self.genes_db_path = get_genes_database_path_for_bin(self.profile_db_path,
                                                                  self.collection_name,
-                                                                 self.bin_names[0],
-                                                                 self.split_names_of_interest)
+                                                                 self.bin_names[0])
             if not os.path.exists(self.genes_db_path):
                 self.genes_db_available = False
             else:
@@ -2271,14 +2270,17 @@ class ProfileSuperclass(object):
                                                                                            anvio.__profile__version__))
 
 
-    def create_blank_genes_database(self):
+    def create_blank_genes_database(self, split_names):
         if self.genes_db_available:
             raise ConfigError("You can't create a blank genes database when there is already one :/")
+
+        splits_hash = utils.get_hash_for_list(split_names)
 
         meta_values = {'anvio': __version__,
                        'contigs_db_hash': self.p_meta['contigs_db_hash'],
                        'collection_name': self.collection_name,
-                       'bin_name': self.bin_names[0]}
+                       'bin_name': self.bin_names[0],
+                       'splits_hash': splits_hash}
 
         GenesDatabase(self.genes_db_path).create(meta_values=meta_values)
         self.genes_db_available = True
@@ -2295,7 +2297,7 @@ class ProfileSuperclass(object):
             raise ConfigError("The function `get_gene_level_coverage_stats_dicts_for_a_bin` can only be called from an instance\
                                of the profile super class that is initalized with a collection name and a single bin.")
 
-        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters)
+        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest)
         self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
@@ -2363,7 +2365,7 @@ class ProfileSuperclass(object):
             self.run.warning("You don't seem to have a genes database associated with your profile database.\
                               Genes database is an optional anvi'o database to store gene-level coverage and\
                               stats dicts. Anvi'o will attempt to create one for you.", lc="cyan")
-            self.create_blank_genes_database()
+            self.create_blank_genes_database(split_names)
 
         if len(self.gene_level_coverage_stats_dict):
             # FIXME: the design here is a fucking mess and needs a fresh look. we need split coverage per nt values initiated to
@@ -3541,15 +3543,11 @@ def get_auxiliary_data_path_for_profile_db(profile_db_path):
     return os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
 
 
-def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name, split_names):
+def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
     if not collection_name or not bin_name:
         raise ConfigError("Genes database must be associted with a collection name and a bin name :/")
 
-    if not isinstance(split_names, set):
-        raise ConfigError("`get_genes_database_path_for_bin` speaking: split names must be type of set :/")
-
-    h = str(hashlib.sha224(''.join(sorted(list(split_names))).encode('utf-8')).hexdigest()[0:8])
-    return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s-%s.db' % (collection_name, bin_name, h))
+    return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 
 
 def get_description_in_db(anvio_db_path, run=run):
