@@ -171,8 +171,8 @@ def is_file_plain_text(file_path, dont_raise=False):
         if dont_raise:
             return False
         else:
-            raise FilesNPathsError("There must be a misunderstnding... %s is a directory .. as far as a file\
-                                    can be from being a plain text file :(" % file_path)
+            raise FilesNPathsError("Someone want's to make sure %s is a plain text file, however, it is actually a\
+                                    directory :(" % file_path)
     except UnicodeDecodeError:
         if dont_raise:
             return False

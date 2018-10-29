@@ -1031,7 +1031,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
                         self.views[view]['dict'][str(gene_callers_id)][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
 
-        self.states_table = TablesForStates(self.profile_db_path)
+        # this is a bit tricky. we already populated the collections dict above, but it was to find out
+        # genes caller ids of interest. we are now resetting the collections dict, and populating it
+        # from scratch from the genes database. similarly, in store collection operations in bottleroutes
+        # and elsewhere will target the gene database tables for gene mode.
+        self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.genes_db_path)
+
+        # here we set the states table to the genes database to make sure the information from the interface
+        # goes into the right table
+        self.states_table = TablesForStates(self.genes_db_path)
 
         self.p_meta['default_item_order'] = 'mean_coverage'
         self.default_view = 'mean_coverage'
@@ -1059,9 +1068,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.splits_basic_info = {}
         self.splits_taxonomy_dict = {}
         self.p_meta['description'] = 'None'
-
-        # FIX ME: storing collection and states is not available for gene mode atm.
-        self.args.read_only = True
 
         self.items_additional_data_keys, self.items_additional_data_dict = [], {}
 
