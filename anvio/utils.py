@@ -2421,6 +2421,10 @@ def download_protein_structures(protein_code_list, output_dir):
     return protein_code_list
 
 
+def get_hash_for_list(l):
+    return 'hash' + str(hashlib.sha224(''.join(sorted(list(l))).encode('utf-8')).hexdigest()[0:8])
+
+
 def get_file_md5(file_path):
     hash_md5 = hashlib.md5()
 
