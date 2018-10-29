@@ -4,6 +4,7 @@
 import os
 import glob
 import uuid
+import shutil
 import zipfile
 import requests
 from distutils.spawn import find_executable
@@ -30,6 +31,9 @@ class Upgrader(object):
             raise Exception('There is no new version to upgrade.')
 
         self.working_dir = filesnpaths.get_temp_directory_path()
+        self.download()
+        self.delete_dist_files()
+        self.move_files()
 
 
     def get_releases(self):
@@ -112,55 +116,73 @@ class Upgrader(object):
         utils.download_file(current_url, current_zip_path, progress=self.progress, run=self.run)
         utils.download_file(target_url, target_zip_path, progress=self.progress, run=self.run)
 
+        self.progress.new('Extracting Archives')
+
         with zipfile.ZipFile(current_zip_path, "r") as zip_ref:
             self.current_version_dir = current_zip_path[:-4] + '/' + zip_ref.namelist()[0]
             zip_ref.extractall(current_zip_path[:-4])
+            self.progress.update('v' + self.version)
 
         with zipfile.ZipFile(target_zip_path, "r") as zip_ref:
             self.target_version_dir = target_zip_path[:-4] + '/' + zip_ref.namelist()[0]
             zip_ref.extractall(target_zip_path[:-4])
+            self.progress.update('v' + self.target_version)
+
+        self.progress.end()
 
 
-    def check_dist_file_content(self, dist_file_path, original_file_path):
-        file_name = os.path.basename(dist_file_path)
+    def delete_dist_files(self):
+        dist_files = []
 
-        if not os.path.exists(dist_file_path):
-            raise Exception("Anvi'o can not find bin script '%s'" % file_name)
-
-        with open(dist_file_path, 'r') as file1:
-            with open(original_file_path, 'r') as file2:
-                lines1 = [line.strip() for line in file1 if not line.startswith('#')]
-                lines2 = [line.strip() for line in file2 if not line.startswith('#')]
-
-                print(len(lines1), len(lines2))
-                if not len(lines1) == len(lines2):
-                    raise Exception('Number of lines not match in "%s"' % file_name)
-
-                if not lines1[1:] == lines2[1:]:
-                    raise Exception('File content does not match in "%s"' % file_name)
-
-
-    def check_dist_files(self):
         for script_type in ['bin', 'sandbox']:
             for file_path in glob.glob(os.path.join(self.current_version_dir, script_type, 'anvi-*')):
                 file_name = os.path.basename(file_path)
                 dist_file_path = os.path.join(self.dist['%s_path' % script_type], file_name)
-
-                self.check_dist_file_content(dist_file_path, file_path)
-
+                dist_files.append(dist_file_path)
+                
         for path_name, sub_directories, file_list in os.walk(os.path.join(self.current_version_dir, 'anvio')):
             relative_path = path_name[len(os.path.join(self.current_version_dir, 'anvio')) + 1:]
 
-            for file_path in file_list + sub_directories:
-                file_name = os.path.basename(file_path)
+            for file_name in file_list + sub_directories:
+                file_path = os.path.join(path_name, file_name)
                 dist_file_path = os.path.join(self.dist['module_path'], relative_path, file_name)
+                dist_files.append(dist_file_path)
 
-                self.check_dist_file_content(dist_file_path, file_path)
+        for dist_file_path in dist_files:
+            if not filesnpaths.is_file_exists(dist_file_path, dont_raise=True):
+                raise Exception("File %s does not exists" % dist_file_path)
+
+        for dist_file_path in dist_files:
+            if os.path.isfile(dist_file_path):
+                os.remove(dist_file_path)
+            else:
+                try:
+                    os.rmdir(dist_file_path)
+                except:
+                    # Directory not empty
+                    pass
 
 
+    def move_files(self):
+        for script_type in ['bin', 'sandbox']:
+            for file_path in glob.glob(os.path.join(self.target_version_dir, script_type, 'anvi-*')):
+                file_name = os.path.basename(file_path)
+                dist_file_path = os.path.join(self.dist['%s_path' % script_type], file_name)
+
+                shutil.copy(file_path, dist_file_path)
+        
+        for path_name, sub_directories, file_list in os.walk(os.path.join(self.target_version_dir, 'anvio')):
+            relative_path = path_name[len(os.path.join(self.target_version_dir, 'anvio')) + 1:]
+            absolute_dist_path = os.path.join(self.dist['module_path'], relative_path)
+
+            if not os.path.exists(absolute_dist_path):
+                os.makedirs(absolute_dist_path)
+
+            for file_name in file_list + sub_directories:
+                file_path = os.path.join(path_name, file_name)
+                dist_file_path = os.path.join(absolute_dist_path, file_name)
+
+                shutil.move(file_path, dist_file_path)
 
 if __name__ == '__main__':
     upgrader = Upgrader()
-    upgrader.download()
-    upgrader.check_if_dist_writable()
-    upgrader.check_dist_files()
