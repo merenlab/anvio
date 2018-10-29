@@ -2289,6 +2289,12 @@ def is_pan_db(db_path):
     return True
 
 
+def is_genes_db(db_path):
+    if get_db_type(db_path) != 'genes':
+        raise ConfigError("'%s' is not an anvi'o genes database." % db_path)
+    return True
+
+
 def is_profile_db_merged(profile_db_path):
     is_profile_db(profile_db_path)
 
@@ -2413,6 +2419,10 @@ def download_protein_structures(protein_code_list, output_dir):
 
     progress.end()
     return protein_code_list
+
+
+def get_hash_for_list(l):
+    return 'hash' + str(hashlib.sha224(''.join(sorted(list(l))).encode('utf-8')).hexdigest()[0:8])
 
 
 def get_file_md5(file_path):
