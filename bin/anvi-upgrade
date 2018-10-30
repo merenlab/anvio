@@ -67,6 +67,7 @@ class Upgrader(object):
 
         dist['module_path'] = os.path.dirname(anvio.__file__)
         dist['module_stat'] = os.stat(anvio.__file__)
+        dist['module_dir_stat'] = os.stat(dist['module_path'])
 
         script_file = find_executable('anvi-script-reformat-fasta')
         dist['sandbox_path'] = os.path.dirname(script_file)
@@ -185,6 +186,7 @@ class Upgrader(object):
 
             if not os.path.exists(absolute_dist_path):
                 os.makedirs(absolute_dist_path)
+                self.restore_file_stats(absolute_dist_path, 'module_dir')
 
             for file_name in file_list + sub_directories:
                 file_path = os.path.join(path_name, file_name)
