@@ -85,6 +85,8 @@ class Upgrader(object):
                 with open(target_path, 'w') as f:
                     f.write('test')
 
+                self.restore_file_stats(target_path, target)
+
                 os.remove(target_path)
             except:
                 raise Exception("This script can not write files in anvi'o installation directories, try running with 'sudo'")
@@ -163,6 +165,11 @@ class Upgrader(object):
                     pass
 
 
+    def restore_file_stats(self, target_path, target):
+        os.chmod(target_path, self.dist['%s_stat' % target].st_mode)
+        os.chown(target_path, self.dist['%s_stat' % target].st_uid, self.dist['%s_stat' % target].st_gid)
+
+
     def move_files(self):
         for script_type in ['bin', 'sandbox']:
             for file_path in glob.glob(os.path.join(self.target_version_dir, script_type, 'anvi-*')):
@@ -170,6 +177,7 @@ class Upgrader(object):
                 dist_file_path = os.path.join(self.dist['%s_path' % script_type], file_name)
 
                 shutil.copy(file_path, dist_file_path)
+                self.restore_file_stats(dist_file_path, script_type)
         
         for path_name, sub_directories, file_list in os.walk(os.path.join(self.target_version_dir, 'anvio')):
             relative_path = path_name[len(os.path.join(self.target_version_dir, 'anvio')) + 1:]
@@ -183,6 +191,8 @@ class Upgrader(object):
                 dist_file_path = os.path.join(absolute_dist_path, file_name)
 
                 shutil.move(file_path, dist_file_path)
+                self.restore_file_stats(dist_file_path, 'module')
+
 
 if __name__ == '__main__':
     upgrader = Upgrader()
