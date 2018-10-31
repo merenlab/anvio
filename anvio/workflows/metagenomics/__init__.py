@@ -126,8 +126,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "MAPPING_DIR": "04_MAPPING",
                                "PROFILE_DIR": "05_ANVIO_PROFILE",
                                "MERGE_DIR": "06_MERGED",
-                               "TAXONOMY_DIR": "07_TAXONOMY",
-                               "SHORT_READ_FILTER_DIR": "01_SHORT_READ_FILTER"})
+                               "TAXONOMY_DIR": "07_TAXONOMY"})
 
         self.default_config.update({'samples_txt': "samples.txt",
                                     'metaspades': {"additional_params": "--only-assembler", "threads": 7},

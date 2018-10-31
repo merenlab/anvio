@@ -244,62 +244,6 @@ rule iu_filter_quality_minoche:
         """
 
 
-rule bowtie_build_for_removal_references:
-    version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-bowtie_build_for_removal_references.log")
-    input: lambda wildcards: M.references_for_removal[wildcards.group]['path']
-    output:
-        o1 = expand(os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], \
-                                 "{group}", "{group}" + '.{i}.bt2'), i=[1,2,3,4], group="{group}"),
-        o2 = expand(os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], \
-                                 "{group}", "{group}" + '.rev.{i}.bt2'), i=[1,2], group="{group}")
-    params:
-        prefix = os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "{group}", "{group}")
-    threads: M.T('bowtie_build_for_removal_references')
-    resources: nodes = M.T('bowtie_build_for_removal_references')
-    shell: "bowtie2-build {input} {params.prefix} >> {log} 2>&1"
-
-
-def input_for_bowtie_for_removal_references(wildcards):
-    d = {'build_output': os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], \
-                                      "{group}", "{group}.1.bt2").format(group=wildcards.group)}
-    # add the fastq files paths to the dictionary:
-    d.update(get_fastq(wildcards.sample, post_reference_based_short_read_removal=False))
-    return d
-
-
-rule bowtie_for_removal_references:
-    """ Run mapping with bowtie2"""
-    version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie_for_removal_references.log"
-    input: unpack(input_for_bowtie_for_removal_references)
-    output:
-        # setting the output as temp, since we only want to keep the bam file.
-        sam = temp(os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "{group}", "{sample}.sam"))
-    params:
-        bowtie_build_prefix = rules.bowtie_build_for_removal_references.params.prefix,
-        additional_params = M.get_param_value_from_config(["bowtie_for_removal_references", "additional_params"])
-    threads: M.T('bowtie_for_removal_references')
-    resources: nodes = M.T('bowtie_for_removal_references'),
-    shell:
-        """
-            bowtie2 --threads {threads} -x {params.bowtie_build_prefix} -1 {input.r1} -2 {input.r2} \
-            {params.additional_params} -S {output.sam} >> {log} 2>&1
-        """
-
-
-rule samtools_view_for_removal_references:
-    """ sort sam file with samtools and create a RAW.bam file"""
-    version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-samtools_view_for_removal_references.log"
-    input: rules.bowtie_for_removal_references.output.sam
-    params: additional_params = M.get_param_value_from_config(["samtools_view_for_removal_references", "additional_params"])
-    output: os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "{group}", "{sample}.bam")
-    threads: M.T('samtools_view_for_removal_references')
-    resources: nodes = M.T('samtools_view_for_removal_references'),
-    shell: "samtools view -bS {input} -o {output} {params.additional_params} >> {log} 2>&1"
-
-
 def need_to_uncompress_fastqs(r1, r2):
     # Checking if any of the input files are compressed
     # this should only happen if QC is not performed in this snakemake session
