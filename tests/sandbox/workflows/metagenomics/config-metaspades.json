@@ -6,6 +6,10 @@
         "run": true,
         "use_scaffolds": ""
     },
+    "remove_short_reads_based_on_references": {
+        "delimiter-for-iu-remove-ids-from-fastq": " ",
+        "references_for_removal_txt": "mock_ref_for_removal.txt"
+    },
     "output_dirs": {
         "FASTA_DIR": "02_FASTA_metaspades",
         "CONTIGS_DIR": "03_CONTIGS_metaspades",

@@ -166,6 +166,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
                                                                             'references_for_removal_txt'],\
                                                                            repress_default=True)
+
         if self.references_for_removal_txt:
             self.load_references_for_removal()
 
@@ -209,14 +210,14 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             if self.references_mode:
                 # sanity check to see that groups specified in samples.txt match
                 # the names of fasta.
-                mismatch = set(self.group_names) - set(self.fasta_information.keys())
+                mismatch = set(self.group_names) - set(self.contigs_information.keys())
                 if mismatch:
                     raise ConfigError("Group names specified in the samples.txt \
                                        file must match the names of fasta \
                                        in the fasta.txt file. These are the \
                                        mismatches: %s" % mismatch)
-                groups_in_fasta_information_but_not_in_samples_txt = set(self.fasta_information.keys()) - set(self.group_names)
-                if groups_in_fasta_information_but_not_in_samples_txt:
+                groups_in_contigs_information_but_not_in_samples_txt = set(self.contigs_information.keys()) - set(self.group_names)
+                if groups_in_contigs_information_but_not_in_samples_txt:
                     run.warning('The following group names appear in your fasta_txt\
                                  but do not appear in your samples_txt. Maybe this is\
                                  ok with you, but we thought you should know. This means\
@@ -326,6 +327,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def load_references_for_removal(self):
         """Load and perform some sanity checks on the references for removal"""
         self.references_for_removal = u.get_TAB_delimited_file_as_dictionary(self.references_for_removal_txt)
+        # adding the references_for_removal to the fasta_information dict
+        self.fasta_information.update(self.references_for_removal)
 
         for sample in self.references_for_removal.keys():
             try:
@@ -342,7 +345,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         if self.references_mode:
             # Make sure that the user didn't give the same name to references and references_for_removal
-            ref_name_in_both = [r for r in self.references_for_removal if r in self.fasta_information]
+            ref_name_in_both = [r for r in self.references_for_removal if r in self.contigs_information]
             if ref_name_in_both:
                 raise ConfigError('You must have unique names for your fasta files in your fasta txt file \
                                    and your references for removal txt file. These are the names that appear \
@@ -365,3 +368,25 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             report_dict[sample] = {}
             report_dict[sample]['number_of_filtered_reads'] = len(ids)
         u.store_dict_as_TAB_delimited_file(report_dict, output_file_name, headers=["sample", 'number_of_filtered_reads'])
+
+
+    def get_fasta(self, wildcards):
+        if wildcards.group in self.references_for_removal:
+            # if it's a reference for removal then we just want to use the
+            # raw fasta file, and there is no need to reformat or assemble
+            contigs = super(MetagenomicsWorkflow, self).get_raw_fasta(wildcards)
+        elif self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
+            contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
+        else:
+            contigs = self.get_raw_fasta(wildcards)
+        return contigs
+
+
+    def get_raw_fasta(self, wildcards):
+        if self.references_mode:
+            # in 'reference mode' the input is the reference fasta
+            contigs = super(MetagenomicsWorkflow, self).get_raw_fasta(wildcards)
+        else:
+            # by default the input fasta is the assembly output
+            contigs = self.dirs_dict["FASTA_DIR"] + "/%s/final.contigs.fa" % wildcards.group
+        return contigs

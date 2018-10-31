@@ -138,7 +138,7 @@ rule metagenomics_workflow_target_rule:
     input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=M.group_names),
            contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
            qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=M.group_names),
-           filter_report = os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "short-read-removal-report.txt") \
+           filter_report = os.path.join(dirs_dict["QC_DIR"], "short-read-removal-report.txt") \
                             if M.references_for_removal_txt \
                             else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names)
 
@@ -330,7 +330,7 @@ def uncompress_fastqs_if_needed(r1, r2, log):
 
 def input_for_remove_short_reads_based_on_references(wildcards):
     d = {}
-    d['bam'] = expand(os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "{group}", "{sample}.bam"), \
+    d['bam'] = expand(os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{sample}.bam"), \
                       group=list(M.references_for_removal.keys()), sample=wildcards.sample)
     d.update(get_fastq(wildcards.sample, post_reference_based_short_read_removal=False))
     return d
@@ -342,7 +342,7 @@ rule remove_short_reads_based_on_references:
     log: os.path.join(dirs_dict["LOGS_DIR"], "{sample}-remove_short_reads_based_on_references.log")
     input: unpack(input_for_remove_short_reads_based_on_references)
     output:
-        ids_to_remove = os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], '{sample}-ids-to-remove.txt'),
+        ids_to_remove = os.path.join(dirs_dict["QC_DIR"], '{sample}-ids-to-remove.txt'),
         # For each one of the four following outputs we have an alternative
         # file name for the case that the user chose dont_remove_just_map
         # These mock files end with '-mock-output'
@@ -402,9 +402,9 @@ rule gen_report_for_mapping_to_references_for_removal:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "gen_report_for_mapping_to_references_for_removal.log")
     input:
-        ids_to_remove = expand(os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], '{sample}-ids-to-remove.txt'), sample=M.sample_names),
+        ids_to_remove = expand(os.path.join(dirs_dict["QC_DIR"], '{sample}-ids-to-remove.txt'), sample=M.sample_names),
     output:
-        report_file = os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "short-read-removal-report.txt")
+        report_file = os.path.join(dirs_dict["QC_DIR"], "short-read-removal-report.txt")
     params:
     threads: 1
     resources: nodes=1
@@ -714,13 +714,12 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
             shell("rm -rf {params.temp_dir}")
 
 
-
 rule bowtie_build:
     """ Run bowtie-build on the contigs fasta"""
     # TODO: consider runnig this as a shadow rule
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-bowtie_build.log"
-    input: get_fasta
+    input: M.get_fasta
     # I touch this file because the files created have different suffix
     output:
         o1 = expand(dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + '.{i}.bt2', i=[1,2,3,4], group="{group}"),
@@ -735,8 +734,12 @@ rule bowtie_build:
 def input_for_bowtie(wildcards):
     '''Creating a dictionary containing the input files for bowtie.'''
     d = {'build_output': dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs.1.bt2".format(group=wildcards.group)}
+    if wildcards.group in M.references_for_removal:
+        post_reference_based_short_read_removal = False
+    else:
+        post_reference_based_short_read_removal = M.remove_short_reads_based_on_references
     # add the fastq files paths to the dictionary:
-    d.update(get_fastq(wildcards.sample))
+    d.update(get_fastq(wildcards.sample, post_reference_based_short_read_removal=post_reference_based_short_read_removal))
     return d
 
 
