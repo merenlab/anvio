@@ -49,6 +49,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.progress = progress
 
         self.group_names = []
+        self.contigs_information = {}
         self.fasta_information = {}
 
         # initialize the base class
@@ -107,7 +108,40 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         if fasta_txt_file:
             filesnpaths.is_file_exists(fasta_txt_file)
-            self.fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
-            self.group_names = list(self.fasta_information.keys())
+            self.contigs_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
+            self.fasta_information.update(self.contigs_information)
+            self.group_names = list(self.contigs_information.keys())
             self.references_mode = True
 
+
+    def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
+        '''
+            Define the path to the input fasta files.
+
+            Uses the config details to choose between the raw fasta file,
+            the reformatted, and the output of the host contamination removal.
+            This function also deals with the different cases of "reference mode"
+            Vs. "assembly mode".
+        '''
+        contigs = self.fasta_information[wildcards.group]['path']
+        ends_with_gz = contigs.endswith('.gz')
+        if remove_gz_suffix and ends_with_gz:
+            # we need to gunzip the fasta file
+            # we will create a temporary uncompressed fasta file.
+            contigs = os.path.join(self.dirs_dict['FASTA_DIR'], \
+                                   'wildcards.group' + '-temp.fa')
+        return contigs
+
+
+    def get_fasta(self, wildcards):
+        '''
+            Define the path to the input fasta files.
+        '''
+        # The raw fasta will be used if no formatting is needed
+        contigs = get_raw_fasta(wildcards)
+
+        if self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
+            # by default, reformat fasta is ran
+            contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
+
+        return contigs
