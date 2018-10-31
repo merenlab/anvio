@@ -360,18 +360,13 @@ rule remove_short_reads_based_on_references:
     resources: nodes = M.T('remove_short_reads_based_on_references')
     run:
         references = M.references_for_removal.keys()
-        if not M.remove_short_reads_based_on_references:
-            # The user wants to use the references to estimate their abundance
-            # but doesnt want to remove any reads
-            ids_to_remove = []
-        else:
-            for bam in input.bam:
-                # merge the ids from matching any reference
-                shell('samtools view %s | cut -f 1 >> %s 2>{log}' % (bam, output.ids_to_remove))
-            ids_to_remove = set(open(output.ids_to_remove).read().splitlines())
-            with open(output.ids_to_remove, 'w') as f:
-                for item in ids_to_remove:
-                    f.write("%s\n" % item)
+        for bam in input.bam:
+            # merge the ids from matching any reference
+            shell('samtools view %s | cut -f 1 >> %s 2>{log}' % (bam, output.ids_to_remove))
+        ids_to_remove = set(open(output.ids_to_remove).read().splitlines())
+        with open(output.ids_to_remove, 'w') as f:
+            for item in ids_to_remove:
+                f.write("%s\n" % item)
         if M.remove_short_reads_based_on_references:
             if ids_to_remove:
                 r1, r2 = uncompress_fastqs_if_needed(input.r1, input.r2, log)
