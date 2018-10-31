@@ -137,7 +137,10 @@ rule metagenomics_workflow_target_rule:
     '''
     input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=M.group_names),
            contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
-           qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=M.group_names)
+           qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=M.group_names),
+           filter_report = os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "short-read-removal-report.txt") \
+                            if M.references_for_removal_txt \
+                            else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names)
 
 
 rule iu_gen_configs:
@@ -339,7 +342,7 @@ rule remove_short_reads_based_on_references:
     log: os.path.join(dirs_dict["LOGS_DIR"], "{sample}-remove_short_reads_based_on_references.log")
     input: unpack(input_for_remove_short_reads_based_on_references)
     output:
-        ids_to_remove = os.path.join(dirs_dict["QC_DIR"], '{sample}-ids-to-removed'),
+        ids_to_remove = os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], '{sample}-ids-to-remove.txt'),
         # For each one of the four following outputs we have an alternative
         # file name for the case that the user chose dont_remove_just_map
         # These mock files end with '-mock-output'
@@ -398,6 +401,20 @@ rule remove_short_reads_based_on_references:
             # we only need the list of ids that matched the references
             # we are not removing enything so we just create mock output files to make snakemake happy
             shell('touch {output.keep1} {output.keep2} {output.remove1} {output.remove2}')
+
+
+rule gen_report_for_mapping_to_references_for_removal:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "gen_report_for_mapping_to_references_for_removal.log")
+    input:
+        ids_to_remove = expand(os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], '{sample}-ids-to-remove.txt'), sample=M.sample_names),
+    output:
+        report_file = os.path.join(dirs_dict["SHORT_READ_FILTER_DIR"], "short-read-removal-report.txt")
+    params:
+    threads: 1
+    resources: nodes=1
+    run:
+        M.gen_report_with_references_for_removal_info(input, output[0])
 
 
 rule gen_qc_report:
