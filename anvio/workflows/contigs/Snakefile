@@ -1,10 +1,8 @@
 # -*- coding: utf-8
 
 import argparse
-import pandas as pd
 
 import anvio
-import anvio.utils as u
 import anvio.workflows as w
 import anvio.terminal as terminal
 
