@@ -13,5 +13,6 @@
         "PROFILE_DIR": "05_ANVIO_PROFILE_references_mode",
         "MERGE_DIR": "06_MERGED_references_mode",
         "LOGS_DIR": "00_LOGS_references_mode"
+        "SHORT_READ_FILTER_DIR": "01_SHORT_READ_FILTER_references_mode"
     }
 }
