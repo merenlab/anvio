@@ -28,6 +28,7 @@ def main(args):
         mcg.write_output_to_files = True
 
     args.init_gene_coverages = True
+    args.init_split_coverage_values_per_nt = True
     args.populate_nt_level_coverage = True
     summary = summarizer.ProfileSummarizer(args)
     summary.init()
