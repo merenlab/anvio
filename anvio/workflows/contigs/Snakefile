@@ -7,7 +7,6 @@ import anvio
 import anvio.utils as u
 import anvio.workflows as w
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows.contigs import ContigsDBWorkflow
 
