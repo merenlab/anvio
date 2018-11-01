@@ -8,6 +8,7 @@ import uuid
 import shutil
 import zipfile
 import requests
+import subprocess
 from distutils.spawn import find_executable
 
 import anvio
@@ -38,6 +39,10 @@ class Upgrader(object):
         self.download()
         self.delete_dist_files()
         self.move_files()
+
+        self.run.info_single('Upgrade was succesful. Testing new version with "anvi-profile --version", \
+            you may also want to use "anvi-self-test" to test it further.', nl_before=1, nl_after=1, mc='green')
+        subprocess.call(['anvi-profile', '--version'])
 
 
     def get_releases(self):
