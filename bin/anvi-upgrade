@@ -23,6 +23,8 @@ class Upgrader(object):
         self.run = run
         self.progress = progress
 
+
+    def upgrade(self):
         self.version = self.get_version()
         self.releases = self.get_releases()
         self.target_version = self.get_target_version()
@@ -32,6 +34,7 @@ class Upgrader(object):
             raise Exception('There is no new version to upgrade.')
 
         self.working_dir = filesnpaths.get_temp_directory_path()
+        self.run.info('Temporary working directory', self.working_dir)
         self.download()
         self.delete_dist_files()
         self.move_files()
@@ -217,3 +220,4 @@ class Upgrader(object):
 
 if __name__ == '__main__':
     upgrader = Upgrader()
+    upgrader.upgrade()
