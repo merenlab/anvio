@@ -138,7 +138,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             Define the path to the input fasta files.
         '''
         # The raw fasta will be used if no formatting is needed
-        contigs = get_raw_fasta(wildcards)
+        contigs = self.get_raw_fasta(wildcards)
 
         if self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
             # by default, reformat fasta is ran
