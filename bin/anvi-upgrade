@@ -38,8 +38,8 @@ class Upgrader(object):
 
     def get_releases(self):
         releases = {}
-        for release in requests.get('https://api.github.com/repos/merenlab/anvio/releases').json():
-            releases[release['tag_name']] = release
+        for release in requests.get('https://api.github.com/repos/merenlab/anvio/tags').json():
+            releases[release['name']] = release
 
         return releases
 
