@@ -46,7 +46,7 @@ else:
 # the default name for the input fasta.txt file is "fasta.txt"
 fasta_txt = M.get_param_value_from_config("fasta_txt")
 filesnpaths.is_file_exists(fasta_txt)
-ALL_SAMPLES = list(M.fasta_information.keys())
+ALL_SAMPLES = list(M.contigs_information.keys())
 
 internal_genomes_file = M.get_param_value_from_config(["anvi_gen_genomes_storage", "--internal-genomes"])
 external_genomes_file = M.get_param_value_from_config(["anvi_gen_genomes_storage", "--external-genomes"])

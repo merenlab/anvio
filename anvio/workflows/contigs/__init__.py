@@ -49,6 +49,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.progress = progress
 
         self.group_names = []
+        self.contigs_information = {}
+        self.fasta_information = {}
 
         # initialize the base class
         WorkflowSuperClass.__init__(self)
@@ -65,9 +67,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                "CONTIGS_DIR": "02_CONTIGS"})
 
         self.default_config.update({"fasta_txt": "fasta.txt",
-                                    "anvi_gen_contigs_database": {"--project-name": "{group}", "threads": 5},
-                                    "centrifuge": {"threads": 5},
-                                    "anvi_run_hmms": {"run": True, "threads": 20},
+                                    "anvi_gen_contigs_database": {"--project-name": "{group}"},
+                                    "centrifuge": {"threads": 2},
+                                    "anvi_run_hmms": {"run": True, "threads": 5},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True},
                                     "emapper": {"--database": "bact", "--usemem": True, "--override": True},
@@ -106,7 +108,40 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         if fasta_txt_file:
             filesnpaths.is_file_exists(fasta_txt_file)
-            self.fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
-            self.group_names = list(self.fasta_information.keys())
+            self.contigs_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
+            self.fasta_information.update(self.contigs_information)
+            self.group_names = list(self.contigs_information.keys())
             self.references_mode = True
 
+
+    def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
+        '''
+            Define the path to the input fasta files.
+
+            Uses the config details to choose between the raw fasta file,
+            the reformatted, and the output of the host contamination removal.
+            This function also deals with the different cases of "reference mode"
+            Vs. "assembly mode".
+        '''
+        contigs = self.fasta_information[wildcards.group]['path']
+        ends_with_gz = contigs.endswith('.gz')
+        if remove_gz_suffix and ends_with_gz:
+            # we need to gunzip the fasta file
+            # we will create a temporary uncompressed fasta file.
+            contigs = os.path.join(self.dirs_dict['FASTA_DIR'], \
+                                   'wildcards.group' + '-temp.fa')
+        return contigs
+
+
+    def get_fasta(self, wildcards):
+        '''
+            Define the path to the input fasta files.
+        '''
+        # The raw fasta will be used if no formatting is needed
+        contigs = get_raw_fasta(wildcards)
+
+        if self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
+            # by default, reformat fasta is ran
+            contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
+
+        return contigs
