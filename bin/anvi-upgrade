@@ -50,6 +50,8 @@ class Upgrader(object):
         if '-master' in version:
             raise Exception("You are already using master version, in order to upgrade run `git pull`.")
 
+        self.run.info('Installed version', '%s' % (version))
+
         return version
 
 
@@ -72,6 +74,10 @@ class Upgrader(object):
         script_file = find_executable('anvi-script-reformat-fasta')
         dist['sandbox_path'] = os.path.dirname(script_file)
         dist['sandbox_stat'] = os.stat(script_file)
+
+        self.run.info('Program location found', dist['bin_path'])
+        self.run.info('Module location found', dist['module_path'])
+        self.run.info('Scripts location found', dist['sandbox_path'])
 
         return dist
 
@@ -104,6 +110,8 @@ class Upgrader(object):
         while ('v%d.%d' % (major, minor+1)) in self.releases:
             minor += 1
 
+        self.run.info('Target version', '%d.%d' % (major, minor))
+
         return '%d.%d' % (major, minor)
 
 
@@ -135,6 +143,7 @@ class Upgrader(object):
 
 
     def delete_dist_files(self):
+        self.progress.new('Deleting current version files')
         dist_files = []
 
         for script_type in ['bin', 'sandbox']:
@@ -142,6 +151,7 @@ class Upgrader(object):
                 file_name = os.path.basename(file_path)
                 dist_file_path = os.path.join(self.dist['%s_path' % script_type], file_name)
                 dist_files.append(dist_file_path)
+                self.progress.update(file_name)
                 
         for path_name, sub_directories, file_list in os.walk(os.path.join(self.current_version_dir, 'anvio')):
             relative_path = path_name[len(os.path.join(self.current_version_dir, 'anvio')) + 1:]
@@ -156,6 +166,7 @@ class Upgrader(object):
                 raise Exception("File %s does not exists" % dist_file_path)
 
         for dist_file_path in dist_files:
+            self.progress.update(os.path.basename(dist_file_path))
             if os.path.isfile(dist_file_path):
                 os.remove(dist_file_path)
             else:
@@ -165,6 +176,8 @@ class Upgrader(object):
                     # Directory not empty
                     pass
 
+        self.progress.end()
+
 
     def restore_file_stats(self, target_path, target):
         os.chmod(target_path, self.dist['%s_stat' % target].st_mode)
@@ -172,12 +185,15 @@ class Upgrader(object):
 
 
     def move_files(self):
+        self.progress.new('Moving target version files')
+
         for script_type in ['bin', 'sandbox']:
             for file_path in glob.glob(os.path.join(self.target_version_dir, script_type, 'anvi-*')):
                 file_name = os.path.basename(file_path)
                 dist_file_path = os.path.join(self.dist['%s_path' % script_type], file_name)
 
                 shutil.copy(file_path, dist_file_path)
+                self.progress.update(file_name)
                 self.restore_file_stats(dist_file_path, script_type)
         
         for path_name, sub_directories, file_list in os.walk(os.path.join(self.target_version_dir, 'anvio')):
@@ -189,12 +205,14 @@ class Upgrader(object):
                 self.restore_file_stats(absolute_dist_path, 'module_dir')
 
             for file_name in file_list:
+                self.progress.update(file_name)
                 file_path = os.path.join(path_name, file_name)
                 dist_file_path = os.path.join(absolute_dist_path, file_name)
 
                 shutil.copy(file_path, dist_file_path)
                 self.restore_file_stats(dist_file_path, 'module')
 
+        self.progress.end()
 
 if __name__ == '__main__':
     upgrader = Upgrader()
