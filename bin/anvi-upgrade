@@ -29,11 +29,12 @@ class Upgrader(object):
         self.version = self.get_version()
         self.releases = self.get_releases()
         self.target_version = self.get_target_version()
-        self.dist = self.get_dist_info()
 
         if self.version == self.target_version:
-            raise Exception('There is no new version to upgrade.')
+            self.run.info_single('You are already using the latest version.', nl_before=1, nl_after=1, mc='green')
+            return
 
+        self.dist = self.get_dist_info()
         self.working_dir = filesnpaths.get_temp_directory_path()
         self.run.info('Temporary working directory', self.working_dir)
         self.download()
@@ -54,7 +55,7 @@ class Upgrader(object):
 
 
     def get_version(self):
-        version = '5.1' #anvio.__version__
+        version = anvio.__version__
 
         if '-master' in version:
             raise Exception("You are already using master version, in order to upgrade run `git pull`.")
