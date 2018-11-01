@@ -336,11 +336,25 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                 raise ConfigError("While processing the references for removal txt file ('%s'), anvi'o ran into the following error: \
                                    %s" % (self.samples_txt_file, e))
 
+        files_that_end_with_gz = []
         for ref_dict in self.references_for_removal.values():
             if 'path' not in ref_dict:
                 raise ConfigError('Yor references for removal txt file is not formatted properly. It must have only two columns \
                                    with the headers "reference" and "path".')
-            filesnpaths.is_file_fasta_formatted(ref_dict['path'])
+            if ref_dict['path'].endswith('.gz'):
+                filesnpaths.is_file_exists(ref_dict['path'])
+                files_that_end_with_gz.append(ref_dict['path'])
+            else:
+                # if the file is not compressed then we can verify that it is a fasta file
+                filesnpaths.is_file_fasta_formatted(ref_dict['path'])
+
+        if files_that_end_with_gz:
+            run.warning('The following reference for removal files are compressed: %s. \
+                         That\'s fine, but it means that we will skip the \
+                         sanity check to verify that this is actually \
+                         a properly formatted fasta file. Things are \
+                         probably Ok, this is just one of these occasions \
+                         in which anvi\'o is oversharing.' % ', '.join(files_that_end_with_gz))
 
         if self.references_mode:
             # Make sure that the user didn't give the same name to references and references_for_removal
@@ -381,10 +395,10 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         return contigs
 
 
-    def get_raw_fasta(self, wildcards):
+    def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
         if self.references_mode:
             # in 'reference mode' the input is the reference fasta
-            contigs = super(MetagenomicsWorkflow, self).get_raw_fasta(wildcards)
+            contigs = super(MetagenomicsWorkflow, self).get_raw_fasta(wildcards, remove_gz_suffix=remove_gz_suffix)
         else:
             # by default the input fasta is the assembly output
             contigs = self.dirs_dict["FASTA_DIR"] + "/%s/final.contigs.fa" % wildcards.group

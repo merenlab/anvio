@@ -1,5 +1,6 @@
 # -*- coding: utf-8
 
+import os
 import argparse
 
 import anvio
@@ -51,13 +52,20 @@ if run_taxonomy_with_centrifuge:
 
                           "config file. See documentation for more details.")
 
-# TODO: it would have been better to have this in tha backhand
-# there is no reason contigs workflow would be familiar with references mode.
-# it should be that this is set to the default for contigs workflow
-# and then in the case of assembly in metagenomics workflow then this value would be override
 
 rule generate_and_annotate_contigs_db:
     input: expand(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done", group=M.group_names)
+
+
+rule gunzip_fasta:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-gunzip_fasta.log"
+    input: lambda wildcards: M.get_raw_fasta(wildcards, remove_gz_suffix=False)
+    output: temp(os.path.join(M.dirs_dict['FASTA_DIR'], \
+                            '{group}' + '-temp.fa'))
+    threads: M.T('gunzip_fasta')
+    resources: nodes = M.T('gunzip_fasta')
+    shell: "gunzip < {input} > {output} 2>{log}"
 
 
 rule anvi_script_reformat_fasta_prefix_only:
