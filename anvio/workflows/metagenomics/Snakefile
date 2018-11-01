@@ -313,6 +313,7 @@ rule remove_short_reads_based_on_references:
                 f.write("%s\n" % item)
         if M.remove_short_reads_based_on_references:
             if ids_to_remove:
+                need_to_uncompress = need_to_uncompress_fastqs(input.r1, input.r2)
                 r1, r2 = uncompress_fastqs_if_needed(input.r1, input.r2, log)
                 # remove ids
                 intermediate_fastq = {"1": r1, "2": r2}
@@ -327,8 +328,11 @@ rule remove_short_reads_based_on_references:
                     shell('mv %s.removed %s' % (intermediate_fastq[i], output_fastq_files['remove'][i]))
                     if run_gzip_fastqs:
                         shell("gzip < %s.survived > %s" % (intermediate_fastq[i], output_fastq_files['keep'][i]))
+                        shell("rm %s.survived" % intermediate_fastq[i])
                     else:
                         shell("mv %s.survived %s" % (intermediate_fastq[i], output_fastq_files['keep'][i]))
+                if need_to_uncompress:
+                    shell('rm %s %s' % (r1, r2))
             else:
                 # No reads from this sample were mapped to references so we will just:
                 # change the name of the input fastq to the expected output fastq
@@ -437,15 +441,16 @@ rule merge_fastas_for_co_assembly:
         if len(input.r1) > 1:
             concatenate = True
         for r1, r2 in zip(input.r1, input.r2):
+            need_to_uncompress = need_to_uncompress_fastqs(r1, r2)
             r1, r2 = uncompress_fastqs_if_needed(r1, r2, log)
 
             # run fq2fa
             fq2fa_output = os.path.join(dirs_dict["QC_DIR"], "R1_R2-merged.temp.fa")
             shell("fq2fa --merge %s %s %s >> %s 2>&1" % (r1, r2, fq2fa_output, log))
 
-            if need_to_uncompress_fastqs(r1, r2):
+            if need_to_uncompress:
                 # if we had to unzip the fastq files then now we delete the unzipped file
-                shell("rm %s %s 2>%s" % (r1_unzipped, r2_unzipped, log))
+                shell("rm %s %s 2>%s" % (r1, r2, log))
 
             if concatenate:
                 # concatenate
@@ -467,24 +472,27 @@ rule merge_fastqs_for_co_assembly:
     resources: nodes = M.T('merge_fastqs_for_co_assembly')
     run:
         for r1, r2 in zip(input.r1, input.r2):
+            need_to_uncompress = need_to_uncompress_fastqs(r1, r2)
             r1, r2 = uncompress_fastqs_if_needed(r1, r2, log)
 
             # concatenate
             shell("cat %s >> %s 2>%s" % (r1, output.r1, log))
             shell("cat %s >> %s 2>%s" % (r2, output.r2, log))
 
-            if need_to_uncompress_fastqs(r1, r2):
+            if need_to_uncompress:
                 # if we had to unzip the fastq files then now we delete the unzipped file
-                shell("rm %s %s 2>%s" % (r1_unzipped, r2_unzipped, log))
+                shell("rm %s %s 2>%s" % (r1, r2, log))
 
-
+gzip_fastq_output = os.path.join(dirs_dict["QC_DIR"],\
+                                 "{sample}-QUALITY_PASSED_{R}.fastq.gz")
 rule gzip_fastqs:
     ''' Compressing the quality controlled fastq files'''
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{sample}-{R}-gzip.log"
     input:
-        fastq = dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq"
-    output: dirs_dict["QC_DIR"] + "/{sample}-QUALITY_PASSED_{R}.fastq.gz"
+        fastq = os.path.join(dirs_dict["QC_DIR"], "{sample}-QUALITY_PASSED_{R}.fastq")
+    output: temp(gzip_fastq_output) if M.remove_short_reads_based_on_references \
+                                else gzip_fastq_output
     threads: M.T('gzip_fastqs')
     resources: nodes = M.T('gzip_fastqs'),
     shell: "gzip {input.fastq} >> {log} 2>&1"
