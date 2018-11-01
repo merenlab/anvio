@@ -5,13 +5,14 @@
 """
 
 
+import os
 import anvio
 import pandas as pd
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio import utils as u
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
 
@@ -44,6 +45,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.run_metaspades = None
         self.use_scaffold_from_metaspades = None
         self.remove_short_reads_based_on_references = None
+        self.references_for_removal_txt = None
+        self.references_for_removal = {}
         self.references_mode = None
         self.fasta_txt_file = None
         self.samples_txt_file = None
@@ -60,7 +63,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped',\
                      'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy', 'metaspades',\
-                     'remove_short_reads_based_on_references'])
+                     'remove_short_reads_based_on_references', 'bowtie_for_removal_references', \
+                     'bowtie_build_for_removal_references', 'samtools_view_for_removal_references'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
                                     "kraken_txt"])
@@ -103,6 +107,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['krakenhll'] = ["additional_params", "run", "--db", "--gzip-compressed"]
         rule_acceptable_params_dict['krakenhll_mpa_report'] = ["additional_params"]
         rule_acceptable_params_dict['import_kraken_hll_taxonomy'] = ["--min-abundance"]
+        rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map", \
+                                                                                 "references_for_removal_txt", \
+                                                                                 "delimiter-for-iu-remove-ids-from-fastq"]
+        rule_acceptable_params_dict['bowtie_for_removal_references'] = rule_acceptable_params_dict['bowtie'].copy()
+        rule_acceptable_params_dict['samtools_view_for_removal_references'] = rule_acceptable_params_dict['samtools_view'].copy()
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -120,19 +129,20 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "TAXONOMY_DIR": "07_TAXONOMY"})
 
         self.default_config.update({'samples_txt': "samples.txt",
-                                    'metaspades': {"additional_params": "--only-assembler", "threads": 11},
-                                    'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 11},
-                                    'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 11},
-                                    'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True, "threads": 2},
+                                    'metaspades': {"additional_params": "--only-assembler", "threads": 7},
+                                    'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 7},
+                                    'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 7},
+                                    'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True},
                                     "gzip_fastqs": {"run": True},
-                                    "bowtie_build": {"threads": 10},
-                                    "bowtie": {"additional_params": "--no-unal", "threads": 10},
-                                    "samtools_view": {"additional_params": "-F 4", "threads": 4},
-                                    "anvi_init_bam": {"threads": 4},
-                                    "anvi_profile": {"threads": 5, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
+                                    "bowtie": {"additional_params": "--no-unal", "threads": 3},
+                                    "samtools_view": {"additional_params": "-F 4"},
+                                    "anvi_profile": {"threads": 3, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True},
-                                    "krakenhll": {"threads": 12, "--gzip-compressed": True, "additional_params": "--preload"}})
+                                    "bowtie_for_removal_references": {"additional_params": "--no-unal", "threads": 3},
+                                    "samtools_view_for_removal_references": {"additional_params": "-F 4"},
+                                    "krakenhll": {"threads": 3, "--gzip-compressed": True, "additional_params": "--preload"},
+                                    "remove_short_reads_based_on_references": {"delimiter-for-iu-remove-ids-from-fastq": " "}})
 
 
     def init(self):
@@ -151,6 +161,13 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.references_mode = self.get_param_value_from_config('references_mode', repress_default=True)
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
+
+        self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
+                                                                            'references_for_removal_txt'],\
+                                                                           repress_default=True)
+
+        if self.references_for_removal_txt:
+            self.load_references_for_removal()
 
         self.sanity_check()
 
@@ -192,14 +209,14 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             if self.references_mode:
                 # sanity check to see that groups specified in samples.txt match
                 # the names of fasta.
-                mismatch = set(self.group_names) - set(self.fasta_information.keys())
+                mismatch = set(self.group_names) - set(self.contigs_information.keys())
                 if mismatch:
                     raise ConfigError("Group names specified in the samples.txt \
                                        file must match the names of fasta \
                                        in the fasta.txt file. These are the \
                                        mismatches: %s" % mismatch)
-                groups_in_fasta_information_but_not_in_samples_txt = set(self.fasta_information.keys()) - set(self.group_names)
-                if groups_in_fasta_information_but_not_in_samples_txt:
+                groups_in_contigs_information_but_not_in_samples_txt = set(self.contigs_information.keys()) - set(self.group_names)
+                if groups_in_contigs_information_but_not_in_samples_txt:
                     run.warning('The following group names appear in your fasta_txt\
                                  but do not appear in your samples_txt. Maybe this is\
                                  ok with you, but we thought you should know. This means\
@@ -306,5 +323,69 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                    a database using the --db parameter in the config file.')
 
 
+    def load_references_for_removal(self):
+        """Load and perform some sanity checks on the references for removal"""
+        self.references_for_removal = u.get_TAB_delimited_file_as_dictionary(self.references_for_removal_txt)
+        # adding the references_for_removal to the fasta_information dict
+        self.fasta_information.update(self.references_for_removal)
+
+        for sample in self.references_for_removal.keys():
+            try:
+                u.check_sample_id(sample)
+            except ConfigError as e:
+                raise ConfigError("While processing the references for removal txt file ('%s'), anvi'o ran into the following error: \
+                                   %s" % (self.samples_txt_file, e))
+
+        for ref_dict in self.references_for_removal.values():
+            if 'path' not in ref_dict:
+                raise ConfigError('Yor references for removal txt file is not formatted properly. It must have only two columns \
+                                   with the headers "reference" and "path".')
+            filesnpaths.is_file_fasta_formatted(ref_dict['path'])
+
+        if self.references_mode:
+            # Make sure that the user didn't give the same name to references and references_for_removal
+            ref_name_in_both = [r for r in self.references_for_removal if r in self.contigs_information]
+            if ref_name_in_both:
+                raise ConfigError('You must have unique names for your fasta files in your fasta txt file \
+                                   and your references for removal txt file. These are the names that appear \
+                                   in both: %s' % ', '.join(ref_name_in_both))
+        dont_remove = self.get_param_value_from_config(['remove_short_reads_based_on_references', 'dont_remove_just_map'])
+        if not dont_remove:
+            self.remove_short_reads_based_on_references = True
+
+
     def get_assembly_software_list(self):
         return ['megahit', 'idba_ud', 'metaspades']
+
+
+    def gen_report_with_references_for_removal_info(self, filtered_id_files, output_file_name):
+        ''' If mapping was done to reference for removal then we create a report with the results.'''
+        report_dict = {}
+        for filename in filtered_id_files:
+            sample = os.path.basename(filename).split("-ids-to-remove.txt")[0]
+            ids = set(open(filename).read().splitlines())
+            report_dict[sample] = {}
+            report_dict[sample]['number_of_filtered_reads'] = len(ids)
+        u.store_dict_as_TAB_delimited_file(report_dict, output_file_name, headers=["sample", 'number_of_filtered_reads'])
+
+
+    def get_fasta(self, wildcards):
+        if wildcards.group in self.references_for_removal:
+            # if it's a reference for removal then we just want to use the
+            # raw fasta file, and there is no need to reformat or assemble
+            contigs = super(MetagenomicsWorkflow, self).get_raw_fasta(wildcards)
+        elif self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
+            contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
+        else:
+            contigs = self.get_raw_fasta(wildcards)
+        return contigs
+
+
+    def get_raw_fasta(self, wildcards):
+        if self.references_mode:
+            # in 'reference mode' the input is the reference fasta
+            contigs = super(MetagenomicsWorkflow, self).get_raw_fasta(wildcards)
+        else:
+            # by default the input fasta is the assembly output
+            contigs = self.dirs_dict["FASTA_DIR"] + "/%s/final.contigs.fa" % wildcards.group
+        return contigs
