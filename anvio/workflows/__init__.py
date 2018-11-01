@@ -84,6 +84,8 @@ class WorkflowSuperClass:
 
 
     def init(self):
+        run.warning('We are initiating parameters for the %s workflow' % self.name)
+
         for rule in self.rules:
             if rule not in self.rule_acceptable_params_dict:
                 self.rule_acceptable_params_dict[rule] = []

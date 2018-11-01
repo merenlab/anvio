@@ -11,6 +11,9 @@ cp $files/mock_data_for_pangenomics/*.fa $output_dir/workflow_test/
 cp $files/workflows/contigs/* $output_dir/workflow_test/
 cd $output_dir/workflow_test
 
+INFO "compressing sample 1"
+gzip 01.fa
+
 INFO "Creating a default config for contigs workflow"
 anvi-run-workflow -w contigs --get-default-config default-config.json
 

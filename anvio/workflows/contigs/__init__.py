@@ -5,6 +5,7 @@
 """
 
 
+import os
 import anvio
 import anvio.utils as u
 import anvio.terminal as terminal
@@ -59,7 +60,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_gen_contigs_database', 'export_gene_calls_for_centrifuge', 'centrifuge',
                            'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
-                           'emapper', 'anvi_script_run_eggnog_mapper'])
+                           'emapper', 'anvi_script_run_eggnog_mapper', 'gunzip_fasta'])
 
         self.general_params.extend(["fasta_txt"])
 
@@ -129,7 +130,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             # we need to gunzip the fasta file
             # we will create a temporary uncompressed fasta file.
             contigs = os.path.join(self.dirs_dict['FASTA_DIR'], \
-                                   'wildcards.group' + '-temp.fa')
+                                   wildcards.group + '-temp.fa')
         return contigs
 
 

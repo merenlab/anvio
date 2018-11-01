@@ -10,13 +10,9 @@ mkdir $output_dir/workflow_test
 cp -r $files/workflows/metagenomics/* $output_dir/workflow_test/
 cd $output_dir/workflow_test
 
-INFO "unzipping fasta files"
-gzip -d three_samples_example/*.fa.gz
-
 #making an uncompressed copy of the fastqs for idba_ud
 mkdir three_samples_example_fastq
 cp three_samples_example/*fastq.gz three_samples_example_fastq/
-gzip -d three_samples_example_fastq/*fastq.gz
 for f in `ls three_samples_example_fastq/*fastq`; do
     mv $f ${f%.fastq}-for-idba_ud.fastq
 done
