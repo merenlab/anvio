@@ -184,15 +184,15 @@ class Upgrader(object):
             relative_path = path_name[len(os.path.join(self.target_version_dir, 'anvio')) + 1:]
             absolute_dist_path = os.path.join(self.dist['module_path'], relative_path)
 
-            if not os.path.exists(absolute_dist_path):
+            if os.path.isdir(path_name) and not os.path.exists(absolute_dist_path):
                 os.makedirs(absolute_dist_path)
                 self.restore_file_stats(absolute_dist_path, 'module_dir')
 
-            for file_name in file_list + sub_directories:
+            for file_name in file_list:
                 file_path = os.path.join(path_name, file_name)
                 dist_file_path = os.path.join(absolute_dist_path, file_name)
 
-                shutil.move(file_path, dist_file_path)
+                shutil.copy(file_path, dist_file_path)
                 self.restore_file_stats(dist_file_path, 'module')
 
 
