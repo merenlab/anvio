@@ -73,7 +73,7 @@ class BottleApplication(Bottle):
             self.export_svg = A('export_svg')
             self.server_only = A('server_only')
 
-        self.password_protected = self.args.password_protected
+        self.password_protected = A('password_protected') or False
         self.password = ''
         self.authentication_secret = ''
         if self.password_protected:
