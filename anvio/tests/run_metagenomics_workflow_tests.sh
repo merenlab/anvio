@@ -10,14 +10,6 @@ mkdir $output_dir/workflow_test
 cp -r $files/workflows/metagenomics/* $output_dir/workflow_test/
 cd $output_dir/workflow_test
 
-#making an uncompressed copy of the fastqs for idba_ud
-mkdir three_samples_example_fastq
-cp three_samples_example/*fastq.gz three_samples_example_fastq/
-for f in `ls three_samples_example_fastq/*fastq`; do
-    mv $f ${f%.fastq}-for-idba_ud.fastq
-done
-mv three_samples_example_fastq/* three_samples_example/
-
 INFO "Creating a default config for metagenomics workflow"
 anvi-run-workflow -w metagenomics --get-default-config default-config.json
 
