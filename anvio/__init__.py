@@ -1306,7 +1306,7 @@ D = {
             ['--password-protected'],
             {'default': False,
              'action': 'store_true',
-             'help': "If this flag is set command line tool will ask you to enter a password and interactive \
+             'help': "If this flag is set, command line tool will ask you to enter a password and interactive \
                       interface will be only accessible after entering same password. This option is recommended \
                       for shared machines like clusters or shared networks where computers are not isolated."}
                 ),
