@@ -47,15 +47,15 @@
             }
         </style>
         <script type="text/javascript">
-            $(document).ready(function {
-                function login() {
-                    let password = $('#password').val();
-                    let salt = 'using_md5_in_2018_';
-                    let hash = md5(salt + password);
-                    createCookie('authentication_secret', hash, -1);
-                    location.href = '/';
-                }
-           
+            function login() {
+                let password = $('#password').val();
+                let salt = 'using_md5_in_2018_';
+                let hash = md5(salt + password);
+                createCookie('authentication_secret', hash, -1);
+                location.href = '/';
+            }
+       
+            $(document).ready(function() {
                $('#password').keydown(function (event) {
                     var keypressed = event.keyCode || event.which;
                     if (keypressed == 13) {
