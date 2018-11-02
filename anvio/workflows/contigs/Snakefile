@@ -355,7 +355,7 @@ rule annotate_contigs_database:
     shell: "touch {output} >> {log} 2>&1"
 
 
-if not slave_mode:
+if 'workflows/contigs' in workflow.included[0]:
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
     # the `WorkflowSuperClass`, so you are most likely covered).

@@ -74,7 +74,7 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-slave_mode= False if 'workflows/metagenomics' in workflow.included[0] else True
+slave_mode = False if 'workflows/metagenomics' in workflow.included[0] else True
 
 if not slave_mode:
     # it is important that this comes before the include statement since
@@ -1144,8 +1144,8 @@ rule import_percent_of_reads_mapped:
                                           --just-do-it >> {log} 2>&1
                   """)
 
-if not slave_mode:
+if 'workflows/metagenomics' in workflow.included[0]:
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
     # the `WorkflowSuperClass`, so you are most likely covered).
-    M.check_workflow_program_dependencies(workflow)
+    M.check_workflow_program_dependencies(workflow, dont_raise=True)
