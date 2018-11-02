@@ -16,6 +16,7 @@ import time
 import json
 import base64
 import random
+import getpass
 import argparse
 import requests
 import datetime
@@ -72,9 +73,15 @@ class BottleApplication(Bottle):
             self.export_svg = A('export_svg')
             self.server_only = A('server_only')
 
-        self.password_protected = False
+        self.password_protected = self.args.password_protected
         self.password = ''
         self.authentication_secret = ''
+        if self.password_protected:
+            print('')
+            self.password = getpass.getpass('Enter password to secure interactive interface: ').encode('utf-8')
+            salt = 'using_md5_in_2018_'.encode('utf-8')
+
+            self.authentication_secret = md5(salt + self.password).hexdigest()
 
         self.session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
