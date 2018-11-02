@@ -97,7 +97,7 @@ class BottleApplication(Bottle):
         self.password = password.encode('utf-8')
         salt = 'using_md5_in_2018_'.encode('utf-8')
 
-        self.authentication_secret = md5(self.salt + self.password).hexdigest()
+        self.authentication_secret = md5(salt + self.password).hexdigest()
 
 
     def register_hooks(self):
