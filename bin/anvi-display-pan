@@ -64,6 +64,7 @@ groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
 groupF.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
 groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
 groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+groupF.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
 args = anvio.get_args(parser)
 
