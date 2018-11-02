@@ -1862,7 +1862,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
         # concatenate new columns to self.data
         entries_before = len(self.data.index)
-        self.data = pd.concat([self.data, new_entries])
+        self.data = pd.concat([self.data, new_entries], sort=True)
         new_entries.set_index("entry_id", drop=False, inplace=True)
         self.data = self.data[column_order]
         entries_after = len(self.data.index)
