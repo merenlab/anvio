@@ -46,16 +46,25 @@
         }
         </style>
         <script type="text/javascript">
-            function login() {
-                let password = $('#password').val();
-                if (password.length > 0) {
-                    let salt = 'using_md5_in_2018_';
-                    let hash = md5(salt + password);
-                    createCookie('authentication_secret', hash, -1);
-                    location.href = '/';
+            $(document).ready(function {
+                function login() {
+                    let password = $('#password').val();
+                    if (password.length > 0) {
+                        let salt = 'using_md5_in_2018_';
+                        let hash = md5(salt + password);
+                        createCookie('authentication_secret', hash, -1);
+                        location.href = '/';
+                    }
                 }
-            }
-        </script>
+           
+               $('#password').keydown(function (event) {
+                    var keypressed = event.keyCode || event.which;
+                    if (keypressed == 13) {
+                        login();
+                    }
+                });
+            });
+        </script> 
     </head>
     <body>
         <div class="container">
@@ -70,7 +79,6 @@
                             <div class="panel-body">
                                 <div class="center-block text-center">
                                     <img class="logo" src="images/logo.png"alt="">
-                                    <form class="unlock-form">
                                         <div class="input-group">
                                             <span class="input-group-addon">
                                                 <i class="glyphicon glyphicon-lock"></i>
@@ -78,13 +86,12 @@
                                             <input type="password" id="password" class="form-control" placeholder="Password" required autofocus>
                                         </div>
                                         <button type="button" onclick="login();" class="btn btn-primary btn-block">Unlock</button>
-                                    </form>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>    
+        </div>
     </body>
 </html>
