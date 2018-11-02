@@ -49,12 +49,10 @@
             $(document).ready(function {
                 function login() {
                     let password = $('#password').val();
-                    if (password.length > 0) {
-                        let salt = 'using_md5_in_2018_';
-                        let hash = md5(salt + password);
-                        createCookie('authentication_secret', hash, -1);
-                        location.href = '/';
-                    }
+                    let salt = 'using_md5_in_2018_';
+                    let hash = md5(salt + password);
+                    createCookie('authentication_secret', hash, -1);
+                    location.href = '/';
                 }
            
                $('#password').keydown(function (event) {
