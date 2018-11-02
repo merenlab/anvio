@@ -56,7 +56,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         # initialize the base class
         WorkflowSuperClass.__init__(self)
 
-        self.rules.extend(['anvi_script_reformat_fasta', 'remove_human_dna_using_centrifuge',
+        self.rules.extend(['anvi_script_reformat_fasta',
                            'anvi_gen_contigs_database', 'export_gene_calls_for_centrifuge', 'centrifuge',
                            'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
@@ -90,7 +90,6 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.rule_acceptable_params_dict['anvi_script_reformat_fasta'] = \
                     ['run', '--simplify-names', '--keep-ids', '--exclude-ids', '--min-len']
 
-        self.rule_acceptable_params_dict['remove_human_dna_using_centrifuge'] = ['run']
 
         gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
                               '--ignore-internal-stop-codons', '--skip-mindful-splitting',\
@@ -118,11 +117,6 @@ class ContigsDBWorkflow(WorkflowSuperClass):
     def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
         '''
             Define the path to the input fasta files.
-
-            Uses the config details to choose between the raw fasta file,
-            the reformatted, and the output of the host contamination removal.
-            This function also deals with the different cases of "reference mode"
-            Vs. "assembly mode".
         '''
         contigs = self.fasta_information[wildcards.group]['path']
         ends_with_gz = contigs.endswith('.gz')

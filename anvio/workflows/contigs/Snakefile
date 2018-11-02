@@ -29,9 +29,6 @@ if not slave_mode:
 
 localrules: annotate_contigs_database
 
-# setting configuration for optional steps
-run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"]) == True
-
 # default is NOT running taxonomy with centrifuge
 run_taxonomy_with_centrifuge = M.get_param_value_from_config(["centrifuge", "run"]) == True
 
