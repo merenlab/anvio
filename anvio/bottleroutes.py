@@ -19,6 +19,7 @@ import random
 import argparse
 import requests
 import datetime
+from hashlib import md5
 from multiprocessing import Process
 from ete3 import Tree
 from bottle import Bottle
@@ -71,6 +72,10 @@ class BottleApplication(Bottle):
             self.export_svg = A('export_svg')
             self.server_only = A('server_only')
 
+        self.password_protected = False
+        self.password = ''
+        self.authentication_secret = ''
+
         self.session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
 
@@ -87,11 +92,24 @@ class BottleApplication(Bottle):
             from bottle import response, request
 
 
+    def set_password(self, password):
+        self.password_protected = True
+        self.password = password.encode('utf-8')
+        salt = 'using_md5_in_2018_'.encode('utf-8')
+
+        self.authentication_secret = md5(self.salt + self.password).hexdigest()
+
+
     def register_hooks(self):
-        self.add_hook('before_request', self.set_default_headers)
+        self.add_hook('before_request', self.before_request)
 
 
-    def set_default_headers(self):
+    def before_request(self):
+        # /app/ contains static files and not password protected.
+        if self.password_protected and not request.path.startswith('/app/'):
+            if not self.authentication_secret == request.get_cookie('authentication_secret'):
+                redirect('/app/login.html')
+
         response.set_header('Content-Type', 'application/json')
         response.set_header('Pragma', 'no-cache')
         response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
@@ -808,8 +826,6 @@ class BottleApplication(Bottle):
 
 
     def gen_summary(self, collection_name):
-        #set_default_headers(response)
-
         if self.read_only:
             return json.dumps({'error': "Sorry! This is a read-only instance."})
 

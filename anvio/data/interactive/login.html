@@ -45,6 +45,17 @@
             margin-bottom: 20px;
         }
         </style>
+        <script type="text/javascript">
+            function login() {
+                let password = $('#password').val();
+                if (password.length > 0) {
+                    let salt = 'using_md5_in_2018_';
+                    let hash = md5(salt + password);
+                    createCookie('authentication_secret', hash, -1);
+                    location.href = '/';
+                }
+            }
+        </script>
     </head>
     <body>
         <div class="container">
