@@ -1,0 +1,79 @@
+<html>
+    <head>
+        <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
+        <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
+        <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+        <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="lib/JavaScript-MD5/js/md5.js"></script>
+        <script type="text/javascript" src="js/utils.js"></script>
+        <style type="text/css">
+            .account-panel
+        {
+            margin-top: 20%;
+            -moz-box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.3);
+            -webkit-box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.3);
+            box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .unlock-form .input-group-addon:first-child {
+            border-bottom-left-radius: 0;
+        }
+        .unlock-form .input-group-btn:last-child>.btn,
+        .input-group .form-control:last-child {
+            border-bottom-right-radius: 0;
+        }
+        .unlock-form .btn-block {
+            margin-top: 5px;
+            border-top-right-radius: 0;
+            border-top-left-radius: 0;
+        }
+        .page-splash {
+            z-index: 99999 !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #DDD;
+        }
+        .logo {
+            display: block;
+            width: 280px;
+            height: 280px;
+            margin-right: auto;
+            margin-left: auto;
+            margin-bottom: 20px;
+        }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+        <div class="page-splash">
+            <div class="container">
+                <div class="row">
+                    <div class="col-sm-6 col-md-4 col-md-offset-4">
+                        <div class="panel panel-default account-panel">
+                            <div class="panel-heading">
+                                <h3 class="panel-title"><span class="glyphicon glyphicon-lock"></span> Enter password to unlock</h3>
+                            </div>
+                            <div class="panel-body">
+                                <div class="center-block text-center">
+                                    <img class="logo" src="images/logo.png"alt="">
+                                    <form class="unlock-form">
+                                        <div class="input-group">
+                                            <span class="input-group-addon">
+                                                <i class="glyphicon glyphicon-lock"></i>
+                                            </span>
+                                            <input type="password" id="password" class="form-control" placeholder="Password" required autofocus>
+                                        </div>
+                                        <button type="button" onclick="login();" class="btn btn-primary btn-block">Unlock</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>    
+    </body>
+</html>
