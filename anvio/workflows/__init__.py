@@ -224,7 +224,7 @@ class WorkflowSuperClass:
 
         shell_programs_needed = [r.shellcmd.strip().split()[0] for r in snakemake_workflow_object.rules if r.shellcmd]
 
-        shell_programs_missing = [s for s in shell_programs_needed if not u.is_program_exists(s)]
+        shell_programs_missing = [s for s in shell_programs_needed if not u.is_program_exists(s, dont_raise=dont_raise)]
 
         run.warning(None, 'Shell programs for the workflow')
         run.info('Needed', ', '.join(shell_programs_needed))
