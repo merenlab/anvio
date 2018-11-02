@@ -1,4 +1,4 @@
 sample	path
-sample_idab_ud_01	sample_01.krakenhll_tax
-sample_idab_ud_02	sample_02.krakenhll_tax
-sample_idab_ud_03	sample_03.krakenhll_tax
+sample_01	sample_01.krakenhll_tax
+sample_02	sample_02.krakenhll_tax
+sample_03	sample_03.krakenhll_tax
