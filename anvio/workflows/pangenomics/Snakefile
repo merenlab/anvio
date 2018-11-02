@@ -149,5 +149,5 @@ rule anvi_gen_genomes_storage:
                                      {params.gene_caller}
         """
 
-if not slave_mode:
+if 'workflows/pangenomics' in workflow.included[0]:
     M.check_workflow_program_dependencies(workflow)
