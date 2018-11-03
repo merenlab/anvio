@@ -63,8 +63,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped',\
                      'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy', 'metaspades',\
-                     'remove_short_reads_based_on_references', 'bowtie_for_removal_references', \
-                     'bowtie_build_for_removal_references', 'samtools_view_for_removal_references'])
+                     'remove_short_reads_based_on_references'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
                                     "kraken_txt"])
@@ -110,8 +109,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map", \
                                                                                  "references_for_removal_txt", \
                                                                                  "delimiter-for-iu-remove-ids-from-fastq"]
-        rule_acceptable_params_dict['bowtie_for_removal_references'] = rule_acceptable_params_dict['bowtie'].copy()
-        rule_acceptable_params_dict['samtools_view_for_removal_references'] = rule_acceptable_params_dict['samtools_view'].copy()
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -139,8 +136,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "anvi_profile": {"threads": 3, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True},
-                                    "bowtie_for_removal_references": {"additional_params": "--no-unal", "threads": 3},
-                                    "samtools_view_for_removal_references": {"additional_params": "-F 4"},
                                     "krakenhll": {"threads": 3, "--gzip-compressed": True, "additional_params": "--preload"},
                                     "remove_short_reads_based_on_references": {"delimiter-for-iu-remove-ids-from-fastq": " "}})
 
@@ -387,7 +382,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         if wildcards.group in self.references_for_removal:
             # if it's a reference for removal then we just want to use the
             # raw fasta file, and there is no need to reformat or assemble
-            contigs = super(MetagenomicsWorkflow, self).get_raw_fasta(wildcards)
+            contigs = self.get_raw_fasta(wildcards)
         elif self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
             contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
         else:
@@ -396,7 +391,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
-        if self.references_mode:
+        if self.references_mode or wildcards.group in self.references_for_removal:
             # in 'reference mode' the input is the reference fasta
             contigs = super(MetagenomicsWorkflow, self).get_raw_fasta(wildcards, remove_gz_suffix=remove_gz_suffix)
         else:
