@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Get a block of sequence following a gene that mathces a functional annotation or HMM hit
-
-    This program takes a contigs database, and searches for a function or HMM hit. It is useful
-    when you want to study which genes are present around a gene of interest. It could be helpful
-    when studying genomic loci that tend to some consereved and some variable genes.
+"""anvi-split-locus, first of its name, splitter of loci, and generator of mini contigs databases
 
   You want to play with it? This is how you could quickly test it:
 
@@ -25,11 +21,11 @@
                       --search-term Ribosomal_L27 \
                       -n 24
 
-  This will give you a fasta file OUTPUT.fa with the Ribosomal_L27 gene and the 24 genes that follow it.
+  This will give you a new contigs database with a single contig that contains the Ribosomal_L27 gene and
+  the 24 genes that follow it.
 
-  If all you want is the sequence of a gene matching a search pattern then use:
-  for HMM: anvi-get-sequences-for-hmm-hits
-  for functional annotations: anvi-search-functions
+  If all you want is the sequence of a gene matching a search pattern then use anvi-get-sequences-for-hmm-hits
+  for HMM searches, and anvi-search-functions for searches in functional annotations.
 """
 
 import sys
@@ -58,11 +54,13 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Search for a function or HMM hit and for each matching gene \
-                                                    get the sequence including a block of genes the around the match.\
-                                                    The output will be written to a fasta file (or multiple files, see\
-                                                    --separate-fasta option below. The headers of the sequences in the\
-                                                    fasta file hold some information about the gene.)")
+    parser = argparse.ArgumentParser(description="This program helps you cut a 'locus' from a larger context. Anvi'o does this by \
+                                                  starting from one gene, and extending its selection based on how many genes you \
+                                                  want from its upstream or downstream in the contig its found. The first gene anvi'o \
+                                                  focuses on is defined by you: you can either use a function name in any of the functional \
+                                                  annotation databases or default or user-defined HMMs, or use a gene callers ID. If \
+                                                  everything goes alright, you will get a separate contigs database for every matching \
+                                                  gene anvi'o found in your master contigs database. Enjoy your mini contigs databases.")
 
     groupA = parser.add_argument_group('Essential INPUT')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
