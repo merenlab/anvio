@@ -460,14 +460,14 @@ def D(debug_message, debug_log_file_path=".SNAKEMAKEDEBUG"):
 def T(config, rule_name, N=1): return A([rule_name,'threads'], config, default_value=N)
 
 
-def get_dir_names(config):
+def get_dir_names(config, dont_raise=False):
     ########################################
     # Reading some definitions from config files (also some sanity checks)
     ########################################
     DICT = dirs_dict
     for d in A("output_dirs", config):
         # renaming folders according to the config file, if the user specified.
-        if d not in DICT:
+        if d not in DICT and not dont_raise:
             # making sure the user is asking to rename an existing folder.
             raise ConfigError("You define a name for the directory '%s' in your "\
                               "config file, but the only available folders are: "\
