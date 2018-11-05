@@ -54,6 +54,10 @@ class Upgrader(object):
             url = url + '?access_token=' + os.environ['ANVIO_GITHUB_API_TOKEN']
 
         response = requests.get(url).json()
+
+        if 'message' in response and 'documentation_url' in response:
+            raise Exception('Github API returned error: %s, %s' % (response['message'], response['documentation_url']))
+
         for release in response:
             releases[release['name']] = release
 
