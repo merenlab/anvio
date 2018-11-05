@@ -48,7 +48,13 @@ class Upgrader(object):
 
     def get_releases(self):
         releases = {}
-        for release in requests.get('https://api.github.com/repos/merenlab/anvio/tags').json():
+        url = 'https://api.github.com/repos/ozcan/anvio/tags'
+
+        if 'ANVIO_GITHUB_API_TOKEN' in os.environ:
+            url = url + '?access_token=' + os.environ['ANVIO_GITHUB_API_TOKEN']
+
+        response = requests.get(url).json()
+        for release in response:
             releases[release['name']] = release
 
         return releases
