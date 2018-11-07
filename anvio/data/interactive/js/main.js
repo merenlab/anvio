@@ -848,7 +848,7 @@ function createLegendColorPanel(legend_id) {
         }
 
         template = template + '<div style="float: left; width: 50%; display: inline-block; padding: 3px 5px;">' + 
-                                '<div class="colorpicker legendcolorpicker" color="' + _color + '"' +
+                                '<div class="colorpicker-base legendcolorpicker" color="' + _color + '"' +
                                 'style="margin-right: 5px; background-color: ' + _color + '"' +
                                 'callback_source="' + legend['source'] + '"' +
                                 'callback_group="' + ((typeof legend['group'] !== 'undefined') ? legend['group'] : '') + '"' +
@@ -866,6 +866,7 @@ function createLegendColorPanel(legend_id) {
         colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
             if (el.getAttribute('callback_group') !== '') {
                 window[el.getAttribute('callback_source')][el.getAttribute('callback_group')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
             } else {
