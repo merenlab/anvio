@@ -154,7 +154,7 @@ class Completeness:
         if anvio.DEBUG:
             self.run.info("Raw estimates", domain_specific_estimates, nl_before=1)
 
-        if len(set([d[0] for d in domain_specific_estimates])) == 1 or domain_specific_estimates[0][0] < 0.01:
+        if (len(d) > 1 and len(set([d[0] for d in domain_specific_estimates])) == 1) or domain_specific_estimates[0][0] < 0.01:
             # clearly none of the domains match with any level of real confidence
             best_matching_domain, domain_matching_confidence = None, 0.0
         else:
