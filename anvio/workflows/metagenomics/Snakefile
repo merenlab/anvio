@@ -445,7 +445,10 @@ rule merge_fastas_for_co_assembly:
             r1, r2 = uncompress_fastqs_if_needed(r1, r2, log)
 
             # run fq2fa
-            fq2fa_output = os.path.join(dirs_dict["QC_DIR"], "R1_R2-merged.temp.fa")
+            prefix1 = os.path.basename(r1).split('.fastq')[0]
+            prefix2 = os.path.basename(r2).split('.fastq')[0]
+            temp_merged_name = prefix1 + prefix2 + '.temp.fa'
+            fq2fa_output = os.path.join(dirs_dict["QC_DIR"], temp_merged_name)
             shell("fq2fa --merge %s %s %s >> %s 2>&1" % (r1, r2, fq2fa_output, log))
 
             if need_to_uncompress:
