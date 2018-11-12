@@ -67,7 +67,11 @@ def main(args):
     # that this might blow up sooner or later, but I will think of a better solution then.
     for request_id in d:
         for sample_id in d[request_id]:
-            normalization_factor = len(list(list(d[request_id].values())[0].keys())[0])
+            try:
+                normalization_factor = len(list(list(d[request_id].values())[0].keys())[0])
+            except IndexError:
+                normalization_factor = 1.0
+
             for oligotype in d[request_id][sample_id]:
                 d[request_id][sample_id][oligotype] = d[request_id][sample_id][oligotype] / normalization_factor
 
