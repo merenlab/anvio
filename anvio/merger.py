@@ -238,7 +238,7 @@ class MultipleRuns:
                  raise ConfigError("There is something wrong with your input databases. The group name 'default'\
                                     should be common to all of them, but it doesn't seem to be the case :/ How did\
                                     you end up with an anvi'o single profile database that doesn't have the 'default'\
-                                    gropu in its additional layer data table? It is very likely that your profiling\
+                                    group in its additional layer data table? It is very likely that your profiling\
                                     step failed for some reason for one or more of your databases :(")
 
         taxonomic_data_groups = set(constants.levels_of_taxonomy).intersection(data_groups_common_to_all_profile_dbs)
