@@ -10,6 +10,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows import WorkflowSuperClass
+from anvio.workflows import init_workflow_super_class
 from anvio.errors import ConfigError
 
 
@@ -29,22 +30,7 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         # if a regular instance of `ContigsDBWorkflow` is being generated, we
         # expect it to have a parameter `args`. if there is no `args` given, we
         # assume the class is being inherited as a base class from within another
-        if args:
-            if len(self.__dict__):
-                raise ConfigError("Something is wrong. You are ineriting `PhylogenomicsWorkflow` from \
-                                   within another class, yet you are providing an `args` parameter.\
-                                   This is not alright.")
-            self.args = args
-            self.name = 'phylogenomics'
-        else:
-            if not len(self.__dict__):
-                raise ConfigError("When you are *not* inheriting `PhylogenomicsWorkflow` from within\
-                                   a super class, you must provide an `args` parameter.")
-
-            if 'name' not in self.__dict__:
-                raise ConfigError("The super class trying to inherit `PhylogenomicsWorkflow` does not\
-                                   have a set `self.name`. Which means there may be other things\
-                                   wrong with it, hence anvi'o refuses to continue.")
+        init_workflow_super_class(self, args, workflow_name='phylogenomics')
 
         self.run = run
         self.progress = progress
@@ -54,7 +40,6 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         self.external_genomes_file = ''
 
         # initialize the base class
-        WorkflowSuperClass.__init__(self)
 
         self.rules.extend(['anvi_get_sequences_for_hmm_hits', 'trimal', 'iqtree'])
 
