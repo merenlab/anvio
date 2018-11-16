@@ -28,6 +28,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ['profile-db', 'contigs-db', 'collection', 'pan-db', 'genomes-storage-db',]
+__provides__ = ['summary',]
 
 
 run = terminal.Run()
@@ -70,10 +72,11 @@ if __name__ == '__main__':
                                         a standard anvi'o profile, you will need a contigs database to go with it. If you\
                                         are working with a pan profile, then you will need to provide a genomes storage.\
                                         Don't worry too much, because anvi'o will warn you gently if you make a mistake.")
-    groupC = parser.add_argument_group('STANDARD PROFILE SPEFIFIC PARAMS', "Parameters that are only relevant to standard\
+    groupC = parser.add_argument_group('STANDARD PROFILE SPECIFIC PARAMS', "Parameters that are only relevant to standard\
                                         profile summaries (declaring or not declaring them will not change anything if you\
                                         are summarizing a pan profile).")
     groupD = parser.add_argument_group('COMMONS', "Common parameters for both pan and standard profile summaries.")
+    groupE = parser.add_argument_group('EXTRA', "Extra stuff because you're extra.")
 
     groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
@@ -85,6 +88,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
     groupD.add_argument(*anvio.A('cog-data-dir'), **anvio.K('cog-data-dir'))
     groupD.add_argument(*anvio.A('quick-summary'), **anvio.K('quick-summary'))
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     groupC.add_argument('--report-aa-seqs-for-gene-calls', default=False, action='store_true', help="You can use this flag if\
                                   you would like to find translated DNA sequences for your gene calls in the genes output\

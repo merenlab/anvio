@@ -1,0 +1,112 @@
+# -*- coding: utf-8
+
+import os
+import argparse
+import pandas as pd
+
+import anvio
+import anvio.workflows as w
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
+
+__author__ = "Alon Shaiber"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Alon Shaiber"
+__email__ = "alon.shaiber@gmail.com"
+
+run = terminal.Run()
+
+slave_mode = False if 'workflows/phylogenomics' in workflow.included[0] else True
+if not slave_mode:
+    # don't be confused, child. when things come to this point, the variable `config`
+    # is already magically filled in by snakemake:
+    M = PhylogenomicsWorkflow(argparse.Namespace(config=config, slave_mode=slave_mode))
+    M.init()
+    dirs_dict = M.dirs_dict
+
+localrules: generate_phylogeny
+
+project_name = M.get_param_value_from_config('project_name')
+
+rule generate_phylogeny:
+    input: os.path.join(dirs_dict["PHYLO_DIR"], project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
+
+rule anvi_get_sequences_for_hmm_hits:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], project_name +"_anvi_get_sequences_for_hmm_hits.log")
+    input: unpack(lambda wildcards: M.input_for_anvi_get_sequences_for_hmm_hits) # The lambda function here is just a trick. from some reason without it, snakemake can't unpack the dict
+    output: os.path.join(dirs_dict["PHYLO_DIR"], project_name + "-proteins.fa")
+    params:
+        internal_genomes_argument = lambda wildcards: "--internal-genomes " + M.internal_genomes_file if M.internal_genomes_file else "",
+        external_genomes_argument = lambda wildcards: "--external-genomes " + M.external_genomes_file if M.external_genomes_file else "",
+        return_best_hit = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit'),
+        separator = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--separator'),
+        align_with = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--align-with'),
+        min_num_bins_gene_occurs = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--min-num-bins-gene-occurs'),
+        max_num_genes_missing_from_bin = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--max-num-genes-missing-from-bin'),
+        concatenate_genes = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--concatenate-genes'),
+        get_aa_sequences = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--get-aa-sequences'),
+        gene_names = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names'),
+        hmm_sources = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--hmm-sources')
+    threads: M.T('anvi_get_sequences_for_hmm_hits')
+    resources: nodes = M.T('anvi_get_sequences_for_hmm_hits')
+    shell:
+        """
+            anvi-get-sequences-for-hmm-hits {params.internal_genomes_argument} {params.external_genomes_argument} \
+                                            {params.return_best_hit} {params.separator} {params.align_with} \
+                                            {params.min_num_bins_gene_occurs} {params.max_num_genes_missing_from_bin} \
+                                            {params.concatenate_genes} {params.get_aa_sequences} {params.gene_names} \
+                                            {params.hmm_sources} -o {output} >> {log} 2>&1
+        """
+
+
+rule trimal:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], project_name +"_trimal.log")
+    input: os.path.join(dirs_dict["PHYLO_DIR"], project_name + "-proteins.fa")
+    output: os.path.join(dirs_dict["PHYLO_DIR"], project_name + "-proteins_GAPS_REMOVED.fa")
+    params:
+        gt = M.get_rule_param('trimal', '-gt'),
+        additional_params = M.get_param_value_from_config(['trimal', 'additional_params'])
+    threads: M.T('trimal')
+    resources: nodes = M.T('trimal')
+    shell:
+        """
+            trimal -in {input} \
+                   -out {output} \
+                   {params.gt} \
+                   {params.additional_params} >> {log} 2>&1
+        """
+
+
+rule iqtree:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], project_name +"_iqtree.log")
+    input: os.path.join(dirs_dict["PHYLO_DIR"], project_name + "-proteins_GAPS_REMOVED.fa")
+    output: os.path.join(dirs_dict["PHYLO_DIR"], project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
+    params:
+        m = M.get_rule_param('iqtree', '-m'),
+        bb = M.get_rule_param('iqtree', '-bb'),
+        additional_params = M.get_param_value_from_config(['iqtree', 'additional_params'])
+    threads: M.T('iqtree')
+    resources: nodes = M.T('iqtree')
+    shell:
+        """
+            iqtree -s {input} \
+                       -nt {threads} \
+                       {params.m} \
+                       {params.bb} \
+                       {params.additional_params} >> {log} 2>&1
+        """
+
+
+if 'workflows/phylogenomics' in workflow.included[0]:
+    # check if all program dependencies are met. for this line to be effective,
+    # there should be an initial dry run step (which is the default behavior of
+    # the `WorkflowSuperClass`, so you are most likely covered).
+    M.check_workflow_program_dependencies(workflow)

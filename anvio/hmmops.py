@@ -23,12 +23,15 @@ progress = terminal.Progress()
 
 
 class SequencesForHMMHits:
-    def __init__(self, contigs_db_path, sources=set([]), init=True, run=run, progress=progress):
+    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
         if not isinstance(sources, type(set([]))):
             raise ConfigError("'sources' variable has to be a set instance.")
+
+        if not isinstance(split_names_of_interest, type(set([]))):
+            raise ConfigError("'split_names_of_interest' variable has to be a set instance.")
 
         self.sources = set([s for s in sources if s])
         self.hmm_hits = {}
@@ -40,13 +43,13 @@ class SequencesForHMMHits:
         self.splits_in_contigs = {}
 
         if contigs_db_path:
-            self.init_dicts(contigs_db_path)
+            self.init_dicts(contigs_db_path, split_names_of_interest)
             self.initialized = True
         else:
             self.initialized = False
 
 
-    def init_dicts(self, contigs_db_path):
+    def init_dicts(self, contigs_db_path, split_names_of_interest=set([])):
         """Initialize essential data for HMM stuff.
 
            This function will do its best to not load any data that will not
@@ -78,16 +81,56 @@ class SequencesForHMMHits:
         # get data from HMM tables based on sources of interest
         self.progress.update('Getting data from HMM tables for %d source(s)' % len(self.sources))
         where_clause_for_sources = "source in (%s)" % ', '.join(['"%s"' % s for s in self.sources])
-        self.hmm_hits = contigs_db.get_some_rows_from_table_as_dict(t.hmm_hits_table_name, \
-                                                                    where_clause=where_clause_for_sources)
-        self.hmm_hits_splits = contigs_db.get_some_rows_from_table_as_dict(t.hmm_hits_splits_table_name, \
-                                                                    where_clause=where_clause_for_sources)
+        self.hmm_hits = contigs_db.get_some_rows_from_table_as_dict(t.hmm_hits_table_name,
+                                                                    where_clause=where_clause_for_sources,
+                                                                    error_if_no_data=False)
+        self.hmm_hits_splits = contigs_db.get_some_rows_from_table_as_dict(t.hmm_hits_splits_table_name,
+                                                                    where_clause=where_clause_for_sources,
+                                                                    error_if_no_data=False)
+
+        # if the user sent a split names of interest, it means they are interested in hits that only occur
+        # in a specific set of split names.
+        if len(split_names_of_interest):
+            total_num_split_names = len(set(self.hmm_hits_splits[entry_id]['split'] for entry_id in self.hmm_hits_splits))
+            hmm_hits_splits_entry_ids_to_remove = set([])
+            hmm_hits_entry_ids_to_remove = set([])
+            for entry_id in self.hmm_hits_splits:
+                if self.hmm_hits_splits[entry_id]['split'] not in split_names_of_interest:
+                    hmm_hits_splits_entry_ids_to_remove.add(entry_id)
+                    hmm_hits_entry_ids_to_remove.add(self.hmm_hits_splits[entry_id]['hmm_hit_entry_id'])
+
+            if len(hmm_hits_splits_entry_ids_to_remove):
+                for entry_id in hmm_hits_splits_entry_ids_to_remove:
+                    self.hmm_hits_splits.pop(entry_id)
+
+            if len(hmm_hits_entry_ids_to_remove):
+                for entry_id in hmm_hits_entry_ids_to_remove:
+                    self.hmm_hits.pop(entry_id)
+
+            filtered_num_split_names = len(set(self.hmm_hits_splits[entry_id]['split'] for entry_id in self.hmm_hits_splits))
+
+            if anvio.DEBUG:
+                self.progress.end()
+
+                self.run.warning(None, header="SequencesForHMMHits info")
+                self.run.info_single('%d split names of interest are found' % len(split_names_of_interest))
+                self.run.info('Total split names w/HMM hits', total_num_split_names)
+                self.run.info('Final split names w/HMM hits', filtered_num_split_names, nl_after=1)
+
+                self.progress.new("Recovering sequences for HMM Hits")
+                self.progress.update('...')
+
+        if not len(self.hmm_hits):
+            # there are HMMs but no hits. FINE.
+            self.progress.end()
+            contigs_db.disconnect()
+            return
 
         gene_caller_ids_of_interest = set([e['gene_callers_id'] for e in self.hmm_hits.values()])
         where_clause_for_genes = "gene_callers_id in (%s)" % ', '.join(['%d' % g for g in gene_caller_ids_of_interest])
 
         self.progress.update('Recovering split and contig names for %d genes' % (len(gene_caller_ids_of_interest)))
-        split_names_of_ineterest, contig_names_of_interest = utils.get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids_of_interest)
+        split_names_of_interest, contig_names_of_interest = utils.get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids_of_interest)
 
 
         self.progress.update('Recovering contig seqs for %d genes' % (len(gene_caller_ids_of_interest)))
@@ -103,7 +146,7 @@ class SequencesForHMMHits:
         self.genes_in_contigs = contigs_db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, \
                                                                             where_clause=where_clause_for_genes)
 
-        self.splits_in_contigs = list(split_names_of_ineterest)
+        self.splits_in_contigs = list(split_names_of_interest)
 
         self.progress.end()
         contigs_db.disconnect()

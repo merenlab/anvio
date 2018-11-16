@@ -25,7 +25,7 @@ function searchContigs()
     {
         // contains
         var _pre = "layerdata[";
-        var _post = "][" + column + "].toString().indexOf(\"" + svalue + "\") != -1";
+        var _post = "][" + column + "].toString().toLowerCase().indexOf(\"" + svalue + "\".toLowerCase()) != -1";
     }
 
     var _len = layerdata.length;

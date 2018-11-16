@@ -2,7 +2,9 @@ import os
 import sys
 import glob
 
-anvio_version='5.1-master'
+init_py_path = os.path.normpath(os.path.dirname(os.path.abspath(__file__))) + '/anvio/__init__.py'
+version_string = [l.strip() for l in open(init_py_path).readlines() if l.strip().startswith('anvio_version')][0]
+anvio_version = version_string.split('=')[1].strip().strip("'").strip('"')
 
 requirements = [req.strip() for req in open('requirements.txt', 'rU').readlines() if not req.startswith('#')]
 

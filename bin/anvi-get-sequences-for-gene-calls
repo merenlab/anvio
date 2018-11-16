@@ -20,6 +20,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ['contigs-db',]
+__provides__ = ['genes-fasta',]
 
 
 run = terminal.Run()
@@ -38,8 +40,9 @@ def main(args):
         gene_caller_ids_list=gene_caller_ids,
         output_file_path=args.output_file,
         simple_headers=not args.report_extended_deflines,
-
+        wrap=args.wrap
     )
+
     if args.export_gff3:
         if args.get_aa_sequences:
             raise ConfigError("AA sequences can only be reported in FASTA format, please remove the --export-gff3 flag to continue.")

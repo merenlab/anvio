@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import anvio
+import pandas as pd
 
+import anvio
 from anvio.parsers.base import Parser
 
 
@@ -32,6 +33,12 @@ class InterProScan(Parser):
 
     def get_dict(self):
         d = self.dicts['matrix']
+
+        # Drop duplicate function annotations.
+        df = pd.DataFrame.from_dict(d, orient='index')
+        df = df.drop_duplicates(subset=['gene_callers_id', 'hash', 'source', 'accession', 'function'])
+        d = df.to_dict(orient='index')
+
         for entry in d:
             try:
                 d[entry]['e_value'] = float(d[entry]['e_value'])

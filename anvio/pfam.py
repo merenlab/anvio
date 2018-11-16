@@ -6,6 +6,7 @@
 """
 import os
 import gzip
+import shutil
 import requests
 from io import BytesIO
 
@@ -36,6 +37,9 @@ pp = terminal.pretty_print
 
 def read_remote_file(url, is_gzip=True):
     remote_file = requests.get(url)
+
+    if remote_file.status_code == 404:
+        raise Exception("'%s' returned 404 Not Found. " % url)
 
     if is_gzip:
         buf = BytesIO(remote_file.content)
@@ -98,8 +102,12 @@ class PfamSetup(object):
 
 
     def confirm_downloaded_files(self):
-        checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
-        checksums = {}
+        try:
+            checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
+            checksums = {}
+        except:
+            self.run.warning("Checksum file '%s' is not available in FTP, Anvi'o won't be able to verify downloaded files." % (self.database_url + '/md5_checksums'))
+            return
 
         for line in checksums_file.split('\n'):
             checksum, file_name = [item.strip() for item in line.strip().split()]
@@ -233,3 +241,12 @@ class Pfam(object):
 
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
         gene_function_calls_table.create(functions_dict)
+
+        if anvio.DEBUG:
+            run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up\
+                         later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+        else:
+            run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
+                             like to keep it for testing purposes)', nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_directory_path)
+            hmmer.clean_tmp_dirs()

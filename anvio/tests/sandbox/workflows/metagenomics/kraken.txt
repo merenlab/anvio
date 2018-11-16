@@ -1,0 +1,4 @@
+sample	path
+sample_01	sample_01.krakenhll_tax
+sample_02	sample_02.krakenhll_tax
+sample_03	sample_03.krakenhll_tax

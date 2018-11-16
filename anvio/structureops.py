@@ -363,7 +363,6 @@ class Structure(object):
 
         return genes_of_interest
 
-
     def process(self):
         """
         """
@@ -419,6 +418,7 @@ class Structure(object):
             raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
 
         self.structure_db.disconnect()
+        self.run.info("Structure database", self.output_db_path)
 
 
     def update_structure_database_meta_table(self, has_structure):
@@ -455,7 +455,7 @@ class Structure(object):
         # Each annotation source does NOT have to annotate each residue in the gene.
         residue_annotation_for_gene = pd.DataFrame({})
         for method in residue_annotation_methods:
-            residue_annotation_for_gene = pd.concat([residue_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1)
+            residue_annotation_for_gene = pd.concat([residue_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1, sort=True)
 
         # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
         residue_annotation_for_gene.insert(0, "entry_id", list(range(residue_annotation_for_gene.shape[0])))
@@ -647,21 +647,22 @@ class StructureUpdate(Structure):
         self.progress = progress
 
         # initialize self.arg parameters
-        A                         = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
-        null                      = lambda x: x
-        self.contigs_db_path      = A('contigs_db', null)
-        self.structure_db_path    = A('structure_db', null)
-        self.genes_to_remove      = A('genes_to_remove', null)
-        self.genes_to_remove_path = A('genes_to_remove_file', null)
-        self.genes_to_add         = A('genes_to_add', null)
-        self.genes_to_add_path    = A('genes_to_add_file', null)
-        self.full_modeller_output = A('dump_dir', null)
-        self.modeller_executable  = A('modeller_executable', null)
-        self.DSSP_executable      = None
+        A                                  = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
+        null                               = lambda x: x
+        self.contigs_db_path               = A('contigs_db', null)
+        self.structure_db_path             = A('structure_db', null)
+        self.genes_to_remove               = A('genes_to_remove', null)
+        self.genes_to_remove_path          = A('genes_to_remove_file', null)
+        self.genes_to_add                  = A('genes_to_add', null)
+        self.genes_to_add_path             = A('genes_to_add_file', null)
+        self.full_modeller_output          = A('dump_dir', null)
+        self.modeller_executable           = A('modeller_executable', null)
+        self.skip_genes_if_already_present = A('skip_genes_if_already_present', bool)
+        self.DSSP_executable               = None
 
         utils.is_contigs_db(self.contigs_db_path)
-        self.contigs_db           = dbops.ContigsDatabase(self.contigs_db_path)
-        self.contigs_db_hash      = self.contigs_db.meta['contigs_db_hash']
+        self.contigs_db      = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
 
         # init ContigsSuperClass
         self.contigs_super = ContigsSuperclass(self.args)
@@ -697,7 +698,17 @@ class StructureUpdate(Structure):
     def add_genes(self):
         # identify which genes user wants to model structures for
         self.genes_of_interest = self.get_genes_of_interest(self.genes_to_add_path, self.genes_to_add)
-        self.run.info("Gene caller ids to be added", ", ".join([str(x) for x in self.genes_of_interest]))
+
+        if self.skip_genes_if_already_present:
+            redundant_gene_caller_ids = [g for g in self.genes_of_interest if g in self.structure_db.genes_queried]
+            if redundant_gene_caller_ids:
+                self.run.info("Redundant gene caller ids that will be skipped", ",".join([str(x) for x in redundant_gene_caller_ids]))
+                self.genes_of_interest = [g for g in self.genes_of_interest if g not in redundant_gene_caller_ids]
+                if not self.genes_of_interest:
+                    raise ConfigError("Every gene you wanted to add is already in the database. Since you provided\
+                                       the --skip-genes-if-already-present flag, there is nothing to do :)")
+
+        self.run.info("Gene caller ids to be added", ",".join([str(x) for x in self.genes_of_interest]))
 
         self.get_MODELLER_params_used_when_db_was_created()
 
@@ -735,7 +746,7 @@ class StructureUpdate(Structure):
         if remove == set(self.structure_db.genes_queried):
             raise ConfigError("You want to remove every gene in your structure database. No.")
 
-        self.run.info("Gene caller ids to be removed", ", ".join([str(x) for x in remove]))
+        self.run.info("Gene caller ids to be removed", ",".join([str(x) for x in remove]))
 
         # remove ids from the three meta-keys in which they can appear
         new_genes_queried = [x for x in self.structure_db.genes_queried if x not in remove]
@@ -813,18 +824,18 @@ class StructureUpdate(Structure):
                                "These gene caller ids you") + " want to add to the structure database\
                                are not known to the contigs database: {}. You have only 2 lives\
                                left. 2 more mistakes, and anvi'o will automatically uninstall\
-                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+                               itself. Yes, seriously :(".format(",".join([str(x) for x in bad_gene_caller_ids])))
 
         # check for genes that do already appear in the structure database
         redundant_gene_caller_ids = [g for g in self.genes_of_interest if g in self.structure_db.genes_queried]
-        if redundant_gene_caller_ids:
+        if redundant_gene_caller_ids and not self.skip_genes_if_already_present:
             raise ConfigError(("This gene caller id you" if len(redundant_gene_caller_ids) == 1 else \
                                "These gene caller ids you") + " want to add to the structure database\
                                is already in the structure database: {}. If you want to re-do the\
                                modelling, then first remove it with --genes-to-remove or\
                                --genes-to-remove-file (you can do it in the same\
                                anvi-update-genes-in-structure-database command).".\
-                                   format(", ".join([str(x) for x in redundant_gene_caller_ids])))
+                                   format(",".join([str(x) for x in redundant_gene_caller_ids])))
 
         # raise warning if number of genes is greater than 20
         if len(self.genes_of_interest) > 20:

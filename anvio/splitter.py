@@ -6,12 +6,17 @@ The default client of this library is under bin/anvi-split"""
 
 
 import os
+import sys
+import copy
+import argparse
 
 import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.hmmops as hmmops
+import anvio.profiler as profiler
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
@@ -24,6 +29,7 @@ from anvio.errors import ConfigError
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.collections import TablesForCollections
+from anvio.tables.genefunctions import TableForGeneFunctions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -71,9 +77,6 @@ class ProfileSplitter:
         utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
-        if profile_db.meta['blank']:
-            raise ConfigError("The anvi-split workflow is not prepared to deal with blank profiles :/ Sorry!")
-
         if profile_db.meta['db_type'] != 'profile':
             raise ConfigError("Anvi'o was trying to split this profile, but it just realized that it is not a profile\
                                database. There is something wrong here.")
@@ -84,7 +87,7 @@ class ProfileSplitter:
         # anvi-split runs to work on bins in the same collection in parallel:
         self.args.delete_output_directory_if_exists = False
 
-        self.summary = summarizer.ProfileSummarizer(self.args)
+        self.summary = summarizer.ProfileSummarizer(self.args, r=self.run, p=self.progress)
         self.summary.init()
 
         self.bin_names_of_interest = sorted(self.summary.bin_ids)
@@ -112,10 +115,16 @@ class ProfileSplitter:
         for bin_name in self.bin_names_of_interest:
             b = BinSplitter(bin_name, self.summary, self.args, run=self.run, progress=self.progress)
             b.do_contigs_db()
-            b.do_profile_db()
 
-            if self.summary.auxiliary_profile_data_available:
-                b.do_auxiliary_profile_data()
+            if self.summary.p_meta['blank']:
+                self.run.warning("It seems your profile database is a blank one. That's fine. Anvi'o assumes that your actual\
+                                  intention is to split your contigs database only. This warning message is here to make sure\
+                                  you will not be upset when you realize your split profile missing a profile database :(")
+            else:
+                b.do_profile_db()
+
+                if self.summary.auxiliary_profile_data_available:
+                    b.do_auxiliary_profile_data()
 
         self.run.info('Num bins processed', len(self.bin_names_of_interest))
         self.run.info("Output directory", self.output_directory)
@@ -181,6 +190,7 @@ class BinSplitter(summarizer.Bin):
         bin_contigs_db.db.update_meta_value('total_length', self.total_length)
         bin_contigs_db.db.update_meta_value('creation_date', bin_contigs_db.get_date())
         bin_contigs_db.db.update_meta_value('contigs_db_hash', self.contigs_db_hash)
+        bin_contigs_db.db.update_meta_value('project_name', self.bin_id)
 
         # the empty contigs db is ready
         bin_contigs_db.disconnect()
@@ -431,3 +441,398 @@ class BinSplitter(summarizer.Bin):
         return skip_hierarchical_clustering
 
 
+class LocusSplitter:
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        # following will be filled in during init:
+        self.targets = []
+        self.num_genes_list = None
+        self.gene_caller_ids_of_interest = set([])
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.input_contigs_db_path = A('contigs_db')
+        self.num_genes = A('num_genes')
+        self.search_term = A('search_term')
+        self.gene_caller_ids = A('gene_caller_ids')
+        self.delimiter = A('delimiter')
+        self.output_dir = A('output_dir') or os.path.abspath(os.path.curdir)
+        self.output_file_prefix = A('output_file_prefix') or 'the_user_provided_no_prefix_so_here_we_go_prefix'
+        self.use_hmm = A('use_hmm')
+        self.hmm_sources = A('hmm_sources') or set([])
+        self.overwrite_output_destinations = A('overwrite_output_destinations')
+        self.remove_partial_hits = A('remove_partial_hits')
+        self.reverse_complement_if_necessary = not A('never_reverse_complement')
+        self.include_fasta_output = True
+
+        if A('list_hmm_sources'):
+            hmmops.SequencesForHMMHits(self.input_contigs_db_path).list_available_hmm_sources()
+
+        # unless we are in debug mode, let's keep things quiet.
+        if anvio.DEBUG:
+            self.run_object = terminal.Run()
+        else:
+            self.run_object = terminal.Run(verbose=False)
+
+
+    def sanity_check(self):
+        """Check sanity while straightening some input variables"""
+
+        filesnpaths.is_output_dir_writable(self.output_dir)
+
+        if (not (self.gene_caller_ids or self.search_term)) or (self.gene_caller_ids and self.search_term):
+            raise ConfigError("You must specify exacly one of the following: --gene-caller-ids or --search-term")
+
+        if self.use_hmm and not self.search_term:
+            raise ConfigError("If you want to use HMMs to find the gene of interest that will define your locus,\
+                               you must also specify a --search-term.")
+
+        utils.is_contigs_db(self.input_contigs_db_path)
+
+        if len(self.hmm_sources):
+            self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(',')])
+
+        self.num_genes_list = [int(x) for x in self.num_genes.split(',')]
+        if len(self.num_genes_list) > 2:
+            raise ConfigError("The block size you provided, \"%s\", is not valid.\
+                                The gene block size is defined by only one or two integers for either \
+                                a block following the search match or a block preceding and following \
+                                the search match respectively." % self.num_genes)
+
+        if len(self.num_genes_list) == 1:
+            self.num_genes_list = [0, self.num_genes_list[0]]
+
+        self.run.warning(None, header="Input / Output", lc="cyan")
+        self.run.info('Contigs DB', os.path.abspath(self.input_contigs_db_path))
+        self.run.info('Output directory', self.output_dir)
+        if ',' in self.num_genes:
+            self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
+        else:
+            self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
+        self.run.info('Rev-comp the locus sequence if necessary', self.reverse_complement_if_necessary)
+
+
+    def init(self):
+        """The whole purpose of this function is to identify which gene calls to focus"""
+
+        self.sanity_check()
+
+        self.run.warning(None, header="Initialization bleep bloops", lc="cyan")
+
+        if self.gene_caller_ids:
+            self.run.info('Mode', 'User-provided gene caller id(s)')
+
+            gene_caller_ids_of_interest = list(utils.get_gene_caller_ids_from_args(self.gene_caller_ids, self.delimiter))
+            self.sources = ['gene_caller_ids']
+        elif self.use_hmm:
+            self.run.info('Mode', 'HMM search')
+
+            s = hmmops.SequencesForHMMHits(self.input_contigs_db_path, sources=self.hmm_sources)
+
+            self.run.info('Search term', self.search_term, mc='green')
+            self.run.info('HMM sources being used', ', '.join(s.sources))
+
+            hmm_hits = utils.get_filtered_dict(s.hmm_hits, 'gene_name', {self.search_term})
+            gene_caller_ids_of_interest = [entry['gene_callers_id'] for entry in hmm_hits.values()]
+
+            self.targets.append('HMMs')
+            self.sources = s.sources
+        else:
+            self.run.info('Mode', 'Function search')
+
+            contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
+            # use functional annotation
+            contigs_db.init_functions()
+            self.run.info('Search term', self.search_term, mc='green')
+            self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
+
+            foo, search_report = contigs_db.search_for_gene_functions([self.search_term], verbose=True)
+            # gene id's of genes with the searched function
+            gene_caller_ids_of_interest = [i[0] for i in search_report]
+
+            self.targets.append('functions')
+            self.sources = contigs_db.gene_function_call_sources
+
+        # Multiple sources could annotate the same gene, so make sure the list is unique
+        self.gene_caller_ids_of_interest = set(gene_caller_ids_of_interest)
+
+        if len(self.gene_caller_ids_of_interest):
+            run.info('Matching genes',
+                     '%d genes matched your search' % len(self.gene_caller_ids_of_interest),
+                     mc='green', nl_after=1)
+
+
+    def process(self, skip_init=False):
+        if not skip_init:
+            self.init()
+
+        if not len(self.gene_caller_ids_of_interest):
+            self.run.warning("There aren't any gene calls that match to the criteria you provided to anvi'o\
+                              export locus magic. Is this yet another case of you did everything right\
+                              yet anvi'o failed you? If that's the case, let us know :( This class will quietly\
+                              kill this process without reporting any error since a lack of hit may be the\
+                              expected outcome of some weird processes somewhere.")
+
+        self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
+        self.contigs_db.init_functions()
+        counter = 1
+        for gene_callers_id in self.gene_caller_ids_of_interest:
+            self.run.warning(None,
+                             header="Exporting locus %d of %d" % \
+                                        (counter, len(self.gene_caller_ids_of_interest)),
+                             nl_after=0)
+
+            output_path_prefix = os.path.join(self.output_dir, "%s_%.4d" % (self.output_file_prefix, counter))
+
+            self.export_locus(gene_callers_id, output_path_prefix)
+
+            counter += 1
+
+
+    def export_locus(self, gene_callers_id, output_path_prefix):
+        """Takes a gene callers ID, and exports a contigs database.
+
+           Output path prefix should be unique for every export locus call. If the prefix you provide
+           looks like this:
+
+                >>> output_path_prefix = '/path/to/dir/file_name_prefix'
+
+           the output files will be stored as this:
+
+                >>> '/path/to/dir/file_name_prefix.fa'
+                >>> '/path/to/dir/file_name_prefix.db'
+
+           """
+
+        if os.path.isdir(output_path_prefix):
+            raise ConfigError("Output path prefix can't be a directory name...")
+
+        filesnpaths.is_output_file_writable(output_path_prefix + '.fa')
+
+        if not self.contigs_db:
+            self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
+            self.contigs_db.init_functions()
+
+        gene_call = self.contigs_db.genes_in_contigs_dict[gene_callers_id]
+        contig_name = self.contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']
+        genes_in_contig_sorted = sorted(list(self.contigs_db.contig_name_to_genes[contig_name]))
+
+        D = lambda: 1 if gene_call['direction'] == 'f' else -1
+        premature = False
+
+        self.run.info("Contig name", contig_name)
+        self.run.info("Contig length", self.contigs_db.contigs_basic_info[contig_name]['length'])
+        self.run.info("Num genes in contig", len(genes_in_contig_sorted))
+        self.run.info("Target gene call", gene_callers_id)
+        self.run.info("Target gene direction", "Forward" if D() == 1 else "Reverse", mc = 'green' if D() == 1 else 'red')
+
+        gene_1 = gene_callers_id - self.num_genes_list[0] * D()
+        gene_2 = gene_callers_id + self.num_genes_list[1] * D()
+        first_gene_of_the_block = min(gene_1, gene_2)
+        last_gene_of_the_block = max(gene_1, gene_2)
+
+        self.run.info("First and last gene of the locus (raw)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
+
+        # getting the ids for the first and last genes in the contig
+        last_gene_in_contig = genes_in_contig_sorted[-1][0]
+        first_gene_in_contig = genes_in_contig_sorted[0][0]
+
+        if last_gene_of_the_block > last_gene_in_contig:
+            last_gene_of_the_block = last_gene_in_contig
+            premature = True
+
+        if first_gene_of_the_block < first_gene_in_contig:
+            first_gene_of_the_block = first_gene_in_contig
+            premature = True
+
+        if premature and self.remove_partial_hits:
+            self.run.info_single("A premature locus is found .. the current configuration says 'skip'. Skipping.", mc="red", nl_before=1)
+            return
+        elif premature and not self.remove_partial_hits:
+            self.run.info_single("A premature locus is found .. the current configuration says 'whatevs'. Anvi'o will continue.", mc="yellow", nl_before=1, nl_after=1)
+
+        self.run.info("First and last gene of the locus (final)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
+
+        locus_start = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
+        locus_stop = self.contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
+
+        # being a performance nerd here yes
+        contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True) \
+                            .get_some_rows_from_table(t.contig_sequences_table_name,
+                                                      where_clause="contig='%s'" % contig_name)[0][1]
+        locus_sequence = contig_sequence[locus_start:locus_stop]
+
+        # here we will create a gene calls dict for genes that are specific to our locus. since we trimmed
+        # the contig sequence to the locus of interest, we will have to adjust start and stop positions of
+        # genes in teh gene calls dict.
+        locus_gene_calls_dict = {}
+        for g in range(first_gene_of_the_block, last_gene_of_the_block + 1):
+            locus_gene_calls_dict[g] = copy.deepcopy(self.contigs_db.genes_in_contigs_dict[g])
+            excess = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
+            locus_gene_calls_dict[g]['start'] -= excess
+            locus_gene_calls_dict[g]['stop'] -= excess
+
+        self.run.info("Locus gene call start/stops excess (nts)", excess)
+
+        if D() != 1 and self.reverse_complement_if_necessary:
+            reverse_complement = True
+        else:
+            reverse_complement = False
+
+        self.run.info('Reverse complementing everything', reverse_complement, mc='green')
+
+        # report a stupid FASTA file.
+        if self.include_fasta_output:
+            fasta_file_path = output_path_prefix + ".fa"
+
+            self.run.info("Output FASTA file", fasta_file_path)
+            with open(fasta_file_path, 'w') as f:
+                locus_header = contig_name + ' ' + \
+                               '|'.join(['target:%s' % ','.join(self.targets),
+                                         'sources:%s' % ','.join(self.sources),
+                                         'query:%s' % self.search_term or 'None',
+                                         'hit_contig:%s' % contig_name,
+                                         'hit_gene_callers_id:%s' % str(gene_callers_id),
+                                         'project_name:%s' % self.contigs_db.a_meta['project_name'].replace(' ', '_').replace("'", '_').replace('"', '_'),
+                                         'locus:%s,%s' % (str(first_gene_of_the_block), str(last_gene_of_the_block)),
+                                         'nt_positions_in_contig:%s:%s' % (str(locus_start), str(locus_stop)),
+                                         'premature:%s' % str(premature),
+                                         'reverse_complemented:%s' % str(reverse_complement)])
+
+                f.write('>%s\n' % locus_header)
+                f.write('%s\n' % utils.rev_comp(locus_sequence) if reverse_complement else locus_sequence)
+
+        # report a fancy anvi'o contigs database
+        self.store_locus_as_contigs_db(contig_name,
+                                       locus_sequence,
+                                       locus_gene_calls_dict,
+                                       output_path_prefix,
+                                       reverse_complement)
+
+
+    def store_locus_as_contigs_db(self, contig_name, sequence, gene_calls, output_path_prefix, reverse_complement=False):
+        """Generates a contigs database and a blank profile for a given locus"""
+
+        temporary_files = []
+
+        # dealing with some output file business.
+        E = lambda e: output_path_prefix + e
+        locus_output_db_path = E(".db")
+        locus_sequence_fasta = E("_sequence.fa")
+        locus_external_gene_calls = E("_external_gene_calls.txt")
+        temporary_files.extend([locus_external_gene_calls, locus_sequence_fasta])
+
+        # we will generate a blank profile database at the end of this. let's get the directory
+        # business sorted.
+        profile_output_dir = output_path_prefix + '-PROFILE'
+        if os.path.exists(profile_output_dir):
+            if self.overwrite_output_destinations:
+                filesnpaths.shutil.rmtree(profile_output_dir)
+            else:
+                raise ConfigError("The directory %s exists, which kinda messes things up here. Either remove\
+                                   it manually, or use the flag  --overwrite-output-destinations so anvi'o can\
+                                   do it for you." % profile_output_dir)
+
+        # sort out the contigs database output path
+        if filesnpaths.is_file_exists(locus_output_db_path, dont_raise=True):
+            if self.overwrite_output_destinations:
+                os.remove(locus_output_db_path)
+            else:
+                raise ConfigError("There is already a contigs database at the output file path :( Either remove it first,\
+                                   or use the --overwrite-output-destinations flag to give anvi'o full authority to wipe\
+                                   your disk.")
+
+        # do we need to reverse complement this guy? if yes, we will take care of the contigs sequence and
+        # gene calls here, and remember this for later.
+        gene_calls_list = list(gene_calls.keys())
+        if reverse_complement:
+            sequence = utils.rev_comp(sequence)
+            gene_calls, gene_caller_id_conversion_dict = utils.rev_comp_gene_calls_dict(gene_calls, sequence)
+        else:
+            gene_caller_id_conversion_dict = dict([(gene_calls_list[g], g) for g in range(0, len(gene_calls_list))])
+            new_gene_calls = {}
+            for g in range(0, len(gene_calls_list)):
+                gene_call = copy.deepcopy(gene_calls[gene_calls_list[g]])
+                new_gene_calls[g] = gene_call
+            gene_calls = new_gene_calls
+
+
+        # write the sequene as a temporary FASTA file since the design of ContigsDatabase::create
+        # will work seamlessly with this approach:
+        with open(locus_sequence_fasta, 'w') as f:
+            f.write('>%s\n%s\n' % (contig_name, sequence))
+
+        # similarly, here we will store external gene calls so there will be no gene calling during
+        # the generation of the contigs database
+        headers = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'source', 'version']
+        utils.store_dict_as_TAB_delimited_file(gene_calls, locus_external_gene_calls, headers=headers)
+
+        # this is where magic happens. we ask anvi'o to create a contigs database for us.
+        args = argparse.Namespace(contigs_fasta=locus_sequence_fasta,
+                                  project_name=os.path.basename(output_path_prefix),
+                                  split_length=sys.maxsize,
+                                  kmer_size=4,
+                                  external_gene_calls=locus_external_gene_calls)
+        dbops.ContigsDatabase(locus_output_db_path, run=self.run_object).create(args)
+
+        # while we are at it, here we generate a blank profile, too. so visualization of the
+        # new contigs database for debugging or other purposes through anvi'o.
+        args = argparse.Namespace(blank_profile=True,
+                                  contigs_db=locus_output_db_path,
+                                  skip_hierarchical_clustering=False,
+                                  output_dir=profile_output_dir,
+                                  sample_name=os.path.basename(output_path_prefix))
+        profiler.BAMProfiler(args, r=self.run_object)._run()
+
+        # so we have a contigs database! but there isn't much in it. the following where clause will
+        # help us read from the tables of the original contigs database, and store it into the
+        # new one throughout the following sections of the code.
+        where_clause = "gene_callers_id in (%s)" % ', '.join(['"%d"' % g for g in gene_caller_id_conversion_dict])
+
+        # a lousy anonymous function to read data from tables given the gene calls of interest
+        R = lambda table_name: db.DB(self.input_contigs_db_path, None, ignore_version=True) \
+                                              .get_some_rows_from_table_as_dict(table_name,
+                                                                                where_clause=where_clause,
+                                                                                error_if_no_data=False)
+
+        G = lambda g: gene_caller_id_conversion_dict[g]
+
+        ############################################################################################
+        # DO FUNCTIONS
+        ###########################################################################################
+        function_calls = R(t.gene_function_calls_table_name)
+
+        for entry_id in function_calls:
+            function_calls[entry_id]['gene_callers_id'] = G(function_calls[entry_id]['gene_callers_id'])
+
+        gene_function_calls_table = TableForGeneFunctions(locus_output_db_path, run=self.run_object)
+        gene_function_calls_table.create(function_calls)
+
+        self.run.info("Output contigs DB path", locus_output_db_path)
+        self.run.info("Output blank profile DB path", os.path.join(profile_output_dir, 'PROFILE.db'))
+
+        ############################################################################################
+        # DO AMINO ACID SEQUENCES -- we are using external gene calls to generate the new contigs
+        #                            database, but amino acid sequnces are kept in a different table
+        #                            and anvi'o checks whether provided gene calls resolve to amino
+        #                            acid sequences with proper starts and stops. if not, it skips
+        #                            them. but amino acid sequences for each gene call was stored
+        #                            in the original contigs database, and the best practice is to
+        #                            carry them into the new one. so here we will remove all data
+        #                            from the amino acid seqeunces table in the new database, and
+        #                            copy the contents from the original one.
+        ############################################################################################
+        amino_acid_sequences = R(t.gene_amino_acid_sequences_table_name)
+
+        entries = [(gene_caller_id_conversion_dict[g], amino_acid_sequences[g]['sequence']) for g in amino_acid_sequences]
+        db.DB(locus_output_db_path, None, ignore_version=True).insert_many(t.gene_amino_acid_sequences_table_name, entries=entries)
+
+        ############################################################################################
+        # REMOVE TEMP FILES
+        ###########################################################################################
+        if anvio.DEBUG:
+            self.run.info_single("Temp output files were kept for inspection due to --debug")
+        else:
+            [os.remove(f) for f in temporary_files]

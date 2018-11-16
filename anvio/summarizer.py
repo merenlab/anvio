@@ -28,7 +28,6 @@ import os
 import sys
 import gzip
 import glob
-import math
 import numpy
 import shutil
 import hashlib
@@ -143,14 +142,15 @@ class SummarizerSuperClass(object):
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
-        self.delete_output_directory_if_exists = True if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
+        self.delete_output_directory_if_exists = False if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
+        self.just_do_it = A('just_do_it')
 
         if not self.lazy_init:
             self.sanity_check()
 
         if self.output_directory:
-            self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
-            filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
+            self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.delete_output_directory_if_exists or self.just_do_it)
+            filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists or self.just_do_it)
         else:
             self.output_directory = "SUMMARY"
 
@@ -326,6 +326,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
         min_function_enrichment = A('min_function_enrichment')
+        core_threshold = A('core_threshold')
+        fdr = A('false_detection_rate')
         min_portion_occurrence_of_function_in_group = A('min_portion_occurrence_of_function_in_group')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
 
@@ -413,78 +415,65 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         number_of_genomes = len(categories_dict.keys())
 
         enrichment_dict = {}
+        z_test_p_values = {}
         for c in categories:
             self.progress.update("Working on category '%s'" % c)
             group_size = len(categories_to_genomes_dict[c])
-            group_portion = group_size / number_of_genomes
-
-            # see details below
-            weighting_normalization_factor = number_of_genomes * (group_portion * math.log2(group_portion)\
-                                                + (1 - group_portion) * math.log2(1 - group_portion))
+            outgroup_size = number_of_genomes - group_size
+            z_test_p_values[c] = []
 
             for f in functions_names:
                 occurrence_in_group = functions_in_categories.loc[c, f]
                 occurrence_outside_of_group = (total_occurrence_of_functions[f] - functions_in_categories.loc[c, f])
                 portion_occurrence_in_group = occurrence_in_group / group_size
                 portion_occurrence_outside_of_group = occurrence_outside_of_group / (number_of_genomes - group_size)
-                enrichment = portion_occurrence_in_group - portion_occurrence_outside_of_group
+                enrichment, p_value = utils.get_two_sample_z_test_statistic(portion_occurrence_in_group, \
+                                                           portion_occurrence_outside_of_group, \
+                                                           group_size, \
+                                                           outgroup_size)
 
-                # the more genomes we have in each group when making the comparisson
-                # the stronger the results are. In order to allow to compare results from
-                # different categories, we also return this weighted score. The normalization
-                # factor is simply the number of genomes multiplied by the entropy of the two compared
-                # groups. the rational is that having more genomes is only helping the comparisson if the
-                # genomes represent both compared groups, and that's where the entropy comes in.
-                weighted_enrichment = -1 * enrichment * weighting_normalization_factor
+                z_test_p_values[c].append(p_value)
 
-                if (abs(enrichment) >= min_function_enrichment) and (max(portion_occurrence_outside_of_group, portion_occurrence_in_group) >= min_portion_occurrence_of_function_in_group):
-                    if c not in enrichment_dict:
-                        enrichment_dict[c] = {}
+                if c not in enrichment_dict:
+                    enrichment_dict[c] = {}
 
-                    if f not in enrichment_dict[c]:
-                        enrichment_dict[c][f] = {}
+                if f not in enrichment_dict[c]:
+                    enrichment_dict[c][f] = {}
 
-                    enrichment_dict[c][f]["enrichment_score"] = enrichment
-                    enrichment_dict[c][f]["weighted_enrichment_score"] = weighted_enrichment
-                    enrichment_dict[c][f]["portion_occurrence_in_group"] = portion_occurrence_in_group
-                    enrichment_dict[c][f]["portion_occurrence_outside_of_group"] = portion_occurrence_outside_of_group
-                    enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
-                    enrichment_dict[c][f]["occurrence_outside_of_group"] = occurrence_outside_of_group
-                    enrichment_dict[c][f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
-                    enrichment_dict[c][f]["core_in_group"] = False
-                    enrichment_dict[c][f]["core"] = False
-                    if enrichment_dict[c][f]["portion_occurrence_in_group"] == 1:
-                        enrichment_dict[c][f]["core_in_group"] = True
-                        if enrichment_dict[c][f]["portion_occurrence_outside_of_group"] == 1:
-                            enrichment_dict[c][f]["core"] = True
+                enrichment_dict[c][f]["enrichment_score"] = enrichment
+                enrichment_dict[c][f]["p_value"] = p_value
+                enrichment_dict[c][f]["portion_occurrence_in_group"] = portion_occurrence_in_group
+                enrichment_dict[c][f]["portion_occurrence_outside_of_group"] = portion_occurrence_outside_of_group
+                enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
+                enrichment_dict[c][f]["occurrence_outside_of_group"] = occurrence_outside_of_group
+                enrichment_dict[c][f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
+                enrichment_dict[c][f]["core_in_group"] = False
+                enrichment_dict[c][f]["core"] = False
+                if enrichment_dict[c][f]["portion_occurrence_in_group"] >= core_threshold:
+                    enrichment_dict[c][f]["core_in_group"] = True
+                    if enrichment_dict[c][f]["portion_occurrence_outside_of_group"] >= core_threshold:
+                        enrichment_dict[c][f]["core"] = True
 
-        import scipy
         import statsmodels.stats.multitest as multitest
-        genome_names = set(self.genome_names)
-        p_values = []
-        for c in categories:
+        for c in enrichment_dict:
+
             self.progress.update("Working on statistics for category '%s'" % c)
-            group_genomes = categories_to_genomes_dict[c]
-            outgroup_genomes = genome_names - group_genomes
-
-            for f in functions_names:
-                x = occurrence_of_functions_in_pangenome_dataframe.loc[group_genomes,f].astype(int)
-                y = occurrence_of_functions_in_pangenome_dataframe.loc[outgroup_genomes,f].astype(int)
-                wilcoxon = scipy.stats.ranksums(x, y)
-                enrichment_dict[c][f]["wilcoxon_p_value"] = wilcoxon.pvalue
-                p_values.append(wilcoxon.pvalue)
-                enrichment_dict[c][f]["wilcoxon_statistic"] = wilcoxon.statistic
-
             # correction for multiple comparrisons
-            reject, corrected_p_values, foo1, foo2 = multitest.multipletests(p_values, method='fdr_bh')
+            reject, corrected_p_values_z_test, foo1, foo2 = multitest.multipletests(z_test_p_values[c], method='fdr_bh', alpha=fdr)
+
             i = 0
-            for f in functions_names:
-                enrichment_dict[c][f]['wilcoxon_corrected_p_value'] = corrected_p_values[i]
+            if len(corrected_p_values_z_test) != len(enrichment_dict[c].keys()):
+                raise ConfigError('This should never happen, contact Alon Shaiber now.')
+            for f in enrichment_dict[c]:
+                enrichment_dict[c][f]['corrected_p_value'] = corrected_p_values_z_test[i]
                 i += 1
 
         if output_file_path:
             self.progress.update('Generating the output file')
             enrichment_data_frame = self.get_enrichment_dict_as_dataframe(enrichment_dict, functional_annotation_source)
+            if min_function_enrichment > 0 or min_portion_occurrence_of_function_in_group > 0:
+                enrichment_data_frame = enrichment_data_frame[enrichment_data_frame['enrichment_score'] > min_function_enrichment]
+                enrichment_data_frame = enrichment_data_frame[enrichment_data_frame['portion_occurrence_in_group'] > min_portion_occurrence_of_function_in_group]
 
             # sort according to enrichment
             enrichment_data_frame.sort_values(by=['category', 'enrichment_score'], axis=0, ascending=False, inplace=True)
@@ -1519,7 +1508,7 @@ class Bin:
 
         if not self.output_directory:
             self.progress.end()
-            raise ConfigError('You caled Bin.create() before setting an output directory. Anvio says "nope, thanks".')
+            raise ConfigError('You called Bin.create() before setting an output directory. Anvio says "nope, thanks".')
 
         filesnpaths.gen_output_directory(self.output_directory)
 
@@ -1782,6 +1771,15 @@ class Bin:
         self.store_data_in_file('original_split_names.txt', '\n'.join(self.split_names))
 
         fasta_file = self.get_output_file_handle('contigs.fa')
+        fasta_file.write(self.get_bin_sequence())
+        fasta_file.close()
+
+        self.store_data_in_file('num_contigs.txt', '%d' % self.bin_info_dict['num_contigs'])
+        self.store_data_in_file('total_length.txt', '%d' % self.bin_info_dict['total_length'])
+
+
+    def get_bin_sequence(self):
+        output = ""
 
         # this dict will keep all the contig ids found in this bin with split names ordered:
         contigs_represented = utils.get_contigs_splits_dict(self.split_names, self.summary.splits_basic_info)
@@ -1791,7 +1789,6 @@ class Bin:
         for contig_id in contigs_represented:
             splits_order = list(contigs_represented[contig_id].keys())
 
-            self.progress.update('Creating the FASTA file :: Identifying sequential blocks ...')
             # this is critical: sequential_blocks is a list of one ore more lists, where each item of this list
             # describes a range of splits that follow each other to represent a coherent
             # chunk of the parent sequence (if all splits from a contig is selected into this bin,
@@ -1799,7 +1796,6 @@ class Bin:
             sequential_blocks = ccollections.GetSequentialBlocksOfSplits(splits_order).process()
 
             for sequential_block in sequential_blocks:
-                self.progress.update('Creating the FASTA file :: Identifying the portion of contig represented ...')
                 first_split = contigs_represented[contig_id][sequential_block[0]]
                 last_split = contigs_represented[contig_id][sequential_block[-1]]
 
@@ -1819,21 +1815,16 @@ class Bin:
                     appendix = '_partial_%d_%d' % (contig_sequence_start_in_splits, contig_sequence_end_in_splits)
 
                 sequence = ''
-                self.progress.update('Creating the FASTA file :: Reconstructing contig sequence from splits ...')
                 for split_order in sequential_block:
                     sequence += self.summary.split_sequences[contigs_represented[contig_id][split_order]]
 
                 fasta_id = contig_id + appendix
                 self.contig_lengths.append(len(sequence))
+                
+                output += '>%s\n' % fasta_id
+                output += '%s\n' % textwrap.fill(sequence, 80, break_on_hyphens=False)
 
-                self.progress.update('Creating the FASTA file :: Writing contig sequence into file ...')
-                fasta_file.write('>%s\n' % fasta_id)
-                fasta_file.write('%s\n' % textwrap.fill(sequence, 80, break_on_hyphens=False))
-
-        fasta_file.close()
-
-        self.store_data_in_file('num_contigs.txt', '%d' % self.bin_info_dict['num_contigs'])
-        self.store_data_in_file('total_length.txt', '%d' % self.bin_info_dict['total_length'])
+        return output
 
 
     def set_taxon_calls(self):
@@ -1900,4 +1891,7 @@ class Bin:
         output_file_obj = self.get_output_file_handle(output_file_name_posfix)
         output_file_obj.write('%s\n' % content)
         output_file_obj.close()
+
+
+
 

@@ -20,6 +20,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
+__requires__ = ['structure-db', 'variability-profile', 'contigs-db', 'profile-db']
+__provides__ = ['interactive', 'summary']
+
 
 
 run = terminal.Run()
@@ -79,6 +82,7 @@ if __name__ == '__main__':
     groupP.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
     groupP.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
     groupP.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+    groupP.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
     try:
         args = anvio.get_args(parser)

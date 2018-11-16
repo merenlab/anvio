@@ -1,5 +1,6 @@
 include *.txt *.md
 recursive-include anvio/data *
+recursive-include anvio/workflows *
 recursive-include anvio/extensions *.h *.c *.pyx *.py
-recursive-include tests *
+recursive-include anvio/tests *
 global-exclude test-output *.pyc

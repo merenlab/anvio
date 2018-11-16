@@ -38,6 +38,13 @@ class DB:
         if new_database and os.path.exists(self.db_path):
             os.remove(self.db_path)
 
+        journal_path = self.db_path + '-journal'
+        if filesnpaths.is_file_exists(journal_path, dont_raise=True):
+            raise ConfigError("It seems the database at '%s' currently used by another proccess\
+                               for writing operations. Anvi'o refuses to work with this database to avoid corrupting it. \
+                               If you think this is a mistake, you may delete the lock file at '%s' after making sure \
+                               no other active process using it for writing." % (os.path.abspath(self.db_path), os.path.abspath(journal_path)))
+
         self.conn = sqlite3.connect(self.db_path)
         self.conn.text_factory = str
 

@@ -396,7 +396,7 @@
                                 </div>
 
                                 <div class="">
-                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode manual-mode" role="group" style="display: none">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode manual-mode gene-mode" role="group" style="display: none">
                                         <button type="button" class="btn btn-default btn-sm" onclick="new LoadCollectionDialog().Show();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
                                         <button type="button" class="btn btn-default btn-sm" onclick="new StoreCollectionDialog().Show();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
                                     </div>
@@ -632,6 +632,26 @@
                                             <td><input class="form-control input-xs" type="checkbox" disabled /></td>
                                             <td>Max number of genes from each genome</td>
                                             <td><input class="form-control input-xs" size="6" parameter="max_num_genes_from_each_genome" type="text" value="0" disabled /></td>
+                                        </tr>
+                                        <tr>
+                                            <td><input class="form-control input-xs" type="checkbox" disabled id="min_func"/></td>
+                                            <td>Min functional homogeneity index</td>
+                                            <td><input class="form-control input-xs" size="6" parameter="min_functional_homogeneity_index" type="text" value="-1" disabled /></td>
+                                        </tr>
+                                        <tr>
+                                            <td><input class="form-control input-xs" type="checkbox" disabled id="max_func"/></td>
+                                            <td>Max functional homogeneity index</td>
+                                            <td><input class="form-control input-xs" size="6" parameter="max_functional_homogeneity_index" type="text" value="1" disabled /></td>
+                                        </tr>
+                                        <tr>
+                                            <td><input class="form-control input-xs" type="checkbox" disabled id="min_geo"/></td>
+                                            <td>Min geometric homogeneity index</td>
+                                            <td><input class="form-control input-xs" size="6" parameter="min_geometric_homogeneity_index" type="text" value="-1" disabled /></td>
+                                        </tr>
+                                        <tr>
+                                            <td><input class="form-control input-xs" type="checkbox" disabled id="max_geo"/></td>
+                                            <td>Max geometric homogeneity index</td>
+                                            <td><input class="form-control input-xs" size="6" parameter="max_geometric_homogeneity_index" type="text" value="1" disabled /></td>
                                         </tr>
                                         <tr>
                                             <td></td>

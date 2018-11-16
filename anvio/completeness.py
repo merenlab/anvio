@@ -134,18 +134,35 @@ class Completeness:
 
         domain_specific_estimates = []
 
+        if anvio.DEBUG:
+            self.run.warning(None, header="DATA FOR ESTIMTES")
+
         for domain in d:
             percent_completion = numpy.mean([d[domain][s]['percent_completion'] for s in d[domain]])
             percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
 
-            substantive_completion = percent_completion - percent_redundancy
-            model_coverage = numpy.mean([d[domain][s]['model_coverage'] for s in d[domain]])
+            if anvio.DEBUG:
+                self.run.info_single("domain: %s; %% comp: %.2f; %% red: %.2f" % (domain, percent_completion, percent_redundancy))
 
-            domain_specific_estimates.append((model_coverage, substantive_completion, domain, substantive_completion / 100.0), )
+            # FIXME: this is a very shitty way of doing this and must be improved;
+            #        see the issue https://github.com/merenlab/anvio/issues/941 for details:
+            domain_specific_estimates.append((((percent_completion - percent_redundancy) / 100.0),
+                                              domain), )
 
         domain_specific_estimates.sort(reverse=True)
 
-        best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][2], domain_specific_estimates[0][3]
+        if anvio.DEBUG:
+            self.run.info("Raw estimates", domain_specific_estimates, nl_before=1)
+
+        if (len(d) > 1 and len(set([d[0] for d in domain_specific_estimates])) == 1) or domain_specific_estimates[0][0] < 0.01:
+            # clearly none of the domains match with any level of real confidence
+            best_matching_domain, domain_matching_confidence = None, 0.0
+        else:
+            best_matching_domain, domain_matching_confidence = domain_specific_estimates[0][1], domain_specific_estimates[0][0]
+
+        if anvio.DEBUG:
+            self.run.info("Best matching domain", best_matching_domain)
+            self.run.info("Matching domain confidence", domain_matching_confidence, nl_after=1)
 
         return (best_matching_domain, domain_matching_confidence)
 
@@ -229,6 +246,9 @@ class Completeness:
 
         best_matching_domain, domain_matching_confidence = self.get_best_matching_domain(results_dict)
 
-        percent_completion, percent_redundancy = self.get_average_domain_completion_and_redundancy(results_dict, best_matching_domain)
+        if best_matching_domain:
+            percent_completion, percent_redundancy = self.get_average_domain_completion_and_redundancy(results_dict, best_matching_domain)
+        else:
+            percent_completion, percent_redundancy = 0.0, 0.0
 
         return (percent_completion, percent_redundancy, best_matching_domain, domain_matching_confidence, results_dict)

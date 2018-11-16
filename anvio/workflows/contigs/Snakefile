@@ -1,13 +1,11 @@
 # -*- coding: utf-8
 
+import os
 import argparse
-import pandas as pd
 
 import anvio
-import anvio.utils as u
 import anvio.workflows as w
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows.contigs import ContigsDBWorkflow
 
@@ -31,18 +29,6 @@ if not slave_mode:
 
 localrules: annotate_contigs_database
 
-group_names = []
-fasta_txt_file = M.get_param_value_from_config('fasta_txt', repress_default=True)
-
-if fasta_txt_file:
-    filesnpaths.is_file_exists(fasta_txt_file)
-    fasta_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
-    group_names = list(fasta_information.keys())
-    references_mode = True
-
-# setting configuration for optional steps
-run_remove_human_dna_using_centrifuge = M.get_param_value_from_config(["remove_human_dna_using_centrifuge", "run"]) == True
-
 # default is NOT running taxonomy with centrifuge
 run_taxonomy_with_centrifuge = M.get_param_value_from_config(["centrifuge", "run"]) == True
 
@@ -63,27 +49,23 @@ if run_taxonomy_with_centrifuge:
 
                           "config file. See documentation for more details.")
 
-def get_raw_fasta(wildcards):
-    '''
-        Define the path to the input fasta files.
-
-        Uses the config details to choose between the raw fasta file,
-        the reformatted, and the output of the host contamination removal.
-        This function also deals with the different cases of "reference mode"
-        Vs. "assembly mode".
-    '''
-    if references_mode:
-        # in 'reference mode' the input is the reference fasta
-        contigs = fasta_information[wildcards.group]['path']
-    else:
-        # by default the input fasta is the assembly output
-        contigs = dirs_dict["FASTA_DIR"] + "/%s/final.contigs.fa" % wildcards.group
-    return contigs
 
 rule generate_and_annotate_contigs_db:
-    input: expand(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done", group=group_names)
+    input: expand(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done", group=M.group_names)
 
-rule anvi_script_reformat_fasta:
+
+rule gunzip_fasta:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-gunzip_fasta.log"
+    input: lambda wildcards: M.get_raw_fasta(wildcards, remove_gz_suffix=False)
+    output: temp(os.path.join(M.dirs_dict['FASTA_DIR'], \
+                            '{group}' + '-temp.fa'))
+    threads: M.T('gunzip_fasta')
+    resources: nodes = M.T('gunzip_fasta')
+    shell: "gunzip < {input} > {output} 2>{log}"
+
+
+rule anvi_script_reformat_fasta_prefix_only:
     '''
         Reformating the headers of the contigs fasta files.
 
@@ -93,83 +75,62 @@ rule anvi_script_reformat_fasta:
         contigs would look like this:
         > MYSAMPLE01_000000000001
         > MYSAMPLE01_000000000002
+
+        We do it in two steps in this workflow with the rules:
+        anvi_script_reformat_fasta_prefix_only and anvi_script_reformat_fasta_min_length
+        The first rule anvi_script_reformat_fasta_prefix_only does all the formating
+        of headers without considering the min_len parameter. The second rule takes
+        the output of the first rule as input and considers the min_len param.
+        The reasoning is that this way we have a fasta file that includes all the contigs
+        from the raw fasta file, but with headers that match the fasta final fasta file.
+        Hence, if later we decide we want to include shorter contigs, we can do it using
+        the output of anvi_script_reformat_fasta_prefix_only and the headers would be consistant.
     '''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta.log"
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta_prefix_only.log"
     input:
-        contigs = get_raw_fasta
+        contigs = M.get_raw_fasta
     output:
         # write protecting the contigs fasta file using protected() because
         # runnig the assembly is probably the most time consuming step and
         # we don't want anyone accidentaly deleting or changing this file.
-        contigs = protected(dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa"),
+        contigs = protected(dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-prefix-formatted-only.fa"),
         report = dirs_dict["FASTA_DIR"] + "/{group}/{group}-reformat-report.txt"
     params:
         prefix = "{group}",
         simplify_names = M.get_rule_param("anvi_script_reformat_fasta", "--simplify-names"),
         keep_ids = M.get_rule_param("anvi_script_reformat_fasta", "--keep-ids"),
         exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids"),
-        min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
     shell: w.r("""anvi-script-reformat-fasta {input} \
                                              -o {output.contigs} \
                                              -r {output.report} \
                                              --prefix {params.prefix} \
-                                             {params.min_len} \
                                              {params.exclude_ids} \
                                              {params.keep_ids} \
                                              {params.simplify_names} >> {log} 2>&1""")
 
 
-def input_for_run_remove_human_dna_using_centrifuge(wildcards):
-    ''' input fasta for the rule run_remove_human_dna_using_centrifuge'''
-    # The raw fasta will be used if no formatting is needed
-    contigs = get_raw_fasta(wildcards)
-
-    if M.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
-        # by default, reformat fasta is ran
-        contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
-
-    return contigs
-
-
-if run_remove_human_dna_using_centrifuge:
-
-    # These rules will only run if the user asked for removal of Human contamination
-    rule remove_human_dna_using_centrifuge:
-        """ this is just a placeholder for now """
-        version: 1.0
-        log: dirs_dict["LOGS_DIR"] + "/{group}-remove-human-dna-using-centrifuge.log"
-        input: input_for_run_remove_human_dna_using_centrifuge
-        output: contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-filtered.fa"
-        threads: M.T('remove_human_dna_using_centrifuge')
-        resources: nodes = M.T('remove_human_dna_using_centrifuge'),
-        shell: "touch {output} >> {log} 2>&1"
-
-
-def get_fasta(wildcards):
+rule anvi_script_reformat_fasta:
     '''
-        Define the path to the input fasta files.
-
-        The input hierarchy is as follows:
-            output of remove_human_dna_using_centrifuge
-            output of anvi_script_reformat_fasta
-            raw fasta
-        Meaning that if host contamination removal was done then it's
-        output is the input fasta, elif anvi_script_reformat_fasta was ran then it's
-        output will be used, otherwise the raw fasta will be used.
+        See docummentation for anvi_script_reformat_fasta_prefix_only
     '''
-    # By default (if no host contamination removal is requested)
-    # Then the input will be the same as the one that would have been used
-    # by the rule run_remove_human_dna_using_centrifuge
-    contigs = input_for_run_remove_human_dna_using_centrifuge(wildcards)
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta.log"
+    input:
+        contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-prefix-formatted-only.fa"
+    output:
+        contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa"
+    params:
+        prefix = "{group}",
+        min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
+    threads: M.T('anvi_script_reformat_fasta')
+    resources: nodes = M.T('anvi_script_reformat_fasta'),
+    shell: w.r("""anvi-script-reformat-fasta {input} \
+                                             -o {output.contigs} \
+                                             {params.min_len} >> {log} 2>&1""")
 
-    if run_remove_human_dna_using_centrifuge:
-        # if host contamination removal is used, then use it's output
-        contigs = rules.remove_human_dna_using_centrifuge.output.contigs
-
-    return contigs
 
 contigs_project_name = M.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'], repress_default=True)
 if contigs_project_name != M.default_config['anvi_gen_contigs_database']['--project-name'] and contigs_project_name is not None:
@@ -191,7 +152,7 @@ rule anvi_gen_contigs_database:
     # depending on whether human contamination using centrifuge was done
     # or not, the input to this rule will be the raw assembly or the
     # filtered.
-    input: get_fasta
+    input: M.get_fasta
     output:
         db = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"
     params:
@@ -236,7 +197,7 @@ if run_taxonomy_with_centrifuge:
         output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-gene-calls.fa")
         threads: M.T('export_gene_calls_for_centrifuge')
         resources: nodes = M.T('export_gene_calls_for_centrifuge'),
-        shell: "anvi-get-dna-sequences-for-gene-calls -c {input} -o {output} >> {log} 2>&1"
+        shell: "anvi-get-sequences-for-gene-calls -c {input} -o {output} >> {log} 2>&1"
 
 
     rule centrifuge:
@@ -394,7 +355,7 @@ rule annotate_contigs_database:
     shell: "touch {output} >> {log} 2>&1"
 
 
-if not slave_mode:
+if 'workflows/contigs' in workflow.included[0]:
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
     # the `WorkflowSuperClass`, so you are most likely covered).

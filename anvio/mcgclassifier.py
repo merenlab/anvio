@@ -532,7 +532,7 @@ class MetagenomeCentricGeneClassifier:
 
     def save_samples_information(self):
         samples_information_file_name = self.output_file_prefix + self.additional_description + '-samples-information.txt'
-        samples_information = pd.concat([self.samples_detection_information, self.samples_coverage_stats_dicts], axis=1)
+        samples_information = pd.concat([self.samples_detection_information, self.samples_coverage_stats_dicts], axis=1, sort=True)
         samples_information.to_csv(samples_information_file_name, sep='\t', index_label='samples')
 
 

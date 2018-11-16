@@ -1,0 +1,23 @@
+{
+    "samples_txt": "samples.txt",
+    "metaspades": {
+        "additional_params": "--only-assembler",
+        "threads": 11,
+        "run": true,
+        "use_scaffolds": ""
+    },
+    "remove_short_reads_based_on_references": {
+        "delimiter-for-iu-remove-ids-from-fastq": " ",
+        "references_for_removal_txt": "mock_ref_for_removal.txt"
+    },
+    "output_dirs": {
+        "FASTA_DIR": "02_FASTA_metaspades",
+        "CONTIGS_DIR": "03_CONTIGS_metaspades",
+        "QC_DIR": "01_QC_metaspades",
+        "MAPPING_DIR": "04_MAPPING_metaspades",
+        "PROFILE_DIR": "05_ANVIO_PROFILE_metaspades",
+        "MERGE_DIR": "06_MERGED_metaspades",
+        "TAXONOMY_DIR": "07_TAXONOMY_metaspades",
+        "LOGS_DIR": "00_LOGS_metaspades"
+    }
+}
