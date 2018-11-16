@@ -1,5 +1,10 @@
 {
     "samples_txt": "samples.txt",
+    "remove_short_reads_based_on_references": {
+        "delimiter-for-iu-remove-ids-from-fastq": " ",
+        "dont_remove_just_map": true,
+        "references_for_removal_txt": "mock_ref_for_removal.txt"
+    },
     "idba_ud": {
         "--min_contig": 1000,
         "threads": 11,
@@ -32,6 +37,7 @@
         "MAPPING_DIR": "04_MAPPING_idba_ud_no_qc",
         "PROFILE_DIR": "05_ANVIO_PROFILE_idba_ud_no_qc",
         "MERGE_DIR": "06_MERGED_idba_ud_no_qc",
+        "SHORT_READ_FILTER_DIR": "01_SHORT_READ_FILTER_idba_ud_no_qc",
         "LOGS_DIR": "00_LOGS_idba_ud_no_qc"
     }
 }

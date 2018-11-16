@@ -454,7 +454,7 @@ Bins.prototype.HighlightItems = function(item_list) {
     for (let name of item_list) {
         let node = drawer.tree.GetLeafByName(name);
         if (node) {
-            this.higlighted_items.push(node);
+            this.higlighted_items.push(name);
         } else {
             console.error('Received highlight request for non-existed node: ' + name);
         }
@@ -670,7 +670,8 @@ Bins.prototype.RedrawBins = function() {
         }
     }
 
-    for (const node of this.higlighted_items) {
+    for (const name of this.higlighted_items) {
+        let node = drawer.tree.GetLeafByName(name);
         let color = document.getElementById('picker_highlight').getAttribute('color');
 
         if (tree_type == 'circlephylogram')

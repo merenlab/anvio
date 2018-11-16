@@ -1,0 +1,3 @@
+reference	path
+REF1	mock_ref_for_removal1.fa.gz
+REF2	mock_ref_for_removal2.fa.gz

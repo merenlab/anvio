@@ -167,12 +167,19 @@ def is_file_plain_text(file_path, dont_raise=False):
 
     try:
         open(os.path.abspath(file_path), 'rU').read(512)
-        return True
     except IsADirectoryError:
-        raise FilesNPathsError("There must be a misunderstnding... %s is a directory .. as far as a file\
-                                can be from being a plain text file :(" % file_path)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("Someone want's to make sure %s is a plain text file, however, it is actually a\
+                                    directory :(" % file_path)
     except UnicodeDecodeError:
-        raise FilesNPathsError("The file at '%s' does not seem to be plain a text file :/" % file_path)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("The file at '%s' does not seem to be plain a text file :/" % file_path)
+
+    return True
 
 
 def is_program_exists(program):
@@ -231,10 +238,10 @@ def gen_output_directory(output_directory, progress=Progress(verbose=False), run
 
     if os.path.exists(output_directory) and delete_if_exists and not is_dir_empty(output_directory):
         try:
-            run.warning('filesnpaths::gen_output_directory: the client asked the existing directory \
-                         "%s" to be removed.. Just so you know :/ (You have 5 seconds to press\
-                         CTRL + C).' % output_directory)
-            time.sleep(5)
+            run.warning('The existing directory "%s" is about to be removed... (You have \
+                         20 seconds to press CTRL + C). [filesnpaths::gen_output_directory]' % output_directory,
+                         header = '!!! READ THIS NOW !!!')
+            time.sleep(20)
             shutil.rmtree(output_directory)
         except:
             progress.end()

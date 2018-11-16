@@ -64,6 +64,8 @@ class Collections:
             read_only = True
         elif self.db_type == 'profile':
             read_only = False
+        elif self.db_type:
+            read_only = False
         elif self.db_type == 'pan':
             read_only = False
         else:

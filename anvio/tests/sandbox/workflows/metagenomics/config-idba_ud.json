@@ -1,10 +1,15 @@
 {
-    "samples_txt": "samples-for-idba_ud.txt",
+    "samples_txt": "samples.txt",
     "idba_ud": {
         "--min_contig": 1000,
         "threads": 11,
         "run": true
     },
+    "krakenhll": {
+        "run": true,
+        "--db": "/fake/db"
+    },
+    "kraken_txt": "kraken.txt",
     "output_dirs": {
         "FASTA_DIR": "02_FASTA_idba_ud",
         "CONTIGS_DIR": "03_CONTIGS_idba_ud",

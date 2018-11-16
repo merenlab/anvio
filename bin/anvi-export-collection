@@ -22,6 +22,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ['profile-db']
+__provides__ = ['collection-txt']
 
 
 run = terminal.Run()

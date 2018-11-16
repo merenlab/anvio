@@ -5,8 +5,11 @@
 """
 
 
+import os
 import anvio
+import anvio.utils as u
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows import init_workflow_super_class
 from anvio.workflows import WorkflowSuperClass
@@ -26,13 +29,18 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.run = run
         self.progress = progress
 
+        self.group_names = []
+        self.contigs_information = {}
+        self.fasta_information = {}
+
+        # initialize the base class
         init_workflow_super_class(self, args, workflow_name='contigs')
 
-        self.rules.extend(['anvi_script_reformat_fasta', 'remove_human_dna_using_centrifuge',
+        self.rules.extend(['anvi_script_reformat_fasta',
                            'anvi_gen_contigs_database', 'export_gene_calls_for_centrifuge', 'centrifuge',
                            'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
-                           'emapper', 'anvi_script_run_eggnog_mapper'])
+                           'emapper', 'anvi_script_run_eggnog_mapper', 'gunzip_fasta'])
 
         self.general_params.extend(["fasta_txt"])
 
@@ -40,9 +48,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                "CONTIGS_DIR": "02_CONTIGS"})
 
         self.default_config.update({"fasta_txt": "fasta.txt",
-                                    "anvi_gen_contigs_database": {"--project-name": "{group}", "threads": 5},
-                                    "centrifuge": {"threads": 5},
-                                    "anvi_run_hmms": {"run": True, "threads": 20},
+                                    "anvi_gen_contigs_database": {"--project-name": "{group}"},
+                                    "centrifuge": {"threads": 2},
+                                    "anvi_run_hmms": {"run": True, "threads": 5},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True},
                                     "emapper": {"--database": "bact", "--usemem": True, "--override": True},
@@ -62,7 +70,6 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.rule_acceptable_params_dict['anvi_script_reformat_fasta'] = \
                     ['run', '--simplify-names', '--keep-ids', '--exclude-ids', '--min-len']
 
-        self.rule_acceptable_params_dict['remove_human_dna_using_centrifuge'] = ['run']
 
         gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
                               '--ignore-internal-stop-codons', '--skip-mindful-splitting',\
@@ -72,3 +79,44 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                               '--ignore-internal-stop-codons']
 
         self.rule_acceptable_params_dict['anvi_gen_contigs_database'] = gen_contigs_params
+
+
+    def init(self):
+        super().init()
+
+        fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
+
+        if fasta_txt_file:
+            filesnpaths.is_file_exists(fasta_txt_file)
+            self.contigs_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
+            self.fasta_information.update(self.contigs_information)
+            self.group_names = list(self.contigs_information.keys())
+            self.references_mode = True
+
+
+    def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
+        '''
+            Define the path to the input fasta files.
+        '''
+        contigs = self.fasta_information[wildcards.group]['path']
+        ends_with_gz = contigs.endswith('.gz')
+        if remove_gz_suffix and ends_with_gz:
+            # we need to gunzip the fasta file
+            # we will create a temporary uncompressed fasta file.
+            contigs = os.path.join(self.dirs_dict['FASTA_DIR'], \
+                                   wildcards.group + '-temp.fa')
+        return contigs
+
+
+    def get_fasta(self, wildcards):
+        '''
+            Define the path to the input fasta files.
+        '''
+        # The raw fasta will be used if no formatting is needed
+        contigs = self.get_raw_fasta(wildcards)
+
+        if self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
+            # by default, reformat fasta is ran
+            contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
+
+        return contigs

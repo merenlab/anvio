@@ -547,6 +547,8 @@ function drawCircleArc(svg_id, p, p0, p1, radius, large_arc_flag) {
 
     var svg = document.getElementById(svg_id);
     svg.appendChild(arc);
+
+    return arc;
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -238,7 +238,7 @@ class MultipleRuns:
                  raise ConfigError("There is something wrong with your input databases. The group name 'default'\
                                     should be common to all of them, but it doesn't seem to be the case :/ How did\
                                     you end up with an anvi'o single profile database that doesn't have the 'default'\
-                                    gropu in its additional layer data table? It is very likely that your profiling\
+                                    group in its additional layer data table? It is very likely that your profiling\
                                     step failed for some reason for one or more of your databases :(")
 
         taxonomic_data_groups = set(constants.levels_of_taxonomy).intersection(data_groups_common_to_all_profile_dbs)
@@ -297,6 +297,7 @@ class MultipleRuns:
                      ('version', 'The version number'),
                      ('num_splits', 'The number of splits'),
                      ('min_contig_length', 'The minimum contig length (-M) values'),
+                     ('max_contig_length', 'The maximum contig length (--max-contig-length) values'),
                      ('min_coverage_for_variability', 'The minimum coverage values to report variability (-V)'),
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
                      ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
@@ -409,15 +410,27 @@ class MultipleRuns:
         # run, yet even that would wrongly assume equal eukaryotic contamination, etc. normalization is a bitch.
 
         smallest_sample_size = min(self.total_reads_mapped_per_sample.values())
+        smallest_non_zero_sample_size = min([v for v in self.total_reads_mapped_per_sample.values() if v] or [0])
 
-        if smallest_sample_size == 0:
-            raise ConfigError("It seems at least one of the samples you are trying to merge has zero hits. Here is a\
-                                list of all samples and number of mapped reads they have: %s." \
-                                    % ', '.join(['"%s": %s' % (s, pp(self.total_reads_mapped_per_sample[s])) for s in self.total_reads_mapped_per_sample]))
+        if smallest_sample_size == 0 and not self.skip_concoct_binning:
+            self.run.warning("At least one of the single profiles you are trying to merge has zero reads. Since anvi'o\
+                              is certain this will make CONCOCT freak out big time, it will set the flag `skip-concoct-binning`\
+                              to True (whihc means you will have no CONCOCT results in your merged profile database by default,\
+                              but you can always try later with `anvi-cluster-with-concoct` and see it fail in your own time).",
+                              header="CONCOCT WARNING")
+            self.skip_concoct_binning = True
+
+        if smallest_non_zero_sample_size == 0 and not self.skip_hierarchical_clustering:
+            self.run.warning("It seems none of the single profiles you are trying to merge has more than zero reads :/\
+                              Anvi'o will let this pass, assuming you have some grand plans with these data. But to\
+                              make sure nothing explode during downstream analyses, it will set the flag\
+                              `--skip-hierarchical-clustering` to True (so there will be no hierarchical clustering\
+                              data available in your merged profile database).", header="HIERARCHICAL CLUSTERING WARNING")
+            self.skip_hierarchical_clustering = True
 
         for input_profile_db_path in self.profile_dbs_info_dict:
             sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
-            self.normalization_multiplier[input_profile_db_path] = smallest_sample_size * 1.0 / self.total_reads_mapped_per_sample[sample_id]
+            self.normalization_multiplier[input_profile_db_path] = (smallest_non_zero_sample_size or 1) * 1.0 / (self.total_reads_mapped_per_sample[sample_id] or (smallest_non_zero_sample_size or 1))
 
         PRETTY = lambda x: ', '.join(['%s: %.2f' % (self.profile_dbs_info_dict[s]['sample_id'], x[s]) for s in sorted(list(x.keys()))])
         self.run.warning("Anvi'o just set the normalization values for each sample based on how many mapped reads they contained.\
@@ -442,6 +455,7 @@ class MultipleRuns:
         C = lambda x: list(self.profile_dbs_info_dict.values())[0][x]
         self.contigs_db_hash = C('contigs_db_hash')
         self.min_contig_length = C('min_contig_length')
+        self.max_contig_length = C('max_contig_length')
         self.num_contigs = C('num_contigs')
         self.num_splits = C('num_splits')
         self.min_coverage_for_variability = C('min_coverage_for_variability')
@@ -470,6 +484,10 @@ class MultipleRuns:
         sample_ids_list = ', '.join(sorted(self.sample_ids_found_in_input_dbs))
         total_reads_mapped_list = ', '.join([str(self.total_reads_mapped_per_sample[sample_id]) for sample_id in self.sample_ids_found_in_input_dbs])
 
+        # we run this now because we change default flags in this function
+        # depending on the number of reads characterized within each single profile.
+        self.set_normalization_multiplier()
+
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
                        'sample_id': self.sample_id,
@@ -480,6 +498,7 @@ class MultipleRuns:
                        'contigs_ordered': not self.skip_hierarchical_clustering,
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
+                       'max_contig_length': self.max_contig_length,
                        'SNVs_profiled': self.SNVs_profiled,
                        'SCVs_profiled': self.SCVs_profiled,
                        'num_contigs': self.num_contigs,
@@ -509,8 +528,6 @@ class MultipleRuns:
         self.run.info('total_reads_mapped', total_reads_mapped_list)
         self.run.info('cmd_line', utils.get_cmd_line())
         self.run.info('clustering_performed', not self.skip_hierarchical_clustering)
-
-        self.set_normalization_multiplier()
 
         self.merge_split_coverage_data()
 

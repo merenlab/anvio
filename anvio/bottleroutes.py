@@ -14,10 +14,13 @@ import sys
 import copy
 import time
 import json
+import base64
 import random
+import getpass
 import argparse
 import requests
 import datetime
+from hashlib import md5
 from multiprocessing import Process
 from ete3 import Tree
 from bottle import Bottle
@@ -70,6 +73,16 @@ class BottleApplication(Bottle):
             self.export_svg = A('export_svg')
             self.server_only = A('server_only')
 
+        self.password_protected = A('password_protected')
+        self.password = ''
+        self.authentication_secret = ''
+        if self.password_protected:
+            print('')
+            self.password = getpass.getpass('Enter password to secure interactive interface: ').encode('utf-8')
+            salt = 'using_md5_in_2018_'.encode('utf-8')
+
+            self.authentication_secret = md5(salt + self.password).hexdigest()
+
         self.session_id = random.randint(0,9999999999)
         self.static_dir = os.path.join(os.path.dirname(utils.__file__), 'data/interactive')
 
@@ -86,11 +99,24 @@ class BottleApplication(Bottle):
             from bottle import response, request
 
 
+    def set_password(self, password):
+        self.password_protected = True
+        self.password = password.encode('utf-8')
+        salt = 'using_md5_in_2018_'.encode('utf-8')
+
+        self.authentication_secret = md5(salt + self.password).hexdigest()
+
+
     def register_hooks(self):
-        self.add_hook('before_request', self.set_default_headers)
+        self.add_hook('before_request', self.before_request)
 
 
-    def set_default_headers(self):
+    def before_request(self):
+        # /app/ contains static files and not password protected.
+        if self.password_protected and not request.path.startswith('/app/'):
+            if not self.authentication_secret == request.get_cookie('authentication_secret'):
+                redirect('/app/login.html')
+
         response.set_header('Content-Type', 'application/json')
         response.set_header('Pragma', 'no-cache')
         response.set_header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
@@ -136,6 +162,7 @@ class BottleApplication(Bottle):
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
+        self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
 
 
     def run_application(self, ip, port):
@@ -222,7 +249,7 @@ class BottleApplication(Bottle):
         try:
             news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md')
             news_items = news_markdown.text.split("***")
-            
+
             """ FORMAT
             # Title with spaces (01.01.1970) #
             Lorem ipsum, dolor sit amet
@@ -268,7 +295,7 @@ class BottleApplication(Bottle):
             default_order = self.interactive.p_meta['default_item_order']
             autodraw = False
             state_dict = None
-            
+
             if self.interactive.state_autoload:
                 state_dict = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
 
@@ -301,6 +328,7 @@ class BottleApplication(Bottle):
             elif self.interactive.mode == 'pan':
                 functions_sources = list(self.interactive.gene_clusters_function_sources)
 
+            inspection_available = self.interactive.auxiliary_profile_data_available
 
             return json.dumps( { "title":                              self.interactive.title,
                                  "description":                        self.interactive.p_meta['description'],
@@ -317,7 +345,7 @@ class BottleApplication(Bottle):
                                  "layers_information_default_order":   self.interactive.layers_additional_data_keys,
                                  "check_background_process":           True,
                                  "autodraw":                           autodraw,
-                                 "inspection_available":               self.interactive.auxiliary_profile_data_available,
+                                 "inspection_available":               inspection_available,
                                  "sequences_available":                True if (self.interactive.split_sequences or self.interactive.mode == 'gene') else False,
                                  "functions_initialized":              self.interactive.gene_function_calls_initiated,
                                  "functions_sources":                  functions_sources,
@@ -357,7 +385,7 @@ class BottleApplication(Bottle):
             data = request.forms.get('data')
             tree_type = request.forms.get('tree_type')
             additional = request.forms.get('additional')
-            
+
             if tree_type == 'samples':
                 if name in self.interactive.layers_order_data_dict:
                     raise Exception("Tree name '%s' already exists, overwriting currently not supported." % name)
@@ -411,7 +439,7 @@ class BottleApplication(Bottle):
         if state_name in self.interactive.states_table.states:
             state = self.interactive.states_table.states[state_name]
             state_dict = json.loads(state['content'])
-            
+
             if self.interactive.mode == 'structure':
                 return json.dumps({'content': state['content']})
             else:
@@ -463,12 +491,15 @@ class BottleApplication(Bottle):
 
         layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
 
-        auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
-                                                                                 self.interactive.p_meta['contigs_db_hash'])
-        coverages = auxiliary_coverages_db.get(split_name)
-        auxiliary_coverages_db.close()
+        try:
+            auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
+                                                                                     self.interactive.p_meta['contigs_db_hash'])
+            coverages = auxiliary_coverages_db.get(split_name)
+            auxiliary_coverages_db.close()
 
-        data['coverage'] = [coverages[layer].tolist() for layer in layers]
+            data['coverage'] = [coverages[layer].tolist() for layer in layers]
+        except:
+            data['coverage'] = [[0] * self.interactive.splits_basic_info[split_name]['length']]
         data['sequence'] = self.interactive.split_sequences[split_name]
 
         ## get the variability information dict for split:
@@ -758,8 +789,13 @@ class BottleApplication(Bottle):
             bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': "anvi-interactive"}
 
         # the db here is either a profile db, or a pan db, but it can't be both:
-        db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
+        if self.interactive.mode == 'gene':
+            db_path = self.interactive.genes_db_path
+        else:
+            db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
+
         collections = TablesForCollections(db_path)
+
         try:
             collections.append(source, data, bins_info_dict)
         except ConfigError as e:
@@ -797,8 +833,6 @@ class BottleApplication(Bottle):
 
 
     def gen_summary(self, collection_name):
-        #set_default_headers(response)
-
         if self.read_only:
             return json.dumps({'error': "Sorry! This is a read-only instance."})
 
@@ -1146,13 +1180,22 @@ class BottleApplication(Bottle):
         try:
             parameters = {}
             for key in request.forms:
-                parameters[key] = int(request.forms.get(key))
+                parameters[key] = float(request.forms.get(key))
 
             gene_clusters_dict, _ = self.interactive.filter_gene_clusters_from_gene_clusters_dict(copy.deepcopy(self.interactive.gene_clusters), **parameters)
             return json.dumps({'status': 0, 'gene_clusters_list': list(gene_clusters_dict.keys())})
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
+
+
+    def check_homogeneity_info(self):
+        try:
+            return json.dumps({'status': 0,
+                               'functional_homogeneity_info_is_available': self.interactive.functional_homogeneity_info_is_available,
+                               'geometric_homogeneity_info_is_available': self.interactive.geometric_homogeneity_info_is_available})
+        except:
+            return json.dumps({'status': 1})
 
 
     def reroot_tree(self):
@@ -1165,4 +1208,15 @@ class BottleApplication(Bottle):
         new_root = tree.get_common_ancestor(left_most, right_most)
         tree.set_outgroup(new_root)
 
-        return json.dumps({'newick': tree.write(format=1)})
+        # Ete3 tree.write function replaces some charachters that we support in the interface.
+        # As a workaround we are going to encode node names with base32, after serialization
+        # we are going to decode them back.
+        for node in tree.traverse('preorder'):
+            node.name = 'base32' + base64.b32encode(node.name.encode('utf-8')).decode('utf-8')
+
+        new_newick = tree.write(format=1)
+
+        # ete also converts base32 padding charachter "=" to "_" so we need to replace it.
+        new_newick = re.sub(r"base32(\w+)", lambda m: base64.b32decode(m.group(1).replace('_','=')).decode('utf-8'), new_newick)
+
+        return json.dumps({'newick': new_newick})

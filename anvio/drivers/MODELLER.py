@@ -429,7 +429,7 @@ class MODELLER:
 
         self.run_command(command, 
                          script_name = script_name,
-                         progress_update = "Calculating 3D model",
+                         progress_update = "Calculating 3D model(s)",
                          check_output = [self.model_info_path])
 
         # load the model results information as a dataframe
@@ -640,8 +640,9 @@ class MODELLER:
                 error = "\n" + "\n".join(error.split('\n'))
                 print(terminal.c(error, color='red'))
                 raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that\
-                                   it is a MODELLER program. That was determined by running the command `%s`, which raised the\
-                                   error seen above. Try running your command without `--modeller-executable`."
+                                   it is a working MODELLER program. That was determined by running the command `%s`, which raised the\
+                                   error seen above. If you want to specify a specific MODELLER program, you can specify it with\
+                                   `--modeller-executable`."
                                        % (self.executable, " ".join(command)))
 
         # no error was raised. now check if output file exists
@@ -649,8 +650,9 @@ class MODELLER:
             filesnpaths.is_file_exists(test_output)
         except FilesNPathsError:
             raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that\
-                               it is a MODELLER program. That was determined by running the command `%s`, which did not\
-                               output the file expected. Try running your command without `--modeller-executable`" % (self.executable, " ".join(command)))
+                               it is a working MODELLER program. That was determined by running the command `%s`, which did not\
+                               output the file expected. If you want to specify a specific MODELLER program, you can specify it with\
+                               `--modeller-executable`." % (self.executable, " ".join(command)))
 
 
     def run_fasta_to_pir(self):

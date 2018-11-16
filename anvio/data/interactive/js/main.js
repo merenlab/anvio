@@ -69,6 +69,8 @@ var session_id;
 var mode;
 var server_mode = false;
 var samples_tree_hover = false;
+var inspection_available = false;
+var sequences_available = false;
 var bbox;
 
 var request_prefix = getParameterByName('request_prefix');
@@ -195,14 +197,14 @@ function initData() {
                 setTimeout(checkBackgroundProcess, 5000);
             }
 
+            inspection_available = response.inspection_available;
             if(!response.inspection_available){
                 toastr.info("Inspection of data items is not going to be available for this project.");
-                $('.menuItemInspect').addClass('menu-disabled');
             }
 
+            sequences_available = response.sequences_available;
             if(!response.sequences_available && mode != "collection" && mode != "pan"){
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
-                $('.menuItemSequence').addClass('menu-disabled');
             }
 
             if (response.read_only)
@@ -286,7 +288,7 @@ function initData() {
                 $.when()
                  .then(drawTree)
                  .then(function() {
-                    if (response.collection !== null && mode !== 'refine' && mode !== 'gene')
+                    if (response.collection !== null && mode !== 'refine')
                     {
                         bins.ImportCollection(response.collection);
                     }
@@ -322,6 +324,28 @@ function switchUserInterfaceMode(project, title) {
         $('#len_title').hide();
         $('.gene-filters-not-available-message').hide();
         $('.pan-filters button,input:checkbox').removeAttr('disabled')
+        $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/check_homogeneity_info',
+            success: function(data){
+                if (data['status'] == 1){
+                    $('#min_func').attr("disabled", 'disabled');
+                    $('#max_func').attr("disabled", 'disabled');
+                    $('#min_geo').attr("disabled", 'disabled');
+                    $('#max_geo').attr("disabled", 'disabled');
+                } else {
+                    if (data['functional_homogeneity_info_is_available'] == 0){
+                        $('#min_func').attr("disabled", 'disabled');
+                        $('#max_func').attr("disabled", 'disabled');
+                    }
+                    if (data['geometric_homogeneity_info_is_available'] == 0){
+                        $('#min_geo').attr("disabled", 'disabled');
+                        $('#max_geo').attr("disabled", 'disabled');
+                    }
+                }
+            }
+        })
     }
 
     if (server_mode) {
@@ -336,7 +360,7 @@ function switchUserInterfaceMode(project, title) {
     }
 }
 
-function setupDescriptionPanel(description) {  
+function setupDescriptionPanel(description) {
     $('#description-editor').val(description);
     $('#description-editor').markdown({
         'onShow': function (e) {
@@ -824,7 +848,7 @@ function createLegendColorPanel(legend_id) {
         }
 
         template = template + '<div style="float: left; width: 50%; display: inline-block; padding: 3px 5px;">' + 
-                                '<div class="colorpicker legendcolorpicker" color="' + _color + '"' +
+                                '<div class="colorpicker-base legendcolorpicker" color="' + _color + '"' +
                                 'style="margin-right: 5px; background-color: ' + _color + '"' +
                                 'callback_source="' + legend['source'] + '"' +
                                 'callback_group="' + ((typeof legend['group'] !== 'undefined') ? legend['group'] : '') + '"' +
@@ -842,6 +866,7 @@ function createLegendColorPanel(legend_id) {
         colorScheme: 'light',
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
             if (el.getAttribute('callback_group') !== '') {
                 window[el.getAttribute('callback_source')][el.getAttribute('callback_group')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
             } else {
@@ -1887,7 +1912,7 @@ function generatePhylogeneticTree() {
     var gene_cluster_list = [];
     var gene_clusters_id = $('#phylogeny_gene_cluster').val();
     
-    for (const node of this.selections[gene_clusters_id].values()) {
+    for (const node of bins.selections[gene_clusters_id].values()) {
         if (node.IsLeaf()) {
             gene_cluster_list.push(node.label);
         } 
@@ -2313,10 +2338,6 @@ function processState(state_name, state) {
         }
     }
 
-    if (state.hasOwnProperty('samples-order') && $(`#samples_order option[value='${state['samples-order']}']`).length > 0) {
-        $('#samples_order').val(state['samples-order']).trigger('change');
-    }
-
     buildLayersTable(layer_order, views[current_view]);
     buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
 
@@ -2331,6 +2352,11 @@ function processState(state_name, state) {
     }
 
     toggleSampleGroups();
+
+    if (state.hasOwnProperty('samples-order') && $(`#samples_order option[value='${state['samples-order']}']`).length > 0) {
+        $('#samples_order').val(state['samples-order']).trigger('change');
+    }
+
     buildLegendTables();
 
     current_state_name = state_name;

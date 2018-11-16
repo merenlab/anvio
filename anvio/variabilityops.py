@@ -523,6 +523,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # filtering
         self.min_scatter = A('min_scatter', int) or 0
         self.min_occurrence = A('min_occurrence', int) or 1
+        self.min_coverage = A('min_coverage', int) or 0
         self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', int) or 0
         self.min_departure_from_reference = A('min_departure_from_reference', float) or 0
         self.max_departure_from_reference = A('max_departure_from_reference', float) or 1
@@ -1379,7 +1380,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # sample_id). The reason for this is aesthetic but also required for vectorized operations that occur after
         # self.progress.update("Those that do require --quince-mode")
         self.data = self.data.sort_values(by=["unique_pos_identifier", "sample_id"])
-        coverage_table = self.data[self.items].T.astype(int).as_matrix()
+        coverage_table = self.data[self.items].T.astype(int).values
 
         # Now we compute the entropy, which is defined at a per position, per sample basis. There is a reason we
         # pass coverage_table instead of a normalized table. If we pass a normalized table scipy.stat.entropy complains
@@ -1861,7 +1862,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
         # concatenate new columns to self.data
         entries_before = len(self.data.index)
-        self.data = pd.concat([self.data, new_entries])
+        self.data = pd.concat([self.data, new_entries], sort=True)
         new_entries.set_index("entry_id", drop=False, inplace=True)
         self.data = self.data[column_order]
         entries_after = len(self.data.index)
@@ -2006,7 +2007,7 @@ class QuinceModeWrapperForFancyEngines(object):
 
         # concatenate new columns to self.data
         entries_before = len(self.data.index)
-        self.data = pd.concat([self.data, new_entries])
+        self.data = pd.concat([self.data, new_entries], sort=True)
         new_entries.set_index("entry_id", drop=False, inplace=True)
         self.data = self.data[column_order]
         entries_after = len(self.data.index)
@@ -2053,6 +2054,9 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
         self.progress = p
 
         self.engine = 'CDN'
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.skip_synonymity = A('skip_synonymity', null)
 
         # Init Meta
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
@@ -2066,6 +2070,10 @@ class CodonsEngine(dbops.ContigsSuperclass, VariabilitySuper, QuinceModeWrapperF
 
 
     def compute_synonymity(self):
+        """This method is currently prohibitively slow for large datasets."""
+        if self.skip_synonymity:
+            return
+
         coding_codons = constants.coding_codons
 
         number_of_pairs = len(coding_codons)*(len(coding_codons)+1)//2
@@ -2366,17 +2374,18 @@ class VariabilityNetwork:
 
 
 class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
-    def __init__(self, args={}, p=progress, r=run):
+    def __init__(self, args={}, p=progress, r=run, dont_process=False):
         self.progress = p
         self.run = r
 
         self.args = args
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        self.columns_to_load = A('columns_to_load', list)
         self.variability_table_path = A('variability_profile', str)
         self.engine = A('engine', str)
 
         if not self.variability_table_path:
-            raise ConfigError("You must declare a variability table filepath.")
+            raise ConfigError("VariabilityData :: You must declare a variability table filepath.")
 
         # determine the engine type of the variability table
         inferred_engine = utils.get_variability_table_engine_type(self.variability_table_path)
@@ -2397,6 +2406,16 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         else:
             pass
 
+        if not dont_process:
+            self.process_external_table()
+
+
+    def load_data(self):
+        """load the variability data (output of anvi-gen-variabliity-profile)"""
+        self.data = pd.read_csv(self.variability_table_path, sep="\t", usecols=self.columns_to_load)
+
+
+    def process_external_table(self):
         # load the data
         self.load_data()
 
@@ -2411,11 +2430,6 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
             self.load_structure_data()
 
         self.init_commons()
-
-
-    def load_data(self):
-        """load the variability data (output of anvi-gen-variabliity-profile)"""
-        self.data = pd.read_csv(self.variability_table_path, sep="\t")
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}

@@ -251,7 +251,7 @@ Drawer.prototype.generate_tooltips = function() {
             else if (layer_types[pindex] == 1) {
                 let stack_names = layerdata[0][pindex].split('!')[1].split(';');
                 let stack_items = layerdata[index][pindex].split(';');
-
+                let layer_title = layerdata[0][pindex];
                 message = '<td>' + layer_title.split('!')[0] + '</td><td><table>';
                 for (let j = stack_names.length - 1; j >= 0; j--) {
                     let bar_name = stack_names[j]; 
@@ -763,6 +763,8 @@ Drawer.prototype.draw_leaf = function(p) {
 };
 
 Drawer.prototype.draw_internal_node = function(p) {
+    let PADDING_STYLE = 'stroke:rgba(0,0,0,0);stroke-width:16;';
+
     if (this.settings['tree-type'] == 'circlephylogram')
     {
         var p0 = [];
@@ -772,17 +774,34 @@ Drawer.prototype.draw_internal_node = function(p) {
         p0['y'] = p.xy['y'];
 
         var anc = p.ancestor;
+        // if has ancestor we are going to draw vertical line
         if (anc) {
             p0 = p.xy;
             p1 = p.backarc;
 
+            // we draw two lines because one is transparent and makes clicking easier.
+            // you can see same thing happening multiple times in this function.
+            // ---
+            // also actual line drawing should be placed before padding line drawing funtion.
+            // in an ideal world they should not share same element ID but they do to trigger 
+            // same mouse events. So when bin changes color first object with that ID changes color.
+            // padding line should placed second to avoid that.
+            
             drawLine(this.tree_svg_id, p, p0, p1);
+
+            let line = drawLine(this.tree_svg_id, p, p0, p1);   
+            line.setAttribute('style', PADDING_STYLE);
         }
         p0 = p.child.backarc;
         p1 = p.child.GetRightMostSibling().backarc;
 
         var large_arc_flag = (Math.abs(p.child.GetRightMostSibling().angle - p.child.angle) > Math.PI) ? true : false;
+
         drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
+
+        let arc = drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
+        arc.setAttribute('style', PADDING_STYLE);
+
     }
     else
     {
@@ -798,6 +817,10 @@ Drawer.prototype.draw_internal_node = function(p) {
             p1['y'] = p0['y'];
 
             drawLine(this.tree_svg_id, p, p0, p1);
+
+            let line = drawLine(this.tree_svg_id, p, p0, p1);
+            line.setAttribute('style', PADDING_STYLE);
+
         }
 
         // vertical line
@@ -810,6 +833,9 @@ Drawer.prototype.draw_internal_node = function(p) {
         p1['y'] = pr['y'];
 
         drawLine(this.tree_svg_id, p, p0, p1, true);
+
+        let line = drawLine(this.tree_svg_id, p, p0, p1, true);
+        line.setAttribute('style', PADDING_STYLE);
     }
 };
 

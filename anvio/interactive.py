@@ -538,6 +538,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['views'] = {}
         self.p_meta['db_type'] = 'profile'
         self.p_meta['merged'] = True
+        self.p_meta['blank'] = True
         self.p_meta['default_view'] = 'single'
         self.default_view = self.p_meta['default_view']
 
@@ -1030,7 +1031,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
                         self.views[view]['dict'][str(gene_callers_id)][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
 
-        self.states_table = TablesForStates(self.profile_db_path)
+        # this is a bit tricky. we already populated the collections dict above, but it was to find out
+        # genes caller ids of interest. we are now resetting the collections dict, and populating it
+        # from scratch from the genes database. similarly, in store collection operations in bottleroutes
+        # and elsewhere will target the gene database tables for gene mode.
+        self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.genes_db_path)
+
+        # here we set the states table to the genes database to make sure the information from the interface
+        # goes into the right table
+        self.states_table = TablesForStates(self.genes_db_path)
 
         self.p_meta['default_item_order'] = 'mean_coverage'
         self.default_view = 'mean_coverage'
@@ -1040,7 +1050,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         for view in views_of_interest:
             item_order_name = view
-            newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], linkage=self.linkage, distance=self.distance)
+            newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'],
+                                                                        linkage=self.linkage,
+                                                                        distance=self.distance)
 
             self.p_meta['available_item_orders'].append(item_order_name)
             self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
@@ -1057,12 +1069,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.splits_taxonomy_dict = {}
         self.p_meta['description'] = 'None'
 
-        # FIX ME: storing collection and states is not available for gene mode atm.
-        self.args.read_only = True
-
         self.items_additional_data_keys, self.items_additional_data_dict = [], {}
 
         for view in views_of_interest:
+            # don't bother if this is a single profile
+            if not self.p_meta['merged']:
+                continue
+
             data_value = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'],
                                                                   distance=self.distance,
                                                                   linkage=self.linkage,
@@ -1854,7 +1867,7 @@ class StructureInteractive(VariabilitySuper):
 
         if self.variability_table_path:
             run.warning("You opted to work with a variability table previously generated from\
-                         anvi-gen-varability-profile. As a word of caution, keep in mind that any\
+                         anvi-gen-variability-profile. As a word of caution, keep in mind that any\
                          filters applied when the table was generated now persist in the\
                          following visualizations.")
             if not self.profile_db_path:

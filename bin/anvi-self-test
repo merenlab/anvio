@@ -10,6 +10,7 @@ import itertools
 import subprocess
 
 import anvio
+import anvio.tests
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import FilesNPathsError, ConfigError
@@ -42,7 +43,7 @@ def main(args):
         raise ConfigError("Well, the test suite '%s' is not something anvi'o knows about :/ Here is a list\
                             of tests available if you would like to try again: %s" % (args.suite, ', '.join(list(tests.keys()))))
 
-    tests_dir_path = os.path.abspath(os.path.join(os.path.dirname(anvio.__file__), '../tests'))
+    tests_dir_path = os.path.dirname(anvio.tests.__file__)
 
     test_files_found = [os.path.basename(p) for p in glob.glob(os.path.join(tests_dir_path, '*.sh'))]
 
@@ -58,9 +59,13 @@ def main(args):
 
     try:
         for test in tests[args.suite]:
-            if subprocess.call('./%s %s' % (test, temporary_output_dir), shell=True) != 0:
-                raise ConfigError("It seems something went wrong while running your tests :/ Anvi'o hopes that the reason is clear\
-                                   from the lines above.")
+            exitcode = subprocess.call('./%s %s' % (test, temporary_output_dir), shell=True)
+            if exitcode != 0:
+                raise ConfigError("According to the exit code ('%s'), anvi'o suspects that something may have gone wrong while \
+                                   running your tests :/ We hope that the reason is clear to you from the lines above. But if you\
+                                   don't see anything obvious, and especially if the test ended up running until the end with\
+                                   reasonable looking final results, you shouldn't worry too much about this error. Life\
+                                   is short and we all can worry just a bit less." % str(exitcode))
     except KeyboardInterrupt:
         pass
 

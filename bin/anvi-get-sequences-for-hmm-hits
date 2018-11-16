@@ -57,6 +57,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ['contigs-db', 'profile-db', 'external-genomes', 'internal-genomes', 'hmm-profile']
+__provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
 
 
 run = terminal.Run()
@@ -77,6 +79,11 @@ def main(args):
                                the best hit (using the `--return-best-hit`) flag to avoid issues if there are more than one\
                                hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
                                is not that kind of a platform :/")
+
+    if args.concatenate_genes:
+        # test whether we know about the aligner early on
+        from anvio.drivers import Aligners
+        Aligners().select(args.align_with)
 
     if args.max_num_genes_missing_from_bin and not args.gene_names and not args.list_available_gene_names:
         raise ConfigError("You can only use --max-num-genes-missing-from-bin flag if you already know what gene names you are\

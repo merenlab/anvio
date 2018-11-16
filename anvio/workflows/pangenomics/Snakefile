@@ -45,8 +45,7 @@ else:
 # the default name for the input fasta.txt file is "fasta.txt"
 fasta_txt = M.get_param_value_from_config("fasta_txt")
 filesnpaths.is_file_exists(fasta_txt)
-fasta_information = pd.read_csv(fasta_txt, sep='\t', index_col=0).to_dict(orient='index')
-ALL_SAMPLES = list(fasta_information.keys())
+ALL_SAMPLES = list(M.contigs_information.keys())
 
 internal_genomes_file = M.get_param_value_from_config(["anvi_gen_genomes_storage", "--internal-genomes"])
 external_genomes_file = M.get_param_value_from_config(["anvi_gen_genomes_storage", "--external-genomes"])
@@ -149,5 +148,5 @@ rule anvi_gen_genomes_storage:
                                      {params.gene_caller}
         """
 
-if not slave_mode:
+if 'workflows/pangenomics' in workflow.included[0]:
     M.check_workflow_program_dependencies(workflow)
