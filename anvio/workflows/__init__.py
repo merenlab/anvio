@@ -513,6 +513,8 @@ def init_workflow_super_class(workflow_object, args, workflow_name):
         workflow_object.args = args
         workflow_object.name = workflow_name
         WorkflowSuperClass.__init__(workflow_object)
+        self.run = run
+        self.progress = progress
     else:
         if not len(workflow_object.__dict__):
             raise ConfigError("When you are *not* inheriting %s from within\

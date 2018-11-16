@@ -29,9 +29,6 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         init_workflow_super_class(self, args, workflow_name='pangenomics')
 
-        self.run = run
-        self.progress = progress
-
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
 
