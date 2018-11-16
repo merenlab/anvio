@@ -27,13 +27,7 @@ progress = terminal.Progress()
 
 class PhylogenomicsWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        # if a regular instance of `ContigsDBWorkflow` is being generated, we
-        # expect it to have a parameter `args`. if there is no `args` given, we
-        # assume the class is being inherited as a base class from within another
         init_workflow_super_class(self, args, workflow_name='phylogenomics')
-
-        self.run = run
-        self.progress = progress
 
         self.input_for_anvi_get_sequences_for_hmm_hits = {}
         self.internal_genomes_file = ''

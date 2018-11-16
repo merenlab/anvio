@@ -28,9 +28,6 @@ class ContigsDBWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         init_workflow_super_class(self, args, workflow_name='contigs')
 
-        self.run = run
-        self.progress = progress
-
         self.group_names = []
         self.contigs_information = {}
         self.fasta_information = {}

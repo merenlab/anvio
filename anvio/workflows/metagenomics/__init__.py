@@ -39,9 +39,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.run = run
         self.progress = progress
 
-        # know thyself.
-        self.name = 'metagenomics'
-
         self.samples_information = {}
         self.kraken_annotation_dict = {}
         self.run_metaspades = None
