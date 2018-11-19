@@ -1,0 +1,6 @@
+name	path
+s01	s01-phylo.fa
+s02	s02-phylo.fa
+s03	s03-phylo.fa
+s04	s04-phylo.fa
+s05	s05-phylo.fa

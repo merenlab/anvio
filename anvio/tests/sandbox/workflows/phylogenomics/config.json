@@ -8,8 +8,11 @@
         "--separator": "",
         "--min-num-bins-gene-occurs": "",
         "--max-num-genes-missing-from-bin": "",
-        "--gene-names": "",
+        "--gene-names": "CoaE,FAD_syn,Flavokinase,Methyltransf_5,Peptidase_A8,Ribosomal_S20p",
         "threads": ""
+    },
+    "anvi_run_ncbi_cogs": {
+        "run": false
     },
     "trimal": {
         "-gt": 0.5,
@@ -22,9 +25,10 @@
         "-bb": 1000,
         "additional_params": ""
     },
-    "project_name": "",
+    "project_name": "TEST",
     "internal_genomes": "",
-    "external_genomes": "",
+    "external_genomes": "external-genomes.txt",
+    "fasta_txt": "fasta.txt",
     "output_dirs": {
         "PHYLO_DIR": "01_PHYLOGENOMICS",
         "LOGS_DIR": "00_LOGS"

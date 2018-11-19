@@ -10,6 +10,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows import WorkflowSuperClass
+from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.errors import ConfigError
 
 
@@ -24,9 +25,12 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-class PhylogenomicsWorkflow(WorkflowSuperClass):
+class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='phylogenomics')
+
+        # initialize the base class
+        ContigsDBWorkflow.__init__(self)
 
         self.input_for_anvi_get_sequences_for_hmm_hits = {}
         self.internal_genomes_file = ''
@@ -61,6 +65,8 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
         super().init()
 
+        self.internal_genomes_file = self.get_param_value_from_config('internal_genomes')
+        self.external_genomes_file = self.get_param_value_from_config('external_genomes')
         self.input_for_anvi_get_sequences_for_hmm_hits = self.get_internal_and_external_genomes_files()
 
         self.sanity_checks()
