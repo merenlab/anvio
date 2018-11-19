@@ -431,6 +431,16 @@ class WorkflowSuperClass:
             internal_genomes_file = self.get_param_value_from_config('internal_genomes')
             external_genomes_file = self.get_param_value_from_config('external_genomes')
 
+            fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
+            if fasta_txt_file and not external_genomes_file:
+                raise ConfigError('You provided a fasta_txt, but didn\'t specify a path for an external-genomes file. \
+                                   If you wish to use external genomes, you must specify a name for the external-genomes \
+                                   file, using the "external_genomes" parameter in your config file. Just to clarify: \
+                                   the external genomes file doesn\'t have to exist, since we will create it for you, \
+                                   by using the information you supplied in the "fasta_txt" file, but you must specify \
+                                   a name for the external-genomes file. For example, you could use "external_genomes": "external-genomes.txt", \
+                                   but feel free to be creative.')
+
             if not internal_genomes_file and not external_genomes_file:
                 raise ConfigError('You must provide either an external genomes file or internal genomes file')
             # here we do a little trick to make sure the rule can expect either one or both
