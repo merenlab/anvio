@@ -398,6 +398,57 @@ class WorkflowSuperClass:
     def T(self, rule_name): return self.get_param_value_from_config([rule_name,'threads']) if self.get_param_value_from_config([rule_name,'threads']) else 1
 
 
+    def init_workflow_super_class(self, args, workflow_name):
+        '''
+            if a regular instance of workflow object is being generated, we
+            expect it to have a parameter `args`. if there is no `args` given, we
+            assume the class is being inherited as a base class from within another.
+
+            For a regular instance of a workflow this function will set the args
+            and init the WorkflowSuperClass.
+        '''
+        if args:
+            if len(self.__dict__):
+                raise ConfigError("Something is wrong. You are ineriting %s from \
+                                   within another class, yet you are providing an `args` parameter.\
+                                   This is not alright." % type(self))
+            self.args = args
+            self.name = workflow_name
+            WorkflowSuperClass.__init__(self)
+            self.run = run
+            self.progress = progress
+        else:
+            if not len(self.__dict__):
+                raise ConfigError("When you are *not* inheriting %s from within\
+                                   a super class, you must provide an `args` parameter." % type(self))
+            if 'name' not in self.__dict__:
+                raise ConfigError("The super class trying to inherit %s does not\
+                                   have a set `self.name`. Which means there may be other things\
+                                   wrong with it, hence anvi'o refuses to continue." % type(self))
+
+
+    def get_internal_and_external_genomes_files(self):
+            internal_genomes_file = self.get_param_value_from_config('internal_genomes')
+            external_genomes_file = self.get_param_value_from_config('external_genomes')
+
+            if not internal_genomes_file and not external_genomes_file:
+                raise ConfigError('You must provide either an external genomes file or internal genomes file')
+            # here we do a little trick to make sure the rule can expect either one or both
+            d = {"internal_genomes_file": external_genomes_file,
+                                                              "external_genomes_file": internal_genomes_file}
+
+            if internal_genomes_file:
+                filesnpaths.is_file_exists(internal_genomes_file)
+                d['internal_genomes_file'] = internal_genomes_file
+
+            if external_genomes_file:
+                if filesnpaths.is_file_exists(external_genomes_file, dont_raise=True):
+                    run.warning('There is no file %s. No worries, one will be created for you.' % external_genomes_file)
+                d['external_genomes_file'] = external_genomes_file
+
+            return d
+
+
 # The config file contains many essential configurations for the workflow
 # Setting the names of all directories
 dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,\
