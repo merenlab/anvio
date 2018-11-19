@@ -472,7 +472,18 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None):
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None):
+    '''
+        Store a dictionary of dictionaries as a TAB-delimited file.
+        input:
+            d - dictionary of dictionaries
+            output_path - output path
+            headers - headers of the secondary dictionary to include (by default include all)
+                      these are the columns that will be included in the output file (this
+                      doesn't include the first column which is the keys of the major dictionary)
+            file_obj - file_object to use for writing
+            key_header - the header for the first column (by default: 'key')
+    '''
     if not file_obj:
         filesnpaths.is_output_file_writable(output_path)
 
@@ -481,8 +492,9 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
     else:
         f = file_obj
 
+    key_header = key_header if key_header else 'key'
     if not headers:
-        headers = ['key'] + sorted(list(d.values())[0].keys())
+        headers = [key_header] + sorted(list(d.values())[0].keys())
 
     f.write('%s\n' % '\t'.join(headers))
 
