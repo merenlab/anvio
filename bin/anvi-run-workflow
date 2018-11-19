@@ -19,6 +19,8 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Alon Shaiber"
+__resources__ = [("Tutorial", "http://merenlab.org/2018/07/09/anvio-snakemake-workflows/")]
+__tags__ = ["metagenomics", "phylogenomics", "contigs", "pangenomics", "metapangenomics"]
 __email__ = "alon.shaiber@gmail.com"
 
 
