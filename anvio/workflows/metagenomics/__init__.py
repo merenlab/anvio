@@ -32,13 +32,8 @@ progress = terminal.Progress()
 min_contig_length_for_assembly = 1000
 
 class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
-        self.args = args
-        self.run = run
-        self.progress = progress
-
-        # know thyself.
-        self.name = 'metagenomics'
+    def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
+        self.init_workflow_super_class(args, workflow_name='metagenomics')
 
         self.samples_information = {}
         self.kraken_annotation_dict = {}

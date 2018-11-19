@@ -1,0 +1,36 @@
+{
+    "anvi_get_sequences_for_hmm_hits": {
+        "--return-best-hit": true,
+        "--align-with": "famsa",
+        "--concatenate-genes": true,
+        "--get-aa-sequences": true,
+        "--hmm-sources": "Campbell_et_al",
+        "--separator": "",
+        "--min-num-bins-gene-occurs": "",
+        "--max-num-genes-missing-from-bin": "",
+        "--gene-names": "CoaE,FAD_syn,Flavokinase,Methyltransf_5,Peptidase_A8,Ribosomal_S20p",
+        "threads": ""
+    },
+    "anvi_run_ncbi_cogs": {
+        "run": false
+    },
+    "trimal": {
+        "-gt": 0.5,
+        "additional_params": "",
+        "threads": ""
+    },
+    "iqtree": {
+        "threads": 8,
+        "-m": "WAG",
+        "-bb": 1000,
+        "additional_params": ""
+    },
+    "project_name": "TEST",
+    "internal_genomes": "",
+    "external_genomes": "external-genomes.txt",
+    "fasta_txt": "fasta.txt",
+    "output_dirs": {
+        "PHYLO_DIR": "01_PHYLOGENOMICS",
+        "LOGS_DIR": "00_LOGS"
+    }
+}

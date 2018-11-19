@@ -28,6 +28,7 @@ if not slave_mode:
     M = PhylogenomicsWorkflow(argparse.Namespace(config=config, slave_mode=slave_mode))
     M.init()
     dirs_dict = M.dirs_dict
+    include: w.get_workflow_snake_file_path('contigs')
 
 localrules: generate_phylogeny
 
