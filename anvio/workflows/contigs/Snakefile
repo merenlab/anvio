@@ -355,6 +355,24 @@ rule annotate_contigs_database:
     shell: "touch {output} >> {log} 2>&1"
 
 
+# generate external genomes storage
+# this rule is only used when this workflow is inherited (e.g. by pangenomics or phylogenomics workflows)
+rule gen_external_genome_file:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "" + "/gen_external_genome_file.log"
+    input:
+        annotation_done = expand(dirs_dict['CONTIGS_DIR'] + "/{sample}-annotate_contigs_database.done", sample=M.group_names),
+        contigs_dbs = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}-contigs.db", sample=M.group_names)
+    output: M.external_genomes_file
+    threads: M.T("gen_external_genome_file")
+    resources: nodes = M.T("gen_external_genome_file")
+    run:
+        with open(output[0], 'w') as f:
+            f.write("name\tcontigs_db_path\n")
+            for c in input.contigs_dbs:
+                f.write("%s\t%s\n" % (c.split(".")[0].split("/")[-1].replace('-','_'), c))
+
+
 if 'workflows/contigs' in workflow.included[0]:
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of

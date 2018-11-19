@@ -11,7 +11,6 @@ import anvio.utils as u
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.workflows import init_workflow_super_class
 from anvio.workflows import WorkflowSuperClass
 
 
@@ -26,13 +25,18 @@ __email__ = "alon.shaiber@gmail.com"
 
 class ContigsDBWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        init_workflow_super_class(self, args, workflow_name='contigs')
+        self.init_workflow_super_class(args, workflow_name='contigs')
 
         self.group_names = []
         self.contigs_information = {}
         self.fasta_information = {}
+        # we have external_genomes_file defined here for the sake of pangenomics and phylogenomics workflows
+        self.external_genomes_file = ''
+        # we have references_mode defined here for the sake of the metagenomics workflow (it is only used when this workflow is inherited)
+        self.references_mode = None
 
-        self.rules.extend(['anvi_script_reformat_fasta',
+        self.rules.extend(['gen_external_genome_file',
+                           'anvi_script_reformat_fasta',
                            'anvi_gen_contigs_database', 'export_gene_calls_for_centrifuge', 'centrifuge',
                            'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
