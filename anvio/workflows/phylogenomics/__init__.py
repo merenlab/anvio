@@ -10,7 +10,6 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows import WorkflowSuperClass
-from anvio.workflows import init_workflow_super_class
 from anvio.errors import ConfigError
 
 
@@ -27,7 +26,7 @@ progress = terminal.Progress()
 
 class PhylogenomicsWorkflow(WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        init_workflow_super_class(self, args, workflow_name='phylogenomics')
+        self.init_workflow_super_class(args, workflow_name='phylogenomics')
 
         self.input_for_anvi_get_sequences_for_hmm_hits = {}
         self.internal_genomes_file = ''
@@ -62,25 +61,12 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
         super().init()
 
-        internal_genomes_file = self.get_param_value_from_config('internal_genomes')
-        external_genomes_file = self.get_param_value_from_config('external_genomes')
+        self.input_for_anvi_get_sequences_for_hmm_hits = self.get_internal_and_external_genomes_files()
 
-        if not internal_genomes_file and not external_genomes_file:
-            raise ConfigError('You must provide either an external genomes file or internal genomes file')
-        # here we do a little trick to make sure the rule can expect either one or both
-        self.input_for_anvi_get_sequences_for_hmm_hits = {"internal_genomes_file": external_genomes_file,
-                                                          "external_genomes_file": internal_genomes_file}
+        self.sanity_checks()
 
-        if internal_genomes_file:
-            filesnpaths.is_file_exists(internal_genomes_file)
-            self.input_for_anvi_get_sequences_for_hmm_hits['internal_genomes_file'] = internal_genomes_file
-            self.internal_genomes_file = internal_genomes_file
 
-        if external_genomes_file:
-            filesnpaths.is_file_exists(external_genomes_file)
-            self.input_for_anvi_get_sequences_for_hmm_hits['external_genomes_file'] = external_genomes_file
-            self.external_genomes_file = external_genomes_file
-
+    def sanity_checks(self):
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit'):
             run.warning('You changed the value for --return-best-hit for the rule anvi_get_sequences_for_hmm_hits \
                          to something other than the default value, which is "true", while we allow you to do it \
