@@ -242,7 +242,7 @@ D = {
     'internal-genomes': (
             ['-i', '--internal-genomes'],
             {'metavar': 'FILE_PATH',
-             'help': "A four-column TAB-delimited flat text file. The header line must contain thse columns: 'name', 'bin_id',\
+             'help': "A five-column TAB-delimited flat text file. The header line must contain thse columns: 'name', 'bin_id',\
                       'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name'\
                       can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection."}
                 ),
