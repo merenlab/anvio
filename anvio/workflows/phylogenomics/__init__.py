@@ -10,6 +10,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows import WorkflowSuperClass
+from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.errors import ConfigError
 
 
@@ -24,37 +25,18 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-class PhylogenomicsWorkflow(WorkflowSuperClass):
+class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        # if a regular instance of `ContigsDBWorkflow` is being generated, we
-        # expect it to have a parameter `args`. if there is no `args` given, we
-        # assume the class is being inherited as a base class from within another
-        if args:
-            if len(self.__dict__):
-                raise ConfigError("Something is wrong. You are ineriting `PhylogenomicsWorkflow` from \
-                                   within another class, yet you are providing an `args` parameter.\
-                                   This is not alright.")
-            self.args = args
-            self.name = 'phylogenomics'
-        else:
-            if not len(self.__dict__):
-                raise ConfigError("When you are *not* inheriting `PhylogenomicsWorkflow` from within\
-                                   a super class, you must provide an `args` parameter.")
+        self.init_workflow_super_class(args, workflow_name='phylogenomics')
 
-            if 'name' not in self.__dict__:
-                raise ConfigError("The super class trying to inherit `PhylogenomicsWorkflow` does not\
-                                   have a set `self.name`. Which means there may be other things\
-                                   wrong with it, hence anvi'o refuses to continue.")
-
-        self.run = run
-        self.progress = progress
+        # initialize the base class
+        ContigsDBWorkflow.__init__(self)
 
         self.input_for_anvi_get_sequences_for_hmm_hits = {}
         self.internal_genomes_file = ''
         self.external_genomes_file = ''
 
         # initialize the base class
-        WorkflowSuperClass.__init__(self)
 
         self.rules.extend(['anvi_get_sequences_for_hmm_hits', 'trimal', 'iqtree'])
 
@@ -83,24 +65,17 @@ class PhylogenomicsWorkflow(WorkflowSuperClass):
         ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
         super().init()
 
-        internal_genomes_file = self.get_param_value_from_config('internal_genomes')
-        external_genomes_file = self.get_param_value_from_config('external_genomes')
+        self.internal_genomes_file = self.get_param_value_from_config('internal_genomes')
+        self.external_genomes_file = self.get_param_value_from_config('external_genomes')
+        self.input_for_anvi_get_sequences_for_hmm_hits = self.get_internal_and_external_genomes_files()
 
-        if not internal_genomes_file and not external_genomes_file:
-            raise ConfigError('You must provide either an external genomes file or internal genomes file')
-        # here we do a little trick to make sure the rule can expect either one or both
-        self.input_for_anvi_get_sequences_for_hmm_hits = {"internal_genomes_file": external_genomes_file,
-                                                          "external_genomes_file": internal_genomes_file}
+        self.sanity_checks()
 
-        if internal_genomes_file:
-            filesnpaths.is_file_exists(internal_genomes_file)
-            self.input_for_anvi_get_sequences_for_hmm_hits['internal_genomes_file'] = internal_genomes_file
-            self.internal_genomes_file = internal_genomes_file
 
-        if external_genomes_file:
-            filesnpaths.is_file_exists(external_genomes_file)
-            self.input_for_anvi_get_sequences_for_hmm_hits['external_genomes_file'] = external_genomes_file
-            self.external_genomes_file = external_genomes_file
+    def sanity_checks(self):
+        if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names'):
+            raise ConfigError('You must provide a list of genes to use for the phylogenomics. \
+                         To do so, please use the "--gene-names" parameter of rule anvi_get_sequences_for_hmm_hits.')
 
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit'):
             run.warning('You changed the value for --return-best-hit for the rule anvi_get_sequences_for_hmm_hits \
