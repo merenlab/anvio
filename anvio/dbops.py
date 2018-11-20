@@ -3546,13 +3546,6 @@ def get_auxiliary_data_path_for_profile_db(profile_db_path):
     return os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
 
 
-def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
-    if not collection_name or not bin_name:
-        raise ConfigError("Genes database must be associted with a collection name and a bin name :/")
-
-    return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
-
-
 def get_description_in_db(anvio_db_path, run=run):
     """Reads the description in an anvi'o database"""
 
