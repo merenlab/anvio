@@ -300,21 +300,22 @@ Drawer.prototype.normalize_values = function() {
                 this.layerdata_dict[id][layer.index] = stack_bar_items.slice(0);
             }
             else { // numerical
-                var normalization = layer.get_view_attribute('normalization');
-                if (normalization == 'sqrt') 
-                {
-                    this.layerdata_dict[id][layer.index] = Math.sqrt(parseFloat(this.layerdata_dict[id][layer.index]));
+                if (isNumber(this.layerdata_dict[id][layer.index])) {
+                    var normalization = layer.get_view_attribute('normalization');
+                    if (normalization == 'sqrt') 
+                    {
+                        this.layerdata_dict[id][layer.index] = Math.sqrt(parseFloat(this.layerdata_dict[id][layer.index]));
+                    }
+                    else if (normalization == 'log') 
+                    {
+                        this.layerdata_dict[id][layer.index] = log10(parseFloat(this.layerdata_dict[id][layer.index]) + 1);
+                    }
+                    
+                    if (!this.param_max.hasOwnProperty(layer.index)|| parseFloat(this.layerdata_dict[id][layer.index]) > parseFloat(this.param_max[layer.index])) 
+                    {
+                        this.param_max[layer.index] = parseFloat(this.layerdata_dict[id][layer.index]);
+                    }
                 }
-                else if (normalization == 'log') 
-                {
-                    this.layerdata_dict[id][layer.index] = log10(parseFloat(this.layerdata_dict[id][layer.index]) + 1);
-                }
-                
-                if (!this.param_max.hasOwnProperty(layer.index)|| parseFloat(this.layerdata_dict[id][layer.index]) > parseFloat(this.param_max[layer.index])) 
-                {
-                    this.param_max[layer.index] = parseFloat(this.layerdata_dict[id][layer.index]);
-                }
-
             }
         });
     }
@@ -375,7 +376,7 @@ Drawer.prototype.calculate_bar_sizes = function() {
                             this.layerdata_dict[id][layer.index] = 0;
                         } else {
                             this.layerdata_dict[id][layer.index] = bar_size * parseFloat(layer.get_visual_attribute('height')) / (max - min);
-                        }                        
+                        }
                     }
                     else
                     {  
@@ -396,8 +397,6 @@ Drawer.prototype.calculate_bar_sizes = function() {
                         var min_max_str = "Min: " + min_new + " - Max: " + max_new;
                         $('#min' + layer.index).attr('title', min_max_str);
                         $('#max' + layer.index).attr('title', min_max_str);
-
-
                     }
                 }
             }
