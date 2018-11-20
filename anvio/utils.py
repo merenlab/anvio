@@ -2245,9 +2245,22 @@ def is_contigs_db(db_path):
     return True
 
 
-def is_pan_or_profile_db(db_path):
-    if get_db_type(db_path) not in ['pan', 'profile']:
-        raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble." % db_path)
+def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
+    ok_db_types = ['pan', 'profile']
+
+    if genes_db_is_also_accepted:
+        ok_db_types += ['gene']
+
+    db_type = get_db_type(db_path)
+
+    if db_type not in ok_db_types:
+        if genes_db_is_also_accepted:
+            raise ConfigError("'%s' is not a pan, profile, or a genes database :/ Anvi'o wants what it wants and this \
+                               '%s' database is not it." % (db_path, db_type))
+        else:
+            raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble (*cough* 'someone' \
+                                being whoever sent this %s database as a parameter to that command *cough*)." % (db_path, db_type))
+
     return True
 
 
