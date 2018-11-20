@@ -29,7 +29,7 @@ from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, Tab
 from anvio.dbops import get_description_in_db
 from anvio.dbops import get_default_item_order_name
 from anvio.completeness import Completeness
-from anvio.errors import ConfigError, RefineError
+from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 
