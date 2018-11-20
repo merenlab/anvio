@@ -2194,6 +2194,8 @@ def get_all_item_names_from_the_database(db_path, run=run):
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
     elif db_type == 'contigs':
         all_items = set(database.get_single_column_from_table(t.splits_info_table_name, 'split'))
+    elif db_type == 'genes':
+        all_items = set([str(i) for i in database.get_single_column_from_table(t.gene_level_coverage_stats_table_name, 'gene_callers_id')])
     else:
         database.disconnect()
         raise ConfigError("You wanted to get all items in the database %s, but no one here knows about its type. Seriously,\
