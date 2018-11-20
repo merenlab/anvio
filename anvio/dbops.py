@@ -2810,6 +2810,10 @@ class GenesDatabase:
         self.db = db.DB(self.db_path, anvio.__genes__version__, new_database=True)
 
         # creating empty default tables
+        self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
+        self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
+        self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
+        self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.gene_level_coverage_stats_table_name, t.gene_level_coverage_stats_table_structure, t.gene_level_coverage_stats_table_structure)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
