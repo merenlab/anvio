@@ -2231,9 +2231,6 @@ class ProfileSuperclass(object):
 
         profile_db.disconnect()
 
-        self.progress.update('Accessing the layers additional data')
-        self.layers_additional_data_keys, self.layers_additional_data = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).get_all()
-
         self.progress.update('Accessing the auxiliary data file')
         self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
         if not os.path.exists(self.auxiliary_data_path):
