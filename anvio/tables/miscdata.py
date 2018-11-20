@@ -74,7 +74,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should\
                                be working with.")
 
-        utils.is_pan_or_profile_db(self.db_path)
+        utils.is_pan_or_profile_db(self.db_path, genes_db_is_also_accepted=True)
         self.db_type = utils.get_db_type(self.db_path)
         self.db_version = utils.get_required_version_for_db(self.db_path)
 
