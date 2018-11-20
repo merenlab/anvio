@@ -1110,10 +1110,23 @@ function buildLayersTable(order, settings)
 
             $('#tbody_layers').append(template);
         }
+
+        // find if numeric or categorical
+        let is_numeric = true;
+        for (let j=1; j < layerdata.length; j++) {
+            if (layerdata[j][layer_id] == '' || layerdata[j][layer_id] == null)
+                continue;
+
+            if (!isNumber(layerdata[j][layer_id])) {
+                is_numeric = false;
+                break;
+            }
+        }
+
         //
         // categorical layer
         //
-        else if (layerdata[1][layer_id] === null || !isNumber(layerdata[1][layer_id]))
+        if (!is_numeric)
         { 
             layer_types[layer_id] = 2;
 
