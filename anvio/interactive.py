@@ -122,8 +122,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.displayed_item_names_ordered = None
         self.auxiliary_profile_data_available = False
 
+        # get additional data for items and layers, and get layer orders data.
         try:
-            # get additional data for items and layers, and get layer orders data.
             a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
             self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
             self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
