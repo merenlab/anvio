@@ -2084,13 +2084,13 @@ class ProfileSuperclass(object):
         # stored in item additional data tables UNLESS THEY ARE ALREADY INITIALIZED IN THE CONTEXT
         # FROM WITHIN PROFILE SUPERCLASS IS INHERITED (SUCH A THING IS HAPPENING AT THE INTERACTIVE
         # CLASS)
-        if super() and self.__getattribute__('items_additional_data_dict') and self.__getattribute__('items_additional_data_keys'):
+        if super() and 'items_additional_data_dict' in dir(self) and 'items_additional_data_keys' in dir(self):
             pass
         else:
             self.items_additional_data_dict = None
             self.items_additional_data_keys = None
 
-        if super() and self.__getattribute__('layers_additional_data_dict') and self.__getattribute__('layers_additional_data_keys'):
+        if super() and 'layers_additional_data_dict' in dir(self) and 'layers_additional_data_keys' in dir(self):
             pass
         else:
             self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all()
