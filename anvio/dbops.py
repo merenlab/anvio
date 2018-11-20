@@ -2240,9 +2240,9 @@ class ProfileSuperclass(object):
 
         if self.collection_name and self.bin_names and len(self.bin_names) == 1:
             self.progress.update('Accessing the genes database')
-            self.genes_db_path = get_genes_database_path_for_bin(self.profile_db_path,
-                                                                 self.collection_name,
-                                                                 self.bin_names[0])
+            self.genes_db_path = utils.get_genes_database_path_for_bin(self.profile_db_path,
+                                                                       self.collection_name,
+                                                                       self.bin_names[0])
             if not os.path.exists(self.genes_db_path):
                 self.genes_db_available = False
             else:
