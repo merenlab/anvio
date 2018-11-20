@@ -2249,7 +2249,7 @@ def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
     ok_db_types = ['pan', 'profile']
 
     if genes_db_is_also_accepted:
-        ok_db_types += ['gene']
+        ok_db_types += ['genes']
 
     db_type = get_db_type(db_path)
 
