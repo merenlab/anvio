@@ -10,7 +10,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, GenesDBError
 from anvio.tables.tableops import Table
 
 
