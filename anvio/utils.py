@@ -2153,6 +2153,9 @@ def get_all_sample_names_from_the_database(db_path):
 
         return set(samples)
 
+    elif db_type == 'genes':
+        return set([str(i) for i in database.get_single_column_from_table(t.gene_level_coverage_stats_table_name, 'sample_name')])
+
     elif db_type == 'pan':
         internal_genome_names, external_genome_names = [], []
         try:
