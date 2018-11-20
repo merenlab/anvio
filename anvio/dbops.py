@@ -2090,6 +2090,11 @@ class ProfileSuperclass(object):
             self.items_additional_data_dict = None
             self.items_additional_data_keys = None
 
+        if super() and self.__getattribute__('layers_additional_data_dict') and self.__getattribute__('layers_additional_data_keys'):
+            pass
+        else:
+            self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all()
+
         self.auxiliary_profile_data_available = None
         self.auxiliary_data_path = None
         self.genes_db_available = None
