@@ -2081,9 +2081,14 @@ class ProfileSuperclass(object):
         self.split_coverage_values = None
 
         # the following two are initialized via `init_items_additional_data()` and use information
-        # stored in item additional data tables
-        self.items_additional_data_dict = None
-        self.items_additional_data_keys = None
+        # stored in item additional data tables UNLESS THEY ARE ALREADY INITIALIZED IN THE CONTEXT
+        # FROM WITHIN PROFILE SUPERCLASS IS INHERITED (SUCH A THING IS HAPPENING AT THE INTERACTIVE
+        # CLASS)
+        if super() and self.__getattribute__('items_additional_data_dict') and self.__getattribute__('items_additional_data_keys'):
+            pass
+        else:
+            self.items_additional_data_dict = None
+            self.items_additional_data_keys = None
 
         self.auxiliary_profile_data_available = None
         self.auxiliary_data_path = None
