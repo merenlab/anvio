@@ -139,7 +139,12 @@ rule metagenomics_workflow_target_rule:
            qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=M.group_names),
            filter_report = os.path.join(dirs_dict["QC_DIR"], "short-read-removal-report.txt") \
                             if M.references_for_removal_txt \
-                            else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names)
+                            else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
+           import_collection_done = expand(os.path.join(dirs_dict["MERGE_DIR"], \
+                                              '{group}', \
+                                              'collection-import.done'), group=list(M.collections.keys())) \
+                                     if M.collections \
+                                     else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names)
 
 
 rule iu_gen_configs:
@@ -990,6 +995,34 @@ rule anvi_merge:
                    {params.overwrite_output_destinations} {params.description} \
                    {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering} \
                    {params.distance} {params.linkage} >> {log} 2>&1")
+
+
+rule anvi_import_collection:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_collection.log"
+    input:
+        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        collection_file = lambda wildcards: M.collections[wildcards.group]['collection_file']
+    output:
+        imported_collection_flag = touch(os.path.join(dirs_dict["MERGE_DIR"], \
+                                              '{group}', \
+                                              'collection-import.done'))
+    params:
+        bins_info = lambda wildcards: M.collections[wildcards.group]['bins_info'],
+        collection_name = lambda wildcards: M.collections[wildcards.group]['collection_name'],
+        contigs_mode = lambda wildcards: M.collections[wildcards.group]['contigs_mode']
+    threads: 1
+    resources: nodes=1
+    shell:
+        """
+           anvi-import-collection -p {input.profile} \
+                                  -c {input.contigs} \
+                                  -C {params.collection_name} \
+                                  {params.bins_info} \
+                                  {params.contigs_mode} \
+                                  {input.collection_file} >> {log} 2>&1
+        """
 
 
 rule krakenhll:

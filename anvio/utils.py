@@ -1364,6 +1364,16 @@ def check_sample_id(sample_id):
                                 digits, and the underscore character ('_')." % sample_id)
 
 
+def check_collection_name(collection_name):
+    try:
+        check_sample_id(collection_name)
+    except:
+        raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain\
+                            ANY characters but digits, ASCII letters and underscore character(s). There should not be\
+                            any space characters, and the collection name should not start with a digit.' % collection_name)
+
+
+
 def is_this_name_OK_for_database(variable_name, content, stringent=True):
     if not content:
         raise ConfigError("But the %s is empty? Come on :(" % variable_name)
