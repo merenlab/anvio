@@ -144,7 +144,11 @@ rule metagenomics_workflow_target_rule:
                                               '{group}', \
                                               'collection-import.done'), group=list(M.collections.keys())) \
                                      if M.collections \
-                                     else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names)
+                                     else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
+           summary = expand(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-SUMMARY"), \
+                            group=list(M.collections.keys())) \
+                      if M.collections \
+                      else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
 
 
 rule iu_gen_configs:
@@ -1023,6 +1027,45 @@ rule anvi_import_collection:
                                   {params.contigs_mode} \
                                   {input.collection_file} >> {log} 2>&1
         """
+
+
+rule anvi_summarize:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_summarize.log")
+    input:
+        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        imported_collection_flag = os.path.join(dirs_dict["MERGE_DIR"], \
+                                                '{group}', \
+                                                'collection-import.done')
+    output:
+        summary_done = temp(touch(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch")))
+    params:
+        collection_name = lambda wildcards: M.collections[wildcards.group]['collection_name'],
+        summary_temp_dir = os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-TEMP")
+    threads: M.T('anvi_summarize')
+    resources: nodes = M.T('anvi_summarize')
+    shell:
+        """
+            anvi-summarize -p {input.profile} \
+                           -c {input.contigs} \
+                           -C {params.collection_name} \
+                           -o {params.summary_temp_dir} >> {log} 2>&1
+        """
+
+
+rule dummy_rule_for_anvi_summarize:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-dummy_rule_for_anvi_summarize.log"
+    input:
+        summary_done = os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch")
+    output:
+        directory(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-SUMMARY"))
+    params:
+        summary_temp_dir = os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-TEMP")
+    threads: 1
+    resources: nodes = 1
+    shell: "mv {params.summary_temp_dir} {output} >> {log} 2>&1"
 
 
 rule krakenhll:
