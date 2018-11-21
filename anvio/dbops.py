@@ -2288,10 +2288,10 @@ class ProfileSuperclass(object):
                        'bin_name': self.bin_names[0],
                        'splits_hash': splits_hash}
 
-        # generate a blank genes database here 
+        # generate a blank genes database here:
         GenesDatabase(self.genes_db_path).create(meta_values=meta_values)
 
-        # and immediately copy-paste the layers additional data table into
+        # and immediately copy-paste the layers additional data and states table into
         # it for convenience:
         genes_database = db.DB(self.genes_db_path, None, ignore_version=True)
         genes_database.copy_paste(table_name=t.layer_additional_data_table_name, source_db_path=self.profile_db_path)
