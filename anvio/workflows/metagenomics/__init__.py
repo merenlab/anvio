@@ -47,6 +47,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.samples_txt_file = None
         self.sample_names = None
         self.group_sizes = None
+        self.collections_txt = None
+        self.collections = None
 
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
@@ -61,7 +63,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'remove_short_reads_based_on_references'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
-                                    "kraken_txt"])
+                                    "kraken_txt", "collections_txt"])
 
         rule_acceptable_params_dict = {}
 
@@ -155,9 +157,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
                                                                             'references_for_removal_txt'],\
                                                                            repress_default=True)
-
         if self.references_for_removal_txt:
             self.load_references_for_removal()
+
+        self.collections_txt = self.get_param_value_from_config('collections_txt')
+        if self.collections_txt:
+            self.load_collections()
 
         self.sanity_check()
 
@@ -311,6 +316,34 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             if not self.get_param_value_from_config(['krakenhll', '--db']):
                 raise ConfigError('In order to run krakenhll, you must provide a path to \
                                    a database using the --db parameter in the config file.')
+
+
+    def load_collections(self):
+        ''' Load the collections_txt file, run some sanity checks, and figure out params for anvi_import_collection'''
+        collections = u.get_TAB_delimited_file_as_dictionary(self.collections_txt)
+        bad_groups = [g for g in collections if g not in self.group_names]
+        if bad_groups:
+                raise ConfigError('Some of the names in your collection_txt \
+                                   file ("%s") don\'t match the names of the \
+                                   groups in your samples_txt/fasta_txt. \
+                                   Here are the names that don\'t match: %s. \
+                                   And here are the group names we expect to find: \
+                                   %s' % (self.collections_txt, ', '.join(bad_groups), ', '.join(self.group_names)))
+        for group in collections:
+            filesnpaths.is_file_exists(collections[group]['collection_file'])
+            if not collections[group]['collection_name']:
+                raise ConfigError('You must specify a name for each collection in your collections_txt')
+            u.check_collection_name(collections[group]['collection_name'])
+            if collections[group].get('bins_info'):
+                filesnpaths.is_file_exists(collections[group]['bins_info'])
+                collections[group]['bins_info'] = '--bins-info %s' % collections[group]['bins_info']
+            else:
+                collections[group]['bins_info'] = ''
+            if collections[group].get('contigs_mode'):
+                collections[group]['contigs_mode'] = '--contigs-mode'
+            else:
+                collections[group]['contigs_mode'] = ''
+        self.collections = collections
 
 
     def load_references_for_removal(self):
