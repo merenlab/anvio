@@ -60,7 +60,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped',\
                      'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy', 'metaspades',\
-                     'remove_short_reads_based_on_references'])
+                     'remove_short_reads_based_on_references', 'anvi_summarize'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
                                     "kraken_txt", "collections_txt"])
@@ -120,7 +120,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "MAPPING_DIR": "04_MAPPING",
                                "PROFILE_DIR": "05_ANVIO_PROFILE",
                                "MERGE_DIR": "06_MERGED",
-                               "TAXONOMY_DIR": "07_TAXONOMY"})
+                               "TAXONOMY_DIR": "07_TAXONOMY",
+                               "SUMMARY_DIR": "08_SUMMARY"})
 
         self.default_config.update({'samples_txt': "samples.txt",
                                     'metaspades': {"additional_params": "--only-assembler", "threads": 7},
