@@ -11,7 +11,6 @@ import copy
 import json
 import numpy
 import random
-import hashlib
 import argparse
 import textwrap
 import multiprocessing
@@ -2082,9 +2081,19 @@ class ProfileSuperclass(object):
         self.split_coverage_values = None
 
         # the following two are initialized via `init_items_additional_data()` and use information
-        # stored in item additional data tables
-        self.items_additional_data_dict = None
-        self.items_additional_data_keys = None
+        # stored in item additional data tables UNLESS THEY ARE ALREADY INITIALIZED IN THE CONTEXT
+        # FROM WITHIN PROFILE SUPERCLASS IS INHERITED (SUCH A THING IS HAPPENING AT THE INTERACTIVE
+        # CLASS)
+        if super() and 'items_additional_data_dict' in dir(self) and 'items_additional_data_keys' in dir(self):
+            pass
+        else:
+            self.items_additional_data_dict = None
+            self.items_additional_data_keys = None
+
+        if super() and 'layers_additional_data_dict' in dir(self) and 'layers_additional_data_keys' in dir(self):
+            pass
+        else:
+            self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all()
 
         self.auxiliary_profile_data_available = None
         self.auxiliary_data_path = None
@@ -2227,9 +2236,6 @@ class ProfileSuperclass(object):
 
         profile_db.disconnect()
 
-        self.progress.update('Accessing the layers additional data')
-        self.layers_additional_data_keys, self.layers_additional_data = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).get_all()
-
         self.progress.update('Accessing the auxiliary data file')
         self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
         if not os.path.exists(self.auxiliary_data_path):
@@ -2241,9 +2247,9 @@ class ProfileSuperclass(object):
 
         if self.collection_name and self.bin_names and len(self.bin_names) == 1:
             self.progress.update('Accessing the genes database')
-            self.genes_db_path = get_genes_database_path_for_bin(self.profile_db_path,
-                                                                 self.collection_name,
-                                                                 self.bin_names[0])
+            self.genes_db_path = utils.get_genes_database_path_for_bin(self.profile_db_path,
+                                                                       self.collection_name,
+                                                                       self.bin_names[0])
             if not os.path.exists(self.genes_db_path):
                 self.genes_db_available = False
             else:
@@ -2282,7 +2288,17 @@ class ProfileSuperclass(object):
                        'bin_name': self.bin_names[0],
                        'splits_hash': splits_hash}
 
+        # generate a blank genes database here:
         GenesDatabase(self.genes_db_path).create(meta_values=meta_values)
+
+        # and immediately copy-paste the layers additional data and states table into
+        # it for convenience:
+        genes_database = db.DB(self.genes_db_path, None, ignore_version=True)
+        genes_database.copy_paste(table_name=t.layer_additional_data_table_name, source_db_path=self.profile_db_path)
+        genes_database.copy_paste(table_name=t.states_table_name, source_db_path=self.profile_db_path)
+        genes_database.disconnect()
+
+        # vamp the stage like a pro:
         self.genes_db_available = True
         self.genes_db_path = self.genes_db_path
 
@@ -2810,6 +2826,10 @@ class GenesDatabase:
         self.db = db.DB(self.db_path, anvio.__genes__version__, new_database=True)
 
         # creating empty default tables
+        self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
+        self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
+        self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
+        self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.gene_level_coverage_stats_table_name, t.gene_level_coverage_stats_table_structure, t.gene_level_coverage_stats_table_structure)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
@@ -3541,13 +3561,6 @@ def is_db_ok_to_create(db_path, db_type):
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):
     return os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
-
-
-def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
-    if not collection_name or not bin_name:
-        raise ConfigError("Genes database must be associted with a collection name and a bin name :/")
-
-    return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 
 
 def get_description_in_db(anvio_db_path, run=run):

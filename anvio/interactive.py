@@ -29,7 +29,7 @@ from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, Tab
 from anvio.dbops import get_description_in_db
 from anvio.dbops import get_default_item_order_name
 from anvio.completeness import Completeness
-from anvio.errors import ConfigError, RefineError
+from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 
@@ -123,11 +123,20 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.auxiliary_profile_data_available = False
 
         # get additional data for items and layers, and get layer orders data.
-        a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
-        self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
-        self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
+        try:
+            a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
+            self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+            self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
+            self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
+        except GenesDBError as e:
+            self.items_additional_data_keys, self.items_additional_data_dict = [], {}
+            self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
+            self.layers_order_data_dict = {}
 
-        self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
+            run.warning("Most likely the misc data module is complaining about a missing genes database. If that's the case,\
+                         you can ignore it as this will sort itself out in a second (this is a workaround for a design\
+                         bottleneck sadface.png): %s" % e.clear_text(), header="EXCEPTION OMMITTED (BUT PROBABLY YOU'RE FINE)", lc='yellow')
+
         for group_name in self.layers_additional_data_keys:
             layer_orders = TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({},
                 self.layers_additional_data_keys[group_name], self.layers_additional_data_dict[group_name]) if a_db_is_found else {}
@@ -298,7 +307,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def gen_orders_for_items_based_on_additional_layers_data(self):
-        if self.skip_auto_ordering:
+        if self.skip_auto_ordering or not self.items_additional_data_keys:
             return
 
         self.progress.new('Processing additional data to order items (to skip: --skip-auto-ordering)')
@@ -1069,8 +1078,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.splits_taxonomy_dict = {}
         self.p_meta['description'] = 'None'
 
-        self.items_additional_data_keys, self.items_additional_data_dict = [], {}
-
         for view in views_of_interest:
             # don't bother if this is a single profile
             if not self.p_meta['merged']:
@@ -1237,7 +1244,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
                 # (5) adding additional layers
-                json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
+                if self.items_additional_data_dict:
+                    json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
 
                 # (6) adding hmm stuff
                 if self.hmm_searches_dict:
