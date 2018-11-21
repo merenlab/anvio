@@ -2295,6 +2295,7 @@ class ProfileSuperclass(object):
         # it for convenience:
         genes_database = db.DB(self.genes_db_path, None, ignore_version=True)
         genes_database.copy_paste(table_name=t.layer_additional_data_table_name, source_db_path=self.profile_db_path)
+        genes_database.copy_paste(table_name=t.states_table_name, source_db_path=self.profile_db_path)
         genes_database.disconnect()
 
         # vamp the stage like a pro:
