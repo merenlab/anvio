@@ -1,0 +1,2 @@
+name	collection_name	collection_file	bins_info	contigs_mode
+G02	MOCK	MOCK-collection.txt	MOCK-collection-info.txt	
