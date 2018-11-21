@@ -224,6 +224,16 @@ D = {
                       positions due to accessory genes. These positions then skew the average\
                       values that we compute."}
             ),
+    'outliers-threshold': (
+            ['--outliers-threshold'],
+            {'default': 1.5,
+             'type': float,
+             'metavar': 'NUM',
+             'help': "Threshold to use for the outlier detection. The default value is '%(default).1f'.\
+                      Absolute deviation around the median is used. To read more about the method please\
+                      refer to: 'How to Detect and Handle Outliers' by Boris Iglewicz and David Hoaglin \
+                      (doi:10.1016/j.jesp.2013.03.013)."}
+            ),
     'external-gene-calls': (
             ['--external-gene-calls'],
             {'metavar': 'GENE-CALLS',
