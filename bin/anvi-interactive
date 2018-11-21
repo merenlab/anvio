@@ -14,7 +14,7 @@ import anvio.terminal as terminal
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError
+from anvio.errors import ConfigError, FilesNPathsError, GenesDBError 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -108,7 +108,7 @@ except ConfigError as e:
 except FilesNPathsError as e:
     print(e)
     sys.exit(-2)
-except DictIOError as e:
+except GenesDBError as e:
     print(e)
     sys.exit(-3)
 

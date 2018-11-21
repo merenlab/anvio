@@ -6,6 +6,9 @@
 import sys
 import copy
 import platform
+
+# yes, this library is imported but never used, but don't remove it
+# unless you want to explode `bottle`:
 import pkg_resources
 
 anvio_version = '5.2-master'
@@ -68,7 +71,7 @@ D = {
             ['-p', '--pan-or-profile-db'],
             {'metavar': "PAN_OR_PROFILE_DB",
              'required': True,
-             'help': "Anvi'o pan or profile database"}
+             'help': "Anvi'o pan or profile database (and even genes database in appropriate contexts)."}
                 ),
     'genomes-storage': (
             ['-g', '--genomes-storage'],

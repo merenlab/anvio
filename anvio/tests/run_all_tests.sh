@@ -414,7 +414,7 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
 
 INFO "A dry run in 'gene-mode' to store gene-level coverage stats in a new genes database"
 rm -rf $output_dir/SAMPLES-MERGED/GENES/*
-anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1 --gene-mode
+anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1 --gene-mode --dry-run
 
 INFO "Firing up the interactive interface to display the contigs db stats"
 anvi-display-contigs-stats $output_dir/CONTIGS.db
@@ -438,6 +438,10 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS
 
 INFO "Firing up the interactive interface to refine a bin"
 anvi-refine -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1
+
+INFO "Importing items and layers additional data into the genes database for CONCOCT::Bin_1"
+anvi-import-misc-data -p $output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db $files/items_addtl_data_gene_mode.txt -t items
+anvi-import-misc-data -p $output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db $files/layers_addtl_data_gene_mode.txt -t layers
 
 INFO "Firing up the interactive interface in 'gene' mode"
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -C CONCOCT -b Bin_1 --gene-mode
