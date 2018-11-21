@@ -71,6 +71,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['iu_gen_configs'] = ["--r1-prefix", "--r2-prefix"]
         rule_acceptable_params_dict['iu_filter_quality_minoche'] = ['run', '--visualize-quality-curves', '--ignore-deflines', '--limit-num-pairs', '--print-qual-scores', '--store-read-fate']
         rule_acceptable_params_dict['gzip_fastqs'] = ["run"]
+        rule_acceptable_params_dict['anvi_summarize'] = ["additional_params"]
         rule_acceptable_params_dict['metaspades'] = ["run", "additional_params", "use_scaffolds"]
         rule_acceptable_params_dict['megahit'] = ["run", "--min-contig-len", "--min-count", "--k-min",
                                                   "--k-max", "--k-step", "--k-list",
