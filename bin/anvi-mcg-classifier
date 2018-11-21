@@ -87,17 +87,7 @@ if __name__ == '__main__':
                         below  0.5-0.25 = 0.25 will be considered negative (i.e. donot contain the genome), samples with detection \
                         between 0.25 and 0.75 would be ambiguous (and hence would not be used for the classification), and samples with \
                         detection above 0.75 would be considered positive (i.e. contain the genome).')
-    groupC.add_argument('--outliers-threshold', metavar='NUM', type=float, default=2.5,
-                            help='Threshold to use for the outlier detection. \
-                            The default value is 2.5.\
-                            Absolute deviation around the median is used. \
-                            To read more about the method please refer to: \
-                            Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and \
-                            Handle Outliers", The ASQC Basic References in Quality Control: \
-                            Statistical Techniques, Edward F. Mykytka, Ph.D., Editor. \
-                            Or to: \
-                            http://www.sciencedirect.com/science/article/pii/S0022103113000668 \
-                            ')
+    groupC.add_argument(*anvio.A('outliers-threshold'), **anvio.K('outliers-threshold'))
     groupC.add_argument(*anvio.A('zeros-are-outliers'), **anvio.K('zeros-are-outliers'))
     args = anvio.get_args(parser)
 
