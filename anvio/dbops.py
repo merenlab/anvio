@@ -2304,7 +2304,7 @@ class ProfileSuperclass(object):
 
 
     def store_gene_level_coverage_stats_into_genes_db(self, parameters):
-        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters)
+        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, run=self.run)
         table_for_gene_level_coverages.store(self.gene_level_coverage_stats_dict)
 
 
@@ -2313,7 +2313,7 @@ class ProfileSuperclass(object):
             raise ConfigError("The function `get_gene_level_coverage_stats_dicts_for_a_bin` can only be called from an instance\
                                of the profile super class that is initalized with a collection name and a single bin.")
 
-        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest)
+        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest, run=self.run)
         self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
@@ -2368,7 +2368,7 @@ class ProfileSuperclass(object):
 
             self.run.warning('A subset of splits (%d of %d, to be precise) are requested to initiate gene-level coverage stats for.\
                               No need to worry, this is just a warning in case you are as obsessed as wanting to know everything\
-                              there is to know.' % (len(self.split_names_of_interest), len(self.split_names)), overwrite_verbose=True)
+                              there is to know.' % (len(self.split_names_of_interest), len(self.split_names)))
         else:
             split_names = self.split_names
 
