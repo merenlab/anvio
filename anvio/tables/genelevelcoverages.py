@@ -55,7 +55,7 @@ class TableForGeneLevelCoverages(Table):
 
 
     def check_params(self):
-        """Make sure paramts to generate gene-level stats match across the board"""
+        """Make sure params to generate gene-level stats match across the board"""
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
