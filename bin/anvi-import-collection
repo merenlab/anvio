@@ -196,12 +196,7 @@ def sanity_check(args):
                      databases that will be generated from this contigs database, things may go South, and anvi'o would\
                      not even care.")
 
-    try:
-        utils.check_sample_id(args.collection_name)
-    except:
-        raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain\
-                            ANY characters but digits, ASCII letters and underscore character(s). There should not be\
-                            any space characters, and the collection name should not start with a digit.' % args.collection_name)
+    utils.check_collection_name(args.collection_name)
 
     filesnpaths.is_file_tab_delimited(args.data, expected_number_of_fields = 2)
     if args.bins_info:
