@@ -28,10 +28,8 @@ from bottle import BaseRequest
 from bottle import redirect, static_file
 
 import anvio
-import anvio.db as db
 import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.tables as t
 import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -389,31 +387,19 @@ class BottleApplication(Bottle):
                 if order_full_name in self.interactive.layers_order_data_dict:
                     raise ConfigError("Tree name '%s' already exists, overwriting currently not supported." % order_full_name)
 
-                self.interactive.layers_order_data_dict[name] = {'newick': data, 'basic': ''}
-                TableForLayerOrders(self.interactive.args).add({name: {'data_type': 'newick', 'data_value': data}})
+                self.interactive.layers_order_data_dict[order_full_name] = {'newick': order_data, 'basic': ''}
+                TableForLayerOrders(self.interactive.args).add({order_full_name: {'data_type': 'newick', 'data_value': order_data}})
             else:
-                self.interactive.p_meta['item_orders'][name] = {'type': 'newick', 'data': data, 'additional': additional}
+                self.interactive.p_meta['item_orders'][order_full_name] = {'type': 'newick', 'data': order_data, 'additional': additional}
 
-                anvio_db = db.DB(self.interactive.pan_db_path or self.interactive.profile_db_path, None, ignore_version=True)
-                orders_in_database = anvio_db.get_table_as_dict(t.item_orders_table_name)
+                order_name, distance, linkage = order_full_name.split(':')
+                anvio_db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
 
-                if overwrite:
-                    if name not in orders_in_database:
-                        raise Exception('You wanted to overwrite "%s", but this order does not exists in database.' % name)
+                dbops.add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=distance, linkage=linkage, additional_data=additional, dont_overwrite=True)
 
-                    anvio_db._exec('''UPDATE %s SET "data" = ?, "additional" = ? WHERE "name" LIKE ?''' % t.item_orders_table_name, (data, additional, name))
-                else:
-                    if name in orders_in_database:
-                        raise Exception('Order "%s" already in database, If you want to overwrite please use overwrite option.' % name)
+            return json.dumps({'status': 0, 'message': 'New order "%s (D: %s; L: %s)" successfully saved to the database.' % (order_name, distance, linkage)})
 
-                    anvio_db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.item_orders_table_name, (name, 'newick', data, additional))
-
-                anvio_db.set_meta_value('available_item_orders', ",".join(anvio_db.get_single_column_from_table(t.item_orders_table_name, 'name')))
-                anvio_db.disconnect()
-
-            return json.dumps({'status': 0, 'message': 'New order "%s" successfully saved to the database.' % name})
-
-        except Exception as e:
+        except ConfigError as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
 
