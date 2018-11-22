@@ -495,7 +495,7 @@ class MultipleRuns:
                        'total_reads_mapped': total_reads_mapped_list,
                        'merged': True,
                        'blank': False,
-                       'contigs_ordered': not self.skip_hierarchical_clustering,
+                       'items_ordered': False,
                        'default_view': 'mean_coverage',
                        'min_contig_length': self.min_contig_length,
                        'max_contig_length': self.max_contig_length,
