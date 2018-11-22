@@ -892,25 +892,7 @@ class PanSuperclass(object):
         self.genome_names = self.p_meta['genome_names']
         self.gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
-        # FIXME: Is this the future where the pan db version is > 6? Great. Then the if statement here no longer
-        # needs to check whether 'items_ordered' is a valid key in self.p_meta:
-        if 'items_ordered' in self.p_meta and self.p_meta['items_ordered']:
-            self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
-            self.item_orders = pan_db.db.get_table_as_dict(t.item_orders_table_name)
-
-            # we need to convert data for 'basic' item orders to array in order to avoid compatibility issues with
-            # other additional item orders in pan and full mode (otherwise interactive class gets complicated
-            # unnecessarily).
-            for item_order in self.item_orders:
-                if self.item_orders[item_order]['type'] == 'basic':
-                    try:
-                        self.item_orders[item_order]['data'] = self.item_orders[item_order]['data'].split(',')
-                    except:
-                        raise ConfigError("Something is wrong with the basic order `%s` in this pan database :(" % (item_order))
-        else:
-            self.p_meta['available_item_orders'] = None
-            self.p_meta['default_item_order'] = None
-            self.item_orders = None
+        self.p_meta['available_item_orders'], self.item_orders = get_item_orders_from_db(self.pan_db_path)
 
         # recover all gene cluster names so others can access to this information
         # without having to initialize anything
@@ -2204,37 +2186,12 @@ class ProfileSuperclass(object):
                                flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o\
                                profile and pan databases maintain a table with all item names they are supposed to be working with.")
 
-        if self.p_meta['items_ordered'] and 'available_item_orders' in self.p_meta:
-            self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
-            self.item_orders = profile_db.db.get_table_as_dict(t.item_orders_table_name)
-
-            for item_order in self.item_orders:
-                if self.item_orders[item_order]['type'] == 'basic':
-                    try:
-                        self.item_orders[item_order]['data'] = self.item_orders[item_order]['data'].split(',')
-                    except:
-                        self.progress.end()
-                        raise ConfigError("Something is wrong with the basic order `%s` in this profile database :(" % (item_order))
-
-        elif self.p_meta['items_ordered'] and 'available_item_orders' not in self.p_meta:
-            self.progress.end()
-            self.run.warning("Your profile database thinks the hierarchical item_order was done, yet it contains no entries\
-                              for any hierarchical item_order results. This is not good. Something must have gone wrong\
-                              somewhere :/ To be on the safe side, anvi'o will assume this profile database has no\
-                              item_order (which is literally the case, by the way, it is just the database itself is\
-                              confused about that fact --it happens to the best of us).")
-            self.progress.new('Initializing the profile database superclass')
-
-            self.p_meta['items_ordered'] = False
-            self.p_meta['available_item_orders'] = None
-            self.p_meta['default_item_order'] = None
-            self.item_orders = None
-        else:
-            self.p_meta['available_item_orders'] = None
-            self.p_meta['default_item_order'] = None
-            self.item_orders = None
-
         profile_db.disconnect()
+
+        self.p_meta['available_item_orders'], self.item_orders = get_item_orders_from_db(self.profile_db_path)
+
+        if not self.item_orders:
+            self.p_meta['default_item_order'] = None
 
         self.progress.update('Accessing the auxiliary data file')
         self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
@@ -3694,10 +3651,7 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
     anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.item_orders_table_name, tuple([order_name, 'newick' if order_data_type_newick else 'basic', order_data, additional_data]))
 
     anvio_db.db.set_meta_value('available_item_orders', ','.join(available_item_orders))
-
-    # We don't consider basic orders as orders becasue we are rebels.
-    if order_data_type_newick:
-        anvio_db.db.set_meta_value('items_ordered', True)
+    anvio_db.db.set_meta_value('items_ordered', True)
 
     try:
         anvio_db.db.get_meta_value('default_item_order')
@@ -3711,6 +3665,27 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
     anvio_db.disconnect()
 
     run.info('New items order', '"%s" (type %s) has been added to the database...' % (order_name, 'newick' if order_data_type_newick else 'basic'))
+
+
+def get_item_orders_from_db(anvio_db_path):
+    anvio_db = DBClassFactory().get_db_object(anvio_db_path)
+
+    utils.is_pan_or_profile_db(anvio_db_path, genes_db_is_also_accepted=True)
+
+    if not anvio_db.meta['items_ordered']:
+        return (None, None)
+
+    available_item_orders = sorted([s.strip() for s in anvio_db.meta['available_item_orders'].split(',')])
+    item_orders_dict = anvio_db.db.get_table_as_dict(t.item_orders_table_name)
+
+    for item_order in item_orders_dict:
+        if item_orders_dict[item_order]['type'] == 'basic':
+            try:
+                item_orders_dict[item_order]['data'] = item_orders_dict[item_order]['data'].split(',')
+            except:
+                raise ConfigError("Something is wrong with the basic order `%s` in this %s database :(" % (item_order, utils.get_db_type(anvio_db_path)))
+
+    return (available_item_orders, item_orders_dict)
 
 
 def get_default_item_order_name(default_item_order_requested, item_orders_dict, progress=progress, run=run):
