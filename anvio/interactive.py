@@ -621,7 +621,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                'blank': True,
                                'merged': True,
                                'contigs_db_hash': None,
-                               'contigs_ordered': False,
+                               'items_ordered': False,
                                'samples': sample_id,
                                'sample_id': sample_id})
 
