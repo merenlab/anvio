@@ -3635,11 +3635,12 @@ def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split
                               run=run)
 
 
-def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None, linkage=None, make_default=False, additional_data=None, run=run):
-    """Adds a new clustering into an anvi'o db
+def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None,
+                          linkage=None, make_default=False, additional_data=None, dont_overwrite=False, run=run):
+    """Adds a new items order into an appropriate anvi'o db
 
        Here is a FIXME for future, smarter generations. This function should go away,
-       and its function should be handled by a new items_order class in tables/miscdata.
+       and what its doing should be handled by a new items_order class in tables/miscdata.
     """
 
     if order_data_type_newick and (not distance or not linkage):
@@ -3679,8 +3680,11 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
         available_item_orders = []
 
     if order_name in available_item_orders:
-        run.warning('Clustering for "%s" is already in the database. Its content will\
-                     be replaced with the new one.' % (order_name))
+        if dont_overwrite:
+            raise ConfigError("The order name '%s' is already in the database, and you are not allowed to overwrite that.\
+                               Probably it is time for you to come up with a new name?" % (order_name))
+        else:
+            run.warning('Clustering for "%s" is already in the database. It will be replaced with the new content.' % (order_name))
 
         anvio_db.db._exec('''DELETE FROM %s where name = "%s"''' % (t.item_orders_table_name, order_name))
     else:
