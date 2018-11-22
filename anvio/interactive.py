@@ -1053,15 +1053,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # goes into the right table
         self.states_table = TablesForStates(self.genes_db_path)
 
-        self.p_meta['default_item_order'] = 'mean_coverage'
-        self.default_view = 'mean_coverage'
-
-        self.p_meta['available_item_orders'] = []
-        self.p_meta['item_orders'] = {}
-
         # dealing with item ordes in the genes database
         self.p_meta['available_item_orders'], self.p_meta['item_orders'] = dbops.get_item_orders_from_db(self.genes_db_path)
 
+        # FIXME: These clustering data should be stored in the genes database :/ what is here is from the ad hoc
+        #        attempt to run things in gene mode before we had the genes database, and we can do better than this
+        #        now. But for that we also need to remove the 'gene_level_coverage_stats' table, and instead sotre
+        #        these information into view tables. both pan and profile databases are nicely following that design,
+        #        and there is no need to make genes database so different.
         for view in views_of_interest:
             item_order_name = view
             newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'],
@@ -1073,6 +1072,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.p_meta['item_orders']['synteny'] = {'type': 'basic', 'data': list(map(str, sorted(all_gene_callers_ids)))}
 
+        self.p_meta['default_item_order'] = 'mean_coverage'
+        self.default_view = 'mean_coverage'
         self.title = "Genes in '%s'" % self.bin_id
 
         # FIXME: When we are in gene-mode mode, our item names are no longer split names, hence the
