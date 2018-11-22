@@ -3594,7 +3594,8 @@ def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split
 
 
 def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None,
-                          linkage=None, make_default=False, additional_data=None, dont_overwrite=False, run=run):
+                          linkage=None, make_default=False, additional_data=None, dont_overwrite=False,
+                          check_names_consistency=False, run=run):
     """Adds a new items order into an appropriate anvi'o db
 
        Here is a FIXME for future, smarter generations. This function should go away,
@@ -3617,6 +3618,21 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
         order_name = ':'.join([order_name, distance, linkage])
     else:
         order_name = ':'.join([order_name, 'NA', 'NA'])
+
+    # check names consistency if the user asked for it
+    if check_names_consistency:
+        if order_data_type_newick:
+            names_in_data = sorted(utils.get_names_order_from_newick_tree(order_data))
+        else:
+            names_in_data = sorted([n.strip() for n in order_data.split(',')])
+
+        names_in_db = sorted(utils.get_all_item_names_from_the_database(anvio_db_path))
+
+        if names_in_db != names_in_data:
+            raise ConfigError("Ehem. There is something wrong with the incoming items order data here :/ Basically,\
+                               the names found in your input data does not match to the item names found in the\
+                               database. Anvi'o is too lazy to find out what exactly differs, but just so you know\
+                               you're doing something wrong :/")
 
     # additional data is JSON formatted entry
     # for now it will only contain collapsed node information.
@@ -3673,7 +3689,7 @@ def get_item_orders_from_db(anvio_db_path):
     utils.is_pan_or_profile_db(anvio_db_path, genes_db_is_also_accepted=True)
 
     if not anvio_db.meta['items_ordered']:
-        return (None, None)
+        return ([], {})
 
     available_item_orders = sorted([s.strip() for s in anvio_db.meta['available_item_orders'].split(',')])
     item_orders_dict = anvio_db.db.get_table_as_dict(t.item_orders_table_name)
