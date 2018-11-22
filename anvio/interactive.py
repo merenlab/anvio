@@ -220,6 +220,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.process_external_item_order()
         self.gen_alphabetical_orders_of_items()
+
         if not self.p_meta['default_item_order'] and len(self.p_meta['available_item_orders']):
             self.p_meta['default_item_order'] = self.p_meta['available_item_orders'][0]
 
@@ -247,18 +248,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.mode == 'manual':
             return
 
-        # we expect to have a default clustering to be set when the code makes it way here, but there is an exception
-        # to that (it is when the user provides an items order file). please pay attention:
-        if not self.p_meta['default_item_order']:
-            if self.item_order_path:
-                # this is a special situation where we are not in manual mode, but we don't have a default clustering.
-                # yet the user has an items order file. here we will set the displauyed items to be the items in the view
-                # data.
-                self.displayed_item_names_ordered = sorted(list(self.views.values())[0]['dict'].keys())
-                return
-            else:
-                raise ConfigError("Wow. Anvi'o has no idea how you managed to come here. Please send an e-mail to the first\
-                                   developer you find, they will definitely want to fix this one.")
+        if not self.p_meta['item_orders']:
+            raise ConfigError("Apologies :( The code managed to came all the way down here without any item\
+                               orders set for your project, which makes it impossible for\
+                               anvi'o intearctive interface to display anything :/ Please check warning\
+                               messages you may have on your screen.")
 
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
@@ -278,13 +272,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.p_meta['item_orders'] or not len([o for o in self.p_meta['item_orders'].values() if o['type'] == 'newick']):
             if self.p_meta['db_type'] == 'pan':
-                raise ConfigError("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
-                                   clustering of protein gene clusters in it. Maybe you skipped the clustering step, maybe\
-                                   anvi'o skipped it on your behalf because you had too many gene clusters or something. Regardless of\
-                                   who did what, you don't get to display your pangenome at this particular instance. In some\
-                                   cases using a parameter like `--min-occurrence 2`, which would reduce the number of gene clusters by\
-                                   removing singletons that appear in only one genome can help solve this issue. Sorry :/" \
-                                                            % (self.p_meta['project_name']))
+                self.run.warning("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
+                                  clustering of gene clusters it contains. Maybe you skipped the clustering step, maybe\
+                                  anvi'o skipped it on your behalf because you had too many gene clusters or something. Anvi'o\
+                                  will do its best to recover from this situation. But you will very likely not be able to see\
+                                  a hierarchical dendrogram in the resulting display even if everything goes alright.. In some\
+                                  cases using a parameter like `--min-occurrence 2`, which would reduce the number of gene clusters by\
+                                  removing singletons that appear in only one genome can help solve this issue and make your\
+                                  pangenome great again." % (self.p_meta['project_name']))
             else:
                 if self.item_order_path:
                     self.run.warning("This merged profile database does not seem to have any hierarchical clustering\
@@ -292,18 +287,20 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                       an items order file. So anvi'o will try to use that and display your data.")
                 else:
                     if self.p_meta['merged']:
-                        raise ConfigError("This merged profile database does not seem to have any hierarchical clustering\
-                                           of splits that is required by the interactive interface. It may have been generated\
-                                           by anvi-merge with the `--skip-hierarchical-clustering` flag, or hierarchical\
-                                           clustering step may have been skipped by anvi-merge because you had too many splits\
-                                           to get the clustering in a reasonable amount of time. Please read the help menu for\
-                                           anvi-merge, and/or refer to the tutorial: \
-                                           http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
+                        self.run.warning("This merged profile database does not seem to have any hierarchical clustering\
+                                          of splits :/ It may be the case becasue it may have been generated by anvi-merge \
+                                          with the `--skip-hierarchical-clustering` flag, or hierarchical\
+                                          clustering step may have been skipped by anvi-merge because you had too many splits\
+                                          to get the clustering in a reasonable amount of time. Basically you will not see a\
+                                          clustering dendrogram in the center of your display. Please read the help menu for\
+                                          anvi-merge, and/or refer to the tutorial: \
+                                          http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
                     else:
-                        raise ConfigError("This single profile database does not seem to have any hierarchical clustering\
-                                           that is required by the interactive interface. You must use `--cluster-contigs`\
-                                           flag for single profiles to access to this functionality. Please read the help\
-                                           menu for anvi-profile, and/or refer to the tutorial.")
+                        self.run.warning("This single profile database does not seem to have any hierarchical clustering\
+                                          that is required by the interactive interface. You must use `--cluster-contigs`\
+                                          flag for single profiles if you would like to see a hierarchical clustering \
+                                          dendrogram in the center of your display. Please read the help menu for \
+                                          anvi-profile, and/or refer to the tutorial.")
 
 
     def gen_orders_for_items_based_on_additional_layers_data(self):
