@@ -63,9 +63,9 @@ def main(args):
     run.info("Order name", order_name, mc='red', nl_after=1)
 
     if order_data_type_newick:
-        dbops.add_items_order_to_db(db_path, order_name, order_data, order_data_type_newick=order_data_type_newick, distance='NA', linkage='NA', dont_overwrite=True, make_default=make_default)
+        dbops.add_items_order_to_db(db_path, order_name, order_data, order_data_type_newick=order_data_type_newick, distance='NA', linkage='NA', dont_overwrite=True, make_default=make_default, check_names_consistency=True)
     else:
-        dbops.add_items_order_to_db(db_path, order_name, order_data, order_data_type_newick=order_data_type_newick, dont_overwrite=True, make_default=make_default)
+        dbops.add_items_order_to_db(db_path, order_name, order_data, order_data_type_newick=order_data_type_newick, dont_overwrite=True, make_default=make_default, check_names_consistency=True)
 
 
 if __name__ == '__main__':
