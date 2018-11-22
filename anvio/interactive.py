@@ -1059,6 +1059,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['available_item_orders'] = []
         self.p_meta['item_orders'] = {}
 
+        # dealing with item ordes in the genes database
+        self.p_meta['available_item_orders'], self.p_meta['item_orders'] = dbops.get_item_orders_from_db(self.genes_db_path)
+
         for view in views_of_interest:
             item_order_name = view
             newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'],
