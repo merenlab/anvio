@@ -67,7 +67,8 @@ class DBClassFactory:
     def __init__(self):
         self.DB_CLASSES = {'profile': ProfileDatabase,
                            'contigs': ContigsDatabase,
-                           'pan': PanDatabase}
+                           'pan': PanDatabase,
+                           'genes': GenesDatabase}
 
     def get_db_class(self, db_path):
         db_type = utils.get_db_type(db_path)
