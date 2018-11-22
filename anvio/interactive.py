@@ -111,10 +111,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                     with all contigs.")
 
         if self.collection_name and (not self.gene_mode) and (self.bin_id or self.bin_ids_file_path) and self.mode != 'refine':
-            raise ConfigError("On the one hand you provide a collection name, signaling anvi'o that you wish to\
-                               run the interactive display in collection mode. But then you also provide a bin name\
-                               as if you wish to run the refinement interface. Are you sure you don't want to run\
-                               `anvi-refine` instead? That would really make things much less confusing here :(")
+            raise ConfigError("There is something confusing here. On the one hand you provide a collection name, telling\
+                               anvi'o that you wish to run the interactive display with a collection focus. It would have\
+                               been fine if you stopped there, because then anvi'o would have fired up in 'collection\
+                               mode'. But you *also* provided a bin name. Now that's another ball game. Well, maybe you\
+                               wish to display this bin in 'gene mode'. But for that, you would need to add the flag\
+                               `--gene-mode`. Or maybe you actually want to 'refine' this bin, but in that case you \
+                               would need to run the program `anvi-refine` instead of `anvi-interactive` with the same\
+                               list of parameters and flags. Either of these would have made things much less confusing\
+                               here :(")
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
