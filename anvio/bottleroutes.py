@@ -380,15 +380,14 @@ class BottleApplication(Bottle):
 
     def save_tree(self):
         try:
-            overwrite = True if request.forms.get('overwrite') == 'true' else False
-            name = request.forms.get('name')
-            data = request.forms.get('data')
+            order_full_name = request.forms.get('name')
+            order_data = request.forms.get('data')
             tree_type = request.forms.get('tree_type')
             additional = request.forms.get('additional')
 
             if tree_type == 'samples':
-                if name in self.interactive.layers_order_data_dict:
-                    raise Exception("Tree name '%s' already exists, overwriting currently not supported." % name)
+                if order_full_name in self.interactive.layers_order_data_dict:
+                    raise ConfigError("Tree name '%s' already exists, overwriting currently not supported." % order_full_name)
 
                 self.interactive.layers_order_data_dict[name] = {'newick': data, 'basic': ''}
                 TableForLayerOrders(self.interactive.args).add({name: {'data_type': 'newick', 'data_value': data}})
