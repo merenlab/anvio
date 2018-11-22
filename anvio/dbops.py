@@ -74,8 +74,7 @@ class DBClassFactory:
 
         if db_type not in self.DB_CLASSES:
             raise ConfigError("DBClassFactory speaking. I do not know a class for database type\
-                                %s :/ I can deal with these though: '%s'" % (', '.join(self.DB_CLASSES)))
-
+                                %s :/ I can deal with these though: '%s'" % (db_type, ', '.join(self.DB_CLASSES))) 
         return self.DB_CLASSES[db_type]
 
 
