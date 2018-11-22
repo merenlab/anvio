@@ -893,8 +893,8 @@ class PanSuperclass(object):
         self.gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
         # FIXME: Is this the future where the pan db version is > 6? Great. Then the if statement here no longer
-        # needs to check whether 'gene_clusters_ordered' is a valid key in self.p_meta:
-        if 'gene_clusters_ordered' in self.p_meta and self.p_meta['gene_clusters_ordered']:
+        # needs to check whether 'items_ordered' is a valid key in self.p_meta:
+        if 'items_ordered' in self.p_meta and self.p_meta['items_ordered']:
             self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
             self.item_orders = pan_db.db.get_table_as_dict(t.item_orders_table_name)
 
@@ -2204,7 +2204,7 @@ class ProfileSuperclass(object):
                                flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o\
                                profile and pan databases maintain a table with all item names they are supposed to be working with.")
 
-        if self.p_meta['contigs_ordered'] and 'available_item_orders' in self.p_meta:
+        if self.p_meta['items_ordered'] and 'available_item_orders' in self.p_meta:
             self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
             self.item_orders = profile_db.db.get_table_as_dict(t.item_orders_table_name)
 
@@ -2216,7 +2216,7 @@ class ProfileSuperclass(object):
                         self.progress.end()
                         raise ConfigError("Something is wrong with the basic order `%s` in this profile database :(" % (item_order))
 
-        elif self.p_meta['contigs_ordered'] and 'available_item_orders' not in self.p_meta:
+        elif self.p_meta['items_ordered'] and 'available_item_orders' not in self.p_meta:
             self.progress.end()
             self.run.warning("Your profile database thinks the hierarchical item_order was done, yet it contains no entries\
                               for any hierarchical item_order results. This is not good. Something must have gone wrong\
@@ -2225,7 +2225,7 @@ class ProfileSuperclass(object):
                               confused about that fact --it happens to the best of us).")
             self.progress.new('Initializing the profile database superclass')
 
-            self.p_meta['contigs_ordered'] = False
+            self.p_meta['items_ordered'] = False
             self.p_meta['available_item_orders'] = None
             self.p_meta['default_item_order'] = None
             self.item_orders = None
@@ -2712,7 +2712,7 @@ class ProfileDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'min_coverage_for_variability',
-                        'merged', 'blank', 'contigs_ordered', 'report_variability_full', 'num_contigs',
+                        'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
                         'num_splits', 'total_length']:
                 try:
                     self.meta[key] = int(self.meta[key])
@@ -2850,6 +2850,7 @@ class GenesDatabase:
 
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('gene_level_coverages_stored', False)
+        self.db.set_meta_value('items_ordered', False)
 
         self.disconnect()
 
@@ -2881,7 +2882,7 @@ class PanDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', \
-                        'num_gene_clusters', 'num_genes_in_gene_clusters', 'gene_alignments_computed', 'gene_clusters_ordered']:
+                        'num_gene_clusters', 'num_genes_in_gene_clusters', 'gene_alignments_computed', 'items_ordered']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
@@ -3696,7 +3697,7 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
 
     # We don't consider basic orders as orders becasue we are rebels.
     if order_data_type_newick:
-        anvio_db.db.set_meta_value('gene_clusters_ordered' if db_type == 'pan' else 'contigs_ordered', True)
+        anvio_db.db.set_meta_value('items_ordered', True)
 
     try:
         anvio_db.db.get_meta_value('default_item_order')

@@ -179,7 +179,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'samples': self.sample_id,
                        'merged': False,
                        'blank': self.blank,
-                       'contigs_ordered': self.contigs_shall_be_clustered,
+                       'items_ordered': False,
                        'default_view': 'single',
                        'min_contig_length': self.min_contig_length,
                        'max_contig_length': self.max_contig_length,
