@@ -1085,6 +1085,7 @@ class VariabilitySuper(VariabilityFilter, object):
            }
 
         if not any(list(requested_split_source.values())):
+            self.progress.end()
             raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
                                --genes-of-interest), OR a list of splits (--splits-of-interest), OR\
                                a collection and bin combo (--collection-name and bin-id). You\
@@ -1094,6 +1095,7 @@ class VariabilitySuper(VariabilityFilter, object):
                                supply the collection name 'DEFAULT' and the bin id 'EVERYTHING'.")
 
         if sum(list(requested_split_source.values())) > 1:
+            self.progress.end()
             raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
                                --genes-of-interest), OR a list of splits (--splits-of-interest), OR a\
                                collection and bin combo (--collection-name and bin-id). You\
