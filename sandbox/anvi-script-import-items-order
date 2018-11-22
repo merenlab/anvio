@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
+"""A program to import an items order into an anvi'o database"""
 
 import sys
 
@@ -57,15 +58,18 @@ def main(args):
         order_data = ','.join(order_data)
 
     run.info("Target database", db_path)
-    run.info("Database type", utils.get_db_type(db_path))
+    run.info("Database type", utils.get_db_type(db_path), nl_after=1)
     run.info("Order file path", input_file_path)
-    run.info("Order data type", 'Newick' if order_data_type_newick else 'Basic')
+    run.info("Order data type", 'newick' if order_data_type_newick else 'basic')
     run.info("Order name", order_name, mc='red', nl_after=1)
 
     if order_data_type_newick:
-        dbops.add_items_order_to_db(db_path, order_name, order_data, order_data_type_newick=order_data_type_newick, distance='NA', linkage='NA', dont_overwrite=True, make_default=make_default, check_names_consistency=True)
+        dbops.add_items_order_to_db(db_path, order_name, order_data, order_data_type_newick=order_data_type_newick,
+                                    distance='NA', linkage='NA', dont_overwrite=True, make_default=make_default,
+                                    check_names_consistency=True)
     else:
-        dbops.add_items_order_to_db(db_path, order_name, order_data, order_data_type_newick=order_data_type_newick, dont_overwrite=True, make_default=make_default, check_names_consistency=True)
+        dbops.add_items_order_to_db(db_path, order_name, order_data, order_data_type_newick=order_data_type_newick,
+                                    dont_overwrite=True, make_default=make_default, check_names_consistency=True)
 
 
 if __name__ == '__main__':
@@ -84,7 +88,7 @@ if __name__ == '__main__':
                                 databases for fun and games. Basically, if the database contains an items order table, then things\
                                 will work. Otherwise, you will probably get angry errors back in the worst case scenario.")
 
-    groupZ = parser.add_argument_group('NOT SO CRITICAL INPUT', 'Because not all parameters created equal')
+    groupZ = parser.add_argument_group('NOT SO CRITICAL INPUT', 'Because not all parameters are created equal')
     groupZ.add_argument('--name', metavar='ORDER NAME', help="What should we call this order? Give it a concise, single-word name.")
     groupZ.add_argument('--make-default', default=False, action="store_true", help="You have the option to make this order the \
                                 default order in the database. Which means, anvi'o will use this one when someone runs the\
