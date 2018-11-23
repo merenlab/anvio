@@ -1746,7 +1746,127 @@ class VariabilitySuper(VariabilityFilter, object):
                 sys.exit()
 
 
-class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
+class VCFMode(object):
+    def __init__(self, args={}, p=progress, r=run):
+        self.run = r
+
+        if self.engine != 'NT':
+            raise ConfigError("This fancy class is only relevant to be inherited from within the NT engine :(")
+
+        self.overwrite_attributes_to_avoid_unnecessary_calculation()
+
+
+    def convert_to_vfc(self):
+        progress.new("Converting to VFC format")
+        progress.update('...')
+
+        print(self.data.shape)
+
+        #######################   SELECTING COLUMNS OF INTEREST ##################################################
+        input_df = input_df.filter(items=['unique_pos_identifier','split_name', 'pos','sample_id','coverage','reference','competing_nts'])
+
+        ##################### ADDING ALLELE COLUMNS FOR FINDING GENOTYPE #########################################
+        input_df['competing_nts'] = input_df.competing_nts.astype(str)
+        input_df['allele1'] = input_df.competing_nts.str[0]
+        input_df['allele2'] = input_df.competing_nts.str[1]
+        input_df["allele2"], input_df["allele1"] = np.where(input_df['allele2']==input_df['reference'], [input_df["allele1"], input_df["allele2"]], [input_df["allele2"], input_df["allele1"] ])
+
+
+        genotype = defaultdict(dict)
+        alt_alleleDict = defaultdict(list)
+
+        for index, row in input_df.iterrows() :
+            key = row['unique_pos_identifier']
+            sample_name = row['sample_id']
+            Ref_allele = row['reference']
+            a1 = row['allele1']
+            a2 = row['allele2']
+
+            if a1 not in alt_alleleDict[key] and a1 != row['reference']:
+                alt_alleleDict[key].append(a1)
+            if a2 not in alt_alleleDict[key] and a2 != row['reference']:
+                alt_alleleDict[key].append(a2)
+
+            if row['reference'] in alt_alleleDict[key]:
+                alt_alleleDict[key].remove( row['reference'])
+
+            ## SET UP A GENOTYPE dict.
+            if a2 in row['reference']:
+                genotype[key][sample_name] = '0/0'
+            elif a1 in row['reference']:
+                genotype[key][sample_name] = '0/n'
+            else:
+                genotype[key][sample_name] = 'p/q'
+
+        ##########################################################################################################
+        ## FOR KEEPING TRACK OF THE IDS WHILE PRINTING DIRECTLY, not used when dictionary printed
+        finalVCF = defaultdict(dict)
+        sampleNames = list(OrderedDict.fromkeys(input_df['sample_id'])) ## To maintain order of the sample
+        header = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
+
+        ##########################################################################################################
+        for index, row in input_df.iterrows():
+            key = row['unique_pos_identifier']
+            sample_name = row['sample_id']
+            Ref_allele = row['reference']
+            a1 = row['allele1']
+            a2 = row['allele2']
+
+            if genotype[key][sample_name] == '0/n':
+                genotype[key][sample_name] = re.sub('n',  str(alt_alleleDict[key].index(a2) + 1), genotype[key][sample_name])
+            elif genotype[key][sample_name] == 'p/q':
+                genotype[key][sample_name] = re.sub('p',  str(alt_alleleDict[key].index(a1) + 1), genotype[key][sample_name])
+                genotype[key][sample_name] = re.sub('q',  str(alt_alleleDict[key].index(a2) + 1), genotype[key][sample_name])
+
+            sampleCol = str(row['coverage']) + ':' + genotype[key][sample_name]
+
+            finalVCF[key] = [row['split_name'],
+                             row['pos'],
+                             key,
+                             Ref_allele,
+                             ','.join(alt_alleleDict[key]),
+                             99,
+                             'PASS',
+                             '.',
+                             'DP:GT',
+                             sampleCol]
+
+        ######################################### PRINT THE VCF ################################################
+        ###### PRINT HEADERS AND INFO
+
+        with open(output_file_path, 'w') as output_file:
+            output_file.write('##fileformat=VCFv4.0' + '\n')
+            output_file.write('##fileDate=' + datetime.datetime.now().strftime("%Y%m%d") + '\n')
+            output_file.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">' + '\n')
+            output_file.write('##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">' +  '\n')
+            output_file.write('\t'.join(header + sampleNames)  + '\n')
+
+            ###### sort?
+            sortedfinalVCF = sorted(finalVCF.values())
+            for i in range(0, len(sortedfinalVCF)):
+                output_file.write('\t'.join([str(x) for x in sortedfinalVCF[i]]) + '\n')
+
+        progress.end()
+
+
+    def overwrite_attributes_to_avoid_unnecessary_calculation(self):
+        # these parameters result in unneeded computation
+        irrelevant_parameter_names = [
+            'compute_gene_coverage_stats',
+        ]
+
+        warn_about_irrelevant_parameters = False
+        for irrelevant_parameter_name in irrelevant_parameter_names:
+            if getattr(self, irrelevant_parameter_name):
+                warn_about_irrelevant_parameters = True
+                setattr(self, irrelevant_parameter_name, None)
+
+        if warn_about_irrelevant_parameters:
+            self.run.warning('--report-vcf renders many parameters useless since the output format is \
+                              simpler. Anvi\'o has disabled some of the parameters you have chosen to save time.')
+
+
+class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper, VCFMode):
     """This is the main class to make sense and report variability for a given set of splits,
        or a bin in a collection, across multiple or all samples. The user can scrutinize the
        nature of the variable positions to be reported dramatically given the ecology and/or
@@ -1763,6 +1883,10 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
 
         # Init Meta
         VariabilitySuper.__init__(self, args=args, r=self.run, p=self.progress)
+
+        if args.__dict__.get('report_vcf'):
+            # inherent relevant attributes if VCF reporting is requested
+            VCFMode.__init__(self, args=args, r=self.run, p=self.progress)
 
 
     def recover_base_frequencies_for_all_samples(self):

@@ -1811,6 +1811,13 @@ D = {
                       This is very useful information, but will not be included by default because it is an\
                       expensive opeation, and you a busy person."}
                 ),
+    'report-vcf': (
+            ['--report-vcf'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "If provided, the variability table will be reported as a .vcf formatted file, instead\
+                      of anvio's home-brewed format."}
+                ),
 }
 
 # two functions that works with the dictionary above.

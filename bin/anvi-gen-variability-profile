@@ -50,6 +50,7 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('include-contig-names'), **anvio.K('include-contig-names'))
     groupO.add_argument(*anvio.A('include-split-names'), **anvio.K('include-split-names'))
     groupO.add_argument(*anvio.A('compute-gene-coverage-stats'), **anvio.K('compute-gene-coverage-stats'))
+    groupO.add_argument(*anvio.A('report-vcf'), **anvio.K('report-vcf'))
     groupE.add_argument(*anvio.A('engine'), **anvio.K('engine'))
     groupE.add_argument(*anvio.A('num-positions-from-each-split'), **anvio.K('num-positions-from-each-split'))
     groupE.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
