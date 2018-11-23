@@ -434,7 +434,7 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
     return output_path
 
 
-def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str=""):
+def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str="", header_comment=None):
     """
     Stores a pandas DataFrame as a tab-delimited file.
 
@@ -455,6 +455,10 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
         rep_str.
     rep_str: String (default = "")
         The string that elements belonging to naughty_characters are replaced by.
+    header_comment: String (default = None)
+        Is a potentially multiline string that prepends the data and column names if they exist. If a
+        it doesn't end with a newline character, one will be added.
+
 
     RETURNS
     =======
@@ -468,7 +472,14 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
 
     d.replace(naughty_characters, np.nan, inplace=True)
 
-    d.to_csv(output_path, sep="\t", columns=columns, index=include_index, index_label=index_label, na_rep=rep_str)
+    writing_mode = 'w' if not header_comment else 'a'
+    if header_comment:
+        if not header_comment.endswith('\n'):
+            header_comment += '\n'
+        with open(output_path, 'w') as f:
+            f.write(header_comment + '\n')
+
+    d.to_csv(output_path, sep="\t", columns=columns, index=include_index, index_label=index_label, na_rep=rep_str, mode=writing_mode)
     return output_path
 
 
