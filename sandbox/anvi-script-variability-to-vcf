@@ -41,7 +41,7 @@ run = terminal.Run()
 def main(args):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     input_file_path = A('input')
-    output_file_path = A('output') or '%s.vcf' % (str(input_file_path))
+    output_file_path = A('output_file') or '%s.vcf' % (str(input_file_path))
 
     filesnpaths.is_file_tab_delimited(input_file_path)
     filesnpaths.is_output_file_writable(output_file_path)
