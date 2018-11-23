@@ -1688,8 +1688,7 @@ class VariabilitySuper(VariabilityFilter, object):
         return self.data[["unique_pos_identifier","codon_order_in_gene"]].\
                drop_duplicates().set_index("unique_pos_identifier").to_dict()["codon_order_in_gene"]
 
-
-    def report(self, data=None):
+    def report(self, data=None, cleanup=True):
         if data is None:
             data = self.data
 
@@ -1697,18 +1696,19 @@ class VariabilitySuper(VariabilityFilter, object):
 
         new_structure, _ = self.get_data_column_structure()
 
-        if not self.include_contig_names_in_output:
+        if not self.include_contig_names_in_output and 'contig_name' in new_structure:
             new_structure.remove('contig_name')
 
-        if not self.include_split_names_in_output:
+        if not self.include_split_names_in_output and 'split_name' in new_structure:
             new_structure.remove('split_name')
 
-        # Update entry_id with sequential numbers based on the final ordering of the data:
-        data.reset_index(drop=True, inplace=True)
-        data["entry_id"] = data.index
+        if cleanup:
+            # Update entry_id with sequential numbers based on the final ordering of the data
+            data.reset_index(drop=True, inplace=True)
+            data["entry_id"] = data.index
 
-        # order by [corresponding_gene_call, codon_order_in_gene]
-        data = data.sort_values(by = ["corresponding_gene_call", "codon_order_in_gene"])
+            # order by [corresponding_gene_call, codon_order_in_gene]
+            data = data.sort_values(by = ["corresponding_gene_call", "codon_order_in_gene"])
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
         utils.store_dataframe_as_TAB_delimited_file(data, self.args.output_file, columns=new_structure)
