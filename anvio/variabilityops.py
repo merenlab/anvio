@@ -1688,6 +1688,7 @@ class VariabilitySuper(VariabilityFilter, object):
         return self.data[["unique_pos_identifier","codon_order_in_gene"]].\
                drop_duplicates().set_index("unique_pos_identifier").to_dict()["codon_order_in_gene"]
 
+
     def report(self, data=None, cleanup=True):
         if data is None:
             data = self.data
@@ -1725,7 +1726,8 @@ class VariabilitySuper(VariabilityFilter, object):
 
         structure = []
         data_types = []
-        for column_group, columns in self.columns_to_report.items():
+        for column_group in self.columns_to_report_order:
+            columns = self.columns_to_report[column_group]
             for column, data_type in columns:
                 if column in data.columns:
                     structure.append(column)
@@ -1754,6 +1756,12 @@ class VCFMode(object):
             raise ConfigError("This fancy class is only relevant to be inherited from within the NT engine :(")
 
         self.overwrite_attributes_to_avoid_unnecessary_calculation()
+        self.columns_to_report_order = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
+        self.columns_to_report['VCF'] = self.columns_to_report_order
+
+        # add codon specific functions to self.process
+        F = lambda f, **kwargs: (f, kwargs)
+        self.process_functions.append(F(self.convert_to_vfc))
 
 
     def convert_to_vfc(self):
