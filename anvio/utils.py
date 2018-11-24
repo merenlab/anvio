@@ -434,7 +434,7 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
     return output_path
 
 
-def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str="", header_comment=None):
+def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str="", header_comment=None, header=True):
     """
     Stores a pandas DataFrame as a tab-delimited file.
 
@@ -458,6 +458,8 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     header_comment: String (default = None)
         Is a potentially multiline string that prepends the data and column names if they exist. If a
         it doesn't end with a newline character, one will be added.
+    header: Boolean (default = True)
+        Should the column names be printed? By default, yes.
 
 
     RETURNS
@@ -477,7 +479,7 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
         with open(output_path, 'w') as f:
             f.write(header_comment + '\n')
 
-    d.to_csv(output_path, sep="\t", columns=columns, index=include_index, index_label=index_label, na_rep=rep_str, mode=writing_mode)
+    d.to_csv(output_path, sep="\t", columns=columns, header=header, index=include_index, index_label=index_label, na_rep=rep_str, mode=writing_mode)
     return output_path
 
 
