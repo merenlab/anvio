@@ -124,7 +124,7 @@ def main(args):
             genotype[key][sample_name] = re.sub('p',  str(alt_alleleDict[key].index(a1) + 1), genotype[key][sample_name])
             genotype[key][sample_name] = re.sub('q',  str(alt_alleleDict[key].index(a2) + 1), genotype[key][sample_name])
 
-        sampleCol = str(row['coverage']) + ':' + genotype[key][sample_name]
+        sampleCol = genotype[key][sample_name] + ':' + str(row['coverage']) 
 
         finalVCF[key] = [row['split_name'],
                          row['pos'],
@@ -134,7 +134,7 @@ def main(args):
                          99,
                          'PASS',
                          '.',
-                         'DP:GT',
+                         'GT:DP',
                          sampleCol]
 
     ######################################### PRINT THE VCF ################################################
