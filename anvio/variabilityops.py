@@ -5,16 +5,20 @@
 
 
 import os
+import re
 import sys
 import copy
 import random
 import inspect
 import argparse
+import datetime
 import numpy as np
 import pandas as pd
 import operator as op
 
 from scipy.stats import entropy
+from collections import defaultdict
+from collections import OrderedDict
 
 import anvio
 import anvio.tables as t
@@ -643,6 +647,8 @@ class VariabilitySuper(VariabilityFilter, object):
         }
         self.columns_to_report_order = ['position_identifiers', 'sample_info', 'gene_info', 'coverage_info',
                                         'sequence_identifiers', 'statistical', 'SSMs', 'structural']
+        self.header_comment = None
+        self.table_formatting = {'header_comment': None, 'header': True}
 
 
 
@@ -1689,9 +1695,12 @@ class VariabilitySuper(VariabilityFilter, object):
                drop_duplicates().set_index("unique_pos_identifier").to_dict()["codon_order_in_gene"]
 
 
-    def report(self, data=None, cleanup=True):
+    def report(self, data=None):
         if data is None:
             data = self.data
+
+        header_comment = self.table_formatting['header_comment']
+        header = self.table_formatting['header']
 
         self.progress.new('Reporting variability data')
 
@@ -1703,7 +1712,7 @@ class VariabilitySuper(VariabilityFilter, object):
         if not self.include_split_names_in_output and 'split_name' in new_structure:
             new_structure.remove('split_name')
 
-        if cleanup:
+        if all([x in new_structure for x in ["corresponding_gene_call", "codon_order_in_gene", "entry_id"]]):
             # Update entry_id with sequential numbers based on the final ordering of the data
             data.reset_index(drop=True, inplace=True)
             data["entry_id"] = data.index
@@ -1712,12 +1721,17 @@ class VariabilitySuper(VariabilityFilter, object):
             data = data.sort_values(by = ["corresponding_gene_call", "codon_order_in_gene"])
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
-        utils.store_dataframe_as_TAB_delimited_file(data, self.args.output_file, columns=new_structure)
+        utils.store_dataframe_as_TAB_delimited_file(data,
+                                                    self.args.output_file,
+                                                    columns=new_structure,
+                                                    header_comment=header_comment,
+                                                    header=header)
         self.progress.end()
 
         self.run.info('Num entries reported', pp(len(data.index)))
         self.run.info('Output File', self.output_file_path)
-        self.run.info('Num %s positions reported' % self.engine, data["unique_pos_identifier"].nunique())
+        if 'unique_pos_identifier' in data.columns:
+            self.run.info('Num %s positions reported' % self.engine, data["unique_pos_identifier"].nunique())
 
 
     def get_data_column_structure(self, data=None):
@@ -1755,9 +1769,12 @@ class VCFMode(object):
         if self.engine != 'NT':
             raise ConfigError("This fancy class is only relevant to be inherited from within the NT engine :(")
 
+        self.header = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
+
         self.overwrite_attributes_to_avoid_unnecessary_calculation()
-        self.columns_to_report_order = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
-        self.columns_to_report['VCF'] = self.columns_to_report_order
+        self.columns_to_report_order = ['VCF']
+        self.columns_to_report['VCF'] = [(x, str) for x in range(len(self.header) + 1)]
+        self.table_formatting['header'] = False
 
         # add codon specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
@@ -1768,22 +1785,20 @@ class VCFMode(object):
         progress.new("Converting to VFC format")
         progress.update('...')
 
-        print(self.data.shape)
-
         #######################   SELECTING COLUMNS OF INTEREST ##################################################
-        input_df = input_df.filter(items=['unique_pos_identifier','split_name', 'pos','sample_id','coverage','reference','competing_nts'])
+        self.data = self.data.filter(items=['unique_pos_identifier','split_name', 'pos','sample_id','coverage','reference','competing_nts'])
+        self.data = self.data.sort_values(by='sample_id')
 
         ##################### ADDING ALLELE COLUMNS FOR FINDING GENOTYPE #########################################
-        input_df['competing_nts'] = input_df.competing_nts.astype(str)
-        input_df['allele1'] = input_df.competing_nts.str[0]
-        input_df['allele2'] = input_df.competing_nts.str[1]
-        input_df["allele2"], input_df["allele1"] = np.where(input_df['allele2']==input_df['reference'], [input_df["allele1"], input_df["allele2"]], [input_df["allele2"], input_df["allele1"] ])
-
+        self.data['competing_nts'] = self.data.competing_nts.astype(str)
+        self.data['allele1'] = self.data.competing_nts.str[0]
+        self.data['allele2'] = self.data.competing_nts.str[1]
+        self.data["allele2"], self.data["allele1"] = np.where(self.data['allele2']==self.data['reference'], [self.data["allele1"], self.data["allele2"]], [self.data["allele2"], self.data["allele1"] ])
 
         genotype = defaultdict(dict)
         alt_alleleDict = defaultdict(list)
 
-        for index, row in input_df.iterrows() :
+        for index, row in self.data.iterrows() :
             key = row['unique_pos_identifier']
             sample_name = row['sample_id']
             Ref_allele = row['reference']
@@ -1795,8 +1810,9 @@ class VCFMode(object):
             if a2 not in alt_alleleDict[key] and a2 != row['reference']:
                 alt_alleleDict[key].append(a2)
 
+            # NOTE Is this statement necessary given the and statements above?
             if row['reference'] in alt_alleleDict[key]:
-                alt_alleleDict[key].remove( row['reference'])
+                alt_alleleDict[key].remove(row['reference'])
 
             ## SET UP A GENOTYPE dict.
             if a2 in row['reference']:
@@ -1809,11 +1825,10 @@ class VCFMode(object):
         ##########################################################################################################
         ## FOR KEEPING TRACK OF THE IDS WHILE PRINTING DIRECTLY, not used when dictionary printed
         finalVCF = defaultdict(dict)
-        sampleNames = list(OrderedDict.fromkeys(input_df['sample_id'])) ## To maintain order of the sample
-        header = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
+        sampleNames = list(OrderedDict.fromkeys(self.data['sample_id'])) ## To maintain order of the sample
 
         ##########################################################################################################
-        for index, row in input_df.iterrows():
+        for index, row in self.data.iterrows():
             key = row['unique_pos_identifier']
             sample_name = row['sample_id']
             Ref_allele = row['reference']
@@ -1821,10 +1836,10 @@ class VCFMode(object):
             a2 = row['allele2']
 
             if genotype[key][sample_name] == '0/n':
-                genotype[key][sample_name] = re.sub('n',  str(alt_alleleDict[key].index(a2) + 1), genotype[key][sample_name])
+                genotype[key][sample_name] = re.sub('n', str(alt_alleleDict[key].index(a2) + 1), genotype[key][sample_name])
             elif genotype[key][sample_name] == 'p/q':
-                genotype[key][sample_name] = re.sub('p',  str(alt_alleleDict[key].index(a1) + 1), genotype[key][sample_name])
-                genotype[key][sample_name] = re.sub('q',  str(alt_alleleDict[key].index(a2) + 1), genotype[key][sample_name])
+                genotype[key][sample_name] = re.sub('p', str(alt_alleleDict[key].index(a1) + 1), genotype[key][sample_name])
+                genotype[key][sample_name] = re.sub('q', str(alt_alleleDict[key].index(a2) + 1), genotype[key][sample_name])
 
             sampleCol = str(row['coverage']) + ':' + genotype[key][sample_name]
 
@@ -1839,20 +1854,15 @@ class VCFMode(object):
                              'DP:GT',
                              sampleCol]
 
-        ######################################### PRINT THE VCF ################################################
-        ###### PRINT HEADERS AND INFO
+        ###### 
+        finalVCF = pd.DataFrame(sorted(finalVCF.values()))
+        self.data = finalVCF # overwrite self.data
 
-        with open(output_file_path, 'w') as output_file:
-            output_file.write('##fileformat=VCFv4.0' + '\n')
-            output_file.write('##fileDate=' + datetime.datetime.now().strftime("%Y%m%d") + '\n')
-            output_file.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">' + '\n')
-            output_file.write('##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">' +  '\n')
-            output_file.write('\t'.join(header + sampleNames)  + '\n')
-
-            ###### sort?
-            sortedfinalVCF = sorted(finalVCF.values())
-            for i in range(0, len(sortedfinalVCF)):
-                output_file.write('\t'.join([str(x) for x in sortedfinalVCF[i]]) + '\n')
+        self.table_formatting['header_comment'] = '##fileformat=VCFv4.0\n' + \
+                                                  '##fileDate={}\n'.format(datetime.datetime.now().strftime("%Y%m%d")) + \
+                                                  '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n' + \
+                                                  '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">\n' + \
+                                                  '\t'.join(self.header + sampleNames)
 
         progress.end()
 
