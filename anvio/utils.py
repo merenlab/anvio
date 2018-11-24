@@ -474,8 +474,6 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
 
     writing_mode = 'w' if not header_comment else 'a'
     if header_comment:
-        if not header_comment.endswith('\n'):
-            header_comment += '\n'
         with open(output_path, 'w') as f:
             f.write(header_comment + '\n')
 
