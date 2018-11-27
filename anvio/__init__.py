@@ -6,6 +6,9 @@
 import sys
 import copy
 import platform
+
+# yes, this library is imported but never used, but don't remove it
+# unless you want to explode `bottle`:
 import pkg_resources
 
 anvio_version = '5.2-master'
@@ -68,7 +71,7 @@ D = {
             ['-p', '--pan-or-profile-db'],
             {'metavar': "PAN_OR_PROFILE_DB",
              'required': True,
-             'help': "Anvi'o pan or profile database"}
+             'help': "Anvi'o pan or profile database (and even genes database in appropriate contexts)."}
                 ),
     'genomes-storage': (
             ['-g', '--genomes-storage'],
@@ -220,6 +223,16 @@ D = {
                       is because when mapping reads to a reference we could get many zero\
                       positions due to accessory genes. These positions then skew the average\
                       values that we compute."}
+            ),
+    'outliers-threshold': (
+            ['--outliers-threshold'],
+            {'default': 1.5,
+             'type': float,
+             'metavar': 'NUM',
+             'help': "Threshold to use for the outlier detection. The default value is '%(default).1f'.\
+                      Absolute deviation around the median is used. To read more about the method please\
+                      refer to: 'How to Detect and Handle Outliers' by Boris Iglewicz and David Hoaglin \
+                      (doi:10.1016/j.jesp.2013.03.013)."}
             ),
     'external-gene-calls': (
             ['--external-gene-calls'],

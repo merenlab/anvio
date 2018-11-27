@@ -96,15 +96,13 @@ for a in available_assemblers:
         number_of_assemblers_in_config_file += 1
         assembly_software_in_config.append(a)
 if number_of_assemblers_in_config_file > 1:
-    raise ConfigError("This workflow supports the usage of only one assembly "\
-                        "software, yet all the following software are " \
-                        "included in your config file: %s. Please include only one." % assembly_software_in_config)
+    raise ConfigError("This workflow supports the usage of only one assembly \
+                        software, yet all the following software are  \
+                        included in your config file: %s. Please include only one." % assembly_software_in_config)
 
 
 # by default fastq files will be zipped after qc is done
 run_gzip_fastqs = M.get_param_value_from_config(['gzip_fastqs', 'run']) == True
-#
-run_qc = M.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
 
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True
 
@@ -134,12 +132,7 @@ rule metagenomics_workflow_target_rule:
         The final product of the workflow is an anvi'o merged profile directory
         for each group
     '''
-    input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=M.group_names),
-           contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
-           qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=M.group_names),
-           filter_report = os.path.join(dirs_dict["QC_DIR"], "short-read-removal-report.txt") \
-                            if M.references_for_removal_txt \
-                            else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names)
+    input: M.target_files
 
 
 rule iu_gen_configs:
@@ -184,7 +177,7 @@ def get_fastq(sample, zipped=run_gzip_fastqs, post_reference_based_short_read_re
     if post_reference_based_short_read_removal:
         fastq_label = "-FILTERED"
 
-    if post_reference_based_short_read_removal or run_qc:
+    if post_reference_based_short_read_removal or M.run_qc:
         # by default, use the output of the reference based short read removal
         if zipped:
             r1 = os.path.join(dirs_dict["QC_DIR"], sample + fastq_label + "_R1.fastq.gz")
@@ -990,6 +983,101 @@ rule anvi_merge:
                    {params.overwrite_output_destinations} {params.description} \
                    {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering} \
                    {params.distance} {params.linkage} >> {log} 2>&1")
+
+
+rule anvi_import_collection:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_collection.log"
+    input:
+        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        collection_file = lambda wildcards: M.collections[wildcards.group]['collection_file']
+    output:
+        imported_collection_flag = touch(os.path.join(dirs_dict["MERGE_DIR"], \
+                                              '{group}', \
+                                              'collection-import.done'))
+    params:
+        bins_info = lambda wildcards: M.collections[wildcards.group]['bins_info'],
+        collection_name = lambda wildcards: M.collections[wildcards.group]['collection_name'],
+        contigs_mode = lambda wildcards: M.collections[wildcards.group]['contigs_mode']
+    threads: 1
+    resources: nodes=1
+    shell:
+        """
+           anvi-import-collection -p {input.profile} \
+                                  -c {input.contigs} \
+                                  -C {params.collection_name} \
+                                  {params.bins_info} \
+                                  {params.contigs_mode} \
+                                  {input.collection_file} >> {log} 2>&1
+        """
+
+
+rule anvi_summarize:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_summarize.log")
+    input:
+        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        imported_collection_flag = os.path.join(dirs_dict["MERGE_DIR"], \
+                                                '{group}', \
+                                                'collection-import.done')
+    output:
+        summary_done = temp(touch(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch")))
+    params:
+        collection_name = lambda wildcards: M.collections[wildcards.group]['collection_name'],
+        summary_temp_dir = os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-TEMP"),
+        additional_params = M.get_param_value_from_config(["anvi_summarize", "additional_params"])
+    threads: M.T('anvi_summarize')
+    resources: nodes = M.T('anvi_summarize')
+    shell:
+        """
+            anvi-summarize -p {input.profile} \
+                           -c {input.contigs} \
+                           -C {params.collection_name} \
+                           {params.additional_params} \
+                           -o {params.summary_temp_dir} >> {log} 2>&1
+        """
+
+
+rule anvi_split:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_split.log")
+    input:
+        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        imported_collection_flag = os.path.join(dirs_dict["MERGE_DIR"], \
+                                                '{group}', \
+                                                'collection-import.done')
+    output:
+        split_done = touch(os.path.join(dirs_dict["SPLIT_PROFILES_DIR"], "{group}-split.done"))
+    params:
+        collection_name = lambda wildcards: M.collections[wildcards.group]['collection_name'],
+        split_dir = os.path.join(dirs_dict["SPLIT_PROFILES_DIR"], "{group}"),
+        additional_params = M.get_param_value_from_config(["anvi_summarize", "additional_params"])
+    threads: M.T('anvi_split')
+    resources: nodes = M.T('anvi_split')
+    shell:
+        """
+            anvi-split -p {input.profile} \
+                       -c {input.contigs} \
+                       -C {params.collection_name} \
+                       -o {params.split_dir} >> {log} 2>&1
+        """
+
+
+rule dummy_rule_for_anvi_summarize:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-dummy_rule_for_anvi_summarize.log"
+    input:
+        summary_done = os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch")
+    output:
+        directory(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-SUMMARY"))
+    params:
+        summary_temp_dir = os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-TEMP")
+    threads: 1
+    resources: nodes = 1
+    shell: "mv {params.summary_temp_dir} {output} >> {log} 2>&1"
 
 
 rule krakenhll:

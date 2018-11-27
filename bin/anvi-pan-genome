@@ -20,7 +20,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['genomes-storage-db',]
-__provides__ = ['pan-db',]
+__provides__ = ['pan-db', 'misc-data-item-orders']
 
 
 run = terminal.Run()

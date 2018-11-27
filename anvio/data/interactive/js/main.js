@@ -1110,180 +1110,196 @@ function buildLayersTable(order, settings)
 
             $('#tbody_layers').append(template);
         }
-        //
-        // categorical layer
-        //
-        else if (layerdata[1][layer_id] === null || !isNumber(layerdata[1][layer_id]))
-        { 
-            layer_types[layer_id] = 2;
+        else
+        {
+            // find if numeric or categorical
+            let is_numeric = true;
+            for (let j=1; j < layerdata.length; j++) {
+                if (layerdata[j][layer_id] == '' || layerdata[j][layer_id] == null)
+                    continue;
 
-            if (hasLayerSettings)
-            {
-                var height = layer_settings['height'];
-                var margin = layer_settings['margin'];
-                var type = layer_settings['type'];
-                var color = layer_settings['color'];
-                var color_start = layer_settings['color-start'];
-            }
-            else
-            {
-                var color = "#000000";
-                var height = '90';
-                var margin = '15';
-                var color_start = "#DDDDDD";
-
-                if (mode == 'collection') {
-                    var type = getNamedLayerDefaults(layer_name, 'type', 'color');
-                    $('.max-font-size-input').show();
-                } else {
-                    var type = 'color';
+                if (!isNumber(layerdata[j][layer_id])) {
+                    is_numeric = false;
+                    break;
                 }
+            }
 
-                // set default categorical layer type to 'text' 
-                // if there are more than 11 unique values and leaf count is less than 300
-                // 301 because layerdata has one extra row for the titles
-                if (layerdata.length <= 301)
+            //
+            // categorical layer
+            //
+            if (!is_numeric)
+            { 
+                layer_types[layer_id] = 2;
+
+                if (hasLayerSettings)
                 {
-                    var _unique_items = [];
-                    for (var _pos = 1; _pos < layerdata.length; _pos++)
-                    {
-                        if (_unique_items.indexOf(layerdata[_pos][layer_id]) === -1)
-                            _unique_items.push(layerdata[_pos][layer_id]);
+                    var height = layer_settings['height'];
+                    var margin = layer_settings['margin'];
+                    var type = layer_settings['type'];
+                    var color = layer_settings['color'];
+                    var color_start = layer_settings['color-start'];
+                }
+                else
+                {
+                    var color = "#000000";
+                    var height = '90';
+                    var margin = '15';
+                    var color_start = "#DDDDDD";
 
-                        if (_unique_items.length > 11) {
-                            height = '0';
-                            type = 'text';
-                            // we have at least one text layer, we can show max font size input
-                            $('.max-font-size-input').show();
-                            break;
+                    if (mode == 'collection') {
+                        var type = getNamedLayerDefaults(layer_name, 'type', 'color');
+                        $('.max-font-size-input').show();
+                    } else {
+                        var type = 'color';
+                    }
+
+                    // set default categorical layer type to 'text' 
+                    // if there are more than 11 unique values and leaf count is less than 300
+                    // 301 because layerdata has one extra row for the titles
+                    if (layerdata.length <= 301)
+                    {
+                        var _unique_items = [];
+                        for (var _pos = 1; _pos < layerdata.length; _pos++)
+                        {
+                            if (_unique_items.indexOf(layerdata[_pos][layer_id]) === -1)
+                                _unique_items.push(layerdata[_pos][layer_id]);
+
+                            if (_unique_items.length > 11) {
+                                height = '0';
+                                type = 'text';
+                                // we have at least one text layer, we can show max font size input
+                                $('.max-font-size-input').show();
+                                break;
+                            }
                         }
                     }
                 }
+                
+                var template = '<tr>' +
+                    '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                    '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
+                    '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker picker_end" color="{color}" style="background-color: {color}; {color-hide}"></div></td>' +
+                    '<td style="width: 50px;">' +
+                    '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this, true);">' +
+                    '        <option value="color"{option-type-color}>Color</option>' +
+                    '        <option value="text"{option-type-text}>Text</option>' +
+                    '    </select>' +
+                    '</td>' +
+                    '<td>n/a</td>' +
+                    '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
+                    '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                    '<td>n/a</td>' +
+                    '<td>n/a</td>' +
+                    '<td><input type="checkbox" class="layer_selectors"></input></td>' +
+                    '</tr>';
+
+                template = template.replace(new RegExp('{id}', 'g'), layer_id)
+                                   .replace(new RegExp('{name}', 'g'), layer_name)
+                                   .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
+                                   .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
+                                   .replace(new RegExp('{short-name}', 'g'), short_name)
+                                   .replace(new RegExp('{color}', 'g'), color)
+                                   .replace(new RegExp('{color-start}', 'g'), color_start)
+                                   .replace(new RegExp('{color-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
+                                   .replace(new RegExp('{color-start-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
+                                   .replace(new RegExp('{height-hide}', 'g'), (type=='text') ? '; visibility: hidden;' : '')
+                                   .replace(new RegExp('{height}', 'g'), height)
+                                   .replace(new RegExp('{margin}', 'g'), margin);
+
+                $('#tbody_layers').append(template);
+            } 
+            //
+            // numerical layer
+            //
+            else
+            {
+                layer_types[layer_id] = 3;
+
+                if (hasViewSettings)
+                {
+                    var norm   = view_settings['normalization'];
+                    var min    = view_settings['min']['value'];
+                    var max    = view_settings['max']['value'];
+                    var min_disabled = view_settings['min']['disabled'];
+                    var max_disabled = view_settings['max']['disabled'];
+                }
+                else
+                {
+                    var norm   = getNamedLayerDefaults(layer_name, 'norm', (mode == 'full' || mode == 'refine') ? 'log' : 'none');
+                    var min    = getNamedLayerDefaults(layer_name, 'min', 0);
+                    var max    = getNamedLayerDefaults(layer_name, 'max', 0);
+                    var min_disabled = getNamedLayerDefaults(layer_name, 'min_disabled', true);
+                    var max_disabled = getNamedLayerDefaults(layer_name, 'max_disabled', true);
+                }
+
+                if (hasLayerSettings)
+                {
+                    var height = layer_settings['height'];
+                    var color  = layer_settings['color'];
+                    var margin = layer_settings['margin'];
+                    var color_start = layer_settings['color-start'];
+                    var type = layer_settings['type'];
+                }
+                else
+                {
+                    var height = getNamedLayerDefaults(layer_name, 'height', '180');
+                    var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
+                    var margin = '15';
+                    if (mode == 'collection') {
+                        var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
+                        var color_start = "#EEEEEE";
+                    } else {
+                        var type = 'bar'
+                        var color_start = "#FFFFFF";
+                    }
+                }
+
+                var template = '<tr>' +
+                    '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                    '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
+                    '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
+                    '<td style="width: 50px;">' +
+                    '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
+                    '        <option value="bar"{option-type-bar}>Bar</option>' +
+                    '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
+                    '        <option value="line"{option-type-line}>Line</option>' +
+                    '    </select>' +
+                    '</td>' +
+                    '<td>' +
+                    '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
+                    '        <option value="none"{option-none}>none</option>' +
+                    '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
+                    '        <option value="log"{option-log}>log</option>' +
+                    '    </select>' +
+                    '</td>' +
+                    '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                    '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                    '<td><input class="input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
+                    '<td><input class="input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
+                    '<td><input type="checkbox" class="layer_selectors"></input></td>' +
+                    '</tr>';
+
+                template = template.replace(new RegExp('{id}', 'g'), layer_id)
+                                   .replace(new RegExp('{name}', 'g'), layer_name)
+                                   .replace(new RegExp('{short-name}', 'g'), short_name)
+                                   .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
+                                   .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
+                                   .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
+                                   .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
+                                   .replace(new RegExp('{color}', 'g'), color)
+                                   .replace(new RegExp('{color-start}', 'g'), color_start)
+                                   .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
+                                   .replace(new RegExp('{height}', 'g'), height)
+                                   .replace(new RegExp('{min}', 'g'), min)
+                                   .replace(new RegExp('{max}', 'g'), max)
+                                   .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
+                                   .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
+                                   .replace(new RegExp('{margin}', 'g'), margin);
+
+
+                $('#tbody_layers').append(template);
             }
             
-            var template = '<tr>' +
-                '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
-                '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker picker_end" color="{color}" style="background-color: {color}; {color-hide}"></div></td>' +
-                '<td style="width: 50px;">' +
-                '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this, true);">' +
-                '        <option value="color"{option-type-color}>Color</option>' +
-                '        <option value="text"{option-type-text}>Text</option>' +
-                '    </select>' +
-                '</td>' +
-                '<td>n/a</td>' +
-                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
-                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</td>' +
-                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
-                '</tr>';
-
-            template = template.replace(new RegExp('{id}', 'g'), layer_id)
-                               .replace(new RegExp('{name}', 'g'), layer_name)
-                               .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
-                               .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
-                               .replace(new RegExp('{short-name}', 'g'), short_name)
-                               .replace(new RegExp('{color}', 'g'), color)
-                               .replace(new RegExp('{color-start}', 'g'), color_start)
-                               .replace(new RegExp('{color-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
-                               .replace(new RegExp('{color-start-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
-                               .replace(new RegExp('{height-hide}', 'g'), (type=='text') ? '; visibility: hidden;' : '')
-                               .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{margin}', 'g'), margin);
-
-            $('#tbody_layers').append(template);
-        } 
-        //
-        // numerical layer
-        //
-        else
-        {
-            layer_types[layer_id] = 3;
-
-            if (hasViewSettings)
-            {
-                var norm   = view_settings['normalization'];
-                var min    = view_settings['min']['value'];
-                var max    = view_settings['max']['value'];
-                var min_disabled = view_settings['min']['disabled'];
-                var max_disabled = view_settings['max']['disabled'];
-            }
-            else
-            {
-                var norm   = getNamedLayerDefaults(layer_name, 'norm', (mode == 'full' || mode == 'refine') ? 'log' : 'none');
-                var min    = getNamedLayerDefaults(layer_name, 'min', 0);
-                var max    = getNamedLayerDefaults(layer_name, 'max', 0);
-                var min_disabled = getNamedLayerDefaults(layer_name, 'min_disabled', true);
-                var max_disabled = getNamedLayerDefaults(layer_name, 'max_disabled', true);
-            }
-
-            if (hasLayerSettings)
-            {
-                var height = layer_settings['height'];
-                var color  = layer_settings['color'];
-                var margin = layer_settings['margin'];
-                var color_start = layer_settings['color-start'];
-                var type = layer_settings['type'];
-            }
-            else
-            {
-                var height = getNamedLayerDefaults(layer_name, 'height', '180');
-                var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
-                var margin = '15';
-                if (mode == 'collection') {
-                    var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
-                    var color_start = "#EEEEEE";
-                } else {
-                    var type = 'bar'
-                    var color_start = "#FFFFFF";
-                }
-            }
-
-            var template = '<tr>' +
-                '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
-                '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
-                '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
-                '<td style="width: 50px;">' +
-                '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
-                '        <option value="bar"{option-type-bar}>Bar</option>' +
-                '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
-                '        <option value="line"{option-type-line}>Line</option>' +
-                '    </select>' +
-                '</td>' +
-                '<td>' +
-                '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
-                '        <option value="none"{option-none}>none</option>' +
-                '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
-                '        <option value="log"{option-log}>log</option>' +
-                '    </select>' +
-                '</td>' +
-                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                '<td><input class="input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
-                '<td><input class="input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
-                '<td><input type="checkbox" class="layer_selectors"></input></td>' +
-                '</tr>';
-
-            template = template.replace(new RegExp('{id}', 'g'), layer_id)
-                               .replace(new RegExp('{name}', 'g'), layer_name)
-                               .replace(new RegExp('{short-name}', 'g'), short_name)
-                               .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
-                               .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
-                               .replace(new RegExp('{option-type-' + type + '}', 'g'), ' selected')
-                               .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
-                               .replace(new RegExp('{color}', 'g'), color)
-                               .replace(new RegExp('{color-start}', 'g'), color_start)
-                               .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
-                               .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{min}', 'g'), min)
-                               .replace(new RegExp('{max}', 'g'), max)
-                               .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
-                               .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
-                               .replace(new RegExp('{margin}', 'g'), margin);
-
-
-            $('#tbody_layers').append(template);
         }
 
         $('#tbody_layers .input-height:last').change(function (ev) {

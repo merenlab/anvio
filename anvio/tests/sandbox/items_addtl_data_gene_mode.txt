@@ -1,0 +1,6 @@
+gene_caller_ids	NUMERICAL_LAYER	CATEGORICAL_LAYER
+0	1	a
+2	2	b
+3	3	c
+4	4	d
+5	5	a

@@ -1,24 +1,53 @@
-Developers
 ===============================================================================
-A. Murat Eren (a.murat.eren at gmail dot com), University of Chicago
-Özcan Esen (ozcanesen at gmail dot com), University of Chicago
-Alon Shaiber (alon.shaiber at gmail dot com), University of Chicago
-Evan Kiefl (kiefl.evan at gmail dot com), University of Chicago
-Andrea Watson (andreawatson at uchicago dot edu), University of Chicago
-Tom Delmont (tomodelmont at gmail dot com), University of Chicago
+Developers and contributors at the University of Chicago
+===============================================================================
+A. Murat Eren (a.murat.eren at gmail dot com)
+Özcan Esen (ozcanesen at gmail dot com)
+Alon Shaiber (alon.shaiber at gmail dot com)
+Evan Kiefl (kiefl.evan at gmail dot com)
+Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
+Andrea Watson (andreawatson at uchicago dot edu)
 
-Contributors
 ===============================================================================
-Tobias Paczian, Argonne National Laboratory
-Gökmen Göksel, Koding Inc.
-Faruk Uzun, Monera
-Gökmen Görgen, Radity
-Mahmoud Yousef, University of Chicago
-Mike Lee, NASA Ames Research Center
-Doğan Can Kilment, Makroser
-S. Çağlar Onur, DigitalOcean
-John Eppley, University of Hawaiʻi at Mānoa
-Daniel Blankenberg, Genomic Medicine Institute
-Ines Martinez, University of Alberta
-M. Fauzi Haroon, Harvard University
-Elmar Pruesse, University of Colorado Denver
+Developers and contributors at large
+===============================================================================
+Tobias Paczian             Argonne National Laboratory        United States
+Mike Lee                   NASA Ames Research Center          United States
+Gökmen Göksel              Koding, Inc.                       United States
+Faruk Uzun                 Monera, Inc.                       Turkey
+Gökmen Görgen              Radity, Inc                        Switzerland
+Doğan Can Kilment          Makroser, Inc.                     Turkey
+John Eppley                University of Hawaiʻi at Mānoa     United States
+S. Çağlar Onur             DigitalOcean, Inc.                 United States
+Daniel Blankenberg         Genomic Medicine Institute         United States
+Srinidhi Varadharajan      University of Oslo                 Norway
+Bryan Merill               Stanford University                United States
+C. Titus Brown             University of California Davis     United States
+Finlay Maguire             Dalhousie University               Canada
+Elmar Pruesse              University of Colorado Denver      United States
+M. Fauzi Haroon            Harvard University                 United States
+Tom Delmont                Genoscope                          France
+Ines Martinez              University of Alberta              Canada
+
+--
+
+Anvi'o is an open-source, community-driven project and the purpose of this file is
+to mention names who contributed to its codebase. The file divides individuals into
+two main groups: (1) those that are currently employed the University of Chicago
+and work on anvi'o as a part of their job description (hence they are ready to
+respond to technical questions or work on feature requests), and (2) those who who
+contribute (or have contributed) to the platfrom from elsewhere on a voluntary
+basis. The order of names in this file follows the logic implemented at GitHub's
+contributors page at https://github.com/merenlab/anvio/graphs/contributors, which
+ranks indivisuals based on the number of commits they've made to the anvi'o master
+repository. This list of names do not include those who contributed to the platform
+by submitting issue reports, writing tutorials, or making suggestions.
+
+Anvi'o developers are aware of the fact that there are no simple quantitative
+measures that can serve as fair and accurate judges of importance or quality. If
+you are a user of anvi'o and found yourself all the way here reading these lines, we
+wish you to remind yourself that the order of names in this file means nothing more
+than a poor attempt to have an organization based on a rather neutral metric. If you
+are an anvi'o user, we believe that it would be the most appropriate and kind of you
+to assume that each and every individual here has contributed to anvi'o equally.
+Since you are here, we thank you, too.
