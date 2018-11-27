@@ -27,18 +27,18 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 class AuxiliaryDataForSplitCoverages(object):
-    def __init__(self, file_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
         self.db_hash = str(db_hash)
         self.version = anvio.__auxiliary_data_version__
-        self.file_path = file_path
+        self.db_path = db_path
         self.quiet = quiet
         self.run = run
         self.progress = progress
         self.numpy_data_type = 'uint16'
         self.coverage_entries = []
 
-        self.db = db.DB(self.file_path, self.version, new_database=create_new)
+        self.db = db.DB(self.db_path, self.version, new_database=create_new)
 
         if create_new:
             self.create_tables()
@@ -107,13 +107,13 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def get(self, split_name):
-        cursor = self.db._exec('''SELECT sample_name, coverages FROM %s WHERE split_name = "%s"''' % 
+        cursor = self.db._exec('''SELECT sample_name, coverages FROM %s WHERE split_name = "%s"''' %
                                                  (t.split_coverages_table_name, split_name))
 
         rows = cursor.fetchall()
 
         if len(rows) == 0:
-            raise AuxiliaryDataError('Database does not know anything about split "%s"' % split_name)
+            raise AuxiliaryDataError('The auxiliary database at "%s" does not know anything about the split "%s"' % (sef.db_path, split_name))
 
         split_coverage = {}
         for row in rows:
