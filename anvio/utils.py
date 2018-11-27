@@ -1364,6 +1364,16 @@ def check_sample_id(sample_id):
                                 digits, and the underscore character ('_')." % sample_id)
 
 
+def check_collection_name(collection_name):
+    try:
+        check_sample_id(collection_name)
+    except:
+        raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain\
+                            ANY characters but digits, ASCII letters and underscore character(s). There should not be\
+                            any space characters, and the collection name should not start with a digit.' % collection_name)
+
+
+
 def is_this_name_OK_for_database(variable_name, content, stringent=True):
     if not content:
         raise ConfigError("But the %s is empty? Come on :(" % variable_name)
@@ -2106,6 +2116,13 @@ def get_missing_programs_for_hmm_analysis():
     return missing_programs
 
 
+def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
+    if not collection_name or not bin_name:
+        raise ConfigError("Genes database must be associted with a collection name and a bin name :/")
+
+    return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
+
+
 def get_db_type(db_path):
     filesnpaths.is_file_exists(db_path)
     database = db.DB(db_path, None, ignore_version=True)
@@ -2145,6 +2162,9 @@ def get_all_sample_names_from_the_database(db_path):
             pass
 
         return set(samples)
+
+    elif db_type == 'genes':
+        return set([str(i) for i in database.get_single_column_from_table(t.gene_level_coverage_stats_table_name, 'sample_name')])
 
     elif db_type == 'pan':
         internal_genome_names, external_genome_names = [], []
@@ -2187,6 +2207,8 @@ def get_all_item_names_from_the_database(db_path, run=run):
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
     elif db_type == 'contigs':
         all_items = set(database.get_single_column_from_table(t.splits_info_table_name, 'split'))
+    elif db_type == 'genes':
+        all_items = set([str(i) for i in database.get_single_column_from_table(t.gene_level_coverage_stats_table_name, 'gene_callers_id')])
     else:
         database.disconnect()
         raise ConfigError("You wanted to get all items in the database %s, but no one here knows about its type. Seriously,\
@@ -2233,9 +2255,22 @@ def is_contigs_db(db_path):
     return True
 
 
-def is_pan_or_profile_db(db_path):
-    if get_db_type(db_path) not in ['pan', 'profile']:
-        raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble." % db_path)
+def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
+    ok_db_types = ['pan', 'profile']
+
+    if genes_db_is_also_accepted:
+        ok_db_types += ['genes']
+
+    db_type = get_db_type(db_path)
+
+    if db_type not in ok_db_types:
+        if genes_db_is_also_accepted:
+            raise ConfigError("'%s' is not a pan, profile, or a genes database :/ Anvi'o wants what it wants and this \
+                               '%s' database is not it." % (db_path, db_type))
+        else:
+            raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble (*cough* 'someone' \
+                                being whoever sent this %s database as a parameter to that command *cough*)." % (db_path, db_type))
+
     return True
 
 

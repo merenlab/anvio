@@ -136,7 +136,7 @@ class Pangenome(object):
                        'gene_alignments_computed': False if self.skip_alignments else True,
                        'genomes_storage_hash': self.genomes_storage.get_storage_hash(),
                        'project_name': self.project_name,
-                       'gene_clusters_clustered': False,
+                       'items_ordered': False,
                        'description': self.description if self.description else '_No description is provided_',
                       }
 

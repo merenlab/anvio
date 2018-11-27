@@ -5,6 +5,13 @@
         "references_for_removal_txt": "mock_ref_for_removal.txt"
     },
     "references_mode": true,
+    "collections_txt": "collections.txt",
+    "anvi_summarize": {
+        "run": true
+    },
+    "anvi_split": {
+        "run": true
+    },
     "output_dirs": {
         "FASTA_DIR": "02_FASTA_references_mode",
         "CONTIGS_DIR": "03_CONTIGS_references_mode",

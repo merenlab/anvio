@@ -17,7 +17,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['pan-db', 'profile-db', 'misc-data-items-txt', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt']
+__requires__ = ['genes-db', 'pan-db', 'profile-db', 'misc-data-items-txt', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt']
 __provides__ = ['misc-data-items', 'misc-data-layers', 'misc-data-layer-orders']
 
 

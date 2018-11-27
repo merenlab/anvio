@@ -54,44 +54,17 @@ class TableForGeneLevelCoverages(Table):
         self.bin_name = db.DB(self.db_path, None, ignore_version=True).get_meta_value('bin_name')
 
 
-    def read(self):
-        # FIXME read this shit now and return 'data'.
+    def check_params(self):
+        """Make sure params to generate gene-level stats match across the board"""
+
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-
-        if not database.get_meta_value('gene_level_coverages_stored'):
-            # we don't have any gene-level coverage data stored in this dataabse
-            return {}
-
-        if not self.ignore_splits_name_check:
-            if not self.split_names:
-                raise ConfigError("So you want to read gene-level coverage data from this genes database\
-                                   but there is a problem. Here anvi'o is talking to the programmer: there\
-                                   are two modes reading from the genes database. You either create an instance of\
-                                   TableForGeneLevelCoverages with a list of `split_names` so anvi'o can make\
-                                   sure the splits you are looking for are certainly those the database knows\
-                                   about, OR, you set the parameter `ignore_splits_name_check` to True, so anvi'o\
-                                   doesn't care about making sure everything is in order. Well. What is going on\
-                                   here is that someone called the `read` function, but the instance of this\
-                                   class does not know any splits, and the `ignore_splits_name_check` is False.")
-
-            splits_hash = utils.get_hash_for_list(self.split_names)
-
-            if splits_hash != database.get_meta_value('splits_hash'):
-                raise ConfigError("Terrible news of the day: You have a genes database for the collection %s and bin %s. But\
-                                   it seems the splits your collection and bin contained when you generated this database\
-                                   has changed after its creation. Maybe you used `anvi-refine` to add or remove some? Or you\
-                                   imported other data with the same collection and bin name? We can't know. You are the one\
-                                   who is creative. But what we know is that this genes database at '%s' is not one that you\
-                                   can use anymore. The easy solution is this: remove this database, and let anvi'o generate\
-                                   another one for you. Alternatively you can run the same exact command you run right before\
-                                   you get this error. Sometimes that works too." % \
-                                        (self.collection_name, self.bin_name, self.db_path))
 
         non_matching_parameters = []
         for parameter in self.parameters:
             try:
                 parameter_in_db = database.get_meta_value(parameter)
             except:
+                database.disconnect()
                 raise ConfigError("Bad news of the day: You have a genes database for the collection %s and bin %s. But\
                                    clearly the parameters you used to generate these gene-level coverage data has little\
                                    to do with the parameters you are using now. For instance, parameter '%s' was not even\
@@ -109,6 +82,7 @@ class TableForGeneLevelCoverages(Table):
 
         if len(non_matching_parameters):
             e = non_matching_parameters[0]
+            database.disconnect()
             raise ConfigError("OK. You have a genes database for the collection %s and bin %s. But %d\
                                of the parameters you used to generate these gene-level coverage data is not\
                                matching the matching parameters you are using now. For instance, the database\
@@ -118,9 +92,54 @@ class TableForGeneLevelCoverages(Table):
                                     (self.collection_name, self.bin_name, len(non_matching_parameters), str(e[1]),
                                     e[0], str(e[2]), self.db_path))
 
+        database.disconnect()
+
+
+    def check_split_names(self):
+        """Make sure split names in the genes database match to the expected split names"""
+
+        if not self.ignore_splits_name_check:
+            if not self.split_names:
+                raise ConfigError("So you want to read gene-level coverage data from this genes database\
+                                   but there is a problem. Here anvi'o is talking to the programmer: there\
+                                   are two modes reading from the genes database. You either create an instance of\
+                                   TableForGeneLevelCoverages with a list of `split_names` so anvi'o can make\
+                                   sure the splits you are looking for are certainly those the database knows\
+                                   about, OR, you set the parameter `ignore_splits_name_check` to True, so anvi'o\
+                                   doesn't care about making sure everything is in order. Well. What is going on\
+                                   here is that someone called the `read` function, but the instance of this\
+                                   class does not know any splits, and the `ignore_splits_name_check` is False.")
+
+            splits_hash = utils.get_hash_for_list(self.split_names)
+
+            db_hash = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path)).get_meta_value('splits_hash')
+
+            if splits_hash != db_hash:
+                raise ConfigError("Terrible news of the day: You have a genes database for the collection %s and bin %s. But\
+                                   it seems the splits your collection and bin contained when you generated this database\
+                                   has changed after its creation. Maybe you used `anvi-refine` to add or remove some? Or you\
+                                   imported other data with the same collection and bin name? We can't know. You are the one\
+                                   who is creative. But what we know is that this genes database at '%s' is not one that you\
+                                   can use anymore. The easy solution is this: remove this database, and let anvi'o generate\
+                                   another one for you. Alternatively you can run the same exact command you run right before\
+                                   you get this error. Sometimes that works too." % \
+                                        (self.collection_name, self.bin_name, self.db_path))
+
+
+    def read(self):
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        if not database.get_meta_value('gene_level_coverages_stored'):
+            # we don't have any gene-level coverage data stored in this database
+            database.disconnect()
+            return {}
+
+        self.check_split_names()
+        self.check_params()
+
         self.progress.new("Database bleep bloop")
         self.progress.update("Recovering gene-level coverage stats from the genes database...")
 
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         raw_data = database.get_table_as_dict(t.gene_level_coverage_stats_table_name)
         data = {}
 
@@ -143,6 +162,7 @@ class TableForGeneLevelCoverages(Table):
             else:
                 data[gene_callers_id][sample_name]['non_outlier_positions'] = None
 
+        database.disconnect()
         self.progress.end()
 
         self.run.warning(None, header="GENE-LEVEL COVERAGES RECOVERED (yay)", lc="green")

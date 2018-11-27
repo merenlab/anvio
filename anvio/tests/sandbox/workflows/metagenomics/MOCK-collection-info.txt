@@ -1,0 +1,2 @@
+Bin_1	anvi-interactive	#ddda08
+Bin_2	anvi-interactive	#0a842f

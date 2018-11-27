@@ -35,6 +35,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='metagenomics')
 
+        self.target_files = [] # TODO: Once we update all other workflows then this will be initiated in WorkflowSuperClass
         self.samples_information = {}
         self.kraken_annotation_dict = {}
         self.run_metaspades = None
@@ -47,6 +48,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.samples_txt_file = None
         self.sample_names = None
         self.group_sizes = None
+        self.collections_txt = None
+        self.collections = None
 
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
@@ -58,10 +61,10 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped',\
                      'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy', 'metaspades',\
-                     'remove_short_reads_based_on_references'])
+                     'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
-                                    "kraken_txt"])
+                                    "kraken_txt", "collections_txt"])
 
         rule_acceptable_params_dict = {}
 
@@ -69,6 +72,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['iu_gen_configs'] = ["--r1-prefix", "--r2-prefix"]
         rule_acceptable_params_dict['iu_filter_quality_minoche'] = ['run', '--visualize-quality-curves', '--ignore-deflines', '--limit-num-pairs', '--print-qual-scores', '--store-read-fate']
         rule_acceptable_params_dict['gzip_fastqs'] = ["run"]
+        rule_acceptable_params_dict['anvi_summarize'] = ["additional_params", "run"]
+        rule_acceptable_params_dict['anvi_split'] = ["additional_params", "run"]
         rule_acceptable_params_dict['metaspades'] = ["run", "additional_params", "use_scaffolds"]
         rule_acceptable_params_dict['megahit'] = ["run", "--min-contig-len", "--min-count", "--k-min",
                                                   "--k-max", "--k-step", "--k-list",
@@ -118,7 +123,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "MAPPING_DIR": "04_MAPPING",
                                "PROFILE_DIR": "05_ANVIO_PROFILE",
                                "MERGE_DIR": "06_MERGED",
-                               "TAXONOMY_DIR": "07_TAXONOMY"})
+                               "TAXONOMY_DIR": "07_TAXONOMY",
+                               "SUMMARY_DIR": "08_SUMMARY",
+                               "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES"})
 
         self.default_config.update({'samples_txt': "samples.txt",
                                     'metaspades': {"additional_params": "--only-assembler", "threads": 7},
@@ -149,17 +156,67 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.sample_names = list(self.samples_information['sample'])
         self.run_metaspades = self.get_param_value_from_config(['metaspades', 'run'])
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
+        self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
+        self.run_summary = self.get_param_value_from_config(['anvi_summarize', 'run']) == True
+        self.run_split = self.get_param_value_from_config(['anvi_split', 'run']) == True
         self.references_mode = self.get_param_value_from_config('references_mode', repress_default=True)
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
 
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
                                                                             'references_for_removal_txt'],\
                                                                            repress_default=True)
-
         if self.references_for_removal_txt:
             self.load_references_for_removal()
 
+        self.collections_txt = self.get_param_value_from_config('collections_txt')
+        if self.collections_txt:
+            self.load_collections()
+        elif self.run_summary:
+            raise ConfigError('If you want to run anvi-summarize you must provide a collections_txt file')
+        elif self.run_split:
+            raise ConfigError('If you want to run anvi-split you must provide a collections_txt file')
+
         self.sanity_check()
+
+        self.init_target_files()
+
+
+    def init_target_files(self):
+        target_files = []
+        merged_profiles = [os.path.join(self.dirs_dict["MERGE_DIR"], g, "PROFILE.db") for g in self.group_names]
+        target_files.extend(merged_profiles)
+
+        contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],\
+                             g + "-annotate_contigs_database.done") for g in self.group_names]
+        target_files.extend(contigs_annotated)
+
+        if self.run_qc:
+            qc_report = os.path.join(self.dirs_dict["QC_DIR"], "qc-report.txt")
+            target_files.append(qc_report)
+
+        if self.references_for_removal_txt:
+            filter_report = os.path.join(self.dirs_dict["QC_DIR"], "short-read-removal-report.txt")
+            target_files.append(filter_report)
+
+        if self.collections:
+            import_collection_done = [os.path.join(self.dirs_dict["MERGE_DIR"],\
+                                                   g,\
+                                                   'collection-import.done')\
+                                                   for g in self.collections.keys()]
+
+            target_files.extend(import_collection_done)
+
+        if self.run_summary:
+            summary = [os.path.join(self.dirs_dict["SUMMARY_DIR"], g + "-SUMMARY") for g in self.collections.keys()]
+            target_files.extend(summary)
+
+        if self.run_split:
+            split = [os.path.join(self.dirs_dict["SPLIT_PROFILES_DIR"],\
+                                  g + "-split.done")\
+                                  for g in self.collections.keys()]
+            target_files.extend(split)
+
+        self.target_files.extend(target_files)
 
 
     def sanity_check(self):
@@ -311,6 +368,34 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             if not self.get_param_value_from_config(['krakenhll', '--db']):
                 raise ConfigError('In order to run krakenhll, you must provide a path to \
                                    a database using the --db parameter in the config file.')
+
+
+    def load_collections(self):
+        ''' Load the collections_txt file, run some sanity checks, and figure out params for anvi_import_collection'''
+        collections = u.get_TAB_delimited_file_as_dictionary(self.collections_txt)
+        bad_groups = [g for g in collections if g not in self.group_names]
+        if bad_groups:
+                raise ConfigError('Some of the names in your collection_txt \
+                                   file ("%s") don\'t match the names of the \
+                                   groups in your samples_txt/fasta_txt. \
+                                   Here are the names that don\'t match: %s. \
+                                   And here are the group names we expect to find: \
+                                   %s' % (self.collections_txt, ', '.join(bad_groups), ', '.join(self.group_names)))
+        for group in collections:
+            filesnpaths.is_file_exists(collections[group]['collection_file'])
+            if not collections[group]['collection_name']:
+                raise ConfigError('You must specify a name for each collection in your collections_txt')
+            u.check_collection_name(collections[group]['collection_name'])
+            if collections[group].get('bins_info'):
+                filesnpaths.is_file_exists(collections[group]['bins_info'])
+                collections[group]['bins_info'] = '--bins-info %s' % collections[group]['bins_info']
+            else:
+                collections[group]['bins_info'] = ''
+            if collections[group].get('contigs_mode'):
+                collections[group]['contigs_mode'] = '--contigs-mode'
+            else:
+                collections[group]['contigs_mode'] = ''
+        self.collections = collections
 
 
     def load_references_for_removal(self):

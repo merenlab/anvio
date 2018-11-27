@@ -10,7 +10,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, GenesDBError
 from anvio.tables.tableops import Table
 
 
@@ -35,6 +35,32 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
+
+        # We just set the path for the database we are going to be working with. but if we seem to
+        # be in 'gene mode', then the actual database we want to work with through this module is
+        # in fact the genes database, so here we will do quite a sketchy thing, and will update our
+        # db path with that.
+        if A('gene_mode'):
+            gene_db_path = utils.get_genes_database_path_for_bin(profile_db_path=A('profile_db'),
+                                                                 collection_name=A('collection_name'),
+                                                                 bin_name=A('bin_id'))
+
+            if filesnpaths.is_file_exists(gene_db_path, dont_raise=True):
+                self.db_path = gene_db_path
+            else:
+                raise GenesDBError("The misc data module can't find a genes databse :( It is inherited with an args \
+                                    object that wanted to initiate anvi'o operations for 'gene mode', which is a special \
+                                    mode of operation where gene-level coverage statistics per collection is \
+                                    read from a special database. In this mode anvi'o also tries to initialize\
+                                    additional data tables from the genes database, instesad of the profile\
+                                    database with which it is associated. However, in the current run, it seems the\
+                                    genes database has not yet been initiated for the collection '%s' and bin '%s'.\
+                                    Probably this will be handled by a higher power, and the genes database will\
+                                    be generated automatically, but this very part of the code has no idea how to\
+                                    deal with this awkward situation, hence throwing this exception and waves its hand\
+                                    to you from a wild wild corner of the anvi'o codebase." % (A('collection_name'), A('bin_id')))
+                self.db_path = None
+
         self.just_do_it = A('just_do_it')
         self.target_data_group_set_by_user = A('target_data_group') or None
         self.target_data_group = self.target_data_group_set_by_user or 'default'
@@ -48,7 +74,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should\
                                be working with.")
 
-        utils.is_pan_or_profile_db(self.db_path)
+        utils.is_pan_or_profile_db(self.db_path, genes_db_is_also_accepted=True)
         self.db_type = utils.get_db_type(self.db_path)
         self.db_version = utils.get_required_version_for_db(self.db_path)
 

@@ -67,7 +67,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Export gene coverage and detection data from')
+    parser = argparse.ArgumentParser(description='Export gene coverage and detection data for all genes associated with\
+                                                  contigs described in a profile database.')
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))

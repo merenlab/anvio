@@ -11,7 +11,6 @@ import copy
 import json
 import numpy
 import random
-import hashlib
 import argparse
 import textwrap
 import multiprocessing
@@ -68,15 +67,15 @@ class DBClassFactory:
     def __init__(self):
         self.DB_CLASSES = {'profile': ProfileDatabase,
                            'contigs': ContigsDatabase,
-                           'pan': PanDatabase}
+                           'pan': PanDatabase,
+                           'genes': GenesDatabase}
 
     def get_db_class(self, db_path):
         db_type = utils.get_db_type(db_path)
 
         if db_type not in self.DB_CLASSES:
             raise ConfigError("DBClassFactory speaking. I do not know a class for database type\
-                                %s :/ I can deal with these though: '%s'" % (', '.join(self.DB_CLASSES)))
-
+                                %s :/ I can deal with these though: '%s'" % (db_type, ', '.join(self.DB_CLASSES))) 
         return self.DB_CLASSES[db_type]
 
 
@@ -893,25 +892,7 @@ class PanSuperclass(object):
         self.genome_names = self.p_meta['genome_names']
         self.gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
-        # FIXME: Is this the future where the pan db version is > 6? Great. Then the if statement here no longer
-        # needs to check whether 'gene_clusters_ordered' is a valid key in self.p_meta:
-        if 'gene_clusters_ordered' in self.p_meta and self.p_meta['gene_clusters_ordered']:
-            self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
-            self.item_orders = pan_db.db.get_table_as_dict(t.item_orders_table_name)
-
-            # we need to convert data for 'basic' item orders to array in order to avoid compatibility issues with
-            # other additional item orders in pan and full mode (otherwise interactive class gets complicated
-            # unnecessarily).
-            for item_order in self.item_orders:
-                if self.item_orders[item_order]['type'] == 'basic':
-                    try:
-                        self.item_orders[item_order]['data'] = self.item_orders[item_order]['data'].split(',')
-                    except:
-                        raise ConfigError("Something is wrong with the basic order `%s` in this pan database :(" % (item_order))
-        else:
-            self.p_meta['available_item_orders'] = None
-            self.p_meta['default_item_order'] = None
-            self.item_orders = None
+        self.p_meta['available_item_orders'], self.item_orders = get_item_orders_from_db(self.pan_db_path)
 
         # recover all gene cluster names so others can access to this information
         # without having to initialize anything
@@ -2082,9 +2063,19 @@ class ProfileSuperclass(object):
         self.split_coverage_values = None
 
         # the following two are initialized via `init_items_additional_data()` and use information
-        # stored in item additional data tables
-        self.items_additional_data_dict = None
-        self.items_additional_data_keys = None
+        # stored in item additional data tables UNLESS THEY ARE ALREADY INITIALIZED IN THE CONTEXT
+        # FROM WITHIN PROFILE SUPERCLASS IS INHERITED (SUCH A THING IS HAPPENING AT THE INTERACTIVE
+        # CLASS)
+        if super() and 'items_additional_data_dict' in dir(self) and 'items_additional_data_keys' in dir(self):
+            pass
+        else:
+            self.items_additional_data_dict = None
+            self.items_additional_data_keys = None
+
+        if super() and 'layers_additional_data_dict' in dir(self) and 'layers_additional_data_keys' in dir(self):
+            pass
+        else:
+            self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all()
 
         self.auxiliary_profile_data_available = None
         self.auxiliary_data_path = None
@@ -2195,40 +2186,12 @@ class ProfileSuperclass(object):
                                flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o\
                                profile and pan databases maintain a table with all item names they are supposed to be working with.")
 
-        if self.p_meta['contigs_ordered'] and 'available_item_orders' in self.p_meta:
-            self.p_meta['available_item_orders'] = sorted([s.strip() for s in self.p_meta['available_item_orders'].split(',')])
-            self.item_orders = profile_db.db.get_table_as_dict(t.item_orders_table_name)
-
-            for item_order in self.item_orders:
-                if self.item_orders[item_order]['type'] == 'basic':
-                    try:
-                        self.item_orders[item_order]['data'] = self.item_orders[item_order]['data'].split(',')
-                    except:
-                        self.progress.end()
-                        raise ConfigError("Something is wrong with the basic order `%s` in this profile database :(" % (item_order))
-
-        elif self.p_meta['contigs_ordered'] and 'available_item_orders' not in self.p_meta:
-            self.progress.end()
-            self.run.warning("Your profile database thinks the hierarchical item_order was done, yet it contains no entries\
-                              for any hierarchical item_order results. This is not good. Something must have gone wrong\
-                              somewhere :/ To be on the safe side, anvi'o will assume this profile database has no\
-                              item_order (which is literally the case, by the way, it is just the database itself is\
-                              confused about that fact --it happens to the best of us).")
-            self.progress.new('Initializing the profile database superclass')
-
-            self.p_meta['contigs_ordered'] = False
-            self.p_meta['available_item_orders'] = None
-            self.p_meta['default_item_order'] = None
-            self.item_orders = None
-        else:
-            self.p_meta['available_item_orders'] = None
-            self.p_meta['default_item_order'] = None
-            self.item_orders = None
-
         profile_db.disconnect()
 
-        self.progress.update('Accessing the layers additional data')
-        self.layers_additional_data_keys, self.layers_additional_data = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path)).get_all()
+        self.p_meta['available_item_orders'], self.item_orders = get_item_orders_from_db(self.profile_db_path)
+
+        if not self.item_orders:
+            self.p_meta['default_item_order'] = None
 
         self.progress.update('Accessing the auxiliary data file')
         self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
@@ -2241,9 +2204,9 @@ class ProfileSuperclass(object):
 
         if self.collection_name and self.bin_names and len(self.bin_names) == 1:
             self.progress.update('Accessing the genes database')
-            self.genes_db_path = get_genes_database_path_for_bin(self.profile_db_path,
-                                                                 self.collection_name,
-                                                                 self.bin_names[0])
+            self.genes_db_path = utils.get_genes_database_path_for_bin(self.profile_db_path,
+                                                                       self.collection_name,
+                                                                       self.bin_names[0])
             if not os.path.exists(self.genes_db_path):
                 self.genes_db_available = False
             else:
@@ -2282,13 +2245,23 @@ class ProfileSuperclass(object):
                        'bin_name': self.bin_names[0],
                        'splits_hash': splits_hash}
 
+        # generate a blank genes database here:
         GenesDatabase(self.genes_db_path).create(meta_values=meta_values)
+
+        # and immediately copy-paste the layers additional data and states table into
+        # it for convenience:
+        genes_database = db.DB(self.genes_db_path, None, ignore_version=True)
+        genes_database.copy_paste(table_name=t.layer_additional_data_table_name, source_db_path=self.profile_db_path)
+        genes_database.copy_paste(table_name=t.states_table_name, source_db_path=self.profile_db_path)
+        genes_database.disconnect()
+
+        # vamp the stage like a pro:
         self.genes_db_available = True
         self.genes_db_path = self.genes_db_path
 
 
     def store_gene_level_coverage_stats_into_genes_db(self, parameters):
-        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters)
+        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, run=self.run)
         table_for_gene_level_coverages.store(self.gene_level_coverage_stats_dict)
 
 
@@ -2297,7 +2270,7 @@ class ProfileSuperclass(object):
             raise ConfigError("The function `get_gene_level_coverage_stats_dicts_for_a_bin` can only be called from an instance\
                                of the profile super class that is initalized with a collection name and a single bin.")
 
-        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest)
+        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest, run=self.run)
         self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
@@ -2352,7 +2325,7 @@ class ProfileSuperclass(object):
 
             self.run.warning('A subset of splits (%d of %d, to be precise) are requested to initiate gene-level coverage stats for.\
                               No need to worry, this is just a warning in case you are as obsessed as wanting to know everything\
-                              there is to know.' % (len(self.split_names_of_interest), len(self.split_names)), overwrite_verbose=True)
+                              there is to know.' % (len(self.split_names_of_interest), len(self.split_names)))
         else:
             split_names = self.split_names
 
@@ -2696,7 +2669,7 @@ class ProfileDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'min_coverage_for_variability',
-                        'merged', 'blank', 'contigs_ordered', 'report_variability_full', 'num_contigs',
+                        'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
                         'num_splits', 'total_length']:
                 try:
                     self.meta[key] = int(self.meta[key])
@@ -2810,6 +2783,10 @@ class GenesDatabase:
         self.db = db.DB(self.db_path, anvio.__genes__version__, new_database=True)
 
         # creating empty default tables
+        self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
+        self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
+        self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
+        self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.gene_level_coverage_stats_table_name, t.gene_level_coverage_stats_table_structure, t.gene_level_coverage_stats_table_structure)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
@@ -2830,6 +2807,7 @@ class GenesDatabase:
 
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('gene_level_coverages_stored', False)
+        self.db.set_meta_value('items_ordered', False)
 
         self.disconnect()
 
@@ -2861,7 +2839,7 @@ class PanDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', \
-                        'num_gene_clusters', 'num_genes_in_gene_clusters', 'gene_alignments_computed', 'gene_clusters_ordered']:
+                        'num_gene_clusters', 'num_genes_in_gene_clusters', 'gene_alignments_computed', 'items_ordered']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
@@ -3543,13 +3521,6 @@ def get_auxiliary_data_path_for_profile_db(profile_db_path):
     return os.path.join(os.path.dirname(profile_db_path), 'AUXILIARY-DATA.db')
 
 
-def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
-    if not collection_name or not bin_name:
-        raise ConfigError("Genes database must be associted with a collection name and a bin name :/")
-
-    return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
-
-
 def get_description_in_db(anvio_db_path, run=run):
     """Reads the description in an anvi'o database"""
 
@@ -3622,11 +3593,13 @@ def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split
                               run=run)
 
 
-def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None, linkage=None, make_default=False, additional_data=None, run=run):
-    """Adds a new clustering into an anvi'o db
+def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type_newick=True, distance=None,
+                          linkage=None, make_default=False, additional_data=None, dont_overwrite=False,
+                          check_names_consistency=False, run=run):
+    """Adds a new items order into an appropriate anvi'o db
 
        Here is a FIXME for future, smarter generations. This function should go away,
-       and its function should be handled by a new items_order class in tables/miscdata.
+       and what its doing should be handled by a new items_order class in tables/miscdata.
     """
 
     if order_data_type_newick and (not distance or not linkage):
@@ -3645,6 +3618,21 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
         order_name = ':'.join([order_name, distance, linkage])
     else:
         order_name = ':'.join([order_name, 'NA', 'NA'])
+
+    # check names consistency if the user asked for it
+    if check_names_consistency:
+        if order_data_type_newick:
+            names_in_data = sorted(utils.get_names_order_from_newick_tree(order_data))
+        else:
+            names_in_data = sorted([n.strip() for n in order_data.split(',')])
+
+        names_in_db = sorted(utils.get_all_item_names_from_the_database(anvio_db_path))
+
+        if names_in_db != names_in_data:
+            raise ConfigError("Ehem. There is something wrong with the incoming items order data here :/ Basically,\
+                               the names found in your input data does not match to the item names found in the\
+                               database. Anvi'o is too lazy to find out what exactly differs, but just so you know\
+                               you're doing something wrong :/")
 
     # additional data is JSON formatted entry
     # for now it will only contain collapsed node information.
@@ -3666,8 +3654,11 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
         available_item_orders = []
 
     if order_name in available_item_orders:
-        run.warning('Clustering for "%s" is already in the database. Its content will\
-                     be replaced with the new one.' % (order_name))
+        if dont_overwrite:
+            raise ConfigError("The order name '%s' is already in the database, and you are not allowed to overwrite that.\
+                               Probably it is time for you to come up with a new name?" % (order_name))
+        else:
+            run.warning('Clustering for "%s" is already in the database. It will be replaced with the new content.' % (order_name))
 
         anvio_db.db._exec('''DELETE FROM %s where name = "%s"''' % (t.item_orders_table_name, order_name))
     else:
@@ -3676,10 +3667,7 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
     anvio_db.db._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.item_orders_table_name, tuple([order_name, 'newick' if order_data_type_newick else 'basic', order_data, additional_data]))
 
     anvio_db.db.set_meta_value('available_item_orders', ','.join(available_item_orders))
-
-    # We don't consider basic orders as orders becasue we are rebels.
-    if order_data_type_newick:
-        anvio_db.db.set_meta_value('gene_clusters_ordered' if db_type == 'pan' else 'contigs_ordered', True)
+    anvio_db.db.set_meta_value('items_ordered', True)
 
     try:
         anvio_db.db.get_meta_value('default_item_order')
@@ -3693,6 +3681,27 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
     anvio_db.disconnect()
 
     run.info('New items order', '"%s" (type %s) has been added to the database...' % (order_name, 'newick' if order_data_type_newick else 'basic'))
+
+
+def get_item_orders_from_db(anvio_db_path):
+    anvio_db = DBClassFactory().get_db_object(anvio_db_path)
+
+    utils.is_pan_or_profile_db(anvio_db_path, genes_db_is_also_accepted=True)
+
+    if not anvio_db.meta['items_ordered']:
+        return ([], {})
+
+    available_item_orders = sorted([s.strip() for s in anvio_db.meta['available_item_orders'].split(',')])
+    item_orders_dict = anvio_db.db.get_table_as_dict(t.item_orders_table_name)
+
+    for item_order in item_orders_dict:
+        if item_orders_dict[item_order]['type'] == 'basic':
+            try:
+                item_orders_dict[item_order]['data'] = item_orders_dict[item_order]['data'].split(',')
+            except:
+                raise ConfigError("Something is wrong with the basic order `%s` in this %s database :(" % (item_order, utils.get_db_type(anvio_db_path)))
+
+    return (available_item_orders, item_orders_dict)
 
 
 def get_default_item_order_name(default_item_order_requested, item_orders_dict, progress=progress, run=run):
