@@ -38,6 +38,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.target_files = [] # TODO: Once we update all other workflows then this will be initiated in WorkflowSuperClass
         self.samples_information = {}
         self.kraken_annotation_dict = {}
+        self.run_krakenhll = None
         self.run_metaspades = None
         self.use_scaffold_from_metaspades = None
         self.remove_short_reads_based_on_references = None
@@ -327,20 +328,19 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def sanity_check_for_kraken(self):
         '''Making sure the sample names and file paths the provided kraken.txt file are valid'''
         kraken_txt = self.get_param_value_from_config('kraken_txt')
+        self.run_krakenhll = self.get_param_value_from_config(['krakenhll', 'run']) == True
 
         if kraken_txt:
-            if self.get_param_value_from_config(['krakenhll', 'run']) == False:
-                raise ConfigError("You supplied a kraken_txt file, %s, but you set krakenhll \
-                                   not to run in the config file. anvi'o is confused and \
-                                   is officially going on a strike." % kraken_txt)
-
-            if 'krakenhll' not in self.config:
-                raise ConfigError('You provided a kraken_txt, but you didnt set any parameters \
-                                   for krakenhll. As a minimum, you must provide the path to \
-                                   the krakenhll database using the --db parameter in the config file.')
+            if self.get_param_value_from_config(['krakenhll', 'run']) == True:
+                raise ConfigError("You supplied a kraken_txt file (\"%s\") but you set krakenhll \
+                                   to run in the config file. anvi'o is confused and \
+                                   is officially going on a strike. Ok, let's clarify, \
+                                   having a kraken_txt file means you already ran krakenhll \
+                                   and want us to use those results, and yet you set krakenhll \
+                                   to run again? why? Ok, time to strike. Bye!" % kraken_txt)
 
             # if a kraken_txt was supplied then let's run kraken by default
-            self.config['krakenhll']['run'] = True
+            self.run_krakenhll = True
 
             kraken_annotation_dict = u.get_TAB_delimited_file_as_dictionary(kraken_txt)
             if next(iter(next(iter(kraken_annotation_dict.values())).keys())) != "path":

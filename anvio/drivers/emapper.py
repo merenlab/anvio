@@ -158,6 +158,23 @@ class EggNOGMapper:
         self.entry_id += 1
 
 
+    def check_prefix_and_get_gene_callers_id(self, fields):
+        if not fields[0].startswith(self.gene_caller_id_prefix):
+            raise ConfigError("Gene caller ids found in this annotation file does not start with the expected prefix. This is a historical\
+                               glitch that is not quite easy to address programmatically, so anvi'o asks you to add the expected prefix as the\
+                               first character of every gene call in your annotations file. This is the prefix what you need to add manually\
+                               to the very beginning of every line (anvi'o developers are very sorry for this step): '%s'." % self.gene_caller_id_prefix)
+
+        try:
+            gene_callers_id = int(fields[0][len(self.gene_caller_id_prefix):])
+        except:
+            raise ConfigError("At least one gene caller id in this annotation file (%s) does not look like how anvi'o likes its gene calls. \
+                               Hint: what should remain after removing gene caller id prefix (%s) should be an integer value." %\
+                                                (fields[0], self.gene_caller_id_prefix))
+
+        return gene_callers_id
+
+
     def __parser_1(self, defline):
         """parses this:
 
@@ -173,16 +190,7 @@ class EggNOGMapper:
             raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the\
                                 number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 12))
 
-        if not fields[0].startswith(self.gene_caller_id_prefix):
-            raise ConfigError("Gene caller ids found in this annotation file does not start with the expected prefix. Anvi'o can not trust\
-                                this file :(. This is the prefix that anvi'o expected: %s" % self.gene_caller_id_prefix)
-
-        try:
-            gene_callers_id = int(fields[0][len(self.gene_caller_id_prefix):])
-        except:
-            raise ConfigError("At least one gene caller id in this annotation file (%s) does not seem to look like what anvi'o is uses for\
-                                gene calls. Hint: what should remain after removing gene caller id prefix (%s) should be an integer value." %\
-                                                (fields[0], self.gene_caller_id_prefix))
+        gene_callers_id = self.check_prefix_and_get_gene_callers_id(fields)
 
         if fields[11] and fields[11] != 'NA' and not fields[11].startswith('Protein of unknown function'):
             self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], fields[11], fields[2])
@@ -209,7 +217,7 @@ class EggNOGMapper:
 
             0          1                    2                    3                   4                   5                     6                 7                    7                    8                                                    9                    10      11
             query_name seed_eggNOG_ortholog seed_ortholog_evalue seed_ortholog_score predicted_gene_name GO_terms              KEGG_pathways     BiGG_Reactions       Annotation_tax_scope OGs                                                  bestOG|evalue|score  COG_cat eggNOG_annot
-            0          367928.BAD_0533      4.3e-211             696.2               TUF                 GO:0001666,GO:0003674 K02358            SADT2                bactNOG[38]          00BM5@actNOG,05CGV@bactNOG,COG0050@NOG               05CGV|2.1e-158|530.1       J This protein promotes the GTP-dependent binding of aminoacyl-tRNA to the A-site of ribosomes during protein biosynthesis (By similarity)[201~]]
+            g0         367928.BAD_0533      4.3e-211             696.2               TUF                 GO:0001666,GO:0003674 K02358            SADT2                bactNOG[38]          00BM5@actNOG,05CGV@bactNOG,COG0050@NOG               05CGV|2.1e-158|530.1       J This protein promotes the GTP-dependent binding of aminoacyl-tRNA to the A-site of ribosomes during protein biosynthesis (By similarity)[201~]]
 
         """
 
@@ -219,20 +227,8 @@ class EggNOGMapper:
             raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the\
                                 number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 13))
 
-        if not fields[0].startswith(self.gene_caller_id_prefix):
-            raise ConfigError("Gene caller ids found in this annotation file does not start with the expected prefix. This is a historical\
-                               glitch that is not quite easy to address programmatically, so anvi'o asks you to add the expected prefix as the\
-                               first character of every gene call in your annotations file. This is what you need to add manually\
-                               (anvi'o developers are very sorry for this step): '%s'. Yeah. Just add that to the very beginning of every\
-                               line." % self.gene_caller_id_prefix)
-
-        try:
-            gene_callers_id = int(fields[0][len(self.gene_caller_id_prefix):])
-        except:
-            raise ConfigError("At least one gene caller id in this annotation file (%s) does not seem to look like what anvi'o is uses for\
-                                gene calls. Hint: what should remain after removing gene caller id prefix (%s) should be an integer value." %\
-                                                (fields[0], self.gene_caller_id_prefix))
-
+        gene_callers_id = self.check_prefix_and_get_gene_callers_id(fields)
+        
         if fields[12] and fields[12] != 'NA' and not fields[12].startswith('Protein of unknown function'):
             self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], fields[12], fields[2])
 

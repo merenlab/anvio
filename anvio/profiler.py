@@ -272,6 +272,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.bam:
             self.bam.close()
 
+        self.run.info_single('Happy.', nl_before=1, nl_after=1)
+
         self.run.quit()
 
 
