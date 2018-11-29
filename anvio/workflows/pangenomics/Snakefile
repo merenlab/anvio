@@ -90,3 +90,44 @@ rule anvi_gen_genomes_storage:
 
 if 'workflows/pangenomics' in workflow.included[0]:
     M.check_workflow_program_dependencies(workflow)
+
+
+rule anvi_get_sequences_for_gene_clusters:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "anvi_get_sequences_for_gene_clusters.log")
+    input:
+        genomes_storage = os.path.join(dirs_dict["PAN_DIR"], M.project_name + "-GENOMES.db"),
+        pan_db = os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db")
+    output:
+    params:
+        gene_clusters_id = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--gene-cluster-id'),
+        gene_cluster_ids_file = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--gene-cluster-ids-file'),
+        collection_name = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--collection-name'),
+        bin_id = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--bin-id'),
+        min_num_genomes_gene_cluster_occurs = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--min-num-genomes-gene-cluster-occurs'),
+        max_num_genomes_gene_cluster_occurs = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--max-num-genomes-gene-cluster-occurs'),
+        min_num_genes_from_each_genome = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--min-num-genes-from-each-genome'),
+        max_num_genes_from_each_genome = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--max-num-genes-from-each-genome'),
+        max_num_gene_clusters_missing_from_genomegene_clusters_id = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--max-num-gene-clusters-missing-from-genome'),
+        min_functional_homogeneity_index = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--min-functional-homogeneity-index'),
+        max_functional_homogeneity_index = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--max-functional-homogeneity-index'),
+        min_geometric_homogeneity_index = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--min-geometric-homogeneity-index'),
+        max_geometric_homogeneity_index = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--max-geometric-homogeneity-index'),
+        add_into_items_additional_data_table = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--add-into-items-additional-data-table'),
+        concatenate_gene_clusters = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--concatenate-gene-clusters'),
+        separator = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--separator'),
+        align_with = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--align-with'),
+
+    threads: M.T('anvi_get_sequences_for_gene_clusters')
+    resources: nodes = M.T('anvi_get_sequences_for_gene_clusters')
+    shell:
+        """
+           {params.gene_cluster_id} {params.gene_cluster_ids_file} {params.collection_name} \
+           {params.bin_id} {params.min_num_genomes_gene_cluster_occurs} \
+           {params.max_num_genomes_gene_cluster_occurs} {params.min_num_genes_from_each_genome} \
+           {params.max_num_genes_from_each_genome} {params.max_num_gene_clusters_missing_from_genome} \
+           {params.min_functional_homogeneity_index} {params.max_functional_homogeneity_index} \
+           {params.min_geometric_homogeneity_index} {params.max_geometric_homogeneity_index} \
+           {params.add_into_items_additional_data_table} {params.concatenate_gene_clusters} \
+           {params.separator} {params.align_with} --just-do-it >> {log} 2>&1
+        """
