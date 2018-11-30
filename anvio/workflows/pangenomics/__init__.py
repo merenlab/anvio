@@ -12,6 +12,7 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
+from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -27,14 +28,15 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
+class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='pangenomics')
 
         self.target_files = [] # TODO: Once we update all other workflows then this will be initiated in WorkflowSuperClass
+        self.pan_project_name = None
 
         # initialize the base class
-        ContigsDBWorkflow.__init__(self)
+        PhylogenomicsWorkflow.__init__(self)
 
         self.rules.extend(['anvi_gen_genomes_storage',
                            'anvi_pan_genome',
@@ -91,7 +93,13 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.pan_project_name + "-PAN.db"))
 
         if self.get_param_value_from_config('use_gene_cluster_sequences_for_phylogeny'):
-            target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.pan_project_name + "-GC-sequences.fa"))
+            GC_sequences = os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "-GC-sequences.fa")
+            target_files.append(GC_sequences)
+            self.use_hmms_for_phylogeny = False
+            self.phylogenomics_sequence_file = GC_sequences
+            phylogenomics_output = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
+            target_files.append(phylogenomics_output)
+
         self.target_files.append(target_files)
 
 

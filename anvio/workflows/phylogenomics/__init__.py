@@ -4,6 +4,7 @@
     Classes to define and work with anvi'o phylogenomics workflows.
 """
 
+import os
 
 import anvio
 import anvio.terminal as terminal
@@ -35,6 +36,9 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.input_for_anvi_get_sequences_for_hmm_hits = {}
         self.internal_genomes_file = ''
         self.external_genomes_file = ''
+        self.phylogenomics_sequence_file = None
+        self.project_name = None
+        self.use_hmms_for_phylogeny = True
 
         # initialize the base class
 
@@ -68,6 +72,11 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.internal_genomes_file = self.get_param_value_from_config('internal_genomes')
         self.external_genomes_file = self.get_param_value_from_config('external_genomes')
         self.input_for_anvi_get_sequences_for_hmm_hits = self.get_internal_and_external_genomes_files()
+        self.project_name = self.get_param_value_from_config('project_name')
+
+        if self.use_hmms_for_phylogeny:
+            # By default we use hmms for phylogeny
+            self.phylogenomics_sequence_file = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins_GAPS_REMOVED.fa")
 
         self.sanity_checks()
 
