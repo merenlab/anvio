@@ -29,6 +29,7 @@ if not slave_mode:
     # in order to generate the contigs databases we include the snakefile for the generation of contigs databases
     # include statement must come after we get an instance of PangenomicsWorkflow class
     include: w.get_workflow_snake_file_path('contigs')
+    include: w.get_workflow_snake_file_path('phylogenomics')
 
 rule pangenomics_target_rule:
     input: M.target_files
@@ -103,7 +104,7 @@ rule anvi_get_sequences_for_gene_clusters:
         genomes_storage = os.path.join(dirs_dict["PAN_DIR"], M.project_name + "-GENOMES.db"),
         pan_db = os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db")
     output:
-        os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-GC-sequences.fa")
+        os.path.join(dirs_dict["PAN_DIR"], M.project_name + "-GC-sequences.fa")
     params:
         gene_cluster_id = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--gene-cluster-id'),
         gene_cluster_ids_file = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--gene-cluster-ids-file'),
