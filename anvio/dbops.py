@@ -2756,7 +2756,7 @@ class GenesDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['min_cov_for_detection', 'zeros_are_outliers', 'gene_level_coverages_stored']:
+            for key in ['min_cov_for_detection', 'zeros_are_outliers', 'gene_level_coverages_stored', 'items_ordered']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
