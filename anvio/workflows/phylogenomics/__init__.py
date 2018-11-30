@@ -76,7 +76,7 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         if self.use_hmms_for_phylogeny:
             # By default we use hmms for phylogeny
-            self.phylogenomics_sequence_file = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins_GAPS_REMOVED.fa")
+            self.phylogenomics_sequence_file = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins.fa")
 
         self.sanity_checks()
 
