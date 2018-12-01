@@ -293,6 +293,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         gene_caller_ids_to_profile = list(codons_in_genes_to_profile_SCVs_dict.keys())
 
+        self.progress.verbose = True
+        self.progress.append("SCVs ⚙  / ")
+        self.progress.verbose = False
         for i in range(len(gene_caller_ids_to_profile)):
             gene_callers_id = gene_caller_ids_to_profile[i]
             codons_to_profile = codons_in_genes_to_profile_SCVs_dict[gene_callers_id]
@@ -332,6 +335,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         variable_nts_table = TableForVariability(self.profile_db_path, progress=self.progress)
 
+        self.progress.verbose = True
+        self.progress.append("SNVs ⚙  / ")
+        self.progress.verbose = False
         for contig in self.contigs:
             for split in contig.splits:
                 for column_profile in list(split.column_profiles.values()):
@@ -376,6 +382,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def store_split_coverages(self):
+        self.progress.verbose = True
+        self.progress.append("💾 ..")
+        self.progress.verbose = False
         for contig in self.contigs:
             for split in contig.splits:
                 self.auxiliary_db.append(split.name, self.sample_id, split.coverage.c)
@@ -664,7 +673,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         discarded_contigs = 0
         memory_usage = None
 
-        self.progress.new('Profiling using ' + str(self.num_threads) + ' thread%s' % ('s' if self.num_threads > 1 else ''))
+        self.progress.new('Profiling w/' + str(self.num_threads) + ' thread%s' % ('s' if self.num_threads > 1 else ''))
         self.progress.update('initializing threads ...')
         # FIXME: memory usage should be generalized.
         last_memory_update = int(time.time())
@@ -687,8 +696,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     memory_usage = utils.get_total_memory_usage()
                     last_memory_update = int(time.time())
 
-                self.progress.update('Processed %d of %d contigs. Current memory usage: %s' % \
-                            (recieved_contigs, self.num_contigs, memory_usage or '...'))
+                self.progress.update('%d of %d contigs ⚙  / MEM ☠️ %s / ' % \
+                            (recieved_contigs, self.num_contigs, memory_usage or ' ??'))
 
                 # here you're about to witness the poor side of Python (or our use of it).
                 # the problem we run into here was the lack of action from the garbage
@@ -710,7 +719,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                         del c
                     del self.contigs[:]
             except KeyboardInterrupt:
-                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
+                self.run.info_single("Anvi'o profiler recieved SIGINT, terminating all processes...", nl_before=2)
                 break
 
         for proc in processes:
@@ -747,10 +756,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
             for split in contig.splits:
                 split.abundance = split.coverage.mean
 
-        self.progress.verbose = False
         self.generate_variabile_nts_table()
         self.generate_variabile_codons_table()
         self.store_split_coverages()
+        self.progress.verbose = False
         self.progress.verbose = True
 
         # creating views in the database for atomic data we gathered during the profiling. Meren, please note
