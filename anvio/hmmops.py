@@ -717,7 +717,7 @@ class SequencesForHMMHits:
 
         filesnpaths.is_output_file_writable(output_file_path)
 
-        if not isinstance(wrap, int):
+        if wrap and not isinstance(wrap, int):
             raise ConfigError('"wrap" has to be an integer instance')
 
         if concatenate_genes:
