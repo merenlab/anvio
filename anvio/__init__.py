@@ -833,6 +833,12 @@ D = {
              'help': "When to wrap sequences when storing them in a FASTA file. The default is\
                       '%(default)d'. A value of '0' would be equivalent to 'do not wrap'."}
                 ),
+    'no-wrap': (
+            ['--no-wrap'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Do not be wrap sequences nicely in the output file."}
+                ),
     'leeway': (
             ['--leeway'],
             {'metavar': 'LEEWAY_NTs',
