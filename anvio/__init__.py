@@ -176,7 +176,7 @@ D = {
                       tree will be, and will take more time and computational resources to finish the\
                       analysis. Also this is not a case of 'the smaller the split size the more sensitive\
                       the results'. If you do not want your contigs to be split, you can either simply\
-                      enter '0' or ANY OTHER negative integer (lots of unnecessary freedom here, enjoy!)."}
+                      enter any negative integer (lots of unnecessary freedom here, enjoy!)."}
                 ),
     'kmer-size': (
             ['-K', '--kmer-size'],
