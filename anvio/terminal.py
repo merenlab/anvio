@@ -62,7 +62,7 @@ class Progress:
         self.color_prefix = '\033[0;30m\033[46m'
         self.color_postfix = '\033[0m'
 
-        self.currently_shown = None
+        self.current = None
 
 
     def get_terminal_width(self):
@@ -84,7 +84,7 @@ class Progress:
 
         self.pid = '%s %s' % (get_date(), pid)
         self.get_terminal_width()
-        self.currently_shown = None
+        self.current = None
 
 
     def write(self, c):
@@ -104,14 +104,16 @@ class Progress:
     def reset(self):
         self.clear()
 
+
     def clear(self):
         if not self.verbose:
             return
+
         null = '\r' + ' ' * (self.terminal_width)
         sys.stderr.write(null)
         sys.stderr.write('\r')
         sys.stderr.flush()
-        self.currently_shown = None
+        self.current = None
 
 
     def append(self, msg):
