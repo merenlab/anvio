@@ -113,7 +113,7 @@ class AuxiliaryDataForSplitCoverages(object):
         rows = cursor.fetchall()
 
         if len(rows) == 0:
-            raise AuxiliaryDataError('The auxiliary database at "%s" does not know anything about the split "%s"' % (sef.db_path, split_name))
+            raise AuxiliaryDataError('The auxiliary database at "%s" does not know anything about the split "%s"' % (self.db_path, split_name))
 
         split_coverage = {}
         for row in rows:
