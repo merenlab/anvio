@@ -28,8 +28,10 @@ def genbank_to_anvio(args):
 
     output_fasta = open(args.output_fasta, "w")
 
-    source = args.annotation_source
-    version = args.annotation_version
+    gene_call_source = args.gene_call_source
+    gene_call_version = args.gene_call_version
+
+    annotation_source = args.annotation_source
 
     output_gene_calls = open(args.output_gene_calls_tsv, "w")
     output_gene_calls.write("gene_callers_id" + "\t" + "contig" + "\t" + "start" + "\t" + "stop" + "\t" + "direction" + "\t" + "partial" + "\t" + "source" + "\t" + "version" + "\n")
@@ -66,7 +68,7 @@ def genbank_to_anvio(args):
             # dumping if overlapping translation frame
             if "transl_except" in gene.qualifiers:
                 continue
-                
+
             # dumping if gene declared a pseudogene
             if "pseudo" in gene.qualifiers:
                 continue
@@ -104,13 +106,13 @@ def genbank_to_anvio(args):
                 gene_name=str(gene.qualifiers["gene"][0])
                 function = function + " (" + gene_name + ")"
 
-            output_gene_calls.write(str(num) + "\t" + rec.name + "\t" + str(start) + "\t" + str(end) + "\t" + str(strand) + "\t" + "0" + "\t" + str(source) +"\t" + str(version) + "\n")
-            
+            output_gene_calls.write(str(num) + "\t" + rec.name + "\t" + str(start) + "\t" + str(end) + "\t" + str(strand) + "\t" + "0" + "\t" + str(gene_call_source) +"\t" + str(gene_call_version) + "\n")
+
             # not writing gene out to functions table if no annotation
             if "hypothetical protein" in function:
                 continue
             else:
-                output_functions.write(str(num) + "\t" + str(source) + "\t" + acc + "\t" + function + "\t" + "0" + "\n")
+                output_functions.write(str(num) + "\t" + str(annotation_source) + "\t" + acc + "\t" + function + "\t" + "0" + "\n")
 
     input_gb.close()
     output_fasta.close()
@@ -125,12 +127,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="This script takes a genbank file and converts it into the\
                                                 format required for importing external gene calls and functions into anvi'o.")
 
-    parser.add_argument('-i', '--input_gb', action='store', dest='input_gb', required=True, 
+    parser.add_argument('-i', '--input_gb', action='store', dest='input_gb', required=True,
                         help='input Genbank file (e.g. typically"*.gbk", "*.gb", "*.gbff")')
-    parser.add_argument('-s', '--annotation_source', action='store', dest='annotation_source', default='NCBI_PGAP', 
+    parser.add_argument('-s', '--gene_call_source', action='store', dest='gene_call_source', default='NCBI_PGAP',
                         help='annotation source (default: "NCBI_PGAP")')
-    parser.add_argument("-v", "--annotation_version", action="store", dest="annotation_version", default="v4.6",\
+    parser.add_argument("-v", "--gene_call_version", action="store", dest="gene_call_version", default="v4.6",\
                         help='Annotation source version (default: "v4.6")')
+    parser.add_argument('-S', '--annotation_source', action='store', dest='annotation_source', default='NCBI_PGAP',
+                        help='annotation source (default: "NCBI_PGAP")')
     parser.add_argument("-o", "--output_gene_calls_tsv", action="store", dest="output_gene_calls_tsv",
                         default="external_gene_calls.tsv",\
                         help='Output tsv file (default: "external_gene_calls.tsv")')
