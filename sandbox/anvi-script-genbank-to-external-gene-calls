@@ -68,7 +68,7 @@ def genbank_to_anvio(args):
                 continue
                 
             # dumping if gene declared a pseudogene
-            if "pseudo" in gene.qualifers:
+            if "pseudo" in gene.qualifiers:
                 continue
 
             num += 1 # iteration for unique "gene_callers_id" for each
