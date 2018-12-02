@@ -170,13 +170,15 @@ D = {
             {'metavar': 'INT',
              'default': 20000,
              'type': int,
-             'help': "Splitting very large contigs into multiple pieces improves the efficacy of the\
-                      visualization step. The default value is (%(default)d). If you are not sure, we\
-                      advise you to not go below 10,000. The lower you go, the more complicated the\
-                      tree will be, and will take more time and computational resources to finish the\
-                      analysis. Also this is not a case of 'the smaller the split size the more sensitive\
-                      the results'. If you do not want your contigs to be split, you can either simply\
-                      enter '0' or ANY OTHER negative integer (lots of unnecessary freedom here, enjoy!)."}
+             'help': "Anvi'o splits very long contigs into smaller pieces, without actually splitting them for real. These\
+                      'virtual' splits improves the efficacy of the visualization step, and changing the split size gives\
+                      freedom to the user to adjust the resolution of their display when necessary. The default value is\
+                      (%(default)d). If you are planning to use your contigs database for metagenomic binning, we advise you\
+                      to not go below 10,000 (since the lower the split size is, the more items to show in the display, and\
+                      decrasing the split size does not really help much to binning). But if you are thinking about using this\
+                      parameter for ad hoc investigations other than binning, you should ignore our advice, and set the split\
+                      size as low as you want. If you do not want your contigs to be split, you can set the split size to '0'\
+                      or any other negative integer (lots of unnecessary freedom here, enjoy!)."}
                 ),
     'kmer-size': (
             ['-K', '--kmer-size'],
