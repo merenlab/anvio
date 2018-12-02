@@ -117,7 +117,7 @@ class Progress:
     def append(self, msg):
         if not self.verbose:
             return
-        self.write('%s%s' % (self.currently_shown, msg))
+        self.write('%s%s' % (self.current, msg))
 
 
     def update(self, msg):
