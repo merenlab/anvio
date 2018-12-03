@@ -138,3 +138,25 @@ rule anvi_get_sequences_for_gene_clusters:
            {params.separator} {params.align_with} \
            -o {output} --just-do-it >> {log} 2>&1
         """
+
+
+rule import_phylogenetic_tree_to_pangenome:
+    version: 1.0
+    log: os.path.join(M.dirs_dict["LOGS_DIR"], "import_phylogenetic_tree_to_pangenome.log")
+    input:
+        pan_db = os.path.join(M.dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db"),
+        newick = os.path.join(M.dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
+    output:
+        layers_orders_file = os.path.join(M.dirs_dict["PAN_DIR"], M.project_name + "-layers-orders.txt"),
+        phylogeny_imported = touch(os.path.join(M.dirs_dict["PAN_DIR"], M.project_name + "-phylogeny-imported.done"))
+    params:
+    threads: M.T('import_phylogenetic_tree_to_pangenome')
+    resources: nodes = M.T('import_phylogenetic_tree_to_pangenome')
+    run:
+        shell('echo -e "item_name\tdata_type\tdata_value" > {output.layers_orders_file}')
+        shell('echo -e "phylogeny\tnewick\t`cat {input.newick}` >> {output.layers_orders_file}')
+        # first create a layers-orders file
+        cmd = "anvi-import-misc-data -p {input.pan_db} \
+                                  -t layer_orders \
+                                  {output.layers_orders_file} >> {log} 2>&1"
+        shell(cmd)
