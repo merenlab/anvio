@@ -611,7 +611,7 @@ class MODELLER:
         temp_dir = filesnpaths.get_temp_directory_path()
         self.copy_script_to_directory('fasta_to_pir.py', add_to_scripts_dict=False, directory=temp_dir)
         test_script = J(temp_dir, 'fasta_to_pir.py')
-        test_input = os.path.abspath(J(os.path.dirname(anvio.__file__), '../tests/sandbox/mock_data_for_structure/proteins.fa'))
+        test_input = J(os.path.dirname(anvio.__file__), 'tests/sandbox/mock_data_for_structure/proteins.fa')
         test_output = J(temp_dir, 'test_out')
 
         command = [self.executable,
