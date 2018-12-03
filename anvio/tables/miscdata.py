@@ -621,6 +621,9 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             value = entry['data_value']
 
             if entry['data_type'] == 'int':
+                # our predictor predicts 'int' if all values are int-ish floats. Ex: [37.0, 36.0, 1.0, ...] 
+                # but python int() function fails to parse strings like '1.0' while float() can parse them correctly.
+                # so here we first parse them with float() and then pass them to int(). Which should not affect anything in theory.
                 d[additional_data_item_name][key] = int(float(value or self.nulls_per_type[entry['data_type']]))
             elif entry['data_type'] == 'float':
                 d[additional_data_item_name][key] = float(value or self.nulls_per_type[entry['data_type']])

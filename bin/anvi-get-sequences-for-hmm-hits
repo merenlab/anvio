@@ -209,11 +209,12 @@ def main(args):
         args.output_file = 'sequences-for-hmm-hits.fa'
 
     # the magic is happening here:
-    s.store_hmm_sequences_into_FASTA(hmm_sequences_dict, \
-                                     args.output_file, \
-                                     concatenate_genes=args.concatenate_genes, \
-                                     separator=separator, \
-                                     genes_order=list(gene_names) if len(gene_names) else None, \
+    s.store_hmm_sequences_into_FASTA(hmm_sequences_dict,
+                                     args.output_file,
+                                     concatenate_genes=args.concatenate_genes,
+                                     separator=separator,
+                                     wrap=None if args.no_wrap else 120,
+                                     genes_order=list(gene_names) if len(gene_names) else None,
                                      align_with=args.align_with)
 
     run.info('Mode', 'AA seqeunces' if args.get_aa_sequences else 'DNA seqeunces', mc='green')
@@ -255,6 +256,7 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be a FASTA file, and you better give it\
                                         a nice name..")
     groupE.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupE.add_argument(*anvio.A('no-wrap'), **anvio.K('no-wrap'))
 
     groupF = parser.add_argument_group('THE ALPHABET', "The sequences are reported in DNA alphabet, but you can also get them\
                                         translated just like all the other cool kids.")
