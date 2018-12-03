@@ -287,7 +287,7 @@ rule anvi_get_sequences_for_gene_calls:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_get_sequences_for_gene_calls.log"
     input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
-    output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-TM7_NR-contigs-aa-sequences.fa")
+    output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs-aa-sequences.fa")
     threads: M.T('anvi_get_sequences_for_gene_calls')
     resources: nodes = M.T('anvi_get_sequences_for_gene_calls')
     shell: "anvi-get-sequences-for-gene-calls -c {input} -o {output} --get-aa-sequences >> {log} 2>&1"
