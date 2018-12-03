@@ -99,6 +99,7 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
             self.phylogenomics_sequence_file = GC_sequences
             phylogenomics_output = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
             target_files.append(phylogenomics_output)
+            target_files.append(os.path.join(M.dirs_dict["PAN_DIR"], M.project_name + "-phylogeny-imported.done"))
 
         self.target_files.append(target_files)
 
