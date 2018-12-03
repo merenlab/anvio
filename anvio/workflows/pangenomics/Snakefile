@@ -70,7 +70,7 @@ rule anvi_pan_genome:
             {params.min_occurrence} {params.min_percent_identity} {params.sensitive}\
             {params.description} {params.overwrite_output_destinations}\
             {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering}\
-            {params.distance} {params.linkage}
+            {params.distance} {params.linkage} >> {log} 2>&1
         """
 
 
@@ -90,7 +90,7 @@ rule anvi_gen_genomes_storage:
             anvi-gen-genomes-storage -o {output}\
                                      {params.internal_genomes_argument}\
                                      {params.external_genomes_argument}\
-                                     {params.gene_caller}
+                                     {params.gene_caller} >> {log} 2>&1
         """
 
 if 'workflows/pangenomics' in workflow.included[0]:
