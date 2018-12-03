@@ -5,10 +5,6 @@
         "threads": 11,
         "run": true
     },
-    "krakenhll": {
-        "run": true,
-        "--db": "/fake/db"
-    },
     "kraken_txt": "kraken.txt",
     "output_dirs": {
         "FASTA_DIR": "02_FASTA_idba_ud",

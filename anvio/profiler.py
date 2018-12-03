@@ -37,7 +37,8 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
-
+null_progress = terminal.Progress(verbose=False)
+null_run = terminal.Run(verbose=False)
 pp = terminal.pretty_print
 
 class BAMProfiler(dbops.ContigsSuperclass):
@@ -193,7 +194,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.update('Creating a new auxiliary database with contigs hash "%s" ...' % self.a_meta['contigs_db_hash'])
         self.auxiliary_db_path = self.generate_output_destination('AUXILIARY-DATA.db')
-        self.auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_db_path, self.a_meta['contigs_db_hash'], create_new=True)
+        self.auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_db_path,
+                                                                            self.a_meta['contigs_db_hash'],
+                                                                            create_new=True,
+                                                                            run=null_run,
+                                                                            progress=null_progress)
 
         self.progress.end()
 
@@ -272,6 +277,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.bam:
             self.bam.close()
 
+        self.run.info_single('Happy 😇', nl_before=1, nl_after=1)
+
         self.run.quit()
 
 
@@ -279,7 +286,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling or not self.profile_SCVs:
             return
 
-        variable_codons_table = TableForCodonFrequencies(self.profile_db_path, progress=self.progress)
+        variable_codons_table = TableForCodonFrequencies(self.profile_db_path, progress=null_progress)
 
         codon_frequencies = bamops.CodonFrequencies()
 
@@ -290,6 +297,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             codons_in_genes_to_profile_SCVs_dict[gene_callers_id].add(codon_order)
 
         gene_caller_ids_to_profile = list(codons_in_genes_to_profile_SCVs_dict.keys())
+
+        self.progress.step_start('SCVs')
 
         for i in range(len(gene_caller_ids_to_profile)):
             gene_callers_id = gene_caller_ids_to_profile[i]
@@ -317,6 +326,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # clear contents of set
         self.codons_in_genes_to_profile_SCVs.clear()
 
+        self.progress.step_end()
+
         if len(codon_frequencies.not_reported_items):
             items = codon_frequencies.not_reported_items
             self.run.warning("The profiler of single-codon variants failed to report anything for a\
@@ -328,7 +339,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling:
             return
 
-        variable_nts_table = TableForVariability(self.profile_db_path, progress=self.progress)
+        variable_nts_table = TableForVariability(self.profile_db_path, progress=null_progress)
+
+        self.progress.step_start("SNVs")
 
         for contig in self.contigs:
             for split in contig.splits:
@@ -372,13 +385,19 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.layer_additional_data['num_SNVs_reported'] = variable_nts_table.num_entries
         self.layer_additional_keys.append('num_SNVs_reported')
 
+        self.progress.step_end()
+
 
     def store_split_coverages(self):
+        self.progress.step_start('Storage')
+
         for contig in self.contigs:
             for split in contig.splits:
                 self.auxiliary_db.append(split.name, self.sample_id, split.coverage.c)
 
         self.auxiliary_db.store()
+
+        self.progress.step_end()
 
 
     def set_sample_id(self):
@@ -662,7 +681,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         discarded_contigs = 0
         memory_usage = None
 
-        self.progress.new('Profiling using ' + str(self.num_threads) + ' thread%s' % ('s' if self.num_threads > 1 else ''))
+        self.progress.new('Profiling w/' + str(self.num_threads) + ' thread%s' % ('s' if self.num_threads > 1 else ''))
         self.progress.update('initializing threads ...')
         # FIXME: memory usage should be generalized.
         last_memory_update = int(time.time())
@@ -685,8 +704,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     memory_usage = utils.get_total_memory_usage()
                     last_memory_update = int(time.time())
 
-                self.progress.update('Processed %d of %d contigs. Current memory usage: %s' % \
-                            (recieved_contigs, self.num_contigs, memory_usage or '...'))
+                self.progress.update('%d of %d contigs ⚙  / MEM ☠️  %s' % \
+                            (recieved_contigs, self.num_contigs, memory_usage or '??'))
 
                 # here you're about to witness the poor side of Python (or our use of it).
                 # the problem we run into here was the lack of action from the garbage
@@ -708,7 +727,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                         del c
                     del self.contigs[:]
             except KeyboardInterrupt:
-                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
+                self.run.info_single("Anvi'o profiler recieved SIGINT, terminating all processes...", nl_before=2)
                 break
 
         for proc in processes:
@@ -716,6 +735,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.store_contigs_buffer()
         self.auxiliary_db.close()
+
         self.progress.end()
 
         # FIXME: this needs to be checked:
@@ -745,11 +765,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
             for split in contig.splits:
                 split.abundance = split.coverage.mean
 
-        self.progress.verbose = False
         self.generate_variabile_nts_table()
         self.generate_variabile_codons_table()
         self.store_split_coverages()
-        self.progress.verbose = True
 
         # creating views in the database for atomic data we gathered during the profiling. Meren, please note
         # that the first entry has a view_id, and the second one does not have one. I know you will look at this

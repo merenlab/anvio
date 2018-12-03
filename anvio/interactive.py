@@ -1208,25 +1208,25 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # (1) set the header line with the first entry:
             json_header = ['contigs']
 
-            # (2) add taxonomy, if exitsts:
-            if len(self.splits_taxonomy_dict):
-                json_header.extend(['taxonomy'])
-
-            # (3) then add length and GC content IF we have sequences available
+            # (2) then add length and GC content IF we have sequences available
             if self.splits_basic_info:
                 basic_info_headers = ['length', 'gc_content']
                 json_header.extend(basic_info_headers)
 
-            # (4) then add the view!
+            # (3) then add the view!
             json_header.extend(view_headers)
 
-            # (5) then add 'additional' headers as the outer ring:
+            # (4) then add 'additional' headers as the outer ring:
             if self.items_additional_data_keys:
                 json_header.extend(self.items_additional_data_keys)
 
-            # (6) finally add hmm search results
+            # (5) finally add hmm search results
             if self.hmm_searches_dict:
                 json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
+
+            # (6) add taxonomy, if exitsts:
+            if len(self.splits_taxonomy_dict):
+                json_header.extend(['taxonomy'])
 
             # (7) and finalize it (yay):
             json_object.append(json_header)
@@ -1236,29 +1236,29 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 json_entry = [split_name]
 
                 # (2)
-                if self.splits_taxonomy_dict:
-                    if split_name in self.splits_taxonomy_dict:
-                        json_entry.extend([self.splits_taxonomy_dict[split_name]])
-                    else:
-                        json_entry.extend([None])
-
-                # (3)
                 if self.splits_basic_info:
                     json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
 
-                # (4) adding essential data for the view
+                # (3) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] for header in view_headers])
 
-                # (5) adding additional layers
+                # (4) adding additional layers
                 if self.items_additional_data_dict:
                     json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
 
-                # (6) adding hmm stuff
+                # (5) adding hmm stuff
                 if self.hmm_searches_dict:
                     if self.split_hmm_layers:
                         json_entry.extend([self.hmm_searches_dict[split_name][header] if split_name in self.hmm_searches_dict else None for header in [tpl[0] for tpl in self.hmm_searches_header]])
                     else:
                         json_entry.extend([len(self.hmm_searches_dict[split_name][header]) if split_name in self.hmm_searches_dict else 0 for header in [tpl[1] for tpl in self.hmm_searches_header]])
+
+                # (6)
+                if self.splits_taxonomy_dict:
+                    if split_name in self.splits_taxonomy_dict:
+                        json_entry.extend([self.splits_taxonomy_dict[split_name]])
+                    else:
+                        json_entry.extend([None])
 
                 # (7) send it along!
                 json_object.append(json_entry)

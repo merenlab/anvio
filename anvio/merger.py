@@ -561,7 +561,7 @@ class MultipleRuns:
 
         self.populate_misc_data_tables()
 
-        self.run.info_single('Happy.', nl_before=1, nl_after=1)
+        self.run.info_single('Happy ☘ ', nl_before=1, nl_after=1)
 
         self.run.quit()
 

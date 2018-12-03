@@ -62,7 +62,7 @@ class Progress:
         self.color_prefix = '\033[0;30m\033[46m'
         self.color_postfix = '\033[0m'
 
-        self.currently_shown = None
+        self.current = None
 
 
     def get_terminal_width(self):
@@ -84,16 +84,25 @@ class Progress:
 
         self.pid = '%s %s' % (get_date(), pid)
         self.get_terminal_width()
-        self.currently_shown = None
+        self.current = None
+        self.step = None
 
 
-    def write(self, c):
-        surpass = self.terminal_width - len(c)
+    def write(self, c, dont_update_current=False):
+        surpass = self.terminal_width - len(c.encode('utf-16-le')) // 2
+                                      # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                      # since we want to be able to
+                                      # calculate string length accurately
+                                      # even when it contains 2-byte unicode
+                                      # chars, the regular `len` does not
+                                      # work here.
 
         if surpass < 0:
             c = c[0:-(-surpass + 5)] + ' (...)'
         else:
-            self.currently_shown = c
+            if not dont_update_current:
+                self.current = c
+
             c = c + ' ' * surpass
 
         if self.verbose:
@@ -104,20 +113,53 @@ class Progress:
     def reset(self):
         self.clear()
 
+
     def clear(self):
         if not self.verbose:
             return
+
         null = '\r' + ' ' * (self.terminal_width)
         sys.stderr.write(null)
         sys.stderr.write('\r')
         sys.stderr.flush()
-        self.currently_shown = None
+        self.current = None
+        self.step = None
 
 
     def append(self, msg):
         if not self.verbose:
             return
-        self.write('%s%s' % (self.currently_shown, msg))
+        self.write('%s%s' % (self.current, msg))
+
+
+    def step_start(self, step, symbol="⚙ "):
+        if not self.pid:
+            raise TerminalError("You don't have an active progress to do it :/")
+
+        if not self.current:
+            raise TerminalError("You don't have a current progress bad :(")
+
+        if self.step:
+            raise TerminalError("You already have an unfinished step :( Here it is: '%s'." % self.step)
+
+        if not self.verbose:
+            return
+
+        self.step = " / %s " % (step)
+
+        self.write(self.current + self.step + symbol, dont_update_current=True)
+
+
+    def step_end(self, symbol="👍"):
+        if not self.step:
+            raise TerminalError("You don't have an ongoing step :(")
+
+        if not self.verbose:
+            return
+
+        self.write(self.current + self.step + symbol)
+
+        self.step = None
 
 
     def update(self, msg):
