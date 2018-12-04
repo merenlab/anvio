@@ -40,7 +40,8 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
 
         self.rules.extend(['anvi_gen_genomes_storage',
                            'anvi_pan_genome',
-                           'anvi_get_sequences_for_gene_clusters'])
+                           'anvi_get_sequences_for_gene_clusters',
+                           'import_phylogenetic_tree_to_pangenome'])
 
         self.general_params.extend(["project_name",
                                     "fasta_txt",
@@ -99,7 +100,7 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
             self.phylogenomics_sequence_file = GC_sequences
             phylogenomics_output = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
             target_files.append(phylogenomics_output)
-            target_files.append(os.path.join(M.dirs_dict["PAN_DIR"], M.project_name + "-phylogeny-imported.done"))
+            target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "-phylogeny-imported.done"))
 
         self.target_files.append(target_files)
 
