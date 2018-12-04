@@ -25,9 +25,11 @@ if [ "$#" -ne 1  ]; then
     exit -1
 fi
 
-EXT=$(basename $1 | cut -f 2 -d '.')
-if [ "$EXT" != "fa" ]; then
-    echo "Error: File name has to have an extension of '.fa'"
+BASE_EXT=$(basename $1)
+EXT="${BASE_EXT##*.}"
+
+if [ "$EXT" != "fa" ] && [ "$EXT" != "fasta" ]; then
+    echo "Error: File name has to have an extension of '.fa' or '.fasta'"
     exit -1
 fi
 
