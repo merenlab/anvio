@@ -312,12 +312,6 @@ rule emapper:
         shell("python2.7 {params.path_to_emapper_dir}/emapper.py -i {input} --output {params.contigs_path_without_extension} " + \
                   "--cpu {threads} {params.database} {params.usemem} {params.override} >> {log} 2>&1")
 
-        # Adding a 'g' prefix before every gene id (the anvi'o emapper driver requires this)
-        shell("sed 's/^[0-9]/g&/' {output} > {output}.temp")
-
-        # changing the file name to the final output
-        shell("mv {output}.temp {output}")
-
 
 rule anvi_script_run_eggnog_mapper:
     version: 1.0
@@ -325,12 +319,19 @@ rule anvi_script_run_eggnog_mapper:
     input:
         eggnog_output = rules.emapper.output,
         contigs = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"
-    output: touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_script_run_eggnog_mapper.done")
+    output:
+        touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_script_run_eggnog_mapper.done")
     params:
         use_version = M.get_rule_param("anvi_script_run_eggnog_mapper", "--use-version")
     threads: M.T('anvi_script_run_eggnog_mapper')
     resources: nodes = M.T('anvi_script_run_eggnog_mapper')
-    shell: "anvi-script-run-eggnog-mapper -c {input.contigs} --annotation {input.eggnog_output} {params.use_version}  >> {log} 2>&1"
+    run:
+        # Adding a 'g' prefix before every gene id (the anvi'o emapper driver requires this)
+        shell("sed 's/^[0-9]/g&/' {input.eggnog_output} > {input.eggnog_output}.temp 2>{log}")
+
+        shell("anvi-script-run-eggnog-mapper -c {input.contigs} --annotation {input.eggnog_output}.temp {params.use_version}  >> {log} 2>&1")
+
+        shell("rm {input.eggnog_output}.temp 2>{log}")
 
 
 rule annotate_contigs_database:
