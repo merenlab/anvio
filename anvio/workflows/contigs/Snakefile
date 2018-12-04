@@ -297,7 +297,7 @@ rule emapper:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-emapper.log"
     input: rules.anvi_get_sequences_for_gene_calls.output
-    output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.emapper.annotations")
+    output: dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.emapper.annotations"
     # TODO: add other emapper params
     params:
         contigs_path_without_extension = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs",
