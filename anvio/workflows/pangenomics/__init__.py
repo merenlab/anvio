@@ -54,7 +54,8 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
                                "PAN_DIR": "03_PAN"})
 
         self.default_config.update({"fasta_txt": "fasta.txt",
-                                    "anvi_pan_genome": {"threads": 7}})
+                                    "anvi_pan_genome": {"threads": 7},
+                                    "import_phylogenetic_tree_to_pangenome": {'tree_name': 'phylogeny'}})
 
         pan_params = ["--project-name", "--genome-names", "--skip-alignments",\
                      "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
@@ -76,6 +77,9 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
                       "--max-geometric-homogeneity-index", "--add-into-items-additional-data-table",
                       "--concatenate-gene-clusters", "--separator", "--align-with"]
         self.rule_acceptable_params_dict['anvi_get_sequences_for_gene_clusters'] = seq_params
+
+        import_params = ['--just-do-it', 'tree_name']
+        self.rule_acceptable_params_dict['import_phylogenetic_tree_to_pangenome'] = import_params
 
     def init(self):
         ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
