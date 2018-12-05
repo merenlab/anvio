@@ -4,12 +4,15 @@
     Classes to define and work with anvi'o pangenomics workflows.
 """
 
+import os
+
 import anvio
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
+from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -25,20 +28,26 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
+class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='pangenomics')
 
+        self.target_files = [] # TODO: Once we update all other workflows then this will be initiated in WorkflowSuperClass
+        self.pan_project_name = None
+
         # initialize the base class
-        ContigsDBWorkflow.__init__(self)
+        PhylogenomicsWorkflow.__init__(self)
 
         self.rules.extend(['anvi_gen_genomes_storage',
-                           'anvi_pan_genome'])
+                           'anvi_pan_genome',
+                           'anvi_get_sequences_for_gene_clusters',
+                           'import_phylogenetic_tree_to_pangenome'])
 
         self.general_params.extend(["project_name",
                                     "fasta_txt",
                                     "internal_genomes",
-                                    "external_genomes"])
+                                    "external_genomes",
+                                    "use_gene_cluster_sequences_for_phylogeny"])
 
         self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
                                "CONTIGS_DIR": "02_CONTIGS",
@@ -58,6 +67,15 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         storage_params = ["--gene-caller"]
         self.rule_acceptable_params_dict['anvi_gen_genomes_storage'] = storage_params
 
+        seq_params = ["--gene-cluster-id", "--gene-cluster-ids-file",
+                      "--collection-name", "--bin-id",
+                      "--min-num-genomes-gene-cluster-occurs", "--max-num-genomes-gene-cluster-occurs",
+                      "--min-num-genes-from-each-genome", "--max-num-genes-from-each-genome",
+                      "--max-num-gene-clusters-missing-from-genome", "--min-functional-homogeneity-index",
+                      "--max-functional-homogeneity-index", "--min-geometric-homogeneity-index",
+                      "--max-geometric-homogeneity-index", "--add-into-items-additional-data-table",
+                      "--concatenate-gene-clusters", "--separator", "--align-with"]
+        self.rule_acceptable_params_dict['anvi_get_sequences_for_gene_clusters'] = seq_params
 
     def init(self):
         ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
@@ -69,6 +87,23 @@ class PangenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.pan_project_name = self.get_param_value_from_config(["anvi_pan_genome", "--project-name"])
 
         self.sanity_checks()
+        self.init_target_files()
+
+    def init_target_files(self):
+        target_files = []
+        target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.pan_project_name + "-PAN.db"))
+
+        if self.get_param_value_from_config('use_gene_cluster_sequences_for_phylogeny'):
+            GC_sequences = os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "-GC-sequences.fa")
+            target_files.append(GC_sequences)
+            self.use_hmms_for_phylogeny = False
+            self.phylogenomics_sequence_file = GC_sequences
+            phylogenomics_output = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
+            target_files.append(phylogenomics_output)
+            target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "-phylogeny-imported.done"))
+
+        self.target_files.append(target_files)
+
 
     def sanity_checks(self):
         if (not self.internal_genomes_file) and (not self.external_genomes_file):

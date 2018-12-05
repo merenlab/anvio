@@ -10,8 +10,12 @@ mkdir $output_dir/workflow_test
 cp $files/mock_data_for_pangenomics/*.fa $output_dir/workflow_test/
 cp $files/mock_data_for_pangenomics/default-state.json        $output_dir/workflow_test/
 cp $files/workflows/pangenomics/fasta.txt $output_dir/workflow_test/
-cp $files/workflows/pangenomics/config.json $output_dir/workflow_test/
+cp $files/workflows/pangenomics/*.json $output_dir/workflow_test/
+cp -r $files/workflows/pangenomics/five* $output_dir/workflow_test/
+
 cd $output_dir/workflow_test
+
+anvi-run-workflow -w pangenomics -c pan-config-with-phylogeny.json
 
 INFO "Creating a default config for pangenomics workflow"
 anvi-run-workflow -w pangenomics --get-default-config default-config.json
