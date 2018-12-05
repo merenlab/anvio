@@ -539,23 +539,23 @@ class BAMProfiler(dbops.ContigsSuperclass):
         return return_path
 
     @staticmethod
-    def profile_contig_worker(self, available_index_queue, output_queue, info_dict):
-        bam_file = pysam.Samfile(info_dict['input_file_path'], 'rb')
+    def profile_contig_worker(self, available_index_queue, output_queue):
+        bam_file = pysam.Samfile(self.input_file_path, 'rb')
 
         while True:
             index = available_index_queue.get(True)
-            contig_name = info_dict['contig_names'][index]
+            contig_name = self.contig_names[index]
             contig = contigops.Contig(contig_name)
-            contig.length = info_dict['contig_lengths'][index]
-            contig.split_length = info_dict['split_length']
-            contig.min_coverage_for_variability = info_dict['min_coverage_for_variability']
-            contig.skip_SNV_profiling = info_dict['skip_SNV_profiling']
-            contig.report_variability_full = info_dict['report_variability_full']
+            contig.length = self.contig_lengths[index]
+            contig.split_length = self.a_meta['split_length']
+            contig.min_coverage_for_variability =  self.min_coverage_for_variability
+            contig.skip_SNV_profiling = self.skip_SNV_profiling
+            contig.report_variability_full = self.report_variability_full
 
             # populate contig with empty split objects and
-            for split_name in info_dict['contig_name_to_splits'][contig_name]:
-                s = info_dict['splits_basic_info'][split_name]
-                split_sequence = info_dict['contig_sequences'][contig_name]['sequence'][s['start']:s['end']]
+            for split_name in self.contig_name_to_splits[contig_name]:
+                s = self.splits_basic_info[split_name]
+                split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
                 split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)
 
@@ -563,7 +563,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig.analyze_coverage(bam_file)
 
             # test the mean coverage of the contig.
-            if contig.coverage.mean < info_dict['min_mean_coverage']:
+            if contig.coverage.mean < self.min_mean_coverage:
                  output_queue.put(None)
                  continue
 
@@ -639,21 +639,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     def profile(self):
         manager = multiprocessing.Manager()
-        info_dict = manager.dict()
-        info_dict = {
-            'input_file_path': self.input_file_path,
-            'contig_names': self.contig_names,
-            'contig_lengths': self.contig_lengths,
-            'splits_basic_info': self.splits_basic_info,
-            'split_length': self.a_meta['split_length'],
-            'min_coverage_for_variability': self.min_coverage_for_variability,
-            'skip_SNV_profiling': self.skip_SNV_profiling,
-            'report_variability_full': self.report_variability_full,
-            'contig_name_to_splits': self.contig_name_to_splits,
-            'contig_sequences': self.contig_sequences,
-            'min_mean_coverage': self.min_mean_coverage
-        }
-
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
 
@@ -664,7 +649,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         processes = []
         for i in range(0, self.num_threads):
-            processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(self, available_index_queue, output_queue, info_dict)))
+            processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(self, available_index_queue, output_queue)))
 
         for proc in processes:
             proc.start()
