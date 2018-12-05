@@ -1,0 +1,33 @@
+{
+    "fasta_txt": "five-genomes-fasta.txt",
+    "anvi_run_hmms": {
+        "run": true,
+        "threads": 5,
+        "--installed-hmm-profile": "",
+        "--hmm-profile-dir": ""
+    },
+    "anvi_run_ncbi_cogs": {
+        "run": false
+    },
+    "anvi_script_reformat_fasta": {
+        "run": false
+    },
+    "anvi_get_sequences_for_gene_clusters": {
+        "--min-num-genomes-gene-cluster-occurs": 5,
+        "--max-num-genes-from-each-genome": 1,
+        "--add-into-items-additional-data-table": "GCs_for_phylogeny",
+        "--concatenate-gene-clusters": true,
+        "--align-with": "famsa"
+    },
+    "project_name": "FIVE_TEST",
+    "internal_genomes": "",
+    "external_genomes": "five-external-genomes.txt",
+    "use_gene_cluster_sequences_for_phylogeny": true,
+    "output_dirs": {
+        "FASTA_DIR": "01_FASTA_FIVE_PAN",
+        "CONTIGS_DIR": "02_CONTIGS_FIVE_PAN",
+        "PHYLO_DIR": "01_PHYLOGENOMICS_FIVE_PAN",
+        "PAN_DIR": "03_PAN_FIVE_PAN",
+        "LOGS_DIR": "00_LOGS_FIVE_PAN"
+    }
+}
