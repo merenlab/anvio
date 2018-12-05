@@ -567,7 +567,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                  output_queue.put(None)
                  continue
 
-            if not info_dict['skip_SNV_profiling']:
+            if not self.skip_SNV_profiling:
                 contig.analyze_auxiliary(bam_file)
                 codons_in_genes_to_profile_SCVs = set([])
                 for split in contig.splits:
