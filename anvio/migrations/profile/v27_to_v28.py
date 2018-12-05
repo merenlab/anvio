@@ -73,6 +73,8 @@ def migrate(db_path):
     profile_db.disconnect()
     progress.end()
 
+    run.info_single("Your profile db is now %s (and anvi'o is as surprised as you are)." % next_version, nl_after=1, nl_before=1, mc='green')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade profile database from version %s to version %s' % (current_version, next_version))
