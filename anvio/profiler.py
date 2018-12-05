@@ -325,9 +325,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         variable_nts_table.store()
 
-        #self.layer_additional_data['num_SNVs_reported'] = variable_nts_table.num_entries
-        #self.layer_additional_keys.append('num_SNVs_reported')
-
 
     def store_split_coverages(self):
         self.progress.step_start('Storage')
@@ -728,6 +725,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # avoid dividing by zero
             dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_splits SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
             dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
+
+        if not self.skip_SNV_profiling:
+            self.layer_additional_data['num_SNVs_reported'] =  TableForVariability(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_keys.append('num_SNVs_reported')
 
         self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
 
