@@ -298,7 +298,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         gene_caller_ids_to_profile = list(codons_in_genes_to_profile_SCVs_dict.keys())
 
-        self.progress.step_start('SCVs')
+        #self.progress.step_start('SCVs')
 
         for i in range(len(gene_caller_ids_to_profile)):
             gene_callers_id = gene_caller_ids_to_profile[i]
@@ -326,7 +326,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # clear contents of set
         self.codons_in_genes_to_profile_SCVs.clear()
 
-        self.progress.step_end()
+        #self.progress.step_end()
 
         if len(codon_frequencies.not_reported_items):
             items = codon_frequencies.not_reported_items
@@ -341,7 +341,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         variable_nts_table = TableForVariability(self.profile_db_path, progress=null_progress)
 
-        self.progress.step_start("SNVs")
+        #self.progress.step_start("SNVs")
 
         for contig in self.contigs:
             for split in contig.splits:
@@ -385,11 +385,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.layer_additional_data['num_SNVs_reported'] = variable_nts_table.num_entries
         self.layer_additional_keys.append('num_SNVs_reported')
 
-        self.progress.step_end()
+        #self.progress.step_end()
 
 
     def store_split_coverages(self):
-        self.progress.step_start('Storage')
+        #self.progress.step_start('Storage')
 
         for contig in self.contigs:
             for split in contig.splits:
@@ -397,7 +397,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.auxiliary_db.store()
 
-        self.progress.step_end()
+        #self.progress.step_end()
 
 
     def set_sample_id(self):
