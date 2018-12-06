@@ -2756,7 +2756,7 @@ class GenesDatabase:
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            for key in ['min_cov_for_detection', 'zeros_are_outliers', 'gene_level_coverages_stored']:
+            for key in ['min_cov_for_detection', 'zeros_are_outliers', 'gene_level_coverages_stored', 'items_ordered']:
                 try:
                     self.meta[key] = int(self.meta[key])
                 except:
@@ -3140,7 +3140,7 @@ class ContigsDatabase:
         if len(all_ids_in_FASTA) != len(set(all_ids_in_FASTA)):
             raise ConfigError("Every contig in the input FASTA file must have a unique ID. You know...")
 
-        if not split_length:
+        if split_length is None:
             raise ConfigError("Creating a new contigs database requires split length information to be\
                                 provided. But the ContigsDatabase class was called to create one without this\
                                 bit of information. Not cool.")
@@ -3163,6 +3163,10 @@ class ContigsDatabase:
         if kmer_size < 2 or kmer_size > 8:
             raise ConfigError("We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
                                 source code if you are not happy to be told what you can't do, let us know how it goes!).")
+
+        if split_length < kmer_size + 1:
+            raise ConfigError("Split size must be at least your k-mer size +1 (so in your case it can't be anything less\
+                               than %d)." % (kmer_size + 1))
 
         if skip_gene_calling:
             skip_mindful_splitting = True

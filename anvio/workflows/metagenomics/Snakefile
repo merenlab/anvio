@@ -96,19 +96,15 @@ for a in available_assemblers:
         number_of_assemblers_in_config_file += 1
         assembly_software_in_config.append(a)
 if number_of_assemblers_in_config_file > 1:
-    raise ConfigError("This workflow supports the usage of only one assembly "\
-                        "software, yet all the following software are " \
-                        "included in your config file: %s. Please include only one." % assembly_software_in_config)
+    raise ConfigError("This workflow supports the usage of only one assembly \
+                        software, yet all the following software are  \
+                        included in your config file: %s. Please include only one." % assembly_software_in_config)
 
 
 # by default fastq files will be zipped after qc is done
 run_gzip_fastqs = M.get_param_value_from_config(['gzip_fastqs', 'run']) == True
-#
-run_qc = M.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
 
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True
-
-run_krakenhll = M.get_param_value_from_config(['krakenhll', 'run']) == True
 
 run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
@@ -134,21 +130,7 @@ rule metagenomics_workflow_target_rule:
         The final product of the workflow is an anvi'o merged profile directory
         for each group
     '''
-    input: expand("{DIR}/{group}/PROFILE.db", DIR=dirs_dict["MERGE_DIR"], group=M.group_names),
-           contigs_annotated = expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
-           qc_report = dirs_dict["QC_DIR"] + "/qc-report.txt" if run_qc else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db", group=M.group_names),
-           filter_report = os.path.join(dirs_dict["QC_DIR"], "short-read-removal-report.txt") \
-                            if M.references_for_removal_txt \
-                            else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
-           import_collection_done = expand(os.path.join(dirs_dict["MERGE_DIR"], \
-                                              '{group}', \
-                                              'collection-import.done'), group=list(M.collections.keys())) \
-                                     if M.collections \
-                                     else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
-           summary = expand(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-SUMMARY"), \
-                            group=list(M.collections.keys())) \
-                      if M.collections \
-                      else expand(dirs_dict["CONTIGS_DIR"] + "/{group}-annotate_contigs_database.done", group=M.group_names),
+    input: M.target_files
 
 
 rule iu_gen_configs:
@@ -193,7 +175,7 @@ def get_fastq(sample, zipped=run_gzip_fastqs, post_reference_based_short_read_re
     if post_reference_based_short_read_removal:
         fastq_label = "-FILTERED"
 
-    if post_reference_based_short_read_removal or run_qc:
+    if post_reference_based_short_read_removal or M.run_qc:
         # by default, use the output of the reference based short read removal
         if zipped:
             r1 = os.path.join(dirs_dict["QC_DIR"], sample + fastq_label + "_R1.fastq.gz")
@@ -922,7 +904,7 @@ rule anvi_merge:
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         profiles = input_for_anvi_merge,
         percent_of_reads_mapped_imported_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, 'import_percent_of_reads_mapped.done', run_import_percent_of_reads_mapped),
-        kraken_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, "import_kraken_hll_taxonomy.done", run_krakenhll)
+        kraken_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, "import_kraken_hll_taxonomy.done", M.run_krakenhll)
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
         AUXILIARY_DATA = dirs_dict["MERGE_DIR"] + "/{group}/AUXILIARY-DATA.db",
@@ -1056,6 +1038,32 @@ rule anvi_summarize:
         """
 
 
+rule anvi_split:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_split.log")
+    input:
+        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        imported_collection_flag = os.path.join(dirs_dict["MERGE_DIR"], \
+                                                '{group}', \
+                                                'collection-import.done')
+    output:
+        split_done = touch(os.path.join(dirs_dict["SPLIT_PROFILES_DIR"], "{group}-split.done"))
+    params:
+        collection_name = lambda wildcards: M.collections[wildcards.group]['collection_name'],
+        split_dir = os.path.join(dirs_dict["SPLIT_PROFILES_DIR"], "{group}"),
+        additional_params = M.get_param_value_from_config(["anvi_summarize", "additional_params"])
+    threads: M.T('anvi_split')
+    resources: nodes = M.T('anvi_split')
+    shell:
+        """
+            anvi-split -p {input.profile} \
+                       -c {input.contigs} \
+                       -C {params.collection_name} \
+                       -o {params.split_dir} >> {log} 2>&1
+        """
+
+
 rule dummy_rule_for_anvi_summarize:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-dummy_rule_for_anvi_summarize.log"
@@ -1127,7 +1135,7 @@ def input_for_import_kraken_hll_taxonomy(wildcards):
 
     if run_import_percent_of_reads_mapped:
         # we include percent_of_reads_mapped_imported_flag as input here so that kraken and import_percent_of_reads_mapped will never run in parallel.
-        # If they run in parallel it could cause trouble as they will try to write to the contigs database at the same time. very bad.
+        # If they run in parallel it could cause trouble as they will try to write to the profile database at the same time. very bad.
         D['percent_of_reads_mapped_imported_flag'] = os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.sample, "import_percent_of_reads_mapped.done"),
     return D
 

@@ -70,7 +70,7 @@ def main(args):
         raise ConfigError("If you are interested in using a list of external genomes, you shouldn't be using a contigs db or\
                            profile db prameters.")
 
-    if not (args.external_genomes or args.contigs_db or args.profile_db):
+    if not (args.internal_genomes or args.external_genomes or args.contigs_db or args.profile_db):
         raise ConfigError("You gotta give this program some input files :/ Come on.")
 
     if args.concatenate_genes:
@@ -104,7 +104,7 @@ def main(args):
     # SequencesForHMMHitsWrapperForMultipleContigs (if there are multiple contigs files)
     # to get sequences, and construct `splits_dict` depending on the input files. it is
     # shitty code, and can be improved.
-    if args.external_genomes:
+    if args.external_genomes or args.internal_genomes:
         s = hmmopswrapper.SequencesForHMMHitsWrapperForMultipleContigs(args, hmm_sources)
         splits_dict = s.splits_dict
     else:
@@ -139,7 +139,10 @@ def main(args):
 
         s = hmmops.SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
 
+    CHK = lambda: exec('raise ConfigError("Your selections returned an empty list of genes to work with :/")') if not len(hmm_sequences_dict) else None
+
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
+    CHK()
 
     run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
@@ -152,9 +155,11 @@ def main(args):
     if len(gene_names):
         hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
         run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
+        CHK()
 
     if args.max_num_genes_missing_from_bin is not None:
         hmm_sequences_dict, bins_removed = s.filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(hmm_sequences_dict, gene_names, int(args.max_num_genes_missing_from_bin))
+        CHK()
 
         if len(bins_removed):
             run.info('Filtered hits', '%d hits remain after filtering for `--max-num-genes-missing-from-bin` flag' % (len(hmm_sequences_dict)))
@@ -165,6 +170,7 @@ def main(args):
 
     if args.min_num_bins_gene_occurs is not None:
         hmm_sequences_dict, genes_removed = s.filter_hmm_sequences_dict_from_genes_that_occur_in_less_than_N_bins(hmm_sequences_dict, int(args.min_num_bins_gene_occurs))
+        CHK()
 
         if len(genes_removed):
             run.info('Filtered hits', '%d hits remain after filtering for `--min-num-bins-gene-occurs` flag' % (len(hmm_sequences_dict)))
@@ -179,12 +185,6 @@ def main(args):
             if(gene_names):
                 gene_names = [g for g in gene_names if g not in genes_removed]
 
-    if not hmm_sequences_dict:
-        raise ConfigError("Your selections resulted in 0 hits. There is nothing to report. Are you\
-                            sure you have the right set of gene names and sources? If you\
-                            select an HMM source, and then use gene names that belong to another\
-                            source, the intersection of the two can be empty. Just saying.")
-
     if args.return_best_hit:
         run.warning("You requested only the best hits to be reported, which means, if, say, there are more than one RecA\
                      hits in a bin for a given HMM source, only the one with the lowest e-value will be kept, and others\
@@ -196,6 +196,7 @@ def main(args):
                          idea but it may be quite relevant when done right'.")
 
         hmm_sequences_dict = s.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(hmm_sequences_dict)
+        CHK()
 
         run.info('Filtered hits', '%d hits remain after removing weak hits for multiple hits' % (len(hmm_sequences_dict)))
 
@@ -209,11 +210,12 @@ def main(args):
         args.output_file = 'sequences-for-hmm-hits.fa'
 
     # the magic is happening here:
-    s.store_hmm_sequences_into_FASTA(hmm_sequences_dict, \
-                                     args.output_file, \
-                                     concatenate_genes=args.concatenate_genes, \
-                                     separator=separator, \
-                                     genes_order=list(gene_names) if len(gene_names) else None, \
+    s.store_hmm_sequences_into_FASTA(hmm_sequences_dict,
+                                     args.output_file,
+                                     concatenate_genes=args.concatenate_genes,
+                                     separator=separator,
+                                     wrap=None if args.no_wrap else 120,
+                                     genes_order=list(gene_names) if len(gene_names) else None,
                                      align_with=args.align_with)
 
     run.info('Mode', 'AA seqeunces' if args.get_aa_sequences else 'DNA seqeunces', mc='green')
@@ -238,10 +240,12 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
 
-    groupC = parser.add_argument_group('INPUT OPTION #3: EXTERNAL GENOMES FILE', "If you have multiple contigs databases without any profile\
-                                        database, you can start with this one. In this case you are not supposed to provide a profile\
-                                        database or an individual contigs database. This is for people who want to use this just\
-                                        with a bunch of FASTA files with their genomes.")
+    groupC = parser.add_argument_group('INPUT OPTION #3: INT/EXTERNAL GENOMES FILE', "Yes. You can alternatively use as input an internal or external\
+                                        genomes file, or both of them together. If you have multiple contigs databases without any profile\
+                                        database, you can use the external genomes file. So if you just have a bunch of FASTA files and nothing else,\
+                                        this is what you need. In contrast, if you want to access to genes in bins described in collections\
+                                        stored in anvi'o profile databases, then you can use internal genomes file route. Or you can mix the two,\
+                                        because why not. There is not much room for excuses here.")
     groupC.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupC.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
 
@@ -255,6 +259,7 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be a FASTA file, and you better give it\
                                         a nice name..")
     groupE.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupE.add_argument(*anvio.A('no-wrap'), **anvio.K('no-wrap'))
 
     groupF = parser.add_argument_group('THE ALPHABET', "The sequences are reported in DNA alphabet, but you can also get them\
                                         translated just like all the other cool kids.")

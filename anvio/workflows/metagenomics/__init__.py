@@ -35,8 +35,10 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='metagenomics')
 
+        self.target_files = [] # TODO: Once we update all other workflows then this will be initiated in WorkflowSuperClass
         self.samples_information = {}
         self.kraken_annotation_dict = {}
+        self.run_krakenhll = None
         self.run_metaspades = None
         self.use_scaffold_from_metaspades = None
         self.remove_short_reads_based_on_references = None
@@ -60,7 +62,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped',\
                      'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy', 'metaspades',\
-                     'remove_short_reads_based_on_references', 'anvi_summarize'])
+                     'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
                                     "kraken_txt", "collections_txt"])
@@ -71,7 +73,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['iu_gen_configs'] = ["--r1-prefix", "--r2-prefix"]
         rule_acceptable_params_dict['iu_filter_quality_minoche'] = ['run', '--visualize-quality-curves', '--ignore-deflines', '--limit-num-pairs', '--print-qual-scores', '--store-read-fate']
         rule_acceptable_params_dict['gzip_fastqs'] = ["run"]
-        rule_acceptable_params_dict['anvi_summarize'] = ["additional_params"]
+        rule_acceptable_params_dict['anvi_summarize'] = ["additional_params", "run"]
+        rule_acceptable_params_dict['anvi_split'] = ["additional_params", "run"]
         rule_acceptable_params_dict['metaspades'] = ["run", "additional_params", "use_scaffolds"]
         rule_acceptable_params_dict['megahit'] = ["run", "--min-contig-len", "--min-count", "--k-min",
                                                   "--k-max", "--k-step", "--k-list",
@@ -122,7 +125,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "PROFILE_DIR": "05_ANVIO_PROFILE",
                                "MERGE_DIR": "06_MERGED",
                                "TAXONOMY_DIR": "07_TAXONOMY",
-                               "SUMMARY_DIR": "08_SUMMARY"})
+                               "SUMMARY_DIR": "08_SUMMARY",
+                               "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES"})
 
         self.default_config.update({'samples_txt': "samples.txt",
                                     'metaspades': {"additional_params": "--only-assembler", "threads": 7},
@@ -153,6 +157,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.sample_names = list(self.samples_information['sample'])
         self.run_metaspades = self.get_param_value_from_config(['metaspades', 'run'])
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
+        self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
+        self.run_summary = self.get_param_value_from_config(['anvi_summarize', 'run']) == True
+        self.run_split = self.get_param_value_from_config(['anvi_split', 'run']) == True
         self.references_mode = self.get_param_value_from_config('references_mode', repress_default=True)
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
 
@@ -165,8 +172,52 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.collections_txt = self.get_param_value_from_config('collections_txt')
         if self.collections_txt:
             self.load_collections()
+        elif self.run_summary:
+            raise ConfigError('If you want to run anvi-summarize you must provide a collections_txt file')
+        elif self.run_split:
+            raise ConfigError('If you want to run anvi-split you must provide a collections_txt file')
 
         self.sanity_check()
+
+        self.init_target_files()
+
+
+    def init_target_files(self):
+        target_files = []
+        merged_profiles = [os.path.join(self.dirs_dict["MERGE_DIR"], g, "PROFILE.db") for g in self.group_names]
+        target_files.extend(merged_profiles)
+
+        contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],\
+                             g + "-annotate_contigs_database.done") for g in self.group_names]
+        target_files.extend(contigs_annotated)
+
+        if self.run_qc:
+            qc_report = os.path.join(self.dirs_dict["QC_DIR"], "qc-report.txt")
+            target_files.append(qc_report)
+
+        if self.references_for_removal_txt:
+            filter_report = os.path.join(self.dirs_dict["QC_DIR"], "short-read-removal-report.txt")
+            target_files.append(filter_report)
+
+        if self.collections:
+            import_collection_done = [os.path.join(self.dirs_dict["MERGE_DIR"],\
+                                                   g,\
+                                                   'collection-import.done')\
+                                                   for g in self.collections.keys()]
+
+            target_files.extend(import_collection_done)
+
+        if self.run_summary:
+            summary = [os.path.join(self.dirs_dict["SUMMARY_DIR"], g + "-SUMMARY") for g in self.collections.keys()]
+            target_files.extend(summary)
+
+        if self.run_split:
+            split = [os.path.join(self.dirs_dict["SPLIT_PROFILES_DIR"],\
+                                  g + "-split.done")\
+                                  for g in self.collections.keys()]
+            target_files.extend(split)
+
+        self.target_files.extend(target_files)
 
 
     def sanity_check(self):
@@ -277,20 +328,19 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def sanity_check_for_kraken(self):
         '''Making sure the sample names and file paths the provided kraken.txt file are valid'''
         kraken_txt = self.get_param_value_from_config('kraken_txt')
+        self.run_krakenhll = self.get_param_value_from_config(['krakenhll', 'run']) == True
 
         if kraken_txt:
-            if self.get_param_value_from_config(['krakenhll', 'run']) == False:
-                raise ConfigError("You supplied a kraken_txt file, %s, but you set krakenhll \
-                                   not to run in the config file. anvi'o is confused and \
-                                   is officially going on a strike." % kraken_txt)
-
-            if 'krakenhll' not in self.config:
-                raise ConfigError('You provided a kraken_txt, but you didnt set any parameters \
-                                   for krakenhll. As a minimum, you must provide the path to \
-                                   the krakenhll database using the --db parameter in the config file.')
+            if self.get_param_value_from_config(['krakenhll', 'run']) == True:
+                raise ConfigError("You supplied a kraken_txt file (\"%s\") but you set krakenhll \
+                                   to run in the config file. anvi'o is confused and \
+                                   is officially going on a strike. Ok, let's clarify, \
+                                   having a kraken_txt file means you already ran krakenhll \
+                                   and want us to use those results, and yet you set krakenhll \
+                                   to run again? why? Ok, time to strike. Bye!" % kraken_txt)
 
             # if a kraken_txt was supplied then let's run kraken by default
-            self.config['krakenhll']['run'] = True
+            self.run_krakenhll = True
 
             kraken_annotation_dict = u.get_TAB_delimited_file_as_dictionary(kraken_txt)
             if next(iter(next(iter(kraken_annotation_dict.values())).keys())) != "path":

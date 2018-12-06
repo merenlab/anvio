@@ -384,11 +384,15 @@ class BottleApplication(Bottle):
             additional = request.forms.get('additional')
 
             if tree_type == 'samples':
-                if order_full_name in self.interactive.layers_order_data_dict:
-                    raise ConfigError("Tree name '%s' already exists, overwriting currently not supported." % order_full_name)
+                order_name = order_full_name
+                distance = 'NA'
+                linkage = 'NA'
 
-                self.interactive.layers_order_data_dict[order_full_name] = {'newick': order_data, 'basic': ''}
-                TableForLayerOrders(self.interactive.args).add({order_full_name: {'data_type': 'newick', 'data_value': order_data}})
+                if order_name in self.interactive.layers_order_data_dict:
+                    raise ConfigError("Tree name '%s' already exists, overwriting currently not supported." % order_name)
+
+                self.interactive.layers_order_data_dict[order_name] = {'newick': order_data, 'basic': ''}
+                TableForLayerOrders(self.interactive.args).add({order_name: {'data_type': 'newick', 'data_value': order_data}})
             else:
                 self.interactive.p_meta['item_orders'][order_full_name] = {'type': 'newick', 'data': order_data, 'additional': additional}
 
