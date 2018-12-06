@@ -1772,13 +1772,22 @@ class VCFMode(object):
         self.header = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
 
         self.overwrite_attributes_to_avoid_unnecessary_calculation()
-        self.columns_to_report_order = ['VCF']
-        self.columns_to_report['VCF'] = [(x, str) for x in range(len(self.header) + 1)]
         self.table_formatting['header'] = False
 
-        # add codon specific functions to self.process
+        # add VCF specific functions to self.process
         F = lambda f, **kwargs: (f, kwargs)
-        self.process_functions.append(F(self.convert_to_vfc))
+        self.process_functions.extend([F(self.get_samples_order),
+                                       F(self.get_columns_to_report),
+                                       F(self.convert_to_vfc)])
+
+
+    def get_samples_order(self):
+        self.samples_order = sorted(list(self.data['sample_id'].unique()))
+
+
+    def get_columns_to_report(self):
+        self.columns_to_report_order = ['VCF']
+        self.columns_to_report['VCF'] = [(x, str) for x in range(len(self.header) + len(self.samples_order))]
 
 
     def convert_to_vfc(self):
@@ -1787,18 +1796,24 @@ class VCFMode(object):
 
         #######################   SELECTING COLUMNS OF INTEREST ##################################################
         self.data = self.data.filter(items=['unique_pos_identifier','split_name', 'pos','sample_id','coverage','reference','competing_nts'])
-        self.data = self.data.sort_values(by='sample_id')
 
-        ##################### ADDING ALLELE COLUMNS FOR FINDING GENOTYPE #########################################
+        ##########################################################################################################
+        ## FOR KEEPING TRACK OF THE IDS WHILE PRINTING DIRECTLY, not used when dictionary printed
+        finalVCF = defaultdict(dict)
+        header = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
+
+        ################### ADDING ALLELE COLUMNS FOR FINDING GENOTYPE ###########################################
         self.data['competing_nts'] = self.data.competing_nts.astype(str)
         self.data['allele1'] = self.data.competing_nts.str[0]
         self.data['allele2'] = self.data.competing_nts.str[1]
-        self.data["allele2"], self.data["allele1"] = np.where(self.data['allele2']==self.data['reference'], [self.data["allele1"], self.data["allele2"]], [self.data["allele2"], self.data["allele1"] ])
+        self.data["allele2"], self.data["allele1"] = np.where(self.data['allele2']==self.data['reference'],
+                                                              [self.data["allele1"], self.data["allele2"]],
+                                                              [self.data["allele2"], self.data["allele1"]])
 
         genotype = defaultdict(dict)
         alt_alleleDict = defaultdict(list)
-
-        for index, row in self.data.iterrows() :
+        sampleInfoDict = defaultdict(dict)
+        for index, row in self.data.iterrows():
             key = row['unique_pos_identifier']
             sample_name = row['sample_id']
             Ref_allele = row['reference']
@@ -1810,59 +1825,38 @@ class VCFMode(object):
             if a2 not in alt_alleleDict[key] and a2 != row['reference']:
                 alt_alleleDict[key].append(a2)
 
-            # NOTE Is this statement necessary given the and statements above?
             if row['reference'] in alt_alleleDict[key]:
-                alt_alleleDict[key].remove(row['reference'])
+                alt_alleleDict[key].remove( row['reference'])
 
             ## SET UP A GENOTYPE dict.
             if a2 in row['reference']:
                 genotype[key][sample_name] = '0/0'
             elif a1 in row['reference']:
-                genotype[key][sample_name] = '0/n'
+                genotype[key][sample_name] = '0/'+str(alt_alleleDict[key].index(a2) + 1)
+
             else:
-                genotype[key][sample_name] = 'p/q'
+                genotype[key][sample_name] = str(alt_alleleDict[key].index(a1) + 1)+'/'+str(alt_alleleDict[key].index(a2) + 1)
+            sampleCol = genotype[key][sample_name] + ':' + str(row['coverage'])
+            sampleInfoDict[key][sample_name]=sampleCol
 
+            #if key not in finalVCF:
+            finalVCF[key]=[row['split_name'],row['pos'],key,Ref_allele,','.join(alt_alleleDict[key]),99,'PASS','.','GT:DP']
         ##########################################################################################################
-        ## FOR KEEPING TRACK OF THE IDS WHILE PRINTING DIRECTLY, not used when dictionary printed
-        finalVCF = defaultdict(dict)
-        sampleNames = list(OrderedDict.fromkeys(self.data['sample_id'])) ## To maintain order of the sample
-
         ##########################################################################################################
-        for index, row in self.data.iterrows():
-            key = row['unique_pos_identifier']
-            sample_name = row['sample_id']
-            Ref_allele = row['reference']
-            a1 = row['allele1']
-            a2 = row['allele2']
+        for key in sampleInfoDict.keys():
 
-            if genotype[key][sample_name] == '0/n':
-                genotype[key][sample_name] = re.sub('n', str(alt_alleleDict[key].index(a2) + 1), genotype[key][sample_name])
-            elif genotype[key][sample_name] == 'p/q':
-                genotype[key][sample_name] = re.sub('p', str(alt_alleleDict[key].index(a1) + 1), genotype[key][sample_name])
-                genotype[key][sample_name] = re.sub('q', str(alt_alleleDict[key].index(a2) + 1), genotype[key][sample_name])
+           for sample in self.samples_order:
+               if sample not in sampleInfoDict.get(key, {}):
+                   sampleInfoDict[key][sample]='./.'
+               finalVCF[key].append(sampleInfoDict[key][sample])
 
-            sampleCol = str(row['coverage']) + ':' + genotype[key][sample_name]
-
-            finalVCF[key] = [row['split_name'],
-                             row['pos'],
-                             key,
-                             Ref_allele,
-                             ','.join(alt_alleleDict[key]),
-                             99,
-                             'PASS',
-                             '.',
-                             'DP:GT',
-                             sampleCol]
-
-        ###### 
-        finalVCF = pd.DataFrame(sorted(finalVCF.values()))
-        self.data = finalVCF # overwrite self.data
+        self.data = pd.DataFrame(sorted(finalVCF.values())) # overwrite self.data
 
         self.table_formatting['header_comment'] = '##fileformat=VCFv4.0\n' + \
                                                   '##fileDate={}\n'.format(datetime.datetime.now().strftime("%Y%m%d")) + \
                                                   '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n' + \
                                                   '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">\n' + \
-                                                  '\t'.join(self.header + sampleNames)
+                                                  '\t'.join(self.header + self.samples_order)
 
         progress.end()
 
