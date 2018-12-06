@@ -1813,7 +1813,6 @@ class VCFMode(object):
         ##########################################################################################################
         ## FOR KEEPING TRACK OF THE IDS WHILE PRINTING DIRECTLY, not used when dictionary printed
         finalVCF = defaultdict(dict)
-        header = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
 
         ################### ADDING ALLELE COLUMNS FOR FINDING GENOTYPE ###########################################
         df['competing_nts'] = df.competing_nts.astype(str)
