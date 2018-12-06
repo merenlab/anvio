@@ -1,0 +1,6 @@
+reference	path
+GP01	five_genomes_example/GP01.fa.gz
+GP02	five_genomes_example/GP02.fa.gz
+GP03	five_genomes_example/GP03.fa.gz
+GP04	five_genomes_example/GP04.fa.gz
+GP05	five_genomes_example/GP05.fa.gz
