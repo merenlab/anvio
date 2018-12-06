@@ -34,6 +34,8 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
 
         self.target_files = [] # TODO: Once we update all other workflows then this will be initiated in WorkflowSuperClass
         self.pan_project_name = None
+        self.valid_sequence_sources_for_phylogeny = ['gene_clusters', 'hmm']
+        self.sequence_source_for_phylogeny = None
 
         # initialize the base class
         PhylogenomicsWorkflow.__init__(self)
@@ -47,7 +49,7 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
                                     "fasta_txt",
                                     "internal_genomes",
                                     "external_genomes",
-                                    "use_gene_cluster_sequences_for_phylogeny"])
+                                    "sequence_source_for_phylogeny"])
 
         self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
                                "CONTIGS_DIR": "02_CONTIGS",
@@ -89,22 +91,28 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         self.input_for_anvi_gen_genomes_storage = self.get_internal_and_external_genomes_files()
         self.project_name = self.get_param_value_from_config("project_name")
         self.pan_project_name = self.get_param_value_from_config(["anvi_pan_genome", "--project-name"])
+        self.sequence_source_for_phylogeny = self.get_param_value_from_config('sequence_source_for_phylogeny')
 
-        self.sanity_checks()
+        if self.pan_project_name:
+            run.warning('you chose to set the "--project-name" parameter for "anvi_pan_genome". That is ok\
+                         but just so you know, if you haven\'t supplied this, then we would have taken the value\
+                         from "project_name" in your config file to also be the project name for "anvi_pan_genome"')
+        else:
+            self.pan_project_name = self.project_name
+
         self.init_target_files()
 
     def init_target_files(self):
         target_files = []
         target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.pan_project_name + "-PAN.db"))
 
-        if self.get_param_value_from_config('use_gene_cluster_sequences_for_phylogeny'):
+        if self.sequence_source_for_phylogeny == 'gene_clusters':
             GC_sequences = os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "-GC-sequences.fa")
-            target_files.append(GC_sequences)
             self.use_hmms_for_phylogeny = False
             self.phylogenomics_sequence_file = GC_sequences
-            phylogenomics_output = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
-            target_files.append(phylogenomics_output)
             target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "-phylogeny-imported.done"))
+        elif self.sequence_source_for_phylogeny == 'hmm':
+            target_files.append(os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins.fa"))
 
         self.target_files.append(target_files)
 
@@ -116,9 +124,7 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         if not self.project_name:
             raise ConfigError("You must provide a project name in your config file.")
 
-        if self.pan_project_name:
-            run.warning('you chose to set the "--project-name" parameter for "anvi_pan_genome". That is ok\
-                         but just so you know, if you haven\'t supplied this, then we would have taken the value\
-                         from "project_name" in your config file to also be the project name for "anvi_pan_genome"')
-        else:
-            self.pan_project_name = self.project_name
+        if self.sequence_source_for_phylogeny not in self.valid_sequence_sources_for_phylogeny:
+            raise ConfigError('%s is not a valid sequence_source_for_phylogeny. \
+                               We only know: %s' % (self.sequence_source_for_phylogeny,\
+                               ', '.join(self.valid_sequence_sources_for_phylogeny)))
