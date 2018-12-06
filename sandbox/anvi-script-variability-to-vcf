@@ -74,7 +74,7 @@ def main(args):
    ##########################################################################################################
     ## FOR KEEPING TRACK OF THE IDS WHILE PRINTING DIRECTLY, not used when dictionary printed
     finalVCF = defaultdict(dict)
-    sampleNames = list(OrderedDict.fromkeys(input_df['sample_id'])) ## To maintain order of the sample
+    sampleNames = sorted(list(input_df['sample_id'].unique()))
     header = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
  
    ##################### ADDING ALLELE COLUMNS FOR FINDING GENOTYPE #########################################
