@@ -106,13 +106,12 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         target_files = []
         target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.pan_project_name + "-PAN.db"))
 
-        if self.sequence_source_for_phylogeny == 'gene_clusters':
-            GC_sequences = os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "-GC-sequences.fa")
-            self.use_hmms_for_phylogeny = False
-            self.phylogenomics_sequence_file = GC_sequences
+        if self.sequence_source_for_phylogeny:
             target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "-phylogeny-imported.done"))
-        elif self.sequence_source_for_phylogeny == 'hmm':
-            target_files.append(os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins.fa"))
+            if self.sequence_source_for_phylogeny == 'gene_clusters':
+                GC_sequences = os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "-GC-sequences.fa")
+                self.use_hmms_for_phylogeny = False
+                self.phylogenomics_sequence_file = GC_sequences
 
         self.target_files.append(target_files)
 
