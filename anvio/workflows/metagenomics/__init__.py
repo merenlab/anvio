@@ -177,8 +177,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         elif self.run_split:
             raise ConfigError('If you want to run anvi-split you must provide a collections_txt file')
 
-        self.sanity_check()
-
         self.init_target_files()
 
 
@@ -220,7 +218,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.target_files.extend(target_files)
 
 
-    def sanity_check(self):
+    def sanity_checks(self):
         self.sanity_check_for_samples_txt()
         self.sanity_check_for_kraken()
         self.sanity_check_for_refereces_txt()
