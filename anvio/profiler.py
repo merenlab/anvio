@@ -327,15 +327,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def store_split_coverages(self):
-        self.progress.step_start('Storage')
-
         for contig in self.contigs:
             for split in contig.splits:
                 self.auxiliary_db.append(split.name, self.sample_id, split.coverage.c)
 
         self.auxiliary_db.store()
-
-        self.progress.step_end()
 
 
     def set_sample_id(self):
