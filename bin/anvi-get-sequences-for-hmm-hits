@@ -139,7 +139,10 @@ def main(args):
 
         s = hmmops.SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
 
+    CHK = lambda: exec('raise ConfigError("Your selections returned an empty list of genes to work with :/")') if not len(hmm_sequences_dict) else None
+
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
+    CHK()
 
     run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
@@ -152,9 +155,11 @@ def main(args):
     if len(gene_names):
         hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
         run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
+        CHK()
 
     if args.max_num_genes_missing_from_bin is not None:
         hmm_sequences_dict, bins_removed = s.filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(hmm_sequences_dict, gene_names, int(args.max_num_genes_missing_from_bin))
+        CHK()
 
         if len(bins_removed):
             run.info('Filtered hits', '%d hits remain after filtering for `--max-num-genes-missing-from-bin` flag' % (len(hmm_sequences_dict)))
@@ -165,6 +170,7 @@ def main(args):
 
     if args.min_num_bins_gene_occurs is not None:
         hmm_sequences_dict, genes_removed = s.filter_hmm_sequences_dict_from_genes_that_occur_in_less_than_N_bins(hmm_sequences_dict, int(args.min_num_bins_gene_occurs))
+        CHK()
 
         if len(genes_removed):
             run.info('Filtered hits', '%d hits remain after filtering for `--min-num-bins-gene-occurs` flag' % (len(hmm_sequences_dict)))
@@ -179,12 +185,6 @@ def main(args):
             if(gene_names):
                 gene_names = [g for g in gene_names if g not in genes_removed]
 
-    if not hmm_sequences_dict:
-        raise ConfigError("Your selections resulted in 0 hits. There is nothing to report. Are you\
-                            sure you have the right set of gene names and sources? If you\
-                            select an HMM source, and then use gene names that belong to another\
-                            source, the intersection of the two can be empty. Just saying.")
-
     if args.return_best_hit:
         run.warning("You requested only the best hits to be reported, which means, if, say, there are more than one RecA\
                      hits in a bin for a given HMM source, only the one with the lowest e-value will be kept, and others\
@@ -196,6 +196,7 @@ def main(args):
                          idea but it may be quite relevant when done right'.")
 
         hmm_sequences_dict = s.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(hmm_sequences_dict)
+        CHK()
 
         run.info('Filtered hits', '%d hits remain after removing weak hits for multiple hits' % (len(hmm_sequences_dict)))
 
