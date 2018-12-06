@@ -485,7 +485,7 @@ class SequencesForHMMHits:
             raise ConfigError("You are asking anvi'o to remove any gene that occurs in less than %d genomes (or bins), however, it seems you have only\
                                %s genomes. Either you set a parameter that exceeds the number of genomes you actually have, or the previous filters\
                                applied to your set of genes have removed all genes from some or all of your genomes :/ Anvi'o cannot know here what might\
-                               have gone wrong, but it kinda believes that it is all on your at this point :/" % (len(all_bins), min_num_bins_gene_occurs))
+                               have gone wrong, but it kinda believes that it is all on your at this point :/" % (min_num_bins_gene_occurs, len(all_bins)))
 
         gene_occurrences_accross_bins = self.get_gene_num_occurrences_across_bins(hmm_sequences_dict_for_splits)
 
