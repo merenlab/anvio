@@ -81,13 +81,14 @@ def main(args):
     input_df['competing_nts'] = input_df.competing_nts.astype(str)
     input_df['allele1'] = input_df.competing_nts.str[0]
     input_df['allele2'] = input_df.competing_nts.str[1]
-    input_df["allele2"], input_df["allele1"] = np.where(input_df['allele2']==input_df['reference'], [input_df["allele1"], input_df["allele2"]], [input_df["allele2"], input_df["allele1"] ])
-
+    input_df["allele2"], input_df["allele1"] = np.where(input_df['allele2']==input_df['reference'],
+                                                        [input_df["allele1"], input_df["allele2"]],
+                                                        [input_df["allele2"], input_df["allele1"]])
 
     genotype = defaultdict(dict)
     alt_alleleDict = defaultdict(list)
     sampleInfoDict = defaultdict(dict)
-    for index, row in input_df.iterrows() :
+    for index, row in input_df.iterrows():
         key = row['unique_pos_identifier']
         sample_name = row['sample_id']
         Ref_allele = row['reference']
