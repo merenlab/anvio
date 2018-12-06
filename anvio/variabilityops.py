@@ -1778,7 +1778,7 @@ class VCFMode(object):
         F = lambda f, **kwargs: (f, kwargs)
         self.process_functions.extend([F(self.get_samples_order),
                                        F(self.get_columns_to_report),
-                                       F(self.convert_to_vfc)])
+                                       F(self.call_convert_to_vfc)])
 
 
     def get_samples_order(self):
@@ -1790,12 +1790,25 @@ class VCFMode(object):
         self.columns_to_report['VCF'] = [(x, str) for x in range(len(self.header) + len(self.samples_order))]
 
 
-    def convert_to_vfc(self):
+    def call_convert_to_vfc(self):
         progress.new("Converting to VFC format")
         progress.update('...')
 
+        self.data = pd.DataFrame(self.convert_to_vfc(self.data, self.samples_order)) # overwrite self.data
+
+        self.table_formatting['header_comment'] = '##fileformat=VCFv4.0\n' + \
+                                                  '##fileDate={}\n'.format(datetime.datetime.now().strftime("%Y%m%d")) + \
+                                                  '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n' + \
+                                                  '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">\n' + \
+                                                  '\t'.join(self.header + self.samples_order)
+
+        progress.end()
+
+
+    @staticmethod
+    def convert_to_vfc(df, samples_order):
         #######################   SELECTING COLUMNS OF INTEREST ##################################################
-        self.data = self.data.filter(items=['unique_pos_identifier','split_name', 'pos','sample_id','coverage','reference','competing_nts'])
+        df = df.filter(items=['unique_pos_identifier','split_name', 'pos','sample_id','coverage','reference','competing_nts'])
 
         ##########################################################################################################
         ## FOR KEEPING TRACK OF THE IDS WHILE PRINTING DIRECTLY, not used when dictionary printed
@@ -1803,17 +1816,17 @@ class VCFMode(object):
         header = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
 
         ################### ADDING ALLELE COLUMNS FOR FINDING GENOTYPE ###########################################
-        self.data['competing_nts'] = self.data.competing_nts.astype(str)
-        self.data['allele1'] = self.data.competing_nts.str[0]
-        self.data['allele2'] = self.data.competing_nts.str[1]
-        self.data["allele2"], self.data["allele1"] = np.where(self.data['allele2']==self.data['reference'],
-                                                              [self.data["allele1"], self.data["allele2"]],
-                                                              [self.data["allele2"], self.data["allele1"]])
+        df['competing_nts'] = df.competing_nts.astype(str)
+        df['allele1'] = df.competing_nts.str[0]
+        df['allele2'] = df.competing_nts.str[1]
+        df["allele2"], df["allele1"] = np.where(df['allele2']==df['reference'],
+                                                              [df["allele1"], df["allele2"]],
+                                                              [df["allele2"], df["allele1"]])
 
         genotype = defaultdict(dict)
         alt_alleleDict = defaultdict(list)
         sampleInfoDict = defaultdict(dict)
-        for index, row in self.data.iterrows():
+        for index, row in df.iterrows():
             key = row['unique_pos_identifier']
             sample_name = row['sample_id']
             Ref_allele = row['reference']
@@ -1845,20 +1858,12 @@ class VCFMode(object):
         ##########################################################################################################
         for key in sampleInfoDict.keys():
 
-           for sample in self.samples_order:
+           for sample in samples_order:
                if sample not in sampleInfoDict.get(key, {}):
                    sampleInfoDict[key][sample]='./.'
                finalVCF[key].append(sampleInfoDict[key][sample])
 
-        self.data = pd.DataFrame(sorted(finalVCF.values())) # overwrite self.data
-
-        self.table_formatting['header_comment'] = '##fileformat=VCFv4.0\n' + \
-                                                  '##fileDate={}\n'.format(datetime.datetime.now().strftime("%Y%m%d")) + \
-                                                  '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n' + \
-                                                  '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read Depth">\n' + \
-                                                  '\t'.join(self.header + self.samples_order)
-
-        progress.end()
+        return sorted(finalVCF.values())
 
 
     def overwrite_attributes_to_avoid_unnecessary_calculation(self):
