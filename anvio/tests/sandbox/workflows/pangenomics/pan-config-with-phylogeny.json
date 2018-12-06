@@ -22,7 +22,7 @@
     "project_name": "FIVE_TEST",
     "internal_genomes": "",
     "external_genomes": "five-external-genomes.txt",
-    "use_gene_cluster_sequences_for_phylogeny": true,
+    "sequence_source_for_phylogeny": "hmm",
     "output_dirs": {
         "FASTA_DIR": "01_FASTA_FIVE_PAN",
         "CONTIGS_DIR": "02_CONTIGS_FIVE_PAN",
