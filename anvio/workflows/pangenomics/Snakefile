@@ -104,7 +104,7 @@ rule anvi_get_sequences_for_gene_clusters:
         genomes_storage = os.path.join(dirs_dict["PAN_DIR"], M.project_name + "-GENOMES.db"),
         pan_db = os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db")
     output:
-        os.path.join(dirs_dict["PAN_DIR"], M.project_name + "-GC-sequences.fa")
+        os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-GC-sequences.fa")
     params:
         gene_cluster_id = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--gene-cluster-id'),
         gene_cluster_ids_file = M.get_rule_param('anvi_get_sequences_for_gene_clusters', '--gene-cluster-ids-file'),
@@ -148,9 +148,9 @@ rule import_phylogenetic_tree_to_pangenome:
         newick = os.path.join(M.dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
     output:
         layers_orders_file = temp(os.path.join(M.dirs_dict["PAN_DIR"], M.project_name + "-layers-orders.txt")),
-        phylogeny_imported = touch(os.path.join(M.dirs_dict["PAN_DIR"], M.project_name + "-phylogeny-imported.done"))
+        phylogeny_imported = touch(M.phylogeny_imported_flag)
     params:
-        tree_name = M.get_param_value_from_config(['import_phylogenetic_tree_to_pangenome', 'tree_name']),
+        tree_name = M.tree_name,
         just_do_it = M.get_rule_param('import_phylogenetic_tree_to_pangenome', '--just-do-it')
     threads: M.T('import_phylogenetic_tree_to_pangenome')
     resources: nodes = M.T('import_phylogenetic_tree_to_pangenome')
