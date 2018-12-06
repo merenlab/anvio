@@ -15,14 +15,14 @@ cp -r $files/workflows/pangenomics/five* $output_dir/workflow_test/
 
 cd $output_dir/workflow_test
 
-INFO "Running pangenomics workflow with phylogeny"
-anvi-run-workflow -w pangenomics -c pan-config-with-phylogeny.json
+INFO "Running pangenomics workflow with phylogeny based on hmms"
+anvi-run-workflow -w pangenomics -c pan-config-with-phylogeny-using-hmms.json
 
 INFO "Vizualize pangenomic results"
 anvi-display-pan -g 03_PAN_FIVE_PAN/FIVE_TEST-GENOMES.db -p 03_PAN_FIVE_PAN/FIVE_TEST-PAN.db
 
-INFO "Running pangenomics workflow with phylogeny"
-anvi-run-workflow -w pangenomics -c pan-config-with-phylogeny-using-hmms.json
+INFO "Running pangenomics workflow with phylogeny based on gene clusters"
+anvi-run-workflow -w pangenomics -c pan-config-with-phylogeny.json
 
 INFO "Vizualize pangenomic results"
 anvi-display-pan -g 03_PAN_FIVE_PAN/FIVE_TEST-GENOMES.db -p 03_PAN_FIVE_PAN/FIVE_TEST-PAN.db
