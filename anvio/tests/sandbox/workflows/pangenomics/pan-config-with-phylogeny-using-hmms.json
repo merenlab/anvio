@@ -12,24 +12,25 @@
     "anvi_script_reformat_fasta": {
         "run": false
     },
-    "anvi_get_sequences_for_gene_clusters": {
-        "--min-num-genomes-gene-cluster-occurs": 5,
-        "--max-num-genes-from-each-genome": 1,
-        "--add-into-items-additional-data-table": "GCs_for_phylogeny",
-        "--align-with": "famsa",
-        "--concatenate-gene-clusters": true
+    "anvi_get_sequences_for_hmm_hits": {
+        "--return-best-hit": true,
+        "--align-with": "muscle",
+        "--concatenate-genes": true,
+        "--get-aa-sequences": true,
+        "--hmm-sources": "Campbell_et_al",
+        "--min-num-bins-gene-occurs": 5
     },
     "import_phylogenetic_tree_to_pangenome": {
-        "tree_name": "phylogeny_gene_clusters"
+        "tree_name": "phylogeny_hmms"
     },
     "project_name": "FIVE_TEST",
     "internal_genomes": "",
     "external_genomes": "five-external-genomes.txt",
-    "sequence_source_for_phylogeny": "gene_clusters",
+    "sequence_source_for_phylogeny": "hmm",
     "output_dirs": {
         "FASTA_DIR": "01_FASTA_FIVE_PAN",
         "CONTIGS_DIR": "02_CONTIGS_FIVE_PAN",
-        "PHYLO_DIR": "01_PHYLOGENOMICS_FIVE_PAN",
+        "PHYLO_DIR": "01_PHYLOGENOMICS_FIVE_PAN_hmms",
         "PAN_DIR": "03_PAN_FIVE_PAN",
         "LOGS_DIR": "00_LOGS_FIVE_PAN"
     }

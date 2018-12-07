@@ -124,8 +124,16 @@ class WorkflowSuperClass:
             self.check_rule_params()
 
 
+    def sanity_checks(self):
+        ''' each workflow has its own sanity checks but we only run these when we go'''
+        # each workflow will overide this function with specific things to check
+        pass
+
+
     def go(self, skip_dry_run=False):
         """Do the actual running"""
+
+        self.sanity_checks()
 
         if self.save_workflow_graph or (not skip_dry_run):
             self.dry_run()

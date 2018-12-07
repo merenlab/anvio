@@ -41,6 +41,8 @@ class TablesForHMMHits(Table):
 
         utils.is_contigs_db(self.db_path)
 
+        self.contigs_db_hash = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path)).get_meta_value('contigs_db_hash')
+
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
 
         if not self.genes_are_called:
@@ -244,7 +246,11 @@ class TablesForHMMHits(Table):
 
             gene_call = self.gene_calls_dict[hit['gene_callers_id']]
 
-            hit['gene_unique_identifier'] = hashlib.sha224('_'.join([gene_call['contig'], hit['gene_name'], str(gene_call['start']), str(gene_call['stop'])]).encode('utf-8')).hexdigest()
+            hit['gene_unique_identifier'] = hashlib.sha224('_'.join([self.contigs_db_hash,
+                                                                     gene_call['contig'],
+                                                                     hit['gene_name'],
+                                                                     str(gene_call['start']),
+                                                                     str(gene_call['stop'])]).encode('utf-8')).hexdigest()
             hit['source'] = source
 
         self.remove_source(source)

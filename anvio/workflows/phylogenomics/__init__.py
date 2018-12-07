@@ -78,8 +78,6 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             # By default we use hmms for phylogeny
             self.phylogenomics_sequence_file = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins.fa")
 
-        self.sanity_checks()
-
 
     def sanity_checks(self):
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names'):
