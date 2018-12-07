@@ -67,7 +67,7 @@ class Progress:
 
     def get_terminal_width(self):
         try:
-            self.terminal_width = get_terminal_size()[0]
+            self.terminal_width = max(get_terminal_size()[0], 120)
         except:
             self.terminal_width = 120
 

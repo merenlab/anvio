@@ -75,6 +75,7 @@ class Contig:
         self.min_coverage_for_variability = 10
         self.skip_SNV_profiling = False
         self.report_variability_full = False
+        self.codon_frequencies_dict = {}
 
 
     def get_atomic_data_dict(self):
