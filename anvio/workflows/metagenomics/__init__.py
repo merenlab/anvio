@@ -217,8 +217,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         self.target_files.extend(target_files)
 
-
-    def sanity_checks(self):
         self.sanity_check_for_samples_txt()
         self.sanity_check_for_kraken()
         self.sanity_check_for_refereces_txt()
