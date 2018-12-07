@@ -2311,12 +2311,21 @@ def get_two_sample_z_test_statistic(p1, p2, n1, n2):
     if p1 == 0 and p2 == 0:
         return (0, 0)
 
+    inequality_sign = p1 > p2
     # This is done in order to estimate an upper bound
     # for the p-value
     p1 = max(p1, 1/n1) # in case p1 is zero
     p2 = max(p2, 1/n2)
     p1 = min(p1, 1 - 1/n1) # in case p1 is 1
     p2 = min(p2, 1 - 1/n2)
+
+    new_inequality_sign = p1 > p2
+    if new_inequality_sign != inequality_sign:
+        # if the portion correction changed the direction of the inequality
+        # then there is no power to this test.
+        # This would only happen when the groups in questions are very small anyway,
+        # but we want to be on the safe side.
+        return (0,0)
 
     p = (n1*p1 + n2*p2) / (n1 + n2)
 
