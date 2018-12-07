@@ -305,12 +305,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         variable_codons_table.store()
 
-        # if len(codon_frequencies.not_reported_items):
-        #     items = codon_frequencies.not_reported_items
-        #     self.run.warning("The profiler of single-codon variants failed to report anything for a\
-        #                       total of %d items, because they looked weird to anvi'o :( Here is a list\
-        #                       of those that did ended up being ignored: '%s'." % (len(items), ', '.join(items)))
-
 
     def generate_variabile_nts_table(self):
         if self.skip_SNV_profiling:
