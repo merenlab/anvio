@@ -645,12 +645,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         discarded_contigs = 0
         memory_usage = None
 
-        self.progress.new('Profiling w/' + str(self.num_threads) + ' thread%s' % ('s' if self.num_threads > 1 else ''))
+        self.progress.new('Profiling w/' + str(self.num_threads) + ' thread%s' % ('s' if self.num_threads > 1 else ''), progress_total_items=self.num_contigs)
         self.progress.update('initializing threads ...')
         # FIXME: memory usage should be generalized.
         last_memory_update = int(time.time())
 
         self.progress.update('contigs are being processed ...')
+        self.progress.increment(recieved_contigs)
         while recieved_contigs < self.num_contigs:
             try:
                 contig = output_queue.get()

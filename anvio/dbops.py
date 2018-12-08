@@ -3137,7 +3137,8 @@ class ContigsDatabase:
         self.progress.end()
 
         all_ids_in_FASTA = utils.get_all_ids_from_fasta(contigs_fasta)
-        if len(all_ids_in_FASTA) != len(set(all_ids_in_FASTA)):
+        total_number_of_contigs = len(all_ids_in_FASTA)
+        if total_number_of_contigs != len(set(all_ids_in_FASTA)):
             raise ConfigError("Every contig in the input FASTA file must have a unique ID. You know...")
 
         if split_length is None:
@@ -3236,9 +3237,11 @@ class ContigsDatabase:
         recovered_split_lengths = []
 
         # THE INFAMOUS GEN CONTGS DB LOOP (because it is so costly, we call it South Loop)
-        self.progress.new('The South Loop')
+        self.progress.new('The South Loop', progress_total_items=total_number_of_contigs)
         fasta.reset()
         while next(fasta):
+            self.progress.increment()
+
             contig_name = fasta.id
             contig_sequence = fasta.seq
 
