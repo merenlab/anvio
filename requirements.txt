@@ -17,3 +17,4 @@ matplotlib==2.2.3
 pyani==0.2.7
 statsmodels==0.9.0
 snakemake==5.2.4
+colored==1.3.93
