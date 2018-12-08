@@ -10,6 +10,8 @@ import struct
 import termios
 import textwrap
 
+from colored import fore, back, style
+
 import anvio.constants as constants
 import anvio.dictio as dictio
 
@@ -59,10 +61,13 @@ class Progress:
         self.is_tty = sys.stdout.isatty()
 
         self.get_terminal_width()
-        self.color_prefix = '\033[0;30m\033[46m'
-        self.color_postfix = '\033[0m'
 
         self.current = None
+
+        self.progress_total_items = None
+        self.progress_current_item = 0
+
+        self.LEN = lambda s: len(s.encode('utf-16-le')) // 2
 
 
     def get_terminal_width(self):
@@ -72,7 +77,7 @@ class Progress:
             self.terminal_width = 120
 
 
-    def new(self, pid, discard_previous_if_exists=False):
+    def new(self, pid, discard_previous_if_exists=False, progress_total_items=None):
         if self.pid:
             if discard_previous_if_exists:
                 self.end()
@@ -86,16 +91,19 @@ class Progress:
         self.get_terminal_width()
         self.current = None
         self.step = None
+        self.progress_total_items = progress_total_items
+        self.progress_current_item = 0
+
+
+    def increment(self, increment_to=None):
+        if increment_to:
+            self.progress_current_item = increment_to
+        else:
+            self.progress_current_item += 1
 
 
     def write(self, c, dont_update_current=False):
-        surpass = self.terminal_width - len(c.encode('utf-16-le')) // 2
-                                      # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                                      # since we want to be able to
-                                      # calculate string length accurately
-                                      # even when it contains 2-byte unicode
-                                      # chars, the regular `len` does not
-                                      # work here.
+        surpass = self.terminal_width - self.LEN(c)
 
         if surpass < 0:
             c = c[0:-(-surpass + 5)] + ' (...)'
@@ -106,8 +114,27 @@ class Progress:
             c = c + ' ' * surpass
 
         if self.verbose:
-            sys.stderr.write(self.color_prefix + c + self.color_postfix)
-            sys.stderr.flush()
+            if self.progress_total_items and self.is_tty:
+                p_text = ' %d%% ⚙  ' % (self.progress_current_item * 100 / self.progress_total_items)
+                p_length = self.LEN(p_text)
+
+                msg_length = self.LEN(c)
+                break_point = round(msg_length * self.progress_current_item / self.progress_total_items)
+
+                # see a full list of color codes: https://gitlab.com/dslackw/colored
+                if p_length >= break_point:
+                    sys.stderr.write(back.CYAN + fore.BLACK + c[:break_point] + \
+                                     back.GREY_30 + fore.WHITE + c[break_point:] + \
+                                     style.RESET)
+                else:
+                    sys.stderr.write(back.CYAN + fore.BLACK + c[:break_point - p_length] + \
+                                     back.SALMON_1 + fore.BLACK + p_text + \
+                                     back.GREY_30 + fore.WHITE + c[break_point:] + \
+                                     style.RESET)
+                sys.stderr.flush()
+            else:
+                sys.stderr.write(back.CYAN + fore.BLACK + c + style.RESET)
+                sys.stderr.flush()
 
 
     def reset(self):
