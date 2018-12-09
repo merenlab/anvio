@@ -127,7 +127,8 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         if not self.project_name:
             raise ConfigError("You must provide a project name in your config file.")
 
-        if self.sequence_source_for_phylogeny not in self.valid_sequence_sources_for_phylogeny:
-            raise ConfigError('%s is not a valid sequence_source_for_phylogeny. \
-                               We only know: %s' % (self.sequence_source_for_phylogeny,\
-                               ', '.join(self.valid_sequence_sources_for_phylogeny)))
+        if self.sequence_source_for_phylogeny:
+            if self.sequence_source_for_phylogeny not in self.valid_sequence_sources_for_phylogeny:
+                raise ConfigError('%s is not a valid sequence_source_for_phylogeny. \
+                                   We only know: %s' % (self.sequence_source_for_phylogeny,\
+                                   ', '.join(self.valid_sequence_sources_for_phylogeny)))
