@@ -265,7 +265,10 @@ w.warning_for_param(config, 'anvi_run_ncbi_cogs', '--temporary-dir-path', '{grou
 rule anvi_run_ncbi_cogs:
     version: anvio.__contigs__version__
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_ncbi_cogs.log"
-    input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+    input:
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        # this is here just so snakemake would run the hmms before running this rule
+        hmms = rules.anvi_run_hmms.output if run_anvi_run_hmms else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
     output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_ncbi_cogs-{group}.done")
     params:
         # anvi-run-ncbi-cogs params. See anvi-run-ncbi-cogs help menu for more info.
@@ -275,7 +278,7 @@ rule anvi_run_ncbi_cogs:
         search_with = M.get_rule_param('anvi_run_ncbi_cogs', '--search-with')
     threads: M.T('anvi_run_ncbi_cogs')
     resources: nodes = M.T('anvi_run_ncbi_cogs'),
-    shell: w.r("""anvi-run-ncbi-cogs -c {input} \
+    shell: w.r("""anvi-run-ncbi-cogs -c {input.contigs} \
                                      -T {threads} \
                                      {params.cog_data_dir} \
                                      {params.sensitive} \
