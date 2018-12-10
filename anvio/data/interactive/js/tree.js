@@ -144,6 +144,7 @@ function Tree() {
     this.leaves = [];
     this.rooted = true;
     this.has_edge_lengths = false;
+    this.has_branch_supports = false;
     this.error = 0;
     this.label_to_leaves = {};
 }
@@ -192,6 +193,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
                     if (isNumber(token[i]) && mode != 'gene') {
                         curnode.branch_support = parseFloat(token[i]);
+                        this.has_branch_supports = true;
                     } else {
                         this.label_to_leaves[token[i]] = curnode;
                         curnode.label = token[i];
@@ -304,6 +306,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                 if (ctype_alnum(token[i].charAt(0)) || token[i].charAt(0) == "'" || token[i].charAt(0) == '"' || token[i].charAt(0) == '_') {
                     if (isNumber(token[i]) && mode != 'gene') {
                         curnode.branch_support = parseFloat(token[i]);
+                        this.has_branch_supports = true;
                     } else {
                         curnode.label = token[i];
                     }
@@ -381,7 +384,11 @@ Tree.prototype.SerializeNode = function(node) {
         text += "(" + this.SerializeNode(node.child) + ")";
     }
 
-    text += node.label; 
+    if (!node.IsLeaf() && this.has_branch_supports) {
+        text += node.branch_support;
+    } else {
+        text += node.label;
+    }
 
     if (node.collapsed) {
         text += '_collapsed';
