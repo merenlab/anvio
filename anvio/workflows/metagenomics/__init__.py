@@ -185,8 +185,15 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
     def init_target_files(self):
         target_files = []
-        merged_profiles = [os.path.join(self.dirs_dict["MERGE_DIR"], g, "PROFILE.db") for g in self.group_names]
+        # We only merge things if there are multiple samples in the same group
+        merged_profiles = [os.path.join(self.dirs_dict["MERGE_DIR"], g, "PROFILE.db") \
+                            for g in self.group_names if self.group_sizes[g] > 1]
         target_files.extend(merged_profiles)
+
+        # for groups of size 1 we create a message file
+        message_file_for_groups_of_size_1 = [os.path.join(self.dirs_dict["MERGE_DIR"], g, "README.txt") \
+                            for g in self.group_names if self.group_sizes[g] == 1]
+        target_files.extend(message_file_for_groups_of_size_1)
 
         contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],\
                              g + "-annotate_contigs_database.done") for g in self.group_names]
