@@ -582,7 +582,7 @@ class Pangenome(object):
         if self.skip_homogeneity:
             self.run.warning("Skipping homogeneity calculations per the '--skip-homogeneity' flag.")
             return
-        
+
         pan = dbops.PanSuperclass(args=self.args)
         gene_cluster_names = set(list(gene_clusters_dict.keys()))
 
@@ -733,13 +733,14 @@ class Pangenome(object):
         # done in the `alignment_worker` down below)
         aligners.select(self.align_with)
 
-        self.progress.new('Aligning amino acid sequences for genes in gene clusters')
-        self.progress.update('...')
         gene_cluster_names = list(gene_clusters_dict.keys())
 
         # we only need to align gene clusters with more than one sequence
         non_singleton_gene_cluster_names = [g for g in gene_cluster_names if len(gene_clusters_dict[g]) > 1]
         num_non_singleton_gene_clusters = len(non_singleton_gene_cluster_names)
+
+        self.progress.new('Aligning amino acid sequences for genes in gene clusters', progress_total_items=num_non_singleton_gene_clusters)
+        self.progress.update('...')
 
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
@@ -770,6 +771,7 @@ class Pangenome(object):
                     print(json.dumps(gene_clusters_item, indent=2))
 
                 received_gene_clusters += 1
+                self.progress.increment()
                 self.progress.update("Processed %d of %d non-singleton GCs in %d threads." %
                     (received_gene_clusters, num_non_singleton_gene_clusters, self.num_threads))
 
@@ -911,7 +913,7 @@ class Pangenome(object):
 
         # work with gene cluster homogeneity index
         self.populate_gene_cluster_homogeneity_index(gene_clusters_dict)
-        
+
         # done
         self.run.info('log file', self.run.log_file_path)
         self.run.quit()
