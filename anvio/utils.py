@@ -2309,7 +2309,7 @@ def get_two_sample_z_test_statistic(p1, p2, n1, n2):
     '''
     import numpy
     if p1 == 0 and p2 == 0:
-        return (0, 0)
+        return (0, 1)
 
     inequality_sign = p1 > p2
     # This is done in order to estimate an upper bound
@@ -2325,7 +2325,7 @@ def get_two_sample_z_test_statistic(p1, p2, n1, n2):
         # then there is no power to this test.
         # This would only happen when the groups in questions are very small anyway,
         # but we want to be on the safe side.
-        return (0,0)
+        return (0,1)
 
     p = (n1*p1 + n2*p2) / (n1 + n2)
 
