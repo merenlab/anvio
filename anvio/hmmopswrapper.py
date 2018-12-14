@@ -38,6 +38,9 @@ class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDe
         self.load_genomes_descriptions(skip_functions=True, init=False)
         hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes()
 
+        if not len(hmm_sources_in_all_genomes):
+            raise ConfigError("There are no HMM sources among your external genomes that occur in every genome :/")
+
         num_internal_genomes = len(set([g for g in self.genomes.values() if 'profile_db_path' in g]))
         collection_names = set([g['collection_id'] for g in self.genomes.values() if 'collection_id' in g])
 
