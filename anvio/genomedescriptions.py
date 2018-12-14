@@ -87,12 +87,17 @@ class GenomeDescriptions(object):
 
 
     def list_HMM_info_and_quit(self):
-        hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes(dont_raise=True)
+        hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes()
 
         # since we know hmm sources in `hmm_sources_in_all_genomes` are common to all genomes,
         # we could use any of those genomes to learn about the specifics of them. here we take
         # the first one from `self.genomes`
         hmm_sources_info = dbops.ContigsDatabase(list(self.genomes.values())[0]['contigs_db_path']).db.get_table_as_dict(t.hmm_hits_info_table_name)
+
+        if self.list_hmm_sources or self.list_available_gene_names:
+            if not len(hmm_sources_in_all_genomes):
+                raise ConfigError("There are no HMM sources among your external genomes that occur in every genome :/")
+                
 
         if self.list_hmm_sources:
             self.run.warning(None, 'HMM SOURCES COMMON TO ALL %d GENOMES' % (len(self.genomes)), lc='yellow')
@@ -110,7 +115,7 @@ class GenomeDescriptions(object):
             sys.exit(0)
 
 
-    def get_HMM_sources_common_to_all_genomes(self, dont_raise=False):
+    def get_HMM_sources_common_to_all_genomes(self):
         """Returns True if all HMM sources in all genomes are comparable"""
 
         hmm_sources_info_per_genome = {}
@@ -137,12 +142,6 @@ class GenomeDescriptions(object):
             for hmm_source in hmm_sources_found:
                 if hmm_source not in hmm_sources_info_per_genome[genome_name] and hmm_source in hmm_sources_in_all_genomes:
                     hmm_sources_in_all_genomes.remove(hmm_source)
-
-        if not len(hmm_sources_in_all_genomes):
-            if dont_raise:
-                return None
-
-            raise ConfigError("There are no HMM sources among your external genomes that occur in every genome :/")
 
         return hmm_sources_in_all_genomes
 
