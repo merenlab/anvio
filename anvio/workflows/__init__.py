@@ -394,7 +394,7 @@ class WorkflowSuperClass:
             "--min-occurence 5"
         '''
         val = self.get_param_value_from_config([_rule, _param])
-        if val:
+        if val is not None and val is not '':
             if isinstance(val, bool):
                 # the param is a flag so no need for a value
                 val = ''
