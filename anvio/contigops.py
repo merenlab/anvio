@@ -4,7 +4,10 @@
    from contigs and splits. Also includes classes to deal with external
    contig data such as GenbankToAnvio."""
 
+import os
 import re
+import io
+import gzip
 
 from Bio import SeqIO
 
@@ -221,9 +224,10 @@ class GenbankToAnvio:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.input_genbank_path = A('input_gb')
+        self.output_file_prefix = A('output_file_prefix')
         self.output_fasta_path = A('output_fasta')
-        self.output_functions_path = A('output_functions') or 'external-functions.txt'
-        self.output_gene_calls_path = A('output_gene_calls') or 'external-gene-calls.txt'
+        self.output_functions_path = A('output_functions')
+        self.output_gene_calls_path = A('output_gene_calls')
         self.source = A('annotations_source') or 'NCBI_PGAP'
         self.version = A('annotations_source') or 'v4.6'
 
@@ -241,18 +245,38 @@ class GenbankToAnvio:
 
 
     def sanity_check(self):
+        if self.output_file_prefix and (self.output_fasta_path or self.output_functions_path or self.output_gene_calls_path):
+            raise ConfigError("Your arguments contain an output file prefix, and other output file paths. You can either\
+                               define a prefix, and the output files would be named accordingly (such as 'PREFIX-extenral-gene-calls',\
+                               'PREFIX-external-functions.txt', and 'PREFIX-contigs.fa'), ORRR you can set output file names\
+                               or paths for each of these files independently. You can also leave it as is for default file names to\
+                               be used. But you can't mix everything together and confuse us here.")
+
+        self.output_fasta_path = self.output_fasta_path or 'contigs.fa'
+        self.output_functions_path = self.output_functions_path or 'external-functions.txt'
+        self.output_gene_calls_path = self.output_gene_calls_path or 'external-gene-calls.txt'
+
+        if self.output_file_prefix:
+            J = lambda x: '-'.join([self.output_file_prefix, x])
+            self.output_fasta_path = J(self.output_fasta_path)
+            self.output_functions_path = J(self.output_functions_path)
+            self.output_gene_calls_path = J(self.output_gene_calls_path)
+
         filesnpaths.is_output_file_writable(self.output_fasta_path)
         filesnpaths.is_output_file_writable(self.output_functions_path)
         filesnpaths.is_output_file_writable(self.output_gene_calls_path)
         filesnpaths.is_file_exists(self.input_genbank_path)
 
-        try:
-            SeqIO.parse(open(self.input_genbank_path, "r"), "genbank")
-        except Exception as e:
-            raise ConfigError("Someone didn't like your unput 'genbank' file :/ Here's what they said\
-                               about it: '%s'." % e)
+        files_already_exist = [f for f in [self.output_fasta_path, self.output_functions_path, self.output_gene_calls_path] if os.path.exists(f)]
+        if len(files_already_exist):
+            raise ConfigError("Some of the output files already exist :/ Anvi'o feels uneasy about simply overwriting\
+                               them and would like to outsource that risk to you. Please either use different output\
+                               file names, or delete these files and come back: '%s'" % (', '.join(files_already_exist)))
+
 
     def process(self):
+        self.sanity_check()
+
         output_fasta = {}
         output_gene_calls = {}
         output_functions = {}
@@ -261,7 +285,16 @@ class GenbankToAnvio:
         num_genes_reported = 0
         num_genes_with_functions = 0
 
-        for genbank_record in SeqIO.parse(open(self.input_genbank_path, "r"), "genbank"):
+        try:
+            if self.input_genbank_path.endswith('.gz'):
+                genbank_file_object = SeqIO.parse(io.TextIOWrapper(gzip.open(self.input_genbank_path, 'r')), "genbank")
+            else:
+                genbank_file_object = SeqIO.parse(open(self.input_genbank_path, "r"), "genbank")
+        except Exception as e:
+            raise ConfigError("Someone didn't like your unput 'genbank' file :/ Here's what they said\
+                               about it: '%s'." % e)
+
+        for genbank_record in genbank_file_object:
             num_genbank_records_processed += 1
 
             output_fasta[genbank_record.name] = str(genbank_record.seq)
@@ -328,7 +361,7 @@ class GenbankToAnvio:
                                                            'direction': direction,
                                                            'partial': 0,
                                                            'source': self.source,
-                                                           'version': self.version} 
+                                                           'version': self.version}
                 num_genes_reported += 1
 
                 # not writing gene out to functions table if no annotation
@@ -340,7 +373,7 @@ class GenbankToAnvio:
                     num_genes_with_functions += 1
 
                 # increment the gene callers id fo rthe next
-                self.gene_callers_id += 1 
+                self.gene_callers_id += 1
 
 
         if num_genbank_records_processed == 0:
