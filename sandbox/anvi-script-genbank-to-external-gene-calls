@@ -26,24 +26,19 @@ progress = terminal.Progress()
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="This script takes a genbank file and converts it into the\
-                                                format required for importing external gene calls and functions into anvi'o.")
+    parser = argparse.ArgumentParser(description="This script takes a GenBank file, and outputs a FASTA file, as well as two\
+                                                  additional TAB-delimited output files for external gene calls and gene\
+                                                  functions that can be used with the programs `anvi-gen-contigs-database`\
+                                                  and `anvi-import-functions`.")
 
-    parser.add_argument('-i', '--input_gb', action='store', dest='input_gb', required=True,
-                        help='input Genbank file (e.g. typically"*.gbk", "*.gb", "*.gbff")')
-    parser.add_argument('-s', '--annotation_source', action='store', dest='annotation_source', default='NCBI_PGAP',
-                        help='annotation source (default: "NCBI_PGAP")')
-    parser.add_argument("-v", "--annotation_version", action="store", dest="annotation_version", default="v4.6",\
-                        help='Annotation source version (default: "v4.6")')
-    parser.add_argument("-o", "--output_gene_calls_tsv", action="store", dest="output_gene_calls_tsv",
-                        default="external_gene_calls.tsv",\
-                        help='Output tsv file (default: "external_gene_calls.tsv")')
-    parser.add_argument("-a", "--output_functions_tsv", action="store", dest="output_functions_tsv",
-                        default="functions.tsv",\
-                        help='Output functions file (default: "functions.tsv")')
-    parser.add_argument("-f", "--output_fasta", action="store", dest="output_fasta", default="clean.fa",
-                        help='Output fasta file with matching, simplified headers to be ready for\
-                             `anvi-gen-contigs-db` (default: "clean.fa")')
+    parser.add_argument('-i', '--input-gb', action='store', required=True, help='Input GenBank file')
+    parser.add_argument('--annotation-source', action='store', default='NCBI_PGAP', help='Annotation \
+                             source (default: "NCBI_PGAP")')
+    parser.add_argument("--annotation-version", action="store", default="v4.6", help='Annotation \
+                             source version to be stored in the database (default: "v4.6")')
+    parser.add_argument("--output-fasta", help='Output FASTA file path.')
+    parser.add_argument("--output-gene-calls", help='Output file path for external gene calls')
+    parser.add_argument("--output-functions", help="Output file path for anvi'o-importable gene functions file")
 
     args = anvio.get_args(parser)
 
