@@ -1,25 +1,25 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""Classes and functions for handling, storing, and retrieving atomic data from contigs and splits"""
+"""Classes and functions for handling, storing, and retrieving atomic data
+   from contigs and splits. Also includes classes to deal with external
+   contig data such as GenbankToAnvio."""
+
+import re
+
+from Bio import SeqIO
 
 import anvio
+import anvio.tables as t
+import anvio.terminal as terminal
 
 from anvio.sequence import Coverage
-from anvio.terminal import Run, Progress
-from anvio.variability import VariablityTestFactory
-
-import anvio.tables as t
-
-run = Run()
-progress = Progress()
-progress.verbose = False
-
 from anvio.variability import ColumnProfile
+from anvio.variability import VariablityTestFactory
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
-__credits__ = ["Faruk Uzun"]
+__credits__ = ["Mike Lee", "Faruk Uzun"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
@@ -205,3 +205,119 @@ class Auxiliary:
             else:
                 self.rep_seq += 'N'
                 self.v.append(0)
+
+
+class GenbankToAnvio:
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.input_genbank_path = A('input_gb')
+        self.output_fasta_path = A('output_fasta')
+        self.output_functions_path = A('output_functions') or 'external-functions.txt'
+        self.output_gene_calls_path = A('output_gene_calls') or 'external-gene-calls.txt'
+        self.source = A('annotations_source') or 'NCBI_PGAP'
+        self.version = A('annotations_source') or 'v4.6'
+
+    def sanity_check(self):
+        pass
+
+
+    def process(self):
+        input_genbank_file = open(self.input_genbank_path, "r")
+
+        output_fasta = open(self.output_fasta_path, "w")
+
+        source = self.source
+        version = self.version
+
+        output_gene_calls = open(self.output_gene_calls_path, "w")
+        output_gene_calls.write("gene_callers_id" + "\t" + "contig" + "\t" + "start" + "\t" + "stop" + "\t" + "direction" + "\t" + "partial" + "\t" + "source" + "\t" + "version" + "\n")
+
+        output_functions = open(self.output_functions_path, "w")
+        output_functions.write("gene_callers_id" + "\t" + "source" + "\t" + "accession" + "\t" + "function" + "\t" + "e_value" + "\n")
+
+        recs = [rec for rec in SeqIO.parse(input_genbank_file, "genbank")]
+
+        num = 0 # iterator for assigning "gene_callers_id"
+
+        note_terms_to_exclude = ["frameshifted", "internal stop", "incomplete"] # dumping gene if noted as these in the "note" section of the call
+        location_terms_to_exclude = ["join", "<", ">"] # dumping gene if "location" section contains any of these: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
+
+        for rec in recs:
+            output_fasta.write(">" + rec.name  + "\n" + str(rec.seq) + "\n") # writing out fasta pulled from genbank file, ready for anvi'o
+
+            genes = [gene for gene in rec.features if gene.type =="CDS"] # focusing on features annotated as "CDS" by NCBI's PGAP
+
+            for gene in genes:
+                location = str(gene.location)
+
+                # dumping gene if "location" section contains any of these terms set above: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
+                if any(exclusion_term in location for exclusion_term in location_terms_to_exclude):
+                    continue
+
+                if "note" in gene.qualifiers:
+                    note = str(gene.qualifiers["note"][0])
+
+                    # dumping gene if noted as any of these in the "note" section set above
+                    if any(exclusion_term in note for exclusion_term in note_terms_to_exclude):
+                        continue
+
+                # dumping if overlapping translation frame
+                if "transl_except" in gene.qualifiers:
+                    continue
+
+                # dumping if gene declared a pseudogene
+                if "pseudo" in gene.qualifiers:
+                    continue
+
+                num += 1 # iteration for unique "gene_callers_id" for each
+
+                # cleaning up gene coordinates to more easily parse:
+                location = location.replace("[", "")
+                location = re.sub('](.*)', '', location)
+                location = location.split(":")
+
+                start = location[0] # start coordinate
+                end = location[1] # end coordinate
+
+
+                # setting strand to "f" or "r":
+                if gene.strand == 1:
+                    strand="f"
+                else:
+                    strand="r"
+
+                # for accession, storing protein id if it has one, else the the locus tag, else "None"
+                if "protein_id" in gene.qualifiers:
+                    acc = gene.qualifiers["protein_id"][0]
+                elif "locus_tag" in gene.qualifiers:
+                    acc = gene.qualifiers["locus_tag"][0]
+                else:
+                    acc = "None"
+
+                # storing gene product annotation
+                function = gene.qualifiers["product"][0]
+
+                # if present, adding gene name to product annotation:
+                if "gene" in gene.qualifiers:
+                    gene_name=str(gene.qualifiers["gene"][0])
+                    function = function + " (" + gene_name + ")"
+
+                output_gene_calls.write(str(num) + "\t" + rec.name + "\t" + str(start) + "\t" + str(end) + "\t" + str(strand) + "\t" + "0" + "\t" + str(source) +"\t" + str(version) + "\n")
+
+                # not writing gene out to functions table if no annotation
+                if "hypothetical protein" in function:
+                    continue
+                else:
+                    output_functions.write(str(num) + "\t" + str(source) + "\t" + acc + "\t" + function + "\t" + "0" + "\n")
+
+        input_genbank_file.close()
+        output_fasta.close()
+        output_gene_calls.close()
+        output_functions.close()
+
+
