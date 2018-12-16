@@ -211,6 +211,8 @@ class Auxiliary:
 
 
 class GenbankToAnvio:
+    """A class to deal with GenBank files. The initial code was implemented by Mike Lee"""
+
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
 
