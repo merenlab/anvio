@@ -31,14 +31,23 @@ if __name__ == '__main__':
                                                   functions that can be used with the programs `anvi-gen-contigs-database`\
                                                   and `anvi-import-functions`.")
 
-    parser.add_argument('-i', '--input-gb', action='store', required=True, help='Input GenBank file')
-    parser.add_argument('--annotation-source', action='store', default='NCBI_PGAP', help='Annotation \
+    
+    groupA = parser.add_argument_group('INPUT', 'Give us the preciousss...')
+    groupA.add_argument('-i', '--input-gb', action='store', required=True, help='Input GenBank file')
+
+    groupB = parser.add_argument_group('OUTPUT', "You either provide a 'prefix', or provide specific output\
+                                                  file names/paths. You can't mix the two (well, you can try).")
+    groupB.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    groupB.add_argument("--output-fasta", help='Output FASTA file path.')
+    groupB.add_argument("--output-gene-calls", help='Output file path for external gene calls')
+    groupB.add_argument("--output-functions", help="Output file path for anvi'o-importable gene functions file")
+
+    groupC = parser.add_argument_group('DETAILS', "Setting the annotation source and version data to appear in the output\
+                                                   file for functional annotations file.")
+    groupC.add_argument('--annotation-source', action='store', default='NCBI_PGAP', help='Annotation \
                              source (default: "NCBI_PGAP")')
-    parser.add_argument("--annotation-version", action="store", default="v4.6", help='Annotation \
+    groupC.add_argument("--annotation-version", action="store", default="v4.6", help='Annotation \
                              source version to be stored in the database (default: "v4.6")')
-    parser.add_argument("--output-fasta", help='Output FASTA file path.')
-    parser.add_argument("--output-gene-calls", help='Output file path for external gene calls')
-    parser.add_argument("--output-functions", help="Output file path for anvi'o-importable gene functions file")
 
     args = anvio.get_args(parser)
 
