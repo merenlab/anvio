@@ -10,9 +10,12 @@ from Bio import SeqIO
 
 import anvio
 import anvio.tables as t
+import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.sequence import Coverage
+from anvio.errors import ConfigError
 from anvio.variability import ColumnProfile
 from anvio.variability import VariablityTestFactory
 
@@ -194,7 +197,7 @@ class Auxiliary:
                 cp['cov_outlier_in_contig'] = pos_in_contig in self.parent_outlier_positions
                 self.column_profile[pos_in_contig] = cp
 
-        # variation density = number of SNVs per kb
+        # variation density = gene_callers_idber of SNVs per kb
         self.variation_density = len(ratios) * 1000.0 / self.split.length
 
         for i in range(self.split.start, self.split.end):
@@ -222,48 +225,60 @@ class GenbankToAnvio:
         self.source = A('annotations_source') or 'NCBI_PGAP'
         self.version = A('annotations_source') or 'v4.6'
 
-    def sanity_check(self):
-        pass
+        # gene callers id start from 0. you can change your instance
+        # prior to processing the genbank file to start from another
+        # value
+        self.gene_callers_id = 0
 
+        # dumping gene if noted as these in the "note" section of the call
+        self.note_terms_to_exclude = ["frameshifted", "internal stop", "incomplete"]
+
+        # dumping gene if "location" section contains any of these: "join" means the
+        # gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
+        self.location_terms_to_exclude = ["join", "<", ">"]
+
+
+    def sanity_check(self):
+        filesnpaths.is_output_file_writable(self.output_fasta_path)
+        filesnpaths.is_output_file_writable(self.output_functions_path)
+        filesnpaths.is_output_file_writable(self.output_gene_calls_path)
+        filesnpaths.is_file_exists(self.input_genbank_path)
+
+        try:
+            SeqIO.parse(open(self.input_genbank_path, "r"), "genbank")
+        except Exception as e:
+            raise ConfigError("Someone didn't like your unput 'genbank' file :/ Here's what they said\
+                               about it: '%s'." % e)
 
     def process(self):
-        input_genbank_file = open(self.input_genbank_path, "r")
+        output_fasta = {}
+        output_gene_calls = {}
+        output_functions = {}
+        num_genbank_records_processed = 0
+        num_genes_found = 0
+        num_genes_reported = 0
+        num_genes_with_functions = 0
 
-        output_fasta = open(self.output_fasta_path, "w")
+        for genbank_record in SeqIO.parse(open(self.input_genbank_path, "r"), "genbank"):
+            num_genbank_records_processed += 1
 
-        source = self.source
-        version = self.version
+            output_fasta[genbank_record.name] = str(genbank_record.seq)
 
-        output_gene_calls = open(self.output_gene_calls_path, "w")
-        output_gene_calls.write("gene_callers_id" + "\t" + "contig" + "\t" + "start" + "\t" + "stop" + "\t" + "direction" + "\t" + "partial" + "\t" + "source" + "\t" + "version" + "\n")
-
-        output_functions = open(self.output_functions_path, "w")
-        output_functions.write("gene_callers_id" + "\t" + "source" + "\t" + "accession" + "\t" + "function" + "\t" + "e_value" + "\n")
-
-        recs = [rec for rec in SeqIO.parse(input_genbank_file, "genbank")]
-
-        num = 0 # iterator for assigning "gene_callers_id"
-
-        note_terms_to_exclude = ["frameshifted", "internal stop", "incomplete"] # dumping gene if noted as these in the "note" section of the call
-        location_terms_to_exclude = ["join", "<", ">"] # dumping gene if "location" section contains any of these: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
-
-        for rec in recs:
-            output_fasta.write(">" + rec.name  + "\n" + str(rec.seq) + "\n") # writing out fasta pulled from genbank file, ready for anvi'o
-
-            genes = [gene for gene in rec.features if gene.type =="CDS"] # focusing on features annotated as "CDS" by NCBI's PGAP
+            genes = [gene for gene in genbank_record.features if gene.type =="CDS"] # focusing on features annotated as "CDS" by NCBI's PGAP
 
             for gene in genes:
+                num_genes_found += 1
                 location = str(gene.location)
 
                 # dumping gene if "location" section contains any of these terms set above: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
-                if any(exclusion_term in location for exclusion_term in location_terms_to_exclude):
+                if any(exclusion_term in location for exclusion_term in self.location_terms_to_exclude):
                     continue
 
                 if "note" in gene.qualifiers:
                     note = str(gene.qualifiers["note"][0])
 
                     # dumping gene if noted as any of these in the "note" section set above
-                    if any(exclusion_term in note for exclusion_term in note_terms_to_exclude):
+                    if any(exclusion_term in note for exclusion_term in self.note_terms_to_exclude):
                         continue
 
                 # dumping if overlapping translation frame
@@ -274,8 +289,6 @@ class GenbankToAnvio:
                 if "pseudo" in gene.qualifiers:
                     continue
 
-                num += 1 # iteration for unique "gene_callers_id" for each
-
                 # cleaning up gene coordinates to more easily parse:
                 location = location.replace("[", "")
                 location = re.sub('](.*)', '', location)
@@ -285,19 +298,19 @@ class GenbankToAnvio:
                 end = location[1] # end coordinate
 
 
-                # setting strand to "f" or "r":
+                # setting direction to "f" or "r":
                 if gene.strand == 1:
-                    strand="f"
+                    direction="f"
                 else:
-                    strand="r"
+                    direction="r"
 
                 # for accession, storing protein id if it has one, else the the locus tag, else "None"
                 if "protein_id" in gene.qualifiers:
-                    acc = gene.qualifiers["protein_id"][0]
+                    accession = gene.qualifiers["protein_id"][0]
                 elif "locus_tag" in gene.qualifiers:
-                    acc = gene.qualifiers["locus_tag"][0]
+                    accession = gene.qualifiers["locus_tag"][0]
                 else:
-                    acc = "None"
+                    accession = "None"
 
                 # storing gene product annotation
                 function = gene.qualifiers["product"][0]
@@ -307,17 +320,51 @@ class GenbankToAnvio:
                     gene_name=str(gene.qualifiers["gene"][0])
                     function = function + " (" + gene_name + ")"
 
-                output_gene_calls.write(str(num) + "\t" + rec.name + "\t" + str(start) + "\t" + str(end) + "\t" + str(strand) + "\t" + "0" + "\t" + str(source) +"\t" + str(version) + "\n")
+                output_gene_calls[self.gene_callers_id] = {'contig': genbank_record.name,
+                                                           'start': start,
+                                                           'stop': end,
+                                                           'direction': direction,
+                                                           'partial': 0,
+                                                           'source': self.source,
+                                                           'version': self.version} 
+                num_genes_reported += 1
 
                 # not writing gene out to functions table if no annotation
-                if "hypothetical protein" in function:
-                    continue
-                else:
-                    output_functions.write(str(num) + "\t" + str(source) + "\t" + acc + "\t" + function + "\t" + "0" + "\n")
+                if "hypothetical protein" not in function:
+                    output_functions[self.gene_callers_id] = {'source': self.source,
+                                                              'accession': accession,
+                                                              'function': function,
+                                                              'e_value': 0}
+                    num_genes_with_functions += 1
 
-        input_genbank_file.close()
-        output_fasta.close()
-        output_gene_calls.close()
-        output_functions.close()
+                # increment the gene callers id fo rthe next
+                self.gene_callers_id += 1 
 
 
+        if num_genbank_records_processed == 0:
+            raise ConfigError("It seems there was no records in your input genbank file :/ Are you sure you\
+                               gave the right file path that actually resolves to a genbank formatted\
+                               text file?")
+
+        self.run.info('Num GenBank entries processed', num_genbank_records_processed)
+        self.run.info('Num gene records found', num_genes_found)
+        self.run.info('Num genes reported', num_genes_reported, mc='green')
+        self.run.info('Num genes with functins', num_genes_with_functions, mc='green', nl_after=1)
+
+        # time to write these down:
+        utils.store_dict_as_FASTA_file(output_fasta,
+                                       self.output_fasta_path,
+                                       wrap_from=None)
+        self.run.info('FASTA file path', self.output_fasta_path)
+
+        utils.store_dict_as_TAB_delimited_file(output_gene_calls,
+                                               self.output_gene_calls_path,
+                                               headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "source", "version"])
+        self.run.info('External gene calls file', self.output_gene_calls_path)
+
+        utils.store_dict_as_TAB_delimited_file(output_functions,
+                                               self.output_functions_path,
+                                               headers=['gene_cluster_id', 'source', 'accession', 'function', 'e_value'])
+        self.run.info('TAB-delimited functions', self.output_functions_path)
+
+        self.run.info_single('Mmmmm ☘ ', nl_before=1, nl_after=1)
