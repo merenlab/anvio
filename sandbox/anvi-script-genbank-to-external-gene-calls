@@ -23,7 +23,6 @@ progress = terminal.Progress()
 
 
 def genbank_to_anvio(args):
-
     input_gb = open(args.input_gb, "r")
 
     output_fasta = open(args.output_fasta, "w")
@@ -66,7 +65,7 @@ def genbank_to_anvio(args):
             # dumping if overlapping translation frame
             if "transl_except" in gene.qualifiers:
                 continue
-                
+
             # dumping if gene declared a pseudogene
             if "pseudo" in gene.qualifiers:
                 continue
@@ -105,7 +104,7 @@ def genbank_to_anvio(args):
                 function = function + " (" + gene_name + ")"
 
             output_gene_calls.write(str(num) + "\t" + rec.name + "\t" + str(start) + "\t" + str(end) + "\t" + str(strand) + "\t" + "0" + "\t" + str(source) +"\t" + str(version) + "\n")
-            
+
             # not writing gene out to functions table if no annotation
             if "hypothetical protein" in function:
                 continue
@@ -117,6 +116,7 @@ def genbank_to_anvio(args):
     output_gene_calls.close()
     output_functions.close()
 
+
 if __name__ == '__main__':
     import argparse
     from Bio import SeqIO
@@ -125,9 +125,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="This script takes a genbank file and converts it into the\
                                                 format required for importing external gene calls and functions into anvi'o.")
 
-    parser.add_argument('-i', '--input_gb', action='store', dest='input_gb', required=True, 
+    parser.add_argument('-i', '--input_gb', action='store', dest='input_gb', required=True,
                         help='input Genbank file (e.g. typically"*.gbk", "*.gb", "*.gbff")')
-    parser.add_argument('-s', '--annotation_source', action='store', dest='annotation_source', default='NCBI_PGAP', 
+    parser.add_argument('-s', '--annotation_source', action='store', dest='annotation_source', default='NCBI_PGAP',
                         help='annotation source (default: "NCBI_PGAP")')
     parser.add_argument("-v", "--annotation_version", action="store", dest="annotation_version", default="v4.6",\
                         help='Annotation source version (default: "v4.6")')
