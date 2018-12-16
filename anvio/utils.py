@@ -1511,7 +1511,10 @@ def store_dict_as_FASTA_file(d, output_file_path, wrap_from=200):
 
     for key in d:
         output.write('>%s\n' % key)
-        output.write('%s\n' % textwrap.fill(d[key], wrap_from, break_on_hyphens=False))
+        if wrap_from:
+            output.write('%s\n' % textwrap.fill(d[key], wrap_from, break_on_hyphens=False))
+        else:
+            output.write('%s\n' % (d[key]))
 
     output.close()
     return True
