@@ -583,7 +583,7 @@ class Pangenome(object):
             self.run.warning("Skipping homogeneity calculations per the '--skip-homogeneity' flag.")
             return
 
-        pan = dbops.PanSuperclass(args=self.args)
+        pan = dbops.PanSuperclass(args=self.args, r=self.run, p=self.progress)
         gene_cluster_names = set(list(gene_clusters_dict.keys()))
 
         d = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_names=gene_cluster_names, num_threads=self.num_threads)
