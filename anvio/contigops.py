@@ -399,7 +399,7 @@ class GenbankToAnvio:
 
         utils.store_dict_as_TAB_delimited_file(output_functions,
                                                self.output_functions_path,
-                                               headers=['gene_cluster_id', 'source', 'accession', 'function', 'e_value'])
+                                               headers=['gene_callers_id', 'source', 'accession', 'function', 'e_value'])
         self.run.info('TAB-delimited functions', self.output_functions_path)
 
         self.run.info_single('Mmmmm ☘ ', nl_before=1, nl_after=1)
