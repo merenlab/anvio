@@ -223,7 +223,7 @@ class GenbankToAnvio:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.input_genbank_path = A('input_gb')
+        self.input_genbank_path = A('input_genbank')
         self.output_file_prefix = A('output_file_prefix')
         self.output_fasta_path = A('output_fasta')
         self.output_functions_path = A('output_functions')
