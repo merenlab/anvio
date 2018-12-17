@@ -117,13 +117,13 @@ SaveTreeDialog.prototype.SaveTree = function() {
 
                 if (this.tree_type == 'samples') {
                     samples_order_dict[new_tree_name] = {'newick': samplesClusteringData['newick'], 'basic': ''};
-                    $('#samples_order').append(`<option val="${new_tree_name}">${new_tree_name}</option>`);
+                    $('#samples_order').append(`<option value="${new_tree_name}">${new_tree_name}</option>`);
                     $('#samples_order').val(new_tree_name);
                     $('#samples_tree_modified_warning').hide();
                 } else {
                     $('#tree_modified_warning').hide();
-                    $('#trees_container').append(`<option val="${new_tree_name}">${getClusteringPrettyName(new_tree_name)}</option>`);
-                    $('#trees_container').val(getClusteringPrettyName(new_tree_name));
+                    $('#trees_container').append(`<option value="${new_tree_name}">${getClusteringPrettyName(new_tree_name)}</option>`);
+                    $('#trees_container').val(new_tree_name);
                 }
                 
                 $(this.dialog).modal('hide');
