@@ -460,7 +460,7 @@ class WorkflowSuperClass:
                 d['internal_genomes_file'] = internal_genomes_file
 
             if external_genomes_file:
-                if filesnpaths.is_file_exists(external_genomes_file, dont_raise=True):
+                if not filesnpaths.is_file_exists(external_genomes_file, dont_raise=True):
                     run.warning('There is no file %s. No worries, one will be created for you.' % external_genomes_file)
                 d['external_genomes_file'] = external_genomes_file
 
