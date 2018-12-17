@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     
     groupA = parser.add_argument_group('INPUT', 'Give us the preciousss...')
-    groupA.add_argument('-i', '--input-gb', action='store', required=True, help='Input GenBank file')
+    groupA.add_argument('-i', '--input-genbank', action='store', required=True, help='Input GenBank file')
 
     groupB = parser.add_argument_group('OUTPUT', "You either provide a 'prefix', or provide specific output\
                                                   file names/paths. You can't mix the two (well, you can try).")
