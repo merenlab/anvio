@@ -152,13 +152,13 @@ rule anvi_gen_contigs_database:
     # depending on whether human contamination using centrifuge was done
     # or not, the input to this rule will be the raw assembly or the
     # filtered.
-    input: M.get_fasta
+    input: unpack(M.get_input_for_anvi_gen_contigs_database)
     output:
         db = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"
     params:
         description = M.get_rule_param("anvi_gen_contigs_database", "--description"),
         skip_gene_calling = M.get_rule_param("anvi_gen_contigs_database", "--skip-gene-calling"),
-        external_gene_calls = M.get_rule_param("anvi_gen_contigs_database", "--external-gene-calls"),
+        external_gene_calls = lambda wildcards: M.get_external_gene_calls_param(wildcards),
         ignore_internal_stop_codons = M.get_rule_param("anvi_gen_contigs_database", "--ignore-internal-stop-codons"),
         skip_mindful_splitting = M.get_rule_param("anvi_gen_contigs_database", "--skip-mindful-splitting"),
         contigs_fasta = M.get_rule_param("anvi_gen_contigs_database", "--contigs-fasta"),

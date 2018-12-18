@@ -9,8 +9,10 @@ import os
 import anvio
 import anvio.utils as u
 import anvio.terminal as terminal
+import anvio.workflows as w
 import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 
 
@@ -108,6 +110,24 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         return contigs
 
 
+    def get_input_for_anvi_gen_contigs_database(self, wildcards):
+        d = {}
+        d['fasta'] = self.get_fasta(wildcards)
+        external_gene_calls = self.contigs_information[wildcards.group].get('external_gene_calls', None)
+        if external_gene_calls:
+            d['external_gene_calls'] = os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group + '-external-gene-calls-reformatted.txt')
+
+        return d
+
+
+    def get_external_gene_calls_param(self, wildcards):
+        external_gene_calls = self.contigs_information[wildcards.group].get('external_gene_calls', None)
+        if external_gene_calls:
+            return "--external-gene-calls " + external_gene_calls
+        else:
+            return ""
+
+
     def get_fasta(self, wildcards):
         '''
             Define the path to the input fasta files.
@@ -120,3 +140,15 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
 
         return contigs
+
+
+    def sanity_check_for_fasta_txt(self):
+        """ Run sanity checks on the fasta txt file"""
+        columns = next(iter(self.contigs_information.values()))
+        bad_columns = [c for c in columns if c not in w.get_fields_for_fasta_information()]
+        if bad_columns:
+            raise ConfigError("Your fasta_txt file contains columns that are \
+                               not familiar to us. These are the only columns \
+                               that we accept: '%s'. These are the columns that \
+                               we don't like in your file: '%s'." % (", ".join(w.get_fields_for_fasta_information()), \
+                                                                   ", ".join(bad_columns)))
