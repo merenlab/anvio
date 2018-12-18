@@ -169,13 +169,8 @@ rule anvi_gen_contigs_database:
     resources: nodes = M.T('anvi_gen_contigs_database'),
     shell: w.r("anvi-gen-contigs-database -f {input} \
                                           -o {output.db} \
-                                          {params.ignore_internal_stop_codons} \
-                                          {params.external_gene_calls} \
-                                          {params.skip_gene_calling} \
-                                          {params.skip_mindful_splitting} \
                                           {params.kmer_size} \
                                           {params.split_length} \
-                                          {params.description} \
                                           {params.project_name} \
                                           {params.contigs_fasta} \
                                           {params.skip_mindful_splitting} \
