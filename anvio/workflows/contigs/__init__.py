@@ -9,8 +9,10 @@ import os
 import anvio
 import anvio.utils as u
 import anvio.terminal as terminal
+import anvio.workflows as w
 import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 
 
@@ -52,7 +54,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "centrifuge": {"threads": 2},
                                     "anvi_run_hmms": {"run": True, "threads": 5},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
-                                    "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True},
+                                    "anvi_script_reformat_fasta": {"--simplify-names": True},
                                     "emapper": {"--database": "bact", "--usemem": True, "--override": True},
                                     "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"}})
 
@@ -68,7 +70,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                          '--use-version']
 
         self.rule_acceptable_params_dict['anvi_script_reformat_fasta'] = \
-                    ['run', '--simplify-names', '--keep-ids', '--exclude-ids', '--min-len']
+                    ['--simplify-names', '--keep-ids', '--exclude-ids', '--min-len']
 
 
         gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
@@ -92,6 +94,19 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             self.fasta_information.update(self.contigs_information)
             self.group_names = list(self.contigs_information.keys())
             self.references_mode = True
+            self.sanity_check_for_fasta_txt()
+
+
+    def sanity_check_for_fasta_txt(self):
+        """ Run sanity checks on the fasta txt file"""
+        columns = next(iter(self.contigs_information.values()))
+        bad_columns = [c for c in columns if c not in w.get_fields_for_fasta_information()]
+        if bad_columns:
+            raise ConfigError("Your fasta_txt file contains columns that are \
+                               not familiar to us. These are the only columns \
+                               that we accept: '%s'. These are the columns that \
+                               we don't like in your file: '%s'." % (", ".join(w.get_fields_for_fasta_information()), \
+                                                                   ", ".join(bad_columns)))
 
 
     def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
@@ -115,8 +130,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         # The raw fasta will be used if no formatting is needed
         contigs = self.get_raw_fasta(wildcards)
 
-        if self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
-            # by default, reformat fasta is ran
+        skip_reformat = str(self.fasta_information[wildcards.group].get('skip_reformat_fasta', "0"))
+
+        if skip_reformat != "1":
             contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
 
         return contigs
