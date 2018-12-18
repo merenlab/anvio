@@ -31,7 +31,7 @@ if __name__ == '__main__':
                                                   functions that can be used with the programs `anvi-gen-contigs-database`\
                                                   and `anvi-import-functions`.")
 
-    
+
     groupA = parser.add_argument_group('INPUT', 'Give us the preciousss...')
     groupA.add_argument('-i', '--input-genbank', action='store', required=True, help='Input GenBank file')
 
