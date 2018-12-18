@@ -298,16 +298,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             self.group_sizes = dict.fromkeys(self.group_names,len(self.sample_names))
 
 
-        if not self.references_mode and not (self.get_param_value_from_config(['anvi_script_reformat_fasta','run']) == True):
-            # in assembly mode (i.e. not in references mode) we always have
-            # to run reformat_fasta. The only reason for this is that
-            # the megahit output is temporary, and if we dont run
-            # reformat_fasta we will delete the output of meghit at the
-            # end of the workflow without saving a copy.
-            raise ConfigError("You can't skip reformat_fasta in assembly mode \
-                                please change your config.json file")
-
-
     def init_samples_txt(self):
         if 'sample' not in self.samples_information.columns.values:
             raise ConfigError("You know what. This '%s' file does not look anything like\
@@ -462,11 +452,15 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def get_fasta(self, wildcards):
+        skip_reformat = "0"
+        if self.references_mode:
+            skip_reformat = str(self.fasta_information[wildcards.group].get('skip_reformat_fasta', "0"))
+
         if wildcards.group in self.references_for_removal:
             # if it's a reference for removal then we just want to use the
             # raw fasta file, and there is no need to reformat or assemble
             contigs = self.get_raw_fasta(wildcards)
-        elif self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
+        elif skip_reformat != "1":
             contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
         else:
             contigs = self.get_raw_fasta(wildcards)
