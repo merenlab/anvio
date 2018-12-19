@@ -274,11 +274,13 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         for gene_cluster_id in gene_clusters_functions_summary_dict:
             gene_cluster_function = gene_clusters_functions_summary_dict[gene_cluster_id]['gene_cluster_function']
+            gene_cluster_function_accession = gene_clusters_functions_summary_dict[gene_cluster_id]['gene_cluster_function_accession']
             if gene_cluster_function:
                 if gene_cluster_function not in occurrence_of_functions_in_pangenome_dict:
                     occurrence_of_functions_in_pangenome_dict[gene_cluster_function] = {}
                     occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids'] = []
                     occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['occurrence'] = None
+                    occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['accession'] = gene_cluster_function_accession
                 occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids'].append(gene_cluster_id)
 
         from anvio.dbops import PanDatabase
@@ -447,6 +449,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
                 enrichment_dict[c][f]["occurrence_outside_of_group"] = occurrence_outside_of_group
                 enrichment_dict[c][f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
+                enrichment_dict[c][f]["function_accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
                 enrichment_dict[c][f]["core_in_group"] = False
                 enrichment_dict[c][f]["core"] = False
                 if enrichment_dict[c][f]["portion_occurrence_in_group"] >= core_threshold:
@@ -502,13 +505,16 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 D[i]['category'] = c
                 D[i][functional_annotation_source] = f
                 for key, value in enrichment_dict[c][f].items():
-                    try:
-                        # if there is a sequence of values
-                        # merge them with commas for nicer printing
-                        D[i][key] = ', '.join(iter(value))
-                    except:
-                        # if it is not a sequnce, it is a single value
+                    if type(value)==str:
                         D[i][key] = value
+                    else:
+                        try:
+                            # if there is a sequence of values
+                            # merge them with commas for nicer printing
+                                D[i][key] = ', '.join(iter(value))
+                        except:
+                            # if it is not a sequnce, it is a single value
+                            D[i][key] = value
                 i += 1
         enrichment_data_frame = pd.DataFrame.from_dict(D, orient='index')
 
