@@ -121,7 +121,8 @@ rule anvi_script_reformat_fasta:
     input:
         contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-prefix-formatted-only.fa"
     output:
-        contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa"
+        contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa"),
+        report = temp(dirs_dict["FASTA_DIR"] + "/{group}/{group}-reformat-report-with-min-len.txt")
     params:
         prefix = "{group}",
         min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
@@ -129,6 +130,7 @@ rule anvi_script_reformat_fasta:
     resources: nodes = M.T('anvi_script_reformat_fasta'),
     shell: w.r("""anvi-script-reformat-fasta {input} \
                                              -o {output.contigs} \
+                                             -r {output.report} \
                                              {params.min_len} >> {log} 2>&1""")
 
 
