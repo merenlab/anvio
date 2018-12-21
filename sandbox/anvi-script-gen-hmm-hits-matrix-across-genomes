@@ -5,6 +5,7 @@ import sys
 import argparse
 
 import anvio
+import anvio.db as db
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.hmmops as hmmops
@@ -46,6 +47,21 @@ def main(args):
         hmmops.SequencesForHMMHits(input_contig_db_paths[0]).list_available_hmm_sources()
     else:
         gene_names = [g.strip() for g in hmmops.SequencesForHMMHits(input_contig_db_paths[0]).hmm_hits_info[hmm_source]['genes'].split(',')]
+
+    # let's see whether all contigs dbs project names
+    for i in range(0, len(input_contig_db_paths)):
+        contigs_db_path = input_contig_db_paths[i]
+
+        contigs_dbs_missing_project_name = []
+        try:
+            db.DB(contigs_db_path, None, ignore_version=True).get_meta_value('project_name')
+        except:
+            contigs_dbs_missing_project_name.append(contigs_db_path)
+
+        if len(contigs_dbs_missing_project_name):
+            raise ConfigError("Some of your contigs databases are missing project name information. \
+                               Here is the list: '%s'." % ', '.join(contigs_dbs_missing_project_name))
+
 
     d = {}
     progress.new('Processing congits databases')
