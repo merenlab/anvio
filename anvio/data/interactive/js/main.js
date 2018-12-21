@@ -1983,21 +1983,27 @@ function saveState()
         return;
     }
 
+    var state_exists = false;
+
     $.ajax({
         type: 'GET',
         cache: false,
+        async: false,
         url: '/state/all',
         success: function(state_list) {
             for (let state_name in state_list) {
                 if (state_name == name)
                 {
-                    if (!confirm('"' + name + '" already exist, do you want to overwrite it?'))
-                        return;
+                    state_exists = true;
                 }
             }
 
         }
     });
+
+    if (state_exists && !confirm('"' + name + '" already exist, do you want to overwrite it?')) {
+        return;
+    }
 
     $.ajax({
         type: 'POST',
