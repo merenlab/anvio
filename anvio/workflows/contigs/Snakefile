@@ -121,7 +121,7 @@ rule anvi_script_reformat_fasta:
     input:
         contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-prefix-formatted-only.fa"
     output:
-        contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa"
+        contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa")
     params:
         prefix = "{group}",
         min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
