@@ -1283,13 +1283,14 @@ class PanSuperclass(object):
         for gene_cluster in self.gene_clusters_functions_dict:
             gene_clusters_functions_summary_dict[gene_cluster] = {}
             gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = None
+            gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function_accession'] = None
             max_votes = 0
             for genome in self.gene_clusters_functions_dict[gene_cluster]:
                 for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster][genome]:
                     if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id]:
                         annotation_blob = self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id][functional_annotation_source]
                         accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
-                        for f in annotations:
+                        for a,f in zip(accessions, annotations):
                             if f not in gene_clusters_functions_summary_dict[gene_cluster]:
                                 gene_clusters_functions_summary_dict[gene_cluster][f] = 0
 
@@ -1298,6 +1299,7 @@ class PanSuperclass(object):
                                 # The function has the votes!
                                 max_votes = gene_clusters_functions_summary_dict[gene_cluster][f]
                                 gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function'] = f
+                                gene_clusters_functions_summary_dict[gene_cluster]['gene_cluster_function_accession'] = a
 
         self.progress.end()
 
