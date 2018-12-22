@@ -8,6 +8,7 @@ import anvio.workflows as w
 import anvio.terminal as terminal
 
 from anvio.workflows.contigs import ContigsDBWorkflow
+from anvio.errors import ConfigError
 
 __author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
@@ -98,9 +99,8 @@ rule anvi_script_reformat_fasta_prefix_only:
         report = dirs_dict["FASTA_DIR"] + "/{group}/{group}-reformat-report.txt"
     params:
         prefix = "{group}",
-        simplify_names = M.get_rule_param("anvi_script_reformat_fasta", "--simplify-names"),
         keep_ids = M.get_rule_param("anvi_script_reformat_fasta", "--keep-ids"),
-        exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids"),
+        exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids")
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
     shell: w.r("""anvi-script-reformat-fasta {input} \
@@ -109,7 +109,7 @@ rule anvi_script_reformat_fasta_prefix_only:
                                              --prefix {params.prefix} \
                                              {params.exclude_ids} \
                                              {params.keep_ids} \
-                                             {params.simplify_names} >> {log} 2>&1""")
+                                             --simplify-names >> {log} 2>&1""")
 
 
 rule anvi_script_reformat_fasta:
@@ -132,33 +132,48 @@ rule anvi_script_reformat_fasta:
                                              {params.min_len} >> {log} 2>&1""")
 
 
-rule translate_external_gene_calls_table:
+rule reformat_external_gene_calls_table:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-translate_external_gene_calls_table.log")
-    input:
-        contigs = os.path.join(dirs_dict["FASTA_DIR"], "{group}", "{group}-contigs.fa"),
-        reformat_report = os.path.join(dirs_dict["FASTA_DIR"], "{group}", "{group}-reformat-report.txt"),
-        external_gene_calls = lambda wildcards: M.get_external_gene_calls_file(wildcards)
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-reformat_external_gene_calls_table.log")
+    input: unpack(M.get_input_for_reformat_external_gene_calls_table)
     output:
         os.path.join(dirs_dict['FASTA_DIR'], "{group}", "{group}-external-gene-calls.txt")
-    threads: M.T('translate_external_gene_calls_table')
-    resources: nodes = M.T('translate_external_gene_calls_table')
+    threads: M.T('reformat_external_gene_calls_table')
+    resources: nodes = M.T('reformat_external_gene_calls_table')
     run:
             import pandas as pd
             import anvio.utils as u
             import anvio.fastalib as f
 
-            fa = f.ReadFasta(input.contigs)
+            fa = f.ReadFasta(input.contigs[0])
             contigs = fa.ids
 
-            reformat_report = pd.read_csv(input.reformat_report, sep = '\t',
+            reformat_report = pd.read_csv(input.reformat_report[0], sep = '\t',
                                           index_col=1, header=None)
             contig_dict = next(iter(reformat_report.to_dict().values()))
             external_gene_calls = u.get_TAB_delimited_file_as_dictionary(input.external_gene_calls)
+            contigs_in_external_gene_calls_not_in_contigs_database = \
+                [c for c in contig_dict.values() if c not in contigs]
+            if contigs_in_external_gene_calls_not_in_contigs_database:
+                warning = "The following contigs are in your external gene calls " +\
+                             "but not in your reformatted fasta file (%s): %s. This " %(\
+                                 input.contigs[0],
+                                 ", ".join(contigs_in_external_gene_calls_not_in_contigs_database)) +\
+                             "is no cause for concern since they have been removed due " +\
+                             "to the --min-len criteria of anvi-script-reformat-fasta, " +\
+                             "but we still thought you should know. Any gene that was called " +\
+                             "within these contigs will naturally not be included in your contigs database."
+                shell("echo '%s' > %s" % (warning, log))
 
             new_external_gene_calls = {}
             for g in external_gene_calls:
-                new_contig_name = contig_dict[external_gene_calls[g]['contig']]
+                contig_name = external_gene_calls[g]['contig']
+                if contig_name not in contig_dict:
+                    raise ConfigError('When proccessing external gene calls for %s \
+                                       we bumped into the following problem: The \
+                                       following contig name: "%s" appears in your external \
+                                       gene calls file, but not in your fasta file.' % (wildcards.group, contig_name))
+                new_contig_name = contig_dict[contig_name]
                 if new_contig_name in contigs:
                     new_external_gene_calls[g] = external_gene_calls[g].copy()
                     new_external_gene_calls[g]['contig'] = new_contig_name

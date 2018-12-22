@@ -44,7 +44,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
                            'emapper', 'anvi_script_run_eggnog_mapper', 'gunzip_fasta',
-                           'translate_external_gene_calls_table'])
+                           'reformat_external_gene_calls_table'])
 
         self.general_params.extend(["fasta_txt"])
 
@@ -56,7 +56,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "centrifuge": {"threads": 2},
                                     "anvi_run_hmms": {"run": True, "threads": 5},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
-                                    "anvi_script_reformat_fasta": {"run": True, "--simplify-names": True},
+                                    "anvi_script_reformat_fasta": {"run": True},
                                     "emapper": {"--database": "bact", "--usemem": True, "--override": True},
                                     "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"}})
 
@@ -72,7 +72,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                          '--use-version']
 
         self.rule_acceptable_params_dict['anvi_script_reformat_fasta'] = \
-                    ['run', '--simplify-names', '--keep-ids', '--exclude-ids', '--min-len']
+                    ['run', '--keep-ids', '--exclude-ids', '--min-len']
 
 
         gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
@@ -132,19 +132,34 @@ class ContigsDBWorkflow(WorkflowSuperClass):
     def get_input_for_anvi_gen_contigs_database(self, wildcards):
         d = {}
         d['fasta'] = self.get_fasta(wildcards)
-        external_gene_calls = self.contigs_information[wildcards.group].get('external_gene_calls', None)
-        if external_gene_calls:
-            fixed_external_gene_calls = self.get_fixed_external_gene_calls_file_name(wildcards)
-            d['external_gene_calls'] = fixed_external_gene_calls
+        external_gene_calls_file = self.get_external_gene_calls_file_name(wildcards)
+        if external_gene_calls_file:
+            d['external_gene_calls'] = external_gene_calls_file
         return d
 
 
-    def get_fixed_external_gene_calls_file_name(self, wildcards):
-        return os.path.join(self.dirs_dict['FASTA_DIR'], wildcards.group, wildcards.group + "-external-gene-calls.txt")
+    def get_input_for_reformat_external_gene_calls_table(self, wildcards):
+        d = {}
+        d['contigs'] = os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group, wildcards.group + "-contigs.fa"),
+        d['reformat_report'] = os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group, wildcards.group + "-reformat-report.txt"),
+        d['external_gene_calls'] = self.contigs_information[wildcards.group]['external_gene_calls']
+        return d
+
+
+    def get_external_gene_calls_file_name(self, wildcards):
+        '''If the user is running anvi-script-reformat-fasta then we need to also reformat the external gene calls'''
+        external_gene_calls = self.contigs_information[wildcards.group].get('external_gene_calls', None)
+        if external_gene_calls:
+            reformat = self.get_rule_param('anvi_script_reformat_fasta', 'run')
+            if reformat:
+                return os.path.join(self.dirs_dict['FASTA_DIR'], wildcards.group, wildcards.group + "-external-gene-calls.txt")
+            else:
+                return self.contigs_information[wildcards.group]['external_gene_calls']
+        return ''
 
 
     def get_external_gene_calls_param(self, wildcards):
-        external_gene_calls = self.get_fixed_external_gene_calls_file_name(wildcards)
+        external_gene_calls = self.get_external_gene_calls_file_name(wildcards)
         if external_gene_calls:
             return "--external-gene-calls " + external_gene_calls
         else:
@@ -180,14 +195,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                 [c for c in self.contigs_information \
                     if self.contigs_information[c].get('gene_functional_annotation')
                     and not self.contigs_information[c].get('external_gene_calls')]
-        for c in self.contigs_information:
-            w.D(self.contigs_information[c].get('external_gene_calls'))
         if contigs_with_external_functions_and_no_external_gene_calls:
             raise ConfigError('You can only provide gene_functional_annotation in \
                                your fasta_txt if you also provide external_gene_calls. \
                                The following entries in "%s" only have functions, but no \
                                gene calls: "%s".' % (self.fasta_txt_file, ', '.join(contigs_with_external_functions_and_no_external_gene_calls)))
-
-
-    def get_external_gene_calls_file(self, wildcards):
-        return self.contigs_information[wildcards.group]['external_gene_calls']
