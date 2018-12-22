@@ -31,6 +31,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.group_names = []
         self.contigs_information = {}
+        self.fasta_txt_file = None
         self.fasta_information = {}
         # we have external_genomes_file defined here for the sake of pangenomics and phylogenomics workflows
         self.external_genomes_file = ''
@@ -86,14 +87,15 @@ class ContigsDBWorkflow(WorkflowSuperClass):
     def init(self):
         super().init()
 
-        fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
+        self.fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
 
-        if fasta_txt_file:
-            filesnpaths.is_file_exists(fasta_txt_file)
-            self.contigs_information = u.get_TAB_delimited_file_as_dictionary(fasta_txt_file)
+        if self.fasta_txt_file:
+            filesnpaths.is_file_exists(self.fasta_txt_file)
+            self.contigs_information = u.get_TAB_delimited_file_as_dictionary(self.fasta_txt_file)
             self.fasta_information.update(self.contigs_information)
             self.group_names = list(self.contigs_information.keys())
             self.references_mode = True
+            self.sanity_check_for_fasta_txt()
 
 
     def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
@@ -152,3 +154,15 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                that we accept: '%s'. These are the columns that \
                                we don't like in your file: '%s'." % (", ".join(w.get_fields_for_fasta_information()), \
                                                                    ", ".join(bad_columns)))
+
+        contigs_with_external_functions_and_no_external_gene_calls = \
+                [c for c in self.contigs_information \
+                    if self.contigs_information[c].get('gene_functional_annotation')
+                    and not self.contigs_information[c].get('external_gene_calls')]
+        for c in self.contigs_information:
+            w.D(self.contigs_information[c].get('external_gene_calls'))
+        if contigs_with_external_functions_and_no_external_gene_calls:
+            raise ConfigError('You can only provide gene_functional_annotation in \
+                               your fasta_txt if you also provide external_gene_calls. \
+                               The following entries in "%s" only have functions, but no \
+                               gene calls: "%s".' % (self.fasta_txt_file, ', '.join(contigs_with_external_functions_and_no_external_gene_calls)))
