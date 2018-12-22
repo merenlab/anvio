@@ -397,10 +397,11 @@ class WorkflowSuperClass:
         if val is not None and val is not '':
             if isinstance(val, bool):
                 # the param is a flag so no need for a value
-                val = ''
-            return _param + ' ' + str(val)
-        else:
-            return ''
+                if val:
+                    return _param
+            else:
+                return _param + ' ' + str(val)
+        return ''
 
 
     def T(self, rule_name): return self.get_param_value_from_config([rule_name,'threads']) if self.get_param_value_from_config([rule_name,'threads']) else 1
