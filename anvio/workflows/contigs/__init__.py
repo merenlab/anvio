@@ -97,6 +97,22 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             self.references_mode = True
             self.sanity_check_for_fasta_txt()
 
+        self.sanity_check_contigs_project_name()
+
+
+    def sanity_check_contigs_project_name(self):
+        contigs_project_name = self.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'], repress_default=True)
+        if contigs_project_name != self.default_config['anvi_gen_contigs_database']['--project-name'] and contigs_project_name is not None:
+            self.run.warning('You chose to set the "project_name" for your contigs databases\
+                         in the config file to %s. You are welcomed to do that, but at your own\
+                         risk. Just so you know, by default the project name would match\
+                         the name for each contigs file (as defined either in the samples_txt\
+                         or fasta_txt file that you supplied), by choosing to provide\
+                         a different name, it means that all your contigs databases would have\
+                         the same name, unless you incloded "{group}" in the name you provided\
+                         but even then, we did not test that option and we are not sure it would\
+                         work...' % contigs_project_name)
+
 
     def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
         '''
