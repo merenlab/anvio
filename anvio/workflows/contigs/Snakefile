@@ -217,6 +217,32 @@ rule anvi_gen_contigs_database:
                                           {params.skip_gene_calling} \
                                           {params.description} >> {log} 2>&1")
 
+
+rule reformat_external_functions:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-reformat_external_functions.log")
+#    input:
+    output:
+        temp = 'temp-{group}'
+    params:
+    threads: M.T('reformat_external_functions')
+    resources: nodes = M.T('reformat_external_functions')
+    shell: "echo a >> {output.temp}"
+
+
+rule import_external_functions:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-import_external_functions.log")
+    input: 'temp-{group}'
+    output:
+        functions_imported = touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-external-functions-imported.done")),
+        previous_rule_is_done = lambda wildcards: M.get_contigs_annotating_dependency(wildcards, 'import_external_functions')
+    params:
+    threads: M.T('import_external_functions')
+    resources: nodes = M.T('import_external_functions')
+    shell: "echo a >> {log} 2>&1"
+
+
 if run_taxonomy_with_centrifuge:
     # If the user wants taxonomy to be assigned with centrifuge
     # then these following rules would run.
@@ -387,7 +413,9 @@ rule annotate_contigs_database:
         # this is here just so snakemake would run the ncbi cogs before running this rule
         cogs = rules.anvi_run_ncbi_cogs.output if run_anvi_run_ncbi_cogs else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         # I hope that by now, you understand why this is here (hint: it is in order to prevent global warming)
-        eggnog_mapper = rules.anvi_script_run_eggnog_mapper.output if run_anvi_script_run_eggnog_mapper else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+        eggnog_mapper = rules.anvi_script_run_eggnog_mapper.output if run_anvi_script_run_eggnog_mapper else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        # import external functions
+        import_external_functions = M.import_external_functions_flags if M.import_external_functions_flags else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
     output: touch(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done")
     shell: "touch {output} >> {log} 2>&1"
 
