@@ -44,6 +44,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
                            'emapper', 'anvi_script_run_eggnog_mapper', 'gunzip_fasta'])
+                           'emapper', 'anvi_script_run_eggnog_mapper', 'gunzip_fasta',
+                           'translate_external_gene_calls_table'])
 
         self.general_params.extend(["fasta_txt"])
 

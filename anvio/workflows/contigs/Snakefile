@@ -121,7 +121,7 @@ rule anvi_script_reformat_fasta:
     input:
         contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-prefix-formatted-only.fa"
     output:
-        contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa")
+        contigs = temp(os.path.join(dirs_dict["FASTA_DIR"], "{group}", "{group}-contigs.fa"))
     params:
         prefix = "{group}",
         min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
@@ -132,17 +132,40 @@ rule anvi_script_reformat_fasta:
                                              {params.min_len} >> {log} 2>&1""")
 
 
-contigs_project_name = M.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'], repress_default=True)
-if contigs_project_name != M.default_config['anvi_gen_contigs_database']['--project-name'] and contigs_project_name is not None:
-    run.warning('You chose to set the "project_name" for your contigs databases\
-                 in the config file to %s. You are welcomed to do that, but at your own\
-                 risk. Just so you know, by default the project name would match\
-                 the name for each contigs file (as defined either in the samples_txt\
-                 or fasta_txt file that you supplied), by choosing to provide\
-                 a different name, it means that all your contigs databases would have\
-                 the same name, unless you incloded "{group}" in the name you provided\
-                 but even then, we did not test that option and we are not sure it would\
-                 work...' % contigs_project_name)
+rule translate_external_gene_calls_table:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-translate_external_gene_calls_table.log")
+    input:
+        contigs = os.path.join(dirs_dict["FASTA_DIR"], "{group}", "{group}-contigs.fa"),
+        reformat_report = os.path.join(dirs_dict["FASTA_DIR"], "{group}", "{group}-reformat-report.txt"),
+        external_gene_calls = lambda wildcards: M.get_external_gene_calls_file(wildcards)
+    output:
+        os.path.join(dirs_dict['FASTA_DIR'], "{group}", "{group}-external-gene-calls.txt")
+    threads: M.T('translate_external_gene_calls_table')
+    resources: nodes = M.T('translate_external_gene_calls_table')
+    run:
+            import pandas as pd
+            import anvio.utils as u
+            import anvio.fastalib as f
+
+            fa = f.ReadFasta(input.contigs)
+            contigs = fa.ids
+
+            reformat_report = pd.read_csv(input.reformat_report, sep = '\t',
+                                          index_col=1, header=None)
+            contig_dict = next(iter(reformat_report.to_dict().values()))
+            external_gene_calls = u.get_TAB_delimited_file_as_dictionary(input.external_gene_calls)
+
+            new_external_gene_calls = {}
+            for g in external_gene_calls:
+                new_contig_name = contig_dict[external_gene_calls[g]['contig']]
+                if new_contig_name in contigs:
+                    new_external_gene_calls[g] = external_gene_calls[g].copy()
+                    new_external_gene_calls[g]['contig'] = new_contig_name
+#            u.store_dict_as_TAB_delimited_file(new_external_gene_calls, output[0], key_header='gene_callers_id')
+            D = pd.DataFrame.from_dict(new_external_gene_calls, orient='index')
+            D.to_csv(output[0], index_label='gene_callers_id', sep='\t')
+
 
 rule anvi_gen_contigs_database:
     """ Generates a contigs database using anvi-gen-contigs-database"""
@@ -167,7 +190,7 @@ rule anvi_gen_contigs_database:
         kmer_size = M.get_rule_param("anvi_gen_contigs_database", "--kmer-size"),
     threads: M.T('anvi_gen_contigs_database')
     resources: nodes = M.T('anvi_gen_contigs_database'),
-    shell: w.r("anvi-gen-contigs-database -f {input} \
+    shell: w.r("anvi-gen-contigs-database -f {input.fasta} \
                                           -o {output.db} \
                                           {params.kmer_size} \
                                           {params.split_length} \
