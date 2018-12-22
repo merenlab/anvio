@@ -43,7 +43,6 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_gen_contigs_database', 'export_gene_calls_for_centrifuge', 'centrifuge',
                            'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
-                           'emapper', 'anvi_script_run_eggnog_mapper', 'gunzip_fasta'])
                            'emapper', 'anvi_script_run_eggnog_mapper', 'gunzip_fasta',
                            'translate_external_gene_calls_table'])
 
@@ -135,13 +134,17 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         d['fasta'] = self.get_fasta(wildcards)
         external_gene_calls = self.contigs_information[wildcards.group].get('external_gene_calls', None)
         if external_gene_calls:
-            d['external_gene_calls'] = os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group + '-external-gene-calls-reformatted.txt')
-
+            fixed_external_gene_calls = self.get_fixed_external_gene_calls_file_name(wildcards)
+            d['external_gene_calls'] = fixed_external_gene_calls
         return d
 
 
+    def get_fixed_external_gene_calls_file_name(self, wildcards):
+        return os.path.join(self.dirs_dict['FASTA_DIR'], wildcards.group, wildcards.group + "-external-gene-calls.txt")
+
+
     def get_external_gene_calls_param(self, wildcards):
-        external_gene_calls = self.contigs_information[wildcards.group].get('external_gene_calls', None)
+        external_gene_calls = self.get_fixed_external_gene_calls_file_name(wildcards)
         if external_gene_calls:
             return "--external-gene-calls " + external_gene_calls
         else:
@@ -184,3 +187,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                your fasta_txt if you also provide external_gene_calls. \
                                The following entries in "%s" only have functions, but no \
                                gene calls: "%s".' % (self.fasta_txt_file, ', '.join(contigs_with_external_functions_and_no_external_gene_calls)))
+
+
+    def get_external_gene_calls_file(self, wildcards):
+        return self.contigs_information[wildcards.group]['external_gene_calls']
