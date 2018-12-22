@@ -141,29 +141,29 @@ rule reformat_external_gene_calls_table:
     threads: M.T('reformat_external_gene_calls_table')
     resources: nodes = M.T('reformat_external_gene_calls_table')
     run:
-            import pandas as pd
-            import anvio.utils as u
-            import anvio.fastalib as f
+        import pandas as pd
+        import anvio.utils as u
+        import anvio.fastalib as f
 
-            fa = f.ReadFasta(input.contigs[0])
-            contigs = fa.ids
+        fa = f.ReadFasta(input.contigs[0])
+        contigs = fa.ids
 
-            reformat_report = pd.read_csv(input.reformat_report[0], sep = '\t',
-                                          index_col=1, header=None)
-            contig_dict = next(iter(reformat_report.to_dict().values()))
-            external_gene_calls = u.get_TAB_delimited_file_as_dictionary(input.external_gene_calls)
-            contigs_in_external_gene_calls_not_in_contigs_database = \
-                [c for c in contig_dict.values() if c not in contigs]
-            if contigs_in_external_gene_calls_not_in_contigs_database:
-                warning = "The following contigs are in your external gene calls " +\
-                             "but not in your reformatted fasta file (%s): %s. This " %(\
-                                 input.contigs[0],
-                                 ", ".join(contigs_in_external_gene_calls_not_in_contigs_database)) +\
-                             "is no cause for concern since they have been removed due " +\
-                             "to the --min-len criteria of anvi-script-reformat-fasta, " +\
-                             "but we still thought you should know. Any gene that was called " +\
-                             "within these contigs will naturally not be included in your contigs database."
-                shell("echo '%s' > %s" % (warning, log))
+        reformat_report = pd.read_csv(input.reformat_report[0], sep = '\t',
+                                      index_col=1, header=None)
+        contig_dict = next(iter(reformat_report.to_dict().values()))
+        external_gene_calls = u.get_TAB_delimited_file_as_dictionary(input.external_gene_calls)
+        contigs_in_external_gene_calls_not_in_contigs_database = \
+            [c for c in contig_dict.values() if c not in contigs]
+        if contigs_in_external_gene_calls_not_in_contigs_database:
+            warning = "The following contigs are in your external gene calls " +\
+                         "but not in your reformatted fasta file (%s): %s. This " %(\
+                             input.contigs[0],
+                             ", ".join(contigs_in_external_gene_calls_not_in_contigs_database)) +\
+                         "is no cause for concern since they have been removed due " +\
+                         "to the --min-len criteria of anvi-script-reformat-fasta, " +\
+                         "but we still thought you should know. Any gene that was called " +\
+                         "within these contigs will naturally not be included in your contigs database."
+            shell("echo '%s' > %s" % (warning, log))
 
             new_external_gene_calls = {}
             for g in external_gene_calls:
@@ -192,7 +192,7 @@ rule anvi_gen_contigs_database:
     # filtered.
     input: unpack(M.get_input_for_anvi_gen_contigs_database)
     output:
-        db = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"
+        db = os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-contigs.db")
     params:
         description = M.get_rule_param("anvi_gen_contigs_database", "--description"),
         skip_gene_calling = M.get_rule_param("anvi_gen_contigs_database", "--skip-gene-calling"),
@@ -219,28 +219,44 @@ rule anvi_gen_contigs_database:
 
 
 rule reformat_external_functions:
+    ''' Remove any gene that is not included in the contigs database due to fasta reformt with --min-len'''
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-reformat_external_functions.log")
-#    input:
-    output:
-        temp = 'temp-{group}'
-    params:
+    input: unpack(M.get_input_for_reformat_external_functions)
+    output: os.path.join(dirs_dict['FASTA_DIR'], "{group}", "{group}" + "-gene-functional-annotation.txt")
     threads: M.T('reformat_external_functions')
     resources: nodes = M.T('reformat_external_functions')
-    shell: "echo a >> {output.temp}"
+    run:
+        import pandas as pd
+        gene_functional_annotation_file = input.gene_functional_annotation
+        external_gene_calls_file = input.external_gene_calls
+
+        gene_functional_annotation = pd.read_csv(gene_functional_annotation_file, sep='\t', index_col=0)
+        external_gene_calls = pd.read_csv(external_gene_calls_file, sep='\t', index_col=0)
+
+        genes_in_both = [g for g in gene_functional_annotation.index if g in external_gene_calls.index]
+        genes_only_in_functional_annotation_file = [g for g in gene_functional_annotation.index if g not in external_gene_calls.index]
+
+        if genes_only_in_functional_annotation_file:
+            warning = "When configuring gene functional annotations for %s\n" % wildcards.group + \
+                      "we noticed that the following gene caller ids are not in your contigs database: \n'%s'.\n" % ', '.join(genes_only_in_functional_annotation_file) + \
+                      "These are probably missing because you used the --min-len parameter when you ran\n" + \
+                      "anvi-script-reformat-fasta. And hence, there is probably no reason for concern.\n"
+            shell("echo -e '%s' > %s" % (warning, log))
+
+        new_gene_functional_annotation = gene_functional_annotation.loc[genes_in_both,]
+        new_gene_functional_annotation.to_csv(output[0], sep='\t')
 
 
 rule import_external_functions:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-import_external_functions.log")
-    input: 'temp-{group}'
+    input: unpack(M.get_input_for_import_external_functions)
     output:
         functions_imported = touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-external-functions-imported.done")),
-        previous_rule_is_done = lambda wildcards: M.get_contigs_annotating_dependency(wildcards, 'import_external_functions')
-    params:
     threads: M.T('import_external_functions')
     resources: nodes = M.T('import_external_functions')
-    shell: "echo a >> {log} 2>&1"
+    shell: "anvi-import-functions -c {input.contigs} -i {input.gene_functional_annotation} >> {log} 2>&1"
 
 
 if run_taxonomy_with_centrifuge:

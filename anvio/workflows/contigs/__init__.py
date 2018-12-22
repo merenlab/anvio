@@ -157,6 +157,14 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         d = {}
         d['gene_functional_annotation'] = self.contigs_information[wildcards.group]['gene_functional_annotation']
         d['external_gene_calls'] = self.get_external_gene_calls_file_name(wildcards)
+        return d
+
+
+    def get_input_for_import_external_functions(self, wildcards):
+        d = {}
+        d['gene_functional_annotation'] = self.get_external_gene_functions_file_name(wildcards)
+        d['contigs'] = os.path.join(self.dirs_dict["CONTIGS_DIR"], wildcards.group + "-contigs.db")
+        return d
 
 
     def get_external_gene_calls_file_name(self, wildcards):
@@ -168,6 +176,18 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                 return os.path.join(self.dirs_dict['FASTA_DIR'], wildcards.group, wildcards.group + "-external-gene-calls.txt")
             else:
                 return self.contigs_information[wildcards.group]['external_gene_calls']
+        return ''
+
+
+    def get_external_gene_functions_file_name(self, wildcards):
+        '''If the user is running anvi-script-reformat-fasta then we need to also reformat the external gene calls'''
+        gene_functional_annotation = self.contigs_information[wildcards.group].get('gene_functional_annotation', None)
+        if gene_functional_annotation:
+            reformat = self.get_rule_param('anvi_script_reformat_fasta', 'run')
+            if reformat:
+                return os.path.join(self.dirs_dict['FASTA_DIR'], wildcards.group, wildcards.group + "-gene-functional-annotation.txt")
+            else:
+                return self.contigs_information[wildcards.group]['gene_functional_annotation']
         return ''
 
 
