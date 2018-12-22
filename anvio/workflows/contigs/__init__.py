@@ -37,6 +37,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.external_genomes_file = ''
         # we have references_mode defined here for the sake of the metagenomics workflow (it is only used when this workflow is inherited)
         self.references_mode = None
+        self.import_external_functions_flags =[]
 
         self.rules.extend(['gen_external_genome_file',
                            'anvi_script_reformat_fasta',
@@ -44,7 +45,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
                            'emapper', 'anvi_script_run_eggnog_mapper', 'gunzip_fasta',
-                           'reformat_external_gene_calls_table'])
+                           'reformat_external_gene_calls_table', 'reformat_external_functions',
+                           'import_external_functions'])
 
         self.general_params.extend(["fasta_txt"])
 
@@ -100,6 +102,11 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.sanity_check_contigs_project_name()
 
+        self.import_external_functions_flags = [os.path.join(self.dirs_dict["CONTIGS_DIR"],
+                                                group + "-external-functions-imported.done")\
+                                                for group in self.contigs_information \
+                                                if self.contigs_information[group].get('gene_functional_annotation')]
+
 
     def sanity_check_contigs_project_name(self):
         contigs_project_name = self.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'], repress_default=True)
@@ -144,6 +151,12 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         d['reformat_report'] = os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group, wildcards.group + "-reformat-report.txt"),
         d['external_gene_calls'] = self.contigs_information[wildcards.group]['external_gene_calls']
         return d
+
+
+    def get_input_for_reformat_external_functions(self, wildcards):
+        d = {}
+        d['gene_functional_annotation'] = self.contigs_information[wildcards.group]['gene_functional_annotation']
+        d['external_gene_calls'] = self.get_external_gene_calls_file_name(wildcards)
 
 
     def get_external_gene_calls_file_name(self, wildcards):
