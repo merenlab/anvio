@@ -263,19 +263,28 @@ class GenbankToAnvioWrapper:
 
         self.run.info('Num entries in metadata', len(metadata))
 
+        CLEAN = lambda x: x.replace(' ', '_').replace('-', '_').replace('.', '').replace('=', '').replace('__', '_')
+
         output_fasta_dict = {}
         self.progress.new("GenBank to anvi'o", progress_total_items=len(metadata))
         for entry in metadata:
             self.progress.increment()
             self.progress.update('Processing %s ...' % entry)
 
-            organism_name = metadata[entry]['organism_name'].replace(' ', '_').replace('-', '_')
+            accession_id = CLEAN(entry)
+            organism_name = CLEAN(metadata[entry]['organism_name'])
+
+            final_name = '_'.join([organism_name, accession_id])
 
             args = argparse.Namespace(input_genbank=metadata[entry]['local_filename'],
-                                      output_file_prefix=os.path.join(self.output_directory_path, organism_name))
+                                      output_file_prefix=os.path.join(self.output_directory_path, final_name))
             g = GenbankToAnvio(args, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
 
-            output_fasta_dict[organism_name] = g.process()
+            if final_name in output_fasta_dict:
+                raise ConfigError("The final name '%s' for your genome has alrady been used by\
+                                   another one :/ This should never happen unless your metadata\
+                                   contains entries with identical accession numbers...")
+            output_fasta_dict[final_name] = g.process()
 
         self.progress.end()
 
