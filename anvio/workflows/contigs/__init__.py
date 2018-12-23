@@ -169,7 +169,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
     def get_external_gene_calls_file_name(self, wildcards):
         '''If the user is running anvi-script-reformat-fasta then we need to also reformat the external gene calls'''
-        external_gene_calls = self.contigs_information[wildcards.group].get('external_gene_calls', None)
+        external_gene_calls = self.contigs_information.get(wildcards.group, {}).get('external_gene_calls', None)
         if external_gene_calls:
             reformat = self.get_rule_param('anvi_script_reformat_fasta', 'run')
             if reformat:
