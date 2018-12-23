@@ -8,6 +8,7 @@ import anvio.workflows as w
 import anvio.terminal as terminal
 
 from anvio.workflows.contigs import ContigsDBWorkflow
+from anvio.errors import ConfigError
 
 __author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
@@ -98,9 +99,8 @@ rule anvi_script_reformat_fasta_prefix_only:
         report = dirs_dict["FASTA_DIR"] + "/{group}/{group}-reformat-report.txt"
     params:
         prefix = "{group}",
-        simplify_names = M.get_rule_param("anvi_script_reformat_fasta", "--simplify-names"),
         keep_ids = M.get_rule_param("anvi_script_reformat_fasta", "--keep-ids"),
-        exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids"),
+        exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids")
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
     shell: w.r("""anvi-script-reformat-fasta {input} \
@@ -109,7 +109,7 @@ rule anvi_script_reformat_fasta_prefix_only:
                                              --prefix {params.prefix} \
                                              {params.exclude_ids} \
                                              {params.keep_ids} \
-                                             {params.simplify_names} >> {log} 2>&1""")
+                                             --simplify-names >> {log} 2>&1""")
 
 
 rule anvi_script_reformat_fasta:
@@ -121,7 +121,7 @@ rule anvi_script_reformat_fasta:
     input:
         contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-prefix-formatted-only.fa"
     output:
-        contigs = dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa"
+        contigs = temp(os.path.join(dirs_dict["FASTA_DIR"], "{group}", "{group}-contigs.fa"))
     params:
         prefix = "{group}",
         min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
@@ -132,17 +132,55 @@ rule anvi_script_reformat_fasta:
                                              {params.min_len} >> {log} 2>&1""")
 
 
-contigs_project_name = M.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'], repress_default=True)
-if contigs_project_name != M.default_config['anvi_gen_contigs_database']['--project-name'] and contigs_project_name is not None:
-    run.warning('You chose to set the "project_name" for your contigs databases\
-                 in the config file to %s. You are welcomed to do that, but at your own\
-                 risk. Just so you know, by default the project name would match\
-                 the name for each contigs file (as defined either in the samples_txt\
-                 or fasta_txt file that you supplied), by choosing to provide\
-                 a different name, it means that all your contigs databases would have\
-                 the same name, unless you incloded "{group}" in the name you provided\
-                 but even then, we did not test that option and we are not sure it would\
-                 work...' % contigs_project_name)
+rule reformat_external_gene_calls_table:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-reformat_external_gene_calls_table.log")
+    input: unpack(M.get_input_for_reformat_external_gene_calls_table)
+    output:
+        os.path.join(dirs_dict['FASTA_DIR'], "{group}", "{group}-external-gene-calls.txt")
+    threads: M.T('reformat_external_gene_calls_table')
+    resources: nodes = M.T('reformat_external_gene_calls_table')
+    run:
+        import pandas as pd
+        import anvio.utils as u
+        import anvio.fastalib as f
+
+        fa = f.ReadFasta(input.contigs[0])
+        contigs = fa.ids
+
+        reformat_report = pd.read_csv(input.reformat_report[0], sep = '\t',
+                                      index_col=1, header=None)
+        contig_dict = next(iter(reformat_report.to_dict().values()))
+        external_gene_calls = u.get_TAB_delimited_file_as_dictionary(input.external_gene_calls)
+        contigs_in_external_gene_calls_not_in_contigs_database = \
+            [c for c in contig_dict.values() if c not in contigs]
+        if contigs_in_external_gene_calls_not_in_contigs_database:
+            warning = "The following contigs are in your external gene calls " +\
+                         "but not in your reformatted fasta file (%s): %s. This " %(\
+                             input.contigs[0],
+                             ", ".join(contigs_in_external_gene_calls_not_in_contigs_database)) +\
+                         "is no cause for concern since they have been removed due " +\
+                         "to the --min-len criteria of anvi-script-reformat-fasta, " +\
+                         "but we still thought you should know. Any gene that was called " +\
+                         "within these contigs will naturally not be included in your contigs database."
+            shell("echo '%s' > %s" % (warning, log))
+
+            new_external_gene_calls = {}
+            for g in external_gene_calls:
+                contig_name = external_gene_calls[g]['contig']
+                if contig_name not in contig_dict:
+                    raise ConfigError('When proccessing external gene calls for %s \
+                                       we bumped into the following problem: The \
+                                       following contig name: "%s" appears in your external \
+                                       gene calls file, but not in your fasta file.' % (wildcards.group, contig_name))
+                new_contig_name = contig_dict[contig_name]
+                if new_contig_name in contigs:
+                    new_external_gene_calls[g] = external_gene_calls[g].copy()
+                    new_external_gene_calls[g]['contig'] = new_contig_name
+#            u.store_dict_as_TAB_delimited_file(new_external_gene_calls, output[0], key_header='gene_callers_id')
+            D = pd.DataFrame.from_dict(new_external_gene_calls, orient='index')
+            D.to_csv(output[0], index_label='gene_callers_id', sep='\t')
+
 
 rule anvi_gen_contigs_database:
     """ Generates a contigs database using anvi-gen-contigs-database"""
@@ -152,13 +190,13 @@ rule anvi_gen_contigs_database:
     # depending on whether human contamination using centrifuge was done
     # or not, the input to this rule will be the raw assembly or the
     # filtered.
-    input: M.get_fasta
+    input: unpack(M.get_input_for_anvi_gen_contigs_database)
     output:
-        db = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"
+        db = os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-contigs.db")
     params:
         description = M.get_rule_param("anvi_gen_contigs_database", "--description"),
         skip_gene_calling = M.get_rule_param("anvi_gen_contigs_database", "--skip-gene-calling"),
-        external_gene_calls = M.get_rule_param("anvi_gen_contigs_database", "--external-gene-calls"),
+        external_gene_calls = lambda wildcards: M.get_external_gene_calls_param(wildcards),
         ignore_internal_stop_codons = M.get_rule_param("anvi_gen_contigs_database", "--ignore-internal-stop-codons"),
         skip_mindful_splitting = M.get_rule_param("anvi_gen_contigs_database", "--skip-mindful-splitting"),
         contigs_fasta = M.get_rule_param("anvi_gen_contigs_database", "--contigs-fasta"),
@@ -167,15 +205,10 @@ rule anvi_gen_contigs_database:
         kmer_size = M.get_rule_param("anvi_gen_contigs_database", "--kmer-size"),
     threads: M.T('anvi_gen_contigs_database')
     resources: nodes = M.T('anvi_gen_contigs_database'),
-    shell: w.r("anvi-gen-contigs-database -f {input} \
+    shell: w.r("anvi-gen-contigs-database -f {input.fasta} \
                                           -o {output.db} \
-                                          {params.ignore_internal_stop_codons} \
-                                          {params.external_gene_calls} \
-                                          {params.skip_gene_calling} \
-                                          {params.skip_mindful_splitting} \
                                           {params.kmer_size} \
                                           {params.split_length} \
-                                          {params.description} \
                                           {params.project_name} \
                                           {params.contigs_fasta} \
                                           {params.skip_mindful_splitting} \
@@ -183,6 +216,48 @@ rule anvi_gen_contigs_database:
                                           {params.external_gene_calls} \
                                           {params.skip_gene_calling} \
                                           {params.description} >> {log} 2>&1")
+
+
+rule reformat_external_functions:
+    ''' Remove any gene that is not included in the contigs database due to fasta reformt with --min-len'''
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-reformat_external_functions.log")
+    input: unpack(M.get_input_for_reformat_external_functions)
+    output: os.path.join(dirs_dict['FASTA_DIR'], "{group}", "{group}" + "-gene-functional-annotation.txt")
+    threads: M.T('reformat_external_functions')
+    resources: nodes = M.T('reformat_external_functions')
+    run:
+        import pandas as pd
+        gene_functional_annotation_file = input.gene_functional_annotation
+        external_gene_calls_file = input.external_gene_calls
+
+        gene_functional_annotation = pd.read_csv(gene_functional_annotation_file, sep='\t', index_col=0)
+        external_gene_calls = pd.read_csv(external_gene_calls_file, sep='\t', index_col=0)
+
+        genes_in_both = [g for g in gene_functional_annotation.index if g in external_gene_calls.index]
+        genes_only_in_functional_annotation_file = [g for g in gene_functional_annotation.index if g not in external_gene_calls.index]
+
+        if genes_only_in_functional_annotation_file:
+            warning = "When configuring gene functional annotations for %s\n" % wildcards.group + \
+                      "we noticed that the following gene caller ids are not in your contigs database: \n'%s'.\n" % ', '.join(genes_only_in_functional_annotation_file) + \
+                      "These are probably missing because you used the --min-len parameter when you ran\n" + \
+                      "anvi-script-reformat-fasta. And hence, there is probably no reason for concern.\n"
+            shell("echo -e '%s' > %s" % (warning, log))
+
+        new_gene_functional_annotation = gene_functional_annotation.loc[genes_in_both,]
+        new_gene_functional_annotation.to_csv(output[0], sep='\t')
+
+
+rule import_external_functions:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-import_external_functions.log")
+    input: unpack(M.get_input_for_import_external_functions)
+    output:
+        functions_imported = touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-external-functions-imported.done")),
+    threads: M.T('import_external_functions')
+    resources: nodes = M.T('import_external_functions')
+    shell: "anvi-import-functions -c {input.contigs} -i {input.gene_functional_annotation} >> {log} 2>&1"
+
 
 if run_taxonomy_with_centrifuge:
     # If the user wants taxonomy to be assigned with centrifuge
@@ -354,7 +429,9 @@ rule annotate_contigs_database:
         # this is here just so snakemake would run the ncbi cogs before running this rule
         cogs = rules.anvi_run_ncbi_cogs.output if run_anvi_run_ncbi_cogs else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         # I hope that by now, you understand why this is here (hint: it is in order to prevent global warming)
-        eggnog_mapper = rules.anvi_script_run_eggnog_mapper.output if run_anvi_script_run_eggnog_mapper else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+        eggnog_mapper = rules.anvi_script_run_eggnog_mapper.output if run_anvi_script_run_eggnog_mapper else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        # import external functions
+        import_external_functions = M.import_external_functions_flags if M.import_external_functions_flags else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
     output: touch(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done")
     shell: "touch {output} >> {log} 2>&1"
 

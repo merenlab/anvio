@@ -397,10 +397,11 @@ class WorkflowSuperClass:
         if val is not None and val is not '':
             if isinstance(val, bool):
                 # the param is a flag so no need for a value
-                val = ''
-            return _param + ' ' + str(val)
-        else:
-            return ''
+                if val:
+                    return _param
+            else:
+                return _param + ' ' + str(val)
+        return ''
 
 
     def T(self, rule_name): return self.get_param_value_from_config([rule_name,'threads']) if self.get_param_value_from_config([rule_name,'threads']) else 1
@@ -578,3 +579,11 @@ def warning_for_param(config, rule, param, wildcard, our_default=None):
             warning_message = warning_message + ' Just so you are aware, if you dont provide a value\
                                                  in the config file, the default value is %s' % wildcard
         run.warning(warning_message)
+
+
+def get_fields_for_fasta_information():
+    """ Return a list of legitimate column names for fasta.txt files"""
+    # Notice we don't include the name of the first column because
+    # utils.get_TAB_delimited_file_as_dictionary doesn't really care about it.
+    return ["path", "external_gene_calls", "gene_functional_annotation"]
+
