@@ -29,7 +29,7 @@ progress = terminal.Progress()
 
 
 class GeneCaller:
-    def __init__(self, fasta_file_path, gene_caller='prodigal', progress=progress, run=run, debug=False):
+    def __init__(self, fasta_file_path, gene_caller='prodigal', args=None, progress=progress, run=run, debug=False):
         filesnpaths.is_file_exists(fasta_file_path)
         filesnpaths.is_file_fasta_formatted(fasta_file_path)
 
@@ -38,6 +38,7 @@ class GeneCaller:
         self.run = run
         self.progress = progress
 
+        self.args = args
         self.debug = debug
         self.tmp_dirs = []
 
@@ -53,7 +54,7 @@ class GeneCaller:
     def process(self):
         output_dir = filesnpaths.get_temp_directory_path()
         self.tmp_dirs.append(output_dir)
-        gene_caller = self.gene_callers[self.gene_caller]()
+        gene_caller = self.gene_callers[self.gene_caller](args=self.args)
 
         gene_calls_dict, amino_acid_sequences_dict = gene_caller.process(self.fasta_file_path, output_dir)
 

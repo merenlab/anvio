@@ -191,6 +191,17 @@ D = {
                       for clustering approaches, you are welcome to experiment (but maybe you should leave\
                       it as is for your first set of analyses)."}
                 ),
+    'prodigal-translation-table': (
+            ['--prodigal-translation-table'],
+            {'metavar': 'INT',
+             'default': None,
+             'help': "This is a parameter to pass to the Prodigal for a specific translation table. This parameter\
+                      corresponds to the paramter `-g` in Prodigal, the default value of which is 11 (so if you do\
+                      not set anything, it will be set to 11 in Prodigal runtime. Please refer to the Prodigal\
+                      documentation to determina what is the right translation table for you if you think you need\
+                      it.)"}
+                ),
+
     'skip-gene-calling': (
             ['--skip-gene-calling'],
             {'default': False,

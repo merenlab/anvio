@@ -27,9 +27,13 @@ pp = terminal.pretty_print
 
 
 class Prodigal:
-    def __init__(self, progress=progress, run=run):
+    def __init__(self, args=None, progress=progress, run=run):
         self.progress = progress
         self.run = run
+        self.args = args
+
+        A = lambda x: (args.__dict__[x] if x in args.__dict__ else None) if args else None
+        self.prodigal_translation_table = A('prodigal_translation_table')
 
         self.parser = None
         self.installed_version = None
@@ -113,10 +117,17 @@ class Prodigal:
         self.run.info('Amino acid sequences', self.amino_acid_sequences_in_contigs)
         self.run.info('Log file', log_file_path)
 
+        cmd_line = ['prodigal', '-i', fasta_file_path, '-o', self.genes_in_contigs, '-a', self.amino_acid_sequences_in_contigs, '-p', 'meta']
+
+        if self.prodigal_translation_table:
+            cmd_line.extend(['-g', self.prodigal_translation_table])
+            self.run.warning("Prodigal translation table is set to '%s' (whatever you did has worked so far, but\
+                              keep an eye for errors from prodigal in case it doesn't like your translation table\
+                              parameter)." % str(self.prodigal_translation_table))
+            
         self.progress.new('Processing')
         self.progress.update('Identifying ORFs in contigs ...')
 
-        cmd_line = ['prodigal', '-i', fasta_file_path, '-o', self.genes_in_contigs, '-a', self.amino_acid_sequences_in_contigs, '-p', 'meta']
         utils.run_command(cmd_line, log_file_path)
 
         if not os.path.exists(self.amino_acid_sequences_in_contigs):

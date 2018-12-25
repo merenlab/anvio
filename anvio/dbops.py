@@ -3064,6 +3064,7 @@ class ContigsDatabase:
         external_gene_calls = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
+        prodigal_translation_table = A('prodigal_translation_table')
 
         if external_gene_calls:
             filesnpaths.is_file_exists(external_gene_calls)
@@ -3071,6 +3072,11 @@ class ContigsDatabase:
         if external_gene_calls and skip_gene_calling:
             raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be\
                                 skipped. Please make up your mind.")
+
+        if (external_gene_calls or skip_gene_calling) and prodigal_translation_table:
+            raise ConfigError("You asked anvi'o to %s, yet you set a specific translation table for prodigal. These\
+                               parameters do not make much sense and anvi'o is kindly asking you to make up your\
+                               mind." % ('skip gene calling' if skip_gene_calling else 'use external gene calls'))
 
         filesnpaths.is_file_fasta_formatted(contigs_fasta)
         contigs_fasta = os.path.abspath(contigs_fasta)
@@ -3207,7 +3213,7 @@ class ContigsDatabase:
             # temporarily disconnect to perform gene calls
             self.db.disconnect()
 
-            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, run=self.run, progress=self.progress, debug=anvio.DEBUG)
+            gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, args=args, run=self.run, progress=self.progress, debug=anvio.DEBUG)
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
             if external_gene_calls:
