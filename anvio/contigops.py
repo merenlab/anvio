@@ -277,11 +277,11 @@ class GenbankToAnvioWrapper:
             # characters.
             organism_name = metadata[entry]['organism_name']
             for char in [c for c in organism_name if c not in OK_CHARS_FOR_ORGANISM_NAME]:
-                organism_name.replace(char, '_')
+                organism_name = organism_name.replace(char, '_')
 
             accession_id = entry
             for char in [c for c in accession_id if c not in OK_CHARS_FOR_ACCESSION]:
-                accession_id.replace(char, '_')
+                accession_id = accession_id.replace(char, '_')
 
             final_name = '_'.join([organism_name, accession_id])
 
