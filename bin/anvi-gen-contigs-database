@@ -41,6 +41,7 @@ if __name__ == '__main__':
 
     groupC = parser.add_argument_group('GENES IN CONTIGS', 'Expert thingies.')
     groupC.add_argument(*anvio.A('skip-gene-calling'), **anvio.K('skip-gene-calling'))
+    groupC.add_argument(*anvio.A('prodigal-translation-table'), **anvio.K('prodigal-translation-table'))
     groupC.add_argument(*anvio.A('external-gene-calls'), **anvio.K('external-gene-calls'))
     groupC.add_argument(*anvio.A('ignore-internal-stop-codons'), **anvio.K('ignore-internal-stop-codons'))
     groupB.add_argument(*anvio.A('skip-mindful-splitting'), **anvio.K('skip-mindful-splitting'))
