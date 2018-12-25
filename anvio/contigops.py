@@ -8,6 +8,7 @@ import os
 import re
 import io
 import gzip
+import string
 import argparse
 
 from Bio import SeqIO
@@ -32,6 +33,9 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+OK_CHARS_FOR_ORGANISM_NAME = string.ascii_letters + string.digits + '_'
+OK_CHARS_FOR_ACCESSION = OK_CHARS_FOR_ORGANISM_NAME + '.'
 
 
 variability_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
@@ -263,16 +267,21 @@ class GenbankToAnvioWrapper:
 
         self.run.info('Num entries in metadata', len(metadata))
 
-        CLEAN = lambda x: x.replace(' ', '_').replace('-', '_').replace('.', '').replace('=', '').replace('__', '_')
-
         output_fasta_dict = {}
         self.progress.new("GenBank to anvi'o", progress_total_items=len(metadata))
         for entry in metadata:
             self.progress.increment()
             self.progress.update('Processing %s ...' % entry)
 
-            accession_id = CLEAN(entry)
-            organism_name = CLEAN(metadata[entry]['organism_name'])
+            # set the organism name and accession id and clean them from weird
+            # characters.
+            organism_name = metadata[entry]['organism_name']
+            for char in [c for c in organism_name if c not in OK_CHARS_FOR_ORGANISM_NAME]:
+                organism_name.replace(char, '_')
+
+            accession_id = entry
+            for char in [c for c in accession_id if c not in OK_CHARS_FOR_ACCESSION]:
+                accession_id.replace(char, '_')
 
             final_name = '_'.join([organism_name, accession_id])
 
