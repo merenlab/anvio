@@ -205,7 +205,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             # If the user supplied external gene calls then we ignore the --prodigal-translation-table parameter
             return ''
         else:
-            return M.get_rule_param("anvi_gen_contigs_database", "--prodigal-translation-table")
+            return self.get_rule_param("anvi_gen_contigs_database", "--prodigal-translation-table")
 
 
     def get_fasta(self, wildcards):
