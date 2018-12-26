@@ -203,7 +203,7 @@ rule anvi_gen_contigs_database:
         project_name = M.get_rule_param("anvi_gen_contigs_database", "--project-name"),
         split_length = M.get_rule_param("anvi_gen_contigs_database", "--split-length"),
         kmer_size = M.get_rule_param("anvi_gen_contigs_database", "--kmer-size"),
-        prodigal_translation_table = M.get_rule_param("anvi_gen_contigs_database", "--prodigal-translation-table")
+        prodigal_translation_table = lambda wildcards: M.get_prodigal_translation_table(wildcards)
     threads: M.T('anvi_gen_contigs_database')
     resources: nodes = M.T('anvi_gen_contigs_database'),
     shell: w.r("anvi-gen-contigs-database -f {input.fasta} \
