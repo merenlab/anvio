@@ -165,21 +165,21 @@ rule reformat_external_gene_calls_table:
                          "within these contigs will naturally not be included in your contigs database."
             shell("echo '%s' > %s" % (warning, log))
 
-            new_external_gene_calls = {}
-            for g in external_gene_calls:
-                contig_name = external_gene_calls[g]['contig']
-                if contig_name not in contig_dict:
-                    raise ConfigError('When proccessing external gene calls for %s \
-                                       we bumped into the following problem: The \
-                                       following contig name: "%s" appears in your external \
-                                       gene calls file, but not in your fasta file.' % (wildcards.group, contig_name))
-                new_contig_name = contig_dict[contig_name]
-                if new_contig_name in contigs:
-                    new_external_gene_calls[g] = external_gene_calls[g].copy()
-                    new_external_gene_calls[g]['contig'] = new_contig_name
+        new_external_gene_calls = {}
+        for g in external_gene_calls:
+            contig_name = external_gene_calls[g]['contig']
+            if contig_name not in contig_dict:
+                raise ConfigError('When proccessing external gene calls for %s \
+                                   we bumped into the following problem: The \
+                                   following contig name: "%s" appears in your external \
+                                   gene calls file, but not in your fasta file.' % (wildcards.group, contig_name))
+            new_contig_name = contig_dict[contig_name]
+            if new_contig_name in contigs:
+                new_external_gene_calls[g] = external_gene_calls[g].copy()
+                new_external_gene_calls[g]['contig'] = new_contig_name
 #            u.store_dict_as_TAB_delimited_file(new_external_gene_calls, output[0], key_header='gene_callers_id')
-            D = pd.DataFrame.from_dict(new_external_gene_calls, orient='index')
-            D.to_csv(output[0], index_label='gene_callers_id', sep='\t')
+        D = pd.DataFrame.from_dict(new_external_gene_calls, orient='index')
+        D.to_csv(output[0], index_label='gene_callers_id', sep='\t')
 
 
 rule anvi_gen_contigs_database:
