@@ -480,15 +480,22 @@ class GenbankToAnvio:
                                        wrap_from=None)
         self.run.info('FASTA file path', self.output_fasta_path)
 
-        utils.store_dict_as_TAB_delimited_file(output_gene_calls,
-                                               self.output_gene_calls_path,
-                                               headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "source", "version"])
-        self.run.info('External gene calls file', self.output_gene_calls_path)
+        if len(output_gene_calls):
+            utils.store_dict_as_TAB_delimited_file(output_gene_calls,
+                                                   self.output_gene_calls_path,
+                                                   headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "source", "version"])
+            self.run.info('External gene calls file', self.output_gene_calls_path)
 
-        utils.store_dict_as_TAB_delimited_file(output_functions,
-                                               self.output_functions_path,
-                                               headers=['gene_callers_id', 'source', 'accession', 'function', 'e_value'])
-        self.run.info('TAB-delimited functions', self.output_functions_path)
+            utils.store_dict_as_TAB_delimited_file(output_functions,
+                                                   self.output_functions_path,
+                                                   headers=['gene_callers_id', 'source', 'accession', 'function', 'e_value'])
+            self.run.info('TAB-delimited functions', self.output_functions_path)
+        else:
+            self.output_gene_calls_path = None
+            self.output_functions_path = None
+            self.run.warning("Anvi'o couldn't find any gene calles in the GenBank file, hence you will get\
+                              no output files for external gene calls or functions :/ We hope you can\
+                              survive this terrible terrible news :(")
 
         self.run.info_single('Mmmmm ☘ ', nl_before=1, nl_after=1)
 
