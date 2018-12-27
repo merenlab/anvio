@@ -343,9 +343,7 @@ rule anvi_run_ncbi_cogs:
     version: anvio.__contigs__version__
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_ncbi_cogs.log"
     input:
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
-        # this is here just so snakemake would run the hmms before running this rule
-        hmms = rules.anvi_run_hmms.output if run_anvi_run_hmms else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
     output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_ncbi_cogs-{group}.done")
     params:
         # anvi-run-ncbi-cogs params. See anvi-run-ncbi-cogs help menu for more info.
