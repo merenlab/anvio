@@ -124,7 +124,7 @@ class Prodigal:
             self.run.warning("Prodigal translation table is set to '%s' (whatever you did has worked so far, but\
                               keep an eye for errors from prodigal in case it doesn't like your translation table\
                               parameter)." % str(self.prodigal_translation_table))
-            
+
         self.progress.new('Processing')
         self.progress.update('Identifying ORFs in contigs ...')
 
