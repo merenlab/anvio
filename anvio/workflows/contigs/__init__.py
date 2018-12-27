@@ -46,7 +46,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls',
                            'emapper', 'anvi_script_run_eggnog_mapper', 'gunzip_fasta',
                            'reformat_external_gene_calls_table', 'reformat_external_functions',
-                           'import_external_functions'])
+                           'import_external_functions', 'anvi_run_pfams'])
 
         self.general_params.extend(["fasta_txt"])
 
@@ -65,6 +65,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--sensitive', '--temporary-dir-path', '--search-with']
 
         self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir']
+
+        self.rule_acceptable_params_dict['anvi_run_pfams'] = ['run', '--pfam-data-dir']
 
         self.rule_acceptable_params_dict['centrifuge'] = ['run', 'db']
 
@@ -106,6 +108,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                                 group + "-external-functions-imported.done")\
                                                 for group in self.contigs_information \
                                                 if self.contigs_information[group].get('gene_functional_annotation')]
+
+        self.run_pfams = self.get_param_value_from_config(['anvi_run_pfams', 'run'])
 
 
     def sanity_check_contigs_project_name(self):
