@@ -6,6 +6,9 @@ import argparse
 
 import anvio
 import anvio.db as db
+import anvio.tables as t
+import anvio.utils as utils
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -61,7 +64,7 @@ class DatabaseInfo:
 
             run.warning(None, "DB Info (no touch also)", lc="green")
             for key in [k for k in self.db_self if k not in ["version", "db_type", "description"]]:
-                if key == self.self_key:
+                if key == self.self_key or (self.self_key == 'sample_id' and key == 'samples'):
                     run.info('%s [JUST SET]' % key, self.db_self[key]["value"], mc='green', lc='green')
                 else:
                     run.info(key, self.db_self[key]["value"])
@@ -99,7 +102,7 @@ class DatabaseInfo:
                                it is not at all :(" % self.db_path)
 
 
-        if self.self_key in ["version", "db_type", "description"]:
+        if self.self_key in ["version", "db_type", "description", "samples"]:
             raise ConfigError("Well. This is awkward. The key '%s' is one of the 'no touch keys', so\
                                you can't change them with this program. That said, you are an adult and\
                                anvi'o can't tell you what to do. If you want to be a rebel, feel free to\
@@ -107,6 +110,24 @@ class DatabaseInfo:
 
         # make sure we did everything we can to avoid user error
         self.self_key = self.self_key.replace(' ', '_').strip()
+
+        if self.self_key in db_self and self.self_key == 'sample_id':
+            if db_self['db_type']['value'] != 'profile' or int(db_self['blank']['value']) or int(db_self['merged']['value']):
+                raise ConfigError("You can change the self-key `sample_id` only in single and non-blank anvi'o\
+                                   profile databases :/")
+
+            if not filesnpaths.is_file_exists(dbops.get_auxiliary_data_path_for_profile_db(self.db_path), dont_raise=True):
+                raise ConfigError("You must have the auxiliary database in its proper location if you wish to\
+                                   change the key `sample_id` in a single profile database. If you are tired of\
+                                   anvi'o telling you what you can or cannot do, feel free to tell it to go fly a kite,\
+                                   and open an sqlite terminal to change anything the way you want.")
+
+            utils.check_sample_id(self.self_value)
+
+            self.run.warning("You are trying to change a special key, `sample_id`. This is a special one,\
+                              because changing it will require a bunch of other things to change as well\
+                              both in other tables in this profile database, and in the auxiliary database\
+                              associated with it.")
 
         if self.self_key in db_self:
             self.run.warning("The content of the key '%s' in the self table of your %s database,\
@@ -127,6 +148,37 @@ class DatabaseInfo:
         database.set_meta_value(self.self_key, self.self_value)
         database.disconnect()
 
+        if self.self_key == 'sample_id':
+            database = db.DB(self.db_path, None, ignore_version=True)
+            current_sample_name = database.get_meta_value("samples")
+
+            self.progress.new("Changing '%s' to '%s'" % (current_sample_name, self.self_value), progress_total_items=5)
+            self.progress.increment()
+            self.progress.update('In self ...')
+            database.remove_meta_key_value_pair('samples')
+            database.set_meta_value('samples', self.self_value)
+
+            self.progress.increment()
+            self.progress.update('In layer additional table')
+            database._exec("""UPDATE %s SET "item_name" = ? WHERE "item_name" == ?""" % t.layer_additional_data_table_name, (self.self_value, current_sample_name))
+
+            self.progress.increment()
+            self.progress.update('In variable nucleotides table')
+            database._exec("""UPDATE %s SET "sample_id" = ? WHERE "sample_id" == ?""" % t.variable_nts_table_name, (self.self_value, current_sample_name))
+
+            self.progress.increment()
+            self.progress.update('In variable codons table')
+            database._exec("""UPDATE %s SET "sample_id" = ? WHERE "sample_id" == ?""" % t.variable_codons_table_name, (self.self_value, current_sample_name))
+            database.disconnect()
+
+            self.progress.increment()
+            self.progress.update('In auxiliary data table')
+            database = db.DB(dbops.get_auxiliary_data_path_for_profile_db(self.db_path), None, ignore_version=True)
+            database._exec("""UPDATE %s SET "sample_name" = ? WHERE "sample_name" == ?""" % t.split_coverages_table_name, (self.self_value, current_sample_name))
+            database.disconnect()
+
+            self.progress.end()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Access self tables, display values, or set new ones totally on your own risk.")
@@ -135,13 +187,8 @@ if __name__ == "__main__":
     groupA.add_argument("input", metavar = "DATABASE_PATH", nargs=None, help = "An anvi'o database for pan, profile, contigs, or auxiliary data")
 
     groupB = parser.add_argument_group('Very dangerous zone', "For power users with extreme self-control and maturity.")
-    # FIXME: Before the next release, make sure the next two params with these:
-    #
-    # groupB.add_argument(*anvio.A('self-key'), **anvio.K('self-key'))
-    # groupB.add_argument(*anvio.A('self-value'), **anvio.K('self-value'))
-    #
-    groupB.add_argument('--self-key', default=None, type=str, help='The key you wish to set or change')
-    groupB.add_argument('--self-value', default=None, type=str, help='The value you wish to set for the self key')
+    groupB.add_argument(*anvio.A('self-key'), **anvio.K('self-key'))
+    groupB.add_argument(*anvio.A('self-value'), **anvio.K('self-value'))
     groupB.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     args, unknown = parser.parse_known_args()
 
