@@ -338,6 +338,20 @@ if run_anvi_run_hmms:
                                   {params.installed_hmm_profile} >> {log} 2>&1")
 
 
+
+rule anvi_run_pfams:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_pfams.log")
+    input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "anvi_run_hmms-{group}.done"))
+    params:
+        pfam_data_dir = M.get_rule_param('anvi_run_pfams', '--pfam-data-dir')
+    threads: M.T('anvi_run_pfams')
+    resources: nodes = M.T('anvi_run_pfams')
+    shell: " anvi-run-pfams -c {input} {params.pfam_data_dir} -T {threads} >> {log} 2>&1"
+
+
+
 w.warning_for_param(config, 'anvi_run_ncbi_cogs', '--temporary-dir-path', '{group}')
 rule anvi_run_ncbi_cogs:
     version: anvio.__contigs__version__
@@ -431,7 +445,9 @@ rule annotate_contigs_database:
         # I hope that by now, you understand why this is here (hint: it is in order to prevent global warming)
         eggnog_mapper = rules.anvi_script_run_eggnog_mapper.output if run_anvi_script_run_eggnog_mapper else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         # import external functions
-        import_external_functions = M.import_external_functions_flags if M.import_external_functions_flags else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+        import_external_functions = M.import_external_functions_flags if M.import_external_functions_flags else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        # annotate pfams
+        pfams =  rules.anvi_run_pfams.output if M.run_pfams else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
     output: touch(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done")
     shell: "touch {output} >> {log} 2>&1"
 
