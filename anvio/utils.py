@@ -1351,17 +1351,18 @@ def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_di
 def check_sample_id(sample_id):
     if sample_id:
         if sample_id[0] in constants.digits:
-            raise ConfigError("Sample name ('%s') is not a valid name. Sample names can't start with digits.\
-                                Long story. Please specify a sample name\
-                                that starts with an ASCII letter (you may want to check '-s' parameter to set\
-                                a sample name if your client permits (otherwise you are going to have to edit\
-                                your input files))." % sample_id)
+            raise ConfigError("The sample name ('%s') is not a valid one. Sample names can't start with digits.\
+                               Long story. Please specify a sample name that starts with an ASCII letter (if\
+                               there are no parameters available to you to set the sample name, it may be the\
+                               case that sample name is determined automatically from the input files you have\
+                               provided to whatever anvi'o workflow you were using, in which case you may need\
+                               to change your input file names or something :/)." % sample_id)
 
         allowed_chars_for_samples = constants.allowed_chars.replace('-', '').replace('.', '')
         if len([c for c in sample_id if c not in allowed_chars_for_samples]):
-            raise ConfigError("Sample name ('%s') contains characters that anvio does not like. Please\
-                                limit the characters that make up the project name to ASCII letters,\
-                                digits, and the underscore character ('_')." % sample_id)
+            raise ConfigError("The sample name ('%s') contains characters anvi'o does not like. Please\
+                               limit the characters that make up the project name to ASCII letters,\
+                               digits, and the underscore character ('_')." % sample_id)
 
 
 def check_collection_name(collection_name):
