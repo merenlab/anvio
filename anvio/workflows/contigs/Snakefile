@@ -343,7 +343,7 @@ rule anvi_run_pfams:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_pfams.log")
     input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
-    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "anvi_run_hmms-{group}.done"))
+    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "anvi_run_pfams-{group}.done"))
     params:
         pfam_data_dir = M.get_rule_param('anvi_run_pfams', '--pfam-data-dir')
     threads: M.T('anvi_run_pfams')
