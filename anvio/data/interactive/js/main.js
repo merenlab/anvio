@@ -2379,6 +2379,7 @@ function processState(state_name, state) {
         $('#samples_order').val(state['samples-order']).trigger('change');
     }
 
+    populateColorDicts();
     buildLegendTables();
 
     current_state_name = state_name;
