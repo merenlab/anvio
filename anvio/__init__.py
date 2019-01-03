@@ -292,6 +292,14 @@ D = {
                       Please let us know if you used this and things failed, so we can tell you that you shouldn't have really used it\
                       if you didn't like failures at the first place (smiley)."}
                 ),
+    'get-samples-stats-only': (
+            ['--get-samples-stats-only'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you only wish to get statistics regarding the occurence of bins in samples, then use this flag. \
+                      Especially when dealing with many samples or large genomes, gene stats could be a long time to compute. \
+                      By using this flag you could save a lot of computation time."}
+                ),
     'gen-figures': (
             ['--gen-figures'],
             {'default': False,
