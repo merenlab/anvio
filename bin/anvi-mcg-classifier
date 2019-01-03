@@ -27,11 +27,14 @@ def main(args):
     if args.output_file_prefix:
         mcg.write_output_to_files = True
 
-    args.init_gene_coverages = True
+    args.init_gene_coverages = False if args.get_samples_stats_only else True
     args.init_split_coverage_values_per_nt = True
     args.populate_nt_level_coverage = True
     summary = summarizer.ProfileSummarizer(args)
     summary.init()
+    if not args.init_gene_coverages:
+        summary.init_split_coverage_values_per_nt_dict()
+
     bin_names_in_collection = summary.bin_ids
     if args.bin_ids_file:
         filesnpaths.is_file_exists(args.bin_ids_file)
@@ -53,10 +56,15 @@ def main(args):
     for bin_name in bin_names_of_interest:
         # This is where things are happening
         _bin = summarizer.Bin(summary, bin_name)
+        print(_bin.split_coverage_values_per_nt_dict)
         mcg.init(gene_level_coverage_stats_dict = _bin.gene_level_coverage_stats_dict, \
                     split_coverage_values_per_nt_dict = _bin.split_coverage_values_per_nt_dict, \
                     additional_description = bin_name)
-        mcg.classify()
+        if not args.get_samples_stats_only:
+            mcg.classify()
+        else:
+            mcg.init_samples_coverage_stats_dict()
+            mcg.save_samples_information()
 
 
 
@@ -79,6 +87,7 @@ if __name__ == '__main__':
     groupB.add_argument('--exclude-samples', metavar='FILE', default=None, help='List of samples to exclude for the analysis.')
     groupB.add_argument('--include-samples', metavar='FILE', default=None, help='List of samples to include for the analysis.')
     groupB.add_argument(*anvio.A('gen-figures'), **anvio.K('gen-figures'))
+    groupB.add_argument(*anvio.A('get-samples-stats-only'), **anvio.K('get-samples-stats-only'))
     groupB.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupC = parser.add_argument_group("PARAMETERS","Parameters to determine cut-offs for the gene-classifier")
     groupC.add_argument('--alpha', '--genome-detection-uncertainty', metavar='NUM', type=float, default=0.25,
