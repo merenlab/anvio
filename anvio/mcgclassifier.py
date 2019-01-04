@@ -127,7 +127,7 @@ class MetagenomeCentricGeneClassifier:
 
         self.gene_level_coverage_stats_dict = gene_level_coverage_stats_dict
         self.split_coverage_values_per_nt_dict = split_coverage_values_per_nt_dict
-        if self.additional_description:
+        if additional_description:
             self.additional_description = '-' + additional_description
 
         try:
