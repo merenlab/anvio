@@ -149,8 +149,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         # loading the samples.txt file
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
         filesnpaths.is_file_exists(self.samples_txt_file)
-        # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
-        self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
+        try:
+            # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
+            self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
+        except IndexError as e:
+            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. \
+                               This is what we know: '%s'" % (self.samples_txt_file, e))
 
 
         # get a list of the sample names
