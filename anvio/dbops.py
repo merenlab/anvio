@@ -898,6 +898,11 @@ class PanSuperclass(object):
         # without having to initialize anything
         self.gene_cluster_names = set(pan_db.db.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
 
+        if not self.gene_cluster_names:
+            raise ConfigError("You seem to have no gene clusters in this pan database :/ This is weird,\
+                               sad, and curious at the same time. Probably you will have to go back to\
+                               previous outputs of your worklow to make sure everything worked out properly.")
+
         pan_db.disconnect()
 
         # create an instance of states table
