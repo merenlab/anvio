@@ -827,7 +827,11 @@ class LocusSplitter:
         amino_acid_sequences = R(t.gene_amino_acid_sequences_table_name)
 
         entries = [(gene_caller_id_conversion_dict[g], amino_acid_sequences[g]['sequence']) for g in amino_acid_sequences]
-        db.DB(locus_output_db_path, None, ignore_version=True).insert_many(t.gene_amino_acid_sequences_table_name, entries=entries)
+
+        locus_db = db.DB(locus_output_db_path, None, ignore_version=True)
+        locus_db._exec("DELETE FROM %s" % t.gene_amino_acid_sequences_table_name)
+        locus_db.insert_many(t.gene_amino_acid_sequences_table_name, entries=entries)
+        locus_db.disconnect()
 
         ############################################################################################
         # REMOVE TEMP FILES
