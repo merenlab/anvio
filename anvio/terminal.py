@@ -229,7 +229,7 @@ class Run:
             return
 
         line = line if line.endswith('\n') else line + '\n'
-        with open(self.log_file_path, "a") as log_file: log_file.write('[%s] %s' % (get_date(), line))
+        with open(self.log_file_path, "a") as log_file: log_file.write('[%s] %s' % (get_date(), line.encode("utf-8")))
 
 
     def write(self, line, quiet=False, overwrite_verbose=False):
