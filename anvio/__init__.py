@@ -139,7 +139,7 @@ D = {
              'help': "A TAB-delimited file for an additional view to be used in the interface. This\
                       file file should contain all split names, and values for each of them in all\
                       samples. Each column in this file must correspond to a sample name. Content\
-                      of this file will be called 'user_vuew', which will be available as a new item\
+                      of this file will be called 'user_view', which will be available as a new item\
                       in the 'views' combo box in the interface"}
                 ),
     'fasta-file': (
