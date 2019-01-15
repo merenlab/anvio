@@ -3,6 +3,7 @@
 """Relations with the console output, Progress and Run classes"""
 
 import os
+import re
 import sys
 import time
 import fcntl
@@ -25,6 +26,12 @@ __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+
+# clean garbage garbage:
+ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+non_ascii_escape = re.compile(r'[^\x00-\x7F]+')
+CLEAR = lambda line: ansi_escape.sub('', non_ascii_escape.sub('', line.strip()))
 
 
 class SuppressAllOutput(object):
@@ -228,8 +235,7 @@ class Run:
                           a log file path :(")
             return
 
-        line = line if line.endswith('\n') else line + '\n'
-        with open(self.log_file_path, "a") as log_file: log_file.write('[%s] %s' % (get_date(), line.encode("utf-8")))
+        with open(self.log_file_path, "a") as log_file: log_file.write('[%s] %s\n' % (get_date(), CLEAR(line)))
 
 
     def write(self, line, quiet=False, overwrite_verbose=False):
