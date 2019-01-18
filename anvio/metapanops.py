@@ -80,6 +80,7 @@ class MetaPangenome(object):
         args.genomes_storage = self.genomes_storage_path
         args.skip_check_collection_name = True
         args.skip_init_functions = True
+        args.output_dir = None
 
         self.pan_summary = summarizer.PanSummarizer(args)
 
@@ -143,6 +144,7 @@ class MetaPangenome(object):
         ARGS.init_gene_coverages = init_gene_coverages
         ARGS.collection_name = collection_name
         ARGS.bin_names_list = bin_names_list
+        ARGS.output_dir = None
 
         summary = summarizer.ProfileSummarizer(ARGS)
         summary.init()
