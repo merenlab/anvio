@@ -226,7 +226,7 @@ def check_output_directory(output_directory, ok_if_exists=False):
     output_directory = os.path.abspath(output_directory)
 
     if os.path.exists(output_directory) and not ok_if_exists:
-        raise FilesNPathsError("The output directory already exists. anvio does not like overwriting stuff.")
+        raise FilesNPathsError("The output directory '%s' already exists. anvio does not like overwriting stuff." % output_directory)
 
     return output_directory
 
