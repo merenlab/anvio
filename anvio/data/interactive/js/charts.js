@@ -31,6 +31,7 @@ var state;
 var layers_ordered;
 var visible_layers;
 var contig_id;
+var page_header;
 var highlight_gene;
 var gene_mode;
 var show_snvs;
@@ -147,7 +148,7 @@ function loadAll() {
                     $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
 
                     $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', sequence);">Get sequence</button> \
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button> \
                                             <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button> \
                                         </div>`);
 
@@ -177,7 +178,8 @@ function show_selected_sequence() {
     range[0] = Math.max(range[0], 0);
     range[1] = Math.min(range[1], sequence.length);
 
-    show_sequence_modal(`Sequence [${range[0]}:${range[1]}]`, sequence.substring(range[0], range[1]));
+    show_sequence_modal(`Sequence [${range[0]}, ${range[1]}]`, 
+        `${page_header} range:${range[0]},${range[1]}\n` + sequence.substring(range[0], range[1]));
 }
 
 
