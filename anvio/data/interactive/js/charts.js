@@ -35,6 +35,7 @@ var highlight_gene;
 var gene_mode;
 var show_snvs;
 var sequence;
+var charts;
 
 
 function loadAll() {
@@ -146,6 +147,11 @@ function loadAll() {
                     $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
 
                     $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
+                                            <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', sequence);">Get sequence</button> \
+                                            <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button> \
+                                        </div>`);
+
+                    $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
                                             <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button> \
                                             <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button> \
                                         </div>`);
@@ -161,6 +167,17 @@ function loadAll() {
             });
     }
     
+}
+
+
+function show_selected_sequence() {
+    let range = charts[0].xScale.domain();
+
+    // who knows?
+    range[0] = Math.max(range[0], 0);
+    range[1] = Math.min(range[1], sequence.length);
+
+    show_sequence_modal(`Sequence [${range[0]}:${range[1]}]`, sequence.substring(range[0], range[1]));
 }
 
 
@@ -334,7 +351,7 @@ function createCharts(state){
     $('#chart-container').css("height", height + "px");
 
     
-    var charts = [];
+    charts = [];
     
     var layersCount = layers.length;
     
@@ -464,6 +481,13 @@ function createCharts(state){
     function onBrush(){
         /* this will return a date range to pass into the chart object */
         var b = brush.empty() ? contextXScale.domain() : brush.extent();
+        
+        if (brush.empty()) {
+            $('.btn-selection-sequence').addClass('disabled').prop('disabled', true);
+        } else {
+            $('.btn-selection-sequence').removeClass('disabled').prop('disabled', false);
+        }
+        
         b = [Math.floor(b[0]), Math.floor(b[1])];
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
