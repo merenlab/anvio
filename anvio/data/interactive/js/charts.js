@@ -150,9 +150,9 @@ function loadAll() {
 
                     $('.main').prepend(`<div style="float: right; text-align: right; padding-right: 60px; padding-bottom: 20px; display: inline-block;" class="form-inline"> \
                                             <b>Range:</b> 
-                                                <input class="form-control input-sm" onkeyup="set_brush_range" id="brush_start" type="text" value="0" size="5"> 
+                                                <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5"> 
                                             <b>:</b> 
-                                                <input class="form-control input-sm" onkeyup="set_brush_range" id="brush_end" type="text" value="${sequence.length}" size="5">\
+                                                <input class="form-control input-sm" id="brush_end" type="text" value="${sequence.length}" size="5">\
                                         </div>`);
 
                     $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
