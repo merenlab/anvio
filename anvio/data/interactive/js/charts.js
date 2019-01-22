@@ -37,6 +37,7 @@ var gene_mode;
 var show_snvs;
 var sequence;
 var charts;
+var brush;
 
 
 function loadAll() {
@@ -147,6 +148,13 @@ function loadAll() {
 
                     $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
 
+                    $('.main').prepend(`<div style="float: right; text-align: right; padding-right: 60px; padding-bottom: 20px; display: inline-block;" class="form-inline"> \
+                                            <b>Range:</b> 
+                                                <input class="form-control input-sm" onkeyup="set_brush_range" id="brush_start" type="text" value="0" size="5"> 
+                                            <b>:</b> 
+                                                <input class="form-control input-sm" onkeyup="set_brush_range" id="brush_end" type="text" value="0" size="5">\
+                                        </div>`);
+
                     $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
                                             <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button> \
                                             <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button> \
@@ -164,6 +172,27 @@ function loadAll() {
 
                     createCharts(state);
                     $('.loading-screen').hide();
+
+                    $('#brush_start, #brush_end').keydown(function(ev) {
+                        if (ev.which == 13) {
+                            let start = parseInt($('#brush_start').val());
+                            let end = parseInt($('#brush_end').val());
+
+                            if (start < 0 || start > sequence.length || end < 0 || end > sequence.length) {
+                                alert(`Invalid value, value needs to be in range 0-${sequence.length}.`);
+                                return;
+                            }
+
+                            if (start >= end) {
+                                alert('Starting value cannot be greater or equal to the ending value.');
+                                return;
+                            }
+
+                            brush.extent([start, end]);
+                            brush(d3.select(".brush").transition());
+                            brush.event(d3.select(".brush").transition());
+                        }
+                    });
                 }
             });
     }
@@ -181,7 +210,6 @@ function show_selected_sequence() {
     show_sequence_modal(`Sequence [${range[0]}, ${range[1]}]`, 
         `${page_header} range:${range[0]},${range[1]}\n` + sequence.substring(range[0], range[1]));
 }
-
 
 function computeGCContent(window_size, step_size) {
     let gc_array = [];
@@ -460,7 +488,7 @@ function createCharts(state){
                 .y0(contextHeight)
                 .y1(0);
 
-    var brush = d3.svg.brush()
+    brush = d3.svg.brush()
                 .x(contextXScale)
                 .on("brushend", onBrush);
 
@@ -491,6 +519,10 @@ function createCharts(state){
         }
         
         b = [Math.floor(b[0]), Math.floor(b[1])];
+
+        $('#brush_start').val(b[0]);
+        $('#brush_end').val(b[1]);
+
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
         }
