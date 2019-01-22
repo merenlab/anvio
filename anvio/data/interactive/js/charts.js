@@ -178,7 +178,7 @@ function loadAll() {
                             let start = parseInt($('#brush_start').val());
                             let end = parseInt($('#brush_end').val());
 
-                            if (start < 0 || start > sequence.length || end < 0 || end > sequence.length) {
+                            if (!isNumber(start) || !isNumber(end) || start < 0 || start > sequence.length || end < 0 || end > sequence.length) {
                                 alert(`Invalid value, value needs to be in range 0-${sequence.length}.`);
                                 return;
                             }
