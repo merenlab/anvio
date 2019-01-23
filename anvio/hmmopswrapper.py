@@ -5,6 +5,7 @@
 """
 
 import argparse
+import hashlib
 
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
@@ -60,6 +61,12 @@ class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDe
             contigs_db_path = g['contigs_db_path']
             contigs_db_hash = g['contigs_db_hash']
 
+            # this is an important variable and allows us to track origins of HMM hits for bins
+            # and individual contigs databases seamlessly. if you want to understand truly what
+            # the hell does this mean, look at `get_genome_hash_for_external_genome` and
+            # `get_genome_hash_for_internal_genome` functions in `genomedescriptions.py`.
+            genome_hash = None
+
             # here we check if the genome descriptions contain reference to a collection name,
             # because if it is the case, we need to focus only on hmm hits that are relevant
             # to splits in this collection:
@@ -76,16 +83,18 @@ class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDe
                                           bin_id=g['bin_id'],
                                           collection_name=g['collection_id'])
                 split_names_of_interest=ccollections.GetSplitNamesInBins(args).get_split_names_only()
+                genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db_hash]).encode('utf-8')).hexdigest()[0:12]
 
                 # current hmm hits now will match to the collection
                 current = SequencesForHMMHits(contigs_db_path, sources = hmm_sources, split_names_of_interest=split_names_of_interest)
             else:
                 current = SequencesForHMMHits(contigs_db_path, sources = hmm_sources)
+                genome_hash = contigs_db_hash
 
             for hmm_hit_id in current.hmm_hits:
                 hit = current.hmm_hits[hmm_hit_id]
                 hit['gene_callers_id'] = '%s_%d' % (contigs_db_hash, hit['gene_callers_id'])
-                hit['contigs_db_hash'] = contigs_db_hash
+                hit['genome_hash'] = genome_hash
                 self.hmm_hits['%s_%d' % (contigs_db_hash, hmm_hit_id)] = hit
 
             if not self.hmm_hits_info:
