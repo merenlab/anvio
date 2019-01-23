@@ -99,7 +99,7 @@ class GenomeDescriptions(object):
         if self.list_hmm_sources or self.list_available_gene_names:
             if not len(hmm_sources_in_all_genomes):
                 raise ConfigError("There are no HMM sources among your external genomes that occur in every genome :/")
-                
+
 
         if self.list_hmm_sources:
             self.run.warning(None, 'HMM SOURCES COMMON TO ALL %d GENOMES' % (len(self.genomes)), lc='yellow')
@@ -185,7 +185,7 @@ class GenomeDescriptions(object):
         self.genome_hash_to_genome_name = {}
         for genome_name in self.external_genome_names:
             g_hash = self.get_genome_hash_for_external_genome(self.genomes[genome_name])
-            self.genomes[genome_name]['genome_hash'] = g_hash 
+            self.genomes[genome_name]['genome_hash'] = g_hash
             self.genome_hash_to_genome_name[g_hash] = genome_name
         for genome_name in self.internal_genome_names:
             g_hash = self.get_genome_hash_for_internal_genome(self.genomes[genome_name])

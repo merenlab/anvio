@@ -61,12 +61,10 @@ def main(args):
         for gene_name in gene_names_in_source:
             d[genome_name][gene_name] = 0
 
-    #{'source': 'Campbell_et_al', 'gene_unique_identifier': 'f5d7612efcfa5072078d247aa739b0c049931cd06467eae82af43f59', 
-    # 'gene_callers_id': 'hash6f46be14_3548', 'gene_name': 'Ribosomal_L18p', 'gene_hmm_id': 'PF00861.17', 'e_value': 8.4e-36, 'contigs_db_hash': 'hash6f46be14'}
     for hit in s.hmm_hits.values():
-        d[s.genome_hash_to_genome_name[hit['contigs_db_hash']]][hit['gene_name']] += 1
+        d[s.genome_hash_to_genome_name[hit['genome_hash']]][hit['gene_name']] += 1
 
-    utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=['contigs_db'] + sorted(gene_names_in_source))
+    utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=['genome_or_bin'] + sorted(gene_names_in_source))
 
     run.info('Output', output_file_path)
 
@@ -76,9 +74,10 @@ if __name__ == "__main__":
                                                   or absence of HMM hits in a given set of contigs databases and an\
                                                   HMM source.')
 
-    groupB = parser.add_argument_group('INPUT: EXTERNAL GENOMES FILE', "Yes. You need to use an external genomes file\
+    groupB = parser.add_argument_group('INPUT: INTERNAL/EXTERNAL GENOMES FILE', "Yes. You need to use an internal and/or external genomes file\
                                         to tell anvi'o where your contigs databases are.")
     groupB.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+    groupB.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
 
     groupD = parser.add_argument_group('HMM STUFF', "This is where you can specify an HMM source, and/or a list of genes to filter\
                                         your results.")
