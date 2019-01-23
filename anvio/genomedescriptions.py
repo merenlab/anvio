@@ -64,12 +64,14 @@ class GenomeDescriptions(object):
 
 
     def names_check(self):
-        i, n = list(self.internal_genomes_dict.keys()), list(self.external_genomes_dict.keys())
+        i, n = list(self.internal_genomes_dict.keys() if self.internal_genomes_dict else []), \
+               list(self.external_genomes_dict.keys() if self.external_genomes_dict else [])
 
         if not i and not n:
-            raise ConfigError("You in fact tried to create a genomes storage file without providing any internal or external genome\
-                                descriptions! You got 5 anvi'o points for being awesome, but this is not gonna work since you really\
-                                need to provide at least one of those descriptions :/")
+            raise ConfigError("You actually managed to get all the way down here in the code without actually providing any internal\
+                               or external genome files! You got 5 anvi'o points for being awesome. But this is not gonna work since\
+                               you really need to provide at least one of those files so anvi'o takes away 4 of those points :/ The\
+                               anvi'o giveth, and the anvi'o taketh away. Enjoy your point.")
 
         if len(i) + len(n) != len(set(i + n)):
             raise ConfigError("Each entry both in internal and external genome descriptions should have a unique 'name'. This does not\
@@ -180,10 +182,15 @@ class GenomeDescriptions(object):
 
         # add hashes for each genome in the self.genomes dict. this will allow us to see whether the HDF file already contains
         # all the information we need.
+        self.genome_hash_to_genome_name = {}
         for genome_name in self.external_genome_names:
-            self.genomes[genome_name]['genome_hash'] = self.get_genome_hash_for_external_genome(self.genomes[genome_name])
+            g_hash = self.get_genome_hash_for_external_genome(self.genomes[genome_name])
+            self.genomes[genome_name]['genome_hash'] = g_hash 
+            self.genome_hash_to_genome_name[g_hash] = genome_name
         for genome_name in self.internal_genome_names:
-            self.genomes[genome_name]['genome_hash'] = self.get_genome_hash_for_internal_genome(self.genomes[genome_name])
+            g_hash = self.get_genome_hash_for_internal_genome(self.genomes[genome_name])
+            self.genomes[genome_name]['genome_hash'] = g_hash
+            self.genome_hash_to_genome_name[g_hash] = genome_name
 
         # if the client is not interested in functions, skip the rest.
         if skip_functions:
