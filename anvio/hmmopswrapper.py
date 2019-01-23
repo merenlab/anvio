@@ -15,27 +15,27 @@ from anvio.hmmops import SequencesForHMMHits
 
 from anvio.errors import ConfigError
 
-run = terminal.Run()
-progress = terminal.Progress()
-
 
 class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDescriptions):
     """A class that generates an instance of SequencesForHMMHits with multiple contigs databases.
 
        An instance from this class will be a fully operational SequencesForHMMHits instance."""
 
-    def __init__(self, args, hmm_sources):
+    def __init__(self, args, hmm_sources, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
+        self.run = run
+        self.progress = progress
         self.hmm_sources = hmm_sources
 
         self.splits_dict = {}
 
         # initialize the super
-        SequencesForHMMHits.__init__(self, None, sources=hmm_sources)
+        SequencesForHMMHits.__init__(self, None, sources=hmm_sources, run=self.run, progress=self.progress)
 
         # process genome descriptions
-        GenomeDescriptions.__init__(self, args)
+        GenomeDescriptions.__init__(self, args, run=self.run, progress=self.progress)
         self.load_genomes_descriptions(skip_functions=True, init=False)
+
         hmm_sources_in_all_genomes = self.get_HMM_sources_common_to_all_genomes()
 
         if not len(hmm_sources_in_all_genomes):
@@ -44,12 +44,12 @@ class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDe
         num_internal_genomes = len(set([g['genome_hash'] for g in self.genomes.values() if 'profile_db_path' in g]))
         collection_names = set([g['collection_id'] for g in self.genomes.values() if 'collection_id' in g])
 
-        self.run.warning("SequencesForHMMHitsWrapperForMultipleContigs class is speaking (yes, the class is\
-                          quite aware of its very long name thankyouverymuch). Of the total %d genome descriptions\
-                          it was given, %d seem to represent internal genomes with bins in collection(s) '%s'. Anvi'o\
-                          will make sure HMM hits to be used for downstream analyses are only those that match to contigs\
-                          that were included in those selections." % (len(self.genomes), num_internal_genomes, ', '.join(collection_names)), lc="green")
-
+        if num_internal_genomes:
+            self.run.warning("SequencesForHMMHitsWrapperForMultipleContigs class is speaking (yes, the class is\
+                              quite aware of its very long name thankyouverymuch). Of the total %d genome descriptions\
+                              it was given, %d seem to represent internal genomes with bins in collection(s) '%s'. Anvi'o\
+                              will make sure HMM hits to be used for downstream analyses are only those that match to contigs\
+                              that were included in those selections." % (len(self.genomes), num_internal_genomes, ', '.join(collection_names)), lc="green")
 
         # very hacky code follows. here we generate a self SequencesForHMMHits object,
         # and we will fill everything in it with slightly modified information so multiple
@@ -85,6 +85,7 @@ class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDe
             for hmm_hit_id in current.hmm_hits:
                 hit = current.hmm_hits[hmm_hit_id]
                 hit['gene_callers_id'] = '%s_%d' % (contigs_db_hash, hit['gene_callers_id'])
+                hit['contigs_db_hash'] = contigs_db_hash
                 self.hmm_hits['%s_%d' % (contigs_db_hash, hmm_hit_id)] = hit
 
             if not self.hmm_hits_info:

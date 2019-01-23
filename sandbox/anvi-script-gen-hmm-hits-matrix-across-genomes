@@ -5,12 +5,10 @@ import sys
 import argparse
 
 import anvio
-import anvio.db as db
-import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+import anvio.hmmopswrapper as hmmopswrapper
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -29,62 +27,46 @@ progress = terminal.Progress()
 
 def main(args):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    input_contig_db_paths = A('input')
-    hmm_source = A('source')
-    list_sources = A('list_sources')
+    hmm_source = A('hmm_source') or set([])
     output_file_path = A('output_file')
+
+    s = hmmopswrapper.SequencesForHMMHitsWrapperForMultipleContigs(args, set([]))
 
     if not hmm_source:
         raise ConfigError("You need to declare an HMM source for this to work :/")
 
+    HMM_sources_common_to_all = s.get_HMM_sources_common_to_all_genomes()
+    if not len(HMM_sources_common_to_all):
+        raise ConfigError("There is not a single HMM source that is common to all\
+                           contigs databases you have :/")
+
+    if hmm_source not in HMM_sources_common_to_all:
+        raise ConfigError('The HMM source "%s" is not common to all of your contigs\
+                           databases you want to work with :/ Here is a list of those\
+                           that are common: %s' % (hmm_source, ', '.join(HMM_sources_common_to_all)))
+
     if not output_file_path:
         raise ConfigError("This will not work without an output file path.")
 
-    gene_names = None
+    s = hmmopswrapper.SequencesForHMMHitsWrapperForMultipleContigs(args, set([hmm_source]), run=terminal.Run(verbose=False))
+
     filesnpaths.is_output_file_writable(output_file_path)
 
-    if list_sources:
-        hmmops.SequencesForHMMHits(input_contig_db_paths[0]).list_available_hmm_sources()
-    else:
-        gene_names = [g.strip() for g in hmmops.SequencesForHMMHits(input_contig_db_paths[0]).hmm_hits_info[hmm_source]['genes'].split(',')]
-
-    # let's see whether all contigs dbs project names
-    for i in range(0, len(input_contig_db_paths)):
-        contigs_db_path = input_contig_db_paths[i]
-
-        contigs_dbs_missing_project_name = []
-        try:
-            db.DB(contigs_db_path, None, ignore_version=True).get_meta_value('project_name')
-        except:
-            contigs_dbs_missing_project_name.append(contigs_db_path)
-
-        if len(contigs_dbs_missing_project_name):
-            raise ConfigError("Some of your contigs databases are missing project name information. \
-                               Here is the list: '%s'." % ', '.join(contigs_dbs_missing_project_name))
-
+    gene_names_in_source = [g.strip() for g in s.hmm_hits_info[hmm_source]['genes'].split(',')]
 
     d = {}
     progress.new('Processing congits databases')
-    for i in range(0, len(input_contig_db_paths)):
-        progress.update('%d of %d' % (i + 1, len(input_contig_db_paths)))
+    for genome_name in s.genomes:
+        d[genome_name] = {}
+        for gene_name in gene_names_in_source:
+            d[genome_name][gene_name] = 0
 
-        contigs_db_path = input_contig_db_paths[i]
-        contigs_db = dbops.ContigsDatabase(contigs_db_path)
-        contigs_name = contigs_db.meta['project_name']
-        contigs_db.disconnect()
+    #{'source': 'Campbell_et_al', 'gene_unique_identifier': 'f5d7612efcfa5072078d247aa739b0c049931cd06467eae82af43f59', 
+    # 'gene_callers_id': 'hash6f46be14_3548', 'gene_name': 'Ribosomal_L18p', 'gene_hmm_id': 'PF00861.17', 'e_value': 8.4e-36, 'contigs_db_hash': 'hash6f46be14'}
+    for hit in s.hmm_hits.values():
+        d[s.genome_hash_to_genome_name[hit['contigs_db_hash']]][hit['gene_name']] += 1
 
-        d[contigs_name] = {}
-
-        hmm = hmmops.SequencesForHMMHits(contigs_db_path, sources=set([hmm_source]), progress=terminal.Progress(verbose=False))
-        for gene_name in [h['gene_name'] for h in hmm.hmm_hits.values()]:
-            d[contigs_name][gene_name] = 1
-
-        for gene_name in gene_names:
-            if gene_name not in d[contigs_name]:
-                d[contigs_name][gene_name] = 0
-    progress.end()
-
-    utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=['contigs_db'] + sorted(gene_names))
+    utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=['contigs_db'] + sorted(gene_names_in_source))
 
     run.info('Output', output_file_path)
 
@@ -94,14 +76,17 @@ if __name__ == "__main__":
                                                   or absence of HMM hits in a given set of contigs databases and an\
                                                   HMM source.')
 
-    parser.add_argument('input', metavar = 'CONTIG DATABASE(S)', nargs='+',
-                        help = "One or more anvi'o contigs databases.")
-    parser.add_argument('--list-sources', action='store_true', default=False,
-                        help = 'Show available single-copy gene sources and exit.')
-    parser.add_argument('--source', default=None,
-                        help = 'A single HMM source to focus on. This HMM source should be found in all contigs\
-                                databases.')
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True }))
+    groupB = parser.add_argument_group('INPUT: EXTERNAL GENOMES FILE', "Yes. You need to use an external genomes file\
+                                        to tell anvi'o where your contigs databases are.")
+    groupB.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+
+    groupD = parser.add_argument_group('HMM STUFF', "This is where you can specify an HMM source, and/or a list of genes to filter\
+                                        your results.")
+    groupD.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source'))
+    groupD.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
+
+    groupD = parser.add_argument_group('OUTPUTTAH')
+    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True }))
 
     args, unknown = parser.parse_known_args()
 
