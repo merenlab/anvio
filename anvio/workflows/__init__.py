@@ -222,7 +222,7 @@ class WorkflowSuperClass:
         os.remove(log_file_path)
 
 
-    def check_workflow_program_dependencies(self, snakemake_workflow_object, dont_raise=False):
+    def check_workflow_program_dependencies(self, snakemake_workflow_object, dont_raise=True):
         """This function gets a snakemake workflow object and checks whether each shell command
            exists in the path.
         """
