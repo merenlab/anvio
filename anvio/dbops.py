@@ -746,6 +746,7 @@ class ContigsSuperclass(object):
             raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
 
         gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list, include_aa_sequences=report_aa_sequences)
+        skipped_gene_calls = []
 
         output = open(output_file_path, 'w')
 
@@ -771,12 +772,19 @@ class ContigsSuperclass(object):
             if wrap:
                 sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
+            if not len(sequence):
+                skipped_gene_calls.append(gene_callers_id)
+                continue
+
             output.write('>%s\n' % header)
             output.write('%s\n' % sequence)
 
         output.close()
-
         self.progress.end()
+
+        if len(skipped_gene_calls):
+            self.run.warning("Gene caller IDs %s have empty AA sequences and skipped." % (", ".join(map(str, skipped_gene_calls))))
+
         self.run.info('Output', output_file_path)
 
 
