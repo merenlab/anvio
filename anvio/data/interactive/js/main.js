@@ -542,22 +542,26 @@ function populateColorDicts() {
         if (layer_types[layer_id] == 2) {
             if (!(layer_id in categorical_data_colors))
             {
-                categorical_stats[layer_id] = {};
                 categorical_data_colors[layer_id] = {};
-                for (var i=1; i < layerdata.length; i++)
-                {
-                    var _category_name = layerdata[i][layer_id];
-                    if (_category_name == null || _category_name == '' || _category_name == 'null')
-                        _category_name = 'None';
-                    layerdata[i][layer_id] = _category_name;
+            }
+            categorical_stats[layer_id] = {};
 
-                    if (typeof categorical_data_colors[layer_id][_category_name] === 'undefined'){
-                        categorical_data_colors[layer_id][_category_name]  = getNamedCategoryColor(_category_name);
-                        categorical_stats[layer_id][_category_name] = 0;
-                    }
+            for (var i=1; i < layerdata.length; i++)
+            {
+                var _category_name = layerdata[i][layer_id];
+                if (_category_name == null || _category_name == '' || _category_name == 'null')
+                    _category_name = 'None';
+                layerdata[i][layer_id] = _category_name;
 
-                    categorical_stats[layer_id][_category_name]++;
+                if (typeof categorical_data_colors[layer_id][_category_name] === 'undefined'){
+                    categorical_data_colors[layer_id][_category_name]  = getNamedCategoryColor(_category_name);
                 }
+
+                if (typeof categorical_stats[layer_id][_category_name] === 'undefined') {
+                    categorical_stats[layer_id][_category_name] = 0;
+                }
+
+                categorical_stats[layer_id][_category_name]++;
             }
         }
     }
