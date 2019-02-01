@@ -143,13 +143,22 @@ class TablesForHMMHits(Table):
                 # like a a dictionary the rest of the code expects with `gene_callers_id` fields. both of these
                 # steps are going to be taken care of in the following function. magic.
 
-                self.run.warning("Alright! You just called an HMM profile that runs on contigs. Because it is not\
-                                 working with anvi'o gene calls directly, the resulting hits will need to be added\
-                                 as 'new gene calls' into the contigs database. This is a new feature, and if it\
-                                 starts screwing things up for you please let us know. Other than that you're pretty\
-                                 much golden. Carry on.",
-                                 header="Psst. Your fancy HMM profile '%s' speaking" % source,
-                                 lc="green")
+                if source != "Ribosomal_RNAs":
+                    self.run.warning("You just called an HMM profile that runs on contigs and not genes. Because this HMM\
+                                      operation is not directly working with gene calls anvi'o already knows about, the resulting\
+                                      hits will need to be added as 'new gene calls' into the contigs database. So far so good.\
+                                      But blecause we are in the contigs realm rater than genes realm, it is likely that\
+                                      resulting hits will not correspond to open reading frames that are supposed to be\
+                                      translated (such as ribosomal RNAs), because otherwise you would be working with genes\
+                                      instad of defining CONTIGS as your context in that HMM profile you just used unless you\
+                                      not sure what you are doing. Hence, anvi'o will not report amino acid sequences for the\
+                                      new gene calls it will recover through these HMMs. Please take a moment and you be the\
+                                      judge of whether this will influence your pangenomic analyses or other things you thought\
+                                      you would be doing with the result of this HMM search downstream. If you do not feel like\
+                                      being the judge of anything today you can move on yet remember to remember this if things\
+                                      look somewhat weird later on.",
+                                     header="Psst. Your fancy HMM profile '%s' speaking" % source,
+                                     lc="green")
 
                 num_hits_before = len(search_results_dict)
                 search_results_dict = utils.get_pruned_HMM_hits_dict(search_results_dict)
@@ -158,7 +167,9 @@ class TablesForHMMHits(Table):
                 if num_hits_before != num_hits_after:
                     self.run.info('Pruned', '%d out of %d hits were removed due to redundancy' % (num_hits_before - num_hits_after, num_hits_before))
 
-                search_results_dict = self.add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(kind_of_search, search_results_dict)
+                search_results_dict = self.add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(kind_of_search,
+                                                                                                           search_results_dict,
+                                                                                                           skip_amino_acid_sequences=True)
 
             self.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
@@ -172,7 +183,7 @@ class TablesForHMMHits(Table):
                 os.remove(v)
 
 
-    def add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(self, source, search_results_dict):
+    def add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(self, source, search_results_dict, skip_amino_acid_sequences=False):
         """Add new gene calls to the contigs database and update the HMM `search_results_dict`.
 
            When we are looking for HMM hits in the context of CONTIGS, our hits do not
@@ -221,7 +232,8 @@ class TablesForHMMHits(Table):
         gene_calls_table = TablesForGeneCalls(self.db_path, run=terminal.Run(verbose=False))
         gene_calls_table.use_external_gene_calls_to_populate_genes_in_contigs_table(input_file_path=None,
                                                                                     gene_calls_dict=additional_gene_calls,
-                                                                                    ignore_internal_stop_codons=True)
+                                                                                    ignore_internal_stop_codons=True,
+                                                                                    skip_amino_acid_sequences=skip_amino_acid_sequences)
         gene_calls_table.populate_genes_in_splits_tables(gene_calls_dict=additional_gene_calls)
 
         # refresh the gene calls dict
