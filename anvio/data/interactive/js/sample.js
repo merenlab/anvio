@@ -238,8 +238,7 @@ function update_samples_layer_min_max(select) {
 
 
 function buildSamplesTable(samples_layer_order, samples_layers) {
-    var order_from_state = true;
-    var all_information_layers = [];
+    var all_information_layers = samples_layer_order;
 
     for (let group in samples_information_dict) {
         let first_sample = Object.keys(samples_information_dict[group])[0];
@@ -265,7 +264,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     if (all_information_layers.length == 0) {
         return;
     }
-    
+
     $('#tbody_samples').empty();
 
     for (var i=0; i < all_information_layers.length; i++)
@@ -353,8 +352,6 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                                .replace(new RegExp('{min}', 'g'), min)
                                .replace(new RegExp('{max}', 'g'), max)
                                .replace(new RegExp('{margin}', 'g'), margin);
-            
-            $('#tbody_samples').append(template); 
         }
         else if (layer_name.indexOf(';') > -1) 
         {
@@ -401,15 +398,6 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                                .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{height}', 'g'), height)
                                .replace(new RegExp('{margin}', 'g'), margin);
-        
-            if (order_from_state)
-            {
-                $('#tbody_samples').append(template);
-            }
-            else
-            {
-                $('#tbody_samples').prepend(template);
-            }
         }
         else
         {
@@ -445,16 +433,8 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                                .replace(new RegExp('{short-name}', 'g'), short_name)
                                .replace(new RegExp('{height}', 'g'), height)
                                .replace(new RegExp('{margin}', 'g'), margin);
-        
-            if (order_from_state)
-            {
-                $('#tbody_samples').append(template);
-            }
-            else
-            {
-                $('#tbody_samples').prepend(template);
-            }
-        }  
+        }
+        $('#tbody_samples').append(template);
     }
 
     $('#tbody_samples .normalization').each((index, select) => {
