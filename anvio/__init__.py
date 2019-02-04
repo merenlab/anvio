@@ -1540,7 +1540,7 @@ D = {
     'min-contig-length': (
             ['-M', '--min-contig-length'],
             {'metavar': 'INT',
-             'default': 2500,
+             'default': 1000,
              'type': int,
              'help': "Minimum length of contigs in a BAM file to analyze. The minimum length should be long enough\
                       for tetra-nucleotide frequency analysis to be meaningful. There is no way to define a golden\
