@@ -177,6 +177,8 @@ class TablesForGeneCalls(Table):
            into the damn memory. anvi'o is doing a pretty bad job with memory management :(
         '''
 
+        amino_acid_sequences = {}
+
         # FIXME: this is a very poor practice for memory management:
         contig_sequences = {}
 
