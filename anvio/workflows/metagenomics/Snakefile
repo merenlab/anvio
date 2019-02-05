@@ -1198,17 +1198,12 @@ rule import_percent_of_reads_mapped:
     resources: nodes = M.T('import_percent_of_reads_mapped')
     run:
         if not filesnpaths.is_file_exists(params.bowtie_log, dont_raise=True):
-            run.warning('We expected to find the log file for bowtie here: %s\
+            raise ConfigError('We expected to find the log file for bowtie2 here: %s\
                          but it is not there. This means we can\'t find out what \
                          percentage of short reads mapped to the fasta file. \
                          If you are confused, feel free to contact us. \
-                         This file will still be created: %s, but don\'t let \
-                         it fool you, nothing was really imported.' % (params.bowtie_log, output.flag))
-            for f in output:
-                # creating fake output files for the rule
-                # this is done just so snakemake thinks that this rule
-                # was executed succesfully.
-                shell("touch %s" %f)
+                         To avoid this error you can skip this step by setting the "run" parameter for this rule \
+                         (import_percent_of_reads_mapped) to "false" in your config file.' % params.bowtie_log)
 
         else:
             shell("""
