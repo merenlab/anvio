@@ -7,6 +7,7 @@ import argparse
 
 import anvio
 import anvio.utils as utils
+import anvio.dbops as dbops
 import anvio.terminal as terminal
 
 from anvio.tables import splits_info_table_name
@@ -40,7 +41,7 @@ def main(args):
                                things would likely work.")
         else:
             utils.is_profile_db_and_contigs_db_compatible(args.pan_or_profile_db, args.contigs_db)
-            all_items = anvio.dbops.ContigsDatabase(args.contigs_db).db.get_single_column_from_table(splits_info_table_name, 'split')
+            all_items = dbops.ContigsDatabase(args.contigs_db).db.get_single_column_from_table(splits_info_table_name, 'split')
     else:
         if args.contigs_db:
             run.warning("You should provide a contigs database to this script only if you are working with an anvi'o blank\
