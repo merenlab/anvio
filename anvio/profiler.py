@@ -65,6 +65,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.profile_SCVs = A('profile_SCVs')
+        self.include_orphans = A('include_orphans')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -538,6 +539,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig.min_coverage_for_variability =  self.min_coverage_for_variability
             contig.skip_SNV_profiling = self.skip_SNV_profiling
             contig.report_variability_full = self.report_variability_full
+            contig.ignore_orphans = not self.include_orphans
 
             # populate contig with empty split objects and
             for split_name in self.contig_name_to_splits[contig_name]:

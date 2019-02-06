@@ -150,9 +150,9 @@ class Coverage:
         self.mean_Q2Q3 = 0.0
 
 
-    def run(self, bam, split):
+    def run(self, bam, split, ignore_orphans=True):
         coverage_profile = {}
-        for pileupcolumn in bam.pileup(split.parent, split.start, split.end):
+        for pileupcolumn in bam.pileup(split.parent, split.start, split.end, ignore_orphans=ignore_orphans):
             if pileupcolumn.pos < split.start or pileupcolumn.pos >= split.end:
                 continue
 
