@@ -400,6 +400,10 @@ class Pangenome(object):
 
         gene_clusters = list(gene_clusters_dict.keys())
 
+        for genome_name in self.genomes:
+            self.genomes[genome_name]['singleton_gene_clusters'] = 0
+            self.genomes[genome_name]['num_gene_clusters_raw'] = 0
+
         for gene_cluster in gene_clusters:
             self.view_data[gene_cluster] = dict([(genome_name, 0) for genome_name in self.genomes])
             self.view_data_presence_absence[gene_cluster] = dict([(genome_name, 0) for genome_name in self.genomes])
@@ -411,6 +415,12 @@ class Pangenome(object):
                 self.view_data[gene_cluster][genome_name] += 1
                 self.view_data_presence_absence[gene_cluster][genome_name] = 1
                 self.additional_view_data[gene_cluster]['num_genes_in_gene_cluster'] += 1
+                self.genomes[genome_name]['num_gene_clusters_raw'] += 1
+
+            genomes_contributing_to_gene_cluster = [t[0] for t in self.view_data_presence_absence[gene_cluster].items() if t[1]]
+
+            if len(genomes_contributing_to_gene_cluster) == 1:
+                self.genomes[genomes_contributing_to_gene_cluster[0]]['singleton_gene_clusters'] += 1
 
             self.additional_view_data[gene_cluster]['SCG'] = 1 if set(self.view_data[gene_cluster].values()) == set([1]) else 0
             self.additional_view_data[gene_cluster]['max_num_paralogs'] = max(self.view_data[gene_cluster].values())
@@ -418,7 +428,6 @@ class Pangenome(object):
             self.additional_view_data[gene_cluster]['num_genomes_gene_cluster_has_hits'] = len([True for genome in self.view_data[gene_cluster] if self.view_data[gene_cluster][genome] > 0])
 
         self.progress.end()
-
         ########################################################################################
         #                           FILTERING BASED ON OCCURRENCE
         ########################################################################################
@@ -615,7 +624,8 @@ class Pangenome(object):
             if h in list(self.genomes.values())[0]:
                 layers_additional_data_keys.append(h)
 
-        layers_additional_data_keys.extend(['num_genes', 'avg_gene_length', 'num_genes_per_kb'])
+        layers_additional_data_keys.extend(['num_genes', 'avg_gene_length', 'num_genes_per_kb',
+                                            'singleton_gene_clusters', 'num_gene_clusters_raw'])
 
         for genome_name in self.genomes:
             new_dict = {}
@@ -625,17 +635,10 @@ class Pangenome(object):
             layers_additional_data_dict[genome_name] = new_dict
 
         # summarize gene cluster stats across genomes
-        layers_additional_data_keys.extend(['num_gene_clusters', 'singleton_gene_clusters'])
+        layers_additional_data_keys.extend(['num_gene_clusters'])
         for genome_name in self.genomes:
             layers_additional_data_dict[genome_name]['num_gene_clusters'] = 0
-            layers_additional_data_dict[genome_name]['singleton_gene_clusters'] = 0
             for gene_cluster in self.view_data_presence_absence:
-                genomes_contributing_to_gene_cluster = [t[0] for t in self.view_data_presence_absence[gene_cluster].items() if t[1]]
-
-                # tracking singletons
-                if len(genomes_contributing_to_gene_cluster) == 1 and genomes_contributing_to_gene_cluster[0] == genome_name:
-                    layers_additional_data_dict[genome_name]['singleton_gene_clusters'] += 1
-
                 # tracking the total number of gene clusters
                 if self.view_data_presence_absence[gene_cluster][genome_name]:
                     layers_additional_data_dict[genome_name]['num_gene_clusters'] += 1
