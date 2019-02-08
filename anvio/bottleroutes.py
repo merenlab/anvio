@@ -348,7 +348,9 @@ class BottleApplication(Bottle):
                                  "functions_initialized":              self.interactive.gene_function_calls_initiated,
                                  "functions_sources":                  functions_sources,
                                  "state":                              (self.interactive.state_autoload, state_dict),
-                                 "collection":                         collection_dict })
+                                 "collection":                         collection_dict,
+                                 "samples":                            self.interactive.p_meta['samples'] if self.interactive.mode in ['full', 'refine'] else [],
+                                 "load_full_state":                    self.interactive.load_full_state })
 
         elif name == "session_id":
             return json.dumps(self.session_id)
