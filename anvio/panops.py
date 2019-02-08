@@ -625,7 +625,10 @@ class Pangenome(object):
                 layers_additional_data_keys.append(h)
 
         layers_additional_data_keys.extend(['num_genes', 'avg_gene_length', 'num_genes_per_kb',
-                                            'singleton_gene_clusters', 'num_gene_clusters_raw'])
+                                            'singleton_gene_clusters'])
+
+        if self.gene_cluster_min_occurrence > 1:
+            layers_additional_data_keys.extend(['num_gene_clusters_raw'])            
 
         for genome_name in self.genomes:
             new_dict = {}
