@@ -144,6 +144,13 @@ var named_layers = {
         'pretty_name': 'Num gene clusters',
         'type': 'bar',
     },
+    'num_gene_clusters_raw': {
+        'height': 220,
+        'color': '#661111',
+        'norm': 'none',
+        'pretty_name': 'Num gene clusters (Raw)',
+        'type': 'bar',
+    },
     'singleton_gene_clusters': {
         'height': 220,
         'color': '#661111',
