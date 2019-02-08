@@ -1844,6 +1844,12 @@ D = {
                       This is very useful information, but will not be included by default because it is an\
                       expensive opeation, and you a busy person."}
                 ),
+    'load-full-state': (
+            ['--load-full-state'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "Meren will explain this."}
+                ),
 }
 
 # two functions that works with the dictionary above.

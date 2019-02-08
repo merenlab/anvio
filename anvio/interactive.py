@@ -87,6 +87,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.show_states = A('show_states')
         self.skip_check_names = A('skip_check_names')
         self.list_collections = A('list_collections')
+        self.load_full_state = A('load_full_state')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
         self.skip_init_functions = A('skip_init_functions')

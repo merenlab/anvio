@@ -60,6 +60,7 @@ var views = {};
 var layers = {};
 var current_view = '';
 var layer_order;
+var sample_names;
 
 var current_state_name = "";
 
@@ -71,6 +72,7 @@ var server_mode = false;
 var samples_tree_hover = false;
 var inspection_available = false;
 var sequences_available = false;
+var load_full_state = false;
 var bbox;
 
 var request_prefix = getParameterByName('request_prefix');
@@ -271,6 +273,9 @@ function initData() {
             buildSamplesTable(convert_samples_order_to_array(samples_information_default_layer_order));
             toggleSampleGroups();
             changeViewData(response.views[1]);
+
+            sample_names = response.samples;
+            load_full_state = response.load_full_state;
 
             if (response.state[0] && response.state[1]) {
                 processState(response.state[0], response.state[1]);
@@ -2225,6 +2230,10 @@ function processState(state_name, state) {
             views[view_key] = {};
             for (let key in state['views'][view_key])
             {
+                if (!load_full_state && mode == 'refine' && sample_names.indexOf(key) > -1) {
+                    continue;
+                }
+
                 let layer_id = getLayerId(key);
                 if (layer_id != -1)
                 {
@@ -2238,6 +2247,7 @@ function processState(state_name, state) {
         layers = {};
         for (let key in state['layers'])
         {
+            
             let layer_id = getLayerId(key);
             if (layer_id != -1)
             {
