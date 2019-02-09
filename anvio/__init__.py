@@ -1599,6 +1599,16 @@ D = {
              'help': "Automatically load previous saved state and draw tree. To see a list of available states,\
                       use --show-states flag."}
                 ),
+    'load-full-state': (
+            ['--load-full-state'],
+            {'required': False,
+             'action': 'store_true',
+             'help': "Often the minimum and maximum values defined for the an entire profile database that contains\
+                      all contigs do not scale well when you wish to work with a single bin in the refine mode. For\
+                      this reason, the default behavior of anvi-refine is to ignore min/max values set in the default\
+                      state. This flag is your way of telling anvi'o to not do that, and load the state stored in the\
+                      profile database as is."}
+                ),
     'state': (
             ['-s', '--state'],
             {'metavar': 'STATE',
@@ -1843,12 +1853,6 @@ D = {
              'help': "If provided, gene coverage statistics will be appended to the table for each entry.\
                       This is very useful information, but will not be included by default because it is an\
                       expensive opeation, and you a busy person."}
-                ),
-    'load-full-state': (
-            ['--load-full-state'],
-            {'required': False,
-             'action': 'store_true',
-             'help': "Meren will explain this."}
                 ),
 }
 
