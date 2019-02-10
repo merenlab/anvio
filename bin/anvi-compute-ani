@@ -209,8 +209,14 @@ def main(args):
 
     clusterings = {}
     for report_name in results:
-        clusterings[report_name] = clustering.get_newick_tree_data_for_dict(results[report_name],
-            linkage=args.linkage, distance=args.distance)
+        try:
+            clusterings[report_name] = clustering.get_newick_tree_data_for_dict(results[report_name],
+                                                                                linkage=args.linkage,
+                                                                                distance=args.distance)
+        except:
+            raise ConfigError("Bad news :/ Something went wrong while anvi'o was processing the output for\
+                               '%s'. You can find the offending file if you search for the output file in\
+                               the temporary output directory '%s'." % (report_name, os.path.join(temp_dir, 'output')))
 
     os.mkdir(args.output_dir)
     for report_name in results:
