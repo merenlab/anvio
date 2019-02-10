@@ -194,10 +194,11 @@ ContextMenu = function(options) {
         'get_split_sequence': {
             'title': 'Get split sequence',
             'action': (node, layer, param) => {
+                let target = (mode == 'gene') ? 'gene' : 'contig';
                 $.ajax({
                     type: 'GET',
                     cache: false,
-                    url: '/data/contig/' + node.label,
+                    url: '/data/'+ target + '/' + node.label,
                     success: function(data) {
                         $('#modSplitSequence .modal-title').html('Split Sequence');
                         $('#splitSequence').val('>' + data['header'] + '\n' + data['sequence']);
@@ -287,10 +288,11 @@ ContextMenu = function(options) {
         'bigsi': {
             'title': 'Search random 150bp on BIGSI',
             'action': (node, layer, param) => {
+                let target = (mode == 'gene') ? 'gene' : 'contig';
                 $.ajax({
                     type: 'GET',
                     cache: false,
-                    url: '/data/contig/' + node.label,
+                    url: '/data/' + target + '/' + node.label,
                     success: function(data) {
                         let bigsi = new BIGSI(data['header'], data['sequence']);
                         bigsi.Search();
