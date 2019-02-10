@@ -57,7 +57,7 @@ function BIGSI(split_name, sequence) {
 
 BIGSI.prototype.Search = function() {
     this.dialog.querySelector('.results').innerHTML = '<center><img src="images/loading.gif" /> <b>Fetching results...</b><br /></center>';
-    
+
     let sub_sequence = '';
     const search_length = 150;
     let start = Math.floor(Math.random() * (this.sequence.length - search_length)); 
@@ -76,7 +76,7 @@ BIGSI.prototype.Search = function() {
         cache: false,
         url: `http://api.bigsi.io/search?seq=${sub_sequence}&threshold=1&score=0`,
         success: (data) => {
-            let table = `<table class="table table-condensed" style="margin-top: 20px; margin-bottom: 20px;"><thead> <tr><th>% k-mers found</th> <th>Accession</th> <th>Hits</th> </tr> </thead> <tbody>`;
+            let table = `<table class="table table-condensed table-striped" style="margin-top: 20px; margin-bottom: 20px;"><thead> <tr><th>% k-mers found</th> <th>Accession</th> <th>Hits</th> </tr> </thead> <tbody>`;
             let results = data[Object.keys(data)[0]]['results'];
 
             for (accession in results) {
@@ -84,7 +84,10 @@ BIGSI.prototype.Search = function() {
                 table += `<tr><td>${item['percent_kmers_found']}</td><td><a target="_blank" href="https://www.ebi.ac.uk/ena/data/view/${accession}">${accession}</a></td> <td>${item['species']}</td> </tr>`;
             }
 
-            this.dialog.querySelector('.results').innerHTML = table + '</tbody> </table>';
+             table += '</tbody></table>';
+             table += '<div style="background: #f1e9de;; margin: 10px 5px; padding: 6px;">If you find these results helpful for your research, please cite <i>"Ultrafast search of all deposited bacterial and viral genomic data"</i> by Bradley et al (<a target="_blank" href="https://doi.org/10.1038/s41587-018-0010-1">doi:10.1038/s41587-018-0010-1</a>).</div>`';
+
+            this.dialog.querySelector('.results').innerHTML = table;
         },
         error: () => {
             this.dialog.querySelector('.results').innerHTML = '<center><b>BIGSI returned nothing (so either no results were found or there was an error).</b></center>';
