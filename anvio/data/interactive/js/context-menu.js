@@ -406,9 +406,8 @@ ContextMenu.prototype.Show = function() {
     var list = document.createElement('ul');
     list.setAttribute('class', 'dropdown-menu context-menu');
     list.setAttribute('role', 'menu');
+    list.style.visibility = 'hidden';
     list.style.display = 'block';
-    list.style.left = this.event.clientX + 'px';
-    list.style.top = this.event.clientY + 'px';
 
     for (const item of this.BuildMenu()) {
         if (item == 'divider') {
@@ -419,6 +418,9 @@ ContextMenu.prototype.Show = function() {
     }
 
     this.container.appendChild(list);
+    list.style.left = Math.min(VIEWER_WIDTH - list.clientWidth, this.event.clientX) + 'px';
+    list.style.top = Math.min(VIEWER_HEIGHT - list.clientHeight, this.event.clientY) + 'px';
+    list.style.visibility = '';
 
     list.addEventListener('click', (event) => {
         let item_name = event.target.getAttribute('item-name');
