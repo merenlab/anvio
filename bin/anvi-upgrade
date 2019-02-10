@@ -75,7 +75,7 @@ class Upgrader(object):
         version = anvio.__version__
 
         if '-master' in version:
-            raise UpgradeError("You are already using master version, in order to upgrade run `git pull`.")
+            raise UpgradeError("You are already using the master repository. To upgrade, run `git pull`.")
 
         self.run.info('Installed version', '%s' % (version))
 
