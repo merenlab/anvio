@@ -102,18 +102,6 @@ class Upgrader(object):
         return dist
 
 
-    def find_executable_and_symlinks(self, program_name):
-        symlinks = []
-        program_path = find_executable(program_name)
-        
-        while os.path.islink(program_path):
-            # read the symlink and join to program_path because it is relative to program path.
-            program_path = os.path.normpath(os.path.join(os.path.dirname(program_path), os.readlink(program_path)))
-            symlinks.append(program_path)
-
-        return {'file_path': program_path, 'symlinks': symlinks}
-
-
     def check_if_dist_writable(self):
         rand_filename = str(uuid.uuid4())
 
