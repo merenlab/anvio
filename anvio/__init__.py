@@ -1791,6 +1791,12 @@ D = {
                       This is very useful information, but will not be included by default because it is an\
                       expensive opeation, and you a busy person."}
                 ),
+    'repository': (
+            ['--repository'],
+            {'default': 'merenlab/anvio',
+             'type': str,
+             'help': "Source repository to download releases, currently only Github is supported. Enter in 'merenlab/anvio' format."}
+                ),
 }
 
 # two functions that works with the dictionary above.
