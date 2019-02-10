@@ -271,7 +271,16 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
     {
         var layer_name = all_information_layers[i]['layer_name'];
         var group = all_information_layers[i]['group'];
+
+        if (!samples_information_dict.hasOwnProperty(group) || Object.keys(samples_information_dict[group]) < 1) {
+            continue;
+        }
+
         var first_sample = Object.keys(samples_information_dict[group])[0];
+
+        if (!samples_information_dict[group][first_sample].hasOwnProperty(layer_name)) {
+            continue;
+        }
 
         var pretty_name = getNamedLayerDefaults(layer_name, 'pretty_name', layer_name);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
