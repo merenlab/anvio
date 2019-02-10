@@ -2,11 +2,13 @@
 # -*- coding: utf-8
 
 import os
+import sys
 import glob
 import stat
 import uuid
 import shutil
 import zipfile
+import argparse
 import requests
 import subprocess
 from distutils.spawn import find_executable
@@ -16,13 +18,18 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import UpgradeError
+
 run = terminal.Run()
 progress = terminal.Progress()
 
 class Upgrader(object):
-    def __init__(self, run=run, progress=progress):
+    def __init__(self, args, run=run, progress=progress):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.run = run
         self.progress = progress
+        self.args = args
+        self.repository = A('repository')
 
 
     def upgrade(self):
@@ -48,7 +55,7 @@ class Upgrader(object):
 
     def get_releases(self):
         releases = {}
-        url = 'https://api.github.com/repos/ozcan/anvio/tags'
+        url = 'https://api.github.com/repos/%s/tags' % self.repository
 
         if 'ANVIO_GITHUB_API_TOKEN' in os.environ:
             url = url + '?access_token=' + os.environ['ANVIO_GITHUB_API_TOKEN']
@@ -56,7 +63,7 @@ class Upgrader(object):
         response = requests.get(url).json()
 
         if 'message' in response and 'documentation_url' in response:
-            raise Exception('Github API returned error: %s, %s' % (response['message'], response['documentation_url']))
+            raise UpgradeError('Github API returned error: %s, %s' % (response['message'], response['documentation_url']))
 
         for release in response:
             releases[release['name']] = release
@@ -68,7 +75,7 @@ class Upgrader(object):
         version = anvio.__version__
 
         if '-master' in version:
-            raise Exception("You are already using master version, in order to upgrade run `git pull`.")
+            raise UpgradeError("You are already using master version, in order to upgrade run `git pull`.")
 
         self.run.info('Installed version', '%s' % (version))
 
@@ -116,7 +123,7 @@ class Upgrader(object):
 
                 os.remove(target_path)
             except:
-                raise Exception("This script can not write files in anvi'o installation directories, try running with 'sudo'")
+                raise ConfigError("This script can not write files in anvi'o installation directories, try running with 'sudo'")
 
 
     def get_target_version(self):
@@ -183,7 +190,7 @@ class Upgrader(object):
 
         for dist_file_path in dist_files:
             if not filesnpaths.is_file_exists(dist_file_path, dont_raise=True):
-                raise Exception("File %s does not exists" % dist_file_path)
+                raise UpgradeError("File %s does not exists" % dist_file_path)
 
         for dist_file_path in dist_files:
             self.progress.update(os.path.basename(dist_file_path))
@@ -246,5 +253,13 @@ class Upgrader(object):
         self.progress.end()
 
 if __name__ == '__main__':
-    upgrader = Upgrader()
-    upgrader.upgrade()
+    parser = argparse.ArgumentParser(description="Download and install minor releases of anvi'o from a Github repository.")
+    parser.add_argument(*anvio.A('repository'), **anvio.K('repository'))
+    args, unknown = parser.parse_known_args()
+
+    try:
+        upgrader = Upgrader(args)
+        upgrader.upgrade()
+    except UpgradeError as e:
+        print(e)
+        sys.exit(-1)
