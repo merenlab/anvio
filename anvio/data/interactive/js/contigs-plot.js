@@ -1,11 +1,10 @@
 function draw_n_values_plot(container, stats) {
     var svg = d3.select(container)
         .append('svg')
-        .attr('viewBox', '0 50 800 220')
-        .attr('class', 'svgviewbox_big');
+        .attr('viewBox', '0 50 800 260')
 
     var g = svg.append("g")
-        .attr("transform", "translate(0, 60)");
+        .attr("transform", "translate(0, 100)");
 
     var plot_width = 780;
     var plot_height = 180;
@@ -114,11 +113,10 @@ function draw_n_values_plot(container, stats) {
 function draw_gene_counts_chart(container, gene_counts) {
         var svg = d3.select(container)
             .append('svg')
-            .attr('viewBox', '0 20 800 240')
-            .attr('class', 'svgviewbox_small');
+            .attr('viewBox', '0 20 800 300')
 
         var g = svg.append("g")
-            .attr("transform", "translate(0, 60)");
+            .attr("transform", "translate(0, 100)");
 
         var plot_width = 780;
         var plot_height = 180;
