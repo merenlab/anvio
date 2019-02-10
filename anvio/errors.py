@@ -73,6 +73,13 @@ class GenesDBError(AnvioError):
         AnvioError.__init__(self)
 
 
+class UpgradeError(AnvioError):
+    def __init__(self, e=None):
+        self.e = remove_spaces(e)
+        self.error_type = 'Upgrade Error'
+        AnvioError.__init__(self)
+
+
 class RefineError(AnvioError):
     def __init__(self, e=None):
         self.e = remove_spaces(e)
