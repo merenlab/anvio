@@ -317,6 +317,10 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             raise ConfigError("You know what. This '%s' file does not look anything like\
                                a samples file." % self.samples_txt_file)
 
+        if len(self.samples_information['sample']) != len(set(self.samples_information['sample'])):
+            raise ConfigError("Names of samples in your samples_txt file must be unique. \
+                               It looks like some names appear twice in your file: %s" % self.samples_txt_file)
+
         for sample in self.samples_information['sample']:
             try:
                 u.check_sample_id(sample)
