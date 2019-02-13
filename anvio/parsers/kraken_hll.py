@@ -84,7 +84,7 @@ class KrakenHLL(Parser):
         self.progress.update('Processing the input data ...')
 
         for entry in kraken_output.values():
-            tax_string_list = entry['taxonomy'].split('|')
+            tax_string_list = [f for f in entry['taxonomy'].split('|') if not f.startswith('k__Fungi')]
             count = entry['count']
 
             num_levels_tax_entry = len(tax_string_list)
