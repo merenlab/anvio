@@ -100,7 +100,7 @@ D = {
             {'metavar': "GENOME_NAMES",
              'required': False,
              'help': "Genome names to 'focus'. You can use this parameter to limit the genomes included in your analysis.\
-                      You can provide these names as a commma-separated list of names, or you can put them in a file,\
+                      You can provide these names as a comma-separated list of names, or you can put them in a file,\
                       where you have a single genome name in each line, and provide the file path."}
                 ),
     'blank-profile': (
@@ -137,7 +137,7 @@ D = {
             ['-V', '--additional-view'],
             {'metavar': 'ADDITIONAL_VIEW',
              'help': "A TAB-delimited file for an additional view to be used in the interface. This\
-                      file file should contain all split names, and values for each of them in all\
+                      file should contain all split names, and values for each of them in all\
                       samples. Each column in this file must correspond to a sample name. Content\
                       of this file will be called 'user_view', which will be available as a new item\
                       in the 'views' combo box in the interface"}
@@ -160,7 +160,7 @@ D = {
             {'metavar': 'FILE',
              'help': "A TAB-delimited file with three columns: 'attribute', 'basic', 'newick'. For each attribute,\
                       the order of samples must be defined either in the 'basic' form or via a 'newick'-formatted\
-                      tree structurei that describes the organization of each sample. Anvi'o will look for a\
+                      tree structure that describes the organization of each sample. Anvi'o will look for a\
                       comma-separated list of sample names for the 'basic' form. Please refer to the online docs\
                       for more info. Also you shouldn't hesitate to try to find the right file format until you get\
                       it working. There are stringent checks on this file, and you will not break anything while trying!."}
@@ -171,7 +171,7 @@ D = {
              'default': 20000,
              'type': int,
              'help': "Anvi'o splits very long contigs into smaller pieces, without actually splitting them for real. These\
-                      'virtual' splits improves the efficacy of the visualization step, and changing the split size gives\
+                      'virtual' splits improve the efficacy of the visualization step, and changing the split size gives\
                       freedom to the user to adjust the resolution of their display when necessary. The default value is\
                       (%(default)d). If you are planning to use your contigs database for metagenomic binning, we advise you\
                       to not go below 10,000 (since the lower the split size is, the more items to show in the display, and\
@@ -196,9 +196,9 @@ D = {
             {'metavar': 'INT',
              'default': None,
              'help': "This is a parameter to pass to the Prodigal for a specific translation table. This parameter\
-                      corresponds to the paramter `-g` in Prodigal, the default value of which is 11 (so if you do\
+                      corresponds to the parameter `-g` in Prodigal, the default value of which is 11 (so if you do\
                       not set anything, it will be set to 11 in Prodigal runtime. Please refer to the Prodigal\
-                      documentation to determina what is the right translation table for you if you think you need\
+                      documentation to determine what is the right translation table for you if you think you need\
                       it.)"}
                 ),
 
@@ -277,7 +277,7 @@ D = {
             {'metavar': 'GENE-CALLER',
              'help': "The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one)\
                       requires an explicit mentioning of which one to use. The default is '%s', but it will not be enough if you\
-                      if you were a rebel adn have used `--external-gene-callers` or something." % constants.default_gene_caller}
+                      if you were a rebel and have used `--external-gene-callers` or something." % constants.default_gene_caller}
                 ),
 
     'ignore-internal-stop-codons': (
@@ -285,7 +285,7 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "This is only relevant when you have an external gene calls file. If anvi'o figures out that your custom gene calls\
-                      result in amino acid seqeunces with stop codons in the middle, it will complain about it. You can use this flag\
+                      result in amino acid sequences with stop codons in the middle, it will complain about it. You can use this flag\
                       to tell anvi'o to don't check for internal stop codons, EVEN THOUGH IT MEANS THERE IS MOST LIKELY SOMETHING\
                       WRONG WITH YOUR EXTERNAL GENE CALLS FILE. Anvi'o will understand that sometimes we don't want to care, and will\
                       not judge you. Instead, it will replace every stop codon residue in the amino acid sequence with an 'X' character.\
@@ -296,7 +296,7 @@ D = {
             ['--get-samples-stats-only'],
             {'default': False,
              'action': 'store_true',
-             'help': "If you only wish to get statistics regarding the occurence of bins in samples, then use this flag. \
+             'help': "If you only wish to get statistics regarding the occurrence of bins in samples, then use this flag. \
                       Especially when dealing with many samples or large genomes, gene stats could be a long time to compute. \
                       By using this flag you could save a lot of computation time."}
                 ),
@@ -335,7 +335,7 @@ D = {
              'help': "Anvi'o can perform accurate characterization of codon frequencies in genes during profiling. While having\
                       codon frequencies opens doors to powerful evolutionary insights in downstream analyses, due to its\
                       computational complexity, this feature comes 'off' by default. Using this flag you can rise against the\
-                      authority as you always should, and make anvi'o profile codons."}
+                      authority, as you always should, and make anvi'o profile codons."}
                 ),
     'include-orphans': (
             ['--include-orphans'],
@@ -357,10 +357,10 @@ D = {
             ['--skip-mindful-splitting'],
             {'default': False,
              'action': 'store_true',
-             'help': "By default, anvi'o attempts to prevent soft-splitting large contigs by cutting prper gene calles\
+             'help': "By default, anvi'o attempts to prevent soft-splitting large contigs by cutting proper gene calls\
                       to make sure a single gene is not broken into multiple splits. This requires a careful\
                       examination of where genes start and end, and to find best locations to split contigs with respect\
-                      to this informtion. So, when the user asks for a split size of, say, 1,000, it serves as a\
+                      to this information. So, when the user asks for a split size of, say, 1,000, it serves as a\
                       mere suggestion. When this flag is used, anvi'o does what the user wants and creates splits at\
                       desired lengths (although some functionality may become unavailable for the projects that rely on\
                       a contigs database that is initiated this way)."}
@@ -449,7 +449,7 @@ D = {
             {'metavar': 'FLOAT',
              'default': 1,
              'type': float,
-             'help': "Takes a value between 0 and 1, where 1 means that only functions occuring in all genomes \
+             'help': "Takes a value between 0 and 1, where 1 means that only functions occurring in all genomes \
                      of a group would be considered as core functions of that group. Default is %(default).1f."}
                 ),
     'min-function-enrichment': (
@@ -492,9 +492,7 @@ D = {
             {'metavar': 'NAME',
              'help': "Title for the interface. If you are working with a RUNINFO dict, the title\
                       will be determined based on information stored in that file. Regardless,\
-                      you can override that value using this parameter. If you are not using a\
-                      anvio RUNINFO dictionary, a meaningful title will appear in the interface\
-                      only if you define one using this parameter."}
+                      you can override that value using this parameter."}
                 ),
     'split-hmm-layers': (
             ['--split-hmm-layers'],
@@ -533,7 +531,7 @@ D = {
              'help': "During profiling, anvi'o marks positions of single-nucleotide variations (SNVs)\
                       that originate from places in contigs where coverage values are a bit 'sketchy'.\
                       If you would like to avoid SNVs in those positions of splits in applicable projects\
-                      you can use this flag, and the interafce would hide SNVs that are marked as 'outlier'\
+                      you can use this flag, and the interface would hide SNVs that are marked as 'outlier'\
                       (although it is clearly the best to see everything, no one will judge you if you end\
                       up using this flag) (plus, there may or may not be some historical data on this here: \
                       https://github.com/meren/anvio/issues/309)."}
@@ -572,7 +570,7 @@ D = {
             {'metavar': 'SOURCE NAME[S]',
              'default': None,
              'help': "Get functional annotations for a specific list of annotation sources. You\
-                      can specifiy one or more sources by separating them from each other with a comma\
+                      can specify one or more sources by separating them from each other with a comma\
                       character (i.e., '--annotation-sources source_1,source_2,source_3'). The default\
                       behavior is to return everything"}
                 ),
@@ -614,7 +612,7 @@ D = {
              'help': "This filter removes bins (or genomes) from your analysis. If you have a list of gene names, you can\
                       use this parameter to omit any bin (or external genome) that is missing more than a number of genes\
                       you desire. For instance, if you have 100 genome bins, and you are interested in working with 5\
-                      ribosomal proteins, you can use '--max-num-genes-missing-from-bin 4' to remove remove the bins that\
+                      ribosomal proteins, you can use '--max-num-genes-missing-from-bin 4' to remove the bins that\
                       are missing more than 4 of those 5 genes. This is especially useful for phylogenomic analyses.\
                       Parameter 0 will remove any bin that is missing any of the genes."}
                 ),
@@ -661,7 +659,7 @@ D = {
              'help': "This filter will remove gene clusters from your report. Let's assume you have 100 genomes in your pan\
                       genome analysis. You can use this parameter if you want to work only with gene clusters that occur in\
                       at most X number of genomes. If you say '--max-num-genomes-gene-cluster-occurs 1', you will get gene\
-                      clusters that are singletons. Combining this paramter with --min-num-genomes-gene-cluster-occurs can\
+                      clusters that are singletons. Combining this parameter with --min-num-genomes-gene-cluster-occurs can\
                       give you a very precise way to filter your gene clusters."}
                 ),
     'min-num-genes-from-each-genome': (
@@ -682,14 +680,14 @@ D = {
                       from your analysis. This could be useful to remove gene clusters with paralogs from your report for\
                       appropriate phylogenomic analyses. For instance, using '--max-num-genes-from-each-genome 1' and \
                       'min-num-genomes-gene-cluster-occurs X' where X is the total number of your genomes, would give you the\
-                      single-copy gene cluters in your pan genome."}
+                      single-copy gene clusters in your pan genome."}
                 ),
     'min-functional-homogeneity-index': (
             ['--min-functional-homogeneity-index'],
             {'default': -1,
              'metavar': 'FLOAT',
              'type': float,
-             'help': "This filter will remove genoe clusters from your report. If you say '--min-functional-homogeneity-index 0.3', \
+             'help': "This filter will remove gene clusters from your report. If you say '--min-functional-homogeneity-index 0.3', \
                       every gene cluster with a functional homogeneity index less than 0.3 will be removed from your analysis. This \
                       can be useful if you only want to look at gene clusters that are highly conserved in resulting funciton"}
                 ),
@@ -698,7 +696,7 @@ D = {
             {'default': 1,
              'metavar': 'FLOAT',
              'type': float,
-             'help': "This filter will remove genoe clusters from your report. If you say '--max-functional-homogeneity-index 0.5', \
+             'help': "This filter will remove gene clusters from your report. If you say '--max-functional-homogeneity-index 0.5', \
                       every gene cluster with a functional homogeneity index greater than 0.5 will be removed from your analysis. This \
                       can be useful if you only want to look at gene clusters that don't seem to be functionally conserved"}
                 ),
@@ -707,7 +705,7 @@ D = {
             {'default': -1,
              'metavar': 'FLOAT',
              'type': float,
-             'help': "This filter will remove genoe clusters from your report. If you say '--min-geometric-homogeneity-index 0.3', \
+             'help': "This filter will remove gene clusters from your report. If you say '--min-geometric-homogeneity-index 0.3', \
                       every gene cluster with a geometric homogeneity index less than 0.3 will be removed from your analysis. This \
                       can be useful if you only want to look at gene clusters that are highly conserved in geometric configuration"}
                 ),
@@ -716,7 +714,7 @@ D = {
             {'default': 1,
              'metavar': 'FLOAT',
              'type': float,
-             'help': "This filter will remove genoe clusters from your report. If you say '--max-geometric-homogeneity-index 0.5', \
+             'help': "This filter will remove gene clusters from your report. If you say '--max-geometric-homogeneity-index 0.5', \
                       every gene cluster with a geometric homogeneity index greater than 0.5 will be removed from your analysis. This \
                       can be useful if you only want to look at gene clusters that have many not be as conserved as others"}
                 ),
@@ -726,7 +724,7 @@ D = {
              'metavar': 'NAME',
              'help': "If you use any of the filters, and would like to add the resulting item names into the items additional\
                       data table of your database, you can use this parameter. You will need to give a name for these results to\
-                      be saved. If the given name is already in the items additoinal data table, its contents will be replaced\
+                      be saved. If the given name is already in the items additional data table, its contents will be replaced\
                       with the new one. Then you can run anvi-interactive or anvi-display-pan to 'see' the results of your filters."}
                 ),
     'concatenate-genes': (
@@ -748,8 +746,8 @@ D = {
             {'metavar': 'ALIGNER',
              'default': None,
              'type': str,
-             'help': "The multiple sequnce alignment program to use when multiple seqeunce alignment is necessary. To see\
-                      all available optons, use the flag `--list-aligners`."}
+             'help': "The multiple sequence alignment program to use when multiple sequence alignment is necessary. To see\
+                      all available options, use the flag `--list-aligners`."}
                 ),
     'list-aligners': (
             ['--list-aligners'],
@@ -804,32 +802,32 @@ D = {
              'help': "Gene caller ids. Multiple of them can be declared separated by a delimiter (the default is a comma).\
                       In anvi-gen-variability-profile, if you declare nothing you will get all genes matching your other\
                       filtering criteria. In other programs, you may get everything, nothing, or an error. It really depends\
-                      on the situation. Fortunately mistakes are cheap, so it's worth a try."}
+                      on the situation. Fortunately, mistakes are cheap, so it's worth a try."}
                 ),
     'gene-mode': (
             ['--gene-mode'],
             {'default': False,
              'action': 'store_true',
              'help': "Initiate the interactive interface in \"gene mode\". In this mode, the items are genes (instead of\
-                      splits of contigs). The following views are avilable: detection (the detection value of each gene\
+                      splits of contigs). The following views are available: detection (the detection value of each gene\
                       in each sample). The mean_coverage (the mean coverage of genes). The non_outlier_mean_coverage\
                       (the mean coverage of the non-outlier nucleotide positions of each gene in each sample (median absolute\
-                      deviation is used to remove outliers per gene per sample)). The non_outlier_coverage_std view (standrad deviation\
+                      deviation is used to remove outliers per gene per sample)). The non_outlier_coverage_std view (standard deviation\
                       of the coverage of non-outlier positions of genes in samples). You can also choose to order items\
                       and layers according to each one of the aforementioned views. In addition, all layer ordering\
-                      that are avialable in the regular mode (i.e. the full mode where you have contigs/splits) are also\
+                      that are available in the regular mode (i.e. the full mode where you have contigs/splits) are also\
                       available in \"gene mode\", so that, for example, you can choose to order the layers according to \"detection\", and that\
                       would be the order according to the detection values of splits, whereas if you choose \"genes_detections\"\
                       then the order of layers would be according to the detection values of genes. Inspection and sequence\
                       functionality are available (through the right-click menu), except now sequences are of the specific gene.\
                       Inspection has now two options available: \"Inspect Context\", which brings you to the inspection page of the split\
                       to which the gene belongs where the inspected gene will be highlighted in yellow in the bottom, and \"Inspect Gene\",\
-                      whih opens the inspection page only for the gene and 100 nts around each side of it (the purpose of this option\
+                      which opens the inspection page only for the gene and 100 nts around each side of it (the purpose of this option\
                       is to make the inspection page load faster if you only want to look at the nucleotide coverage of a specific gene).\
                       NOTICE: You can't store states or collections in \"gene mode\". However, you still can make fake selections, and create\
-                      fake bins for your viewing covenience only (smiley). Search options are available, and you can even search for functions\
+                      fake bins for your viewing convenience only (smiley). Search options are available, and you can even search for functions\
                       if you have them in your contigs database. ANOTHER NOTICE: loading this mode might take a while if your bin\
-                      has many genes, and your profile database has many samples, this is beacause the gene coverages stats are\
+                      has many genes, and your profile database has many samples, this is because the gene coverages stats are\
                       computed in an ad-hoc manner when you load this mode, we know this is not ideal and we plan to improve that\
                       (along with other things). If you have suggestions/complaints regarding this mode please comment on this\
                       github issue: https://goo.gl/yHhRei. Please refer to the online tutorial for more information."}
@@ -1037,11 +1035,11 @@ D = {
                       samples ended in each group? Obviously, even distribution of samples across groups may tell\
                       us something different than uneven distribution of samples across groups. So, this parameter\
                       filters out any x if 'the number of samples in the second largest group' (=scatter) is less\
-                      than -m. Here is an example: lets assume you have 7 samples. While 5 of those have AG, 2\
+                      than -m. Here is an example: let's assume you have 7 samples. While 5 of those have AG, 2\
                       of them have TC at position x. This would mean scatter of x is 2. If you set -m to 2, this\
                       position would not be reported in your output matrix. The default value for -m is\
                       %(default)d, which means every `x` found in the database and survived previous filtering\
-                      criteria will be reported. Naturally, -m can not be more than half of the number of samples.\
+                      criteria will be reported. Naturally, -m cannot be more than half of the number of samples.\
                       Please refer to the user documentation if this is confusing."}
                 ),
     'min-ratio-of-competings-nts': (
@@ -1127,8 +1125,8 @@ D = {
              'default': 1,
              'type': int,
              'help': "Minimum number of samples a nucleotide position should be reported as variable. Default is %(default)d.\
-                      If you set it to 2, for instance, each eligable variable position will be expected to appear in at least\
-                      two samples, which will reduce the impact of stochastic, or unintelligeable varaible positions."}
+                      If you set it to 2, for instance, each eligible variable position will be expected to appear in at least\
+                      two samples, which will reduce the impact of stochastic, or unintelligible variable positions."}
                 ),
     'quince-mode': (
             ['--quince-mode'],
@@ -1137,7 +1135,7 @@ D = {
              'help': "The default behavior is to report base frequencies of nucleotide positions only if there\
                       is any variation reported during profiling (which by default uses some heuristics to minimize\
                       the impact of error-driven variation). So, if there are 10 samples, and a given position has been\
-                      reported as a varaible site during profiling in only one of those samples, there will be no\
+                      reported as a variable site during profiling in only one of those samples, there will be no\
                       information will be stored in the database for the remaining 9. When this flag is\
                       used, we go back to each sample, and report base frequencies for each sample at this position\
                       even if they do not vary. It will take considerably longer to report when this flag is on, and the use\
@@ -1224,7 +1222,7 @@ D = {
                       it is just all out there. Honestly it is so good that we will build a wall around it\
                       and make other linkage methods pay for it. But if you want to see a full\
                       list of available ones you can check the hierarcy.linkage function in\
-                      the scipy.cluster module. Up tp you really. But then you can't use %(default)s\
+                      the scipy.cluster module. Up to you really. But then you can't use %(default)s\
                       anymore, and you would have to leave anvi'o right now."}
                 ),
     'input-dir': (
@@ -1439,7 +1437,7 @@ D = {
             ['--skip-variability-tables'],
             {'default': False,
              'action': 'store_true',
-             'help': "Processing variability tables in profile databse might take a very very long time. With\
+             'help': "Processing variability tables in profile database might take a very long time. With\
                       this flag you will be asking anvi'o to skip them."}
                 ),
     'enforce-hierarchical-clustering': (
@@ -1506,11 +1504,11 @@ D = {
              'action': 'store_true',
              'help': "One of the things anvi-profile does is to store information about variable\
                       nucleotide positions. Usually it does not report every variable position, since\
-                      not every variable position is geniune variation. Say, if you have 1,000 coverage,\
+                      not every variable position is genuine variation. Say, if you have 1,000 coverage,\
                       and all nucleotides at that position are Ts and only one of them is a C, the\
                       confidence of that C being a real variation is quite low. anvio has a simple\
                       algorithm in place to reduce the impact of noise. However, using this flag\
-                      you can diable it and ask profiler to report every single variation (which\
+                      you can disable it and ask profiler to report every single variation (which\
                       may result in very large output files and millions of reports, but you are the\
                       boss). Do not forget to take a look at '--min-coverage-for-variability' parameter"}
                 ),
@@ -1550,7 +1548,7 @@ D = {
              'type': int,
              'help': "Minimum length of contigs in a BAM file to analyze. The minimum length should be long enough\
                       for tetra-nucleotide frequency analysis to be meaningful. There is no way to define a golden\
-                      number of minumum length that would be applicable to genomes found in all environments, but we\
+                      number of minimum length that would be applicable to genomes found in all environments, but we\
                       chose the default to be %(default)d, and have been happy with it. You are welcome to experiment,\
                       but we advise to never go below 1,000. You also should remember that the lower you go, the more\
                       time it will take to analyze all contigs. You can use --list-contigs parameter to have an idea how\
@@ -1571,7 +1569,7 @@ D = {
              'default': 0,
              'type': int,
              'help': "Minimum mean coverage for contigs to be kept in the analysis. The default value is %(default)d,\
-                      which is for your best interest if you are going to profile muptiple BAM files which are then\
+                      which is for your best interest if you are going to profile multiple BAM files which are then\
                       going to be merged for a cross-sectional or time series analysis. Do not change it if you are not\
                       sure this is what you want to do."}
                 ),
@@ -1709,7 +1707,7 @@ D = {
              'metavar': 'INT',
              'required': False,
              'help': "The queue size for worker threads to store data to communicate to the main thread. The default is set by the\
-                      class based on the number of threads. If you have *any* hesitation about whther you know what you are doing,\
+                      class based on the number of threads. If you have *any* hesitation about whether you know what you are doing,\
                       you should not change this value."}
                 ),
     'write-buffer-size': (
