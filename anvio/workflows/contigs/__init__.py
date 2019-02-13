@@ -228,6 +228,10 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
     def sanity_check_for_fasta_txt(self):
         """ Run sanity checks on the fasta txt file"""
+
+        for name in self.contigs_information.keys():
+            u.is_this_name_OK_for_database('fasta.txt entry name', name, stringent=True)
+
         columns = next(iter(self.contigs_information.values()))
         bad_columns = [c for c in columns if c not in w.get_fields_for_fasta_information()]
         if bad_columns:
