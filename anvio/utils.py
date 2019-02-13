@@ -1796,6 +1796,10 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         else:
             entry_name = line_fields[indexing_field]
 
+        if entry_name in d:
+            raise ConfigError("The entry name %s appears twice in the TAB-delimited file '%s'. We don't think that you did that purposefully \
+                               (if you think this should be Ok, then feel free to contact us)." % (entry_name, file_path))
+
         d[entry_name] = {}
 
         for i in range(0, len(columns)):
