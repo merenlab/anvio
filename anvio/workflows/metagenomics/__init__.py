@@ -38,7 +38,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.target_files = [] # TODO: Once we update all other workflows then this will be initiated in WorkflowSuperClass
         self.samples_information = {}
         self.kraken_annotation_dict = {}
-        self.run_krakenhll = None
+        self.run_krakenuniq = None
         self.run_metaspades = None
         self.use_scaffold_from_metaspades = None
         self.remove_short_reads_based_on_references = None
@@ -61,7 +61,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped',\
-                     'krakenhll', 'krakenhll_mpa_report', 'import_kraken_hll_taxonomy', 'metaspades',\
+                     'krakenuniq', 'import_krakenuniq_taxonomy', 'metaspades',\
                      'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
@@ -104,9 +104,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                      "--enforce-hierarchical-clustering", "--distance", "--linkage",
                                                      "--skip-concoct-binning", "--overwrite-output-destinations"]
         rule_acceptable_params_dict['import_percent_of_reads_mapped'] = ["run"]
-        rule_acceptable_params_dict['krakenhll'] = ["additional_params", "run", "--db", "--gzip-compressed"]
-        rule_acceptable_params_dict['krakenhll_mpa_report'] = ["additional_params"]
-        rule_acceptable_params_dict['import_kraken_hll_taxonomy'] = ["--min-abundance"]
+        rule_acceptable_params_dict['krakenuniq'] = ["additional_params", "run", "--db", "--gzip-compressed"]
+        rule_acceptable_params_dict['import_krakenuniq_taxonomy'] = ["--min-abundance"]
         rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map", \
                                                                                  "references_for_removal_txt", \
                                                                                  "delimiter-for-iu-remove-ids-from-fastq"]
@@ -114,7 +113,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
         forbidden_params = {}
-        forbidden_params['krakenhll'] = ['--fastq-input', '--paired', '--output']
+        forbidden_params['krakenuniq'] = ['--fastq-input', '--paired', '--output']
 
         self.forbidden_params.update(forbidden_params)
 
@@ -139,7 +138,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     "anvi_profile": {"threads": 3, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True},
-                                    "krakenhll": {"threads": 3, "--gzip-compressed": True, "additional_params": "--preload"},
+                                    "krakenuniq": {"threads": 3, "--gzip-compressed": True, "additional_params": ""},
                                     "remove_short_reads_based_on_references": {"delimiter-for-iu-remove-ids-from-fastq": " "}})
 
 
@@ -339,19 +338,19 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def init_kraken(self):
         '''Making sure the sample names and file paths the provided kraken.txt file are valid'''
         kraken_txt = self.get_param_value_from_config('kraken_txt')
-        self.run_krakenhll = self.get_param_value_from_config(['krakenhll', 'run']) == True
+        self.run_krakenuniq = self.get_param_value_from_config(['krakenuniq', 'run']) == True
 
         if kraken_txt:
-            if self.get_param_value_from_config(['krakenhll', 'run']) == True:
-                raise ConfigError("You supplied a kraken_txt file (\"%s\") but you set krakenhll \
+            if self.get_param_value_from_config(['krakenuniq', 'run']) == True:
+                raise ConfigError("You supplied a kraken_txt file (\"%s\") but you set krakenuniq \
                                    to run in the config file. anvi'o is confused and \
                                    is officially going on a strike. Ok, let's clarify, \
-                                   having a kraken_txt file means you already ran krakenhll \
-                                   and want us to use those results, and yet you set krakenhll \
+                                   having a kraken_txt file means you already ran krakenuniq \
+                                   and want us to use those results, and yet you set krakenuniq \
                                    to run again? why? Ok, time to strike. Bye!" % kraken_txt)
 
             # if a kraken_txt was supplied then let's run kraken by default
-            self.run_krakenhll = True
+            self.run_krakenuniq = True
 
             kraken_annotation_dict = u.get_TAB_delimited_file_as_dictionary(kraken_txt)
             if next(iter(next(iter(kraken_annotation_dict.values())).keys())) != "path":
@@ -375,9 +374,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                    Here is an example of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), wrong_samples_in_kraken_txt[0]))
             self.kraken_annotation_dict = kraken_annotation_dict
 
-        if self.get_param_value_from_config(['krakenhll', 'run']):
-            if not self.get_param_value_from_config(['krakenhll', '--db']):
-                raise ConfigError('In order to run krakenhll, you must provide a path to \
+        if self.get_param_value_from_config(['krakenuniq', 'run']):
+            if not self.get_param_value_from_config(['krakenuniq', '--db']):
+                raise ConfigError('In order to run krakenuniq, you must provide a path to \
                                    a database using the --db parameter in the config file.')
 
 
