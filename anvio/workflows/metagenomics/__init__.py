@@ -211,12 +211,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             target_files.append(filter_report)
 
         if self.collections:
-            import_collection_done = [os.path.join(self.dirs_dict["MERGE_DIR"],\
-                                                   g,\
-                                                   'collection-import.done')\
-                                                   for g in self.collections.keys()]
-
-            target_files.extend(import_collection_done)
+            for group in self.collections.keys():
+                target_files.append(self.get_collection_import_flag(group))
 
         if self.run_summary:
             summary = [os.path.join(self.dirs_dict["SUMMARY_DIR"], g + "-SUMMARY") for g in self.collections.keys()]
@@ -225,11 +221,20 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         if self.run_split:
             split = [os.path.join(self.dirs_dict["SPLIT_PROFILES_DIR"],\
                                   g + "-split.done")\
-                                  for g in self.collections.keys()]
+                                  for g in self.collections.keys() if not self.collections[g]['default_collection']]
             target_files.extend(split)
 
         self.target_files.extend(target_files)
 
+
+    def get_collection_import_flag(self, group):
+        ''' Return the flag for collection import (either default collection or from file).'''
+        if not self.collections[group].get('default_collection'):
+            flag = os.path.join(self.dirs_dict["MERGE_DIR"], group, 'collection-import.done')
+        else:
+            flag = os.path.join(self.dirs_dict["MERGE_DIR"], group, 'default-collection-import.done')
+
+        return flag
 
 
     def init_refereces_txt(self):
@@ -392,19 +397,40 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                    And here are the group names we expect to find: \
                                    %s' % (self.collections_txt, ', '.join(bad_groups), ', '.join(self.group_names)))
         for group in collections:
-            filesnpaths.is_file_exists(collections[group]['collection_file'])
-            if not collections[group]['collection_name']:
-                raise ConfigError('You must specify a name for each collection in your collections_txt')
-            u.check_collection_name(collections[group]['collection_name'])
-            if collections[group].get('bins_info'):
-                filesnpaths.is_file_exists(collections[group]['bins_info'])
-                collections[group]['bins_info'] = '--bins-info %s' % collections[group]['bins_info']
-            else:
-                collections[group]['bins_info'] = ''
-            if collections[group].get('contigs_mode'):
-                collections[group]['contigs_mode'] = '--contigs-mode'
-            else:
+            default_collection = collections[group].get('default_collection')
+
+            if default_collection:
+                # User can specify either a default collection OR collection from file
+                not_allowed_params = {'collection_name', 'collection_file', 'bins_info', 'contigs_mode'}
+                if any([collections[group][key] for key in not_allowed_params if key in collections[group].keys()]):
+                    raise ConfigError('We encountered the following problem with your \
+                                       collections_txt file ("%s"): you can choose \
+                                       either using a default collection OR importing \
+                                       a collection from a file. Yet, for "%s", you specificy \
+                                       a default collection AND also specify some of the following \
+                                       parameters: %s.' % (self.collections_txt, group, ", ".join(not_allowed_params)))
+
+                collections[group]['collection_name'] = 'DEFAULT'
                 collections[group]['contigs_mode'] = ''
+
+            else:
+                if not filesnpaths.is_file_exists(collections[group]['collection_file'], dont_raise=True):
+                    raise ConfigError('We encountered the following problem with your \
+                                       collections_txt file ("%s"): you did not specify \
+                                       a valid collection file for "%s".' % (self.collections_txt, group))
+
+                if not collections[group]['collection_name']:
+                    raise ConfigError('You must specify a name for each collection in your collections_txt')
+                u.check_collection_name(collections[group]['collection_name'])
+                if collections[group].get('bins_info'):
+                    filesnpaths.is_file_exists(collections[group]['bins_info'])
+                    collections[group]['bins_info'] = '--bins-info %s' % collections[group]['bins_info']
+                else:
+                    collections[group]['bins_info'] = ''
+                if collections[group].get('contigs_mode'):
+                    collections[group]['contigs_mode'] = '--contigs-mode'
+                else:
+                    collections[group]['contigs_mode'] = ''
         self.collections = collections
 
 
