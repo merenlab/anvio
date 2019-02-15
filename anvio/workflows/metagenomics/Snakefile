@@ -1034,15 +1034,32 @@ rule anvi_import_collection:
         """
 
 
+rule anvi_import_default_collection:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_default_collection.log"
+    input:
+        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+    output:
+        imported_collection_flag = touch(os.path.join(dirs_dict["MERGE_DIR"], \
+                                              '{group}', \
+                                              'default-collection-import.done'))
+    threads: 1
+    resources: nodes=1
+    shell:
+        """
+           anvi-script-add-default-collection -p {input.profile} \
+                                              -c {input.contigs} >> {log} 2>&1
+        """
+
+
 rule anvi_summarize:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_summarize.log")
     input:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
-        imported_collection_flag = os.path.join(dirs_dict["MERGE_DIR"], \
-                                                '{group}', \
-                                                'collection-import.done')
+        imported_collection_flag = lambda wildcards: M.get_collection_import_flag(str(wildcards.group))
     output:
         summary_done = temp(touch(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch")))
     params:

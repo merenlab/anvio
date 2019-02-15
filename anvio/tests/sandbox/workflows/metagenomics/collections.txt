@@ -1,2 +1,3 @@
-name	collection_name	collection_file	bins_info	contigs_mode
+name	collection_name	collection_file	bins_info	contigs_mode	default_collection
+G01					1
 G02	MOCK	MOCK-collection.txt	MOCK-collection-info.txt	
