@@ -16,6 +16,10 @@ anvi-run-workflow -w metagenomics --get-default-config default-config.json
 INFO "List dependencies for metagenomics workflow with megahit"
 anvi-run-workflow -w metagenomics --config config-megahit.json --list-dependencies
 
+INFO "Running a dry run in references mode with no qc and no gzip"
+anvi-run-workflow -w metagenomics --config config-references-mode-no-qc-no-gzip-no-groups.json
+anvi-run-workflow -w metagenomics --config config-references-mode-no-qc-no-gzip-no-groups.json --save-workflow-graph
+
 INFO "Running a dry run for metagenomics workflow with megahit"
 anvi-run-workflow -w metagenomics --config config-megahit.json
 anvi-run-workflow -w metagenomics --config config-megahit.json --save-workflow-graph
@@ -30,10 +34,6 @@ anvi-run-workflow -w metagenomics --config config-references-mode.json --list-de
 INFO "Running a dry run in references mode"
 anvi-run-workflow -w metagenomics --config config-references-mode.json
 anvi-run-workflow -w metagenomics --config config-references-mode.json --save-workflow-graph
-
-INFO "Running a dry run in references mode with no qc and no gzip"
-anvi-run-workflow -w metagenomics --config config-references-mode-no-qc-no-gzip-no-groups.json
-anvi-run-workflow -w metagenomics --config config-references-mode-no-qc-no-gzip-no-groups.json --save-workflow-graph
 
 INFO "List dependencies for metagenomics workflow with idba_ud"
 anvi-run-workflow -w metagenomics --config config-idba_ud.json --list-dependencies
