@@ -17,9 +17,9 @@ Gökmen Göksel              Koding, Inc.                       United States
 Faruk Uzun                 Monera, Inc.                       Turkey
 Gökmen Görgen              Radity, Inc                        Switzerland
 Doğan Can Kilment          Makroser, Inc.                     Turkey
+Daniel Blankenberg         Genomic Medicine Institute         United States
 John Eppley                University of Hawaiʻi at Mānoa     United States
 S. Çağlar Onur             DigitalOcean, Inc.                 United States
-Daniel Blankenberg         Genomic Medicine Institute         United States
 Xabier Vázquez-Campos      University of New South Wales      Australia
 Srinidhi Varadharajan      University of Oslo                 Norway
 Bryan Merill               Stanford University                United States
@@ -34,21 +34,25 @@ Ines Martinez              University of Alberta              Canada
 
 Anvi'o is an open-source, community-driven project and the purpose of this file is
 to mention names who contributed to its codebase. The file divides individuals into
-two main groups: (1) those that are currently employed the University of Chicago
+two main groups: (1) those who are currently employed at the University of Chicago
 and work on anvi'o as a part of their job description (hence they are ready to
-respond to technical questions or work on feature requests), and (2) those who who
-contribute (or have contributed) to the platfrom from elsewhere on a voluntary
-basis. The order of names in this file follows the logic implemented at GitHub's
-contributors page at https://github.com/merenlab/anvio/graphs/contributors, which
-ranks indivisuals based on the number of commits they've made to the anvi'o master
-repository. This list of names do not include those who contributed to the platform
-by submitting issue reports, writing tutorials, or making suggestions.
+respond to technical questions or work on feature requests), and (2) those who
+contribute (or have contributed) to the platform from elsewhere and help its progress
+on a voluntary basis. The order of names in this file follows the logic implemented
+at GitHub's contributors page at the following URL, which ranks individuals based on
+the number of commits they've made to the anvi'o master repository:
+
+    https://github.com/merenlab/anvio/graphs/contributors
 
 Anvi'o developers are aware of the fact that there are no simple quantitative
-measures that can serve as fair and accurate judges of importance or quality. If
-you are a user of anvi'o and found yourself all the way here reading these lines, we
-wish you to remind yourself that the order of names in this file means nothing more
-than a poor attempt to have an organization based on a rather neutral metric. If you
-are an anvi'o user, we believe that it would be the most appropriate and kind of you
-to assume that each and every individual here has contributed to anvi'o equally.
-Since you are here, we thank you, too.
+measures that can serve as fair and accurate judges of importance or quality. For
+instance this list does not include those who contributed to the platform by submitting
+issues, writing tutorials, making suggestions, or helping other anvi'o users.
+
+If you are a user of anvi'o and found yourself all the way here reading these lines, we
+would like you to remind yourself that the order of names in this file means nothing
+more than a poor attempt to have an organization based on a rather neutral metric. If
+you are an anvi'o user, we believe that it would be the most appropriate and kind of
+you to assume that anvi'o wouldn't have been possible without any of these individuals
+and those who contributed to the platfrom by other means than writing code. We are
+thankful for all who invested their time. Since you are here, we thank you, too.
