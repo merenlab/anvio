@@ -1178,7 +1178,7 @@ rule import_krakenuniq_taxonomy:
         """
             anvi-import-taxonomy-for-layers -p {input.profile} \
                                             -i {input.tsv} \
-                                            --parser kraken_hll \
+                                            --parser krakenuniq \
                                             {params.min_abundance} >> {log} 2>&1
         """
 

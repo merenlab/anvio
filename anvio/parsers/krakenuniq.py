@@ -17,7 +17,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-class KrakenHLL(Parser):
+class KrakenUniq(Parser):
     def __init__(self, input_files, taxonomy_table_structure, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress
@@ -35,7 +35,7 @@ class KrakenHLL(Parser):
                                  },
                            }
 
-        Parser.__init__(self, 'KrakenHLL', input_files, files_expected, files_structure)
+        Parser.__init__(self, 'KrakenUniq', input_files, files_expected, files_structure)
 
 
     def process(self):
