@@ -33,6 +33,7 @@ def filter_FASTA_by_blast_results(args):
     output_file_path = A('output_file')
     threshold = A('threshold') or 30.0
     outfmt = A('outfmt')
+    ok_if_exists = A('just_do_it')
 
     if not output_file_path:
         raise ConfigError("An output file path is required for this to work.")
@@ -48,7 +49,7 @@ def filter_FASTA_by_blast_results(args):
     except:
         raise ConfigError("Threshold must be of type int or float.")
 
-    filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
+    filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=ok_if_exists)
 
     cols = outfmt.split(" ")
     required_cols = ['qseqid', 'bitscore', 'length', 'qlen', 'pident']
@@ -121,7 +122,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file', {'required': False}))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': False}))
     parser.add_argument("-b", "--blast-output", required = True, help = "BLAST table generated with \
-                                blastp. `--outfmt 6` as the output format is assumed.")
+                                blastp. `--outfmt 6` as the output format is assumed.", metavar='TAB DELIMITED FILE')
     parser.add_argument("-s", "--outfmt", required = True, help = "Specify the column ordering of your\
                                 BLAST report. We add the following paramter to our BLAST searches\
                                 so the output report contains the `qlen` field, which is not included by\
@@ -144,6 +145,7 @@ if __name__ == '__main__':
                                 does. For example, a sequence that's only half aligned by a match but with 100%%\
                                 identity at matched regions has a `pident` of 100 but a `proper_pident` of 50. The\
                                 default is %(default).1f%%.")
+    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 

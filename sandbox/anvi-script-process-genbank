@@ -33,14 +33,14 @@ if __name__ == '__main__':
 
 
     groupA = parser.add_argument_group('INPUT', 'Give us the preciousss...')
-    groupA.add_argument('-i', '--input-genbank', action='store', required=True, help='Input GenBank file')
+    groupA.add_argument('-i', '--input-genbank', action='store', required=True, help='Input GenBank file', metavar='GENBANK')
 
     groupB = parser.add_argument_group('OUTPUT', "You either provide a 'prefix', or provide specific output\
                                                   file names/paths. You can't mix the two (well, you can try).")
     groupB.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
-    groupB.add_argument("--output-fasta", help='Output FASTA file path.')
-    groupB.add_argument("--output-gene-calls", help='Output file path for external gene calls')
-    groupB.add_argument("--output-functions", help="Output file path for anvi'o-importable gene functions file")
+    groupB.add_argument("--output-fasta", help='Output FASTA file path.', metavar='FASTA')
+    groupB.add_argument("--output-gene-calls", help='Output file path for external gene calls', metavar='TAB DELIMITED FILE')
+    groupB.add_argument("--output-functions", help="Output file path for anvi'o-importable gene functions file", metavar='TAB DELIMITED FILE')
 
     groupC = parser.add_argument_group('DETAILS', "Setting the annotation source and version data to appear in the output\
                                                    file for functional annotations file.")
