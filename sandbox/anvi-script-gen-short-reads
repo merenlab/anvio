@@ -117,9 +117,9 @@ def main(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate short reads from contigs')
-    parser.add_argument('configuration', metavar = 'CONFIG_FILE', 
+    parser.add_argument('configuration', metavar = 'CONFIG_FILE',
                                         help = 'Configuration file')
-    parser.add_argument('--output-file-path', metavar = 'FILE_PATH', 
+    parser.add_argument('--output-file-path', metavar = 'FASTA_FILE',
                                         help = 'Output FASTA file path')
 
 

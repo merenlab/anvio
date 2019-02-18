@@ -154,7 +154,7 @@ if __name__ == '__main__':
                                                   program allows you to take a better look at those regions at the short\
                                                   read level without any mapping.")
 
-    parser.add_argument('fastq_files', nargs='+', help='One or more FASTQ formatted files')
+    parser.add_argument('fastq_files', nargs='+', help='One or more FASTQ formatted files', metavar='FASTQ_FILES')
     parser.add_argument('--match-sequence', required=True, metavar='SHORT SEQUENCE',
                         help="Short sequence to look for..")
     parser.add_argument('-m', '--min-remainder-length', metavar='INT', type=int, default=60,
