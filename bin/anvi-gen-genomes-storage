@@ -46,7 +46,7 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group("OUTPUT", "Give it a nice name. Must end with '-GENOMES.db'. This is primarily due to the fact\
                                                   that there are other .db files used throughout anvi'o and it would be better to\
                                                   distinguish this very special file from them.")
-    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True, 'metavar': 'GENOMES_STORAGE'}))
 
     args = anvio.get_args(parser)
 
