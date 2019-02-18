@@ -127,7 +127,7 @@ do
     INFO "Importing short-read-level taxonomy for SAMPLE-$f"
     anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \
                                     -i $files/example_files_for_kraken_hll_taxonomy/SAMPLE-$f.mpa \
-                                    --parser kraken_hll
+                                    --parser krakenuniq
 done
 
 
