@@ -85,7 +85,7 @@ def experimental_organization(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='why yes we do stuff here.')
-    parser.add_argument('config_file', metavar = 'PATH', default = None, type=str,
+    parser.add_argument('config_file', metavar = 'FILE', default = None, type=str,
                         help = 'Config file for clustering of contigs. See documentation for help.')
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
