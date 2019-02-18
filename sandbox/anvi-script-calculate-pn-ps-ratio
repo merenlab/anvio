@@ -165,8 +165,8 @@ if __name__ == '__main__':
                                                        parameters to unlock the "Advanced anvi\'an" \
                                                        achievement.')
 
-    groupV.add_argument('-a', '--saav-table', help='Filepath to the SAAV table.')
-    groupV.add_argument('-b', '--scv-table', help='Filepath to the SCV table.')
+    groupV.add_argument('-a', '--saav-table', help='Filepath to the SAAV table.', metavar='SAAV_FILE')
+    groupV.add_argument('-b', '--scv-table', help='Filepath to the SCV table.', metavar='SCV_FILE')
     groupV.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db',
                                                      {'help':'Filepath to the contigs database used \
                                                       to generate variability tables.'}))
