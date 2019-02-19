@@ -6,7 +6,7 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
-from anvio.parsers.kraken_hll import KrakenHLL
+from anvio.parsers.krakenuniq import KrakenUniq
 from anvio.parsers.defaultmatrix import DefaultMatrix
 from anvio.parsers.centrifuge import Centrifuge
 from anvio.parsers.kaiju import Kaiju
@@ -26,7 +26,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 parser_modules = {}
 parser_modules['taxonomy_genes']  = {"default_matrix": DefaultMatrix, "centrifuge": Centrifuge, 'kaiju': Kaiju}
-parser_modules['taxonomy_layers'] = {"kraken_hll": KrakenHLL}
+parser_modules['taxonomy_layers'] = {"krakenuniq": KrakenUniq}
 parser_modules['functions']       = {"interproscan": InterProScan}
 parser_modules['search']          = {"hmmscan": HMMScan}
 parser_modules['collections']     = {"concoct": CONCOCT}
