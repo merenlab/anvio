@@ -61,7 +61,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'anvi_import_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',\
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'annotate_contigs_database', 'anvi_merge', 'import_percent_of_reads_mapped',\
-                     'krakenuniq', 'import_krakenuniq_taxonomy', 'metaspades',\
+                     'krakenuniq', 'krakenuniq_mpa_report', 'import_krakenuniq_taxonomy', 'metaspades',\
                      'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
@@ -105,6 +105,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                      "--skip-concoct-binning", "--overwrite-output-destinations"]
         rule_acceptable_params_dict['import_percent_of_reads_mapped'] = ["run"]
         rule_acceptable_params_dict['krakenuniq'] = ["additional_params", "run", "--db", "--gzip-compressed"]
+        rule_acceptable_params_dict['krakenuniq_mpa_report'] = ["--db"]
         rule_acceptable_params_dict['import_krakenuniq_taxonomy'] = ["--min-abundance"]
         rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map", \
                                                                                  "references_for_removal_txt", \
