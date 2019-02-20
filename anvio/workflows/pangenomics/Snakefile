@@ -38,7 +38,7 @@ rule pangenomics_target_rule:
 # run pangenome
 rule anvi_pan_genome:
     version: anvio.__pan__version__
-    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "anvi_pan_genome.log")
+    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "-anvi_pan_genome.log")
     threads: M.T("anvi_pan_genome")
     resources: nodes = M.T("anvi_pan_genome")
     input: dirs_dict["PAN_DIR"] + "/" + M.project_name + "-GENOMES.db"
@@ -76,7 +76,7 @@ rule anvi_pan_genome:
 
 # generate anvi'o genomes storage
 rule anvi_gen_genomes_storage:
-    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "anvi_gen_genomes_storage.log")
+    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "-anvi_gen_genomes_storage.log")
     threads: M.T("anvi_gen_genomes_storage")
     resources: nodes = M.T("anvi_gen_genomes_storage")
     input: unpack(lambda wildcards: M.input_for_anvi_gen_genomes_storage)
@@ -99,7 +99,7 @@ if 'workflows/pangenomics' in workflow.included[0]:
 
 rule anvi_get_sequences_for_gene_clusters:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "anvi_get_sequences_for_gene_clusters.log")
+    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "-anvi_get_sequences_for_gene_clusters.log")
     input:
         genomes_storage = os.path.join(dirs_dict["PAN_DIR"], M.project_name + "-GENOMES.db"),
         pan_db = os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db")
@@ -142,7 +142,7 @@ rule anvi_get_sequences_for_gene_clusters:
 
 rule import_phylogenetic_tree_to_pangenome:
     version: 1.0
-    log: os.path.join(M.dirs_dict["LOGS_DIR"], M.pan_project_name + "import_phylogenetic_tree_to_pangenome.log")
+    log: os.path.join(M.dirs_dict["LOGS_DIR"], M.pan_project_name + "-import_phylogenetic_tree_to_pangenome.log")
     input:
         pan_db = os.path.join(M.dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db"),
         newick = os.path.join(M.dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
