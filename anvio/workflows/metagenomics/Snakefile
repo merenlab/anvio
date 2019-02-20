@@ -1124,7 +1124,7 @@ rule krakenuniq:
     input: unpack(lambda wildcards: get_fastq(wildcards.sample))
     output:
         raw = os.path.join(dirs_dict["TAXONOMY_DIR"], "{sample}.krakenuniq"),
-        tsv = os.path.join(dirs_dict["TAXONOMY_DIR"], "{sample}.tsv")
+        tsv = os.path.join(dirs_dict["TAXONOMY_DIR"], "{sample}-krakenuniq-report.tsv")
     params:
         db = M.get_rule_param("krakenuniq", "--db"),
         gzip_compressed = M.get_rule_param("krakenuniq", "--gzip-compressed"),
@@ -1146,6 +1146,23 @@ rule krakenuniq:
                      {params.additional_params} >> {log} 2>&1
         """
 
+rule krakenuniq_mpa_report:
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{sample}-krakenuniq_mpa_report.log"
+    input: os.path.join(dirs_dict["TAXONOMY_DIR"], "{sample}.krakenuniq"),
+    output: os.path.join(dirs_dict["TAXONOMY_DIR"], "{sample}-krakenuniq.tsv")
+    # FIXME: I need to see if more params should be available for krakenuniq_mpa_report
+    params: db = M.get_rule_param("krakenuniq", "--db")
+    threads: M.T('krakenuniq_mpa_report')
+    resources: nodes = M.T('krakenuniq_mpa_report')
+    shell:
+        """
+            krakenuniq-mpa-report {params.db} \
+                                  --header-line \
+                                  {input} \
+                                  > {output} 2 > {log}
+        """
+
 
 def input_for_import_krakenuniq_taxonomy(wildcards):
     ''' configure input for import_percent_of_reads_mapped.'''
@@ -1155,7 +1172,7 @@ def input_for_import_krakenuniq_taxonomy(wildcards):
         D['tsv'] = M.kraken_annotation_dict[wildcards.sample]['path']
     else:
         # if the user didn't provide a file, then annotation needs to run
-        D['tsv'] = os.path.join(dirs_dict["TAXONOMY_DIR"], wildcards.sample + ".tsv")
+        D['tsv'] = os.path.join(dirs_dict["TAXONOMY_DIR"], wildcards.sample + "-krakenuniq.tsv")
 
     if run_import_percent_of_reads_mapped:
         # we include percent_of_reads_mapped_imported_flag as input here so that kraken and import_percent_of_reads_mapped will never run in parallel.
