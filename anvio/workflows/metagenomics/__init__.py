@@ -105,7 +105,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                      "--skip-concoct-binning", "--overwrite-output-destinations"]
         rule_acceptable_params_dict['import_percent_of_reads_mapped'] = ["run"]
         rule_acceptable_params_dict['krakenuniq'] = ["additional_params", "run", "--db", "--gzip-compressed"]
-        rule_acceptable_params_dict['krakenuniq_mpa_report'] = ["--db"]
         rule_acceptable_params_dict['import_krakenuniq_taxonomy'] = ["--min-abundance"]
         rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map", \
                                                                                  "references_for_removal_txt", \
