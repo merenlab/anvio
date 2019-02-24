@@ -270,17 +270,23 @@ anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              --engine AA
 
 INFO "Generating amino acid frequencies for gene caller id 3 in SAMPLE-01.bam"
-anvi-get-codon-frequencies -i $output_dir/SAMPLE-01.bam \
+anvi-get-codon-frequencies -b $output_dir/SAMPLE-01.bam \
                            -c $output_dir/CONTIGS.db \
                            --gene-caller-id 3 \
                            -o $output_dir/CODON_frequencies_for_gene_caller_id_3.txt
 
 INFO "Generating amino codon frequencies for gene caller id 3 in SAMPLE-01.bam"
-anvi-get-codon-frequencies -i $output_dir/SAMPLE-01.bam \
+anvi-get-codon-frequencies -b $output_dir/SAMPLE-01.bam \
                            -c $output_dir/CONTIGS.db \
                            --gene-caller-id 3 \
                            -o $output_dir/AA_frequencies_for_gene_caller_id_3.txt \
+                           --percent-normalize \
                            --return-AA-frequencies-instead
+
+INFO "Generating normalized codon frequencies for all genes in the contigs database"
+anvi-get-codon-frequencies -c $output_dir/CONTIGS.db \
+                           -o $output_dir/CODON_frequencies_for_the_contigs_db.txt \
+                           --merens-codon-normalization
 
 INFO "Getting back the sequence for gene call 3"
 anvi-get-sequences-for-gene-calls -c $output_dir/CONTIGS.db --gene-caller-ids 3 -o $output_dir/Sequence_for_gene_caller_id_3.fa
