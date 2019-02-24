@@ -234,16 +234,45 @@ class ContigsSuperclass(object):
             self.run.info('Splits taxonomy', 'Initiated for taxonomic level for "%s"' % t_level)
 
 
-    def init_contig_sequences(self, min_contig_length=0):
-        self.progress.new('Loading contig sequences')
+    def init_contig_sequences(self, min_contig_length=0, gene_caller_ids_of_interest=set([])):
+        contigs_db = ContigsDatabase(self.contigs_db_path)
 
+        # are we going to read everything, or only those that are of interest?
+        if len(gene_caller_ids_of_interest):
+            contig_names_of_interest = set([])
+            for gene_callers_id in self.genes_in_contigs_dict:
+                if gene_callers_id in gene_caller_ids_of_interest:
+                    contig_names_of_interest.add(self.genes_in_contigs_dict[gene_callers_id]['contig'])
+
+            self.run.warning("Someone asked the contigs super class to initialize contig sequences that are affiliated\
+                              with any of the %d gene calls avni'o determined to be relevant for this operation (either\
+                              becasue the user asked for it, or there was an optimization step somewhere). As a result\
+                              of which, this class will only know %d sequences instead of %d in the database." \
+                                % (len(gene_caller_ids_of_interest), len(contig_names_of_interest), len(self.contigs_basic_info)),
+                             header="JUST SO YOU KNOW", lc='yellow')
+
+            if not len(contig_names_of_interest):
+                raise ConfigError("Well, it turns out there are no contigs matching to the list of gene calls anvi'o\
+                                   wanted to work with :( Very sad (and very confusing). If you think this is a bug on\
+                                   our part, please let us know.")
+
+            self.progress.new('Loading contig sequences')
+            self.progress.update('Reading SOME contig sequences')
+            self.contig_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
+                                                                  '''contig IN (%s)''' % (', '.join(["'%s'" % s for s in contig_names_of_interest])),
+                                                                  error_if_no_data=True)
+            self.progress.end()
+        else:
+            self.progress.new('Loading contig sequences')
+            self.progress.update('Reading ALL contig sequences')
+            self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
+            self.progress.end()
+
+        contigs_db.disconnect()
+
+        self.progress.new('Filtering contig sequences')
         self.progress.update('Identifying contigs shorter than M')
         contigs_shorter_than_M = set([c for c in self.contigs_basic_info if self.contigs_basic_info[c]['length'] < min_contig_length])
-
-        self.progress.update('Reading contig sequences')
-        contigs_db = ContigsDatabase(self.contigs_db_path)
-        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
-        contigs_db.disconnect()
 
         self.progress.update('Filtering out shorter contigs')
         for contig_name in contigs_shorter_than_M:
