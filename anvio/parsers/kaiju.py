@@ -153,8 +153,8 @@ class Kaiju(Parser):
         random_phylum_names = set([taxonomy_dict[e]['t_phylum'] for e in random.sample(list(taxonomy_dict.keys()), 20)])
 
         self.run.warning("Good news: anvi'o finished parsing kaiju taxonomy output. Bad news: it has no idea whether\
-                          it did well or not. Since the user can specify which taxonomic levels kaiju to report\
-                          they can't ask anvi'o to utilize that information. So anvi'o always assumes you started from\
+                          it did well or not. Because the user can ask kaiju to report certain taxonomic levels, but\
+                          can't ask anvi'o to utilize that information. So anvi'o always assumes you started from\
                           the domain-level, and followed the conventional levels of taxonomy. Here is your question. We\
                           randomly picked some phylum names from your input taoxnomy as anvi'o parsed them. Here they are:\
                           '%s'. Do they look like phylum names to you? If they don't, you are in very big trouble :( The\
