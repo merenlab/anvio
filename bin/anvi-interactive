@@ -30,92 +30,93 @@ __provides__ = ['collection', 'bin', 'interactive', 'svg']
 run = terminal.Run()
 progress = terminal.Progress()
 
-# setup the command line user interface
-parser = argparse.ArgumentParser(description="Start an anvi'o server for the interactive interface")
+if __name__ == '__main__':
+    # setup the command line user interface
+    parser = argparse.ArgumentParser(description="Start an anvi'o server for the interactive interface")
 
-groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
-                                                      anvi'o databases. The default use assumes you have your\
-                                                      profile and contigs database, however, it is also possible\
-                                                      to start the interface using ad hoc input files. See 'MANUAL\
-                                                      INPUT' section for required parameters.")
-groupB = parser.add_argument_group('MANUAL INPUTS', "Mandatory input parameters to start the interactive interface\
-                                                     without anvi'o databases.")
-groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
-groupD = parser.add_argument_group('GENE MODE', "Gene mode related parameters.")
-groupE = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
-                                                       the interface.")
-groupF = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
-                                                                   nice to have).")
-groupG = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+    groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
+                                                          anvi'o databases. The default use assumes you have your\
+                                                          profile and contigs database, however, it is also possible\
+                                                          to start the interface using ad hoc input files. See 'MANUAL\
+                                                          INPUT' section for required parameters.")
+    groupB = parser.add_argument_group('MANUAL INPUTS', "Mandatory input parameters to start the interactive interface\
+                                                         without anvi'o databases.")
+    groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
+    groupD = parser.add_argument_group('GENE MODE', "Gene mode related parameters.")
+    groupE = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+                                                           the interface.")
+    groupF = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
+                                                                       nice to have).")
+    groupG = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
-groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':
-                                "If you have a collection in your profile database, you can use this flag to start the\
-                                interactive interface with a tree showing your bins in your collection, instead of each\
-                                split. This is very useful when you have imported your external binning results into\
-                                anvi'o, and want to see the distribution of your bins across samples. In these cases\
-                                anvi'o will cluster your bins and based on multiple metrics. Because this particular\
-                                clustering will be done on the fly within anvi'o interactive class, you get to define\
-                                a disntance metric and a linkage method using --linkage and --distance parameters if\
-                                you want!"}))
-groupB.add_argument(*anvio.A('manual-mode'), **anvio.K('manual-mode'))
-groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
-groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
-groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
-groupB.add_argument(*anvio.A('items-order'), **anvio.K('items-order'))
-groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
-groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
-groupE.add_argument(*anvio.A('view'), **anvio.K('view'))
-groupE.add_argument(*anvio.A('title'), **anvio.K('title'))
-groupE.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
-groupE.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
-groupE.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
-groupE.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))
-groupE.add_argument(*anvio.A('collection-autoload'), **anvio.K('collection-autoload'))
-groupE.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
-groupD.add_argument(*anvio.A('gene-mode'), **anvio.K('gene-mode'))
-groupD.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
-groupF.add_argument(*anvio.A('show-views'), **anvio.K('show-views'))
-groupF.add_argument(*anvio.A('skip-check-names'), **anvio.K('skip-check-names'))
-groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
-groupF.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
-groupF.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
-groupF.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
-groupF.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
-groupF.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
-groupF.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
-                                'The distance metric for the hierarchical clustering. Only relevant if you are running\
-                                 the interactive interface in "collection" mode. The default is "%(default)s".'}))
-groupF.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help':
-                                'The linkage method for the hierarchical clustering. Only relevant if you are running\
-                                 the interactive interface in "collection" mode. The default is "%(default)s".'}))
-groupG.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-groupG.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-groupG.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
-groupG.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
-groupG.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
-groupG.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':
+                                    "If you have a collection in your profile database, you can use this flag to start the\
+                                    interactive interface with a tree showing your bins in your collection, instead of each\
+                                    split. This is very useful when you have imported your external binning results into\
+                                    anvi'o, and want to see the distribution of your bins across samples. In these cases\
+                                    anvi'o will cluster your bins and based on multiple metrics. Because this particular\
+                                    clustering will be done on the fly within anvi'o interactive class, you get to define\
+                                    a disntance metric and a linkage method using --linkage and --distance parameters if\
+                                    you want!"}))
+    groupB.add_argument(*anvio.A('manual-mode'), **anvio.K('manual-mode'))
+    groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
+    groupB.add_argument(*anvio.A('view-data'), **anvio.K('view-data'))
+    groupB.add_argument(*anvio.A('tree'), **anvio.K('tree'))
+    groupB.add_argument(*anvio.A('items-order'), **anvio.K('items-order'))
+    groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
+    groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
+    groupE.add_argument(*anvio.A('view'), **anvio.K('view'))
+    groupE.add_argument(*anvio.A('title'), **anvio.K('title'))
+    groupE.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
+    groupE.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
+    groupE.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
+    groupE.add_argument(*anvio.A('state-autoload'), **anvio.K('state-autoload'))
+    groupE.add_argument(*anvio.A('collection-autoload'), **anvio.K('collection-autoload'))
+    groupE.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
+    groupD.add_argument(*anvio.A('gene-mode'), **anvio.K('gene-mode'))
+    groupD.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupF.add_argument(*anvio.A('show-views'), **anvio.K('show-views'))
+    groupF.add_argument(*anvio.A('skip-check-names'), **anvio.K('skip-check-names'))
+    groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupF.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+    groupF.add_argument(*anvio.A('show-states'), **anvio.K('show-states'))
+    groupF.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupF.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
+    groupF.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
+    groupF.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
+                                    'The distance metric for the hierarchical clustering. Only relevant if you are running\
+                                     the interactive interface in "collection" mode. The default is "%(default)s".'}))
+    groupF.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help':
+                                    'The linkage method for the hierarchical clustering. Only relevant if you are running\
+                                     the interactive interface in "collection" mode. The default is "%(default)s".'}))
+    groupG.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupG.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupG.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+    groupG.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
+    groupG.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+    groupG.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
-args = anvio.get_args(parser)
+    args = anvio.get_args(parser)
 
-try:
-    d = interactive.Interactive(args)
-    args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
-except ConfigError as e:
-    print(e)
-    sys.exit(-1)
-except FilesNPathsError as e:
-    print(e)
-    sys.exit(-2)
-except GenesDBError as e:
-    print(e)
-    sys.exit(-3)
+    try:
+        d = interactive.Interactive(args)
+        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except GenesDBError as e:
+        print(e)
+        sys.exit(-3)
 
-if args.dry_run:
-    run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
-    sys.exit()
+    if args.dry_run:
+        run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
+        sys.exit()
 
-app = BottleApplication(d)
-app.run_application(args.ip_address, args.port_number)
+    app = BottleApplication(d)
+    app.run_application(args.ip_address, args.port_number)
 
