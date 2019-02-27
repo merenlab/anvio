@@ -147,7 +147,10 @@ def calculate_pN_pS_ratio(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Extract information for variable positions')
+    parser = argparse.ArgumentParser(description='This program calculates for each gene the ratio of pN/pS (the metagenomic analogy\
+                                                  of dN/dS; see doi:10.1038/nature11711 and doi:10.7717/peerj.2959) based on metagenomic\
+                                                  read recruitment, however, unlike standard pN/pS calculations, it relies on \
+                                                  codons rather than nucleotides for accurate estimations of synonimity.')
 
     groupV = parser.add_argument_group('VARIABILITY', 'You provide two variability tables generated with anvi-gen-variability-profile:\
                                         one for SAAVs (generated with --engine AA) and for SCVs (generated with --engine CDN). They \
