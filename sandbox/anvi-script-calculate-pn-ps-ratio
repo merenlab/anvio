@@ -149,44 +149,29 @@ def calculate_pN_pS_ratio(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extract information for variable positions')
 
-    groupV = parser.add_argument_group('VARIABILITY', 'Two variability tables generated from \
-                                                       anvi-gen-variability-table are required. One \
-                                                       of SAAVs (generated with --engine AA) and one \
-                                                       of SCVs (generated with --engine CDN). They \
-                                                       must be generated with the same profile database and \
-                                                       the exact same set of genes in the contigs \
-                                                       database. To be safe, it is highly recommended you \
-                                                       use the same settings during both commands except \
-                                                       for changing --engine AA to --engine CDN and the \
-                                                       output filename.')
-    groupO = parser.add_argument_group('OUTPUT',      'The output of this program is a folder \
-                                                       directory with several tables.')
-    groupE = parser.add_argument_group('TUNABLES',    'Successfully tune one or more of these \
-                                                       parameters to unlock the "Advanced anvi\'an" \
-                                                       achievement.')
-
+    groupV = parser.add_argument_group('VARIABILITY', 'You provide two variability tables generated with anvi-gen-variability-profile:\
+                                        one for SAAVs (generated with --engine AA) and for SCVs (generated with --engine CDN). They \
+                                        must be generated with the same profile and contigs database pair. To be safe, we recommended\
+                                        you use the same settings during both commands except for changing --engine AA to --engine CDN\
+                                        and the output filename.')
     groupV.add_argument('-a', '--saav-table', help='Filepath to the SAAV table.', metavar='SAAV_FILE')
     groupV.add_argument('-b', '--scv-table', help='Filepath to the SCV table.', metavar='SCV_FILE')
-    groupV.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db',
-                                                     {'help':'Filepath to the contigs database used \
+    groupV.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'help':'Filepath to the contigs database used \
                                                       to generate variability tables.'}))
-    groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus',
-                                                     {'default': 0.1, 'help': 'Variants (either SCVs or \
-                                                       SAAVs) will be ignored if they have a departure \
-                                                       from consensus less than this value. Note: Keep \
-                                                       in mind you may have already supplied this parameter \
-                                                       during anvi-gen-variability-profile. Default is 0.1.'}))
-    groupE.add_argument('-i', '--minimum-num-variants', default=4, type=int, required=False, help='Ignore genes \
-                                                       with less than this number of single codon \
-                                                       variants. This avoids being impressed by \
-                                                       pN/pS values of infinite, when really all \
-                                                       that happened was a gene had 1 SAAV and 0 \
-                                                       synonymous SCVs. The default is 4 to ensure \
-                                                       some level of statistical importance.')
-    groupE.add_argument('-m', '--min-coverage', default=30, type=int, required=False,
-                                                       help='If the coverage value at a codon \
-                                                       is less than this amount, any SAAVs or SCVs \
-                                                       associated with it will be ignored.')
+
+    groupE = parser.add_argument_group('TUNABLES', "Successfully tune one or more of these parameters to unlock the badge 'Advanced anvian'.")
+    groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus', {'default': 0.1, 'help': \
+                            'Variants (either SCVs or SAAVs) will be ignored if they have a departure from consensus less than this \
+                            value. Note: Keep in mind you may have already supplied this parameter during anvi-gen-variability-profile.\
+                            The default value is "%(default).2f".'}))
+    groupE.add_argument('-i', '--minimum-num-variants', default=4, type=int, required=False, help='Ignore genes with less than this number\
+                            of single codon variants. This avoids being impressed by pN/pS values of infinite, when in reality the gene had\
+                            a single SAAV and no synonymous SCVs. The default is %(default)d to ensure a default value with some level of \
+                            statistical importance.')
+    groupE.add_argument('-m', '--min-coverage', default=30, type=int, required=False, help='If the coverage value at a codon is less than \
+                            this amount, any SAAVs or SCVs associated with it will be ignored. The default is %(default)d.')
+
+    groupO = parser.add_argument_group('OUTPUT', 'The output of this program is a folder directory with several tables.')
     groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required':True}))
 
     args = anvio.get_args(parser)
