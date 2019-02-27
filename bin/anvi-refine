@@ -32,61 +32,63 @@ __provides__ = ['bin',]
 run = terminal.Run()
 progress = terminal.Progress()
 
-parser = argparse.ArgumentParser(description="Start the anvi'o interactive interactive for refining")
 
-groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
-                                                      anvi'o databases. The default use assumes you have your\
-                                                      profile and contigs database, however, it is also possible\
-                                                      to start the interface using ad-hoc input files. See 'MANUAL\
-                                                      INPUT' section for other set of parameters that are mutually\
-                                                      exclusive with datanases.")
-groupB = parser.add_argument_group('REFINE-SPECIFICS', "Parameters that are essential to the refinement process.")
-groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
-groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
-                                                       the interface.")
-groupE = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
-                                                                   nice to have).")
-groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Start the anvi'o interactive interactive for refining")
 
-groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
-groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
-groupC.add_argument(*anvio.A('load-full-state'), **anvio.K('load-full-state'))
-groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
-groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
-groupD.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
-groupD.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
-groupD.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
-groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
-groupD.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
-groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
-groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
-groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
-groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-groupF.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
-groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
-groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
-groupF.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
+    groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
+                                                          anvi'o databases. The default use assumes you have your\
+                                                          profile and contigs database, however, it is also possible\
+                                                          to start the interface using ad-hoc input files. See 'MANUAL\
+                                                          INPUT' section for other set of parameters that are mutually\
+                                                          exclusive with datanases.")
+    groupB = parser.add_argument_group('REFINE-SPECIFICS', "Parameters that are essential to the refinement process.")
+    groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
+    groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+                                                           the interface.")
+    groupE = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
+                                                                       nice to have).")
+    groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
-args = anvio.get_args(parser)
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
+    groupC.add_argument(*anvio.A('load-full-state'), **anvio.K('load-full-state'))
+    groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
+    groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
+    groupD.add_argument(*anvio.A('split-hmm-layers'), **anvio.K('split-hmm-layers'))
+    groupD.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level'))
+    groupD.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
+    groupD.add_argument(*anvio.A('title'), **anvio.K('title'))
+    groupD.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
+    groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+    groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
+    groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
+    groupF.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupF.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupF.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+    groupF.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
+    groupF.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+    groupF.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
 
-try:
-    args.mode = 'refine'
-    d = interactive.Interactive(args)
-    args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
-except ConfigError as e:
-    print(e)
-    sys.exit(-1)
-except FilesNPathsError as e:
-    print(e)
-    sys.exit(-2)
-except DictIOError as e:
-    print(e)
-    sys.exit(-3)
+    args = anvio.get_args(parser)
+
+    try:
+        args.mode = 'refine'
+        d = interactive.Interactive(args)
+        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+    except DictIOError as e:
+        print(e)
+        sys.exit(-3)
 
 
-app = BottleApplication(d)
-app.run_application(args.ip_address, args.port_number)
+    app = BottleApplication(d)
+    app.run_application(args.ip_address, args.port_number)
