@@ -1281,6 +1281,9 @@ class ContigSummarizer(SummarizerSuperClass):
             for e in list(c.genes_in_splits.values()):
                 if e['split'] in split_names:
                     process_gene_call(e['gene_callers_id'])
+
+            info_dict['num_splits'] = len(split_names)
+            info_dict['num_contigs'] = len(set([c.splits_basic_info[split_name]['parent'] for split_name in split_names]))
         else:
             c.init_contig_sequences()
             seq = ''.join([e['sequence'] for e in list(c.contig_sequences.values())])
