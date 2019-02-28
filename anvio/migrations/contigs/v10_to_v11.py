@@ -57,9 +57,12 @@ def migrate(db_path):
     progress.update("Removing old table")
     contigs_db._exec("DROP TABLE %s;" % (genes_in_splits_table_name + '_old'))
 
-    progress.update("Optimizing the database")
-    contigs_db.conn.isolation_level = None
-    contigs_db._exec("VACUUM;")
+    try:
+        progress.update("Optimizing the database")
+        contigs_db.conn.isolation_level = None
+        contigs_db._exec("VACUUM;")
+    except:
+        pass
 
     progress.update("Updating version")
     contigs_db.remove_meta_key_value_pair('version')

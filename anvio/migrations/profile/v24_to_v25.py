@@ -57,8 +57,12 @@ def migrate(db_path):
         # add the sad fact
         profile_db.set_meta_value('SCVs_profiled', False)
 
-        # clean after yourself
-        profile_db._exec('vacuum')
+        try:
+            # clean after yourself
+            profile_db.conn.isolation_level = None
+            profile_db._exec('vacuum')
+        except:
+            pass
 
         full_upgrade = True
     else:
