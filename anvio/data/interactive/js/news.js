@@ -27,6 +27,7 @@ function checkNews() {
 
             if (unread_count > 0) {
                 $('#toggle-panel-right-3').css('color', '#FF0000');
+                $('#toggle-panel-right-3').addClass('glowing-button');
             }
         }
     });
@@ -35,5 +36,6 @@ function checkNews() {
 function newsMarkRead() {
     $('.blue-dot').remove();
     $('#toggle-panel-right-3').css('color', '#000000');
+    $('#toggle-panel-right-3').removeClass('glowing-button');
     createCookie('last_seen_hash', md5($('.news-item > h1')[0].textContent), -1);
 }
