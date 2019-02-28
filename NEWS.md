@@ -1,3 +1,7 @@
+# v5.3: a minor but important update for "margaret" (28.02.2019) #
+Please see our up-to-date [installation](http://merenlab.org/2016/06/26/installation-v2/) document to upgrade your anvi'o.
+***
+
 # v5, "margaret" is out! (25.06.2018) #
 We are happy to announce #anvio v5, "margaret":
 
