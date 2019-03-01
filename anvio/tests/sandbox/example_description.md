@@ -1,46 +1,21 @@
-# Herba aethera hoc aenis
+<img src="https://github.com/merenlab/anvio/blob/master/anvio/data/interactive/images/logo.png?raw=true" style="width: 150px; float: right;" />
 
-Lorem markdownum Minyae *edax*, cum ad primaque _pendent processit_. Castris Achillem duro ullis moenibus pars pendentibus vincar aetas seminaque exhibuit, hoc, sit duo *tenuerunt* gemmae. Triopeida cetera capillos nec: angues inmissa silet, ultra elusaque altius videt perpetuumque agris **divitibusque moenia**
-communiter.
+**If you are reading these lines, it means your test was successful, and your system is able to run anvi'o (yay) :)**
 
-## Mortale coding practiceaux a plataforma anvi'o
+If this is your first time with anvi'o, or if you are not familiar with the platform, please take a moment to read the rest of this document.
 
-Alti nemus tamen, nec versus, ortus quae ille; tam. Multo carmina abstulit, se secutae Unde miserorum, euntem? Quam hunc, ut petit possent malo suci sic, opus manum. Iugulaberis aurea **vocari pedibus**: faecis ast leves credimus genuere inquit verum. Phasias est auras iam usum erat!
+---
 
-``` python
-class DatabasesMetaclass(ProfileSuperclass, ContigsSuperclass, object):
-    """Essential data to load for a given run"""
-    def __init__(self, args, r=run, p=progress):
-        self.args = args
-        self.run = r
-        self.progress = p
+### Learning anvi'o
 
-        filesnpaths.is_file_exists(args.contigs_db)
-        filesnpaths.is_file_exists(args.profile_db)
+Anvi'o has a relatively steep learning curve, but once you get the basics, the rest comes quite rapidly.
 
-        is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+You can start by taking a look at the [anvi'o vignette](http://merenlab.org/software/anvio/vignette/) to see all anvi'o programs in a single page along with their help menus. The power of anvi'o comes from its Lego-like design, where a [large number of small programs operate on a small number of concepts](http://merenlab.org/software/anvio/network/). This strategy allows you to build very complex ideas in a reproducible and robust fashion.
 
-        ContigsSuperclass.__init__(self, self.args, self.run, self.progress)
-        ProfileSuperclass.__init__(self, self.args, self.run, self.progress)
+[<img src="http://merenlab.org/images/anvio-network.png" style="width: 100%;" />](http://merenlab.org/software/anvio/network/)
 
-        self.init_split_sequences()
-        self.init_gene_coverages_and_detection_dicts()
-```
+[This page](http://merenlab.org/software/anvio/) offers theoretical and practical insights into 'omics analyses you can perform with anvi'o through tutorials and blog posts. You can also scroll through some of our online reproducible bioinformatics workflows such as [this one](http://merenlab.org/data/prochlorococcus-metapangenome/) or [this one](http://merenlab.org/data/wolbachia-plasmid/) to see various uses of anvi'o in the context of scientific questions.
 
-## Neque anas sed gravidis saevit se logos
+### Join the conversation
 
-Pariter inpia **et mea mater** dabatur, nitido seque corpora. Versum et sortis prima diuque perspice **terribilo mistaqeo**, constitit probabido belogo de Tom e Tom alono:
-
-![](http://i.imgur.com/3ryGe3i.png?1)
-
-
-## Obusta pontum cum tempora magno
-
-Vestibus *Orneus*. Quam quos mentis ipso anteit et in nec pocula ill [merenlab e orgo](http://merenlab.org). Proximitas exit inmunibus mensis in noctis villae: quo saepe solus facto hunc sua iuveni cava dolos [artus](http://github.com/merenlab). Et **ales non** hic prole umbris Liriope, vult rursus. Sola primo ignis varias aurora conciderant Achille rura; est quo materiam interque discreta.
-
-* Illic in iurares et transit adhibere formam; agros dedecus silvas scelus edentem
-* Longe [nurusque](http://quos-lupus.io/mons.html), reposco culpa; et ille haeserat una, hoc.
-* **Medusaeo illa claudit** hostis, monuit serieque tyranni, prodit.
-* Visaque formatae consilioque fecerat.
-
-Urbem caeli innixus adhuc et vigor radios. Telisque pietas, et per rota serviet luna sonant; est liceat oscula.
+[Developers of anvi'o](https://github.com/merenlab/anvio/blob/master/AUTHORS.txt) strive to tailor this platform to **your** needs. Please do not hesitate to get in touch with us if you need technical help, have suggestions, or simply in need of bouncing computational and experimental 'omics ideas from others. You can join the conversation through [anvi'o slack](https://slackin-ezbpfhwsmh.now.sh/) or [anvi'o Google Groups](https://groups.google.com/forum/#!forum/anvio). If you run into technical problems despite our best efforts, you can always [file an issue report on GitHub](https://github.com/merenlab/anvio/issues).
