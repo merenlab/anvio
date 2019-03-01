@@ -70,6 +70,7 @@ class BottleApplication(Bottle):
             self.browser_path = A('browser_path')
             self.export_svg = A('export_svg')
             self.server_only = A('server_only')
+            self.user_server_shutdown = A('user_server_shutdown')
 
         self.password_protected = A('password_protected')
         self.password = ''
@@ -124,6 +125,7 @@ class BottleApplication(Bottle):
     def register_routes(self):
         self.route('/',                                        callback=self.redirect_to_app)
         self.route('/app/:filename#.*#',                       callback=self.send_static)
+        self.route('/app/shutdown',                            callback=self.server_shutdown)
         self.route('/data/news',                               callback=self.get_news)
         self.route('/data/<name>',                             callback=self.send_data)
         self.route('/data/view/<view_id>',                     callback=self.get_view_data)
@@ -240,6 +242,14 @@ class BottleApplication(Bottle):
             ret.headers['Content-Length'] = buff.getbuffer().nbytes
 
         return ret
+
+
+    def server_shutdown(self, **kwd):
+        if self.user_server_shutdown:
+            run.info_single('User Requested shutdown via web.', nl_after=1)
+            # Could do sys.exit(0) instead, but raising KeyboardInterrupt will force consistent shutdown process
+            raise KeyboardInterrupt
+        return json.dumps({'error': "The server cannot be shutdown by a web user.", 'status_code': 0})
 
 
     def get_news(self):
