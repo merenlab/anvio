@@ -154,6 +154,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         except IndexError as e:
             raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. \
                                This is what we know: '%s'" % (self.samples_txt_file, e))
+        if 'sample' not in list(self.samples_information.columns):
+            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. \
+                               We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
 
 
         # get a list of the sample names
@@ -331,6 +334,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             except ConfigError as e:
                 raise ConfigError("While processing the samples txt file ('%s'), anvi'o ran into the following error: \
                                    %s" % (self.samples_txt_file, e))
+
+        if 'r1' not in self.samples_information.columns or 'r2' not in self.samples_information:
+            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. \
+                               We are not sure what's wrong, but we expected to find columns with \
+                               titles 'r1' and 'r2' and we did not find such columns." % self.samples_txt_file)
 
         fastq_file_names = list(self.samples_information['r1']) + list(self.samples_information['r2'])
         bad_fastq_names = [s for s in fastq_file_names if (not s.endswith('.fastq') and not s.endswith('.fastq.gz'))]
