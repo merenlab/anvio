@@ -1331,6 +1331,12 @@ D = {
              'type': str,
              'help': "The user for an anvi'server."}
                 ),
+    'user-server-shutdown': (
+            ['--user-server-shutdown'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Allow users to shutdown an anvi'server via web interface."}
+                ),
     'read-only': (
             ['--read-only'],
             {'default': False,
