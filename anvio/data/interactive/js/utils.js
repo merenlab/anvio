@@ -320,7 +320,7 @@ String.prototype.hashCode = function() {
 
 function checkBackgroundProcess()
 {
-    var message = "It seems background process is down or changed, you may lose your work.";
+    var message = "It seems the server that's been serving this page is no longer accessible. You may lose your unsaved changes in this window.";
 
     $.ajax({
         type: 'GET',
