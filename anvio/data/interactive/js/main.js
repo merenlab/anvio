@@ -2421,3 +2421,31 @@ function restoreOriginalTree(type) {
         }
     );
 }
+
+
+function shutdownServer()
+{
+    if (!confirm('Do you want to shutdown the web server?')) {
+        return;
+    }
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/app/shutdown',
+        success: function(response) {
+            if (typeof response != 'object') {
+                response = JSON.parse(response);
+            }
+
+            if (response['status_code']==0)
+            {
+                toastr.error(response['error']);
+            }
+            else if (response['status_code']==1)
+            {
+                toastr.success("Server successfully shutdown.");
+            }
+        }
+    });
+}
