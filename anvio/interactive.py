@@ -202,6 +202,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.load_collection_mode()
         elif self.mode == 'full':
             self.load_full_mode()
+        elif self.mode == 'inspect':
+            self.load_full_mode()
+            self.load_inspect_mode()
         else:
             raise ConfigError("The interactive class is called with a mode that no one knows anything \
                                about. '%s'... What kind of a mode is that anyway :/" % self.mode)
@@ -668,6 +671,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         run.info('available_clusterings', list(clusterings.keys()))
 
         return clusterings
+
+
+    def load_inspect_mode(self):
+        self.p_meta['item_orders']['alphabetical'] = {'type': 'basic', 'data': sorted(self.displayed_item_names_ordered[::-1], reverse=True)}
+        self.p_meta['available_item_orders'].append('alphabetical')
 
 
     def load_refine_mode(self):

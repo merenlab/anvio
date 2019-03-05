@@ -206,6 +206,8 @@ class BottleApplication(Bottle):
             homepage = 'contigs.html'
         elif self.interactive.mode == 'structure':
             homepage = 'structure.html'
+        elif self.interactive.mode == 'inspect':
+            redirect('/app/charts?order=alphabetical&id=%srand=%s' % (self.interactive.displayed_item_names_ordered[1], self.random_hash(8)))
 
         redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
