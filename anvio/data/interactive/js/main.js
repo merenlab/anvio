@@ -200,7 +200,7 @@ function initData() {
             }
 
             inspection_available = response.inspection_available;
-            if(!response.inspection_available){
+            if((mode == 'full' || mode == 'gene' || mode == 'refine') && !response.inspection_available){
                 toastr.info("Inspection of data items is not going to be available for this project.");
             }
 
