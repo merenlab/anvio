@@ -234,6 +234,7 @@ class GenbankToAnvioWrapper:
         self.metadata_file_path = A('metadata')
         self.output_directory_path = os.path.abspath(A('output_dir') or os.path.curdir)
         self.output_fasta_descriptor = A('output_fasta_txt') or os.path.join(self.output_directory_path, 'fasta-input.txt')
+        self.exclude_gene_calls_from_fasta_txt = A('exclude_gene_calls_from_fasta_txt')
 
 
     def sanity_check(self):
@@ -300,7 +301,11 @@ class GenbankToAnvioWrapper:
 
         self.progress.end()
 
-        utils.store_dict_as_TAB_delimited_file(output_fasta_dict, self.output_fasta_descriptor, headers=['name', 'path', 'external_gene_calls', 'gene_functional_annotation'])
+        headers = ['name', 'path', 'gene_functional_annotation']
+        if not self.exclude_gene_calls_from_fasta_txt:
+            headers.append('external_gene_calls')
+
+        utils.store_dict_as_TAB_delimited_file(output_fasta_dict, self.output_fasta_descriptor, headers=headers)
 
         self.run.info('Output FASTA descriptor', self.output_fasta_descriptor)
 
