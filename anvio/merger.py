@@ -383,6 +383,17 @@ class MultipleRuns:
         output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.db')
         merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
 
+        AUX = lambda x: os.path.join(os.path.dirname(x), 'AUXILIARY-DATA.db')
+
+        if False in [filesnpaths.is_file_exists(AUX(p), dont_raise=True) for p in self.profile_dbs_info_dict]:
+            self.run.warning("Some of your single profile databases to be merged are missing auxiliary data files associated with them. Did you\
+                              download them from somewhere and forgot to download the AUXILIARY-DATA.db files? Well. That's fine. Anvi'o will\
+                              continue merging your profiles without split coverages (which means you will not be able to inspect nucleotide\
+                              level coverage values and some other bells and whistles). If you want, you can kill this process now with CTRL+C\
+                              and redo it with all database files in proper places.")
+
+            return None
+
         self.progress.new('Merging split coverage data')
 
         # fill coverages in from all samples
