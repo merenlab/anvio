@@ -585,9 +585,18 @@ class VariabilitySuper(VariabilityFilter, object):
 
         # Initialize the contigs super
         if self.contigs_db_path:
-            filesnpaths.is_file_exists(self.contigs_db_path)
             dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
-            self.init_contig_sequences()
+
+            if self.splits_of_interest_path:
+                split_names_of_interest = self.get_splits_of_interest(splits_of_interest_path=self.splits_of_interest_path, split_source="split_names")
+            elif self.gene_caller_ids:
+                split_names_of_interest = self.get_splits_of_interest(splits_of_interest_path=None, split_source="gene_caller_ids")
+            elif self.genes_of_interest_path:
+                split_names_of_interest = self.get_splits_of_interest(splits_of_interest_path=None, split_source="gene_caller_ids")
+            else:
+                split_names_of_interest = set([])
+
+            self.init_contig_sequences(split_names_of_interest=split_names_of_interest)
 
         # these lists are dynamically extended
         self.columns_to_report = {
