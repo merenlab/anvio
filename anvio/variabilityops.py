@@ -710,6 +710,35 @@ class VariabilitySuper(VariabilityFilter, object):
                                sanity_check, self.splits_of_interest_path, self.bin_id,\
                                self.collection_name will all be ignored.")
 
+        if self.splits_of_interest_path and self.gene_caller_ids:
+            raise ConfigError("You can't declare a file for split names of interest and then list a\
+                               bunch of gene caller ids to focus :(")
+
+        if self.splits_of_interest_path and self.genes_of_interest_path:
+            raise ConfigError("You can't declare files with split names of interest and gene caller\
+                               ids of interest :/ Pick one.")
+
+        if self.genes_of_interest_path and self.gene_caller_ids:
+            raise ConfigError("Nice try. But it is not OK to list a bunch of gene caller ids to focus\
+                               and also provide a file path with gene caller ids :(")
+
+        if self.gene_caller_ids:
+            if isinstance(self.gene_caller_ids, str):
+                try:
+                    self.gene_caller_ids = [int(g.strip()) for g in self.gene_caller_ids.split(',')]
+                except:
+                    raise ConfigError("The gene caller ids anvi'o found does not seem like gene caller\
+                                       ids anvi'o use. There is something wrong here :(")
+
+        if self.genes_of_interest_path:
+            filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
+
+            try:
+                self.gene_caller_ids = [int(g.strip()) for g in open(self.genes_of_interest_path, 'rU').readlines()]
+            except:
+                raise ConfigError("The gene caller ids anvi'o found in that file does not seem like gene caller\
+                                   ids anvi'o would use. There is something wrong here :(")
+
 
     def convert_counts_to_frequencies(self, retain_counts = False):
         if retain_counts:
