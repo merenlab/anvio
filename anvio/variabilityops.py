@@ -779,21 +779,7 @@ class VariabilitySuper(VariabilityFilter, object):
             genes_of_interest_path = self.genes_of_interest_path
             gene_caller_ids = self.gene_caller_ids
 
-        if genes_of_interest_path and gene_caller_ids:
-            self.progress.end()
-            raise ConfigError("You can't provide gene caller ids from the command line, and a list\
-                               of gene caller ids as a file at the same time, obviously.")
-
         if gene_caller_ids:
-            if "," in gene_caller_ids:
-                gene_caller_ids = [g.strip() for g in gene_caller_ids.split(",")]
-            else:
-                gene_caller_ids = [gene_caller_ids]
-            for index, gene_caller_id in enumerate(gene_caller_ids):
-                try:
-                    gene_caller_ids[index] = int(gene_caller_id)
-                except:
-                    raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % gene_caller_id)
             genes_of_interest = set(gene_caller_ids)
 
         elif genes_of_interest_path:
