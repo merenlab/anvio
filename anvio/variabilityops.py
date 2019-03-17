@@ -806,6 +806,7 @@ class VariabilitySuper(VariabilityFilter, object):
            attribute (first code block of this method), which may not exist for classes inheriting
            this method.
         """
+
         # use class-wide attributes if no parameters are passed
         if split_source is "" and splits_of_interest_path is "":
             split_source = self.split_source
@@ -815,7 +816,10 @@ class VariabilitySuper(VariabilityFilter, object):
             splits_of_interest = set([])
 
         elif split_source == "gene_caller_ids":
-            splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
+            # this or down below will explode one day. the current implementation of this module
+            # contains serious design flaws :( when this explodes and we are lost how to fix it,
+            # perhaps it will be a good time to rewrite this entire thing.
+            splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in (self.genes_of_interest or self.gene_caller_ids)]))
 
         elif split_source == "bin_id":
             if self.collection_name and not self.bin_id:
