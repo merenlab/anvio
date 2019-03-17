@@ -234,28 +234,37 @@ class ContigsSuperclass(object):
             self.run.info('Splits taxonomy', 'Initiated for taxonomic level for "%s"' % t_level)
 
 
-    def init_contig_sequences(self, min_contig_length=0, gene_caller_ids_of_interest=set([])):
+    def init_contig_sequences(self, min_contig_length=0, gene_caller_ids_of_interest=set([]), split_names_of_interest=set([])):
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
+        if len(gene_caller_ids_of_interest) and len(split_names_of_interest):
+            raise ConfigError("Ehem. Someone just called `init_contig_sequences` with gene caller ids of interest AND\
+                               split names of interest. Someone should make up their mind and go for only one of those")
+
         # are we going to read everything, or only those that are of interest?
-        if len(gene_caller_ids_of_interest):
-            contig_names_of_interest = set([])
+        contig_names_of_interest = set([])
+        if gene_caller_ids_of_interest:
             for gene_callers_id in self.genes_in_contigs_dict:
                 if gene_callers_id in gene_caller_ids_of_interest:
                     contig_names_of_interest.add(self.genes_in_contigs_dict[gene_callers_id]['contig'])
+        elif split_names_of_interest:
+            contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in split_names_of_interest])
 
-            self.run.warning("Someone asked the contigs super class to initialize contig sequences that are affiliated\
-                              with any of the %d gene calls avni'o determined to be relevant for this operation (either\
-                              becasue the user asked for it, or there was an optimization step somewhere). As a result\
-                              of which, this class will only know %d sequences instead of %d in the database." \
-                                % (len(gene_caller_ids_of_interest), len(contig_names_of_interest), len(self.contigs_basic_info)),
-                             header="JUST SO YOU KNOW", lc='yellow')
-
+        if gene_caller_ids_of_interest or split_names_of_interest: 
+            # someone was interested in a subest of things, but found nothing for them?
             if not len(contig_names_of_interest):
                 raise ConfigError("Well, it turns out there are no contigs matching to the list of gene calls anvi'o\
                                    wanted to work with :( Very sad (and very confusing). If you think this is a bug on\
                                    our part, please let us know.")
 
+            self.run.warning("Someone asked the contigs super class to initialize contig sequences that are affiliated\
+                              with some of the gene calls or split names relevant for this operation (this is happening either\
+                              becasue the user asked for it, or there was an optimization step somewhere). As a result\
+                              of which, this class will only know %d contig sequences instead of %d in the database." \
+                                % (len(contig_names_of_interest), len(self.contigs_basic_info)),
+                             header="JUST SO YOU KNOW", lc='yellow')
+
+            # load some
             self.progress.new('Loading contig sequences')
             self.progress.update('Reading SOME contig sequences')
             self.contig_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
@@ -263,6 +272,7 @@ class ContigsSuperclass(object):
                                                                   error_if_no_data=True)
             self.progress.end()
         else:
+            # load all 
             self.progress.new('Loading contig sequences')
             self.progress.update('Reading ALL contig sequences')
             self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
