@@ -1009,9 +1009,14 @@ class VariabilitySuper(VariabilityFilter, object):
             self.max_departure_from_reference_filtered = True
 
         if not conditions:
-            return ""
+            where_clause = ""
+        else:
+            where_clause =  " AND ".join([col_name + col_condition for col_name, col_condition in conditions.items()])
 
-        return " AND ".join([col_name + col_condition for col_name, col_condition in conditions.items()])
+        if anvio.DEBUG:
+            self.run.warning(where_clause, header="WHERE CLAUSE")
+
+        return where_clause
 
 
     def load_variability_data(self):
