@@ -304,9 +304,19 @@ class MultipleRuns:
                      ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)')]:
             v = set([r[k] for r in list(self.profile_dbs_info_dict.values())])
             if len(v) > 1:
-                raise ConfigError("%s are not identical for all profiles to be merged, which is a \
-                                    deal breaker. All profiles that are going to be merged must be\
-                                    run with identical flags and parameters :/" % p)
+                if anvio.FORCE:
+                    self.run.warning("Anvio'o found out that %s is not identical across all your profiles, but since you\
+                                      have used the `--force` flag, it will continue with the merge. This is very\
+                                      dangerous, and even if merging finishes succesfully, it does not mean you can trust\
+                                      your results to be error free. We believe you are prepared to deal with potential\
+                                      implications of forcing things because you are awesome." % p, lc="cyan")
+                else:
+                    raise ConfigError("Ouch. %s are not identical for all profiles to be merged, which is a \
+                                       deal breaker. All profiles that are going to be merged must be\
+                                       run with identical flags and parameters :/ You really shouldn't but if you want to\
+                                       try to force things because you believe this is due to a misunderstanding, you can\
+                                       use the flag --force. While you are considering this as an option, please also\
+                                       remember that this we advice against it.." % p)
 
         # get split names from one of the profile databases. split names must be identical across all
         self.split_names = sorted(list(utils.get_all_item_names_from_the_database(list(self.profile_dbs_info_dict.keys())[0])))
