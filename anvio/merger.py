@@ -399,8 +399,7 @@ class MultipleRuns:
         # fill coverages in from all samples
         for input_profile_db_path in self.profile_dbs_info_dict:
             self.progress.update(input_profile_db_path)
-            input_file_path = os.path.join(os.path.dirname(input_profile_db_path), 'AUXILIARY-DATA.db')
-            sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(input_file_path, self.contigs_db_hash)
+            sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(AUX(input_profile_db_path), self.contigs_db_hash)
 
             for split_name in self.split_names:
                 coverages_dict = sample_split_coverage_values.get(split_name)
