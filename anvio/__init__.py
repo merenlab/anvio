@@ -1854,9 +1854,9 @@ D = {
             ['--compute-gene-coverage-stats'],
             {'required': False,
              'action': 'store_true',
-             'help': "If provided, gene coverage statistics will be appended to the table for each entry.\
-                      This is very useful information, but will not be included by default because it is an\
-                      expensive opeation, and you a busy person."}
+             'help': "If provided, gene coverage statistics will be appended for each entry in variability reoprt.\
+                      This is very useful information, but will not be included by default because it is an expensive\
+                      operation, and may take some additional time."}
                 ),
     'repository': (
             ['--repository'],
