@@ -585,9 +585,18 @@ class VariabilitySuper(VariabilityFilter, object):
 
         # Initialize the contigs super
         if self.contigs_db_path:
-            filesnpaths.is_file_exists(self.contigs_db_path)
             dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
-            self.init_contig_sequences()
+
+            if self.splits_of_interest_path:
+                split_names_of_interest = self.get_splits_of_interest(splits_of_interest_path=self.splits_of_interest_path, split_source="split_names")
+            elif self.gene_caller_ids:
+                split_names_of_interest = self.get_splits_of_interest(splits_of_interest_path=None, split_source="gene_caller_ids")
+            elif self.genes_of_interest_path:
+                split_names_of_interest = self.get_splits_of_interest(splits_of_interest_path=None, split_source="gene_caller_ids")
+            else:
+                split_names_of_interest = set([])
+
+            self.init_contig_sequences(split_names_of_interest=split_names_of_interest)
 
         # these lists are dynamically extended
         self.columns_to_report = {
@@ -701,6 +710,35 @@ class VariabilitySuper(VariabilityFilter, object):
                                sanity_check, self.splits_of_interest_path, self.bin_id,\
                                self.collection_name will all be ignored.")
 
+        if self.splits_of_interest_path and self.gene_caller_ids:
+            raise ConfigError("You can't declare a file for split names of interest and then list a\
+                               bunch of gene caller ids to focus :(")
+
+        if self.splits_of_interest_path and self.genes_of_interest_path:
+            raise ConfigError("You can't declare files with split names of interest and gene caller\
+                               ids of interest :/ Pick one.")
+
+        if self.genes_of_interest_path and self.gene_caller_ids:
+            raise ConfigError("Nice try. But it is not OK to list a bunch of gene caller ids to focus\
+                               and also provide a file path with gene caller ids :(")
+
+        if self.gene_caller_ids:
+            if isinstance(self.gene_caller_ids, str):
+                try:
+                    self.gene_caller_ids = [int(g.strip()) for g in self.gene_caller_ids.split(',')]
+                except:
+                    raise ConfigError("The gene caller ids anvi'o found does not seem like gene caller\
+                                       ids anvi'o use. There is something wrong here :(")
+
+        if self.genes_of_interest_path:
+            filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
+
+            try:
+                self.gene_caller_ids = [int(g.strip()) for g in open(self.genes_of_interest_path, 'rU').readlines()]
+            except:
+                raise ConfigError("The gene caller ids anvi'o found in that file does not seem like gene caller\
+                                   ids anvi'o would use. There is something wrong here :(")
+
 
     def convert_counts_to_frequencies(self, retain_counts = False):
         if retain_counts:
@@ -741,21 +779,7 @@ class VariabilitySuper(VariabilityFilter, object):
             genes_of_interest_path = self.genes_of_interest_path
             gene_caller_ids = self.gene_caller_ids
 
-        if genes_of_interest_path and gene_caller_ids:
-            self.progress.end()
-            raise ConfigError("You can't provide gene caller ids from the command line, and a list\
-                               of gene caller ids as a file at the same time, obviously.")
-
         if gene_caller_ids:
-            if "," in gene_caller_ids:
-                gene_caller_ids = [g.strip() for g in gene_caller_ids.split(",")]
-            else:
-                gene_caller_ids = [gene_caller_ids]
-            for index, gene_caller_id in enumerate(gene_caller_ids):
-                try:
-                    gene_caller_ids[index] = int(gene_caller_id)
-                except:
-                    raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % gene_caller_id)
             genes_of_interest = set(gene_caller_ids)
 
         elif genes_of_interest_path:
@@ -782,6 +806,7 @@ class VariabilitySuper(VariabilityFilter, object):
            attribute (first code block of this method), which may not exist for classes inheriting
            this method.
         """
+
         # use class-wide attributes if no parameters are passed
         if split_source is "" and splits_of_interest_path is "":
             split_source = self.split_source
@@ -791,7 +816,10 @@ class VariabilitySuper(VariabilityFilter, object):
             splits_of_interest = set([])
 
         elif split_source == "gene_caller_ids":
-            splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in self.genes_of_interest]))
+            # this or down below will explode one day. the current implementation of this module
+            # contains serious design flaws :( when this explodes and we are lost how to fix it,
+            # perhaps it will be a good time to rewrite this entire thing.
+            splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in (self.genes_of_interest or self.gene_caller_ids)]))
 
         elif split_source == "bin_id":
             if self.collection_name and not self.bin_id:
@@ -981,9 +1009,14 @@ class VariabilitySuper(VariabilityFilter, object):
             self.max_departure_from_reference_filtered = True
 
         if not conditions:
-            return ""
+            where_clause = ""
+        else:
+            where_clause =  " AND ".join([col_name + col_condition for col_name, col_condition in conditions.items()])
 
-        return " AND ".join([col_name + col_condition for col_name, col_condition in conditions.items()])
+        if anvio.DEBUG:
+            self.run.warning(where_clause, header="WHERE CLAUSE")
+
+        return where_clause
 
 
     def load_variability_data(self):
