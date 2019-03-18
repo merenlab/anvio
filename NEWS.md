@@ -1,3 +1,7 @@
+# Working with NCBI genomes (18.03.2019) #
+[A new blog post](http://merenlab.org/2019/03/14/ncbi-genome-download-magic/) by [@Alon Shaiber](https://twitter.com/alon_shaiber) on how to download microbial genomes from the NCBI and include them in anvi'o 'omics analyses.
+***
+
 # v5.3: a minor but important update for "margaret" (28.02.2019) #
 Please see our up-to-date [installation](http://merenlab.org/2016/06/26/installation-v2/) document to upgrade your anvi'o.
 ***
