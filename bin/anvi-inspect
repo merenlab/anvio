@@ -32,15 +32,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Start an anvi'o inspect interactive interface.")
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "The interactive interface can be started with anvi'o databases.")
-    groupG = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+    groupB = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+                                                           the interface.")
+    groupC = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('split-name'), **anvio.K('split-name'))
+    groupB.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
 
-    groupG.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-    groupG.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-    groupG.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+    groupC.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupC.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupC.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
 
     args = anvio.get_args(parser)
 
