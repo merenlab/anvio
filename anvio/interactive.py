@@ -674,7 +674,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def load_inspect_mode(self):
-        self.p_meta['item_orders']['alphabetical'] = {'type': 'basic', 'data': sorted(self.displayed_item_names_ordered[::-1], reverse=True)}
+        self.displayed_item_names_ordered = sorted(self.views[self.default_view]['dict'].keys())
+        a = {'type': 'basic', 'data': sorted(self.displayed_item_names_ordered[::-1], reverse=True)}
+        self.p_meta['item_orders']['alphabetical'] = a
         self.p_meta['available_item_orders'].append('alphabetical')
 
 
