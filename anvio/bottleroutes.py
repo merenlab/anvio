@@ -207,7 +207,7 @@ class BottleApplication(Bottle):
         elif self.interactive.mode == 'structure':
             homepage = 'structure.html'
         elif self.interactive.mode == 'inspect':
-            redirect('/app/charts.html?order=alphabetical&id=%srand=%s' % (self.interactive.displayed_item_names_ordered[1], self.random_hash(8)))
+            redirect('/app/charts.html?order=alphabetical&id=%s&rand=%s' % (self.interactive.displayed_item_names_ordered[1], self.random_hash(8)))
 
         redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
@@ -470,7 +470,8 @@ class BottleApplication(Bottle):
             split_name = item_name
             title = split_name
 
-        state = json.loads(request.forms.get('state'))
+        if self.interactive.mode == 'inspect':
+            order_name = 'alphabetical'
 
         data = {'layers': [],
                  'title': title,
@@ -492,7 +493,15 @@ class BottleApplication(Bottle):
 
         data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, item_name)
 
-        layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
+        if self.interactive.mode == 'inspect':
+            if self.interactive.state_autoload:
+                state = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
+                layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]    
+            else:
+                layers = [layer for layer in sorted(self.interactive.p_meta['samples'])]
+        else:
+            state = json.loads(request.forms.get('state'))
+            layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
 
         try:
             auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
