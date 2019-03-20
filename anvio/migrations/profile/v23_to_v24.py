@@ -113,26 +113,28 @@ def migrate(db_path):
     run.info('Profile db type', 'Merged' if is_merged else 'Single')
     run.info('Full profile', is_full_profile)
 
-    total_reads_mapped = profile_db.get_meta_value('total_reads_mapped')
-    samples = profile_db.get_meta_value('samples')
-    profile_db.disconnect()
+    if is_full_profile:
+        total_reads_mapped = profile_db.get_meta_value('total_reads_mapped')
+        samples = profile_db.get_meta_value('samples')
+        profile_db.disconnect()
 
-    layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(profile_db=db_path))
+        layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(profile_db=db_path))
 
-    # we will do this only for full merged or single profiles
-    if is_full_profile and is_merged:
-        full_upgrade = True
-        total_reads_mapped = [int(m) for m in total_reads_mapped.split(',')]
-        samples = [s.strip() for s in samples.split(',')]
-        d = dict(zip(samples, total_reads_mapped))
-        data = {}
-        for sample in samples:
-            data[sample] = {'total_reads_mapped': d[sample]}
+        # we will do this only for full merged or single profiles
+        if is_merged:
+            full_upgrade = True
+            total_reads_mapped = [int(m) for m in total_reads_mapped.split(',')]
+            samples = [s.strip() for s in samples.split(',')]
+            d = dict(zip(samples, total_reads_mapped))
+            data = {}
+            for sample in samples:
+                data[sample] = {'total_reads_mapped': d[sample]}
 
-        layer_additional_data_table.add(data, ['total_reads_mapped'])
-    elif is_full_profile and not is_merged:
-        total_reads_mapped = int(total_reads_mapped)
-        layer_additional_data_table.add({samples: {'total_reads_mapped': total_reads_mapped}}, ['total_reads_mapped'])
+            layer_additional_data_table.add(data, ['total_reads_mapped'])
+        else:
+            total_reads_mapped = int(total_reads_mapped)
+            layer_additional_data_table.add({samples: {'total_reads_mapped': total_reads_mapped}}, ['total_reads_mapped'])
+        
         full_upgrade = True
     else:
         full_upgrade = False
@@ -142,8 +144,9 @@ def migrate(db_path):
 
     profile_db = db.DB(db_path, None, ignore_version = True)
 
-    # remove stuff no longer necessary
-    profile_db.remove_meta_key_value_pair('total_reads_mapped')
+    if full_upgrade:
+        # remove stuff no longer necessary
+        profile_db.remove_meta_key_value_pair('total_reads_mapped')
 
     # set the version
     profile_db.remove_meta_key_value_pair('version')
