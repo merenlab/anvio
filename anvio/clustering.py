@@ -114,12 +114,16 @@ def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, 
     return newick
 
 
-def create_newick_file_from_matrix_file(observation_matrix_path, output_file_name, linkage=constants.linkage_method_default,
-                         distance=constants.distance_metric_default, norm='l1', progress=progress, transpose=False):
+def create_newick_file_from_matrix_file(observation_matrix_path, output_file_path, linkage=constants.linkage_method_default,
+                         distance=constants.distance_metric_default, norm='l1', progress=progress, transpose=False,
+                         items_order_file_path=None):
     is_distance_and_linkage_compatible(distance, linkage)
     filesnpaths.is_file_exists(observation_matrix_path)
     filesnpaths.is_file_tab_delimited(observation_matrix_path)
-    filesnpaths.is_output_file_writable(output_file_name)
+
+    filesnpaths.is_output_file_writable(output_file_path)
+    if items_order_file_path:
+        filesnpaths.is_output_file_writable(items_order_file_path)
 
     id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose)
 
@@ -127,9 +131,12 @@ def create_newick_file_from_matrix_file(observation_matrix_path, output_file_nam
 
     newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict)
 
-    if output_file_name:
-        open(output_file_name, 'w').write(newick.strip() + '\n')
+    if output_file_path:
+        open(output_file_path, 'w').write(newick.strip() + '\n')
 
+    if items_order_file_path:
+        open(items_order_file_path, 'w').write('\n'.join(utils.get_names_order_from_newick_tree(newick)) + '\n')
+        
 
 def get_scaled_vectors(vectors, user_seed=None, n_components=12, normalize=True, progress=progress):
     if user_seed:
