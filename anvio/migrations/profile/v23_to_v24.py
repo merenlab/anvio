@@ -108,12 +108,14 @@ def migrate(db_path):
 
     is_merged = profile_db.get_meta_value('merged')
     tables_in_db = profile_db.get_table_names()
+    profile_db.disconnect()
     is_full_profile = 'mean_coverage_Q2Q3_splits' in tables_in_db or 'atomic_data_splits' in tables_in_db
 
     run.info('Profile db type', 'Merged' if is_merged else 'Single')
     run.info('Full profile', is_full_profile)
 
     if is_full_profile:
+        profile_db = db.DB(db_path, None, ignore_version = True)
         total_reads_mapped = profile_db.get_meta_value('total_reads_mapped')
         samples = profile_db.get_meta_value('samples')
         profile_db.disconnect()
