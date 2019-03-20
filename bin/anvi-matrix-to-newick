@@ -30,18 +30,31 @@ def main(args):
 
     run.info('Input matrix file', args.input_matrix)
     progress.new('Analyzing input file')
-    clustering.create_newick_file_from_matrix_file(args.input_matrix, args.output_file, linkage = args.linkage,
-                                    distance = args.distance, transpose = args.transpose, progress = progress)
+    clustering.create_newick_file_from_matrix_file(args.input_matrix, args.output_file, linkage=args.linkage,
+                                    distance=args.distance, transpose=args.transpose, progress=progress,
+                                    items_order_file_path=args.items_order_file)
     progress.end()
     run.info('Output newick', args.output_file)
+    if args.items_order_file:
+        run.info('Items order', args.items_order_file)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Takes an observation matrix, returns a newick tree.')
-    parser.add_argument('input_matrix', metavar = 'PATH', default = None,
-                        help = 'Input matrix')
 
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupA = parser.add_argument_group('INPUT', 'The data you wish to cluster')
+    groupA.add_argument('input_matrix', metavar='PATH', default=None,
+                        help='Input matrix')
+
+    groupB = parser.add_argument_group('OUTPUT', 'How would you like your results to be reported?')
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupB.add_argument('--items-order-file', metavar='FILE PATH', default=None,
+                        help="In addition to a newick formatted output file, you can ask anvi'o to report\
+                              the order of items in the resulting tree in a separate file. The content of\
+                              this file will be a single-column item names the way they are ordered in the\
+                              output newick dendrogram.")
+
+    groupC = parser.add_argument_group('SWEETS', 'Additional options')
     parser.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
     parser.add_argument(*anvio.A('distance'), **anvio.K('distance'))
     parser.add_argument(*anvio.A('linkage'), **anvio.K('linkage'))
