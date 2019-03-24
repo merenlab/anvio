@@ -24,16 +24,15 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
-
-
 def main(args):
+    run = terminal.Run(verbose=False if args.concise else True)
+    progress = terminal.Progress(verbose=False if args.concise else True)
+    pp = terminal.pretty_print
+
     if args.output_file:
         filesnpaths.is_output_file_writable(args.output_file)
 
-    collections = ccollections.Collections()
+    collections = ccollections.Collections(r=run, p=progress)
     collections.populate_collections_dict(args.contigs_db)
     if args.profile_db:
         collections.populate_collections_dict(args.profile_db)
@@ -88,8 +87,6 @@ def main(args):
         print("%s :: PC: %.2f%%, PR: %.2f%%, N: %s, L: %s, D: %s (C: %.2f)" % \
                         (bin_id, p_completion, p_redundancy, pp(num_splits), pp(total_length), domain, domain_confidence))
 
-    print()
-
     if args.output_file:
         utils.store_dict_as_TAB_delimited_file(results_dict, args.output_file, headers = ['bins', 'domain', 'domain_confidence', 'percent_completion', 'percent_redundancy', 'num_splits', 'total_length'])
         run.info('Output', args.output_file)
@@ -104,6 +101,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    parser.add_argument(*anvio.A('concise'), **anvio.K('concise'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = anvio.get_args(parser)
