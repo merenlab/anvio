@@ -1285,6 +1285,12 @@ D = {
              'action': 'store_true',
              'help': "Be verbose, print more messages whenever possible."}
                 ),
+    'concise': (
+            ['--concise'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't be verbose, print less messages whenever possible."}
+                ),
     'just-do-it': (
             ['--just-do-it'],
             {'default': False,
