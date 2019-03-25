@@ -46,7 +46,6 @@ def main(args):
     data = [vectors[genome_to_id[genome]] for genome in genomes]
     dim = len(data[0])
 
-    
     # add some NON-CPR data points (this is garbage heuristic, and shold be improved,
     # fortunately it is pretty easy to do this part right)
     for i in range(0, int(len(genomes) * 2)):
@@ -58,7 +57,7 @@ def main(args):
             v[j] = 0
 
         data.append(v)
- 
+
     rf = RF(args.output)
     rf.train(features, data, labels)
 
