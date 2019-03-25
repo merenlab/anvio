@@ -61,6 +61,33 @@
                 </div>
             </div>
 
+            <div class="modal fade" id="searchItemDialog" role="dialog" style="display: none;">
+                <div class="modal-dialog modal-md">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h3 class="modal-title" style="color: black;"><b>Search items</b></h3>
+                        </div>
+                        <div class="modal-body">
+                            <div class="input-group">
+                                <input type="text" class="form-control search-query" value="" placeholder="Leave empty to list all items."
+                                onkeypress="if(event.key == 'Enter') { search_items(); }" >
+                                <span class="input-group-btn">
+                                    <button type="button" class="form-control btn btn-default btn-sm" onclick="search_items();">Search</button>
+                                </span>
+                            </div>
+
+                            <div class="search-results">
+
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="modal fade" id="GCContentOverlayDialog" role="dialog" style="display: none;">
                 <div class="modal-dialog modal-md">
                     <div class="modal-content">
