@@ -463,7 +463,7 @@ class BottleApplication(Bottle):
 
     def charts(self, order_name, item_name):
         title = None
-        state = None
+        state = {}
 
         if self.interactive.mode == 'gene':
             split_name = self.interactive.gene_callers_id_to_split_name_dict[int(item_name)]
@@ -506,7 +506,7 @@ class BottleApplication(Bottle):
                 # anvi-inspect is called so there is no state stored in localstorage written by main anvio plot
                 # and there is no default state in the database, we are going to generate a mock state.
                 # only the keys we need is enough. 
-                state['layers-order'] = layers
+                state['layer-order'] = layers
                 state['layers'] = {}
                 for layer in layers:
                     state['layers'][layer] = {'height': 1, 'color': '#00000'}
