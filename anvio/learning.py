@@ -4,7 +4,6 @@
 
 import pickle
 import numpy as np
-import sklearn.ensemble
 
 import anvio
 import anvio.utils as utils
@@ -12,6 +11,9 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+
+with terminal.SuppressAllOutput():
+    import sklearn.ensemble
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -52,9 +54,11 @@ class RF:
         pickle.dump({'features': features, 'classes': rf.classes_, 'classifier': rf}, open(self.classifier_object_path, 'wb'))
         self.run.info('Classifier output', self.classifier_object_path)
 
+
     def predict_from_TAB_delimited_file(self, file_path):
         cols = utils.get_columns_of_TAB_delim_file(file_path)
         return self.predict(utils.get_TAB_delimited_file_as_dictionary(file_path, column_mapping=[str] + [float] * len(cols)))
+
 
     def predict(self, data_dict):
         if not self.classifier_initialized:
@@ -107,5 +111,5 @@ class RF:
 
         self.classifier_initialized = True
 
-        self.run.info('Classifier', "Initialized with %d features grouped into %d classes." % (len(self.features), len(self.classes)))
+        self.run.info('Random Forest Classifier', "Initialized with %d features grouped into %d classes." % (len(self.features), len(self.classes)))
 
