@@ -143,31 +143,51 @@ class Completeness:
         """
 
         # learn everything from the random forest.
-        domain_predictions, prob_mixed_domains = self.SCG_comain_predictor.predict_from_observed_genes_per_domain(observed_genes_per_domain)
+        domain_predictions, prob_mixed_domains, prob_blank_domain = self.SCG_comain_predictor.predict_from_observed_genes_per_domain(observed_genes_per_domain)
         domain_specific_estimates = []
 
         if anvio.DEBUG:
-            self.run.warning(None, header="SCG DATA FOR C/R ESTIMTES")
+            self.run.warning(None, header="SCG DATA FOR C/R ESTIMTES", lc='green')
+            self.run.info_single("%8s (probability: %.2f)" % ('blank', prob_blank_domain), mc='cyan')
+            self.run.info_single("%8s (probability: %.2f)" % ('mixed', prob_mixed_domains), mc='cyan')
 
+        domain_cr = {}
         for confidence, domain in domain_predictions:
             source = self.SCG_comain_predictor.SCG_domain_to_source[domain]
-            percent_completion = d[domain][source]['percent_completion']
-            percent_redundancy = d[domain][source]['percent_redundancy']
+            domain_cr[domain] = {'percent_completion': d[domain][source]['percent_completion'],
+                                 'percent_redundancy': d[domain][source]['percent_redundancy']}
 
             if anvio.DEBUG:
-                self.run.info_single("%8s (domain confidence: %.1f) C/R: %.2f/%.2f" % (domain, confidence, percent_completion, percent_redundancy))
+                self.run.info_single("%8s (domain confidence: %.2f) C/R: %.2f/%.2f" % (domain, confidence, domain_cr[domain]['percent_completion'], domain_cr[domain]['percent_redundancy']), mc='green')
 
         domain_matching_confidence, best_matching_domain = domain_predictions[0]
+        best_mathcing_domain_completion, best_matching_domain_redundancy = domain_cr[domain]['percent_completion'], domain_cr[domain]['percent_redundancy']
+
+        # it he probabiity of this domain to be blank is so high, and the best matching domain confidence
+        # is so low, do not return any completion or best matching domain estimates.
+        if domain_matching_confidence < 0.15 and prob_blank_domain > 0.5:
+            domain_matching_confidence, best_matching_domain = 0.0, None
+            best_mathcing_domain_completion, best_matching_domain_redundancy = None, None
 
         info_text = ''
         max_confidence = max([t[0] for t in domain_predictions])
-        if max_confidence < 0.6 and prob_mixed_domains > 0.4:
+        if prob_blank_domain > 0.5:
+            info_text = "CRAP DOMAIN EST BECAUSE NO SIGNAL. So anvi'o is having hard time determining any domain\
+                         for this selection either because the number of contigs are very little, or there are no\
+                         SCGs among the selected ones. This may happen if you are working with genomes that are\
+                         extremely low completion, or alternatively coming from parts of life that are very \
+                         understudied (such as viruses or plasmids, etc). If these do not apply to you, and you are\
+                         sure your selection represents a proper genome, then either anvi'o made a mistake, or you\
+                         stumbled upon a graet story."
+        elif max_confidence < 0.6 and prob_mixed_domains > 0.4:
             info_text = "CRAP DOMAIN EST BECAUSE STUFF IS MIXED. Please note that anvi'o determined '%s' \
-                         as the best matching domain for your\
-                         contigs BUT anvio' also determined that the probability of these contigs to be \
-                         coming from mixed domains is crazy high (%.2f). Basically neither this domain\
-                         prediction, nor the completion and redundancy estimates mean anything :/ The good news\
-                         is that more refined selections will likely fix this :)" % (best_matching_domain, prob_mixed_domains)
+                         as the best matching domain for your contigs BUT actually the probability of these \
+                         contigs to be coming from mixed domains is crazy high (%.2f). Which means, neither \
+                         this domain prediction, nor the completion and redundancy estimates should mean much,\
+                         and you should take a look at the entire list of C/R estimates from all domain SCGs :/\
+                         The good news is that more refined the input contigs (such as you make more and more\
+                         precise selections or provdide more and more refined genomes), this situation will\
+                         likely correct itself." % (best_matching_domain, prob_mixed_domains)
         elif max_confidence < 0.6 and prob_mixed_domains < 0.4:
             info_text = "CRAP DOMAIN EST BECAUSE WHO KNOWS WHY. Please note that anvi'o determined '%s' as the\
                          best matching domain for your contigs to predict the completion and redundancy\
@@ -176,9 +196,25 @@ class Completeness:
                          is most likely due to a very small number of contigs to offer reliable estimates\
                          of domain." % (best_matching_domain, domain_matching_confidence)
         else:
-            info_text = "GREAT DOMAIN EST. YOU'RE GOLDEN. The very high confidence of random forest indicates that this set of contigs\
-                         are almost certainly coming from a population that belongs to domain %s." \
-                                    % (best_matching_domain)
+            if best_matching_domain_redundancy < 10:
+                info_text = "GREAT DOMAIN EST. YOU'RE GOLDEN. The very high confidence of random forest indicates that this set of contigs\
+                             are almost certainly coming from a population that belongs to domain %s. IN ADDITION, the low redundancy of SCGs\
+                             do not predict any serious contamination. But please remember that this information does not mean there is NO\
+                             contamination in your genome bin." \
+                                        % (best_matching_domain)
+            elif best_matching_domain_redundancy > 10 and best_matching_domain_redundancy < 100:
+                info_text = "GREAT DOMAIN EST. YOU'RE GOLDEN. The very high confidence of random forest indicates that this set of contigs\
+                             are almost certainly coming from a population that belongs to domain %s. BUT you almost certainly are looking at\
+                             a composite genome. You should consider refining this particular collection of contigs to lower the redundancy." \
+                                        % (best_matching_domain)
+            elif best_matching_domain_redundancy > 100:
+                info_text = "GREAT DOMAIN EST. YOU'RE GOLDEN. The very high confidence of random forest indicates that the very large fraction\
+                             of this set of contigs are almost certainly coming from populations that belong to the domain %s. HOWEVER, the\
+                             extremely high amount of redundancy of SCGs in domain %s suggests that you either are working with a set of contigs\
+                             that are extremely composite, or you are looking basically an entire metagenome or something." \
+                                        % (best_matching_domain, best_matching_domain)
+            else:
+                info_text = "GREAT DOMAIN EST. YOU'RE GOLDEN. But your redundancy estimates are weird :("
 
         if anvio.DEBUG:
             self.run.warning(info_text)
