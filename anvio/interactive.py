@@ -96,6 +96,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
         self.gene_mode = A('gene_mode')
+        self.inspect_split_name = A('split_name')
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
@@ -675,9 +676,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_inspect_mode(self):
         self.displayed_item_names_ordered = sorted(self.views[self.default_view]['dict'].keys())
-        a = {'type': 'basic', 'data': sorted(self.displayed_item_names_ordered[::-1], reverse=True)}
-        self.p_meta['item_orders']['alphabetical'] = a
+        alphabetical_order = {'type': 'basic', 'data': sorted(self.displayed_item_names_ordered[::])}
+        self.p_meta['item_orders']['alphabetical'] = alphabetical_order
         self.p_meta['available_item_orders'].append('alphabetical')
+
+        if not self.inspect_split_name or self.inspect_split_name not in self.displayed_item_names_ordered:
+            self.inspect_split_name = alphabetical_order['data'][0]
+            self.run.warning("Either you forgot to provide split name to inspect or the split name\
+                             you have provided does not exist. So anvi'o decided to show you the split: \
+                             %s" % self.inspect_split_name)
 
 
     def load_refine_mode(self):
