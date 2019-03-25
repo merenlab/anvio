@@ -11,7 +11,7 @@ import anvio.terminal as terminal
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
 
-available_hmm_sources =  list(hmm_data.sources.keys())
+available_hmm_sources = list(hmm_data.sources.keys())
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.hmmhits import TablesForHMMHits
