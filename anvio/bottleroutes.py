@@ -588,9 +588,10 @@ class BottleApplication(Bottle):
         query = request.forms.get('search-query')
 
         if query and len(query) > 0:
+            query = query.lower()
             results = []
             for name in self.interactive.displayed_item_names_ordered:
-                if query in name:
+                if query in name.lower():
                     results.append(name)
             return json.dumps({'results': results})
         else:
