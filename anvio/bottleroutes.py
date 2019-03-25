@@ -463,6 +463,8 @@ class BottleApplication(Bottle):
 
     def charts(self, order_name, item_name):
         title = None
+        state = None
+
         if self.interactive.mode == 'gene':
             split_name = self.interactive.gene_callers_id_to_split_name_dict[int(item_name)]
             title = "Gene '%d' in split '%s'" % (int(item_name), split_name)
@@ -483,7 +485,8 @@ class BottleApplication(Bottle):
                  'previous_contig_name': None,
                  'next_contig_name': None,
                  'genes': [],
-                 'outlier_SNVs_shown': not self.args.hide_outlier_SNVs}
+                 'outlier_SNVs_shown': not self.args.hide_outlier_SNVs,
+                 'state': {}}
 
         if split_name not in self.interactive.split_names:
             return data
@@ -499,9 +502,20 @@ class BottleApplication(Bottle):
                 layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]    
             else:
                 layers = [layer for layer in sorted(self.interactive.p_meta['samples'])]
+
+                # anvi-inspect is called so there is no state stored in localstorage written by main anvio plot
+                # and there is no default state in the database, we are going to generate a mock state.
+                # only the keys we need is enough. 
+                state['layers-order'] = layers
+                state['layers'] = {}
+                for layer in layers:
+                    state['layers'][layer] = {'height': 1, 'color': '#00000'}
+
         else:
             state = json.loads(request.forms.get('state'))
             layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
+
+        data['state'] = state
 
         try:
             auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
