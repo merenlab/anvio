@@ -163,6 +163,7 @@ class BottleApplication(Bottle):
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
+        self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
 
 
     def run_application(self, ip, port):
@@ -207,7 +208,7 @@ class BottleApplication(Bottle):
         elif self.interactive.mode == 'structure':
             homepage = 'structure.html'
         elif self.interactive.mode == 'inspect':
-            redirect('/app/charts.html?order=alphabetical&id=%s&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
+            redirect('/app/charts.html?id=%s&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
 
         redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
@@ -581,6 +582,19 @@ class BottleApplication(Bottle):
         progress.end()
 
         return json.dumps(data)
+
+
+    def search_items_by_name(self):
+        query = request.forms.get('search-query')
+
+        if query and len(query) > 0:
+            results = []
+            for name in self.interactive.displayed_item_names_ordered:
+                if query in name:
+                    results.append(name)
+            return json.dumps({'results': results})
+        else:
+            return json.dumps({'results': self.interactive.displayed_item_names_ordered})
 
 
     def charts_for_single_gene(self, order_name, item_name):

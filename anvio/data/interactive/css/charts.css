@@ -161,3 +161,8 @@ a{
     border: 2px solid;
     border-color: #555;
 }
+
+.search-results {
+    padding: 20px;
+    font-size: 12px;
+}
