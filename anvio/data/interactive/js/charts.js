@@ -86,6 +86,7 @@ function loadAll() {
                 url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
                 data: {'state': JSON.stringify(state)},
                 success: function(contig_data) {
+                    state = contig_data['state'];
                     page_header = contig_data.title;
                     layers = contig_data.layers;
                     coverage = contig_data.coverage;
@@ -415,8 +416,9 @@ function createCharts(state){
     for(var i = 0; i < layersCount; i++){
         var layer_index = layers.indexOf(layers_ordered[i]);
 
-        if (parseFloat(state['layers'][layers_ordered[i]]['height']) == 0)
-          continue;
+        if (parseFloat(state['layers'][layers_ordered[i]]['height']) == 0) {
+            continue;
+        }
 
         charts.push(new Chart({
                         name: layers[layer_index],
