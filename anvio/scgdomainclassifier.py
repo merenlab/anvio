@@ -185,7 +185,7 @@ class Train(SCGDomainClassifier):
                         mixed_contigs_dbs.append(random.choice(self.contigs_dbs[domain]))
 
                     vectors = []
-                    mixed_vector = [0] * 3 * len(self.features)
+                    mixed_vector = [0] * len(self.SCG_domains) * len(self.features)
                     for contigs_db_path in mixed_contigs_dbs:
                         vectors.append(self.get_SCG_vector_for_contigs_db(contigs_db_path))
 
@@ -197,6 +197,16 @@ class Train(SCGDomainClassifier):
 
                     self.labels.append('mixed')
                     self.data.append(mixed_vector)
+
+        # add noise for no domain. this is to cover the case of no or extremely few SCGs.
+        for i in range(0, 10):
+            blank_vector = [0] * len(self.SCG_domains) * len(self.features)
+
+            for j in random.sample(range(0, len(blank_vector)), i):
+                blank_vector[j] = 1
+
+            self.labels.append('blank')
+            self.data.append(blank_vector)
 
 
     def train(self):
@@ -239,6 +249,7 @@ class Predict(SCGDomainClassifier):
         raw_classes_probabilities = sorted(list(zip(self.rf.classifier.predict_proba([features_vector])[0], self.rf.classes)), reverse=True)
 
         prob_mixed_domains = [t[0] for t in raw_classes_probabilities if t[1] == 'mixed'][0]
-        predicted_domains = [t for t in raw_classes_probabilities if t[1] != 'mixed']
+        prob_blank_domain = [t[0] for t in raw_classes_probabilities if t[1] == 'blank'][0]
+        predicted_domains = [t for t in raw_classes_probabilities if t[1] not in ['mixed', 'blank']]
 
-        return predicted_domains, prob_mixed_domains
+        return predicted_domains, prob_mixed_domains, prob_blank_domain
