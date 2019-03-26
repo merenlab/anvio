@@ -1217,6 +1217,6 @@ class BottleApplication(Bottle):
         new_newick = tree.write(format=1)
 
         # ete also converts base32 padding charachter "=" to "_" so we need to replace it.
-        new_newick = re.sub(r"base32(\w+)", lambda m: base64.b32decode(m.group(1).replace('_','=')).decode('utf-8'), new_newick)
+        new_newick = re.sub(r"base32(\w*)", lambda m: base64.b32decode(m.group(1).replace('_','=')).decode('utf-8'), new_newick)
 
         return json.dumps({'newick': new_newick})
