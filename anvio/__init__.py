@@ -344,6 +344,14 @@ D = {
              'action': 'store_true',
              'help': "Include orphans (paired reads that are not in a proper pair). The default is to ignore orphans."}
                 ),
+    'max-coverage-depth': (
+            ['-m', '--max-coverage-depth'],
+            {'default': constants.max_depth_for_coverage,
+            'metavar': 'INT',
+            'type': int,
+             'help': "Max coverage depth to read from BAM file. Coverages higher than this limit will be cut-off. \
+                      The default cut-off is '%d'." % (constants.max_depth_for_coverage)}
+                ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
             {'default': False,
