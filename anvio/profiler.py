@@ -98,10 +98,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                we don't need.")
 
         if self.max_coverage_depth >= auxiliarydataops.COVERAGE_MAX_VALUE:
-            raise ConfigError("You can not set max coverage depth greater than the maximum value allowed in database \
-                               for coverages, which is %d. Also, max coverage depth is a soft cut-off but coverage maximum\
-                               is not. It is recommended to put a little gap in between them like 10%%. \
-                               " % auxiliarydataops.COVERAGE_MAX_VALUE)
+            raise ConfigError("The value %s for the maximum coverage depth is not going to work :/ While the maximum\
+                               depth of coverage for anvi'o to care about is a soft cut-off (hence you have some level\
+                               of freedom through the parameter `--max-coverage-depth`), there are database limitations\
+                               anvi'o must consider and can not change. The maximum value allowed in the database for\
+                               coverage information is 65536. Hence, you should set your depth of coverage to something \
+                               that is less than this value. In addition, it is also recommended to leave a little gap\
+                               and don't go beyond 90%% of this hard limit (that's why anvi'o will keep telling you,\
+                               \"%s is nice, but %s is the best I can do\" when you try to exceed that)." \
+                                        % (pp(self.max_coverage_depth), pp(self.max_coverage_depth), pp(auxiliarydataops.COVERAGE_MAX_VALUE)))
 
 
         if self.blank and not self.skip_hierarchical_clustering:
