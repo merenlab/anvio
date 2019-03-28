@@ -21,10 +21,12 @@ __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
-
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+
+COVERAGE_DTYPE = 'uint16'
+COVERAGE_MAX_VALUE = np.iinfo(COVERAGE_DTYPE).max
 
 class AuxiliaryDataForSplitCoverages(object):
     def __init__(self, db_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
@@ -35,7 +37,6 @@ class AuxiliaryDataForSplitCoverages(object):
         self.quiet = quiet
         self.run = run
         self.progress = progress
-        self.numpy_data_type = 'uint16'
         self.coverage_entries = []
 
         self.db = db.DB(self.db_path, self.version, new_database=create_new)
@@ -65,7 +66,7 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def append(self, split_name, sample_name, coverage_list):
-        coverage_list_blob = utils.convert_numpy_array_to_binary_blob(np.array(coverage_list, dtype=self.numpy_data_type))
+        coverage_list_blob = utils.convert_numpy_array_to_binary_blob(np.array(coverage_list, dtype=COVERAGE_DTYPE))
         self.coverage_entries.append((split_name, sample_name, coverage_list_blob, ))
 
 
@@ -119,7 +120,7 @@ class AuxiliaryDataForSplitCoverages(object):
         for row in rows:
             sample_name, coverage_blob = row # unpack sqlite row tuple
 
-            split_coverage[sample_name] = utils.convert_binary_blob_to_numpy_array(coverage_blob, dtype=self.numpy_data_type)
+            split_coverage[sample_name] = utils.convert_binary_blob_to_numpy_array(coverage_blob, dtype=COVERAGE_DTYPE)
 
         return split_coverage
 
