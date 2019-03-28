@@ -66,6 +66,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.profile_SCVs = A('profile_SCVs')
         self.include_orphans = A('include_orphans')
+        self.max_coverage_depth = A('max_coverage_depth')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -95,6 +96,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                hierarchical clustering of contigs. It is going to be done by default. If it is\
                                not changing anything, why is anvi'o upset with you? Because. Let's don't use flags\
                                we don't need.")
+
+        if self.max_coverage_depth >= auxiliarydataops.COVERAGE_MAX_VALUE:
+            raise ConfigError("You can not set max coverage depth greater than the maximum value allowed in database \
+                               for coverages, which is %d. Also, max coverage depth is a soft cut-off but coverage maximum\
+                               is not. It is recommended to put a little gap in between them like 10%%. \
+                               " % auxiliarydataops.COVERAGE_MAX_VALUE)
+
 
         if self.blank and not self.skip_hierarchical_clustering:
             self.contigs_shall_be_clustered = True
@@ -469,6 +477,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('num_contigs', self.num_contigs, quiet=True)
         self.run.info('num_splits', self.num_splits)
         self.run.info('total_length', self.total_length)
+        self.run.info('max_coverage_depth', pp(self.max_coverage_depth))
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
         profile_db.db.set_meta_value('num_splits', self.num_splits)
@@ -540,6 +549,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig.skip_SNV_profiling = self.skip_SNV_profiling
             contig.report_variability_full = self.report_variability_full
             contig.ignore_orphans = not self.include_orphans
+            contig.max_coverage_depth = self.max_coverage_depth
 
             # populate contig with empty split objects and
             for split_name in self.contig_name_to_splits[contig_name]:
