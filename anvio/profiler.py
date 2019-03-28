@@ -97,6 +97,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                not changing anything, why is anvi'o upset with you? Because. Let's don't use flags\
                                we don't need.")
 
+        if self.max_coverage_depth >= auxiliarydataops.COVERAGE_MAX_VALUE:
+            raise ConfigError("You can not set max coverage depth greater than the maximum value allowed in database \
+                               for coverages, which is %d. Also, max coverage depth is a soft cut-off but coverage maximum\
+                               is not. It is recommended to put a little gap in between them like 10%%. \
+                               " % auxiliarydataops.COVERAGE_MAX_VALUE)
+
+
         if self.blank and not self.skip_hierarchical_clustering:
             self.contigs_shall_be_clustered = True
 
