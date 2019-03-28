@@ -148,8 +148,8 @@ class Completeness:
 
         if anvio.DEBUG:
             self.run.warning(None, header="SCG DATA FOR C/R ESTIMTES", lc='green')
-            self.run.info_single("%8s (probability: %.2f)" % ('blank', prob_blank_domain), mc='cyan')
-            self.run.info_single("%8s (probability: %.2f)" % ('mixed', prob_mixed_domains), mc='cyan')
+            self.run.info_single("Probability BLANK: %.2f" % (prob_blank_domain), mc='cyan')
+            self.run.info_single("Probability COMPOSITE  %.2f" % (prob_mixed_domains), mc='cyan')
 
         domain_cr = {}
         for confidence, domain in domain_predictions:
@@ -158,7 +158,7 @@ class Completeness:
                                  'percent_redundancy': d[domain][source]['percent_redundancy']}
 
             if anvio.DEBUG:
-                self.run.info_single("%8s (domain confidence: %.2f) C/R: %.2f/%.2f" % (domain, confidence, domain_cr[domain]['percent_completion'], domain_cr[domain]['percent_redundancy']), mc='green')
+                self.run.info_single("Domain '%8s' (probability: %.2f) C/R: %.2f/%.2f" % (domain, confidence, domain_cr[domain]['percent_completion'], domain_cr[domain]['percent_redundancy']), mc='green')
 
         domain_matching_confidence, best_matching_domain = domain_predictions[0]
         best_mathcing_domain_completion, best_matching_domain_redundancy = domain_cr[domain]['percent_completion'], domain_cr[domain]['percent_redundancy']
