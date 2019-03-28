@@ -70,10 +70,6 @@ class MetagenomeCentricGeneClassifier:
         self.coverage_values_per_nt = None
         self.gene_coverages = {}
         self.gene_detections = None
-        # FIXME: it looks to me like the next three variables are never used. They should be deleted.
-        self.gene_coverage_values_per_nt = {}
-        self.gene_non_outlier_coverage_std = None
-        self.gene_non_outlier_positions = {}
         self.samples = None
         self.positive_samples = []
         self.number_of_positive_samples = None
@@ -83,7 +79,6 @@ class MetagenomeCentricGeneClassifier:
         self.samples_detection_information = {}
         self.gene_presence_absence_in_samples_initiated = False
         self.gene_presence_absence_in_samples = None
-        self.gene_coverages_filtered = {} # FIXME: never used?
         self.additional_description = ''
         self.total_length = None
         self.samples_coverage_stats_dicts_was_initiated = False
