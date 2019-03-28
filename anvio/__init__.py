@@ -346,11 +346,12 @@ D = {
                 ),
     'max-coverage-depth': (
             ['-m', '--max-coverage-depth'],
-            {'default': constants.max_depth_for_coverage,
-            'metavar': 'INT',
-            'type': int,
-             'help': "Max coverage depth to read from BAM file. Coverages higher than this limit will be cut-off. \
-                      The default cut-off is '%d'." % (constants.max_depth_for_coverage)}
+            {'default': 8000,
+             'metavar': 'INT',
+             'type': int,
+             'help': "Max depth of coverage to consider when reading from the BAM file. It means, nucleotide positions with\
+                      coverages that exceed this value will have a flat coverage that is equal to this value. The default\
+                      is %(default)d."}
                 ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
