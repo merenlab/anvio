@@ -17,6 +17,7 @@ import anvio
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.sequence import Coverage
@@ -87,6 +88,7 @@ class Contig:
         self.skip_SNV_profiling = False
         self.report_variability_full = False
         self.ignore_orphans = True
+        self.max_coverage_depth = constants.max_depth_for_coverage
         self.codon_frequencies_dict = {}
 
 
@@ -110,7 +112,9 @@ class Contig:
         counter = 1
         for split in self.splits:
             split.coverage = Coverage()
-            split.coverage.run(bam, split, ignore_orphans=self.ignore_orphans)
+            split.coverage.run(bam, split, 
+                            ignore_orphans=self.ignore_orphans, 
+                            max_coverage_depth=self.max_coverage_depth)
             contig_coverage.extend(split.coverage.c)
 
             counter += 1
@@ -126,7 +130,8 @@ class Contig:
                                         parent_outlier_positions=self.coverage.outlier_positions,
                                         min_coverage=self.min_coverage_for_variability,
                                         report_variability_full=self.report_variability_full,
-                                        ignore_orphans=self.ignore_orphans)
+                                        ignore_orphans=self.ignore_orphans,
+                                        max_coverage_depth=self.max_coverage_depth)
 
             counter += 1
 
@@ -160,7 +165,11 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, parent_outlier_positions, min_coverage=10, report_variability_full=False, ignore_orphans=True):
+    def __init__(self, split, bam, parent_outlier_positions, 
+                 min_coverage=10, 
+                 report_variability_full=False, 
+                 ignore_orphans=True,
+                 max_coverage_depth=constants.max_depth_for_coverage):
         self.v = []
         self.rep_seq = ''
         self.split = split
@@ -171,6 +180,7 @@ class Auxiliary:
         self.column_profile = self.split.column_profiles
         self.report_variability_full = report_variability_full
         self.ignore_orphans = ignore_orphans
+        self.max_coverage_depth = max_coverage_depth
 
         self.run(bam)
 
@@ -178,7 +188,9 @@ class Auxiliary:
     def run(self, bam):
         ratios = []
 
-        for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end, ignore_orphans=self.ignore_orphans):
+        for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end, 
+                                    ignore_orphans=self.ignore_orphans, max_depth=self.max_coverage_depth):
+
             pos_in_contig = pileupcolumn.pos
             if pos_in_contig < self.split.start or pos_in_contig >= self.split.end:
                 continue

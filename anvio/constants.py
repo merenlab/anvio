@@ -33,6 +33,13 @@ default_gene_caller = "prodigal"
 
 max_num_items_for_hierarchical_clustering = 20000
 
+# max coverage depth to read from BAM files using pysam. 
+# this parameter also can be set later using command line parameters
+# we use uint16 as dtype for numpy arrays when we work on & store coverages
+# which has limit of 65536, so this constant needs to be smaller than that.
+# If you change this value please change all dtypes.
+max_depth_for_coverage = 60000
+
 # default methods for hierarchical cluster analyses
 distance_metric_default = 'euclidean'
 linkage_method_default = 'ward'

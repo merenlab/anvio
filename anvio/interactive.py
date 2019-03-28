@@ -2207,12 +2207,12 @@ class ContigsInteractive():
         n_values = [c['n_values'] for c in self.contigs_stats.values()]
         N = lambda n: [n_value[n]['num_contigs'] for n_value in n_values]
         L = lambda n: [n_value[n]['length'] for n_value in n_values]
-        basic_stats.append(['N50'] + N(49))
-        basic_stats.append(['N75'] + N(74))
-        basic_stats.append(['N90'] + N(89))
-        basic_stats.append(['L50'] + L(49))
-        basic_stats.append(['L75'] + L(74))
-        basic_stats.append(['L90'] + L(89))
+        basic_stats.append(['L50'] + N(49))
+        basic_stats.append(['L75'] + N(74))
+        basic_stats.append(['L90'] + N(89))
+        basic_stats.append(['N50'] + L(49))
+        basic_stats.append(['N75'] + L(74))
+        basic_stats.append(['N90'] + L(89))
 
         self.tables['basic_stats'] = basic_stats
         self.human_readable_keys.extend([e[0] for e in basic_stats])
