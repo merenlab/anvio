@@ -737,7 +737,7 @@ function Chart(options){
         
     this.chartContainer.append("g")
                    .attr("class", "y axis")
-                   .attr("transform", "translate(-15,0)")
+                   .attr("transform", "translate(-10,0)")
                    .call(this.yAxis);
 
     this.lineContainer.append("g")
