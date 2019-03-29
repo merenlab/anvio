@@ -38,6 +38,7 @@ var show_snvs;
 var sequence;
 var charts;
 var brush;
+var inspect_mode;
 
 
 function loadAll() {
@@ -86,6 +87,7 @@ function loadAll() {
                 url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
                 data: {'state': JSON.stringify(state)},
                 success: function(contig_data) {
+                    state = contig_data['state'];
                     page_header = contig_data.title;
                     layers = contig_data.layers;
                     coverage = contig_data.coverage;
@@ -131,7 +133,7 @@ function loadAll() {
                         target_str = 'target="_top"';
                     }
 
-                    var inspect_mode = 'inspect';
+                    inspect_mode = 'inspect';
 
                     if (gene_mode) {
                         inspect_mode = 'inspect_gene';
@@ -146,7 +148,7 @@ function loadAll() {
                     if(previous_contig_name)
                         prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': show_snvs}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
-                    $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "</small></small></br></br>");
+                    $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "&nbsp;&nbsp;<a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></small></small></br></br>");
 
                     $('.main').prepend(`<div style="float: right; text-align: right; padding-right: 60px; padding-bottom: 20px; display: inline-block;" class="form-inline"> \
                                             <b>Range:</b> 
@@ -336,6 +338,53 @@ function resetMaxValues() {
 }
 
 
+function showSearchItemsDialog() {
+    $('#searchItemDialog').modal('show');
+    $('#searchItemDialog .search-results').empty();
+}
+
+function search_items() {
+    // anvi-server uses iframes for prettier urls, links need to be open _top
+    var target_str = '';
+
+    if (self != top) {
+        target_str = 'target="_top"';
+    }
+
+    let search_query = $('#searchItemDialog .search-query').val();
+    $('#searchItemDialog .search-results').empty();
+
+    $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/search_items',
+            data: {'search-query': search_query },
+            success: function(data) {
+                let results = data['results'];
+
+                for (let i=0; i < results.length; i++) {
+                    let item_name = results[i];
+                    let item_name_pretty = item_name;
+
+                    if (search_query.length > 0) {
+                        let begin = item_name.toLowerCase().indexOf(search_query.toLowerCase());
+                        item_name_pretty = [item_name.slice(0, begin), 
+                                           '<mark>', 
+                                           item_name.slice(begin, begin + search_query.length), 
+                                           '</mark>', 
+                                           item_name.slice(begin + search_query.length, item_name.length)
+                                           ].join("");
+
+                    }
+
+                    let link = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': item_name, 'show_snvs': show_snvs}) +'" '+target_str+'>' + item_name_pretty + '</a>';
+                    $('#searchItemDialog .search-results').append(link + '<br />');
+
+                }
+            }
+        });
+}
+
 function createCharts(state){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
@@ -415,8 +464,9 @@ function createCharts(state){
     for(var i = 0; i < layersCount; i++){
         var layer_index = layers.indexOf(layers_ordered[i]);
 
-        if (parseFloat(state['layers'][layers_ordered[i]]['height']) == 0)
-          continue;
+        if (parseFloat(state['layers'][layers_ordered[i]]['height']) == 0) {
+            continue;
+        }
 
         charts.push(new Chart({
                         name: layers[layer_index],

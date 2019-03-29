@@ -162,6 +162,7 @@ class BottleApplication(Bottle):
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
+        self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
 
 
     def run_application(self, ip, port):
@@ -205,6 +206,8 @@ class BottleApplication(Bottle):
             homepage = 'contigs.html'
         elif self.interactive.mode == 'structure':
             homepage = 'structure.html'
+        elif self.interactive.mode == 'inspect':
+            redirect('/app/charts.html?id=%s&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
 
         redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
@@ -460,6 +463,8 @@ class BottleApplication(Bottle):
 
     def charts(self, order_name, item_name):
         title = None
+        state = {}
+
         if self.interactive.mode == 'gene':
             split_name = self.interactive.gene_callers_id_to_split_name_dict[int(item_name)]
             title = "Gene '%d' in split '%s'" % (int(item_name), split_name)
@@ -467,7 +472,8 @@ class BottleApplication(Bottle):
             split_name = item_name
             title = split_name
 
-        state = json.loads(request.forms.get('state'))
+        if self.interactive.mode == 'inspect':
+            order_name = 'alphabetical'
 
         data = {'layers': [],
                  'title': title,
@@ -479,7 +485,8 @@ class BottleApplication(Bottle):
                  'previous_contig_name': None,
                  'next_contig_name': None,
                  'genes': [],
-                 'outlier_SNVs_shown': not self.args.hide_outlier_SNVs}
+                 'outlier_SNVs_shown': not self.args.hide_outlier_SNVs,
+                 'state': {}}
 
         if split_name not in self.interactive.split_names:
             return data
@@ -489,7 +496,26 @@ class BottleApplication(Bottle):
 
         data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, item_name)
 
-        layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
+        if self.interactive.mode == 'inspect':
+            if self.interactive.state_autoload:
+                state = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
+                layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]    
+            else:
+                layers = [layer for layer in sorted(self.interactive.p_meta['samples'])]
+
+                # anvi-inspect is called so there is no state stored in localstorage written by main anvio plot
+                # and there is no default state in the database, we are going to generate a mock state.
+                # only the keys we need is enough. 
+                state['layer-order'] = layers
+                state['layers'] = {}
+                for layer in layers:
+                    state['layers'][layer] = {'height': 1, 'color': '#00000'}
+
+        else:
+            state = json.loads(request.forms.get('state'))
+            layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
+
+        data['state'] = state
 
         try:
             auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
@@ -555,6 +581,20 @@ class BottleApplication(Bottle):
         progress.end()
 
         return json.dumps(data)
+
+
+    def search_items_by_name(self):
+        query = request.forms.get('search-query')
+
+        if query and len(query) > 0:
+            query = query.lower()
+            results = []
+            for name in self.interactive.displayed_item_names_ordered:
+                if query in name.lower():
+                    results.append(name)
+            return json.dumps({'results': results})
+        else:
+            return json.dumps({'results': self.interactive.displayed_item_names_ordered})
 
 
     def charts_for_single_gene(self, order_name, item_name):

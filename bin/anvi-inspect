@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""This program runs inspect page directly"""
+
+import sys
+import argparse
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.interactive as interactive
+
+from anvio.bottleroutes import BottleApplication
+from anvio.errors import ConfigError, FilesNPathsError, GenesDBError 
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Özcan Esen"
+__email__ = "ozcanesen@gmail.com"
+__requires__ = ['profile-db', 'contigs-db', 'bin']
+__provides__ = ['interactive']
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+if __name__ == '__main__':
+    # setup the command line user interface
+    parser = argparse.ArgumentParser(description="Start an anvi'o inspect interactive interface.")
+
+    groupA = parser.add_argument_group('DEFAULT INPUTS', "The interactive interface can be started with anvi'o databases.")
+    groupB = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+                                                           the interface.")
+    groupC = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupA.add_argument(*anvio.A('split-name'), **anvio.K('split-name'))
+    groupB.add_argument(*anvio.A('hide-outlier-SNVs'), **anvio.K('hide-outlier-SNVs'))
+
+    groupC.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupC.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupC.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        args.mode = 'inspect'
+        d = interactive.Interactive(args)
+        args.port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
+
+    app = BottleApplication(d)
+    app.run_application(args.ip_address, args.port_number)
