@@ -11,6 +11,7 @@ import os
 import re
 import io
 import sys
+import math
 import copy
 import time
 import json
@@ -584,7 +585,10 @@ class BottleApplication(Bottle):
 
 
     def search_items_by_name(self):
+        items_per_page = 30
+
         query = request.forms.get('search-query')
+        page = request.forms.get('page') or 0
 
         if query and len(query) > 0:
             query = query.lower()
@@ -592,9 +596,22 @@ class BottleApplication(Bottle):
             for name in self.interactive.displayed_item_names_ordered:
                 if query in name.lower():
                     results.append(name)
-            return json.dumps({'results': results})
         else:
-            return json.dumps({'results': self.interactive.displayed_item_names_ordered})
+            results = self.interactive.displayed_item_names_ordered
+
+        page_start = max(0, page * items_per_page)
+        page_end = min(len(results), (page + 1) * items_per_page)
+
+        total_page = math.ceil(len(results) / items_per_page)
+
+        results = results[page_start:page_end]
+
+        return json.dumps({
+            'search-query': query,
+            'results': results,
+            'page': page,
+            'total_page': total_page
+            })
 
 
     def charts_for_single_gene(self, order_name, item_name):
