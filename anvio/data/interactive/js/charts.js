@@ -74,130 +74,131 @@ function loadAll() {
 
     if (typeof localStorage.state === 'undefined')
     {
-        alert("Something went wrong, couldn't access to localStorage");
+        state = {}
     }
     else
     {
-        // backup the state, if user changes the page (prev, next) we are going to overwrite it.
         state = JSON.parse(localStorage.state);
-        var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
-        $.ajax({
-                type: 'POST',
-                cache: false,
-                url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
-                data: {'state': JSON.stringify(state)},
-                success: function(contig_data) {
-                    state = contig_data['state'];
-                    page_header = contig_data.title;
-                    layers = contig_data.layers;
-                    coverage = contig_data.coverage;
-                    sequence = contig_data.sequence;
-                    variability = [];
-
-                    for (var i=0; i<coverage.length; i++) {
-                        variability[i] = [];
-                        for (var l=0; l<4; l++) {
-                            variability[i][l] = [];
-                            for (var h=0; h<coverage[i].length; h++) {
-                                if (contig_data.variability[i][l].hasOwnProperty(h)) {
-                                    variability[i][l].push(contig_data.variability[i][l][h]);
-                                    if (contig_data.variability[i][l][h] > maxVariability) {
-                                        maxVariability = contig_data.variability[i][l][h];
-                                    }
-                                } else {
-                                    variability[i][l].push(0);
-                                }
-                            }
-                        }
-                    }
-
-                    competing_nucleotides = contig_data.competing_nucleotides;
-                    previous_contig_name = contig_data.previous_contig_name;
-                    next_contig_name = contig_data.next_contig_name;
-                    index = contig_data.index;
-                    total = contig_data.total;
-                    genes = contig_data.genes;
-
-                    if(layers.length == 0){
-                        console.log('Warning: no layers returned')
-                    }
-
-                    next_str = " | next &gt;&gt;&gt;";
-                    prev_str = "&lt;&lt;&lt; prev | ";
-                    position = index + " of " + total;
-
-                    // anvi-server uses iframes for prettier urls, links need to be open _top
-                    var target_str = '';
-
-                    if (self != top) {
-                        target_str = 'target="_top"';
-                    }
-
-                    inspect_mode = 'inspect';
-
-                    if (gene_mode) {
-                        inspect_mode = 'inspect_gene';
-                    }
-                    else if (highlight_gene) {
-                        inspect_mode = 'inspect_context';
-                    }
-
-                    if(next_contig_name)
-                        next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': show_snvs}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
-
-                    if(previous_contig_name)
-                        prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': show_snvs}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
-
-                    $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "&nbsp;&nbsp;<a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></small></small></br></br>");
-
-                    $('.main').prepend(`<div style="float: right; text-align: right; padding-right: 60px; padding-bottom: 20px; display: inline-block;" class="form-inline"> \
-                                            <b>Range:</b> 
-                                                <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5"> 
-                                            <b>:</b> 
-                                                <input class="form-control input-sm" id="brush_end" type="text" value="${sequence.length}" size="5">\
-                                        </div>`);
-
-                    $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button> \
-                                            <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button> \
-                                        </div>`);
-
-                    $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button> \
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button> \
-                                        </div>`);
-
-                    $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button> \
-                                        </div>');
-
-                    createCharts(state);
-                    $('.loading-screen').hide();
-
-                    $('#brush_start, #brush_end').keydown(function(ev) {
-                        if (ev.which == 13) {
-                            let start = parseInt($('#brush_start').val());
-                            let end = parseInt($('#brush_end').val());
-
-                            if (!isNumber(start) || !isNumber(end) || start < 0 || start > sequence.length || end < 0 || end > sequence.length) {
-                                alert(`Invalid value, value needs to be in range 0-${sequence.length}.`);
-                                return;
-                            }
-
-                            if (start >= end) {
-                                alert('Starting value cannot be greater or equal to the ending value.');
-                                return;
-                            }
-
-                            brush.extent([start, end]);
-                            brush(d3.select(".brush").transition());
-                            brush.event(d3.select(".brush").transition());
-                        }
-                    });
-                }
-            });
     }
+
+    var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
+    $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
+            data: {'state': JSON.stringify(state)},
+            success: function(contig_data) {
+                state = contig_data['state'];
+                page_header = contig_data.title;
+                layers = contig_data.layers;
+                coverage = contig_data.coverage;
+                sequence = contig_data.sequence;
+                variability = [];
+
+                for (var i=0; i<coverage.length; i++) {
+                    variability[i] = [];
+                    for (var l=0; l<4; l++) {
+                        variability[i][l] = [];
+                        for (var h=0; h<coverage[i].length; h++) {
+                            if (contig_data.variability[i][l].hasOwnProperty(h)) {
+                                variability[i][l].push(contig_data.variability[i][l][h]);
+                                if (contig_data.variability[i][l][h] > maxVariability) {
+                                    maxVariability = contig_data.variability[i][l][h];
+                                }
+                            } else {
+                                variability[i][l].push(0);
+                            }
+                        }
+                    }
+                }
+
+                competing_nucleotides = contig_data.competing_nucleotides;
+                previous_contig_name = contig_data.previous_contig_name;
+                next_contig_name = contig_data.next_contig_name;
+                index = contig_data.index;
+                total = contig_data.total;
+                genes = contig_data.genes;
+
+                if(layers.length == 0){
+                    console.log('Warning: no layers returned')
+                }
+
+                next_str = " | next &gt;&gt;&gt;";
+                prev_str = "&lt;&lt;&lt; prev | ";
+                position = index + " of " + total;
+
+                // anvi-server uses iframes for prettier urls, links need to be open _top
+                var target_str = '';
+
+                if (self != top) {
+                    target_str = 'target="_top"';
+                }
+
+                inspect_mode = 'inspect';
+
+                if (gene_mode) {
+                    inspect_mode = 'inspect_gene';
+                }
+                else if (highlight_gene) {
+                    inspect_mode = 'inspect_context';
+                }
+
+                if(next_contig_name)
+                    next_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': show_snvs}) +'" '+target_str+'> | next &gt;&gt;&gt;</a>';
+
+                if(previous_contig_name)
+                    prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': show_snvs}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
+
+                $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "&nbsp;&nbsp;<a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></small></small></br></br>");
+
+                $('.main').prepend(`<div style="float: right; text-align: right; padding-right: 60px; padding-bottom: 20px; display: inline-block;" class="form-inline"> \
+                                        <b>Range:</b> 
+                                            <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5"> 
+                                        <b>:</b> 
+                                            <input class="form-control input-sm" id="brush_end" type="text" value="${sequence.length}" size="5">\
+                                    </div>`);
+
+                $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
+                                        <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button> \
+                                        <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button> \
+                                    </div>`);
+
+                $('.main').prepend(`<div style="text-align: right; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
+                                        <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button> \
+                                        <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button> \
+                                    </div>`);
+
+                $('.main').prepend('<div style="text-align: left; padding-left: 40px; padding-bottom: 20px; display: inline-block;"> \
+                                        <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button> \
+                                        <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button> \
+                                    </div>');
+
+                createCharts(state);
+                $('.loading-screen').hide();
+
+                $('#brush_start, #brush_end').keydown(function(ev) {
+                    if (ev.which == 13) {
+                        let start = parseInt($('#brush_start').val());
+                        let end = parseInt($('#brush_end').val());
+
+                        if (!isNumber(start) || !isNumber(end) || start < 0 || start > sequence.length || end < 0 || end > sequence.length) {
+                            alert(`Invalid value, value needs to be in range 0-${sequence.length}.`);
+                            return;
+                        }
+
+                        if (start >= end) {
+                            alert('Starting value cannot be greater or equal to the ending value.');
+                            return;
+                        }
+
+                        brush.extent([start, end]);
+                        brush(d3.select(".brush").transition());
+                        brush.event(d3.select(".brush").transition());
+                    }
+                });
+            }
+        });
+
 }
 
 
