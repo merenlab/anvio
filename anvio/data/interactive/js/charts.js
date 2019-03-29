@@ -344,7 +344,11 @@ function showSearchItemsDialog() {
     $('#searchItemDialog .search-results').empty();
 }
 
-function search_items() {
+function search_items(search_query, page) {
+    if (typeof page === 'undefined') {
+        page = 0; 
+    }
+
     // anvi-server uses iframes for prettier urls, links need to be open _top
     var target_str = '';
 
@@ -352,16 +356,20 @@ function search_items() {
         target_str = 'target="_top"';
     }
 
-    let search_query = $('#searchItemDialog .search-query').val();
     $('#searchItemDialog .search-results').empty();
 
     $.ajax({
             type: 'POST',
             cache: false,
             url: '/data/search_items',
-            data: {'search-query': search_query },
+            data: {'search-query': search_query, 'page': page},
             success: function(data) {
+                page = parseInt(data['page']);
+                search_query = data['search-query']
+                let total_page = parseInt(data['total_page']);
+
                 let results = data['results'];
+                let results_html = '';
 
                 for (let i=0; i < results.length; i++) {
                     let item_name = results[i];
@@ -379,9 +387,25 @@ function search_items() {
                     }
 
                     let link = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': item_name, 'show_snvs': show_snvs}) +'" '+target_str+'>' + item_name_pretty + '</a>';
-                    $('#searchItemDialog .search-results').append(link + '<br />');
+                    results_html += link + '<br />';
 
                 }
+
+                results_html += '<br /><br /><center>';
+
+                if (page > 0) {
+                    results_html += `<a href="#" onclick="search_items('${search_query}', ${page-1});">&lt;&lt;&lt; prev</a> | `;
+                }
+
+                results_html += " page " + (page + 1) + " of " + total_page;
+                
+                if (page + 1 < total_page) {
+                    results_html += ` | <a href="#" onclick="search_items('${search_query}', ${page+1});"> next &gt;&gt;&gt;</a>`;
+                }
+
+                results_html += '</center>';
+
+                $('#searchItemDialog .search-results').append(results_html);
             }
         });
 }
