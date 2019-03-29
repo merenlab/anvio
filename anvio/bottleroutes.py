@@ -588,7 +588,7 @@ class BottleApplication(Bottle):
         items_per_page = 30
 
         query = request.forms.get('search-query')
-        page = request.forms.get('page') or 0
+        page = int(request.forms.get('page') or 0)
 
         if query and len(query) > 0:
             query = query.lower()
