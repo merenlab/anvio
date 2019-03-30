@@ -149,7 +149,9 @@ function loadAll() {
                 if(previous_contig_name)
                     prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': show_snvs}) + '" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
-                $('#header').append("<strong>" + page_header + "</strong> detailed <br /><small><small>" + prev_str + position + next_str + "&nbsp;&nbsp;<a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></small></small></br></br>");
+                $('#header').append("<strong>" + page_header + "</strong> detailed");
+                $('#header').append("<p><small><small>" + prev_str + position + next_str + "</small></small></p>");
+                $('#header').append("<p style='margin-top: -30px; margin-bottom: 15px;'><small><small><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></small></small></p>");
 
                 $('.main').prepend(`<div style="float: right; text-align: right; padding-right: 60px; padding-bottom: 20px; display: inline-block;" class="form-inline"> \
                                         <b>Range:</b> 
