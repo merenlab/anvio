@@ -102,6 +102,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
                                 you send to this class. What are you doing?")
 
+        if self.profile_db_path and filesnpaths.is_file_exists(self.profile_db_path, dont_raise=True):
+            utils.is_profile_db(self.profile_db_path)
+
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
 
