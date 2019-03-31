@@ -84,12 +84,14 @@ class Completeness:
         self.source_to_domain = dict([(source, info_table[source]['domain']) for source in self.sources])
         self.domain_to_sources = [(domain, [source for source in self.sources if info_table[source]['domain'] == domain]) for domain in self.domains]
 
-        missing_SCG_HMMs = [s for s in self.SCG_comain_predictor.SCG_sources if s not in self.sources]
-        if len(missing_SCG_HMMs):
-            raise ConfigError("Bad news :( Anvi'o completion estimations require all SCG HMMs to be run on contigs databases. Yet your contigs database\
-                               '%s' is lacking these ones: '%s'. You can run `anvi-run-hmms` on your contigs database to make sure all SCG HMM hits are stored\
-                               in your contigs database. Alternatively you can run the same program with `-I XXX` parameter where XXX is one of the\
-                               missing SCG HMM collection." % (contigs_db_path, ', '.join(missing_SCG_HMMs)))
+        self.missing_SCG_HMMs = [s for s in self.SCG_comain_predictor.SCG_sources if s not in self.sources]
+        if len(self.missing_SCG_HMMs):
+            self.run.warning("Sad news :( Anvi'o completion estimations require all single-copy core gene (SCG) collections to be run on contigs\
+                              databases. Yet your contigs database '%s' is lacking these default ones: '%s'. If you need completion estimates,\
+                              the easiest solution is to run `anvi-run-hmms` on your contigs database. This will make sure all SCG HMM hits are \
+                              stored in your contigs database. Alternatively you can run the same program with `-I XXX` parameter where XXX is one\
+                              of the missing SCG HMM collection (in case you are only missing one of the SCG collections)." \
+                                                                                    % (contigs_db_path, ', '.join(self.missing_SCG_HMMs)))
 
         if source_requested:
             if source_requested not in self.sources:
