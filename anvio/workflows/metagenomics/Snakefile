@@ -1160,7 +1160,7 @@ rule krakenuniq_mpa_report:
             krakenuniq-mpa-report {params.db} \
                                   --header-line \
                                   {input} \
-                                  > {output} 2 > {log}
+                                  > {output} 2> {log}
         """
 
 
