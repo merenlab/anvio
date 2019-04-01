@@ -632,7 +632,8 @@ class BottleApplication(Bottle):
                  'previous_contig_name': None,
                  'next_contig_name': None,
                  'genes': [],
-                 'outlier_SNVs_shown': not self.args.hide_outlier_SNVs}
+                 'outlier_SNVs_shown': not self.args.hide_outlier_SNVs,
+                 'state': state}
 
         data['index'], data['total'], data['previous_contig_name'], data['next_contig_name'] = self.get_index_total_previous_and_next_items(order_name, str(gene_callers_id))
 
