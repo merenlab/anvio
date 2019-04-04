@@ -8,6 +8,7 @@ run = terminal.Run()
 
 dir_path = os.path.dirname(os.path.abspath(__file__))
 sources = u.get_HMM_sources_dictionary([s for s in glob.glob(os.path.join(dir_path, '*')) if s.find('.py') < 0 and s.find('.txt') < 0 and not os.path.basename(s).startswith('__')])
+scg_domain_to_source = dict([(sources[s]['domain'], s) for s in sources if sources[s]['kind'] == 'singlecopy']) 
 
 # lets make sure stuff we need is installed on this system
 # to perform an HMM search
