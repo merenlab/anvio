@@ -772,7 +772,7 @@ class BottleApplication(Bottle):
 
     def completeness(self):
         completeness_sources = {}
-        completeness_averages = {}
+        completeness_data = {}
         if not self.interactive.completeness:
             return json.dumps(completeness_sources)
 
@@ -781,7 +781,7 @@ class BottleApplication(Bottle):
 
         run.info_single('Completeness info has been requested for %d splits in %s' % (len(split_names), bin_name))
 
-        p_completion, p_redundancy, scg_domain, domain_confidence, results_dict = self.interactive.completeness.get_info_for_splits(set(split_names))
+        p_completion, p_redundancy, scg_domain, domain_probabilities, info_text, results_dict = self.interactive.completeness.get_info_for_splits(set(split_names))
 
         # convert results_dict (where domains are the highest order items) into a dict that is compatible with the
         # previous format of the dict (where hmm scg source names are the higher order items).
@@ -789,12 +789,14 @@ class BottleApplication(Bottle):
             for source in results_dict[domain]:
                 completeness_sources[source] = results_dict[domain][source]
 
-        completeness_averages['percent_completion'] = p_completion
-        completeness_averages['percent_redundancy'] = p_redundancy
-        completeness_averages['domain'] = scg_domain
-        completeness_averages['domain_confidence'] = domain_confidence
+        completeness_data['percent_completion'] = p_completion
+        completeness_data['percent_redundancy'] = p_redundancy
+        completeness_data['domain'] = scg_domain
+        completeness_data['info_text'] = info_text
+        completeness_data['domain_probabilities'] = domain_probabilities
 
-        return json.dumps({'stats': completeness_sources, 'averages': completeness_averages, 'refs': self.interactive.completeness.http_refs})
+        # FIXME: We need to look into what we are sending and sort out what needs to be shown:
+        return json.dumps({'stats': completeness_sources, 'averages': completeness_data, 'refs': self.interactive.completeness.http_refs})
 
 
     def get_collections(self):
