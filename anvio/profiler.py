@@ -66,7 +66,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.profile_SCVs = A('profile_SCVs')
         self.include_orphans = A('include_orphans')
-        self.max_coverage_depth = A('max_coverage_depth')
+        self.max_coverage_depth = A('max_coverage_depth') or 8000
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
