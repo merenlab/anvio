@@ -318,9 +318,9 @@ column -t $output_dir/renaming-report.txt
 echo
 
 INFO "Requesting collection info"
-anvi-script-get-collection-info -p $output_dir/SAMPLES-MERGED/PROFILE.db \
-                                -c $output_dir/CONTIGS.db \
-                                -C "cmdline_concoct_RENAMED"
+anvi-estimate-genome-completeness -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                                  -c $output_dir/CONTIGS.db \
+                                  -C "cmdline_concoct_RENAMED"
 
 INFO "Summarizing CONCOCT results"
 anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db \
