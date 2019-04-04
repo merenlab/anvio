@@ -118,7 +118,7 @@ class Completeness:
             self.run.info_single(source)
 
 
-    def get_best_matching_domain(self, hmm_hits, observed_genes_per_domain):
+    def get_best_matching_domain(self, hmm_hits, observed_genes_per_domain, bin_name='UNKNOWN'):
         """Returns the best matching and other domain info using a random forest.
 
            The input dict `hmm_hits` has no role in predicting the best matching domain,
@@ -136,7 +136,7 @@ class Completeness:
         domain_specific_estimates = []
 
         if anvio.DEBUG:
-            self.run.warning(None, header="SCG DATA FOR C/R ESTIMTES", lc='green')
+            self.run.warning(None, header="DOMAIN ESTIMTES FOR '%s'" % bin_name, lc='green')
             for domain in control_domains:
                 self.run.info_single("Probability %s %.2f" % (domain.upper(), domain_probabilities[domain]), mc='cyan')
             for domain in actual_domains:
@@ -236,7 +236,7 @@ class Completeness:
         return (best_matching_domain, domain_probabilities, control_domains, remove_spaces(info_text))
 
 
-    def get_info_for_splits(self, split_names, min_e_value=1e-5):
+    def get_info_for_splits(self, split_names, min_e_value=1e-5, bin_name='UNKNOWN'):
         """This function takes a bunch of split names, and returns three things:
 
             - Average percent completion for best matching domain
@@ -325,7 +325,7 @@ class Completeness:
         if not len(scg_hmm_hits):
             return (None, None, None, None, "ANVI'O FOUND NO SCG HMM HITS :/", scg_hmm_hits)
 
-        best_matching_domain, domain_probabilities, control_domains, info_text = self.get_best_matching_domain(scg_hmm_hits, observed_genes_per_domain)
+        best_matching_domain, domain_probabilities, control_domains, info_text = self.get_best_matching_domain(scg_hmm_hits, observed_genes_per_domain, bin_name)
 
         if best_matching_domain and best_matching_domain not in control_domains:
             if best_matching_domain not in scg_hmm_hits:

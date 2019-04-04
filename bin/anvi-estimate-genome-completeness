@@ -4,6 +4,12 @@
 import os
 import sys
 
+try:
+    from tabulate import tabulate
+    tabulate_OK = True
+except:
+    tabulate_OK = False
+
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -62,36 +68,41 @@ def main(args):
     else:
         collection = {os.path.basename(args.contigs_db[:-3]): list(contigs_db.splits_basic_info.keys())}
 
-    run.info_single("Completion and redundancy estimates. PC: Percent completion; PR: Percent redundancy;\
-                     N: Number of splits; L: Length (total number of nucleotides); D: Domain for single-copy\
-                     core genes; C: Domain confidence.", nl_before=1, nl_after=1)
+    table = []
+    header=['bin name', 'domain', '% completion', '% redundancy', 'num_splits', 'total length']
+    for bin_id in collection:
+        p_completion, p_redundancy, domain, domain_probabilities, info_text, _ = completeness.get_info_for_splits(set(collection[bin_id]), bin_name=bin_id)
+        total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
+        num_splits = len(collection[bin_id])
+        domain_confidence = domain_probabilities[domain] if domain else 0.0
+
+        table.append([bin_id, '%s (%.1f)' % (domain.upper(), domain_confidence), '%.2f' % p_completion, '%.2f' % p_redundancy, num_splits, total_length])
 
     if args.collection_name:
         run.warning(None, header = 'Bins in collection "%s"' % args.collection_name, lc = 'green')
     else:
         run.warning(None, header = 'Genome in "%s"' % os.path.basename(args.contigs_db), lc = 'green')
 
-    results_dict = {}
-    for bin_id in collection:
-        p_completion, p_redundancy, domain, domain_probabilities, info_text, _ = completeness.get_info_for_splits(set(collection[bin_id]))
-        total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
-        num_splits = len(collection[bin_id])
-        domain_confidence = domain_probabilities[domain] if domain else 0.0
+    if tabulate_OK:
+        print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+    else:
+        run.warning("The python package 'tabular' is not found, so anvi'o will produce you this very ugly table down below.\
+                     If you want a more reasonable one, either 'pip install tabulate' and try again, or provide an output\
+                     file name :/")
+        print('\t'.join(header))
+        for entry in table:
+            print('\t'.join(['%s' % e for e in entry]))
 
-        results_dict[bin_id] = {'domain': domain,
-                                'domain_confidence': '%.2f' % domain_confidence,
-                                'percent_completion': '%.2f' % p_completion,
-                                'percent_redundancy': '%.2f' % p_redundancy,
-                                'num_splits': num_splits,
-                                'total_length': total_length,
-                                'info_text': info_text}
-
-        print("%s :: PC: %.2f%%, PR: %.2f%%, N: %s, L: %s, D: %s (C: %.2f)" % \
-                        (bin_id, p_completion, p_redundancy, pp(num_splits), pp(total_length), domain, domain_confidence))
+    run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the\
+                     amount of confidence that is shown in parantheses. If the domain is 'mixed', it means you have lots of\
+                     garbage in your bin that spans accross multiple domains of life (which is crazy). If it is 'blank', it means\
+                     anvi'o did not find enough signal from single-copy core genes to determine what domain should be used to\
+                     estimate the completion and redundancy of this bin accurately. You can get much more information about these\
+                     estimations by running the same command line with the additinal flag `--debug`.", nl_before=1, nl_after=1)
 
     if args.output_file:
-        utils.store_dict_as_TAB_delimited_file(results_dict, args.output_file, headers = ['bins', 'domain', 'domain_confidence', 'percent_completion', 'percent_redundancy', 'num_splits', 'total_length', 'info_text'])
-        run.info('Output', args.output_file)
+        utils.store_array_as_TAB_delimited_file(table, args.output_file, header=header)
+        run.info('Results also stored in an output file', args.output_file, nl_after=1)
 
 
 if __name__ == '__main__':
