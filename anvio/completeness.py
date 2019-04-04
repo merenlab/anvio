@@ -341,6 +341,7 @@ class Completeness:
                                   know. Because knowledge is power .. even when you're not sure what it means." % best_matching_domain)
                 percent_completion, percent_redundancy = 0.0, 0.0
             else:
+                source = self.SCG_comain_predictor.SCG_domain_to_source[best_matching_domain]
                 percent_completion = scg_hmm_hits[best_matching_domain][source]['percent_completion']
                 percent_redundancy = scg_hmm_hits[best_matching_domain][source]['percent_redundancy']
         else:
