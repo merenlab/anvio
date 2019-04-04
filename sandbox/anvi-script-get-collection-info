@@ -97,11 +97,20 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Provides information about each bin in a given collection.')
+    parser = argparse.ArgumentParser(description='Estimate completion and redundancy using domain-specific single-copy core genes.')
 
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupA = parser.add_argument_group('MINIMUM INPUT', "Minimum input is an anvi'o contigs database. If you provide nothing else,\
+                                                         anvi'o will assume that it is a single genome (even if it is not), and\
+                                                         give you back what you need.")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+
+    groupB = parser.add_argument_group('ADDITIONAL INPUT (OPTIONAL)', "You can also give this program an anvi'o profile database along\
+                                                         with a collection name. In which case anvi'o will estimate the completion and\
+                                                         redundancy of every bin in this collection. Fun.")
+    groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+
+    groupB = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "Because life is already very hard as it is.")
     parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     parser.add_argument(*anvio.A('concise'), **anvio.K('concise'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
