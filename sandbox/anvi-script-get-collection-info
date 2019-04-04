@@ -73,22 +73,24 @@ def main(args):
 
     results_dict = {}
     for bin_id in collection:
-        p_completion, p_redundancy, domain, domain_confidence, _ = completeness.get_info_for_splits(set(collection[bin_id]))
+        p_completion, p_redundancy, domain, domain_probabilities, info_text, _ = completeness.get_info_for_splits(set(collection[bin_id]))
         total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
         num_splits = len(collection[bin_id])
+        domain_confidence = domain_probabilities[domain] if domain else 0.0
 
         results_dict[bin_id] = {'domain': domain,
                                 'domain_confidence': '%.2f' % domain_confidence,
                                 'percent_completion': '%.2f' % p_completion,
                                 'percent_redundancy': '%.2f' % p_redundancy,
                                 'num_splits': num_splits,
-                                'total_length': total_length}
+                                'total_length': total_length,
+                                'info_text': info_text}
 
         print("%s :: PC: %.2f%%, PR: %.2f%%, N: %s, L: %s, D: %s (C: %.2f)" % \
                         (bin_id, p_completion, p_redundancy, pp(num_splits), pp(total_length), domain, domain_confidence))
 
     if args.output_file:
-        utils.store_dict_as_TAB_delimited_file(results_dict, args.output_file, headers = ['bins', 'domain', 'domain_confidence', 'percent_completion', 'percent_redundancy', 'num_splits', 'total_length'])
+        utils.store_dict_as_TAB_delimited_file(results_dict, args.output_file, headers = ['bins', 'domain', 'domain_confidence', 'percent_completion', 'percent_redundancy', 'num_splits', 'total_length', 'info_text'])
         run.info('Output', args.output_file)
 
 

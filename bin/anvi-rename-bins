@@ -131,7 +131,8 @@ def main(args):
     for bin_name in collection_dict:
         counter += 1
         progress.update('%d in %d' % (counter, total_num_bins))
-        p_completion, p_redundancy, domain, domain_confidence, d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
+        p_completion, p_redundancy, domain, domain_probabilities, info_text, d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
+        domain_confidence = domain_probabilities[domain] if domain else 0.0
 
         l = []
         for domain in d:
