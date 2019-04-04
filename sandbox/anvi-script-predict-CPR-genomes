@@ -101,7 +101,9 @@ def main(args):
         class_prediction = 'CPR' if predictions[bin_id]['CPR'] > predictions[bin_id]['NON-CPR'] else 'NOT CPR'
         class_probability = max(predictions[bin_id].values()) * 100
 
-        p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(collection[bin_id]))
+        p_completion, p_redundancy, domain, domain_probabilities, info_text, results_dict = completeness.get_info_for_splits(set(collection[bin_id]))
+        domain_confidence = domain_probabilities[domain] if domain else 0.0
+
         c = results_dict['bacteria']['Campbell_et_al']
         percent_completion = c['percent_completion']
         percent_redundancy = c['percent_redundancy']

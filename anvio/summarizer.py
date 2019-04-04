@@ -1317,7 +1317,8 @@ class ContigSummarizer(SummarizerSuperClass):
             info_dict['avg_gene_length'], info_dict['num_genes_per_kb'] = 0.0, 0
 
         # get completeness / contamination estimates
-        p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.Completeness(self.contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
+        p_completion, p_redundancy, domain, domain_probabilities, info_text, results_dict = completeness.Completeness(self.contigs_db_path).get_info_for_splits(split_names if split_names else set(c.splits_basic_info.keys()))
+        domain_confidence = domain_probabilities[domain] if domain else 0.0
 
         info_dict['hmm_sources_info'] = c.hmm_sources_info
         info_dict['percent_completion'] = p_completion
@@ -1525,7 +1526,8 @@ class Bin:
     def access_completeness_scores(self):
         self.progress.update('Accessing completeness scores ...')
 
-        p_completion, p_redundancy, domain, domain_confidence, results_dict = self.summary.completeness.get_info_for_splits(set(self.split_names))
+        p_completion, p_redundancy, domain, domain_probabilities, info_text, results_dict = self.summary.completeness.get_info_for_splits(set(self.split_names))
+        domain_confidence = domain_probabilities[domain] if domain else 0.0
 
         self.bin_info_dict['completeness'] = results_dict
 
