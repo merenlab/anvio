@@ -817,7 +817,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # clustering is done, we can get prepared for the expansion of the view dict
             # with new layers. Note that these layers are going to be filled later.
             if completion_redundancy_available:
-                d['header'].extend(['percent_completion', 'percent_redundancy'])
+                d['header'].extend(['percent_completion', 'percent_redundancy', 'matching_domain'])
             d['header'].extend(['bin_name', 'source'])
 
             views_for_collection[view] = d
@@ -847,14 +847,17 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             if completion_redundancy_available:
                 # get completeness estimate
-                p_completion, p_redundancy, domain, domain_confidence, results_dict = completeness.get_info_for_splits(set(self.collection[bin_id]))
+                p_completion, p_redundancy, domain, domain_probabilities, info_text, _ = completeness.get_info_for_splits(set(self.collection[bin_id]))
+                domain_confidence = domain_probabilities[domain] if domain else 0.0
 
             for view in self.views:
                 self.views[view]['dict'][bin_id]['bin_name'] = bin_id
 
                 if completion_redundancy_available:
+                    matching_domain, matching_domain_confidence = sorted(domain_probabilities.items(), key = lambda x: x[1], reverse=True)[0]
                     self.views[view]['dict'][bin_id]['percent_completion'] = p_completion
                     self.views[view]['dict'][bin_id]['percent_redundancy'] = p_redundancy
+                    self.views[view]['dict'][bin_id]['matching_domain'] = '%s (%.1f)' % (matching_domain, matching_domain_confidence)
 
                 self.views[view]['dict'][bin_id]['source'] = bins_info_dict[bin_id]['source']
 
