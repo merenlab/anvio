@@ -84,15 +84,6 @@ class Completeness:
         self.source_to_domain = dict([(source, info_table[source]['domain']) for source in self.sources])
         self.domain_to_sources = [(domain, [source for source in self.sources if info_table[source]['domain'] == domain]) for domain in self.domains]
 
-        self.missing_SCG_HMMs = [s for s in self.SCG_comain_predictor.SCG_sources if s not in self.sources]
-        if len(self.missing_SCG_HMMs):
-            self.run.warning("Sad news :( Anvi'o completion estimations require all single-copy core gene (SCG) collections to be run on contigs\
-                              databases. Yet your contigs database '%s' is lacking these default ones: '%s'. If you need completion estimates,\
-                              the easiest solution is to run `anvi-run-hmms` on your contigs database. This will make sure all SCG HMM hits are \
-                              stored in your contigs database. Alternatively you can run the same program with `-I XXX` parameter where XXX is one\
-                              of the missing SCG HMM collection (in case you are only missing one of the SCG collections)." \
-                                                                                    % (contigs_db_path, ', '.join(self.missing_SCG_HMMs)))
-
         if source_requested:
             if source_requested not in self.sources:
                 raise ConfigError('Requested source "%s" is not one of the single-copy gene sources found in the database.' % source_requested)
@@ -124,64 +115,62 @@ class Completeness:
             self.run.info_single(source)
 
 
-    def get_average_domain_completion_and_redundancy(self, d, domain):
-        """For a given results dict `d` obtained from 'get_info_for_splits', and a domain, returns
-           average percent completion and redundancy for the domain."""
+    def get_best_matching_domain(self, hmm_hits, observed_genes_per_domain):
+        """Returns the best matching and other domain info using a random forest.
 
-        percent_completion = numpy.mean([d[domain][s]['percent_completion'] for s in d[domain]])
-        percent_redundancy = numpy.mean([d[domain][s]['percent_redundancy'] for s in d[domain]])
-
-        return percent_completion, percent_redundancy
-
-
-    def get_best_matching_domain(self, d, observed_genes_per_domain):
-        """Returns the best matcing domain by using a random forest classifier.
-
-           The input dict `d` has no role in predicting the best matching domain,
+           The input dict `hmm_hits` has no role in predicting the best matching domain,
            but useful to print out some helpful messages when necessary.
 
            It returns a tuple for best matching domain and how confident is the match
            according to the random forest classifier.
         """
 
-        # learn everything from the random forest.
-        domain_predictions, prob_mixed_domains, prob_blank_domain = self.SCG_comain_predictor.predict_from_observed_genes_per_domain(observed_genes_per_domain)
+        # learn domains anvi'o hmm hits know about
+        domains_in_hmm_hits = sorted(hmm_hits.keys())
+
+        # learn domain predictions from anvi'o random forest
+        domain_probabilities, actual_domains, control_domains = self.SCG_comain_predictor.predict_from_observed_genes_per_domain(observed_genes_per_domain)
         domain_specific_estimates = []
 
         if anvio.DEBUG:
             self.run.warning(None, header="SCG DATA FOR C/R ESTIMTES", lc='green')
-            self.run.info_single("Probability BLANK: %.2f" % (prob_blank_domain), mc='cyan')
-            self.run.info_single("Probability COMPOSITE  %.2f" % (prob_mixed_domains), mc='cyan')
+            for domain in control_domains:
+                self.run.info_single("Probability %s %.2f" % (domain.upper(), domain_probabilities[domain]), mc='cyan')
+            for domain in actual_domains:
+                source = self.SCG_comain_predictor.SCG_domain_to_source[domain]
+                if domain in domains_in_hmm_hits:
+                    self.run.info_single("Domain '%8s' (probability: %.2f) C/R: %.2f/%.2f" % (domain,
+                                                                                              domain_probabilities[domain],
+                                                                                              hmm_hits[domain][source]['percent_completion'],
+                                                                                              hmm_hits[domain][source]['percent_completion']), mc='green')
+                else:
+                    self.run.info_single("Domain '%8s' (probabiity: %.2f) (HMMs were not run for this / had 0 hits)" % (domain, domain_probabilities[domain]), mc='red')
 
-        domain_cr = {}
-        for confidence, domain in domain_predictions:
-            source = self.SCG_comain_predictor.SCG_domain_to_source[domain]
-            domain_cr[domain] = {'percent_completion': d[domain][source]['percent_completion'],
-                                 'percent_redundancy': d[domain][source]['percent_redundancy']}
+        best_matching_domain, domain_matching_confidence = sorted(domain_probabilities.items(), key = lambda x: x[1], reverse=True)[0]
 
-            if anvio.DEBUG:
-                self.run.info_single("Domain '%8s' (probability: %.2f) C/R: %.2f/%.2f" % (domain, confidence, domain_cr[domain]['percent_completion'], domain_cr[domain]['percent_redundancy']), mc='green')
-
-        domain_matching_confidence, best_matching_domain = domain_predictions[0]
-        best_mathcing_domain_completion, best_matching_domain_redundancy = domain_cr[domain]['percent_completion'], domain_cr[domain]['percent_redundancy']
+        if best_matching_domain in domains_in_hmm_hits:
+            source = self.SCG_comain_predictor.SCG_domain_to_source[best_matching_domain]
+            best_mathcing_domain_completion, best_matching_domain_redundancy = hmm_hits[best_matching_domain][source]['percent_completion'], hmm_hits[best_matching_domain][source]['percent_completion']
+        else:
+            best_mathcing_domain_completion, best_matching_domain_redundancy = None, None
 
         # it he probabiity of this domain to be blank is so high, and the best matching domain confidence
         # is so low, do not return any completion or best matching domain estimates.
-        if domain_matching_confidence < 0.15 and prob_blank_domain > 0.5:
-            domain_matching_confidence, best_matching_domain = 0.0, None
+        if domain_matching_confidence < 0.15 and domain_probabilities['blank'] > 0.5:
+            domain_matching_confidence = 0.0
             best_mathcing_domain_completion, best_matching_domain_redundancy = None, None
 
         info_text = ''
-        max_confidence = max([t[0] for t in domain_predictions])
-        if prob_blank_domain > 0.5:
+        max_confidence = max(domain_probabilities.values())
+        if domain_probabilities['blank'] > 0.5:
             info_text = "CRAP DOMAIN EST BECAUSE NO SIGNAL. So anvi'o is having hard time determining any domain\
-                         for this selection either because the number of contigs are very little, or there are no\
+                         for this set of contigs either because the number of contigs are very little, or there are no\
                          SCGs among the selected ones. This may happen if you are working with genomes that are\
                          extremely low completion, or alternatively coming from parts of life that are very \
                          understudied (such as viruses or plasmids, etc). If these do not apply to you, and you are\
-                         sure your selection represents a proper genome, then either anvi'o made a mistake, or you\
+                         sure your set of contigs represents a proper genome, then either anvi'o made a mistake, or you\
                          stumbled upon a graet story."
-        elif max_confidence < 0.6 and prob_mixed_domains > 0.4:
+        elif max_confidence < 0.6 and domain_probabilities['mixed'] > 0.4:
             info_text = "CRAP DOMAIN EST BECAUSE STUFF IS MIXED. Please note that anvi'o determined '%s' \
                          as the best matching domain for your contigs BUT actually the probability of these \
                          contigs to be coming from mixed domains is crazy high (%.2f). Which means, neither \
@@ -189,8 +178,8 @@ class Completeness:
                          and you should take a look at the entire list of C/R estimates from all domain SCGs :/\
                          The good news is that more refined the input contigs (such as you make more and more\
                          precise selections or provdide more and more refined genomes), this situation will\
-                         likely correct itself." % (best_matching_domain, prob_mixed_domains)
-        elif max_confidence < 0.6 and prob_mixed_domains < 0.4:
+                         likely correct itself." % (best_matching_domain, domain_probabilities['mixed'])
+        elif max_confidence < 0.6 and domain_probabilities['mixed'] < 0.4:
             info_text = "CRAP DOMAIN EST BECAUSE WHO KNOWS WHY. Please note that anvi'o determined '%s' as the\
                          best matching domain for your contigs to predict the completion and redundancy\
                          estimates through sigle-copy core genes, however, since the confidence is as low\
@@ -221,7 +210,7 @@ class Completeness:
         if anvio.DEBUG:
             self.run.warning(info_text)
 
-        return (best_matching_domain, domain_matching_confidence, remove_spaces(info_text))
+        return (best_matching_domain, domain_probabilities, control_domains, remove_spaces(info_text))
 
 
     def get_info_for_splits(self, split_names, min_e_value=1e-5):
@@ -230,12 +219,12 @@ class Completeness:
             - Average percent completion for best matching domain
             - Average redundancy for best matching domain
             - Best matching domain for this collection of splits,
-            - Domain matching confidence (see get_average_domain_completion_and_redundancy for details)
             - And a comprehensive results dictionary that explains each HMM source in each domain,
 
         For your convenience, you can call this function this way:
 
-        p_completion, p_redundancy, domain, domain_confidence, results_dict = get_info_for_splits(s)
+            p_completion, p_redundancy, domain, domain_probabilities, info_text, hmm_hits_dict = get_info_for_splits(s)
+            domain_confidence = domain_probabilities[domain] if domain else 0.0
         """
 
         hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'split', split_names)
@@ -281,43 +270,52 @@ class Completeness:
             observed_genes_per_domain[domain][gene_name] += 1
 
         # here we generate the results information
-        results_dict = {}
+        scg_hmm_hits = {}
         for domain in self.domains:
-            results_dict[domain] = {}
+            scg_hmm_hits[domain] = {}
 
         for source in self.sources:
             domain = self.source_to_domain[source]
-            results_dict[domain][source] = {'domain': domain, 'source': source}
+            scg_hmm_hits[domain][source] = {'domain': domain, 'source': source}
 
             genes_count = Counter([v['gene_name'] for v in list(info_dict[source].values())])
 
             # report num genes in the model and the num of those with hits (note that htis doesn't
             # care whether those hits are contributing to redundance or not --instad here we are
             # intrested only in the 'coverage' of the model)
-            results_dict[domain][source]['num_genes_in_model'] = len(self.genes_in_db[source])
-            results_dict[domain][source]['num_genes_in_model_with_hits ']= len(genes_count)
-            results_dict[domain][source]['model_coverage']= len(genes_count) / len(self.genes_in_db[source])
+            scg_hmm_hits[domain][source]['num_genes_in_model'] = len(self.genes_in_db[source])
+            scg_hmm_hits[domain][source]['num_genes_in_model_with_hits ']= len(genes_count)
+            scg_hmm_hits[domain][source]['model_coverage']= len(genes_count) / len(self.genes_in_db[source])
 
-            results_dict[domain][source]['percent_completion'] = len(genes_count) * 100.0 / len(self.genes_in_db[source])
+            scg_hmm_hits[domain][source]['percent_completion'] = len(genes_count) * 100.0 / len(self.genes_in_db[source])
 
             # report redundancy:
             genes_that_occur_multiple_times = [g for g in genes_count if genes_count[g] > 1]
-            results_dict[domain][source]['percent_redundancy'] = sum([genes_count[g] - 1 for g in genes_that_occur_multiple_times]) * 100.0 / len(self.genes_in_db[source])
+            scg_hmm_hits[domain][source]['percent_redundancy'] = sum([genes_count[g] - 1 for g in genes_that_occur_multiple_times]) * 100.0 / len(self.genes_in_db[source])
 
             # identify splits that contribute the same single_copy_gene
             redundants = {}
             for gene_name in genes_that_occur_multiple_times:
                 redundants[gene_name] = [self.splits_unique_gene_id_occurs[unique_gene_id] for unique_gene_id in gene_name_to_unique_id[source][gene_name]]
-            results_dict[domain][source]['redundants'] = redundants
+            scg_hmm_hits[domain][source]['redundants'] = redundants
 
-        if not len(results_dict):
-            return (None, None, None, None, results_dict)
+        if not len(scg_hmm_hits):
+            return (None, None, None, None, "ANVI'O FOUND NO SCG HMM HITS :/", scg_hmm_hits)
 
-        best_matching_domain, domain_matching_confidence, info_text = self.get_best_matching_domain(results_dict, observed_genes_per_domain)
+        best_matching_domain, domain_probabilities, control_domains, info_text = self.get_best_matching_domain(scg_hmm_hits, observed_genes_per_domain)
 
-        if best_matching_domain:
-            percent_completion, percent_redundancy = self.get_average_domain_completion_and_redundancy(results_dict, best_matching_domain)
+        if best_matching_domain and best_matching_domain not in control_domains:
+            if best_matching_domain not in scg_hmm_hits:
+                self.run.warning("Just so you know: Single-copy core gene HMMs for the domain %s that anvi'o estimated to be the best\
+                                  matching domain for this set of contigs that you asked anvi'o to produce completion and redundancy\
+                                  estimates for were not run on the contigs database you're using. In simpler words: RUN ALL SCG HMMs\
+                                  ON YOUR CONTIGS DATABASE IF YOU WANT NICER THINGS :("\
+                                                    % best_matching_domain)
+                percent_completion, percent_redundancy = 0.0, 0.0
+            else:
+                percent_completion = scg_hmm_hits[best_matching_domain][source]['percent_completion']
+                percent_redundancy = scg_hmm_hits[best_matching_domain][source]['percent_redundancy']
         else:
             percent_completion, percent_redundancy = 0.0, 0.0
 
-        return (percent_completion, percent_redundancy, best_matching_domain, domain_matching_confidence, results_dict)
+        return (percent_completion, percent_redundancy, best_matching_domain, domain_probabilities, info_text, scg_hmm_hits)
