@@ -316,6 +316,10 @@ var named_layers = {
         'type': 'text',
         'pretty_name': 'Bin name',
     },
+    'matching_domain': {
+        'type': 'text',
+        'pretty_name': 'Matching domain',
+    },
     'blank_view': {
         'height': 0,
         'color': '#FFFFFF',
