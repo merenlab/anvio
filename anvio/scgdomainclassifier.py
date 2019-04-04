@@ -246,10 +246,11 @@ class Predict(SCGDomainClassifier):
                 else:
                     features_vector.append(0)
 
-        raw_classes_probabilities = sorted(list(zip(self.rf.classifier.predict_proba([features_vector])[0], self.rf.classes)), reverse=True)
+        # control domains are those that are not to predict actual domains but
+        # the absence of any predictable domain.
+        control_domains = ['mixed', 'blank']
+        actual_domains = [t for t in self.rf.classes if t not in control_domains]
 
-        prob_mixed_domains = [t[0] for t in raw_classes_probabilities if t[1] == 'mixed'][0]
-        prob_blank_domain = [t[0] for t in raw_classes_probabilities if t[1] == 'blank'][0]
-        predicted_domains = [t for t in raw_classes_probabilities if t[1] not in ['mixed', 'blank']]
+        domain_probabilities = dict(zip(self.rf.classes, self.rf.classifier.predict_proba([features_vector])[0]))
 
-        return predicted_domains, prob_mixed_domains, prob_blank_domain
+        return domain_probabilities, actual_domains, control_domains
