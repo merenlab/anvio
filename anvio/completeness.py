@@ -145,7 +145,7 @@ class Completeness:
                     self.run.info_single("Domain '%8s' (probability: %.2f) C/R: %.2f/%.2f" % (domain,
                                                                                               domain_probabilities[domain],
                                                                                               hmm_hits[domain][source]['percent_completion'],
-                                                                                              hmm_hits[domain][source]['percent_completion']), mc='green')
+                                                                                              hmm_hits[domain][source]['percent_redundancy']), mc='green')
                 else:
                     self.run.info_single("Domain '%8s' (probabiity: %.2f) (HMMs were not run for this / had 0 hits)" % (domain, domain_probabilities[domain]), mc='red')
 
@@ -153,7 +153,8 @@ class Completeness:
 
         if best_matching_domain in domains_in_hmm_hits:
             source = self.SCG_comain_predictor.SCG_domain_to_source[best_matching_domain]
-            best_mathcing_domain_completion, best_matching_domain_redundancy = hmm_hits[best_matching_domain][source]['percent_completion'], hmm_hits[best_matching_domain][source]['percent_completion']
+            best_mathcing_domain_completion, best_matching_domain_redundancy = hmm_hits[best_matching_domain][source]['percent_completion'], \
+                                                                               hmm_hits[best_matching_domain][source]['percent_redundancy']
         else:
             best_mathcing_domain_completion, best_matching_domain_redundancy = None, None
 
@@ -216,8 +217,8 @@ class Completeness:
                                  do not predict any serious contamination. But please remember that this information does not mean there is NO\
                                  contamination in your genome bin. If you want to take a more carful look, you can try `anvi-refine`." \
                                             % (best_matching_domain)
-                elif best_matching_domain_redundancy > 10 and best_matching_domain_redundancy < 100:
-                    info_text = "GREAT DOMAIN CONFIDENCE (YAY) BUT SOME REDUNDANCY (BOO). The very high confidence of domain prediction indicates that this\
+                elif best_matching_domain_redundancy >= 10 and best_matching_domain_redundancy <= 100:
+                    info_text = "GREAT DOMAIN CONFIDENCE (YAY) BUT SOME SERIOUS REDUNDANCY (BOO). The very high confidence of domain prediction indicates that this\
                                  set of contigs are almost certainly coming from a population that belongs to domain %s. BUT you almost certainly are\
                                  looking at a composite genome. You should consider refining this particular collection of contigs to lower the\
                                  redundancy." % (best_matching_domain)
