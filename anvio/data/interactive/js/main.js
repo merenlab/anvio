@@ -1651,24 +1651,40 @@ function showCompleteness(bin_id, updateOnly) {
     var stats = bins.cache['completeness'][bin_id]['stats'];
     var averages = bins.cache['completeness'][bin_id]['averages'];
 
-    var title = 'Completeness of "' + $('#bin_name_' + bin_id).val() + '"';
+    var title = 'C/R for "' + $('#bin_name_' + bin_id).val() + '"';
 
     if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
         return;
 
     var msg = '<table class="table table-striped sortable">' +
-        '<thead><tr><th data-sortcolumn="0" data-sortkey="0-0">Source</th><th data-sortcolumn="1" data-sortkey="1-0">SCG domain</th><th data-sortcolumn="2" data-sortkey="2-0">Percent completion</th></tr></thead><tbody>';
+              '<thead><tr>' +
+                  '<th>&nbsp;</th>' + 
+                  '<th data-sortcolumn="1" data-sortkey="1-0">Domain</th>' + 
+                  '<th data-sortcolumn="2" data-sortkey="2-0">Domain Confidence</th>' + 
+                  '<th data-sortcolumn="3" data-sortkey="3-0">Completion</th>' + 
+                  '<th data-sortcolumn="4" data-sortkey="4-0">Redundancy</th>' + 
+              '</tr></thead><tbody>';
 
     for (let source in stats){
-        if(stats[source]['domain'] != averages['domain'])
-            // if the source is not matching the best domain recovered
-            // don't show it in the interface
-            continue;
+        msg += "<tr>";
 
-        msg += "<tr><td data-value='" + source  + "'><a href='" + refs[source] + "' class='no-link' target='_blank'>" + source + "</a></td><td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td><td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td></tr>";
+        if(stats[source]['domain'] == averages['domain']){
+            msg += "<td>✓</td>";
+        } else {
+            msg += "<td></td>";
+        }
+
+        msg += "<td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td>" +
+               "<td data-value='" + averages['domain_probabilities'][stats[source]['domain']] + "'>" + averages['domain_probabilities'][stats[source]['domain']].toFixed(2) + "</td>" +
+               "<td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td>" +
+               "<td data-value='" + stats[source]['percent_redundancy'] + "'>" + stats[source]['percent_redundancy'].toFixed(2) + "%</td>";
+
+        msg += "</tr>";
     }
 
     msg = msg + '</tbody></table>';
+
+    msg += "<hr><p>" + averages['info_text'] + "</p>";
 
     showDraggableDialog(title, msg, updateOnly);
 }
