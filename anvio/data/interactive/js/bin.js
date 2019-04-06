@@ -318,14 +318,51 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                         this.cache['completeness'][bin_id] = data;
                         let average_completeness = data['averages']['percent_completion'];
                         let average_redundancy = data['averages']['percent_redundancy'];
+                        let best_matching_domain = data['averages']['domain'];
+                        let stats = data['stats'];
+                        let domain_probabilities = data['averages']['domain_probabilities'];
 
-                        if (average_completeness != null && average_redundancy != null) {
-                            bin_row.querySelector('td.completeness').setAttribute('data-value', average_completeness);
-                            bin_row.querySelector('td.completeness>input').value = average_completeness.toFixed(1);
+                        bin_row.querySelector('td.completeness>input').style.background = "";
+                        bin_row.querySelector('td.redundancy>input').style.background = "";
 
-                            bin_row.querySelector('td.redundancy').setAttribute('data-value', average_redundancy);
-                            bin_row.querySelector('td.redundancy>input').value = average_redundancy.toFixed(1);
+                        let _dc = null;
+                        let _dr = null;
+                        let _vc = null;
+                        let _vr = null;
+                        let _cc = null;
+                        let _cr = null;
+
+                        if (num_items == 0) {
+                            _dc = -1; _dr = -1; _vc = '--'; _vr = '--';
+                        } else if (best_matching_domain == "blank") {
+                            _dc = -1; _dr = -1; _vc = '??'; _vr = '??'; _cc = '#DDDDDD'; _cr = '#DDDDDD';
+                        } else if (best_matching_domain == "mixed") {
+                            _dc = -1; _dr = -1; _vc = 'xx'; _vr = 'xx'; _cc = '#FF9999'; _cr = '#FF9999';
+                        } else if (average_completeness != null && average_redundancy != null) {
+                            _dc = average_completeness; _dr = average_redundancy;
+                            _vc = average_completeness.toFixed(1);
+                            _vr = average_redundancy.toFixed(1);
+
+                            if (average_completeness > 80) {
+                                _cc = '#AAFFAA';
+                            } else if (average_completeness > 50) {
+                                _cc = '#DDFFDD';
+                            }
+
+                            if (average_redundancy > 50) {
+                                _cr = '#FF7777';
+                            } else if (average_redundancy > 7) {
+                                _cr = '#FFAAAA';
+                            }
                         }
+
+                        bin_row.querySelector('td.completeness').setAttribute('data-value', _dc);
+                        bin_row.querySelector('td.completeness>input').style.background = _cc;
+                        bin_row.querySelector('td.completeness>input').value = _vc;
+
+                        bin_row.querySelector('td.redundancy').setAttribute('data-value', _dr);
+                        bin_row.querySelector('td.redundancy>input').style.background = _cr;
+                        bin_row.querySelector('td.redundancy>input').value = _vr;
 
                         showCompleteness(bin_id, true);
                         showRedundants(bin_id, true);
