@@ -407,11 +407,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 contigs_with_good_lengths.add(i)
 
         if not len(contigs_with_good_lengths):
-            filesnpaths.shutil.rmtree(self.output_directory)
+            try:
+                filesnpaths.shutil.rmtree(self.output_directory)
+            except:
+                pass
+
             raise ConfigError("Anvi'o applied your min/max lenght criteria for contigs to filter out the bad ones\
                                and has bad news: not a single contig in your contigs database was greater than %s\
-                               and smaller than %s nts :( While at it, anvi'o removed your half-baked output directory,\
-                               too." % (pp(self.min_contig_length), pp(self.max_contig_length)))
+                               and smaller than %s nts :( So this profiling attempt did not really go anywhere.\
+                               Please remove your half-baked output directory if it is still there: '%s'." \
+                                        % (pp(self.min_contig_length), pp(self.max_contig_length), self.output_directory))
         else:
             self.contig_names = [self.contig_names[i] for i in contigs_with_good_lengths]
             self.contig_lengths = [self.contig_lengths[i] for i in contigs_with_good_lengths]
