@@ -66,7 +66,7 @@ class Completeness:
         #
         # {
         #    'percentage_in_split'   : 69.6763202725724,
-        #    'source'                : u'Campbell_et_al',
+        #    'source'                : u'Bacteria_74',
         #    'split'                 : u'ANTARCTICAAQUATIC_SMPL_SITE231_3.0UMcontig18439_split_00001',
         #    'hmm_hit_entry_id'      : 1
         # }
