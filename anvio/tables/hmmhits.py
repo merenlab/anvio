@@ -83,7 +83,7 @@ class TablesForHMMHits(Table):
             class Args: pass
             args = Args()
             args.contigs_db = self.db_path
-            contigs_db = ContigsSuperclass(args)
+            contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False))
 
             if context == 'GENE':
                 target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
