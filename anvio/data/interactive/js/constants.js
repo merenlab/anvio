@@ -213,6 +213,15 @@ var named_layers = {
         'type': 'intensity',
         'pretty_name': 'Geo. Homogeneity Ind.',
     },
+    'combined_homogeneity_index': {
+        'height': 180,
+        'color': '#3D8870',
+        'norm': 'none',
+        'min': 0,
+        'max': 1,
+        'type': 'intensity',
+        'pretty_name': 'Combined Homogeneity Ind.',
+    },
     'max_num_paralogs': {
         'height': 180,
         'color': '#002e4f',
