@@ -1636,8 +1636,11 @@ class PanSuperclass(object):
                                that is not what you're doing." % (len(all_genomes), min_num_genomes_gene_cluster_occurs))
 
         gene_cluster_occurrences_accross_genomes, num_genes_contributed_per_genome = self.get_basic_gene_clusters_stats(gene_clusters_dict)
-        if self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available and self.combined_homogeneity_info_is_available:
+        if self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available and not self.combined_homogeneity_info_is_available:
+            homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index'])
+        elif self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available and self.combined_homogeneity_info_is_available:
             homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
+        
 
         gene_clusters_to_remove = set([])
         all_gene_clusters = set(list(gene_cluster_occurrences_accross_genomes.keys()))
@@ -1666,9 +1669,9 @@ class PanSuperclass(object):
                 if min_functional_homogeneity_index == -1 and max_functional_homogeneity_index == 1 and min_geometric_homogeneity_index == -1 and max_geometric_homogeneity_index == 1:
                     continue #No need to raise an error if the parameters are default/all at their bounds
 
-                raise ConfigError("Bad news: anvi'o was unable to retrieve homogeneity indices for gene cluster %s. This could be because homogeneity was not \
-                                   computed for this gene cluster when the pangenomic analysis was created. The good news is that you can fix that!\
-                                   Take a look at the anvi-compute-gene-cluster-homogeneity script" % gene_cluster_name)
+                raise ConfigError("Bad news: anvi'o was unable to retrieve functional and geometric homogeneity indices for gene cluster %s. This could be because \
+                                   functional and geometric homogeneity was not computed for this gene cluster when the pangenomic analysis was created. \
+                                   The good news is that you can fix that! Take a look at the anvi-compute-gene-cluster-homogeneity script" % gene_cluster_name)
 
             try:
                 if homogeneity_dict[gene_cluster_name]['combined_homogeneity_index'] < min_combined_homogeneity_index or homogeneity_dict[gene_cluster_name]['combined_homogeneity_index'] > max_combined_homogeneity_index:
@@ -1677,7 +1680,7 @@ class PanSuperclass(object):
             except:
                 if min_combined_homogeneity_index == -1  and max_combined_homogeneity_index == 1:
                     continue
-                raise ConfigError("Bad news: anvi'o was unable to retrieve homogeneity indices for gene cluster %s. This could be because homogeneity was not \
+                raise ConfigError("Bad news: anvi'o was unable to retrieve the combined homogeneity index for gene cluster %s. This could be because combined homogeneity was not \
                                        computed for this gene cluster when the pangenomic analysis was created. The good news is that you can fix that!\
                                        Take a look at the anvi-compute-gene-cluster-homogeneity script" % gene_cluster_name)
 
