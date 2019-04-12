@@ -149,8 +149,17 @@ class Completeness:
                 else:
                     self.run.info_single("Domain '%8s' (probabiity: %.2f) (HMMs were not run for this / had 0 hits)" % (domain, domain_probabilities[domain]), mc='red')
 
-        best_matching_domain, domain_matching_confidence = sorted(domain_probabilities.items(), key = lambda x: x[1], reverse=True)[0]
+        # figure out the best matching domain and its confidence by simply sorting
+        # actual domains first.
+        best_matching_domain, domain_matching_confidence = sorted([d for d in domain_probabilities.items() if d[0] in actual_domains], key = lambda x: x[1], reverse=True)[0]
 
+        # if the confidence is less than 0.2, then we are in the world of noise.
+        # pick the control domain that matches best:
+        if domain_matching_confidence < 0.20:
+            best_matching_domain, domain_matching_confidence = sorted([d for d in domain_probabilities.items() if d[0] in control_domains], key = lambda x: x[1], reverse=True)[0]
+
+        # figure out the completion and redundancy given the best matching domain
+        # for further filtering down below.
         if best_matching_domain in domains_in_hmm_hits:
             source = self.SCG_comain_predictor.SCG_domain_to_source[best_matching_domain]
             best_mathcing_domain_completion, best_matching_domain_redundancy = hmm_hits[best_matching_domain][source]['percent_completion'], \
@@ -158,6 +167,7 @@ class Completeness:
         else:
             best_mathcing_domain_completion, best_matching_domain_redundancy = None, None
 
+        # figure shit out
         info_text = ''
         max_confidence = max(domain_probabilities.values())
         if best_matching_domain in control_domains:
