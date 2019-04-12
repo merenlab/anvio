@@ -12,7 +12,6 @@ GrpE	PF01025.19	pfam.xfam.org
 Ham1p_like	PF01725.16	pfam.xfam.org
 IPPT	PF01715.17	pfam.xfam.org
 OSCP	PF00213.18	pfam.xfam.org
-Peptidase_A8	PF01252.18	pfam.xfam.org
 Pept_tRNA_hydro	PF01195.19	pfam.xfam.org
 PGK	PF00162.19	pfam.xfam.org
 RBFA	PF02033.18	pfam.xfam.org
@@ -71,4 +70,3 @@ tRNA_m1G_MT	PF01746.21	pfam.xfam.org
 TsaE	PF02367.17	pfam.xfam.org
 UPF0054	PF02130.17	pfam.xfam.org
 YajC	PF02699.15	pfam.xfam.org
-YidD	PF01809.18	pfam.xfam.org
