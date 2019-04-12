@@ -269,7 +269,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
-        default_item_order = self.p_meta['item_orders'][self.p_meta['default_item_order']]
+        if self.p_meta['default_item_order']:
+            default_item_order = self.p_meta['item_orders'][self.p_meta['default_item_order']]
+        else:
+            default_item_order = self.p_meta['item_orders'][self.p_meta['available_item_orders'][0]]
+
         if default_item_order['type'] == 'newick':
             self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_item_order['data'], reverse=True)
         elif default_item_order['type'] == 'basic':
