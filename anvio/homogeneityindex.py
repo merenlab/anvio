@@ -12,7 +12,7 @@ import anvio.terminal as terminal
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -27,10 +27,12 @@ class HomogeneityCalculator(object):
         self.quick_homogeneity = quick_homogeneity
         self.functional = {}
         self.geometric = {}
+        self.overall = {}
 
         self.cluster_sizes = {}
         self.total_functional = 0
         self.total_geometric = 0
+        self.total_overall = 0
         #the above are foundations for potential future capabilities
 
 
@@ -66,8 +68,9 @@ class HomogeneityCalculator(object):
                         similarity_score += 3
                     elif utils.is_amino_acid_functionally_conserved(amino_acid_residue_1,amino_acid_residue_2):
                         similarity_score += 2
-                    elif amino_acid_residue_2 != "-":
-                        similarity_score += 1
+                    #elif amino_acid_residue_2 != "-":
+                        #similarity_score += 1
+                        #max_score -= 3
                     else:
                         similarity_score += 0
 
@@ -157,9 +160,10 @@ class HomogeneityCalculator(object):
 
 
     def get_homogeneity_dicts(self, gene_clusters_dict):
-        """The main function called by dbops.PanSuperClass. It retrieves the gene clusters dictionary passed to
+        """ The main function called by dbops.PanSuperClass. It retrieves the gene clusters dictionary passed to
             the HomogeneityCalculator intiatior and calculates functional and geometric indices for each.
-            This function returns two dictionaries - functional and geometric - with the following structure:
+            This function returns three dictionaries - functional, geometric, and a representation of the average -
+            with the following structure:
                 {gene_cluster_id_1: index_1,
                  gene_cluster_id_2: index_2,
                  etc...
@@ -174,8 +178,14 @@ class HomogeneityCalculator(object):
                 gene_caller_ids = genes_in_cluster[genome_name]
                 for gene_caller_id in gene_caller_ids:
                     cluster_sequences.append(gene_caller_ids[gene_caller_id])
-
-            self.functional[gene_cluster] = self.compute_functional_index(cluster_sequences)
-            self.geometric[gene_cluster] = self.compute_geometric_index(cluster_sequences, self.quick_homogeneity)
+          
+            fun = self.compute_functional_index(cluster_sequences)
+            geo = self.compute_geometric_index(cluster_sequences, self.quick_homogeneity)
+            self.functional[gene_cluster] = fun
+            self.geometric[gene_cluster] = geo
+            if fun == 0 and geo == 0:
+                self.overall[gene_cluster] = 0
+            else:
+                self.overall[gene_cluster] = 2 * fun * geo / (fun + geo)
         
-        return self.functional, self.geometric
+        return self.functional, self.geometric, self.overall

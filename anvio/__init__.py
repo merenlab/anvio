@@ -728,6 +728,24 @@ D = {
                       every gene cluster with a geometric homogeneity index greater than 0.5 will be removed from your analysis. This \
                       can be useful if you only want to look at gene clusters that have many not be as conserved as others"}
                 ),
+    'min-combined-homogeneity-index': (
+            ['--min-combined-homogeneity-index'],
+            {'default': -1,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This filter will remove gene clusters from your report. If you say '--min-combined-homogeneity-index 0.3', \
+                      every gene cluster with a combined homogeneity index less than 0.3 will be removed from your analysis. This \
+                      can be useful if you only want to look at gene clusters that are highly conserved overall"}
+                ),
+    'max-combined-homogeneity-index': (
+            ['--max-combined-homogeneity-index'],
+            {'default': 1,
+             'metavar': 'FLOAT',
+             'type': float,
+             'help': "This filter will remove gene clusters from your report. If you say '--max-combined-homogeneity-index 0.5', \
+                      every gene cluster with a combined homogeneity index greater than 0.5 will be removed from your analysis. This \
+                      can be useful if you only want to look at gene clusters that have many not be as conserved overall as others"}
+                ),
     'add-into-items-additional-data-table': (
             ['--add-into-items-additional-data-table'],
             {'default': None,

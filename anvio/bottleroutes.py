@@ -1253,7 +1253,8 @@ class BottleApplication(Bottle):
         try:
             return json.dumps({'status': 0,
                                'functional_homogeneity_info_is_available': self.interactive.functional_homogeneity_info_is_available,
-                               'geometric_homogeneity_info_is_available': self.interactive.geometric_homogeneity_info_is_available})
+                               'geometric_homogeneity_info_is_available': self.interactive.geometric_homogeneity_info_is_available,
+                               'combined_homogeneity_info_is_available': self.interactive.combined_homogeneity_info_is_available})
         except:
             return json.dumps({'status': 1})
 
