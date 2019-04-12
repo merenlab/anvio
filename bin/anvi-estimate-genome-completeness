@@ -35,38 +35,45 @@ def main(args):
     progress = terminal.Progress(verbose=False if args.concise else True)
     pp = terminal.pretty_print
 
-    if args.output_file:
-        filesnpaths.is_output_file_writable(args.output_file)
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    contigs_db_path = A('contigs_db')
+    profile_db_path = A('profile_db')
+    collection_name = A('collection_name')
+    list_collections = A('list_collections')
+    output_file_path = A('output_file')
+
+    if output_file_path:
+        filesnpaths.is_output_file_writable(output_file_path)
 
     collections = ccollections.Collections(r=run, p=progress)
-    collections.populate_collections_dict(args.contigs_db)
-    if args.profile_db:
-        collections.populate_collections_dict(args.profile_db)
+    collections.populate_collections_dict(contigs_db_path)
+    if profile_db_path:
+        collections.populate_collections_dict(profile_db_path)
 
-    if args.list_collections:
+    if list_collections:
         collections.list_collections()
         sys.exit()
 
-    if args.profile_db and not args.collection_name:
+    if profile_db_path and not collection_name:
         raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
 
-    if not args.collection_name:
+    if not collection_name:
         run.warning("You did not provide a collection name. Anvi'o will assume that what is in your contigs database\
                      is a a single genome (or genome bin).")
 
-    if args.collection_name and args.collection_name not in collections.collections_dict:
-        raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % args.collection_name)
+    if collection_name and collection_name not in collections.collections_dict:
+        raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % collection_name)
 
-    completeness = Completeness(args.contigs_db)
+    completeness = Completeness(contigs_db_path)
     if not len(completeness.sources):
         raise ConfigError("HMM's were not run for this contigs database :/")
 
     contigs_db = ContigsSuperclass(args, r = run, p = progress)
 
-    if args.collection_name:
-        collection = collections.get_collection_dict(args.collection_name)
+    if collection_name:
+        collection = collections.get_collection_dict(collection_name)
     else:
-        collection = {os.path.basename(args.contigs_db[:-3]): list(contigs_db.splits_basic_info.keys())}
+        collection = {os.path.basename(contigs_db_path[:-3]): list(contigs_db.splits_basic_info.keys())}
 
     table = []
     header=['bin name', 'domain', '% completion', '% redundancy', 'num_splits', 'total length']
@@ -78,10 +85,10 @@ def main(args):
 
         table.append([bin_id, '%s (%.1f)' % (domain.upper(), domain_confidence), '%.2f' % p_completion, '%.2f' % p_redundancy, num_splits, total_length])
 
-    if args.collection_name:
-        run.warning(None, header = 'Bins in collection "%s"' % args.collection_name, lc = 'green')
+    if collection_name:
+        run.warning(None, header = 'Bins in collection "%s"' % collection_name, lc = 'green')
     else:
-        run.warning(None, header = 'Genome in "%s"' % os.path.basename(args.contigs_db), lc = 'green')
+        run.warning(None, header = 'Genome in "%s"' % os.path.basename(contigs_db_path), lc = 'green')
 
     if tabulate_OK:
         print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
@@ -100,9 +107,9 @@ def main(args):
                      estimate the completion and redundancy of this bin accurately. You can get much more information about these\
                      estimations by running the same command line with the additinal flag `--debug`.", nl_before=1, nl_after=1)
 
-    if args.output_file:
-        utils.store_array_as_TAB_delimited_file(table, args.output_file, header=header)
-        run.info('Results also stored in an output file', args.output_file, nl_after=1)
+    if output_file_path:
+        utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
+        run.info('Results also stored in an output file', output_file_path, nl_after=1)
 
 
 if __name__ == '__main__':
@@ -110,21 +117,24 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Estimate completion and redundancy using domain-specific single-copy core genes.')
 
-    groupA = parser.add_argument_group('MINIMUM INPUT', "Minimum input is an anvi'o contigs database. If you provide nothing else,\
-                                                         anvi'o will assume that it is a single genome (even if it is not), and\
-                                                         give you back what you need.")
+    groupA = parser.add_argument_group('MANDATORY INPUT OPTION #1', "Minimum input is an anvi'o contigs database. If you provide nothing else,\
+                                                                     anvi'o will assume that it is a single genome (even if it is not), and\
+                                                                     give you back what you need.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
-    groupB = parser.add_argument_group('ADDITIONAL INPUT (OPTIONAL)', "You can also give this program an anvi'o profile database along\
+    groupB = parser.add_argument_group('MANDATORY INPUT OPTION #2', "Or you can initiate this with an external genomes file.")
+    groupB.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+
+    groupC = parser.add_argument_group('ADDITIONAL INPUT (OPTIONAL)', "You can also give this program an anvi'o profile database along\
                                                          with a collection name. In which case anvi'o will estimate the completion and\
                                                          redundancy of every bin in this collection. Fun.")
-    groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupC.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
 
-    groupB = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "Because life is already very hard as it is.")
-    parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
-    parser.add_argument(*anvio.A('concise'), **anvio.K('concise'))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupD = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "Because life is already very hard as it is.")
+    groupD.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupD.add_argument(*anvio.A('concise'), **anvio.K('concise'))
+    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = anvio.get_args(parser)
 
