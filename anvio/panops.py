@@ -602,7 +602,7 @@ class Pangenome(object):
                               without updating anything in the pan database...")
             return
 
-        miscdata.TableForItemAdditionalData(self.args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index'], skip_check_names=True)
+        miscdata.TableForItemAdditionalData(self.args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'], skip_check_names=True)
 
 
     def populate_layers_additional_data_and_orders(self):
