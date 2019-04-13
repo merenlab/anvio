@@ -132,6 +132,8 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('max-functional-homogeneity-index'), **anvio.K('max-functional-homogeneity-index'))
     groupD.add_argument(*anvio.A('min-geometric-homogeneity-index'), **anvio.K('min-geometric-homogeneity-index'))
     groupD.add_argument(*anvio.A('max-geometric-homogeneity-index'), **anvio.K('max-geometric-homogeneity-index'))
+    groupD.add_argument(*anvio.A('min-combined-homogeneity-index'), **anvio.K('min-combined-homogeneity-index'))
+    groupD.add_argument(*anvio.A('max-combined-homogeneity-index'), **anvio.K('max-combined-homogeneity-index'))
     groupD.add_argument(*anvio.A('add-into-items-additional-data-table'), **anvio.K('add-into-items-additional-data-table'))
 
     groupE = parser.add_argument_group('OTHER STUFF', "Yes. Stuff that are not like the ones above.")
