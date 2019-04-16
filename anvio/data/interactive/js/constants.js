@@ -215,12 +215,12 @@ var named_layers = {
     },
     'combined_homogeneity_index': {
         'height': 180,
-        'color': '#3D8870',
+        'color': '#326b59',
         'norm': 'none',
         'min': 0,
         'max': 1,
         'type': 'intensity',
-        'pretty_name': 'Combined Homogeneity Ind.',
+        'pretty_name': 'Comb. Homogeneity Ind.',
     },
     'max_num_paralogs': {
         'height': 180,
