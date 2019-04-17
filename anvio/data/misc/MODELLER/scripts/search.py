@@ -10,13 +10,11 @@ DATABASE = sys.argv[2]
 ALIGNMENT_TABLE = sys.argv[3]
 
 from modeller import *
-import os
 
 log.verbose()
 env = environ()
 
 # Read in the database of PDB chains clustered at 95% sequence identity
-print(os.path.isfile(DATABASE))
 sdb = sequence_db(env)
 sdb.read(seq_database_file=DATABASE, seq_database_format='BINARY', chains_list='ALL')
 
