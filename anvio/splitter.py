@@ -462,6 +462,7 @@ class LocusSplitter:
         self.output_file_prefix = A('output_file_prefix') or 'the_user_provided_no_prefix_so_here_we_go_prefix'
         self.use_hmm = A('use_hmm')
         self.hmm_sources = A('hmm_sources') or set([])
+        self.annotation_sources = A('annotation_sources')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.remove_partial_hits = A('remove_partial_hits')
         self.reverse_complement_if_necessary = not A('never_reverse_complement')
@@ -548,7 +549,7 @@ class LocusSplitter:
             self.run.info('Search term', self.search_term, mc='green')
             self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
 
-            foo, search_report = contigs_db.search_for_gene_functions([self.search_term], verbose=True)
+            foo, search_report = contigs_db.search_for_gene_functions([self.search_term], requested_sources=self.annotation_sources, verbose=True)
             # gene id's of genes with the searched function
             gene_caller_ids_of_interest = [i[0] for i in search_report]
 
