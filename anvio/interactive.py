@@ -1786,6 +1786,9 @@ class StructureInteractive(VariabilitySuper):
             available_gene_caller_ids = self.available_gene_caller_ids
             available_genes_path = self.available_genes_path
 
+        if available_gene_caller_ids:
+            available_gene_caller_ids = [int(gene) for gene in available_gene_caller_ids.split(',')]
+
         # method inherited from VariabilitySuper
         requested_available_genes = self.get_genes_of_interest(available_genes_path, available_gene_caller_ids)
 
