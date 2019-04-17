@@ -1318,10 +1318,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                                               ', '.join(bad_bin_names)
                                                              ))
 
+        collections = TablesForCollections(self.profile_db_path)
+
         # remove bins that should be updated in the database:
         for bin_id in self.ids_for_already_refined_bins:
-            collection_dict.pop(bin_id)
-            bins_info_dict.pop(bin_id)
+            collections.delete_bin(self.collection_name, bin_id)
 
         # zero it out
         self.ids_for_already_refined_bins = set([])
@@ -1336,18 +1337,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             run.info_single('')
 
         for bin_id in refined_bin_data:
-            collection_dict[bin_id] = refined_bin_data[bin_id]
-            bins_info_dict[bin_id] = refined_bins_info_dict[bin_id]
             self.ids_for_already_refined_bins.add(bin_id)
-
 
         if anvio.DEBUG:
             run.info('resulting collection', collection_dict)
             run.info('resulting bins info', bins_info_dict)
             run.info_single('')
 
-        collections = TablesForCollections(self.profile_db_path)
-        collections.append(self.collection_name, collection_dict, bins_info_dict)
+        collections.append(self.collection_name, refined_bin_data, refined_bins_info_dict, drop_collection=False)
 
         run.info_single('"%s" collection is updated!' % self.collection_name)
 
