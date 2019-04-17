@@ -13,7 +13,6 @@ template_ids = tuple(["".join(x.strip().split("\t")) for x in open(TEMPLATE_IDS_
 
 from modeller import *
 from modeller.automodel import *    # Load the automodel class
-import os
 
 log.verbose()
 env = environ(rand_seed=-12312)

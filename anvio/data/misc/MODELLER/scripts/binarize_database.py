@@ -7,7 +7,6 @@ import sys
 PIR = sys.argv[1]
 BIN = sys.argv[2]
 
-import os
 from modeller import *
 
 log.verbose()
