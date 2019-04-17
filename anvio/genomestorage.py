@@ -57,6 +57,8 @@ class GenomeStorage(object):
         self.gene_info_entries = []
         self.gene_functions_entries = []
         self.gene_functions_entry_id = 0
+        self.gene_info_entry_id = 0
+        self.genome_info_entry_id = 0
 
         if create_new:
             self.create_tables()
@@ -131,7 +133,7 @@ class GenomeStorage(object):
         self.gene_info = {}
         self.progress.update('Loading genes info for %s genomes...' % len(self.genomes_info))
         for gene_info_tuple in self.db.get_some_rows_from_table(t.gene_info_table_name, where_clause):
-            genome_name, gene_caller_id, aa_sequence, dna_sequence, partial, length = gene_info_tuple
+            entry_id, genome_name, gene_caller_id, aa_sequence, dna_sequence, partial, length = gene_info_tuple
             if genome_name not in self.gene_info:
                 self.gene_info[genome_name] = {}
 
@@ -170,13 +172,13 @@ class GenomeStorage(object):
 
 
     def get_genomes_dict(self):
-        # we retrieve all table at once to avoid seperate sql queries
         all_genomes_dict = self.db.get_table_as_dict(t.genome_info_table_name)
+
         result = {}
 
-        # copy genomes requested by user to result dictionary
-        for genome_name in self.genome_names:
-            result[genome_name] = all_genomes_dict[genome_name]
+        for entry_id in all_genomes_dict:
+            genome_name = all_genomes_dict[entry_id]['genome_name']
+            result[genome_name] = all_genomes_dict[entry_id]
 
         return result
 
@@ -266,9 +268,9 @@ class GenomeStorage(object):
 
 
     def add_genome(self, genome_name, genome_info_dict):
-        values = (genome_name, )
+        values = (self.genome_info_entry_id, genome_name, )
 
-        for column_name in t.genome_info_table_structure[1:]:
+        for column_name in t.genome_info_table_structure[2:]:
             if genome_info_dict[column_name]:
                 values += (genome_info_dict[column_name], )
             else:
@@ -277,11 +279,13 @@ class GenomeStorage(object):
                 # which is covered in https://github.com/merenlab/anvio/issues/573
                 values += (-1, )
 
+        self.genome_info_entry_id += 1
         self.genome_info_entries.append(values)
 
 
     def add_gene_call(self, genome_name, gene_caller_id, aa_sequence, dna_sequence, partial=0):
-        self.gene_info_entries.append((genome_name, gene_caller_id, aa_sequence, dna_sequence,
+        self.gene_info_entry_id += 1
+        self.gene_info_entries.append((self.gene_info_entry_id, genome_name, gene_caller_id, aa_sequence, dna_sequence,
                                                 partial, len(aa_sequence),))
 
 
@@ -297,7 +301,7 @@ class GenomeStorage(object):
 
 
     def is_known_genome(self, genome_name, throw_exception=True):
-        if genome_name not in self.genomes_info:
+        if genome_name not in set([g['genome_name'] for g in self.genomes_info.values()]):
             if throw_exception:
                 raise ConfigError('The database at "%s" does not know anything about "%s" :(' % (self.storage_path, genome_name))
             else:
