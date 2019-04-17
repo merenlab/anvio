@@ -90,6 +90,7 @@ if __name__ == '__main__':
                             If you choose this option, you must also say which HMM source to use.')
     groupE.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
     groupE.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
+    parser.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
     groupE.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupE.add_argument(*anvio.A('remove-partial-hits'), **anvio.K('remove-partial-hits'))
     groupE.add_argument(*anvio.A('never-reverse-complement'), **anvio.K('never-reverse-complement'))
