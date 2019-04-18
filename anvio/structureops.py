@@ -293,7 +293,7 @@ class Structure(object):
             self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention \
                               to the quality of the proteins...".format(self.percent_identical_cutoff))
 
-        # check that DSSP exists
+        # check that DSSP exists and works
         if self.skip_DSSP:
             self.run.warning("You requested to skip amino acid residue annotation with DSSP. A bold move only an expert could justify... \
                               Anvi'o's respect for you increases slightly.")
@@ -316,6 +316,31 @@ class Structure(object):
 
             self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
                                   % self.DSSP_executable, nl_before=1, nl_after=1)
+            self.is_executable_a_working_DSSP_program()
+
+
+    def is_executable_a_working_DSSP_program(self):
+        test_input = os.path.join(os.path.dirname(anvio.__file__), 'tests/sandbox/mock_data_for_structure/STRUCTURES/0.pdb')
+
+        p = PDBParser()
+        test_structure = p.get_structure('test', test_input)
+        test_model = test_structure[0] # pdb files can have multiple models. DSSP assumes the first.
+
+        # run DSSP
+        try:
+            residue_annotation = DSSP(test_model, test_input, dssp = self.DSSP_executable, acc_array = "Wilke")
+        except Exception as e:
+            raise ConfigError('Your executable of DSSP, `{}`, failed to pass our tests. For information on how to test\
+                               that your version is working correctly, please visit\
+                               http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'\
+                               .format(self.DSSP_executable))
+
+        if not len(residue_annotation.keys()):
+            raise ConfigError("Your executable of DSSP, `{}`, exists but didn't return any meaningful output. This\
+                               is a known issue with certain distributions of DSSP. For information on how to test\
+                               that your version is working correctly, please visit\
+                               http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
+                               .format(self.DSSP_executable))
 
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None):
@@ -522,13 +547,6 @@ class Structure(object):
 
         # run DSSP
         residue_annotation = DSSP(model, pdb_filepath, dssp = self.DSSP_executable, acc_array = "Wilke")
-
-        if not len(residue_annotation.keys()):
-            raise ConfigError("Your executable of DSSP, `{}`, exists but didn't return any meaningful output. This\
-                               is a known issue with certain distributions of DSSP. For information on how to test\
-                               that your version is working correctly, please visit\
-                               http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
-                               .format(self.DSSP_executable, pdb_filepath))
 
         # convert to a digestible format
         return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation)
