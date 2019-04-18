@@ -97,6 +97,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.collection_name = A('collection_name')
         self.gene_mode = A('gene_mode')
         self.inspect_split_name = A('split_name')
+        self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
+
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
@@ -727,15 +729,26 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Number of bins', len(self.bins))
         self.run.info('Number of splits', len(self.split_names_of_interest))
 
-        item_orders = self.cluster_splits_of_interest()
-        default_clustering_class = constants.merged_default if self.is_merged else constants.single_default
+        if not self.skip_hierarchical_clustering:
+            item_orders = self.cluster_splits_of_interest()
+            default_clustering_class = constants.merged_default if self.is_merged else constants.single_default
 
-        default_item_order = dbops.get_default_item_order_name(default_clustering_class, item_orders)
+            default_item_order = dbops.get_default_item_order_name(default_clustering_class, item_orders)
+        else:
+            # even though we do not generate any hierarchical clustering,
+            # we need to clear these, otherwise full mode trees will appear.
+            item_orders = {}
+            default_item_order = None
 
         self.item_orders = item_orders
         self.p_meta['item_orders'] = item_orders
         self.p_meta['available_item_orders'] = list(self.item_orders.keys())
         self.p_meta['default_item_order'] = default_item_order
+        
+        self.add_user_tree()
+
+        if self.skip_hierarchical_clustering and not self.tree:
+            raise ConfigError("You wanted to skip hierarchical clustering but did not provided any newick file.")
 
         self.collections = ccollections.Collections()
         self.collections.populate_collections_dict(self.profile_db_path)
