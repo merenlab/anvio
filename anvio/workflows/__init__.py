@@ -419,7 +419,7 @@ class WorkflowSuperClass:
         threads = self.get_param_value_from_config([rule_name,'threads'])
         if threads:
             try:
-                if int(threads) > int(max_threads):
+                if int(threads) > float(max_threads):
                     return int(max_threads)
                 else:
                     return int(threads)
