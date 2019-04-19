@@ -47,7 +47,7 @@ class MODELLER:
         self.run = run
         self.progress = progress
 
-        up_to_date_modeller_exec = "mod9.20" # default exec to use
+        up_to_date_modeller_exec = "mod9.21" # default exec to use
 
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
