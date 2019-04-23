@@ -164,13 +164,13 @@ class TablesForGeneCalls(Table):
         if skip_amino_acid_sequences:
             amino_acid_sequences = dict([(g, '') for g in gene_calls_dict])
         else:
-            amino_acid_sequences = self.get_amino_acid_sequences_for_genes_in_gene_calls_dict(gene_calls_dict)
+            amino_acid_sequences = self.get_amino_acid_sequences_for_genes_in_gene_calls_dict(gene_calls_dict, ignore_internal_stop_codons=ignore_internal_stop_codons)
 
         # populate genes_in_contigs, and gene_amino_acid_sequences table in contigs db.
         self.populate_genes_in_contigs_table(gene_calls_dict, amino_acid_sequences, append_to_the_db=append_to_the_db)
 
 
-    def get_amino_acid_sequences_for_genes_in_gene_calls_dict(self, gene_calls_dict):
+    def get_amino_acid_sequences_for_genes_in_gene_calls_dict(self, gene_calls_dict, ignore_internal_stop_codons=False):
         '''Recover amino acid sequences for gene calls in a gene_calls_dict.
 
            During this operation we are going to have to read all contig sequences
