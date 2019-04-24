@@ -93,10 +93,10 @@ class COGs:
         if self.search_with not in self.available_db_search_program_targets:
             raise ConfigError("Anvi'o understands that you want to use '%s' to search for COGs, however, there is no\
                                database formatted under the COGs data directory for that program :/ You may need to\
-                               re-run the COGs setup, UNLESS, you set up your COG data directory somewhere else than what\
-                               anvi'o attempts to use at the moment ('%s'). If that is the case, this may be the best\
-                               time to point the right directory using the --cog-data-dir parameter, or the environmental\
-                               variable 'ANVIO_COG_DATA_DIR'." % (self.search_with, self.COG_data_dir))
+                               re-run the COGs setup (anvi-setup-ncbi-cogs), UNLESS, you set up your COG data directory \
+                               somewhere else than what anvi'o attempts to use at the moment ('%s'). If that is the case, \
+                               this may be the best time to point the right directory using the --cog-data-dir parameter, \
+                               or the environmental variable 'ANVIO_COG_DATA_DIR'." % (self.search_with, self.COG_data_dir))
 
         if not aa_sequences_file_path and not self.contigs_db_path:
             raise ConfigError("You either need to provide an anvi'o contigs database path, or a FASTA file for AA\
