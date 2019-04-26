@@ -6,9 +6,9 @@ import sys
 
 import anvio
 import anvio.utils as utils
-import anvio.concoct as concoct
 import anvio.filesnpaths as filesnpaths
 
+import anvio.drivers.concoct as concoct
 from anvio.errors import ConfigError, FilesNPathsError
 
 
