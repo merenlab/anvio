@@ -24,45 +24,52 @@ __provides__ = ['split-bins',]
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Split an anvi'o profile into smaller profiles. This is usually great when\
-                                                  you want to share a subset of an anvi'o profile. You give this guy an anvi'o\
-                                                  profile databsae, a contigs database, and a collection id, and it gives\
-                                                  you back directories of profiles for each bin that can be treated as\
-                                                  individual anvi'o profiles.")
+    parser = argparse.ArgumentParser(description="Split an anvi'o pan or profile database into smaller, self-contained pieces.\
+                                                  This is usually great when you want to share a subset of an anvi'o project.\
+                                                  You give this guy your databases, and a collection id, and it gives\
+                                                  you back directories of individual projects for each bin that can be treated as\
+                                                  self-contained smaller anvi'o projects. We know you don't read this far into\
+                                                  these help menus, but please remember: you will either need to provide a profile &\
+                                                  contigs database pair, or a pan & genomes storage pair. The rest will be taken\
+                                                  care of. Magic.")
 
-    groupD = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first.")
-    groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-    groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupA = parser.add_argument_group('DATABASES', "You will either provide a PROFILE/CONTIGS or a PAN/GENOMES STORAGE pair here.")
+    groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
-    groupE = parser.add_argument_group('COLLECTION', 'You should provide a valid collection name. If you do not provide\
+
+    groupB = parser.add_argument_group('PROFILE/CONTIGS OPTIONS', "Some options that are specific to this only.")
+    groupB.add_argument(*anvio.A('skip-variability-tables'), **anvio.K('skip-variability-tables'))
+    groupB.add_argument(*anvio.A('compress-auxiliary-data'), **anvio.K('compress-auxiliary-data'))
+
+    groupC = parser.add_argument_group('COLLECTION', 'You should provide a valid collection name. If you do not provide\
                                                       bin names, the program will generate an output for each bin in your\
                                                       collection separately.')
-    groupE.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupE.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
 
-    groupO = parser.add_argument_group('OUTPUT', 'Where do we want the resulting split profiles to be stored.')
-    groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupD = parser.add_argument_group('OUTPUT', 'Where do we want the resulting split profiles to be stored.')
+    groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 
-    groupQ = parser.add_argument_group('EXTRAS', "Stuff that you rarely need, but you really really need when the time comes.\
+    groupE = parser.add_argument_group('EXTRAS', "Stuff that you rarely need, but you really really need when the time comes.\
                                                   Following parameters will aply to each of the resulting anvi'o profile that\
                                                   will be split from the mother anvi'o profile.")
-    groupQ.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
-    groupQ.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))
-    groupQ.add_argument(*anvio.A('skip-variability-tables'), **anvio.K('skip-variability-tables'))
-    groupQ.add_argument(*anvio.A('compress-auxiliary-data'), **anvio.K('compress-auxiliary-data'))
-    groupQ.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering'))
-    groupQ.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
+    groupE.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupE.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))
+    groupE.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering'))
+    groupE.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
                       'The distance metric for the hierarchical clustering. If you do not use this flag,\
                        the default distance metric will be used for each clustering configuration\
                        which is "%s".' % constants.distance_metric_default}))
-    groupQ.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'default': None, 'help':
+    groupE.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'default': None, 'help':
                       'The same story with the `--distance`, except, the system default for this one\
                        is %s.' % constants.linkage_method_default}))
 
     args = anvio.get_args(parser)
 
     try:
-        splitter.ProfileSplitter(args).process()
+        splitter.DBSplitter(args).get()(args).process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
