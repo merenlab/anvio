@@ -26,10 +26,12 @@ import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.panops import Pangenome
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.collections import TablesForCollections
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.tables.views import TablesForViews
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -47,6 +49,84 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
+class PanSplitter(summarizer.PanSummarizer):
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_db_path = A('pan_or_profile_db')
+        args.pan_db = self.pan_db_path
+
+        self.genomes_storage_path = A('genomes_storage')
+        self.collection_name = A('collection_name')
+        self.bin_name = A('bin_id')
+        self.output_directory = A('output_dir')
+        self.list_collections = A('list_collections')
+
+        self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.pan_db_path)
+
+
+    def init(self):
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
+
+        if not self.genomes_storage_path:
+            raise ConfigError("You must provide a genomes storage database for this operation.")
+
+        if not self.pan_db_path:
+            raise ConfigError("You came all the way here without a pan database. Congratulations! But we\
+                               kinda need it at this stage really :/ GOOD DAY.")
+
+        utils.is_pan_db(self.pan_db_path)
+
+        if self.list_collections:
+            self.collections.list_collections()
+            sys.exit(0)
+
+        if not self.collection_name:
+            raise ConfigError("You must provide a collection name for this to work. If you want to know about\
+                               all the collections in your pan database you can use the program\
+                               `anvi-show-collections-and-bins` or run the same command with the flag\
+                               `--list-collections`.")
+
+        # if this is not set false, the summarizer class attemts to remove the main output directory
+        # upon initialization. not doing that is useful in this context since this allows multiple
+        # anvi-split runs to work on bins in the same collection in parallel:
+        self.args.delete_output_directory_if_exists = False
+
+        self.summary = summarizer.PanSummarizer(self.args, r=self.run, p=self.progress)
+        self.summary.load_pan_views()
+
+        self.bin_names_of_interest = sorted(self.summary.bins_info_dict.keys())
+
+        if self.bin_name:
+            if self.bin_name not in self.bin_names_of_interest:
+                raise ConfigError("The bin name you wish to split from this profile databse is not in the collection. Busted!")
+            else:
+                self.bin_names_of_interest = [self.bin_name]
+
+
+    def process(self):
+        """This is the function that goes through each bin loaded in the class and proecesses them."""
+        self.init()
+
+        filesnpaths.gen_output_directory(self.output_directory)
+
+        self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. This\
+                          is quite a tricky operation, and even if it finishes successfully, you must double check everyting\
+                          in the resulting profiles to make sure things worked as expected. Although we are doing our best to\
+                          test all these, variation between projects make it impossible to be 100% sure.")
+
+        for bin_name in self.bin_names_of_interest:
+            b = PanBinSplitter(bin_name, self.summary, self.args, run=self.run, progress=self.progress)
+            b.do_pan_db()
+
+        self.run.info('Num bins processed', len(self.bin_names_of_interest))
+        self.run.info("Output directory", self.output_directory)
+
+
 class ProfileSplitter:
     def __init__(self, args, run=run, progress=progress):
         self.args = args
@@ -54,7 +134,9 @@ class ProfileSplitter:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.profile_db_path = A('profile_db')
+        self.profile_db_path = A('pan_or_profile_db')
+        args.profile_db = self.profile_db_path
+
         self.contigs_db_path = A('contigs_db')
         self.collection_name = A('collection_name')
         self.bin_name = A('bin_id')
@@ -93,7 +175,7 @@ class ProfileSplitter:
         self.bin_names_of_interest = sorted(self.summary.bin_ids)
         if self.bin_name:
             if self.bin_name not in self.bin_names_of_interest:
-                raise ConfigError("The bin name you wish to split from this profile databse is not in the collection. Busted!")
+                raise ConfigError("The bin name you wish to split from this profile database is not in the collection. Busted!")
             else:
                 self.bin_names_of_interest = [self.bin_name]
 
@@ -130,13 +212,235 @@ class ProfileSplitter:
         self.run.info("Output directory", self.output_directory)
 
 
-class BinSplitter(summarizer.Bin):
+class XSplitter(object):
+    """Some common functions both for profile bin and pan bin splitter classes"""
+
+    def __init__(self):
+        pass
+
+    def is_hierarchical_clustering_for_bin_OK(self):
+        skip_hierarchical_clustering = self.skip_hierarchical_clustering
+
+        if self.num_splits > self.max_num_splits_for_hierarchical_clustering and not self.enforce_hierarchical_clustering:
+            self.run.warning("It seems you have more than %s splits in this particular bin. This is the\
+                              soft limit for anvi'o to attempt to create a hierarchical clustering of your splits\
+                              (which becomes the center tree in all anvi'o displays). If you want a hierarchical\
+                              clustering to be done anyway, you can re-run the splitting process only for this bin\
+                              by adding these parameters to your run: '--bin-id %s --enforce-hierarchical-clustering'.\
+                              If you feel like you are lost, don't hesitate to get in touch with anvi'o developers." \
+                                                        % (pp(self.max_num_splits_for_hierarchical_clustering), self.bin_id))
+            skip_hierarchical_clustering = True
+
+        if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
+            self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt\
+                              to create a hierarchical clustering of your %s splits for this bin. It may take a bit of\
+                              time, and it is not even anvi'o's fault, you know  :/" \
+                                                        % pp(self.max_num_splits_for_hierarchical_clustering))
+
+        return skip_hierarchical_clustering
+
+
+    def is_dbs_identical(self, source_db_path, target_db_path):
+        """Check whether the two dbs have identical table names"""
+
+        source_db = db.DB(source_db_path, None, ignore_version=True)
+        target_db = db.DB(target_db_path, None, ignore_version=True)
+
+        source_tables = set(source_db.get_table_names())
+        target_tables = set(target_db.get_table_names())
+
+        if not source_tables == target_tables:
+            self.progress.end()
+
+            diff = source_tables.difference(target_tables)
+
+            raise ConfigError("Something went wrong during subsetting :/ Table names in the parent db (%s) and the child\
+                               db (%s) does not seem to be identical. The following tables are found in the source, but\
+                               missing in the target database: '%s'" % (source_db_path, target_db_path, ', '.join(diff)))
+
+        source_db.disconnect()
+        target_db.disconnect()
+
+
+    def migrate_data(self, tables_dict, source_db_path, target_db_path):
+        """Filter data from `source_db_path` into `target_db_path` based on rules defined in `tables_dict`
+
+        Each item in `tables_dict` must be a table name, and should correspond to a tuple with two items. The
+        first item of the tuple should be a `key` (of type str) on which the table data should be filtered, and
+        the second item should be a set of acceptable values (of type set).
+        """
+
+        for table_name in tables_dict:
+            self.progress.update("Table '%s' .. setting up the query" % table_name)
+            filter_on_key = tables_dict[table_name][0]
+            filter_for = ','.join('"%s"' % str(i) for i in tables_dict[table_name][1])
+            where_clause = "%s IN (%s)" % (filter_on_key, filter_for)
+
+
+            self.progress.update("Table '%s' .. reading data" % table_name)
+            source_db = db.DB(source_db_path, None, ignore_version=True)
+            data = source_db.get_some_rows_from_table(table_name, where_clause)
+            source_db.disconnect()
+
+            if not len(data):
+                continue
+
+            self.progress.update("Table '%s' .. writing data" % table_name)
+            target_db = db.DB(target_db_path, None, ignore_version=True)
+            target_db._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
+            target_db.disconnect()
+
+        # make sure things are OK
+        self.is_dbs_identical(source_db_path, target_db_path)
+
+
+
+class PanBinSplitter(summarizer.PanBin, XSplitter):
+    def __init__(self, bin_name, summary_object, args, run=run, progress=progress):
+        """A class to split a single bin from its parent.
+
+        The class is not really useful without a summary object, but it makes logistic sense to keep it
+        separate since the inheritance from anvio/summarizer.Bin is much easier and sane this way."""
+        summarizer.PanBin.__init__(self, summary_object, bin_name, run, progress)
+
+        XSplitter.__init__(self)
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_db_path = A('pan_db')
+        self.genomes_storage_path = A('genomes_storage')
+        self.output_directory = A('output_dir')
+        self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
+        self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
+        self.distance = A('distance') or constants.distance_metric_default
+        self.linkage = A('linkage') or constants.linkage_method_default
+
+        # let's remember this for later.
+        self.bin_project_name = 'The %s split from "%s"' % (self.bin_id, self.summary.p_meta['project_name'])
+
+        # make sure early on that both the distance and linkage is OK.
+        clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
+        self.clustering_configs = constants.clustering_configs['pan']
+        self.database_paths = {'PAN.db': os.path.abspath(self.pan_db_path)}
+
+
+        if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
+            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
+                               while also asking it to enforce it.")
+
+        # set the output directory, and output file paths
+        self.bin_output_directory = os.path.join(self.output_directory, bin_name)
+        filesnpaths.gen_output_directory(self.bin_output_directory)
+
+        # let's see whether we are going to do any hierarchical clustering:
+        self.max_num_splits_for_hierarchical_clustering = constants.max_num_items_for_hierarchical_clustering
+        self.skip_hierarchical_clustering = self.is_hierarchical_clustering_for_bin_OK()
+
+        # set your own db paths
+        self.bin_pan_db_path = os.path.join(self.bin_output_directory, 'PAN.db')
+
+
+    def do_pan_db(self):
+        self.progress.new('Splitting "%s"' % self.bin_id)
+        self.progress.update('Subsetting the pan database')
+
+        bin_pan_db = dbops.PanDatabase(self.bin_pan_db_path)
+        bin_pan_db.touch()
+
+        # copy-paste tables that will largely stay the same from the parent
+        bin_pan_db.db.copy_paste(table_name='self', source_db_path=self.pan_db_path)
+        bin_pan_db.db.copy_paste(table_name=t.states_table_name, source_db_path=self.pan_db_path)
+        bin_pan_db.db.copy_paste(table_name=t.layer_additional_data_table_name, source_db_path=self.pan_db_path)
+        bin_pan_db.db.copy_paste(table_name=t.layer_orders_table_name, source_db_path=self.pan_db_path)
+
+        # update some values
+        bin_pan_db.db.update_meta_value('project_name', self.bin_project_name)
+        bin_pan_db.db.update_meta_value('available_item_orders', None)
+        bin_pan_db.db.update_meta_value('items_ordered', None)
+        bin_pan_db.db.update_meta_value('num_gene_clusters', self.num_gene_clusters)
+        bin_pan_db.db.update_meta_value('num_genes_in_gene_clusters', self.num_genes_in_gene_clusters)
+
+        bin_pan_db.disconnect()
+
+        # let's generate views. first we need to learn learning genomes from the view data.
+        table_structure=['gene_cluster'] + sorted(self.genomes)
+        table_types=['text'] + ['numeric'] * len(self.genomes)
+
+        # summarizer.PanBin already has updated/pruned views dicts. that's why this loop will work.
+        for view_name in ['gene_cluster_frequencies', 'gene_cluster_presence_absence']:
+            TablesForViews(self.bin_pan_db_path).create_new_view(
+                                                data_dict=self.views[view_name]['dict'],
+                                                table_name=self.views[view_name]['table_name'],
+                                                table_structure=table_structure,
+                                                table_types=table_types,
+                                                view_name = view_name)
+
+        # setup the filtering rules for migrating data:
+        tables = {
+                    t.item_additional_data_table_name: ('item_name', self.split_names),
+                    t.pan_gene_clusters_table_name: ('gene_cluster_id', self.split_names),
+                }
+
+        self.migrate_data(tables, self.pan_db_path, self.bin_pan_db_path)
+
+        self.progress.end()
+
+        # add a collection
+        collection_dict = {'ALL_SPLITS': self.split_names}
+        bins_info_dict = {'ALL_SPLITS': {'html_color': '#FF0000', 'source': 'anvi-split'}}
+        collections = TablesForCollections(self.bin_pan_db_path)
+        collections.append('DEFAULT', collection_dict, bins_info_dict=bins_info_dict)
+
+        # clustering of items.. this is the most elegant way of doing this:
+        p = Pangenome(argparse.Namespace(skip_hierarchical_clustering=self.skip_hierarchical_clustering,
+                                         output_dir=self.bin_output_directory,
+                                         distance=self.distance,
+                                         linkage=self.linkage,
+                                         run=self.run,
+                                         progress=self.progress,
+                                         project_name=self.bin_project_name))
+        p.genomes = self.genomes
+        p.pan_db_path = self.bin_pan_db_path
+        p.gen_hierarchical_clustering_of_gene_clusters()
+
+
+class DBSplitter:
+    """Implements the shittiest factory pattern humankind has ever seen. Behold."""
+
+    def __init__(self, args, run=run, progress=progress):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        if not A('pan_or_profile_db'):
+            raise ConfigError("No pan/profile database no cookie.")
+
+        self.mode = None
+        if A('contigs_db'):
+            self.mode = 'profile'
+        elif A('genomes_storage'):
+            self.mode = 'pan'
+        else:
+            raise ConfigError("Well. You are trying to initiate the anvi'o database splitter, but anvi'o has\
+                               no idea what exactly you are trying to do becasue you haven't declared enough\
+                               databases. You should either use a contigs database or a genomes storage among\
+                               your arguments to initiate this class properly.")
+
+
+    def get(self):
+        if self.mode == 'pan':
+            return PanSplitter
+        elif self.mode == 'profile':
+            return ProfileSplitter
+        else:
+            return None
+
+
+class BinSplitter(summarizer.Bin, XSplitter):
     def __init__(self, bin_name, summary_object, args, run=run, progress=progress):
         """A class to split a single bin from its parent.
 
         The class is not really useful without a summary object, but it makes logistic sense to keep it
         separate since the inheritance from anvio/summarizer.Bin is much easier and sane this way."""
         summarizer.Bin.__init__(self, summary_object, bin_name, run, progress)
+
+        XSplitter.__init__(self)
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
@@ -274,7 +578,7 @@ class BinSplitter(summarizer.Bin):
 
         # update some values
         bin_profile_db.db.update_meta_value('contigs_db_hash', self.contigs_db_hash)
-        bin_profile_db.db.update_meta_value('available_clusterings', None)
+        bin_profile_db.db.update_meta_value('available_item_orders', None)
         bin_profile_db.db.update_meta_value('sample_id', self.bin_id)
 
         # setup the filtering rules for migrating data:
@@ -334,60 +638,6 @@ class BinSplitter(summarizer.Bin):
         collections.append('DEFAULT', collection_dict, bins_info_dict=bins_info_dict)
 
 
-    def is_dbs_identical(self, source_db_path, target_db_path):
-        """Check whether the two dbs have identical table names"""
-
-        source_db = db.DB(source_db_path, None, ignore_version=True)
-        target_db = db.DB(target_db_path, None, ignore_version=True)
-
-        source_tables = set(source_db.get_table_names())
-        target_tables = set(target_db.get_table_names())
-
-        if not source_tables == target_tables:
-            self.progress.end()
-
-            diff = source_tables.difference(target_tables)
-
-            raise ConfigError("Something went wrong during subsetting :/ Table names in the parent db (%s) and the child\
-                               db (%s) does not seem to be identical. The following tables are found in the source, but\
-                               missing in the target database: '%s'" % (source_db_path, target_db_path, ', '.join(diff)))
-
-        source_db.disconnect()
-        target_db.disconnect()
-
-
-    def migrate_data(self, tables_dict, source_db_path, target_db_path):
-        """Filter data from `source_db_path` into `target_db_path` based on rules defined in `tables_dict`
-
-        Each item in `tables_dict` must be a table name, and should correspond to a tuple with two items. The
-        first item of the tuple should be a `key` (of type str) on which the table data should be filtered, and
-        the second item should be a set of acceptable values (of type set).
-        """
-
-        for table_name in tables_dict:
-            self.progress.update("Table '%s' .. setting up the query" % table_name)
-            filter_on_key = tables_dict[table_name][0]
-            filter_for = ','.join('"%s"' % str(i) for i in tables_dict[table_name][1])
-            where_clause = "%s IN (%s)" % (filter_on_key, filter_for)
-
-
-            self.progress.update("Table '%s' .. reading data" % table_name)
-            source_db = db.DB(source_db_path, None, ignore_version=True)
-            data = source_db.get_some_rows_from_table(table_name, where_clause)
-            source_db.disconnect()
-
-            if not len(data):
-                continue
-
-            self.progress.update("Table '%s' .. writing data" % table_name)
-            target_db = db.DB(target_db_path, None, ignore_version=True)
-            target_db._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
-            target_db.disconnect()
-
-        # make sure things are OK
-        self.is_dbs_identical(source_db_path, target_db_path)
-
-
     def cluster_contigs_anvio(self):
         # clustering of contigs is done for each configuration file under static/clusterconfigs/merged directory;
         # at this point we don't care what those recipes really require because we already merged and generated
@@ -417,28 +667,6 @@ class BinSplitter(summarizer.Bin):
                                             linkage=linkage,
                                             make_default=config_name == constants.merged_default,
                                             run=self.run)
-
-
-    def is_hierarchical_clustering_for_bin_OK(self):
-        skip_hierarchical_clustering = self.skip_hierarchical_clustering
-
-        if self.num_splits > self.max_num_splits_for_hierarchical_clustering and not self.enforce_hierarchical_clustering:
-            self.run.warning("It seems you have more than %s splits in this particular bin. This is the\
-                              soft limit for anvi'o to attempt to create a hierarchical clustering of your splits\
-                              (which becomes the center tree in all anvi'o displays). If you want a hierarchical\
-                              clustering to be done anyway, you can re-run the splitting process only for this bin\
-                              by adding these parameters to your run: '--bin-id %s --enforce-hierarchical-clustering'.\
-                              If you feel like you are lost, don't hesitate to get in touch with anvi'o developers." \
-                                                        % (pp(self.max_num_splits_for_hierarchical_clustering), self.bin_id))
-            skip_hierarchical_clustering = True
-
-        if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
-            self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt\
-                              to create a hierarchical clustering of your %s splits for this bin. It may take a bit of\
-                              time, and it is not even anvi'o's fault, you know  :/" \
-                                                        % pp(self.max_num_splits_for_hierarchical_clustering))
-
-        return skip_hierarchical_clustering
 
 
 class LocusSplitter:
