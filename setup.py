@@ -21,7 +21,7 @@ except ImportError:
     print("You need to have numpy installed on your system to run setup.py. Sorry!")
     sys.exit()
 
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, find_packages
 
 if os.environ.get('USER','') == 'vagrant':
     del os.link
