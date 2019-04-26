@@ -20,7 +20,12 @@
    to the vbgmm module.
 """
 
-import vbgmm
+try:
+    import vbgmm
+    __CONCOCT_AVAILABLE__ = True
+except ImportError:
+    __CONCOCT_AVAILABLE__ = False
+
 import random
 import collections
 import numpy as np
@@ -55,6 +60,11 @@ class CONCOCT:
     def __init__(self, args, r=run, p=progress):
         self.run = r
         self.progress = p
+
+        if not __CONCOCT_AVAILABLE__:
+            raise ConfigError("CONCOCT is not installed on your system, please install CONCOCT to be \
+                               able to use this driver. See https://concoct.readthedocs.io/en/latest/ \
+                               for details.")
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
