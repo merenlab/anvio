@@ -20,6 +20,7 @@
    to the vbgmm module.
 """
 
+import vbgmm
 import random
 import collections
 import numpy as np
@@ -30,7 +31,6 @@ import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
-import anvio.vbgmm as vbgmm
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
@@ -220,7 +220,6 @@ class CONCOCT_INTERFACE():
         self.transformed_data = pca_object.transform(self.original_data)
 
         self.NClusters = NClusters
-        self.assign = np.zeros((self.NC), dtype=np.int32)
 
         self.progress.end()
         self.run.info('CONCOCT INIT', 'Complete for %d splits' % len(self.contig_names))
@@ -231,7 +230,13 @@ class CONCOCT_INTERFACE():
 
         self.progress.new('VBGMM')
         self.progress.update('Clustering ...')
-        vbgmm.fit(self.transformed_data, self.assign, self.NClusters, self.debug)
+
+        # TO DO...
+        seed = 4 # chosen by fair dice roll
+        threads = 1
+        n_iter = 500 # was default in concoct
+
+        self.assign = vbgmm.fit(self.transformed_data, self.NClusters, seed, threads, n_iter)
         self.progress.end()
 
         self.run.info('CONCOCT VGBMM', 'Returning %d final clusters' % (len(set(self.assign))))
