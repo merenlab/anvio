@@ -1524,15 +1524,6 @@ D = {
                       planning to do binning on one sample, you must use this flag to tell anvio to\
                       run cluster configurations for single runs on your sample."}
                 ),
-    'skip-concoct-binning': (
-            ['--skip-concoct-binning'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Anvi'o uses CONCOCT (Alneberg et al.) by default for unsupervised genome binning\
-                      for merged runs. CONCOCT results are stored in the profile database, which then\
-                      can be used from within appropriate interfaces (i.e., anvi-interactive, anvi-summary,\
-                      etc). Use this flag if you would like to skip this step"}
-                ),
     'num-clusters-requested': (
             ['--num-clusters-requested'],
             {'metavar': 'INT',
