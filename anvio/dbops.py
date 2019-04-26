@@ -2966,19 +2966,10 @@ class PanDatabase:
         else:
             self.db = None
 
-
-    def create(self, meta_values={}):
+    def touch(self):
         is_db_ok_to_create(self.db_path, 'pan')
 
         self.db = db.DB(self.db_path, anvio.__pan__version__, new_database=True)
-
-        for key in meta_values:
-            self.db.set_meta_value(key, meta_values[key])
-
-        self.db.set_meta_value('creation_date', time.time())
-
-        # know thyself
-        self.db.set_meta_value('db_type', 'pan')
 
         # creating empty default tables for pan specific operations:
         self.db.create_table(t.pan_gene_clusters_table_name, t.pan_gene_clusters_table_structure, t.pan_gene_clusters_table_types)
@@ -2994,6 +2985,20 @@ class PanDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
+
+        # know thyself
+        self.db.set_meta_value('db_type', 'pan')
 
         self.disconnect()
 
