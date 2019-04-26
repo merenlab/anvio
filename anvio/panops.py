@@ -64,8 +64,8 @@ class Pangenome(object):
         self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
         self.skip_alignments = A('skip_alignments')
-        self.skip_homogeneity = self.args.skip_homogeneity
-        self.quick_homogeneity = self.args.quick_homogeneity
+        self.skip_homogeneity = A('skip_homogeneity')
+        self.quick_homogeneity = A('quick_homogeneity')
         self.align_with = A('align_with')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = anvio.DEBUG
@@ -628,7 +628,7 @@ class Pangenome(object):
                                             'singleton_gene_clusters'])
 
         if self.gene_cluster_min_occurrence > 1:
-            layers_additional_data_keys.extend(['num_gene_clusters_raw'])            
+            layers_additional_data_keys.extend(['num_gene_clusters_raw'])
 
         for genome_name in self.genomes:
             new_dict = {}
