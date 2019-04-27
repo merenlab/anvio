@@ -80,6 +80,15 @@ anvi-summarize -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -o TEST
 INFO "Summarizing the pan, using the test collection"
 anvi-summarize -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -o TEST_SUMMARY
 
+INFO "Splitting bins in the pan genome into smaller, self-contained pan databases"
+anvi-split -p TEST/TEST-PAN.db -g TEST-GENOMES.db -C test_collection -o TEST_SPLIT_PAN
+
+INFO "Resulting split pans"
+ls -l TEST_SPLIT_PAN/*/*db
+
+INFO "Taking a look at the make up one of the split pans"
+anvi-db-info TEST_SPLIT_PAN/GENE_CLUSTER_BIN_1_CORE/PAN.db
+
 INFO "Listing collections available"
 anvi-show-collections-and-bins -p TEST/TEST-PAN.db
 
