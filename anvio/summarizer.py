@@ -255,8 +255,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if not self.skip_init_functions:
             self.init_gene_clusters_functions()
 
-        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
-        self.bin_ids = sorted(self.collection_dict.keys())
+        self.collection_dict, self.bins_info_dict, self.bin_ids = None, None, None
+        if self.collection_name:
+            self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
+            self.bin_ids = sorted(self.collection_dict.keys())
 
         # see if COG functions or categories are available
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
