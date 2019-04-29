@@ -313,9 +313,9 @@ class GenbankToAnvioWrapper:
 
         self.progress.end()
 
-        headers = ['name', 'path', 'gene_functional_annotation']
+        headers = ['name', 'path']
         if not self.exclude_gene_calls_from_fasta_txt:
-            headers.append('external_gene_calls')
+            headers.extend(['external_gene_calls', 'gene_functional_annotation'])
 
         utils.store_dict_as_TAB_delimited_file(output_fasta_dict, self.output_fasta_descriptor, headers=headers)
 
