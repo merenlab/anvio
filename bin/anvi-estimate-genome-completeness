@@ -121,10 +121,10 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
 
-    groupB = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "Because life is already very hard as it is.")
-    parser.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
-    parser.add_argument(*anvio.A('concise'), **anvio.K('concise'))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupC = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "Because life is already very hard as it is.")
+    groupC.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupC.add_argument(*anvio.A('concise'), **anvio.K('concise'))
+    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = anvio.get_args(parser)
 
