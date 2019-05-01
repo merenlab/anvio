@@ -56,9 +56,9 @@ class TablesForViews(Table):
 
         if not append_mode:
             if view_name and view_name in views_in_db:
-                raise ConfigError("TablesForViews speaking: Yo yo yo. You already have a view in the db called '%s'.\
+                raise ConfigError("TablesForViews speaking: Yo yo yo. You already have a view in the db '%s' called '%s'.\
                                     You can't create another one before you get rid of the existing one, because rules."\
-                                                                            % view_name)
+                                                                            % (self.db_path, view_name))
 
             # first create the data table:
             anvio_db.db.drop_table(table_name)

@@ -95,7 +95,7 @@ class WorkflowSuperClass:
                 if param not in self.rule_acceptable_params_dict[rule]:
                     self.rule_acceptable_params_dict[rule].append(param)
 
-            general_params_that_all_workflows_must_accept = ['output_dirs']
+            general_params_that_all_workflows_must_accept = ['output_dirs', 'max_threads']
             for param in general_params_that_all_workflows_must_accept:
                 if param not in self.general_params:
                     self.general_params.append(param)
@@ -260,6 +260,14 @@ class WorkflowSuperClass:
                         Here is a list of the wrong directories: %s. This workflow only has \
                         the following directories: %s." % (" ".join(wrong_dir_names), " ".join(list(self.dirs_dict.keys()))))
 
+        ## make sure max_threads is an integer number
+        max_threads = self.get_param_value_from_config('max_threads')
+        if max_threads:
+            try:
+                int(max_threads)
+            except:
+                raise ConfigError('"max_threads" must be an integer value. The value you provided in the config file is: "%s"' % max_threads)
+
 
     def get_default_config(self):
         c = self.fill_empty_config_params(self.default_config)
@@ -404,7 +412,22 @@ class WorkflowSuperClass:
         return ''
 
 
-    def T(self, rule_name): return self.get_param_value_from_config([rule_name,'threads']) if self.get_param_value_from_config([rule_name,'threads']) else 1
+    def T(self, rule_name):
+        max_threads = self.get_param_value_from_config("max_threads")
+        if not max_threads:
+            max_threads = float("Inf")
+        threads = self.get_param_value_from_config([rule_name,'threads'])
+        if threads:
+            try:
+                if int(threads) > float(max_threads):
+                    return int(max_threads)
+                else:
+                    return int(threads)
+            except:
+                raise ConfigError('"threads" must be an integer number. In your config file you provided "%s" for \
+                                   the number of threads for rule "%s"' % (threads, rule_name))
+        else:
+            return 1
 
 
     def init_workflow_super_class(self, args, workflow_name):

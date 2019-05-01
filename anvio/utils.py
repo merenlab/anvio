@@ -1754,8 +1754,8 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         for field in columns:
             if field not in expected_fields:
                 raise ConfigError("There are more fields in the file '%s' than the expected fields :/\
-                                    Anvi'o is telling you about this because get_TAB_delimited_file_as_dictionary\
-                                    funciton is called with `only_expected_fields` flag turned on.")
+                                   Anvi'o is telling you about this because get_TAB_delimited_file_as_dictionary\
+                                   funciton is called with `only_expected_fields` flag turned on." % (file_path))
 
     d = {}
     line_counter = 0

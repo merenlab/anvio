@@ -102,7 +102,7 @@ def main(args):
 
     if args.store_in_db:
         args.just_do_it = True
-        miscdata.TableForItemAdditionalData(args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index'])
+        miscdata.TableForItemAdditionalData(args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
 
     if args.output_file:
         utils.store_dict_as_TAB_delimited_file(d, args.output_file)

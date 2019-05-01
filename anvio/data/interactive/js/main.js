@@ -338,7 +338,9 @@ function switchUserInterfaceMode(project, title) {
                     $('#min_func').attr("disabled", 'disabled');
                     $('#max_func').attr("disabled", 'disabled');
                     $('#min_geo').attr("disabled", 'disabled');
-                    $('#max_geo').attr("disabled", 'disabled');
+                    $('#max_geo').attr("disabled", 'disabled')
+                    $('#min_combined').attr("disabled", 'disabled');
+                    $('#max_combined').attr("disabled", 'disabled');
                 } else {
                     if (data['functional_homogeneity_info_is_available'] == 0){
                         $('#min_func').attr("disabled", 'disabled');
@@ -347,6 +349,10 @@ function switchUserInterfaceMode(project, title) {
                     if (data['geometric_homogeneity_info_is_available'] == 0){
                         $('#min_geo').attr("disabled", 'disabled');
                         $('#max_geo').attr("disabled", 'disabled');
+                    }
+                    if (data['combined_homogeneity_info_is_available'] == 0){
+                        $('#min_combined').attr("disabled", 'disabled');
+                        $('#max_combined').attr("disabled", 'disabled');
                     }
                 }
             }

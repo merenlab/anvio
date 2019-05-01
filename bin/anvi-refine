@@ -55,6 +55,10 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
+    groupC.add_argument(*anvio.A('tree'), **anvio.K('tree'))
+    groupC.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering', {'help':
+                                    'Skip hierarchical clustering for the splits in the refined bin, if you skip clustering \
+                                    you need to provide your own newick formatted tree using --tree parameter.'}))
     groupC.add_argument(*anvio.A('load-full-state'), **anvio.K('load-full-state'))
     groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
     groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))

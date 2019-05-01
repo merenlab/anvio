@@ -93,10 +93,10 @@ class COGs:
         if self.search_with not in self.available_db_search_program_targets:
             raise ConfigError("Anvi'o understands that you want to use '%s' to search for COGs, however, there is no\
                                database formatted under the COGs data directory for that program :/ You may need to\
-                               re-run the COGs setup, UNLESS, you set up your COG data directory somewhere else than what\
-                               anvi'o attempts to use at the moment ('%s'). If that is the case, this may be the best\
-                               time to point the right directory using the --cog-data-dir parameter, or the environmental\
-                               variable 'ANVIO_COG_DATA_DIR'." % (self.search_with, self.COG_data_dir))
+                               re-run the COGs setup (anvi-setup-ncbi-cogs), UNLESS, you set up your COG data directory \
+                               somewhere else than what anvi'o attempts to use at the moment ('%s'). If that is the case, \
+                               this may be the best time to point the right directory using the --cog-data-dir parameter, \
+                               or the environmental variable 'ANVIO_COG_DATA_DIR'." % (self.search_with, self.COG_data_dir))
 
         if not aa_sequences_file_path and not self.contigs_db_path:
             raise ConfigError("You either need to provide an anvi'o contigs database path, or a FASTA file for AA\
@@ -163,7 +163,10 @@ class COGs:
 
         # let's keep track of hits that match to missing COGs
         hits_for_missing_cogs = 0
+        hits_for_missing_ncbi_protein_ids = 0
+
         missing_cogs_found = set([])
+        missing_ncbi_protein_ids_found = set([])
 
         for gene_callers_id in self.hits:
             ncbi_protein_id = self.hits[gene_callers_id]['hit']
@@ -171,8 +174,11 @@ class COGs:
             in_proteins_FASTA_not_in_cogs_CSV = []
             if ncbi_protein_id not in cogs_data.p_id_to_cog_id:
                 in_proteins_FASTA_not_in_cogs_CSV.append((ncbi_protein_id, gene_callers_id),)
-            else:
-                COG_ids = cogs_data.p_id_to_cog_id[ncbi_protein_id]
+                missing_ncbi_protein_ids_found.add(ncbi_protein_id)
+                hits_for_missing_ncbi_protein_ids += 1
+                continue
+
+            COG_ids = cogs_data.p_id_to_cog_id[ncbi_protein_id]
 
             annotations = []
             categories = set([])
@@ -205,6 +211,15 @@ class COGs:
             self.run.warning('Although your COGs are successfully added to the database, there were some COG IDs your genes hit\
                               were among the ones that were not described in the raw data. Here is the list of %d COG IDs that\
                               were hit %d times: %s.' % (len(missing_cogs_found), hits_for_missing_cogs, ', '.join(missing_cogs_found)))
+
+        if len(missing_ncbi_protein_ids_found):
+            self.run.warning("Well. Your COGs were successfully added to the database, but there were some garbage anvi'o brushed\
+                              off under the rug. There were %d genes in your database that hit %d protein IDs in NCBIs COGs database,\
+                              but since NCBI did not release what COGs they correspond to in the database they made available (that\
+                              helps us to resolve protein IDs to COG ids), we could not annotate those genes with functions. Anvi'o\
+                              apologizes on behalf of all computer scientists for half-done stuff we often force biologists to deal\
+                              with. If you want to do some Googling, these were the offending protein IDs: '%s'." % \
+                                        (hits_for_missing_ncbi_protein_ids, len(missing_ncbi_protein_ids_found), ', '.join([str(s) for s in missing_ncbi_protein_ids_found])))
 
         if len(in_proteins_FASTA_not_in_cogs_CSV):
             # so some of the hits represented in the FASTA file from the NCBI were not put in the

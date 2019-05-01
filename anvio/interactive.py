@@ -97,6 +97,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.collection_name = A('collection_name')
         self.gene_mode = A('gene_mode')
         self.inspect_split_name = A('split_name')
+        self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
+
 
         if self.pan_db_path and self.profile_db_path:
             raise ConfigError("You can't set both a profile database and a pan database in arguments\
@@ -269,7 +271,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
-        default_item_order = self.p_meta['item_orders'][self.p_meta['default_item_order']]
+        if self.p_meta['default_item_order']:
+            default_item_order = self.p_meta['item_orders'][self.p_meta['default_item_order']]
+        else:
+            default_item_order = self.p_meta['item_orders'][self.p_meta['available_item_orders'][0]]
+
         if default_item_order['type'] == 'newick':
             self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_item_order['data'], reverse=True)
         elif default_item_order['type'] == 'basic':
@@ -723,15 +729,26 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Number of bins', len(self.bins))
         self.run.info('Number of splits', len(self.split_names_of_interest))
 
-        item_orders = self.cluster_splits_of_interest()
-        default_clustering_class = constants.merged_default if self.is_merged else constants.single_default
+        if not self.skip_hierarchical_clustering:
+            item_orders = self.cluster_splits_of_interest()
+            default_clustering_class = constants.merged_default if self.is_merged else constants.single_default
 
-        default_item_order = dbops.get_default_item_order_name(default_clustering_class, item_orders)
+            default_item_order = dbops.get_default_item_order_name(default_clustering_class, item_orders)
+        else:
+            # even though we do not generate any hierarchical clustering,
+            # we need to clear these, otherwise full mode trees will appear.
+            item_orders = {}
+            default_item_order = None
 
         self.item_orders = item_orders
         self.p_meta['item_orders'] = item_orders
         self.p_meta['available_item_orders'] = list(self.item_orders.keys())
         self.p_meta['default_item_order'] = default_item_order
+        
+        self.add_user_tree()
+
+        if self.skip_hierarchical_clustering and not self.tree:
+            raise ConfigError("You wanted to skip hierarchical clustering but did not provided any newick file.")
 
         self.collections = ccollections.Collections()
         self.collections.populate_collections_dict(self.profile_db_path)
@@ -1314,10 +1331,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                                               ', '.join(bad_bin_names)
                                                              ))
 
+        collections = TablesForCollections(self.profile_db_path)
+
         # remove bins that should be updated in the database:
         for bin_id in self.ids_for_already_refined_bins:
-            collection_dict.pop(bin_id)
-            bins_info_dict.pop(bin_id)
+            collections.delete_bin(self.collection_name, bin_id)
 
         # zero it out
         self.ids_for_already_refined_bins = set([])
@@ -1332,18 +1350,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             run.info_single('')
 
         for bin_id in refined_bin_data:
-            collection_dict[bin_id] = refined_bin_data[bin_id]
-            bins_info_dict[bin_id] = refined_bins_info_dict[bin_id]
             self.ids_for_already_refined_bins.add(bin_id)
-
 
         if anvio.DEBUG:
             run.info('resulting collection', collection_dict)
             run.info('resulting bins info', bins_info_dict)
             run.info_single('')
 
-        collections = TablesForCollections(self.profile_db_path)
-        collections.append(self.collection_name, collection_dict, bins_info_dict)
+        collections.append(self.collection_name, refined_bin_data, refined_bins_info_dict, drop_collection=False)
 
         run.info_single('"%s" collection is updated!' % self.collection_name)
 
@@ -1784,6 +1798,9 @@ class StructureInteractive(VariabilitySuper):
         if available_gene_caller_ids is "" and available_genes_path is "":
             available_gene_caller_ids = self.available_gene_caller_ids
             available_genes_path = self.available_genes_path
+
+        if available_gene_caller_ids:
+            available_gene_caller_ids = [int(gene) for gene in available_gene_caller_ids.split(',')]
 
         # method inherited from VariabilitySuper
         requested_available_genes = self.get_genes_of_interest(available_genes_path, available_gene_caller_ids)
