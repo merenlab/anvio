@@ -11,7 +11,7 @@ import platform
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '5.5'
+anvio_version = '5.5-master'
 anvio_codename = 'margaret'
 
 DEBUG = '--debug' in sys.argv
