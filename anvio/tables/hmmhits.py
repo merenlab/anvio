@@ -83,7 +83,7 @@ class TablesForHMMHits(Table):
             class Args: pass
             args = Args()
             args.contigs_db = self.db_path
-            contigs_db = ContigsSuperclass(args)
+            contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False))
 
             if context == 'GENE':
                 target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
@@ -258,7 +258,7 @@ class TablesForHMMHits(Table):
 
             gene_call = self.gene_calls_dict[hit['gene_callers_id']]
 
-            hit['gene_unique_identifier'] = hashlib.sha224('_'.join([self.contigs_db_hash,
+            hit['gene_unique_identifier'] = hashlib.sha224('_'.join([str(self.contigs_db_hash),
                                                                      gene_call['contig'],
                                                                      hit['gene_name'],
                                                                      str(gene_call['start']),
