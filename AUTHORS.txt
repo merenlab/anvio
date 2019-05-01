@@ -7,6 +7,7 @@ Alon Shaiber (alon.shaiber at gmail dot com)
 Evan Kiefl (kiefl.evan at gmail dot com)
 Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
 Andrea Watson (andreawatson at uchicago dot edu)
+Emily Fogarty (efogarty at uchicago dot edu)
 
 ===============================================================================
 Developers and contributors at large

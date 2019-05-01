@@ -8,8 +8,8 @@ import sys
 import anvio
 import anvio.db as db
 import anvio.utils as utils
-import anvio.filesnpaths as filesnpaths
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -46,9 +46,7 @@ def main(args):
 
     run.info('Database', '"%s" has been initiated with its %d tables.' % (args.db_path, len(tables_in_database)))
 
-    table_content = database.get_table_as_dict(args.table)
     table_columns = database.get_table_structure(args.table)
-    run.info('Table', '"%s" has been read with %d entries and %d columns.' % (args.table, len(table_content), len(table_columns)))
 
     if args.list:
         run.info('Table columns', '"%s"' % ', '.join(table_columns))
@@ -63,11 +61,14 @@ def main(args):
 
         run.info('Columns to report', '"%s"' % ', '.join(table_columns))
 
+    table_content = database.get_table_as_dataframe(args.table, columns_of_interest=table_columns)
+
+    run.info('Table', '"%s" has been read with %d entries and %d columns.' % (args.table, len(table_content), len(table_columns)))
 
     if not args.output_file:
         args.output_file = args.table + '.txt'
 
-    utils.store_dict_as_TAB_delimited_file(table_content, args.output_file, table_columns)
+    utils.store_dataframe_as_TAB_delimited_file(table_content, args.output_file)
     run.info('Output', args.output_file)
 
 

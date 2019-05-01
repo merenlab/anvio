@@ -34,8 +34,10 @@ class TablesForCollections(Table):
     """Populates the collections_* tables, where collections of bins of contigs and splits are kept"""
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
+        self.version = utils.get_required_version_for_db(db_path)
+        self.run = run
 
-        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run, progress)
+        Table.__init__(self, self.db_path, self.version, run, progress)
 
         # set these dudes so we have access to unique IDs:
         self.set_next_available_id(t.collections_bins_info_table_name)
@@ -50,7 +52,21 @@ class TablesForCollections(Table):
         self.delete_entries_for_key('collection_name', collection_name, [t.collections_info_table_name, t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_bins_info_table_name])
 
 
-    def append(self, collection_name, collection_dict, bins_info_dict={}):
+    def delete_bin(self, collection_name, bin_name):
+        database = db.DB(self.db_path, self.version)
+        tables_to_clear = [t.collections_contigs_table_name, t.collections_splits_table_name, t.collections_bins_info_table_name]
+
+        for table_name in tables_to_clear:
+            database._exec('''DELETE FROM %s WHERE collection_name = "%s" AND \
+                                                   bin_name = "%s"''' % (table_name, collection_name, bin_name))
+
+        self.run.warning('All previous entries for "%s" of "%s" is being removed from "%s"' % 
+                        (bin_name,collection_name, ', '.join(tables_to_clear)))
+
+        database.disconnect()
+
+
+    def append(self, collection_name, collection_dict, bins_info_dict={}, drop_collection=True):
         utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
 
         for bin_name in collection_dict:
@@ -62,8 +78,9 @@ class TablesForCollections(Table):
                                     They do not have to be identical, but for each bin id, there must be a unique\
                                     entry in the bins informaiton dict. There is something wrong with your input :/')
 
-        # remove any pre-existing information for 'collection_name'
-        self.delete(collection_name)
+        if drop_collection:
+            # remove any pre-existing information for 'collection_name'
+            self.delete(collection_name)
 
         num_splits_in_collection_dict = sum([len(splits) for splits in list(collection_dict.values())])
         splits_in_collection_dict = set(list(chain.from_iterable(list(collection_dict.values()))))
@@ -77,9 +94,10 @@ class TablesForCollections(Table):
         # how many clusters are defined in 'collection_dict'?
         bin_names = list(collection_dict.keys())
 
-        # push information about this search result into serach_info table.
-        db_entries = tuple([collection_name, num_splits_in_collection_dict, len(bin_names), ','.join(bin_names)])
-        database._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_info_table_name, db_entries)
+        if drop_collection:
+            # push information about this search result into serach_info table.
+            db_entries = tuple([collection_name, num_splits_in_collection_dict, len(bin_names), ','.join(bin_names)])
+            database._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_info_table_name, db_entries)
 
         if not bins_info_dict:
             colors = utils.get_random_colors_dict(bin_names)
@@ -127,15 +145,22 @@ class TablesForCollections(Table):
 
         num_bins = len(bin_names)
         num_bins_to_report = 50
-        if num_bins <= num_bins_to_report:
+        if not drop_collection:
+            bins_to_report = bin_names
+            bin_report_msg = "Here is a full list of the bin names added to this collection: {}.".format(",".join(bins_to_report))
+        elif num_bins <= num_bins_to_report:
             bins_to_report = bin_names
             bin_report_msg = "Here is a full list of the bin names in this collection: {}.".format(",".join(bins_to_report))
         else:
             bins_to_report = bin_names[:num_bins_to_report]
             bin_report_msg = "Here is a list of the first {} bin names in this collection: {}.".format(num_bins_to_report, ",".join(bins_to_report))
 
-        self.run.info('Collections', 'The collection "%s" that describes %s splits and %s bins has been successfully added to the\
-                                      database at "%s". %s' % (collection_name, pp(num_splits), pp(num_bins), self.db_path, bin_report_msg), mc='green')
+        if drop_collection:
+            self.run.info('Collections', 'The collection "%s" that describes %s splits and %s bins has been successfully added to the\
+                                          database at "%s". %s' % (collection_name, pp(num_splits), pp(num_bins), self.db_path, bin_report_msg), mc='green')
+        else:
+            self.run.info('Collections', 'The existing collection "%s" updated, %s splits and %s bins has been successfully added to the\
+                                          database at "%s". %s' % (collection_name, pp(num_splits), pp(num_bins), self.db_path, bin_report_msg), mc='green')
 
 
     def process_contigs(self, collection_name, collection_dict):

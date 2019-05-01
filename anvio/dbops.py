@@ -911,6 +911,7 @@ class PanSuperclass(object):
         k = TableForItemAdditionalData(self.args).get_available_data_keys()
         self.functional_homogeneity_info_is_available = 'functional_homogeneity_index' in k
         self.geometric_homogeneity_info_is_available = 'geometric_homogeneity_index' in k
+        self.combined_homogeneity_info_is_available = 'combined_homogeneity_index' in k
 
         self.num_gene_clusters = None
         self.num_genes_in_gene_clusters = None
@@ -971,8 +972,9 @@ class PanSuperclass(object):
 
         F = lambda x: '[YES]' if x else '[NO]'
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
-        self.run.info('Gene cluster homogeneity estimates', 'Functional: %s; Geometric: %s' % \
-                         (F(self.functional_homogeneity_info_is_available), F(self.geometric_homogeneity_info_is_available)),
+        self.run.info('Gene cluster homogeneity estimates', 'Functional: %s; Geometric: %s; Combined: %s' % \
+                         (F(self.functional_homogeneity_info_is_available), F(self.geometric_homogeneity_info_is_available),
+                          F(self.combined_homogeneity_info_is_available)),
                       mc="cyan")
 
 
@@ -1112,7 +1114,8 @@ class PanSuperclass(object):
                 homogeneity_dict = output_queue.get()
                 if homogeneity_dict:
                     results_dict[homogeneity_dict['gene cluster']] = {'functional_homogeneity_index': homogeneity_dict['functional'],
-                                                                      'geometric_homogeneity_index': homogeneity_dict['geometric']}
+                                                                      'geometric_homogeneity_index': homogeneity_dict['geometric'],
+                                                                      'combined_homogeneity_index': homogeneity_dict['combined']}
 
                 received_gene_clusters += 1
                 self.progress.increment(increment_to=received_gene_clusters)
@@ -1143,7 +1146,7 @@ class PanSuperclass(object):
             gene_cluster[gene_cluster_name] = gene_clusters_dict[gene_cluster_name]
 
             try:
-                funct_index, geo_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
+                funct_index, geo_index, combined_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
             except:
                 run.warning("Homogeneity indices computation for gene cluster %s failed. This can happen due to one of three reasons: \
                              (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted into the input \
@@ -1154,10 +1157,12 @@ class PanSuperclass(object):
                              analysis." % gene_cluster_name)
                 funct_index[gene_cluster_name] = -1
                 geo_index[gene_cluster_name] = -1
+                combined_index[gene_cluster_name] = -1
 
             indices_dict['gene cluster'] = gene_cluster_name
             indices_dict['functional'] = funct_index[gene_cluster_name]
             indices_dict['geometric'] = geo_index[gene_cluster_name]
+            indices_dict['combined'] = combined_index[gene_cluster_name]
 
             output_queue.put(indices_dict)
 
@@ -1521,7 +1526,7 @@ class PanSuperclass(object):
     def filter_gene_clusters_from_gene_clusters_dict(self, gene_clusters_dict, min_num_genomes_gene_cluster_occurs=0,
              max_num_genomes_gene_cluster_occurs=sys.maxsize, min_num_genes_from_each_genome=0, max_num_genes_from_each_genome=sys.maxsize,
              min_functional_homogeneity_index=-1, max_functional_homogeneity_index=1, min_geometric_homogeneity_index=-1,
-             max_geometric_homogeneity_index=1):
+             max_geometric_homogeneity_index=1, min_combined_homogeneity_index=-1, max_combined_homogeneity_index=1):
         """This takes in your `gene_clusters_dict`, and removes gene_clusters based on their occurrences across genomes.
 
            The `min_num_genomes_gene_cluster_occurs` parameter defines what is the minimum number of genomes you want a gene to
@@ -1568,6 +1573,15 @@ class PanSuperclass(object):
                 min_geometric_homogeneity_index = -1
                 max_geometric_homogeneity_index = 1
 
+        if not self.combined_homogeneity_info_is_available:
+            if min_combined_homogeneity_index != -1 or max_combined_homogeneity_index != 1:
+                self.run.warning("You are trying to filter your gene clusters by combined homogeneity, when your pan database does not\
+                                  include information about combined homogeneity. You can always compute this index for all of your \
+                                  gene clusters using 'anvi-compute-gene-cluster-homogeneity', but anvi'o will override your decision for now.\
+                                  You will not be able to filter your gene clusters by combined homogeneity at this time.")
+                min_combined_homogeneity_index = -1
+                max_combined_homogeneity_index = 1
+
         if min_num_genomes_gene_cluster_occurs < 0 or max_num_genomes_gene_cluster_occurs < 0:
             raise ConfigError("When you ask for a negative value for the the minimum or maximum number of genomes a gene cluster is expected\
                                to be found, you are pushing the boundaries of physics instead of biology. Let's focus on one field of science\
@@ -1596,6 +1610,18 @@ class PanSuperclass(object):
             if max_functional_homogeneity_index < min_functional_homogeneity_index or max_geometric_homogeneity_index < min_geometric_homogeneity_index:
                 raise ConfigError("Please. Check your parameters. Make sure that minimum values are less than (or equal to) maximum values. We beg you")
 
+        if self.combined_homogeneity_info_is_available:
+            if min_combined_homogeneity_index < 0 and min_combined_homogeneity_index != -1:
+                raise ConfigError("The combined homogeneity index have a mininum value of 0, along with an error value of -1. You can either ask for\
+                                   values of 0 or greater, or put in '-1'. These are hard limits.")
+
+            if max_combined_homogeneity_index > 1:
+                raise ConfigError("The combined homogeneity index has a maximum possible value of 1. Your parameters exceed this hard upper limit.\
+                                   Please check your parameters.")
+
+            if max_combined_homogeneity_index < min_combined_homogeneity_index:
+                raise ConfigError("Please. Check your parameters. Make sure that minimum values are less than (or equal to) maximum values. We beg you")
+
         all_genomes = self.get_all_genome_names_in_gene_clusters_dict(gene_clusters_dict)
 
         if max_num_genomes_gene_cluster_occurs == sys.maxsize:
@@ -1610,8 +1636,11 @@ class PanSuperclass(object):
                                that is not what you're doing." % (len(all_genomes), min_num_genomes_gene_cluster_occurs))
 
         gene_cluster_occurrences_accross_genomes, num_genes_contributed_per_genome = self.get_basic_gene_clusters_stats(gene_clusters_dict)
-        if self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available:
+        if self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available and not self.combined_homogeneity_info_is_available:
             homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index'])
+        elif self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available and self.combined_homogeneity_info_is_available:
+            homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
+        
 
         gene_clusters_to_remove = set([])
         all_gene_clusters = set(list(gene_cluster_occurrences_accross_genomes.keys()))
@@ -1635,13 +1664,26 @@ class PanSuperclass(object):
                 if homogeneity_dict[gene_cluster_name]['geometric_homogeneity_index'] < min_geometric_homogeneity_index or homogeneity_dict[gene_cluster_name]['geometric_homogeneity_index'] > max_geometric_homogeneity_index:
                     gene_clusters_to_remove.add(gene_cluster_name)
                     continue
+
             except:
                 if min_functional_homogeneity_index == -1 and max_functional_homogeneity_index == 1 and min_geometric_homogeneity_index == -1 and max_geometric_homogeneity_index == 1:
                     continue #No need to raise an error if the parameters are default/all at their bounds
 
-                raise ConfigError("Bad news: anvi'o was unable to retrieve homogeneity indices for gene cluster %s. This could be because homogeneity was not \
-                                   computed for this gene cluster when the pangenomic analysis was created. The good news is that you can fix that!\
-                                   Take a look at the anvi-compute-gene-cluster-homogeneity script")
+                raise ConfigError("Bad news: anvi'o was unable to retrieve functional and geometric homogeneity indices for gene cluster %s. This could be because \
+                                   functional and geometric homogeneity was not computed for this gene cluster when the pangenomic analysis was created. \
+                                   The good news is that you can fix that! Take a look at the anvi-compute-gene-cluster-homogeneity script" % gene_cluster_name)
+
+            try:
+                if homogeneity_dict[gene_cluster_name]['combined_homogeneity_index'] < min_combined_homogeneity_index or homogeneity_dict[gene_cluster_name]['combined_homogeneity_index'] > max_combined_homogeneity_index:
+                        gene_clusters_to_remove.add(gene_cluster_name)
+                        continue
+            except:
+                if min_combined_homogeneity_index == -1  and max_combined_homogeneity_index == 1:
+                    continue
+                raise ConfigError("Bad news: anvi'o was unable to retrieve the combined homogeneity index for gene cluster %s. This could be because combined homogeneity was not \
+                                       computed for this gene cluster when the pangenomic analysis was created. The good news is that you can fix that!\
+                                       Take a look at the anvi-compute-gene-cluster-homogeneity script" % gene_cluster_name)
+
 
         gene_clusters_to_keep = all_gene_clusters.difference(gene_clusters_to_remove)
 
@@ -1649,22 +1691,26 @@ class PanSuperclass(object):
             raise ConfigError("Bad news: the combination of your filters resulted in zero gene clusters :/ These are the filtesr anvi'o used: --min-num-genomes-gene-cluster-occurs %(min_oc)d,\
                                --max-num-genomes-gene-cluster-occurs %(max_oc)d, --min-num-genes-from-each-genome %(min_g)d, --max-num-genes-from-each-genome %(max_g)d, \
                                --min-functional-homogeneity-index %(min_fh)f, --max-functional-homogeneity-index %(max_fh)f, --min-geometric-homogeneity-index %(min_gh)f, \
-                               and --max-geometric-homogeneity-index %(max_gh)f. None of your %(all_gcs)d gene clusters in your %(all_gs)d genomes that were included this analysis \
-                               matched to this combination (please note that number of genomes may be smaller than the actual number of genomes in the original pan genome \
+                               --max-geometric-homogeneity-index %(max_gh)f, --min-combined-homogeneity-index %(min_ch)f, and --max-combined-homogeneity-index %(max_ch)f. \
+                               None of your %(all_gcs)d gene clusters in your %(all_gs)d genomes that were included this analysis matched to this combination \
+                               (please note that number of genomes may be smaller than the actual number of genomes in the original pan genome \
                                if other filters were applied to the gene clusters dictionary prior)." % \
                                             {'min_oc': min_num_genomes_gene_cluster_occurs, 'max_oc': max_num_genomes_gene_cluster_occurs,
                                              'min_g': min_num_genes_from_each_genome, 'max_g': max_num_genes_from_each_genome,
                                              'min_fh': min_functional_homogeneity_index, 'max_fh': max_functional_homogeneity_index,
                                              'min_gh': min_geometric_homogeneity_index, 'max_gh': max_geometric_homogeneity_index,
+                                             'min_ch': min_combined_homogeneity_index, 'max_ch': max_combined_homogeneity_index,
                                              'all_gcs': len(all_gene_clusters), 'all_gs': len(all_genomes)})
 
         msg = "Based on --min-num-genomes-gene-cluster-occurs %d, --max-num-genomes-gene-cluster-occurs %d, \
                --min-num-genes-from-each-genome %d, --max-num-genes-from-each-genome %d, --min-functional-homogeneity-index %0.3f, \
-               --max-functional-homogeneity-index %0.3f, --min-geometric-homogeneity-index %0.3f, and \
-               --max-geometric-homogeneity-index %0.3f (some of these may be default values, no need to panic)." \
+               --max-functional-homogeneity-index %0.3f, --min-geometric-homogeneity-index %0.3f,  \
+               --max-geometric-homogeneity-index %0.3f, --min-combined-homogeneity-index %0.3f,  \
+               --max-combined-homogeneity-index %0.3f (some of these may be default values, no need to panic)." \
                             % (min_num_genomes_gene_cluster_occurs, max_num_genomes_gene_cluster_occurs,
                                min_num_genes_from_each_genome, max_num_genes_from_each_genome, min_functional_homogeneity_index,
-                               max_functional_homogeneity_index, min_geometric_homogeneity_index, max_functional_homogeneity_index)
+                               max_functional_homogeneity_index, min_geometric_homogeneity_index, max_functional_homogeneity_index,
+                               min_combined_homogeneity_index, max_combined_homogeneity_index)
 
         # Baris Metin: lambda functions are ugly.
         # Meren Urat : YOU'RE UGLY :(
@@ -1786,6 +1832,8 @@ class PanSuperclass(object):
         max_functional_homogeneity_index = A('max_functional_homogeneity_index')
         min_geometric_homogeneity_index = A('min_geometric_homogeneity_index')
         max_geometric_homogeneity_index = A('max_geometric_homogeneity_index')
+        min_combined_homogeneity_index = A('min_combined_homogeneity_index')
+        max_combined_homogeneity_index = A('max_combined_homogeneity_index')
         add_into_items_additional_data_table = A('add_into_items_additional_data_table')
         gene_clusters_names_of_interest = A('gene_clusters_names_of_interest')
         just_do_it = A('just_do_it')
@@ -1812,7 +1860,9 @@ class PanSuperclass(object):
                                                                       min_functional_homogeneity_index,
                                                                       max_functional_homogeneity_index,
                                                                       min_geometric_homogeneity_index,
-                                                                      max_geometric_homogeneity_index)
+                                                                      max_geometric_homogeneity_index,
+                                                                      min_combined_homogeneity_index,
+                                                                      max_combined_homogeneity_index)
 
         # this is where we add the items in the resulting filtered dict into the items additonal data
         # table:
@@ -2916,19 +2966,10 @@ class PanDatabase:
         else:
             self.db = None
 
-
-    def create(self, meta_values={}):
+    def touch(self):
         is_db_ok_to_create(self.db_path, 'pan')
 
         self.db = db.DB(self.db_path, anvio.__pan__version__, new_database=True)
-
-        for key in meta_values:
-            self.db.set_meta_value(key, meta_values[key])
-
-        self.db.set_meta_value('creation_date', time.time())
-
-        # know thyself
-        self.db.set_meta_value('db_type', 'pan')
 
         # creating empty default tables for pan specific operations:
         self.db.create_table(t.pan_gene_clusters_table_name, t.pan_gene_clusters_table_structure, t.pan_gene_clusters_table_types)
@@ -2944,6 +2985,20 @@ class PanDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+
+        return self.db
+
+
+    def create(self, meta_values={}):
+        self.touch()
+
+        for key in meta_values:
+            self.db.set_meta_value(key, meta_values[key])
+
+        self.db.set_meta_value('creation_date', time.time())
+
+        # know thyself
+        self.db.set_meta_value('db_type', 'pan')
 
         self.disconnect()
 
