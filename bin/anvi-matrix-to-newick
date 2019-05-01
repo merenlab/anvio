@@ -55,9 +55,9 @@ if __name__ == '__main__':
                               output newick dendrogram.")
 
     groupC = parser.add_argument_group('SWEETS', 'Additional options')
-    parser.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
-    parser.add_argument(*anvio.A('distance'), **anvio.K('distance'))
-    parser.add_argument(*anvio.A('linkage'), **anvio.K('linkage'))
+    groupC.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
+    groupC.add_argument(*anvio.A('distance'), **anvio.K('distance'))
+    groupC.add_argument(*anvio.A('linkage'), **anvio.K('linkage'))
 
     try:
         args = anvio.get_args(parser)
