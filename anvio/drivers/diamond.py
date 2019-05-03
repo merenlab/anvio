@@ -44,8 +44,6 @@ class Diamond:
 
         if not self.target_fasta:
             self.target_fasta = self.query_fasta
-        elif self.target_db_path:
-            self.target_fasta = self.target_db_path
 
         self.search_output_path = 'diamond-search-results'
         self.tabular_output_path = 'diamond-search-results.txt'
