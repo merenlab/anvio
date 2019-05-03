@@ -392,6 +392,8 @@ class GetReadsFromBAM:
 
 
     def init(self):
+        utils.is_contigs_db(self.contigs_db_path)
+
         self.run.info('Input BAM file(s)', ', '.join([os.path.basename(f) for f in self.input_bam_files]))
 
         d = ccollections.GetSplitNamesInBins(self.args).get_dict()
