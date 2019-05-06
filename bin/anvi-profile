@@ -53,7 +53,7 @@ if __name__ == '__main__':
     groupM.add_argument(*anvio.A('skip-SNV-profiling'), **anvio.K('skip-SNV-profiling'))
     groupM.add_argument(*anvio.A('profile-SCVs'), **anvio.K('profile-SCVs'))
     groupM.add_argument(*anvio.A('description'), **anvio.K('description'))
-    groupM.add_argument(*anvio.A('include-orphans'), **anvio.K('include-orphans'))
+    groupM.add_argument(*anvio.A('ignore-orphans'), **anvio.K('ignore-orphans'))
     groupX.add_argument(*anvio.A('cluster-contigs'), **anvio.K('cluster-contigs'))
     groupX.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))
     groupX.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
