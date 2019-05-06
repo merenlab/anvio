@@ -87,7 +87,7 @@ class Contig:
         self.min_coverage_for_variability = 10
         self.skip_SNV_profiling = False
         self.report_variability_full = False
-        self.ignore_orphans = True
+        self.ignore_orphans = False
         self.max_coverage_depth = constants.max_depth_for_coverage
         self.codon_frequencies_dict = {}
 
@@ -168,7 +168,7 @@ class Auxiliary:
     def __init__(self, split, bam, parent_outlier_positions, 
                  min_coverage=10, 
                  report_variability_full=False, 
-                 ignore_orphans=True,
+                 ignore_orphans=False,
                  max_coverage_depth=constants.max_depth_for_coverage):
         self.v = []
         self.rep_seq = ''

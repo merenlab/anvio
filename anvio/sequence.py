@@ -150,7 +150,7 @@ class Coverage:
         self.mean_Q2Q3 = 0.0
 
 
-    def run(self, bam, split, ignore_orphans=True, max_coverage_depth=constants.max_depth_for_coverage):
+    def run(self, bam, split, ignore_orphans=False, max_coverage_depth=constants.max_depth_for_coverage):
         coverage_profile = {}
 
         for pileupcolumn in bam.pileup(split.parent, split.start, split.end, 
