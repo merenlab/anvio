@@ -37,8 +37,8 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
     README = readme.read()
 
-include_dirs_for_concoct = [numpy.get_include(), '/opt/local/include/', '/usr/local/include/']
-library_dirs_for_concoct = ['/opt/local/lib/', '/usr/local/lib/']
+include_dirs_for_concoct = [numpy.get_include(), '/opt/local/include/', '/usr/local/include/', '/usr/include/']
+library_dirs_for_concoct = ['/opt/local/lib/', '/usr/local/lib/', '/usr/lib/']
 
 setup(
     name = "anvio",
