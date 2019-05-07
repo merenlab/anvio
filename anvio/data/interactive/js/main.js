@@ -220,10 +220,16 @@ function initData() {
             item_lengths = response.item_lengths;
 
             var default_tree  = response.item_orders[0];
+            var default_order = response.item_orders[1];
             var available_trees = response.item_orders[2];
             $('#trees_container').append(getComboBoxContent(default_tree, available_trees));
-            clusteringData = response.item_orders[1]['data'];
-            loadOrderingAdditionalData(response.item_orders[1]);
+            clusteringData = default_order['data'];
+
+            if (default_order.hasOwnProperty('additional')) {
+                default_order['additional'] = JSON.parse(default_order['additional']);
+            }
+
+            loadOrderingAdditionalData(default_order);
 
 
             var default_view = response.views[0];
