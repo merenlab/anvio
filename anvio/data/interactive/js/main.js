@@ -915,7 +915,11 @@ function loadOrderingAdditionalData(order) {
     collapsedNodes = [];
     
     if (order.hasOwnProperty('additional')) {
-        let orders_additional = JSON.parse(order['additional']);
+        let orders_additional = order['additional'];
+
+        if (typeof orders_additional === 'string') {
+            orders_additional = JSON.parse(orders_additional);
+        }
 
         if (orders_additional.hasOwnProperty('collapsedNodes')) {
             collapsedNodes = orders_additional['collapsedNodes'];
