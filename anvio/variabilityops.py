@@ -819,7 +819,11 @@ class VariabilitySuper(VariabilityFilter, object):
             # this or down below will explode one day. the current implementation of this module
             # contains serious design flaws :( when this explodes and we are lost how to fix it,
             # perhaps it will be a good time to rewrite this entire thing.
-            splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in (self.genes_of_interest or self.gene_caller_ids)]))
+            # Edit: it exploded slightly :( I am ashamed of this code
+            try:
+                splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in (self.genes_of_interest or self.gene_caller_ids)]))
+            except KeyError as e:
+                raise ConfigError("Some of the gene caller IDs you provided are not in your contigs database...")
 
         elif split_source == "bin_id":
             if self.collection_name and not self.bin_id:
