@@ -37,6 +37,7 @@ class Diamond:
 
         self.tmp_dir = tempfile.gettempdir()
         self.evalue = 1e-05
+        self.min_pct_id = None
         self.max_target_seqs = 100000
 
         self.query_fasta = query_fasta
@@ -128,6 +129,9 @@ class Diamond:
         if self.max_target_seqs:
             cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
 
+        if self.min_pct_id:
+            cmd_line.extend(['--id', self.min_pct_id])
+
         if self.evalue:
             cmd_line.extend(['--evalue', self.evalue])
 
@@ -158,6 +162,9 @@ class Diamond:
 
         if self.max_target_seqs:
             cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
+
+        if self.min_pct_id:
+            cmd_line.extend(['--id', self.min_pct_id])
 
         if self.evalue:
             cmd_line.extend(['--evalue', self.evalue])
