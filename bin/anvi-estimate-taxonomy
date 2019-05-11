@@ -170,66 +170,12 @@ class SCGTaxonomy:
                 if anvio.DEBUG:
                     self.show_hits(bin_name, gene_name, hits)
 
-                #if anvio.DEBUG:
-                    #tab recap score_by_entry like :
-                    #self.show_hits(bin_name, gene_name, hits)
-            score_by_entry, number_of_matching_genes = self.get_cumul_hit_per_gene(hits_per_gene)
-            get_consensus_taxonomy=self.get_consensus_taxonomy(score_by_entry,\
-             number_of_matching_genes,hits_per_gene[gene_name])
+            consensus_taxonomy = self.get_consensus_taxonomy(hits_per_gene)
 
 
-    def get_cumul_hit_per_gene(self,hits_per_gene):
-        """add bitscore of eatch blast per query"""
-
-        cumul_hit_per_gene={}
-
-        matching_genes=[gene for gene in hits_per_gene if len(hits_per_gene[gene])]
-
-        self.run.info('SCGs with match(s)', ', '.join(matching_genes))
-        number_of_matching_genes=len(matching_genes)
-        for matching_gene in matching_genes:
-
-            for entry in hits_per_gene[matching_gene]:
-
-                    if entry["accession"] not in cumul_hit_per_gene:
-                        cumul_hit_per_gene[entry['accession']]=float(entry['bitscore'])
-                    else:
-                        cumul_hit_per_gene[entry['accession']]=\
-                        float(cumul_hit_per_gene[entry['accession']])\
-                        +float(entry['bitscore'])
-
-        return cumul_hit_per_gene, number_of_matching_genes
-
-    def get_consensus_taxonomy(self, score_by_entry, number_of_matching_genes,hits_per_gene):
-
-        for query in  score_by_entry.keys():
-            maxscore=(max(score_by_entry.values()))/number_of_matching_genes
-            # temporary
-            taxo1=""
-            taxo2=""
-            for code, score in sorted(score_by_entry.items(), key=lambda x: (-x[1], x[0])):
-
-                #add option of %
-                if (float(score)/number_of_matching_genes)<(float(maxscore)*0.70):
-
-                    break
-
-                else:
-
-                    print (code, (score/number_of_matching_genes))
-                    if taxo1=="":
-                        taxo1=self.taxonomy_dict[code]
-                    else:
-                        taxo2=self.taxonomy_dict[code]
-                        #return list ........ creat db for taxonomy
-                        taxo1=set(taxo1.values()).intersection(set(taxo2.values()))
-            else:
-                if taxo1=="":
-                    taxo1="N/A"
-                    break
-                else:
-                    break
-            print(str(query)+"\t"+str(taxo1))
+    def get_consensus_taxonomy(self, hits_per_gene):
+        # do something with hits per gene
+        pass
 
 
     def get_raw_blast_hits(self, d, max_target_seqs=20, evalue=1e-05, min_pct_id=50):
