@@ -181,13 +181,8 @@ class SCGTaxonomy:
                 if anvio.DEBUG:
                     self.show_hits(bin_name, gene_name, hits)
 
+            consensus_taxonomy=self.get_consensus_taxonomy(hits_per_gene)
 
-            score_by_entry= self.get_cumul_hit_per_gene(hits_per_gene)
-
-            if anvio.DEBUG:
-                self.show_table_score(bin_name, score_by_entry)
-
-            consensus_taxonomy=self.get_consensus_taxonomy(score_by_entry,hits_per_gene[gene_name],bin_name)
 
 
 
@@ -216,7 +211,8 @@ class SCGTaxonomy:
 
         return cumul_hit_per_gene
 
-    def get_consensus_taxonomy(self, score_by_entry,hits_per_gene,bin_name):
+
+    def get_consensus_taxonomy_with_score_by_entry(self, score_by_entry, bin_name):
 
         # temporary
         estimate_taxonomy_temp1=""
@@ -245,6 +241,18 @@ class SCGTaxonomy:
         self.run.info("Estimate Taxonomy of "+str(bin_name), '/'.join(estimate_taxonomy_temp1))
         estimate_taxonomy=dict(zip(self.taxonomic_levels, estimate_taxonomy_temp1))
         return estimate_taxonomy
+
+
+    def get_consensus_taxonomy(self,hits_per_gene):
+
+
+        score_by_entry= self.get_cumul_hit_per_gene(hits_per_gene)
+
+        if anvio.DEBUG:
+            self.show_table_score(bin_name, score_by_entry)
+
+        consensus_taxonomy=self.get_consensus_taxonomy_with_score_by_entry(score_by_entry,bin_name)
+
 
     def get_raw_blast_hits(self, d, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
         """Takes a dictionary that contains `gene_name` and `sequence`, and returns
