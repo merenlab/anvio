@@ -147,6 +147,7 @@ class SCGTaxonomy:
 
         self.init()
 
+
         # split hmm_sequences_dict
         hmm_sequences_dict_per_bin = self.get_hmm_sequences_dict_into_bins(hmm_sequences_dict)
 
