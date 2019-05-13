@@ -127,6 +127,16 @@ class SCGTaxonomy:
 
         print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
 
+    def show_table_score(self, bin_name, selected_entrys_by_score):
+        self.run.warning(None, header='%s' % (bin_name), lc="yellow")
+        header = [ 'Average bitscore', 'taxonomy']
+        table = []
+
+        for code, score in sorted(selected_entrys_by_score.items(), key=lambda x: (-x[1], x[0])):
+            table.append([score, ' / '.join(self.taxonomy_dict[code].values())])
+
+        print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+
 
     def get_hmm_sequences_dict_into_bins(self, hmm_sequences_dict):
         hmm_sequences_dict_per_bin = {}
@@ -171,12 +181,16 @@ class SCGTaxonomy:
                 if anvio.DEBUG:
                     self.show_hits(bin_name, gene_name, hits)
 
-                #if anvio.DEBUG:
-                    #tab recap score_by_entry like :
-                    #self.show_hits(bin_name, gene_name, hits)
-            score_by_entry, number_of_matching_genes = self.get_cumul_hit_per_gene(hits_per_gene)
-            get_consensus_taxonomy=self.get_consensus_taxonomy(score_by_entry,\
-             number_of_matching_genes,hits_per_gene[gene_name])
+
+            score_by_entry= self.get_cumul_hit_per_gene(hits_per_gene)
+
+            if anvio.DEBUG:
+                self.show_table_score(bin_name, score_by_entry)
+
+            consensus_taxonomy=self.get_consensus_taxonomy(score_by_entry,hits_per_gene[gene_name],bin_name)
+
+
+
 
 
     def get_cumul_hit_per_gene(self,hits_per_gene):
@@ -185,55 +199,54 @@ class SCGTaxonomy:
         cumul_hit_per_gene={}
 
         matching_genes=[gene for gene in hits_per_gene if len(hits_per_gene[gene])]
-
-        self.run.info('SCGs with match(s)', ', '.join(matching_genes))
         number_of_matching_genes=len(matching_genes)
+        self.run.info('Num SCGs with match(s)', number_of_matching_genes)
+        self.run.info('SCGs with match(s)', ', '.join(matching_genes))
+
         for matching_gene in matching_genes:
 
             for entry in hits_per_gene[matching_gene]:
 
                     if entry["accession"] not in cumul_hit_per_gene:
-                        cumul_hit_per_gene[entry['accession']]=float(entry['bitscore'])
+                        cumul_hit_per_gene[entry['accession']]=(float(entry['bitscore'])/number_of_matching_genes)
                     else:
                         cumul_hit_per_gene[entry['accession']]=\
                         float(cumul_hit_per_gene[entry['accession']])\
-                        +float(entry['bitscore'])
+                        +(float(entry['bitscore'])/number_of_matching_genes)
 
-        return cumul_hit_per_gene, number_of_matching_genes
+        return cumul_hit_per_gene
 
-    def get_consensus_taxonomy(self, score_by_entry, number_of_matching_genes,hits_per_gene):
+    def get_consensus_taxonomy(self, score_by_entry,hits_per_gene,bin_name):
 
-        for query in  score_by_entry.keys():
-            maxscore=(max(score_by_entry.values()))/number_of_matching_genes
-            # temporary
-            taxo1=""
-            taxo2=""
-            for code, score in sorted(score_by_entry.items(), key=lambda x: (-x[1], x[0])):
+        # temporary
+        estimate_taxonomy_temp1=""
+        estimate_taxonomy_temp2=""
+        try:
+            maxscore=max(score_by_entry.values())
+        except:
+            self.run.info("Estimate Taxonomy of "+str(bin_name), "N/A")
+            return
 
-                #add option of %
-                if (float(score)/number_of_matching_genes)<(float(maxscore)*0.70):
+        selected_entrys_by_score={\
+         code:score for code, score in score_by_entry.items() if score>(float(maxscore)*0.99) }
 
-                    break
 
-                else:
+        if anvio.DEBUG:
+            self.show_table_score(bin_name, selected_entrys_by_score)
 
-                    print (code, (score/number_of_matching_genes))
-                    if taxo1=="":
-                        taxo1=self.taxonomy_dict[code]
-                    else:
-                        taxo2=self.taxonomy_dict[code]
-                        #return list ........ creat db for taxonomy
-                        taxo1=set(taxo1.values()).intersection(set(taxo2.values()))
+        for code, score in sorted(selected_entrys_by_score.items()):
+            if estimate_taxonomy_temp1=="":
+                estimate_taxonomy_temp1=list(self.taxonomy_dict[code].values())
             else:
-                if taxo1=="":
-                    taxo1="N/A"
-                    break
-                else:
-                    break
-            print(str(query)+"\t"+str(taxo1))
+                estimate_taxonomy_temp2=list(self.taxonomy_dict[code].values())
+                estimate_taxonomy_temp1=[i for i, j in zip(estimate_taxonomy_temp1, estimate_taxonomy_temp2) if i == j]
 
 
-    def get_raw_blast_hits(self, d, max_target_seqs=20, evalue=1e-05, min_pct_id=50):
+        self.run.info("Estimate Taxonomy of "+str(bin_name), '/'.join(estimate_taxonomy_temp1))
+        estimate_taxonomy=dict(zip(self.taxonomic_levels, estimate_taxonomy_temp1))
+        return estimate_taxonomy
+
+    def get_raw_blast_hits(self, d, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
         """Takes a dictionary that contains `gene_name` and `sequence`, and returns
            filtered BLAST hits against the corresopnding database. I.e.,
 
