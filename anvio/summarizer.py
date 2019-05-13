@@ -333,7 +333,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
         min_function_enrichment = A('min_function_enrichment')
-        core_threshold = A('core_threshold')
         fdr = A('false_detection_rate')
         min_portion_occurrence_of_function_in_group = A('min_portion_occurrence_of_function_in_group')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
@@ -422,59 +421,42 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         number_of_genomes = len(categories_dict.keys())
 
         enrichment_dict = {}
-        z_test_p_values = {}
+        chi2_test_q_values = []
+        function_occurrence_table = {}
+
+        # populate the number of genomes per category once
         for c in categories:
-            self.progress.update("Working on category '%s'" % c)
-            group_size = len(categories_to_genomes_dict[c])
-            outgroup_size = number_of_genomes - group_size
-            z_test_p_values[c] = []
+            function_occurrence_table[c] = {}
+            function_occurrence_table[c]['N'] = len(categories_to_genomes_dict[c])
 
-            for f in functions_names:
-                occurrence_in_group = functions_in_categories.loc[c, f]
-                occurrence_outside_of_group = (total_occurrence_of_functions[f] - functions_in_categories.loc[c, f])
-                portion_occurrence_in_group = occurrence_in_group / group_size
-                portion_occurrence_outside_of_group = occurrence_outside_of_group / (number_of_genomes - group_size)
-                enrichment, p_value = utils.get_two_sample_z_test_statistic(portion_occurrence_in_group, \
-                                                           portion_occurrence_outside_of_group, \
-                                                           group_size, \
-                                                           outgroup_size)
+        self.progress.update("Calculating functional enrichment statistics")
+        for f in functions_names:
+            for c in categories:
+                function_occurrence_table[c]['p'] = functions_in_categories.loc[c, f] / function_occurrence_table[c]['N']
+            function_occurrence_table_df = pd.DataFrame.from_dict(function_occurrence_table, orient='index')
+            test_statistic, q_value = utils.get_enriched_functions_statistics(function_occurrence_table_df['p'].values,
+                                                                              function_occurrence_table_df['N'].values)
+            chi2_test_q_values.append(q_value)
+            enrichment_dict[f] = {}
 
-                z_test_p_values[c].append(p_value)
-
-                if c not in enrichment_dict:
-                    enrichment_dict[c] = {}
-
-                if f not in enrichment_dict[c]:
-                    enrichment_dict[c][f] = {}
-
-                enrichment_dict[c][f]["enrichment_score"] = enrichment
-                enrichment_dict[c][f]["p_value"] = p_value
-                enrichment_dict[c][f]["portion_occurrence_in_group"] = portion_occurrence_in_group
-                enrichment_dict[c][f]["portion_occurrence_outside_of_group"] = portion_occurrence_outside_of_group
-                enrichment_dict[c][f]["occurrence_in_group"] = occurrence_in_group
-                enrichment_dict[c][f]["occurrence_outside_of_group"] = occurrence_outside_of_group
-                enrichment_dict[c][f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
-                enrichment_dict[c][f]["function_accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
-                enrichment_dict[c][f]["core_in_group"] = False
-                enrichment_dict[c][f]["core"] = False
-                if enrichment_dict[c][f]["portion_occurrence_in_group"] >= core_threshold:
-                    enrichment_dict[c][f]["core_in_group"] = True
-                    if enrichment_dict[c][f]["portion_occurrence_outside_of_group"] >= core_threshold:
-                        enrichment_dict[c][f]["core"] = True
+            enrichment_dict[f]["enrichment_score"] = test_statistic
+            enrichment_dict[f]["q_value"] = q_value
+            enrichment_dict[f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
+            enrichment_dict[f]["function_accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
+            for c in categories:
+                enrichment_dict[f]['p_' + c] = function_occurrence_table[c]['p']
+            for c in categories:
+                enrichment_dict[f]['N_' + c] = function_occurrence_table[c]['N']
 
         import statsmodels.stats.multitest as multitest
-        for c in enrichment_dict:
+        reject, corrected_q_values, foo1, foo2 = multitest.multipletests(chi2_test_q_values, method='fdr_bh', alpha=fdr)
 
-            self.progress.update("Working on statistics for category '%s'" % c)
-            # correction for multiple comparrisons
-            reject, corrected_p_values_z_test, foo1, foo2 = multitest.multipletests(z_test_p_values[c], method='fdr_bh', alpha=fdr)
-
-            i = 0
-            if len(corrected_p_values_z_test) != len(enrichment_dict[c].keys()):
-                raise ConfigError('This should never happen, contact Alon Shaiber now.')
-            for f in enrichment_dict[c]:
-                enrichment_dict[c][f]['corrected_p_value'] = corrected_p_values_z_test[i]
-                i += 1
+        i = 0
+        if len(corrected_q_values) != len(enrichment_dict.keys()):
+            raise ConfigError('This should never happen, contact Alon Shaiber now.')
+        for f in enrichment_dict:
+            enrichment_dict[f]['corrected_q_value'] = corrected_q_values[i]
+            i += 1
 
         if output_file_path:
             self.progress.update('Generating the output file')
@@ -484,7 +466,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 enrichment_data_frame = enrichment_data_frame[enrichment_data_frame['portion_occurrence_in_group'] > min_portion_occurrence_of_function_in_group]
 
             # sort according to enrichment
-            enrichment_data_frame.sort_values(by=['category', 'enrichment_score'], axis=0, ascending=False, inplace=True)
+            enrichment_data_frame.sort_values(by=['enrichment_score'], axis=0, ascending=False, inplace=True)
 
             enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.2f')
 
@@ -498,29 +480,26 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
     def get_enrichment_dict_as_dataframe(self, enrichment_dict, functional_annotation_source):
         # convert dictionary to pandas
-        # we can't use pandas from_dict because it is meant for dict of dicts (i.e. tow levels)
-        # and we have a dict of dicts of dicts (three levels).
-        # so we first convert it to a dict of dicts and then convert to pandas
+        # we want to deal with sequences (see below) and so this is easier than using pandas from_dict
+        # we first convert it to a dict of dicts and then convert to pandas
         # because this is faster than alternatives
         i = 0
         D = {}
-        for c in enrichment_dict:
-            for f in enrichment_dict[c]:
-                D[i] = {}
-                D[i]['category'] = c
-                D[i][functional_annotation_source] = f
-                for key, value in enrichment_dict[c][f].items():
-                    if type(value)==str:
+        for f in enrichment_dict:
+            D[i] = {}
+            D[i][functional_annotation_source] = f
+            for key, value in enrichment_dict[f].items():
+                if type(value)==str:
+                    D[i][key] = value
+                else:
+                    try:
+                        # if there is a sequence of values
+                        # merge them with commas for nicer printing
+                            D[i][key] = ', '.join(iter(value))
+                    except:
+                        # if it is not a sequnce, it is a single value
                         D[i][key] = value
-                    else:
-                        try:
-                            # if there is a sequence of values
-                            # merge them with commas for nicer printing
-                                D[i][key] = ', '.join(iter(value))
-                        except:
-                            # if it is not a sequnce, it is a single value
-                            D[i][key] = value
-                i += 1
+            i += 1
         enrichment_data_frame = pd.DataFrame.from_dict(D, orient='index')
 
         return enrichment_data_frame

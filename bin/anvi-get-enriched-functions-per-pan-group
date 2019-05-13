@@ -54,7 +54,6 @@ if __name__ == '__main__':
 
     groupD = parser.add_argument_group('OPTIONAL PARAMETERS', "Parameters to help you filter the output.")
     groupD.add_argument(*anvio.A('min-function-enrichment'), **anvio.K('min-function-enrichment'))
-    groupD.add_argument(*anvio.A('core-threshold'), **anvio.K('core-threshold'))
     groupD.add_argument(*anvio.A('min-portion-occurrence-of-function-in-group'), **anvio.K('min-portion-occurrence-of-function-in-group'))
     groupD.add_argument(*anvio.A('false-detection-rate'), **anvio.K('false-detection-rate'))
 
