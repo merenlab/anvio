@@ -2305,6 +2305,44 @@ def is_blank_profile(db_path):
     return True if blank == 1 else False
 
 
+def get_p_value_for_chisq_test(test_statistic, degrees_of_freedom):
+    from scipy.stats import chi2
+    return 1-chi2.cdf(test_statistic, degrees_of_freedom)
+
+
+def get_enriched_functions_statistics(props, reps):
+    '''
+        Accepts two vectors as input:
+            props: the proportions of occurrence (of a function) in each category.
+            reps: the total number (of genomes) in each category.
+
+        Returns a test_statistic (enrichment score) and a q_value according to a chi-square test.
+
+        If one group has no hits (e.g. p1=0) then we compute an upper bound
+        for the p-value by pretending that it had one hit.
+
+        If one group has 100% hits (e.g. p1=1) then we compute an upper bound
+        for the p-value by pretending that p1=1-1/n1 hits
+    '''
+    import numpy as np
+    # if the function doesn't occur at all then test_statistic is zero and p-value is 1
+    if not np.count_nonzero(props):
+        return (0, 1)
+
+    # changing zero occurrences to 1
+    props = np.maximum(props, 1/reps)
+
+    # changing occurrences of 1 to 1-1/ni (ni is the size of the i'th group)
+    props = np.minimum(props, 1 - 1/reps)
+
+    overall_portion = np.sum(np.multiply(props, reps)) / np.sum(reps)
+    occurrences_per_group = np.multiply(props, reps)    ## or just the number of genomes with the gene as a vector
+    expected_occurrences_for_uniformal_dist = np.multiply(overall_portion, reps)
+    chisq = np.sum(np.divide(np.square(occurrences_per_group - expected_occurrences_for_uniformal_dist), expected_occurrences_for_uniformal_dist))
+    p_value = get_p_value_for_chisq_test(chisq, len(reps)-1)
+    return (chisq, p_value)
+
+
 def get_two_sample_z_test_statistic(p1, p2, n1, n2):
     '''
         Compute a two sample z-test statistic
