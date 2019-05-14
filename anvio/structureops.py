@@ -905,7 +905,7 @@ class ContactMap(object):
     def load_pdb_file(self, name_id = 'structure'):
         p = PDBParser()
         model = p.get_structure(name_id, self.pdb_path)[0] # [0] = first model
-        structure = model[' '] # [' '] = get first chain in model
+        structure = model['A'] # ['A'] = get first chain in model
         return structure
 
 
