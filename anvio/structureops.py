@@ -140,15 +140,17 @@ class StructureDatabase(object):
             raise ConfigError("store :: rows_data must be either a list of tuples or a pandas dataframe.")
 
 
-    def get_summary_for_interactive(self, corresponding_gene_call):
-        summary = {}
-
+    def get_pdb_content(self, corresponding_gene_call):
         if not corresponding_gene_call in self.genes_with_structure:
             raise ConfigError('The gene caller id {} was not found in the structure database :('.format(corresponding_gene_call))
 
-        summary['pdb_content'] = self.db.get_single_column_from_table(t.structure_pdb_data_table_name,
+        return self.db.get_single_column_from_table(t.structure_pdb_data_table_name,
             'pdb_content', where_clause="corresponding_gene_call = %d" % corresponding_gene_call)[0].decode('utf-8')
 
+
+    def get_summary_for_interactive(self, corresponding_gene_call):
+        summary = {}
+        summary['pdb_content'] = self.get_pdb_content(corresponding_gene_call)
         summary['residue_info'] = self.db.get_table_as_dataframe(t.structure_residue_info_table_name,
             where_clause = "corresponding_gene_call = %d" % corresponding_gene_call).to_json(orient='index')
 
