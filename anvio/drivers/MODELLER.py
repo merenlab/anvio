@@ -138,6 +138,8 @@ class MODELLER:
 
             self.pick_best_model()
 
+            self.run_add_chain_identifiers_to_best_model()
+
             self.out["structure_exists"] = True
 
         except self.EndModeller as e:
@@ -375,7 +377,7 @@ class MODELLER:
         if not "get_model.py" in self.scripts.keys():
             raise ConfigError("You are out of line calling tidyup without running get_model.py")
 
-        # remove all copies of all scrips that were ran
+        # remove all copies of all scripts that were ran
         for script_name, file_path in self.scripts.items():
             os.remove(file_path)
 
@@ -394,6 +396,27 @@ class MODELLER:
             new_file_path = J(self.directory, new_basename)
             os.rename(file_path, new_file_path)
             self.model_info.loc[model, "name"] = new_basename
+
+
+    def run_add_chain_identifiers_to_best_model(self):
+        """
+        Some third-party services expect a chain identifier, this adds it to the chosen model
+        """
+        script_name = "add_chain_identifiers_to_best_model.py"
+
+        # check script exists, then copy the script into the working directory
+        self.copy_script_to_directory(script_name)
+
+        dir_name, base_name = os.path.split(self.out['best_model_path'])
+
+        command = [self.executable,
+                   script_name,
+                   dir_name,
+                   base_name]
+
+        self.run_command(command,
+                         script_name = script_name,
+                         progress_update = "Adding chain identifier to best model")
 
 
     def run_get_model(self, num_models, deviation, very_fast):
