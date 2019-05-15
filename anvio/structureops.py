@@ -913,11 +913,14 @@ class StructureExport():
 
 
     def export_pdbs(self):
-        for gene in self.genes_of_interest:
+        self.progress.new('Exporting structure files')
+        for i, gene in enumerate(self.genes_of_interest):
+            self.progress.update('Processed {} of {}'.format(i, len(self.genes_of_interest)))
             file_path = os.path.join(self.output_dir, 'gene_{}.pdb'.format(gene))
             pdb_content = self.structure_db.get_pdb_content(gene)
             with open(file_path, 'w') as f:
                 f.write(pdb_content)
+        self.progress.end()
 
 
     def get_genes_of_interest(self, genes_of_interest_path, gene_caller_ids):
