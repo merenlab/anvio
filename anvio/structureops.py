@@ -148,6 +148,13 @@ class StructureDatabase(object):
             'pdb_content', where_clause="corresponding_gene_call = %d" % corresponding_gene_call)[0].decode('utf-8')
 
 
+    def export_pdb_content(self, corresponding_gene_call, filepath, ok_if_exists=False):
+        if filesnpaths.is_output_file_writable(filepath, ok_if_exists=ok_if_exists):
+            pdb_content = self.get_pdb_content(corresponding_gene_call)
+            with open(filepath, 'w') as f:
+                f.write(pdb_content)
+
+
     def get_summary_for_interactive(self, corresponding_gene_call):
         summary = {}
         summary['pdb_content'] = self.get_pdb_content(corresponding_gene_call)
@@ -917,9 +924,7 @@ class StructureExport():
         for i, gene in enumerate(self.genes_of_interest):
             self.progress.update('Processed {} of {}'.format(i, len(self.genes_of_interest)))
             file_path = os.path.join(self.output_dir, 'gene_{}.pdb'.format(gene))
-            pdb_content = self.structure_db.get_pdb_content(gene)
-            with open(file_path, 'w') as f:
-                f.write(pdb_content)
+            self.structure_db.export_pdb_content(gene, file_path, ok_if_exists=True)
         self.progress.end()
 
 
