@@ -1362,6 +1362,15 @@ class VariabilitySuper(VariabilityFilter, object):
         self.check_if_data_is_empty()
 
 
+    def reorder_data_for_vectorization(self):
+        """
+        Order the entries according to unique_pos_identifier (and for a given unique_pos_identifier,
+        entries are ordered alphabetically by sample_id). Required for vectorized operations in instances
+        where quince mode has ran.
+        """
+        self.data = self.data.sort_values(by=["unique_pos_identifier", "sample_id"])
+
+
     def compute_comprehensive_variability_scores(self):
         """
             Comprehensive stats are defined as scores that take into consideration the entire vector of variability and
@@ -1412,13 +1421,10 @@ class VariabilitySuper(VariabilityFilter, object):
 
         self.comprehensive_stats_headers = [m + '_weighted' for m in self.substitution_scoring_matrices] + ['entropy']
 
+        self.reorder_data_for_vectorization()
         # Pandas is fun, but numpy is fast. Here we convert the coverage table information from the DataFrame to a
         # numpy array. The transpose is required because scipy.stats entropy function calculates along an
-        # unspecifiable axis that we must conform to. But before any of this is done we order the entries according
-        # to unique_pos_identifier (and for a given unique_pos_identifier, entries are ordered alphabetically by
-        # sample_id). The reason for this is aesthetic but also required for vectorized operations that occur after
-        # self.progress.update("Those that do require --quince-mode")
-        self.data = self.data.sort_values(by=["unique_pos_identifier", "sample_id"])
+        # unspecifiable axis that we must conform to.
         coverage_table = self.data[self.items].T.astype(int).values
 
         # Now we compute the entropy, which is defined at a per position, per sample basis. There is a reason we
@@ -2469,6 +2475,36 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
             self.load_structure_data()
 
         self.init_commons()
+
+
+class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
+    def __init__(self, args={}, p=progress, r=run):
+        self.progress = p
+        self.run = r
+
+        self.args = args
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        self.engine = A('engine', str)
+
+        variability_engines[self.engine].__init__(self, self.args, p=self.progress, r=self.run)
+
+
+    def process(self):
+        self.init_commons()
+        self.load_variability_data()
+        self.apply_preliminary_filters()
+        self.calculate_FST_matrix()
+
+
+    def get_pairwise_FST(self):
+        pass
+
+
+    def get_FST_matrix(self):
+        dimension = len(self.sample_ids_of_interest)
+        self.fst = pd.DataFrame(np.zeros(dimension, dimension))
+
+
 
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
