@@ -2488,23 +2488,82 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
 
         variability_engines[self.engine].__init__(self, self.args, p=self.progress, r=self.run)
 
+        items_dict = {
+            'NT': constants.nucleotides,
+            'CDN': constants.codons,
+            'AA': constants.amino_acids
+        }
+
+        self.columns_of_interest = items_dict[self.engine] + [
+            'entry_id',
+            'sample_id',
+            'corresponding_gene_call',
+            'coverage',
+            'reference',
+            'unique_pos_identifier',
+            'gene_length'
+        ]
+
+
+    def fill_missing_entries(self, pairwise_data, sample_1, sample_2):
+        missing_data = {column: [] for column in pairwise_data.columns}
+
+        data_sample_1 = pairwise_data[pairwise_data['sample_id'] == sample_1].set_index('unique_pos_identifier', drop = True)
+        data_sample_2 = pairwise_data[pairwise_data['sample_id'] == sample_2].set_index('unique_pos_identifier', drop = True)
+
+        positions_sample_1 = set(data_sample_1.index)
+        positions_sample_2 = set(data_sample_2.index)
+
+        positions_missing_from_sample_1 = set([pos for pos in positions_sample_2 if pos not in positions_sample_1])
+        positions_missing_from_sample_2 = set([pos for pos in positions_sample_1 if pos not in positions_sample_2])
+
+        def correct_frequencies(row):
+            row[self.items] = np.zeros(len(self.items))
+            row[row['reference']] = 1
+            row['coverage'] = 1
+            return row
+
+        data_missing_from_sample_1 = data_sample_2.loc[positions_missing_from_sample_1, :].apply(correct_frequencies, axis = 1).reset_index(drop = False)
+        data_missing_from_sample_2 = data_sample_1.loc[positions_missing_from_sample_2, :].apply(correct_frequencies, axis = 1).reset_index(drop = False)
+
+        return pd.concat([pairwise_data, data_missing_from_sample_1, data_missing_from_sample_2], sort = True).reset_index(drop = True)
+
 
     def process(self):
         self.init_commons()
         self.load_variability_data()
         self.apply_preliminary_filters()
-        self.calculate_FST_matrix()
+        self.set_unique_pos_identification_numbers()
+        self.data = self.data[self.columns_of_interest]
+        self.convert_counts_to_frequencies()
+        self.get_FST_matrix()
 
 
-    def get_pairwise_FST(self):
-        pass
+    def get_pairwise_FST(self, sample_1, sample_2):
+        if sample_1 == sample_2:
+            return 0
+
+        pairwise_data = self.data[(self.data['sample_id'] == sample_1) | (self.data['sample_id'] == sample_2)]
+        pairwise_data = self.fill_missing_entries(pairwise_data, sample_1, sample_2)
+        pairwise_data = pairwise_data.sort_values(by=["unique_pos_identifier", "sample_id"])
+
+        fixation_index = None
+        return fixation_index
 
 
     def get_FST_matrix(self):
-        dimension = len(self.sample_ids_of_interest)
-        self.fst = pd.DataFrame(np.zeros(dimension, dimension))
+        self.progress.new('Calculating pairwise fixation indices')
+        dimension = len(self.available_sample_ids)
+        self.fst_matrix = np.zeros((dimension, dimension))
 
+        for i, sample_1 in enumerate(self.available_sample_ids):
+            for j, sample_2 in enumerate(self.available_sample_ids):
+                if i > j:
+                    self.fst_matrix[i, j] = self.fst_matrix[j, i]
+                else:
+                    self.progress.update('{} with {}'.format(sample_1, sample_2))
+                    self.fst_matrix[i, j] = self.get_pairwise_FST(sample_1, sample_2)
 
-
+        self.progress.end()
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
