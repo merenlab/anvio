@@ -1690,9 +1690,15 @@ function showCompleteness(bin_id, updateOnly) {
             msg += "<td></td>";
         }
 
-        msg += "<td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td>" +
-               "<td data-value='" + averages['domain_probabilities'][stats[source]['domain']] + "'>" + averages['domain_probabilities'][stats[source]['domain']].toFixed(2) + "</td>" +
-               "<td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td>" +
+        msg += "<td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td>";
+
+        if (averages['domain_probabilities'].hasOwnProperty(stats[source]['domain'])) {
+            msg += "<td data-value='" + averages['domain_probabilities'][stats[source]['domain']] + "'>" + averages['domain_probabilities'][stats[source]['domain']].toFixed(2) + "</td>";
+        } else {
+            msg += "<td data-value='N/A'>N/A</td>";
+        }
+        
+        msg += "<td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td>" +
                "<td data-value='" + stats[source]['percent_redundancy'] + "'>" + stats[source]['percent_redundancy'].toFixed(2) + "%</td>";
 
         msg += "</tr>";
