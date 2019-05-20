@@ -314,7 +314,7 @@ function initData() {
 }
 
 function switchUserInterfaceMode(project, title) {
-    if (server_mode == false && (mode == 'pan' || mode == 'gene' || mode == 'full')) {
+    if (server_mode == false && (mode == 'pan' || mode == 'gene' || mode == 'full' || mode == 'refine')) {
         $('#search_functions_button').attr('disabled', false);
         $('#searchFunctionsValue').attr('disabled', false);
         $('.functions-not-available-message').hide();
