@@ -4,11 +4,7 @@
 import os
 import sys
 
-try:
-    from tabulate import tabulate
-    tabulate_OK = True
-except:
-    tabulate_OK = False
+from tabulate import tabulate
 
 import anvio
 import anvio.utils as utils
@@ -30,17 +26,94 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-def main(args):
-    run = terminal.Run(verbose=False if args.concise else True)
-    progress = terminal.Progress(verbose=False if args.concise else True)
-    pp = terminal.pretty_print
+pp = terminal.pretty_print
 
+
+def print_proper(args, collection, completeness, run, progress):
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    contigs_db_path = A('contigs_db')
+    profile_db_path = A('profile_db')
+    list_collections = A('list_collections')
+    output_file_path = A('output_file')
+
+    contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+
+    table = []
+    header=['bin name', 'domain', 'confidence', '% completion', '% redundancy', 'num_splits', 'total length']
+    for bin_id in collection:
+        p_completion, p_redundancy, domain, domain_probabilities, info_text, _ = completeness.get_info_for_splits(set(collection[bin_id]), bin_name=bin_id)
+        total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
+        num_splits = len(collection[bin_id])
+        domain_confidence = domain_probabilities[domain] if domain else 0.0
+
+        table.append([bin_id, '%s' % domain.upper(), '%.1f' % domain_confidence, '%.2f' % p_completion, '%.2f' % p_redundancy, num_splits, total_length])
+
+    print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+
+    run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the\
+                     amount of confidence for that call in the 'domain' column. If the domain is 'mixed', it means it is very\
+                     likely you have contigs in your bin that spans accross multiple domains of life (maybe it is worth a Nobel,\
+                     but more likely it is just garbage). If the domain is 'blank', it means anvi'o did not find enough signal \
+                     from single-copy core genes to determine what domain it should use to estimate the completion and redundancy\
+                     of this bin accurately. You can get much more information about these estimations by running the same command\
+                     line with the additinal flag `--debug`.", nl_before=1, nl_after=1)
+
+    if output_file_path:
+        utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
+        run.info('Results also stored in an output file', output_file_path, nl_after=1)
+
+
+def print_improper(args, collection, completeness, run, progress):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     contigs_db_path = A('contigs_db')
     profile_db_path = A('profile_db')
     collection_name = A('collection_name')
     list_collections = A('list_collections')
     output_file_path = A('output_file')
+
+    run.info_single("Since domain estimates do not seem to be working, for your contigs database, anvi'o will show you the raw\
+                     C/R estimates altogether.")
+
+    contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+
+    table = []
+    header = ['bin name', 'domain', 'source', '% completion', '% redundancy', 'num_splits', 'total length']
+
+    # we will keep the talbe and header above for the output file, but use a smaller table for
+    # printing out information:
+    bin_header = ['domain', 'source', '% completion', '% redundancy']
+    for bin_id in collection:
+        bin_table = []
+        _, _, _, _, _, scg_hmm_hits = completeness.get_info_for_splits(set(collection[bin_id]), bin_name=bin_id)
+        total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
+        num_splits = len(collection[bin_id])
+
+        run.width = 60
+        run.warning(None, header='%s (num_splits: %s; total_length: %s)' % (bin_id, pp(num_splits), pp(total_length)), lc = 'green')
+
+        for domain in scg_hmm_hits:
+            for scg_collection_for_domain in scg_hmm_hits[domain]:
+                D = scg_hmm_hits[domain][scg_collection_for_domain]
+                table.append([bin_id, '%s' % domain.upper(), '%s' % scg_collection_for_domain, '%.2f' % D['percent_completion'], '%.2f' % D['percent_redundancy'], num_splits, total_length])
+                bin_table.append(['%s' % domain.upper(), '%s' % scg_collection_for_domain, '%.2f' % D['percent_completion'], '%.2f' % D['percent_redundancy']])
+
+        print(tabulate(bin_table, headers=bin_header, tablefmt="fancy_grid", numalign="right"))
+
+    if output_file_path:
+        utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
+        run.info('Results also stored in an output file', output_file_path, nl_after=1, nl_before=2)
+
+
+def main(args):
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    contigs_db_path = A('contigs_db')
+    profile_db_path = A('profile_db')
+    collection_name = A('collection_name')
+    list_collections = A('list_collections')
+    output_file_path = A('output_file')
+
+    run = terminal.Run(verbose=False if args.concise else True)
+    progress = terminal.Progress(verbose=False if args.concise else True)
 
     if output_file_path:
         filesnpaths.is_output_file_writable(output_file_path)
@@ -68,48 +141,20 @@ def main(args):
     if not len(completeness.sources):
         raise ConfigError("HMM's were not run for this contigs database :/")
 
-    contigs_db = ContigsSuperclass(args, r = run, p = progress)
-
     if collection_name:
         collection = collections.get_collection_dict(collection_name)
     else:
         collection = {os.path.basename(contigs_db_path[:-3]): list(contigs_db.splits_basic_info.keys())}
-
-    table = []
-    header=['bin name', 'domain', '% completion', '% redundancy', 'num_splits', 'total length']
-    for bin_id in collection:
-        p_completion, p_redundancy, domain, domain_probabilities, info_text, _ = completeness.get_info_for_splits(set(collection[bin_id]), bin_name=bin_id)
-        total_length = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection[bin_id])])
-        num_splits = len(collection[bin_id])
-        domain_confidence = domain_probabilities[domain] if domain else 0.0
-
-        table.append([bin_id, '%s (%.1f)' % (domain.upper(), domain_confidence), '%.2f' % p_completion, '%.2f' % p_redundancy, num_splits, total_length])
 
     if collection_name:
         run.warning(None, header = 'Bins in collection "%s"' % collection_name, lc = 'green')
     else:
         run.warning(None, header = 'Genome in "%s"' % os.path.basename(contigs_db_path), lc = 'green')
 
-    if tabulate_OK:
-        print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+    if not completeness.initialized_properly:
+        print_improper(args, collection, completeness, run, progress)
     else:
-        run.warning("The python package 'tabular' is not found, so anvi'o will produce you this very ugly table down below.\
-                     If you want a more reasonable one, either 'pip install tabulate' and try again, or provide an output\
-                     file name :/")
-        print('\t'.join(header))
-        for entry in table:
-            print('\t'.join(['%s' % e for e in entry]))
-
-    run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the\
-                     amount of confidence that is shown in parantheses. If the domain is 'mixed', it means you have lots of\
-                     garbage in your bin that spans accross multiple domains of life (which is crazy). If it is 'blank', it means\
-                     anvi'o did not find enough signal from single-copy core genes to determine what domain should be used to\
-                     estimate the completion and redundancy of this bin accurately. You can get much more information about these\
-                     estimations by running the same command line with the additinal flag `--debug`.", nl_before=1, nl_after=1)
-
-    if output_file_path:
-        utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
-        run.info('Results also stored in an output file', output_file_path, nl_after=1)
+        print_proper(args, collection, completeness, run, progress)
 
 
 if __name__ == '__main__':
