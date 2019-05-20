@@ -41,8 +41,9 @@ class Completeness:
     def __init__(self, contigs_db_path, scg_domain_classifier_path=None, source_requested=None, run=run, progress=progress):
         self.run = run
         self.progress = progress
+        self.initialized_properly = True
 
-        self.SCG_comain_predictor = scgdomainclassifier.Predict(argparse.Namespace(), run=terminal.Run(verbose=False), progress=self.progress)
+        self.SCG_domain_predictor = scgdomainclassifier.Predict(argparse.Namespace(), run=terminal.Run(verbose=False), progress=self.progress)
 
         # hi db
         contigs_db = dbops.ContigsDatabase(contigs_db_path)
@@ -87,6 +88,16 @@ class Completeness:
         self.source_to_domain = dict([(source, info_table[source]['domain']) for source in self.sources])
         self.domain_to_sources = [(domain, [source for source in self.sources if info_table[source]['domain'] == domain]) for domain in self.domains]
 
+        domains_missing_in_SCG_domain_predictor = [d for d in self.domains if d not in self.SCG_domain_predictor.SCG_domains]
+        if len(domains_missing_in_SCG_domain_predictor):
+            num_domains_missing = len(domains_missing_in_SCG_domain_predictor)
+            self.run.warning("OK. We have a problem. You seem to have single-copy core gene collections for %d %s among your HMM hits that\
+                               are not included when the anvi'o domain predictor was trained :/ Here is the list of domains that are making\
+                               us upset here: \"%s\". This means either you put a new HMM single-copy core gene collection to the anvi'o HMMs\
+                               directory, or gave it as a parameter, and run `anvi-run-hmms` without updating the classifier anvi'o uses to\
+                               resolve domains for proper completion/redundancy estimates." % (num_domains_missing, 'domains' if num_domains_missing > 1 else 'domain', ', '.join(domains_missing_in_SCG_domain_predictor)))
+            self.initialized_properly = False
+
         if source_requested:
             if source_requested not in self.sources:
                 raise ConfigError('Requested source "%s" is not one of the single-copy gene sources found in the database.' % source_requested)
@@ -96,9 +107,9 @@ class Completeness:
             self.genes_in_db = {source_requested: self.genes_in_db[source_requested]}
             self.hmm_hits_splits_table = utils.get_filtered_dict(self.hmm_hits_splits_table, 'source', set([source_requested]))
 
+        # these will be very useful later. trust me.
         self.unique_gene_id_to_gene_name = {}
         self.splits_unique_gene_id_occurs = {}
-        # these will be very useful later. trust me.
         for entry in list(self.hmm_hits_splits_table.values()):
             hmm_hit = self.hmm_hits_table[entry['hmm_hit_entry_id']]
             gene_unique_identifier = hmm_hit['gene_unique_identifier']
@@ -128,11 +139,14 @@ class Completeness:
            according to the random forest classifier.
         """
 
+        if not self.initialized_properly:
+            return ('', {}, {}, None)
+
         # learn domains anvi'o hmm hits know about
         domains_in_hmm_hits = sorted(hmm_hits.keys())
 
         # learn domain predictions from anvi'o random forest
-        domain_probabilities, actual_domains, control_domains = self.SCG_comain_predictor.predict_from_observed_genes_per_domain(observed_genes_per_domain)
+        domain_probabilities, actual_domains, control_domains = self.SCG_domain_predictor.predict_from_observed_genes_per_domain(observed_genes_per_domain)
         domain_specific_estimates = []
 
         if anvio.DEBUG:
@@ -140,7 +154,7 @@ class Completeness:
             for domain in control_domains:
                 self.run.info_single("Probability %s %.2f" % (domain.upper(), domain_probabilities[domain]), mc='cyan')
             for domain in actual_domains:
-                source = self.SCG_comain_predictor.SCG_domain_to_source[domain]
+                source = self.SCG_domain_predictor.SCG_domain_to_source[domain]
                 if domain in domains_in_hmm_hits:
                     self.run.info_single("Domain '%8s' (probability: %.2f) C/R: %.2f/%.2f" % (domain,
                                                                                               domain_probabilities[domain],
@@ -161,7 +175,7 @@ class Completeness:
         # figure out the completion and redundancy given the best matching domain
         # for further filtering down below.
         if best_matching_domain in domains_in_hmm_hits:
-            source = self.SCG_comain_predictor.SCG_domain_to_source[best_matching_domain]
+            source = self.SCG_domain_predictor.SCG_domain_to_source[best_matching_domain]
             best_mathcing_domain_completion, best_matching_domain_redundancy = hmm_hits[best_matching_domain][source]['percent_completion'], \
                                                                                hmm_hits[best_matching_domain][source]['percent_redundancy']
         else:
@@ -268,7 +282,7 @@ class Completeness:
         # quite inefficient, and the late addition of random forest domain predictor is making things
         # even less clear. The following dictionary is to predict the domain:
         observed_genes_per_domain = {}
-        for domain in self.SCG_comain_predictor.SCG_domains:
+        for domain in self.domains:
             observed_genes_per_domain[domain] = Counter()
 
         # we need to restructure 'hits' into a dictionary that gives access to sources and genes in a more direct manner
@@ -352,7 +366,7 @@ class Completeness:
                                   know. Because knowledge is power .. even when you're not sure what it means." % best_matching_domain)
                 percent_completion, percent_redundancy = 0.0, 0.0
             else:
-                source = self.SCG_comain_predictor.SCG_domain_to_source[best_matching_domain]
+                source = self.SCG_domain_predictor.SCG_domain_to_source[best_matching_domain]
                 percent_completion = scg_hmm_hits[best_matching_domain][source]['percent_completion']
                 percent_redundancy = scg_hmm_hits[best_matching_domain][source]['percent_redundancy']
         else:
