@@ -336,6 +336,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         fdr = A('false_detection_rate')
         min_portion_occurrence_of_function_in_group = A('min_portion_occurrence_of_function_in_group')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
+        exclude_ungrouped = A('exclude_ungrouped')
 
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -406,18 +407,18 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         total_occurrence_of_functions = occurrence_of_functions_in_pangenome_dataframe.sum()
 
         # add a category column to the dataframe
-        occurrence_of_functions_in_pangenome_dataframe['category'] = occurrence_of_functions_in_pangenome_dataframe.index.map(lambda x: categories_dict[x][category_variable])
+        occurrence_of_functions_in_pangenome_dataframe['category'] = occurrence_of_functions_in_pangenome_dataframe.index.map(lambda x: str(categories_dict[x][category_variable]))
 
         # the sum of occurrences of each function in each category
         functions_in_categories = occurrence_of_functions_in_pangenome_dataframe.groupby('category').sum()
 
         # unique names of categories
-        categories = set([categories_dict[g][category_variable] for g in categories_dict.keys() if\
-                            categories_dict[g][category_variable] is not None])
+        categories = set([str(categories_dict[g][category_variable]) for g in categories_dict.keys() if\
+                            (categories_dict[g][category_variable] is not None or not exclude_ungrouped)])
 
         categories_to_genomes_dict = {}
         for c in categories:
-            categories_to_genomes_dict[c] = set([genome for genome in categories_dict.keys() if categories_dict[genome][category_variable] == c])
+            categories_to_genomes_dict[c] = set([genome for genome in categories_dict.keys() if str(categories_dict[genome][category_variable]) == c])
         number_of_genomes = len(categories_dict.keys())
 
         enrichment_dict = {}

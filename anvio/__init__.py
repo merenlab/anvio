@@ -438,6 +438,14 @@ D = {
              'metavar': 'CATEGORY',
              'help': "The additional layers data variable name that divides layers into multiple categories."}
                 ),
+    'exclude-ungrouped': (
+            ['--exclude-ungrouped'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you want anvi'o to ignore genomes with no value set for the catergory variable \
+                      (which you specified using --category-variable). By default all variables with no value will be \
+                      considered as a single group when preforming the statistical analysis."}
+                ),
     'min-portion-occurrence-of-function-in-group': (
             ['-P', '--min-portion-occurrence-of-function-in-group'],
             {'metavar': 'FLOAT',
