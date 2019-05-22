@@ -144,6 +144,7 @@ def main(args):
     if collection_name:
         collection = collections.get_collection_dict(collection_name)
     else:
+        contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
         collection = {os.path.basename(contigs_db_path[:-3]): list(contigs_db.splits_basic_info.keys())}
 
     if collection_name:
