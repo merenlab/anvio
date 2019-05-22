@@ -57,6 +57,21 @@ progress = terminal.Progress()
 
 
 class CONCOCT:
+    arguments = {
+        'seed': (
+                ['--seed'],
+                {'metavar': "INT",
+                 'required': False,
+                 'help': "Seed for random numbers"}
+                    ),
+        'threads': (
+                ['-T', '--threads'],
+                {'metavar': "INT",
+                 'required': False,
+                 'help': "Number of threads"}
+                    ),
+    }
+
     def __init__(self, args, r=run, p=progress):
         self.run = r
         self.progress = p
