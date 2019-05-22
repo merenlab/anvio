@@ -88,14 +88,16 @@ class Completeness:
         self.source_to_domain = dict([(source, info_table[source]['domain']) for source in self.sources])
         self.domain_to_sources = [(domain, [source for source in self.sources if info_table[source]['domain'] == domain]) for domain in self.domains]
 
-        domains_missing_in_SCG_domain_predictor = [d for d in self.domains if d not in self.SCG_domain_predictor.SCG_domains]
-        if len(domains_missing_in_SCG_domain_predictor):
-            num_domains_missing = len(domains_missing_in_SCG_domain_predictor)
-            self.run.warning("OK. We have a problem. You seem to have single-copy core gene collections for %d %s among your HMM hits that\
-                               are not included when the anvi'o domain predictor was trained :/ Here is the list of domains that are making\
-                               us upset here: \"%s\". This means either you put a new HMM single-copy core gene collection to the anvi'o HMMs\
-                               directory, or gave it as a parameter, and run `anvi-run-hmms` without updating the classifier anvi'o uses to\
-                               resolve domains for proper completion/redundancy estimates." % (num_domains_missing, 'domains' if num_domains_missing > 1 else 'domain', ', '.join(domains_missing_in_SCG_domain_predictor)))
+        self.domains_missing_in_SCG_domain_predictor = [d for d in self.domains if d not in self.SCG_domain_predictor.SCG_domains]
+        if len(self.domains_missing_in_SCG_domain_predictor):
+            num_domains_missing = len(self.domains_missing_in_SCG_domain_predictor)
+            self.run.warning("OK. We have a problem. You seem to have single-copy core gene collections for among your HMM hits %s that\
+                              are not included when the anvi'o domain predictor was trained :/ Here is the list of domains that are making\
+                              us upset here: \"%s\". This means either you put a new HMM single-copy core gene collection to the anvi'o HMMs\
+                              directory, or gave it as a parameter, and run `anvi-run-hmms` without updating the classifier anvi'o uses to\
+                              resolve domains for proper completion/redundancy estimates." % \
+                                           ('a domain' if num_domains_missing == 1 else '%s domains' % num_domains_missing,
+                                            ', '.join(self.domains_missing_in_SCG_domain_predictor)))
             self.initialized_properly = False
 
         if source_requested:
@@ -139,11 +141,26 @@ class Completeness:
            according to the random forest classifier.
         """
 
-        if not self.initialized_properly:
-            return ('', {}, {}, None)
+        # learn domains anvi'o hmm hits know about .. NOTE: the key problem here is that due to this line, anvi'o currently allows
+        # a single SCG collection per domain. This can be changed, and we will think about that when it is a necessity. No need
+        # to be rocket scientists before the need arises.
+        domains_in_hmm_hits = sorted([d for d in hmm_hits if list(hmm_hits[d].values())[0]['num_genes_in_model_with_hits']])
 
-        # learn domains anvi'o hmm hits know about
-        domains_in_hmm_hits = sorted(hmm_hits.keys())
+        # if this class is initialized improperly, it means there are SCG domains in the contigs database anvi'o does not
+        # recognize. but for a given bin, all HMM hits may be coming only from domains anvi'o recognizes. in those cases
+        # we can predict the domain nicely, and move on with our lives. if hmm hits for a given bin includes hits from the
+        # mysterious hmm collection the user defined, then there is not much we can do. here we will test the presence of
+        # any HMM hits with a domain we don't recognize, and act accordingly.
+        if not self.initialized_properly:
+            hits_contain_a_domain_missing_from_SCG_domain_predictor = len(set(domains_in_hmm_hits).intersection(set(self.domains_missing_in_SCG_domain_predictor))) > 0
+
+            if hits_contain_a_domain_missing_from_SCG_domain_predictor:
+                info_text = "NO DOMAIN ESTIMATION BECAUSE THERE IS WEIRD STUFF GOING ON. Anvi'o is having hard time determining the domain for\
+                             this particular genomic bin because it includes HMM hits coming from single-copy core gene collection anvi'o did not\
+                             know about when the domain predictor was trained :/ This is not a very big deal as anvi'o will continue showing you\
+                             the completion/redundancy estimates for every SCG collection you have in this contigs database, but it will predict\
+                             the proper domain for you."
+                return ('', {}, {}, info_text)
 
         # learn domain predictions from anvi'o random forest
         domain_probabilities, actual_domains, control_domains = self.SCG_domain_predictor.predict_from_observed_genes_per_domain(observed_genes_per_domain)
@@ -332,7 +349,7 @@ class Completeness:
             # care whether those hits are contributing to redundance or not --instad here we are
             # intrested only in the 'coverage' of the model)
             scg_hmm_hits[domain][source]['num_genes_in_model'] = len(self.genes_in_db[source])
-            scg_hmm_hits[domain][source]['num_genes_in_model_with_hits ']= len(genes_count)
+            scg_hmm_hits[domain][source]['num_genes_in_model_with_hits']= len(genes_count)
             scg_hmm_hits[domain][source]['model_coverage']= len(genes_count) / len(self.genes_in_db[source])
 
             scg_hmm_hits[domain][source]['percent_completion'] = len(genes_count) * 100.0 / len(self.genes_in_db[source])
