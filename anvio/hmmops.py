@@ -713,13 +713,27 @@ class SequencesForHMMHits:
         f.close()
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator=None, genes_order=None, align_with=None):
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator=None, genes_order=None, align_with=None, just_do_it=False):
         """Stores HMM sequences into a FASTA file."""
 
         filesnpaths.is_output_file_writable(output_file_path)
 
         if wrap and not isinstance(wrap, int):
             raise ConfigError('"wrap" has to be an integer instance')
+
+        if genes_order and concatenate_genes:
+            gene_frequencies = Counter(genes_order)
+            non_unique_genes = [g for g in gene_frequencies if gene_frequencies[g] > 1]
+            if len(non_unique_genes):
+                if just_do_it:
+                    self.run.warning("Anvi'o found that some gene names occur multiple times (i.e., %s), but is letting this get away\
+                                      since the user invoked the grumpy flag." % (', '.join(non_unique_genes)), nl_before=1)
+                else:
+                    raise ConfigError("The list of gene names you wish to concatenate contains those that occur more than once.\
+                                       Here is the list: '%s'. While anvi'o believes it is a silly idea to have the same gene\
+                                       names multiple times, it will not care about it and will let you get away with it if you\
+                                       really want that. In which case you can use the flag `--just-do-it`, and move on with your\
+                                       very unconventional and cool analysis." % (', '.join(non_unique_genes)))
 
         if concatenate_genes:
             self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with)
