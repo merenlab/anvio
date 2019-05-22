@@ -5,6 +5,8 @@ import anvio.terminal as terminal
 from anvio.drivers.fasttree import FastTree
 from anvio.drivers.muscle import Muscle
 from anvio.drivers.famsa import FAMSA
+from anvio.drivers.concoct import CONCOCT
+from anvio.drivers.metabat import MetaBAT
 from anvio.errors import ConfigError
 
 run = terminal.Run()
@@ -16,6 +18,8 @@ phylogeny_default = "fasttree"
 driver_modules['phylogeny'] = {"default":  FastTree,
                                "fasttree": FastTree}
 
+driver_modules['binning'] = {"concoct": CONCOCT,
+                             "metabat": MetaBAT}
 
 class Aligners:
     def __init__(self, run=run, progress=progress):

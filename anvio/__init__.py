@@ -1192,6 +1192,12 @@ D = {
              'type': str,
              'help': "Varaibility engine. The default is '%(default)s'."}
                 ),
+    'driver': (
+            ['--driver'],
+            {'metavar': 'DRIVER',
+             'type': str,
+             'help': "Automatic binning drivers. Available options '%(choices)s'."}
+                ),
     'skip-synonymity': (
             ['--skip-synonymity'],
             {'default': False,

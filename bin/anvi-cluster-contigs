@@ -8,6 +8,7 @@ import anvio
 import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 
+from anvio.drivers import driver_modules
 import anvio.drivers.concoct as concoct
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -40,6 +41,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
     parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'default': 'CONCOCT'}))
     parser.add_argument(*anvio.A('num-clusters-requested'), **anvio.K('num-clusters-requested'))
+    parser.add_argument(*anvio.A('driver'), **anvio.K('driver', {'choices': list(driver_modules['binning'].keys())}))
+
 
     args = anvio.get_args(parser)
 
@@ -58,8 +61,8 @@ if __name__ == '__main__':
         if args.output_file:
             filesnpaths.is_output_file_writable(args.output_file)
 
-        c = concoct.CONCOCT(args)
-        c.cluster()
+        # c = concoct.CONCOCT(args)
+        # c.cluster()
 
         if args.output_file:
             c.store_clusters_as_TAB_delimited_text(args.output_file)
