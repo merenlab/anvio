@@ -334,7 +334,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                         if (num_items == 0) {
                             _dc = -1; _dr = -1; _vc = '--'; _vr = '--';
                         } else if (best_matching_domain == '') {
-                            _dc = -1; _dr = -1; _vc = '*'; _vr = '*'; _cc = '#DDDDDD'; _cr = '#DDDDDD';
+                            _dc = -1; _dr = -1; _vc = '***'; _vr = '***'; _cc = '#DDAAAA'; _cr = '#DDAAAA';
                         } else if (best_matching_domain == "blank") {
                             _dc = -1; _dr = -1; _vc = '??'; _vr = '??'; _cc = '#DDDDDD'; _cr = '#DDDDDD';
                         } else if (best_matching_domain == "mixed") {
