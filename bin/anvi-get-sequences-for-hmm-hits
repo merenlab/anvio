@@ -216,7 +216,8 @@ def main(args):
                                      separator=separator,
                                      wrap=None if args.no_wrap else 120,
                                      genes_order=list(gene_names) if len(gene_names) else None,
-                                     align_with=args.align_with)
+                                     align_with=args.align_with,
+                                     just_do_it=args.just_do_it)
 
     run.info('Mode', 'AA seqeunces' if args.get_aa_sequences else 'DNA seqeunces', mc='green')
     run.info('Genes are concatenated', args.concatenate_genes)
@@ -280,6 +281,7 @@ if __name__ == '__main__':
 
     groupG = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
     groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
+    groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 
