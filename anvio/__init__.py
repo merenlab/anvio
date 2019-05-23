@@ -1196,6 +1196,7 @@ D = {
             ['--driver'],
             {'metavar': 'DRIVER',
              'type': str,
+             'required': True,
              'help': "Automatic binning drivers. Available options '%(choices)s'."}
                 ),
     'skip-synonymity': (
