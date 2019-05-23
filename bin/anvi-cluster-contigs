@@ -3,13 +3,13 @@
 """A script to call CONCOCT clustering on a merged anvi'o profile"""
 
 import sys
+import argparse
 
 import anvio
 import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 
 from anvio.drivers import driver_modules
-import anvio.drivers.concoct as concoct
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -28,23 +28,47 @@ __requires__ = ['profile-db', 'contigs-db']
 __provides__ = ['collection', 'bin']
 
 if __name__ == '__main__':
-    import argparse
+    show_help = ('--help' in sys.argv) or ('-h' in sys.argv)
+    modules = driver_modules['binning']
 
-    parser = argparse.ArgumentParser(description="A program to cluster items in a merged anvi'o profile using CONCOCT, and optionally\
+    parent_parser = argparse.ArgumentParser(description="A program to cluster items in a merged anvi'o profile using CONCOCT, and optionally\
                                                   creating a collection in the profile database. This is especially useful if you need to\
                                                   have more control over the number of clusters to work with if you are planning to refine\
-                                                  them manually later.")
+                                                  them manually later.", add_help=False)
 
-    parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
-    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'default': 'CONCOCT'}))
-    parser.add_argument(*anvio.A('num-clusters-requested'), **anvio.K('num-clusters-requested'))
-    parser.add_argument(*anvio.A('driver'), **anvio.K('driver', {'choices': list(driver_modules['binning'].keys())}))
+    parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parent_parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    parent_parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
+    parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'default': 'CONCOCT'}))
+    parent_parser.add_argument(*anvio.A('num-clusters-requested'), **anvio.K('num-clusters-requested'))
+    parent_parser.add_argument(*anvio.A('driver'), **anvio.K('driver', 
+        {'choices': list(driver_modules['binning'].keys()), 'type': str.lower}))
 
+    if show_help:
+        parent_parser.print_help()
 
-    args = anvio.get_args(parser)
+    subparsers = {}
+    for name, module in modules.items():
+        subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS)
+        subparser._optionals.title = '%s options' % name.upper()
+
+        for arg_name, definiton in module.arguments.items():
+            subparser.add_argument(*definiton[0], **definiton[1])
+
+        if show_help:
+            subparser.print_help()
+
+        subparsers[name] = subparser
+
+    if show_help:
+        sys.exit()
+
+    args, unknown = parent_parser.parse_known_args()
+    print(anvio.DEBUG)
+    sub_args, unknown = subparsers[args.driver].parse_known_args()
+    binning_module = modules[args.driver](sub_args)
+    binning_module.cluster()
 
     try:
         collection_name = args.collection_name.strip()
