@@ -11,7 +11,7 @@ import platform
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '5.4-master'
+anvio_version = '5.5-master'
 anvio_codename = 'margaret'
 
 DEBUG = '--debug' in sys.argv
@@ -338,11 +338,11 @@ D = {
                       computational complexity, this feature comes 'off' by default. Using this flag you can rise against the\
                       authority, as you always should, and make anvi'o profile codons."}
                 ),
-    'include-orphans': (
-            ['--include-orphans'],
+    'ignore-orphans': (
+            ['--ignore-orphans'],
             {'default': False,
              'action': 'store_true',
-             'help': "Include orphans (paired reads that are not in a proper pair). The default is to ignore orphans."}
+             'help': "Ignore orphan reads (paired reads that are not in a proper pair). The default is to include orphans."}
                 ),
     'max-coverage-depth': (
             ['-m', '--max-coverage-depth'],

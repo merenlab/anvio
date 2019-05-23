@@ -255,6 +255,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if not self.skip_init_functions:
             self.init_gene_clusters_functions()
 
+        self.collection_dict, self.bins_info_dict, self.bin_ids = None, None, None
+        if self.collection_name:
+            self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
+            self.bin_ids = sorted(self.collection_dict.keys())
+
         # see if COG functions or categories are available
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
@@ -522,9 +527,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
 
     def process(self):
-        # init profile data for colletion.
-        collection_dict, bins_info_dict = self.init_collection_profile(self.collection_name)
-
         # let bin names known to all
         bin_ids = list(self.collection_profile.keys())
 
@@ -574,7 +576,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.summary['files'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from the superclass!
 
-        self.generate_gene_clusters_file(collection_dict)
+        self.generate_gene_clusters_file(self.collection_dict)
 
         self.report_misc_data_files(target_table='layers')
         self.report_misc_data_files(target_table='items')
@@ -1409,6 +1411,45 @@ class ContigSummarizer(SummarizerSuperClass):
                 contigs_index += 1
 
         return results
+
+
+class PanBin:
+    def __init__(self, summary, bin_id, r=run, p=progress):
+        self.summary = summary
+        self.progress = p
+        self.run = r
+
+        if bin_id not in self.summary.bin_ids:
+            raise ConfigError("Bin '%s' does not seem to be in this summary :/ These are the ones in it: %s." % (bin_id, ', '.join(self.summary.bin_ids)))
+
+        self.bin_id = bin_id
+        self.split_names = summary.collection_dict[self.bin_id]
+        self.views = {}
+        self.genomes = []
+
+        self.num_gene_clusters = None
+        self.num_genes_in_gene_clusters = None
+
+        self.num_splits = len(self.split_names)
+
+        # here we are subsetting views based on what gene clusters are available
+        # in this particular bin.
+        for view in self.summary.views:
+            self.views[view] = {}
+            self.views[view]['table_name'] = self.summary.views[view]['table_name']
+            self.views[view]['header'] = self.summary.views[view]['header']
+            self.views[view]['dict'] = {}
+
+            for split_name in self.split_names:
+                self.views[view]['dict'][split_name] = self.summary.views[view]['dict'][split_name]
+
+            if not self.genomes:
+                self.genomes = self.views[view]['header']
+
+        if 'gene_cluster_frequencies' in self.views:
+            self.num_gene_clusters = len(self.views['gene_cluster_frequencies']['dict'])
+            self.num_genes_in_gene_clusters = sum([sum(x.values()) for x in self.views['gene_cluster_frequencies']['dict'].values()])
+
 
 class Bin:
     def __init__(self, summary, bin_id, r=run, p=progress):

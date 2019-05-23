@@ -97,7 +97,7 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -n 22,22 \
                   -s S-AdoMet_synt_C \
                   --use-hmm \
-                  --hmm-sources Campbell_et_al
+                  --hmm-sources Bacteria_71 
 
 INFO "Recovering completeness esimates for the contigs db"
 anvi-compute-completeness -c $output_dir/CONTIGS.db

@@ -201,7 +201,7 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group('BAM FILE?', "Optional BAM file to recover CDN/AA frequencies among the mapped reads. It is OK to not\
                                                   provide one. Read the help menu of the program for more information.")
-    parser.add_argument('-b', '--bam-file', metavar = 'INPUT_BAM', default = None, help = 'Sorted and indexed BAM file to analyze.')
+    groupB.add_argument('-b', '--bam-file', metavar = 'INPUT_BAM', default = None, help = 'Sorted and indexed BAM file to analyze.')
 
 
     groupC = parser.add_argument_group('COMMON OPTIONALS', "Important things to read never end. Stupid science.")

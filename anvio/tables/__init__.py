@@ -13,7 +13,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "12"
+contigs_db_version = "13"
 profile_db_version = "31"
 genes_db_version = "4"
 pan_db_version = "13"
