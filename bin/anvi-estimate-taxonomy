@@ -267,6 +267,7 @@ class SCGTaxonomy:
             program = driver_modules['phylogeny']['default']
             print(program,"db_path")
             sequences_match=">"+entry['bin_id']+"\n"+entry['sequence']+"\n"
+            lenentry=len(entry['sequence'])
             for matching_gene in matching_genes:
                 print(matching_gene)
                 db_path = self.SCG_FASTA_DB_PATH(matching_gene)
@@ -276,7 +277,9 @@ class SCGTaxonomy:
                 with open(str(matching_gene)+".fa", mode='w') as file:
                     for hit in hits_per_gene[matching_gene]:
                         index=db.ids.index(hit['accession'])
-                        file.write(">"+db.ids[index]+"\n"+db.sequences[index]+"\n")
+                        diff=('-' *(int(lenentry)-len(db.sequences[index])))
+                        print(diff)
+                        file.write(">"+db.ids[index]+"\n"+str(diff)+db.sequences[index]+"\n")
                     file.write(">"+entry['bin_id']+"\n"+entry['sequence']+"\n")
                 program().run_command(str(matching_gene)+".fa", str(hit['accession'])+".tree")
 
