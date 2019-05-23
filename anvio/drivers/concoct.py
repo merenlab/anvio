@@ -34,7 +34,6 @@ from sklearn.decomposition import PCA
 
 import anvio
 import anvio.utils as utils
-import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -98,6 +97,8 @@ class CONCOCT:
 
         self.progress.new('Init')
 
+        import anvio.dbops as dbops
+
         self.progress.update('accessing the profile database ...')
         profile_db = dbops.ProfileDatabase(args.profile_db)
 
@@ -132,48 +133,6 @@ class CONCOCT:
 
         # be nice.
         return self.clusters
-
-
-    def store_clusters_as_TAB_delimited_text(self, output_file_path):
-        filesnpaths.is_output_file_writable(output_file_path)
-
-        self.progress.new('Storing clusters as TAB-delimited file')
-        self.progress.update('creating the clusters dictionary ...')
-        clusters_dict = {}
-        for contig_name in self.clusters:
-            clusters_dict[contig_name] = {'concoct_bin': self.clusters[contig_name]}
-
-        self.progress.update('writing the file ...')
-        utils.store_dict_as_TAB_delimited_file(clusters_dict, output_file_path, ['contig', 'concoct_bin'])
-        self.progress.end()
-
-        self.run.info('CONCOCT results in txt', output_file_path, display_only=True)
-
-
-    def store_clusters_in_db(self, collection_name='CONCOCT'):
-       # convert id -> bin mapping dict into a bin -> ids dict
-        data = {}
-        bin_info_dict = {}
-
-        if not len(self.clusters):
-            self.run.info('CONCOCT results in db', 'Nope. CONCOCT clusters are empty. Skipping!', mc='red', display_only=True)
-            return
-
-        for split_name in self.clusters:
-            bin_id = self.clusters[split_name]
-            if bin_id in data:
-                data[bin_id].add(split_name)
-            else:
-                data[bin_id] = set([split_name])
-                bin_info_dict[bin_id] = {'html_color': '#' + ''.join(['%02X' % random.randint(50, 230) for i in range(0, 3)]), 'source': 'CONCOCT'}
-                                                            # ^
-                                                            #  \
-                                                            #    poor man's random color generator
-
-        c = TablesForCollections(self.profile_db_path)
-        c.append(collection_name, data, bin_info_dict)
-
-        self.run.info('CONCOCT results in db', self.profile_db_path, display_only=True)
 
 
 class CONCOCT_INTERFACE():
