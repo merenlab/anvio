@@ -16,6 +16,8 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.hmmopswrapper as hmmopswrapper
+from anvio.drivers import driver_modules
+import anvio.fastalib as f
 
 from anvio.drivers.diamond import Diamond
 from anvio.dbops import ContigsSuperclass
@@ -52,6 +54,13 @@ class SCGTaxonomy:
 
         self.initialized = False
 
+
+        self.taxonomy_database_path
+
+        self.bestpercent = args.bestpercent
+
+        self.methode = args.methode
+
         self.SCGs = ["Ribosomal_L1", "Ribosomal_L13", "Ribosomal_L16", "Ribosomal_L17",
                      "Ribosomal_L2", "Ribosomal_L20", "Ribosomal_L21p", "Ribosomal_L22",
                      "Ribosomal_L27A", "Ribosomal_L3", "Ribosomal_L4", "Ribosomal_L6",
@@ -70,6 +79,8 @@ class SCGTaxonomy:
         self.taxonomic_levels = ['t_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 
         self.SCG_DB_PATH = lambda SCG: os.path.join(self.taxonomy_database_path, "%s.dmnd" % SCG)
+
+        self.SCG_FASTA_DB_PATH = lambda SCG: os.path.join(self.taxonomy_database_path,SCG)
 
         self.taxonomy_dict = {}
 
@@ -181,38 +192,17 @@ class SCGTaxonomy:
                 if anvio.DEBUG:
                     self.show_hits(bin_name, gene_name, hits)
 
-            consensus_taxonomy=self.get_consensus_taxonomy(hits_per_gene)
+            consensus_taxonomy=self.get_consensus_taxonomy(hits_per_gene,bin_name,hmm_sequences_dict_per_bin)
 
 
 
 
 
 
-    def get_cumul_hit_per_gene(self,hits_per_gene):
-        """add bitscore of eatch blast per query"""
-
-        cumul_hit_per_gene={}
-
-        matching_genes=[gene for gene in hits_per_gene if len(hits_per_gene[gene])]
-        number_of_matching_genes=len(matching_genes)
-        self.run.info('Num SCGs with match(s)', number_of_matching_genes)
-        self.run.info('SCGs with match(s)', ', '.join(matching_genes))
-
-        for matching_gene in matching_genes:
-
-            for entry in hits_per_gene[matching_gene]:
-
-                    if entry["accession"] not in cumul_hit_per_gene:
-                        cumul_hit_per_gene[entry['accession']]=(float(entry['bitscore'])/number_of_matching_genes)
-                    else:
-                        cumul_hit_per_gene[entry['accession']]=\
-                        float(cumul_hit_per_gene[entry['accession']])\
-                        +(float(entry['bitscore'])/number_of_matching_genes)
-
-        return cumul_hit_per_gene
 
 
-    def get_consensus_taxonomy_with_score_by_entry(self, score_by_entry, bin_name):
+
+    def get_consensus_taxonomy_with_score_by_entry(self, score_by_entry, bin_name,bestpercent):
 
         # temporary
         estimate_taxonomy_temp1=""
@@ -224,8 +214,9 @@ class SCGTaxonomy:
             return
 
         selected_entrys_by_score={\
-         code:score for code, score in score_by_entry.items() if score>(float(maxscore)*0.99) }
+         code:score for code, score in score_by_entry.items() if score>(float(maxscore)*float(bestpercent)) }
 
+        self.run.info("Number of taxonomy use for the consensus", len(selected_entrys_by_score))
 
         if anvio.DEBUG:
             self.show_table_score(bin_name, selected_entrys_by_score)
@@ -238,20 +229,77 @@ class SCGTaxonomy:
                 estimate_taxonomy_temp1=[i for i, j in zip(estimate_taxonomy_temp1, estimate_taxonomy_temp2) if i == j]
 
 
-        self.run.info("Estimate Taxonomy of "+str(bin_name), '/'.join(estimate_taxonomy_temp1))
+        self.run.info("Estimate Taxonomy of "+str(bin_name), '/'.join(estimate_taxonomy_temp1)+"\n")
         estimate_taxonomy=dict(zip(self.taxonomic_levels, estimate_taxonomy_temp1))
         return estimate_taxonomy
 
+    def get_cumul_hit_per_gene(self,hits_per_gene):
+        """add bitscore of eatch blast per query"""
+        matching_genes=[gene for gene in hits_per_gene if len(hits_per_gene[gene])]
+        cumul_hit_per_gene={}
+        number_of_matching_genes=len(matching_genes)
+        self.run.info('Num SCGs with match(s)', number_of_matching_genes)
+        self.run.info('SCGs with match(s)', ', '.join(matching_genes))
+        for matching_gene in matching_genes:
+            for entry in hits_per_gene[matching_gene]:
 
-    def get_consensus_taxonomy(self,hits_per_gene):
+                    if entry["accession"] not in cumul_hit_per_gene:
+                        cumul_hit_per_gene[entry['accession']]=(float(entry['bitscore'])/number_of_matching_genes)
+                    else:
+                        cumul_hit_per_gene[entry['accession']]=\
+                        float(cumul_hit_per_gene[entry['accession']])\
+                        +(float(entry['bitscore'])/number_of_matching_genes)
+
+        return cumul_hit_per_gene
+
+    def get_matching_gene(self,hits_per_gene):
+        matching_genes=[gene for gene in hits_per_gene if len(hits_per_gene[gene])]
+        number_of_matching_genes=len(matching_genes)
+        self.run.info('Num SCGs with match(s)', number_of_matching_genes)
+        self.run.info('SCGs with match(s)', ', '.join(matching_genes))
+        return matching_genes
 
 
-        score_by_entry= self.get_cumul_hit_per_gene(hits_per_gene)
 
-        if anvio.DEBUG:
-            self.show_table_score(bin_name, score_by_entry)
+    def make_tree_with_hit(self,hits_per_gene,hmm_sequences_dict_per_bin,bin_name):
+        for entry in hmm_sequences_dict_per_bin[bin_name].values():
+            matching_genes=self.get_matching_gene(hits_per_gene)
+            program = driver_modules['phylogeny']['default']
+            print(program,"db_path")
+            sequences_match=">"+entry['bin_id']+"\n"+entry['sequence']+"\n"
+            for matching_gene in matching_genes:
+                print(matching_gene)
+                db_path = self.SCG_FASTA_DB_PATH(matching_gene)
+                print(db_path)
+                db=f.ReadFasta(db_path)
+                print(db)
+                with open(str(matching_gene)+".fa", mode='w') as file:
+                    for hit in hits_per_gene[matching_gene]:
+                        index=db.ids.index(hit['accession'])
+                        file.write(">"+db.ids[index]+"\n"+db.sequences[index]+"\n")
+                    file.write(">"+entry['bin_id']+"\n"+entry['sequence']+"\n")
+                program().run_command(str(matching_gene)+".fa", str(hit['accession'])+".tree")
 
-        consensus_taxonomy=self.get_consensus_taxonomy_with_score_by_entry(score_by_entry,bin_name)
+
+    def get_consensus_taxonomy(self,hits_per_gene,bin_name,hmm_sequences_dict_per_bin):
+
+        #matching_genes=get_matching_gene(hits_per_gene)
+
+
+
+        if self.methode=="tree":
+            self.make_tree_with_hit(hits_per_gene,hmm_sequences_dict_per_bin,bin_name)
+
+        else:
+            score_by_entry= self.get_cumul_hit_per_gene(hits_per_gene)
+            if anvio.DEBUG:
+                self.show_table_score(bin_name, score_by_entry)
+            consensus_taxonomy=self.get_consensus_taxonomy_with_score_by_entry(score_by_entry,bin_name,self.bestpercent)
+
+
+
+
+
 
 
     def get_raw_blast_hits(self, d, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
@@ -291,6 +339,14 @@ class SCGTaxonomy:
 
 
 def main(args):
+
+    if not args.methode:
+        args.methode="tree"
+
+    if not args.bestpercent:
+        args.bestpercent=0.98
+
+
     if args.external_genomes and (args.contigs_db or args.profile_db):
         raise ConfigError("If you are interested in using a list of external genomes, you shouldn't be using a contigs db or\
                            profile db prameters.")
@@ -330,6 +386,9 @@ def main(args):
 
     if not args.gene_names:
         args.gene_names = "Ribosomal_L1,Ribosomal_L13,Ribosomal_L16,Ribosomal_L17,Ribosomal_L2,Ribosomal_L20,Ribosomal_L21p,Ribosomal_L22,Ribosomal_L27A,Ribosomal_L3,Ribosomal_L4,Ribosomal_L6,Ribosomal_L9_C,Ribosomal_S11,Ribosomal_S2,Ribosomal_S20p,Ribosomal_S3_C,Ribosomal_S6,Ribosomal_S7,Ribosomal_S9,ribosomal_L24"
+
+    if not args.bestpercent:
+        args.bestpercent = 0.98
 
     # the following if/else block either uses SequencesForHMMHits or the wrapper class
     # SequencesForHMMHitsWrapperForMultipleContigs (if there are multiple contigs files)
@@ -496,6 +555,10 @@ if __name__ == '__main__':
     parser.add_argument("-t", "--taxonomy-file", help="taxo file", nargs='?')
 
     parser.add_argument("-r", "--taxonomy-database", help="db ribosomal prot", nargs='?')
+
+    parser.add_argument("-bpc", "--bestpercent", help="cutoff for consider taxonomie to the best taxonomie score . Default value 0.98")
+
+    parser.add_argument("-m", "--methode", help="method chosen for estimation of taxonomy ")
 
     args = anvio.get_args(parser)
 
