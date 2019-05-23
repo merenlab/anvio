@@ -41,11 +41,11 @@ if __name__ == '__main__':
                             the anvi'o snakemake workflows because magic.", metavar='OUTPUT_FASTA_TXT')
 
     groupC = parser.add_argument_group('ADDITIONAL PARAMETERS', 'Additional things you can set.')
-    groupC.add_argument('-E', '--exclude-gene-calls-from-fasta-txt', required=False, help='By specifying this flag, the \
-                        the external gene calls file will be excluded from the fasta.txt file. An external gene calls file \
-                        will still be generated, but just not included in your fasta.txt. By excluding the gene calls \
-                        you guarantee that anvi\'o that prodigal will be used to generate gene calls when a workflow \
-                        runs anvi-gen-contigs-database.', action='store_true')
+    groupC.add_argument('-E', '--exclude-gene-calls-from-fasta-txt', required=False, help="This flag will exclude\
+                        the external gene calls and functions from the fasta.txt file. Files for external gene calls\
+                        and functions according to the information stored in GenBank file, but they will simply\
+                        not be included in your fasta.txt file. By doing so you will *gurantee* that when you use\
+                        this file from within a workflow, anvi'o wil use its default gene caller to identify genes.", action='store_true')
 
     args = anvio.get_args(parser)
 

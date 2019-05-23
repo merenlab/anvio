@@ -27,6 +27,8 @@ a = automodel(env,
               assess_methods=(assess.GA341,
                               assess.DOPE))
 
+a.set_output_model_format('PDB')
+
 # prepare for an extremely fast optimization
 if VERY_FAST:
     a.very_fast()

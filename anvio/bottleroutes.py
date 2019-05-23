@@ -208,7 +208,7 @@ class BottleApplication(Bottle):
         elif self.interactive.mode == 'structure':
             homepage = 'structure.html'
         elif self.interactive.mode == 'inspect':
-            redirect('/app/charts.html?id=%s&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
+            redirect('/app/charts.html?id=%s&show_snvs=true&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
 
         redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
@@ -334,7 +334,7 @@ class BottleApplication(Bottle):
                         item_lengths[gene_cluster] += len(self.interactive.gene_clusters[gene_cluster][genome])
 
             functions_sources = []
-            if self.interactive.mode == 'full' or self.interactive.mode == 'gene':
+            if self.interactive.mode == 'full' or self.interactive.mode == 'gene' or self.interactive.mode == 'refine':
                 functions_sources = list(self.interactive.gene_function_call_sources)
             elif self.interactive.mode == 'pan':
                 functions_sources = list(self.interactive.gene_clusters_function_sources)

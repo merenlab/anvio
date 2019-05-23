@@ -6,6 +6,7 @@
 
 import sys
 import textwrap
+from collections import Counter
 
 from scipy import stats
 
@@ -560,7 +561,7 @@ class SequencesForHMMHits:
         return Aligners().select(align_with)
 
 
-    def __store_concatenated_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None, align_with=None):
+    def __store_concatenated_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None, align_with=None, just_do_it=False):
         """Generates concatenated sequences from `hmm_sequences_dict_for_splits` dict.
 
            Please do NOT directly access to this function, and use `store_hmm_sequences_into_FASTA`
@@ -568,16 +569,23 @@ class SequencesForHMMHits:
         """
 
         if len(self.sources) != 1:
-            raise ConfigError("If you want your genes to be concatenated, you should be requesting a single HMM source. Why?\
-                               In fact we are not exactly sure why. But when we think of it, we couldn't come up with a \
-                               scenario where the user might truly be interested in concatenating genes from multiple HMM\
-                               sources, and we wanted to add a control in case they are making a mistake w/o realizing. If you\
-                               are sure this is what you must do for the question you are interested in, please send an\
-                               e-mail to the anvi'o discussion group, and convince us .. or you can just delete this if block\
-                               to avoid this check if you are not in the mood. We know the feeling.")
+            if just_do_it:
+                self.run.warning("You have asked anvi'o to not pay attention to the fact that you are asking for genes to be concatenated\
+                                  that are coming from different HMM collections. Fingers crossed. Please check the deflines of the\
+                                  resulting FASTA file carefully.")
+            else:
+                raise ConfigError("In theory you should be requesting a single HMM source if you want your genes to be concatenated.\
+                                   But in practice everyone has different needs, so we don't know. If this is not due to an error on\
+                                   your part, and if you think you know what you are doing, you can ask anvi'o to let you concatenate\
+                                   genes from multiple HMM sources by using the flag `--just-do-it`. In that case you will not see this\
+                                   error, but you must be extremely careful to make sure the resulting file looks like it should, and\
+                                   the information it contains makes sense. Since this not the common practice, you may run into other\
+                                   errors downstream, for which we apologize in advance.")
 
-        hmm_source = self.sources.pop()
-        gene_names_in_source = [g.strip() for g in self.hmm_hits_info[hmm_source]['genes'].split(',')]
+        # if the user did not define a single HMM source, then it will recover all genes in all HMM sources.
+        gene_names_in_source = []
+        for _hmm_source in self.sources:
+            gene_names_in_source.extend([g.strip() for g in self.hmm_hits_info[_hmm_source]['genes'].split(',')])
 
         # the user wants to play rough. FINE. we will concatenate genes for phylogenomic analyses.
         gene_names = None
@@ -601,7 +609,7 @@ class SequencesForHMMHits:
             gene_names = genes_order
         else:
             self.run.warning("You did not define any gene names. Bold move. Now anvi'o will attempt to report a file with all\
-                              genes defined in the HMM source '%s'." % hmm_source)
+                              genes defined in all HMM sources. This will likely be quite ugly, so please brace yourself.")
 
             gene_names = gene_names_in_dict
 
@@ -667,7 +675,7 @@ class SequencesForHMMHits:
             HMM hits dictionary (here is a list of them: '%s'). Not knowing what to do with this werid\
             situation, anvi'o put gap characters for all of them and retained your order. Here are those\
             genes that missed the party: '%s'" % \
-                (', '.join(bin_names_in_dict), ', '.join(gene_names_missing_from_everywhere)))
+                (', '.join(bin_names_in_dict), ', '.join(set(gene_names_missing_from_everywhere))))
 
         f.close()
 
@@ -713,7 +721,7 @@ class SequencesForHMMHits:
         f.close()
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator=None, genes_order=None, align_with=None):
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator=None, genes_order=None, align_with=None, just_do_it=False):
         """Stores HMM sequences into a FASTA file."""
 
         filesnpaths.is_output_file_writable(output_file_path)
@@ -721,7 +729,21 @@ class SequencesForHMMHits:
         if wrap and not isinstance(wrap, int):
             raise ConfigError('"wrap" has to be an integer instance')
 
+        if genes_order and concatenate_genes:
+            gene_frequencies = Counter(genes_order)
+            non_unique_genes = [g for g in gene_frequencies if gene_frequencies[g] > 1]
+            if len(non_unique_genes):
+                if just_do_it:
+                    self.run.warning("Anvi'o found that some gene names occur multiple times (i.e., %s), but is letting this get away\
+                                      since the user invoked the grumpy flag." % (', '.join(non_unique_genes)), nl_before=1)
+                else:
+                    raise ConfigError("The list of gene names you wish to concatenate contains those that occur more than once.\
+                                       Here is the list: '%s'. While anvi'o believes it is a silly idea to have the same gene\
+                                       names multiple times, it will not care about it and will let you get away with it if you\
+                                       really want that. In which case you can use the flag `--just-do-it`, and move on with your\
+                                       very unconventional and cool analysis." % (', '.join(non_unique_genes)))
+
         if concatenate_genes:
-            self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with)
+            self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with, just_do_it)
         else:
             self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with)

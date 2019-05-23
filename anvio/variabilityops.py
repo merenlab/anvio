@@ -819,7 +819,11 @@ class VariabilitySuper(VariabilityFilter, object):
             # this or down below will explode one day. the current implementation of this module
             # contains serious design flaws :( when this explodes and we are lost how to fix it,
             # perhaps it will be a good time to rewrite this entire thing.
-            splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in (self.genes_of_interest or self.gene_caller_ids)]))
+            # Edit: it exploded slightly :( I am ashamed of this code
+            try:
+                splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in (self.genes_of_interest or self.gene_caller_ids)]))
+            except KeyError as e:
+                raise ConfigError("Some of the gene caller IDs you provided are not in your contigs database...")
 
         elif split_source == "bin_id":
             if self.collection_name and not self.bin_id:
@@ -1358,6 +1362,15 @@ class VariabilitySuper(VariabilityFilter, object):
         self.check_if_data_is_empty()
 
 
+    def reorder_data_for_vectorization(self):
+        """
+        Order the entries according to unique_pos_identifier (and for a given unique_pos_identifier,
+        entries are ordered alphabetically by sample_id). Required for vectorized operations in instances
+        where quince mode has ran.
+        """
+        self.data = self.data.sort_values(by=["unique_pos_identifier", "sample_id"])
+
+
     def compute_comprehensive_variability_scores(self):
         """
             Comprehensive stats are defined as scores that take into consideration the entire vector of variability and
@@ -1408,13 +1421,10 @@ class VariabilitySuper(VariabilityFilter, object):
 
         self.comprehensive_stats_headers = [m + '_weighted' for m in self.substitution_scoring_matrices] + ['entropy']
 
+        self.reorder_data_for_vectorization()
         # Pandas is fun, but numpy is fast. Here we convert the coverage table information from the DataFrame to a
         # numpy array. The transpose is required because scipy.stats entropy function calculates along an
-        # unspecifiable axis that we must conform to. But before any of this is done we order the entries according
-        # to unique_pos_identifier (and for a given unique_pos_identifier, entries are ordered alphabetically by
-        # sample_id). The reason for this is aesthetic but also required for vectorized operations that occur after
-        # self.progress.update("Those that do require --quince-mode")
-        self.data = self.data.sort_values(by=["unique_pos_identifier", "sample_id"])
+        # unspecifiable axis that we must conform to.
         coverage_table = self.data[self.items].T.astype(int).values
 
         # Now we compute the entropy, which is defined at a per position, per sample basis. There is a reason we
@@ -2466,5 +2476,94 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
 
         self.init_commons()
 
+
+class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
+    def __init__(self, args={}, p=progress, r=run):
+        self.progress = p
+        self.run = r
+
+        self.args = args
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        self.engine = A('engine', str)
+
+        variability_engines[self.engine].__init__(self, self.args, p=self.progress, r=self.run)
+
+        items_dict = {
+            'NT': constants.nucleotides,
+            'CDN': constants.codons,
+            'AA': constants.amino_acids
+        }
+
+        self.columns_of_interest = items_dict[self.engine] + [
+            'entry_id',
+            'sample_id',
+            'corresponding_gene_call',
+            'coverage',
+            'reference',
+            'unique_pos_identifier',
+            'gene_length'
+        ]
+
+
+    def fill_missing_entries(self, pairwise_data, sample_1, sample_2):
+        missing_data = {column: [] for column in pairwise_data.columns}
+
+        data_sample_1 = pairwise_data[pairwise_data['sample_id'] == sample_1].set_index('unique_pos_identifier', drop = True)
+        data_sample_2 = pairwise_data[pairwise_data['sample_id'] == sample_2].set_index('unique_pos_identifier', drop = True)
+
+        positions_sample_1 = set(data_sample_1.index)
+        positions_sample_2 = set(data_sample_2.index)
+
+        positions_missing_from_sample_1 = set([pos for pos in positions_sample_2 if pos not in positions_sample_1])
+        positions_missing_from_sample_2 = set([pos for pos in positions_sample_1 if pos not in positions_sample_2])
+
+        def correct_frequencies(row):
+            row[self.items] = np.zeros(len(self.items))
+            row[row['reference']] = 1
+            row['coverage'] = 1
+            return row
+
+        data_missing_from_sample_1 = data_sample_2.loc[positions_missing_from_sample_1, :].apply(correct_frequencies, axis = 1).reset_index(drop = False)
+        data_missing_from_sample_2 = data_sample_1.loc[positions_missing_from_sample_2, :].apply(correct_frequencies, axis = 1).reset_index(drop = False)
+
+        return pd.concat([pairwise_data, data_missing_from_sample_1, data_missing_from_sample_2], sort = True).reset_index(drop = True)
+
+
+    def process(self):
+        self.init_commons()
+        self.load_variability_data()
+        self.apply_preliminary_filters()
+        self.set_unique_pos_identification_numbers()
+        self.data = self.data[self.columns_of_interest]
+        self.convert_counts_to_frequencies()
+        self.get_FST_matrix()
+
+
+    def get_pairwise_FST(self, sample_1, sample_2):
+        if sample_1 == sample_2:
+            return 0
+
+        pairwise_data = self.data[(self.data['sample_id'] == sample_1) | (self.data['sample_id'] == sample_2)]
+        pairwise_data = self.fill_missing_entries(pairwise_data, sample_1, sample_2)
+        pairwise_data = pairwise_data.sort_values(by=["unique_pos_identifier", "sample_id"])
+
+        fixation_index = None
+        return fixation_index
+
+
+    def get_FST_matrix(self):
+        self.progress.new('Calculating pairwise fixation indices')
+        dimension = len(self.available_sample_ids)
+        self.fst_matrix = np.zeros((dimension, dimension))
+
+        for i, sample_1 in enumerate(self.available_sample_ids):
+            for j, sample_2 in enumerate(self.available_sample_ids):
+                if i > j:
+                    self.fst_matrix[i, j] = self.fst_matrix[j, i]
+                else:
+                    self.progress.update('{} with {}'.format(sample_1, sample_2))
+                    self.fst_matrix[i, j] = self.get_pairwise_FST(sample_1, sample_2)
+
+        self.progress.end()
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}

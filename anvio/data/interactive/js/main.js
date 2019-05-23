@@ -220,10 +220,16 @@ function initData() {
             item_lengths = response.item_lengths;
 
             var default_tree  = response.item_orders[0];
+            var default_order = response.item_orders[1];
             var available_trees = response.item_orders[2];
             $('#trees_container').append(getComboBoxContent(default_tree, available_trees));
-            clusteringData = response.item_orders[1]['data'];
-            loadOrderingAdditionalData(response.item_orders[1]);
+            clusteringData = default_order['data'];
+
+            if (default_order.hasOwnProperty('additional')) {
+                default_order['additional'] = JSON.parse(default_order['additional']);
+            }
+
+            loadOrderingAdditionalData(default_order);
 
 
             var default_view = response.views[0];
@@ -308,7 +314,7 @@ function initData() {
 }
 
 function switchUserInterfaceMode(project, title) {
-    if (server_mode == false && (mode == 'pan' || mode == 'gene' || mode == 'full')) {
+    if (server_mode == false && (mode == 'pan' || mode == 'gene' || mode == 'full' || mode == 'refine')) {
         $('#search_functions_button').attr('disabled', false);
         $('#searchFunctionsValue').attr('disabled', false);
         $('.functions-not-available-message').hide();
@@ -909,7 +915,11 @@ function loadOrderingAdditionalData(order) {
     collapsedNodes = [];
     
     if (order.hasOwnProperty('additional')) {
-        let orders_additional = JSON.parse(order['additional']);
+        let orders_additional = order['additional'];
+
+        if (typeof orders_additional === 'string') {
+            orders_additional = JSON.parse(orders_additional);
+        }
 
         if (orders_additional.hasOwnProperty('collapsedNodes')) {
             collapsedNodes = orders_additional['collapsedNodes'];
@@ -1680,9 +1690,15 @@ function showCompleteness(bin_id, updateOnly) {
             msg += "<td></td>";
         }
 
-        msg += "<td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td>" +
-               "<td data-value='" + averages['domain_probabilities'][stats[source]['domain']] + "'>" + averages['domain_probabilities'][stats[source]['domain']].toFixed(2) + "</td>" +
-               "<td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td>" +
+        msg += "<td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td>";
+
+        if (averages['domain_probabilities'].hasOwnProperty(stats[source]['domain'])) {
+            msg += "<td data-value='" + averages['domain_probabilities'][stats[source]['domain']] + "'>" + averages['domain_probabilities'][stats[source]['domain']].toFixed(2) + "</td>";
+        } else {
+            msg += "<td data-value='N/A'>N/A</td>";
+        }
+        
+        msg += "<td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td>" +
                "<td data-value='" + stats[source]['percent_redundancy'] + "'>" + stats[source]['percent_redundancy'].toFixed(2) + "%</td>";
 
         msg += "</tr>";

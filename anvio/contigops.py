@@ -36,7 +36,7 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 OK_CHARS_FOR_ORGANISM_NAME = string.ascii_letters + string.digits + '_'
-OK_CHARS_FOR_ACCESSION = OK_CHARS_FOR_ORGANISM_NAME + '.'
+OK_CHARS_FOR_ACCESSION = OK_CHARS_FOR_ORGANISM_NAME
 
 
 variability_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
@@ -87,7 +87,7 @@ class Contig:
         self.min_coverage_for_variability = 10
         self.skip_SNV_profiling = False
         self.report_variability_full = False
-        self.ignore_orphans = True
+        self.ignore_orphans = False
         self.max_coverage_depth = constants.max_depth_for_coverage
         self.codon_frequencies_dict = {}
 
@@ -168,7 +168,7 @@ class Auxiliary:
     def __init__(self, split, bam, parent_outlier_positions, 
                  min_coverage=10, 
                  report_variability_full=False, 
-                 ignore_orphans=True,
+                 ignore_orphans=False,
                  max_coverage_depth=constants.max_depth_for_coverage):
         self.v = []
         self.rep_seq = ''
@@ -313,9 +313,9 @@ class GenbankToAnvioWrapper:
 
         self.progress.end()
 
-        headers = ['name', 'path', 'gene_functional_annotation']
+        headers = ['name', 'path']
         if not self.exclude_gene_calls_from_fasta_txt:
-            headers.append('external_gene_calls')
+            headers.extend(['external_gene_calls', 'gene_functional_annotation'])
 
         utils.store_dict_as_TAB_delimited_file(output_fasta_dict, self.output_fasta_descriptor, headers=headers)
 

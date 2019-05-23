@@ -44,8 +44,6 @@ class Diamond:
 
         if not self.target_fasta:
             self.target_fasta = self.query_fasta
-        elif self.target_db_path:
-            self.target_fasta = self.target_db_path
 
         self.search_output_path = 'diamond-search-results'
         self.tabular_output_path = 'diamond-search-results.txt'
@@ -146,6 +144,36 @@ class Diamond:
         self.check_output(expected_output, 'blastp')
 
         self.run.info('Diamond blastp results', expected_output)
+
+
+    def blastp_stdin(self, sequence):
+        self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
+
+        cmd_line = ['diamond',
+                    'blastp',
+                    '-d', self.target_fasta,
+                    '-p', self.num_threads]
+
+        cmd_line.append('--sensitive') if self.sensitive else None
+
+        if self.max_target_seqs:
+            cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
+
+        if self.evalue:
+            cmd_line.extend(['--evalue', self.evalue])
+
+        self.run.info('DIAMOND blastp stdin cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+
+        self.progress.new('DIAMOND')
+        self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
+
+        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, '>seq\n%s' % sequence)
+
+        self.progress.end()
+
+        self.run.info('Diamond blastp results', '%d lines were returned from STDIN call' % len(output))
+
+        return(output)
 
 
     def view(self):

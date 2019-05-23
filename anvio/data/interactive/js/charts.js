@@ -395,14 +395,20 @@ function search_items(search_query, page) {
 
                 results_html += '<br /><br /><center>';
 
-                if (page > 0) {
+                if (results.length > 0) {
+                    if (page > 0) {
                     results_html += `<a href="#" onclick="search_items('${search_query}', ${page-1});">&lt;&lt;&lt; prev</a> | `;
-                }
+                    }
 
-                results_html += " page " + (page + 1) + " of " + total_page;
-                
-                if (page + 1 < total_page) {
-                    results_html += ` | <a href="#" onclick="search_items('${search_query}', ${page+1});"> next &gt;&gt;&gt;</a>`;
+                    results_html += " page " + (page + 1) + " of " + total_page;
+                    
+                    if (page + 1 < total_page) {
+                        results_html += ` | <a href="#" onclick="search_items('${search_query}', ${page+1});"> next &gt;&gt;&gt;</a>`;
+                    }
+                }
+                else
+                {
+                    results_html+="<b>No results found.</b>";
                 }
 
                 results_html += '</center>';
