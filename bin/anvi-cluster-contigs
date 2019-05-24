@@ -3,14 +3,18 @@
 """A script to call CONCOCT clustering on a merged anvi'o profile"""
 
 import sys
+import random
 import argparse
 
 import anvio
+import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.drivers import driver_modules
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -27,6 +31,23 @@ __tags__ = ["profile_db", "clustering", "collections"]
 __requires__ = ['profile-db', 'contigs-db']
 __provides__ = ['collection', 'bin']
 
+run = terminal.Run()
+
+def store_clusters_in_db(profile_db_path, clusters, collection_name, source):
+    bin_info_dict = {}
+
+    for bin_id in clusters:
+        bin_info_dict[bin_id] = {'html_color': '#' + ''.join(['%02X' % random.randint(50, 230) for i in range(0, 3)]), 'source': source}
+                                                                # ^
+                                                                #  \
+                                                                #    poor man's random color generator
+
+    c = TablesForCollections(profile_db_path)
+    c.append(collection_name, clusters, bin_info_dict)
+
+    run.info('%s results in db' % source, profile_db_path, display_only=True)
+
+
 if __name__ == '__main__':
     show_help = ('--help' in sys.argv) or ('-h' in sys.argv)
     modules = driver_modules['binning']
@@ -40,7 +61,7 @@ if __name__ == '__main__':
     parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parent_parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     parent_parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
-    parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'default': 'CONCOCT'}))
+    parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
     parent_parser.add_argument(*anvio.A('num-clusters-requested'), **anvio.K('num-clusters-requested'))
     parent_parser.add_argument(*anvio.A('driver'), **anvio.K('driver', 
         {'choices': list(driver_modules['binning'].keys()), 'type': str.lower}))
@@ -64,13 +85,9 @@ if __name__ == '__main__':
     if show_help:
         sys.exit()
 
-    args, unknown = parent_parser.parse_known_args()
-    print(anvio.DEBUG)
-    sub_args, unknown = subparsers[args.driver].parse_known_args()
-    binning_module = modules[args.driver](sub_args)
-    binning_module.cluster()
-
     try:
+        args, unknown = parent_parser.parse_known_args()
+
         collection_name = args.collection_name.strip()
         if not len(collection_name):
             raise ConfigError('Nice try. Collection name cannot be emtpy')
@@ -85,13 +102,25 @@ if __name__ == '__main__':
         if args.output_file:
             filesnpaths.is_output_file_writable(args.output_file)
 
-        # c = concoct.CONCOCT(args)
-        # c.cluster()
+        utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
-        if args.output_file:
-            c.store_clusters_as_TAB_delimited_text(args.output_file)
+        merged_profile_db = dbops.ProfileDatabase(args.profile_db)
+
+        if(merged_profile_db.meta['merged'] != True):
+            raise ConfigError("'%s' does not seem to be a merged profile database :/" % args.profile_db)
+
+        contigs_db = dbops.ContigsDatabase(args.contigs_db)
+
+        driver = args.driver
+        sub_args, unknown = subparsers[driver].parse_known_args()
+        binning_module = modules[driver](profile_db=merged_profile_db, contigs_db=contigs_db)
+        
+        clusters = binning_module.cluster(sub_args)
+
+        # if args.output_file:
+        #     c.store_clusters_as_TAB_delimited_text(args.output_file)
         if not args.skip_store_in_db:
-            c.store_clusters_in_db(collection_name = collection_name)
+            store_clusters_in_db(args.profile_db, clusters, collection_name, driver)
 
     except ConfigError as e:
         print(e)
