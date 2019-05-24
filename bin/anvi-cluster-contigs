@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""A script to call CONCOCT clustering on a merged anvi'o profile"""
-
+"""A script to run automatic binning algorithms on a merged anvi'o profile"""
+import os
 import sys
 import random
 import argparse
@@ -46,6 +46,24 @@ def store_clusters_in_db(profile_db_path, clusters, collection_name, source):
     c.append(collection_name, clusters, bin_info_dict)
 
     run.info('%s results in db' % source, profile_db_path, display_only=True)
+
+
+def prepare_input_files(profile_db, contigs_db):
+    input_files = argparse.Namespace()
+    temp_path = filesnpaths.get_temp_directory_path()
+    
+    P = lambda x: os.path.join(temp_path, x)
+    
+    input_files = argparse.Namespace()
+    input_files.coverage = P('coverages.txt')
+    input_files.fasta = P('sequence.fa')
+        
+    coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs')
+
+    utils.export_sequences_from_contigs_db(contigs_db.db_path, input_files.fasta, seq_names_to_export=sorted(coverages.keys()), splits_mode=True)
+    utils.store_dict_as_TAB_delimited_file(coverages, input_files.coverage, ['contig'] + sorted(list(profile_db.samples)))
+
+    return input_files
 
 
 if __name__ == '__main__':
@@ -113,9 +131,11 @@ if __name__ == '__main__':
 
         driver = args.driver
         sub_args, unknown = subparsers[driver].parse_known_args()
-        binning_module = modules[driver](profile_db=merged_profile_db, contigs_db=contigs_db)
-        
-        clusters = binning_module.cluster(sub_args)
+        binning_module = modules[driver]()
+
+        input_files = prepare_input_files(merged_profile_db, contigs_db)
+
+        clusters = binning_module.cluster(input_files, sub_args)
 
         # if args.output_file:
         #     c.store_clusters_as_TAB_delimited_text(args.output_file)
