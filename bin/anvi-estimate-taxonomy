@@ -280,27 +280,36 @@ class SCGTaxonomy:
                 lenentry=len(entry['sequence'])
                 db_path = self.SCG_FASTA_DB_PATH(entry['gene_name'])
                 db=f.ReadFasta(db_path)
+                i=0
+                for hit in hits_per_gene[entry['gene_name']]:
+                    index=db.ids.index(hit['accession'])
+                    species_name=hit['taxonomy']['t_species'].split(" ")
+                    species_name=species_name[1]
+                    if float(hit['bitscore']) > float(maxscore):
+                        maxscore = hit['bitscore']
+                        sequences_match.append((species_name,db.sequences[index]))
+                        i+=1
+                    if float(hit['bitscore']) < (float(maxscore)*float(self.bestpercent)):
+                        continue
+                    sequences_match.append((species_name,db.sequences[index]))
+                    i+=1
 
-                temp_file_path_fa = filesnpaths.get_temp_file_path(prefix='ANVIO_fa_%s' % str(bin_name)+str(entry['gene_name'])+".fa")
-                with open(temp_file_path_fa, 'w') as file:
-                    for hit in hits_per_gene[entry['gene_name']]:
-                        index=db.ids.index(hit['accession'])
-                        if float(hit['bitscore']) > float(maxscore):
-                            maxscore = hit['bitscore']
-                            sequences_match.append((db.ids[index],db.sequences[index]))
-                        if float(hit['bitscore']) < (float(maxscore)*float(self.bestpercent)):
-                            continue
-                        sequences_match.append((db.ids[index],db.sequences[index]))
-                alignments = aligner(run=r).run_stdin(sequences_match)
-                temp_file_path_muscle = filesnpaths.get_temp_file_path(prefix='ANVIO_muscle_%s' % str(bin_name)+str(entry['gene_name'])+".fa")
-                with open(temp_file_path_fa, 'w') as muscle:
-                    for id, sequence in alignments.items():
-                        muscle.write('>%s\n%s\n' % (id,sequence))
 
-                output_file_path=str(hit['accession'])+".tree"
-                filesnpaths.is_output_file_writable(output_file_path)
-                program().run_command(temp_file_path_muscle,output_file_path )
+                if i>3:
+                    alignments = aligner(run=r).run_stdin(sequences_match)
+                    temp_file_path_muscle = filesnpaths.get_temp_file_path(prefix='ANVIO_muscle_%s' % str(bin_name)+str(entry['gene_name'])+".fa")
+                    with open(temp_file_path_muscle, 'w') as muscle:
+                        for id, sequence in alignments.items():
+                            muscle.write('>%s\n%s\n' % (id,sequence))
+                    output_file_path=str(bin_name)+"_"+str(entry['gene_name'])+".tree"
 
+                    filesnpaths.is_output_file_writable(output_file_path)
+
+                    print(temp_file_path_muscle)
+                    program().run_command(temp_file_path_muscle,output_file_path )
+                else:
+                    print("for "+str(bin_name)+" the protein: "+str(entry['gene_name'])+"\t match "+hit['taxonomy']['t_species'])
+                    sys.exit(status=None)
 
 
 
