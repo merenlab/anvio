@@ -18,6 +18,7 @@ import anvio.ccollections as ccollections
 import anvio.hmmopswrapper as hmmopswrapper
 from anvio.drivers import driver_modules
 import anvio.fastalib as f
+from anvio.drivers import Aligners
 
 from anvio.drivers.diamond import Diamond
 from anvio.dbops import ContigsSuperclass
@@ -40,6 +41,7 @@ progress = terminal.Progress()
 
 run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
+aligners = Aligners()
 
 
 class SCGTaxonomy:
@@ -262,26 +264,47 @@ class SCGTaxonomy:
 
 
     def make_tree_with_hit(self,hits_per_gene,hmm_sequences_dict_per_bin,bin_name):
+
+        self.align_with="muscle"
+        aligners.select(self.align_with)
+        r = terminal.Run()
+
+        matching_genes=self.get_matching_gene(hits_per_gene)
         for entry in hmm_sequences_dict_per_bin[bin_name].values():
-            matching_genes=self.get_matching_gene(hits_per_gene)
-            program = driver_modules['phylogeny']['default']
-            print(program,"db_path")
-            sequences_match=">"+entry['bin_id']+"\n"+entry['sequence']+"\n"
-            lenentry=len(entry['sequence'])
-            for matching_gene in matching_genes:
-                print(matching_gene)
-                db_path = self.SCG_FASTA_DB_PATH(matching_gene)
-                print(db_path)
+            if entry['gene_name'] in matching_genes:
+                program = driver_modules['phylogeny']['default']
+                aligner = aligners.select("muscle", quiet=True)
+                sequences_match=[]
+                sequences_match.append((entry['bin_id'],entry['sequence']))
+                maxscore=0
+                lenentry=len(entry['sequence'])
+                db_path = self.SCG_FASTA_DB_PATH(entry['gene_name'])
                 db=f.ReadFasta(db_path)
-                print(db)
-                with open(str(matching_gene)+".fa", mode='w') as file:
-                    for hit in hits_per_gene[matching_gene]:
+
+                temp_file_path_fa = filesnpaths.get_temp_file_path(prefix='ANVIO_fa_%s' % str(bin_name)+str(entry['gene_name'])+".fa")
+                with open(temp_file_path_fa, 'w') as file:
+                    for hit in hits_per_gene[entry['gene_name']]:
                         index=db.ids.index(hit['accession'])
-                        diff=('-' *(int(lenentry)-len(db.sequences[index])))
-                        print(diff)
-                        file.write(">"+db.ids[index]+"\n"+str(diff)+db.sequences[index]+"\n")
-                    file.write(">"+entry['bin_id']+"\n"+entry['sequence']+"\n")
-                program().run_command(str(matching_gene)+".fa", str(hit['accession'])+".tree")
+                        if float(hit['bitscore']) > float(maxscore):
+                            maxscore = hit['bitscore']
+                            sequences_match.append((db.ids[index],db.sequences[index]))
+                        if float(hit['bitscore']) < (float(maxscore)*float(self.bestpercent)):
+                            continue
+                        sequences_match.append((db.ids[index],db.sequences[index]))
+                alignments = aligner(run=r).run_stdin(sequences_match)
+                temp_file_path_muscle = filesnpaths.get_temp_file_path(prefix='ANVIO_muscle_%s' % str(bin_name)+str(entry['gene_name'])+".fa")
+                with open(temp_file_path_fa, 'w') as muscle:
+                    for id, sequence in alignments.items():
+                        muscle.write('>%s\n%s\n' % (id,sequence))
+
+                output_file_path=str(hit['accession'])+".tree"
+                filesnpaths.is_output_file_writable(output_file_path)
+                program().run_command(temp_file_path_muscle,output_file_path )
+
+
+
+
+
 
 
     def get_consensus_taxonomy(self,hits_per_gene,bin_name,hmm_sequences_dict_per_bin):
