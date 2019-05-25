@@ -487,7 +487,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             # sort according to enrichment
             enrichment_data_frame.sort_values(by=['enrichment_score'], axis=0, ascending=False, inplace=True)
 
-            enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.2f')
+            enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f')
 
         self.progress.end()
 
