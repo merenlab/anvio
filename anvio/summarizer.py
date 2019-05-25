@@ -338,6 +338,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_occurrence_table_output = A('functional_occurrence_table_output')
         exclude_ungrouped = A('exclude_ungrouped')
 
+        min_number_for_q_value_calculation = 5
+
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
 
@@ -426,9 +428,12 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         function_occurrence_table = {}
 
         # populate the number of genomes per category once
+        groups_below_threshold = []
         for c in categories:
             function_occurrence_table[c] = {}
             function_occurrence_table[c]['N'] = len(categories_to_genomes_dict[c])
+            if function_occurrence_table[c]['N'] < min_number_for_q_value_calculation:
+                groups_below_threshold.append(c)
 
         self.progress.update("Calculating functional enrichment statistics")
         for f in functions_names:
@@ -437,6 +442,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             function_occurrence_table_df = pd.DataFrame.from_dict(function_occurrence_table, orient='index')
             test_statistic, q_value = utils.get_enriched_functions_statistics(function_occurrence_table_df['p'].values,
                                                                               function_occurrence_table_df['N'].values)
+            if groups_below_threshold:
+                # if there were groups with less than 5 members than we discard the q-value
+                q_value = None
+
             chi2_test_q_values.append(q_value)
             enrichment_dict[f] = {}
 
@@ -449,8 +458,17 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             for c in categories:
                 enrichment_dict[f]['N_' + c] = function_occurrence_table[c]['N']
 
-        import statsmodels.stats.multitest as multitest
-        reject, corrected_q_values, foo1, foo2 = multitest.multipletests(chi2_test_q_values, method='fdr_bh', alpha=fdr)
+        if not groups_below_threshold:
+            import statsmodels.stats.multitest as multitest
+            reject, corrected_q_values, foo1, foo2 = multitest.multipletests(chi2_test_q_values, method='fdr_bh', alpha=fdr)
+        else:
+            corrected_q_values = [None] * len(enrichment_dict.keys())
+            run.warning('At least one of your groups has less than %s members. \
+                         This is fine, but small groups do not allow the computation \
+                         of a meaningful q-value, and hence anvi\'o will still \
+                         compute a test statistic (AKA enrichment score) that you can \
+                         use to sort your functions but there will be no q-value asociated \
+                         with these scores. Here are the problematic groups: %s.' % (min_number_for_q_value_calculation, ', '.join(groups_below_threshold)))
 
         i = 0
         if len(corrected_q_values) != len(enrichment_dict.keys()):
