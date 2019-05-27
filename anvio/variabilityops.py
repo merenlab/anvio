@@ -2488,13 +2488,14 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
 
         variability_engines[self.engine].__init__(self, self.args, p=self.progress, r=self.run)
 
-        items_dict = {
+        # FIXME
+        self.items_dict = {
             'NT': constants.nucleotides,
             'CDN': constants.codons,
             'AA': constants.amino_acids
         }
 
-        self.columns_of_interest = items_dict[self.engine] + [
+        self.columns_of_interest = self.items_dict[self.engine] + [
             'entry_id',
             'sample_id',
             'corresponding_gene_call',
@@ -2519,12 +2520,13 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
 
         def correct_frequencies(row):
             row[self.items] = np.zeros(len(self.items))
-            row[row['reference']] = 1
-            row['coverage'] = 1
+            row[row['reference']] = 1.0
             return row
 
         data_missing_from_sample_1 = data_sample_2.loc[positions_missing_from_sample_1, :].apply(correct_frequencies, axis = 1).reset_index(drop = False)
         data_missing_from_sample_2 = data_sample_1.loc[positions_missing_from_sample_2, :].apply(correct_frequencies, axis = 1).reset_index(drop = False)
+        data_missing_from_sample_1['sample_id'] = sample_1
+        data_missing_from_sample_2['sample_id'] = sample_2
 
         return pd.concat([pairwise_data, data_missing_from_sample_1, data_missing_from_sample_2], sort = True).reset_index(drop = True)
 
@@ -2539,15 +2541,48 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
         self.get_FST_matrix()
 
 
+    def get_pairwise_data_and_shape(self, sample_1, sample_2):
+        pairwise_data = self.data[(self.data['sample_id'] == sample_1) | (self.data['sample_id'] == sample_2)]
+        pairwise_data = self.fill_missing_entries(pairwise_data, sample_1, sample_2)
+
+        # calculate the shape of the data
+        num_items = len(self.items)
+        num_samples = len(pairwise_data['sample_id'].unique())
+        num_positions = pairwise_data.shape[0] // num_samples
+
+        pairwise_data = pairwise_data.sort_values(by=["unique_pos_identifier", "sample_id"])
+        pairwise_data = pairwise_data[self.items_dict[self.engine]]
+
+        return pairwise_data, (num_positions, num_samples, num_items)
+
+
     def get_pairwise_FST(self, sample_1, sample_2):
         if sample_1 == sample_2:
             return 0
 
-        pairwise_data = self.data[(self.data['sample_id'] == sample_1) | (self.data['sample_id'] == sample_2)]
-        pairwise_data = self.fill_missing_entries(pairwise_data, sample_1, sample_2)
-        pairwise_data = pairwise_data.sort_values(by=["unique_pos_identifier", "sample_id"])
+        pairwise_data, tensor_shape = self.get_pairwise_data_and_shape(sample_1, sample_2)
 
-        fixation_index = None
+        """
+        pairwise_data = pd.DataFrame({
+            'A': [0.5, 0.25, 1, 1, 1, 0],
+            'C': [0] * 6,
+            'T': [0.5, 0.75, 0, 0, 0, 0],
+            'G': [0] * 5 + [1],
+        })
+        num_items = 4
+        num_samples = 2
+        num_positions = 3
+        tensor_shape = (num_positions, num_samples, num_items)
+        normalization = 1
+        """
+
+
+        # V/\
+        tensor = pairwise_data.values.reshape(*tensor_shape)
+        outer_product = tensor[:,0,:][:,:,np.newaxis] * tensor[:,1,:][:,np.newaxis,:]
+        diagonals = outer_product * np.broadcast_to(np.identity(outer_product.shape[1])[None, ...], outer_product.shape)
+        fixation_index = np.sum(outer_product - diagonals, axis=(0,1,2)) / normalization
+
         return fixation_index
 
 
