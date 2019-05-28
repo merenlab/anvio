@@ -1568,8 +1568,8 @@ function drawTree() {
                     showDraggableDialog('An exception occured', 
                         '<textarea style="width: 100%; height: 360px;">' + error.stack + '</textarea>\
                         <a target="_blank" href="https://github.com/merenlab/anvio/issues/new?title='+issue_title+'&body='+issue_body+'&labels=bug,interface">\
-                            <button type="button" class="btn btn-success btn-sm">Report this on GitHub</button> * Requires GitHub account.\
-                        </a>');
+                            <button type="button" class="btn btn-success btn-sm">Report this on GitHub</button>\
+                        </a> * Requires GitHub account.');
                 }
                 
                 // last_settings used in export svg for layer information,
