@@ -19,6 +19,12 @@ import anvio.hmmopswrapper as hmmopswrapper
 from anvio.drivers import driver_modules
 import anvio.fastalib as f
 from anvio.drivers import Aligners
+#from sklearn.datasets as sd
+#from scipy.stats import friedmanchisquare
+import scipy.stats as ss
+
+
+import scikit_posthocs as sp
 
 from anvio.drivers.diamond import Diamond
 from anvio.dbops import ContigsSuperclass
@@ -180,10 +186,12 @@ class SCGTaxonomy:
             self.run.info('Bin name', bin_name)
             self.run.info('Num SCGs', len(hmm_sequences_dict_per_bin[bin_name]))
             self.run.info('SCGs', ', '.join([e['gene_name'] for e in hmm_sequences_dict_per_bin[bin_name].values()]))
-
+            j=0
             for entry in hmm_sequences_dict_per_bin[bin_name].values():
                 gene_name = entry['gene_name']
                 hits = self.get_raw_blast_hits(entry)
+                if not hits:
+                    j+=1
 
                 # replace accessions with taxonomy
                 for hit in hits:
@@ -193,6 +201,10 @@ class SCGTaxonomy:
 
                 if anvio.DEBUG:
                     self.show_hits(bin_name, gene_name, hits)
+
+            if j==len(hits_per_gene):
+                self.run.info(bin_name, "diamond didn't return any match")
+                continue
 
             consensus_taxonomy=self.get_consensus_taxonomy(hits_per_gene,bin_name,hmm_sequences_dict_per_bin)
 
@@ -251,7 +263,6 @@ class SCGTaxonomy:
                         cumul_hit_per_gene[entry['accession']]=\
                         float(cumul_hit_per_gene[entry['accession']])\
                         +(float(entry['bitscore'])/number_of_matching_genes)
-
         return cumul_hit_per_gene
 
     def get_matching_gene(self,hits_per_gene):
@@ -263,65 +274,132 @@ class SCGTaxonomy:
 
 
 
-    def make_tree_with_hit(self,hits_per_gene,hmm_sequences_dict_per_bin,bin_name):
 
+    def align_hit_sequence(self,entry,hits_per_gene):
+        sequences_match=[]
+        sequences_match.append((entry['bin_id'],entry['sequence']))
+        db_path = self.SCG_FASTA_DB_PATH(entry['gene_name'])
+        db=f.ReadFasta(db_path)
+        maxscore=0
+        for hit in hits_per_gene[entry['gene_name']]:
+            index=db.ids.index(hit['accession'])
+            species_name=hit['taxonomy']['t_species'].split(" ")
+            species_name=species_name[1]
+            if float(hit['bitscore']) > float(maxscore):
+                maxscore = hit['bitscore']
+                sequences_match.append((species_name,db.sequences[index]))
+            if float(hit['bitscore']) < (float(maxscore)*float(self.bestpercent)):
+                continue
+            sequences_match.append((species_name,db.sequences[index]))
+        return(sequences_match)
+
+
+    def align_with_muscle(self,entry,sequences_match,bin_name):
         self.align_with="muscle"
         aligners.select(self.align_with)
         r = terminal.Run()
+        program = driver_modules['phylogeny']['default']
+        aligner = aligners.select("muscle", quiet=True)
+        alignments = aligner(run=r).run_stdin(sequences_match)
+        temp_file_path_muscle = filesnpaths.get_temp_file_path(prefix='ANVIO_muscle_%s' % str(bin_name)+str(entry['gene_name'])+".fa")
+        with open(temp_file_path_muscle, 'w') as muscle:
+            for id, sequence in alignments.items():
+                muscle.write('>%s\n%s\n' % (id,sequence))
+        output_file_path=str(bin_name)+"_"+str(entry['gene_name'])+".tree"
+        filesnpaths.is_output_file_writable(output_file_path)
+        program().run_command(temp_file_path_muscle,output_file_path)
 
+    def make_tree_with_hit(self,hits_per_gene,hmm_sequences_dict_per_bin,bin_name):
         matching_genes=self.get_matching_gene(hits_per_gene)
         for entry in hmm_sequences_dict_per_bin[bin_name].values():
             if entry['gene_name'] in matching_genes:
-                program = driver_modules['phylogeny']['default']
-                aligner = aligners.select("muscle", quiet=True)
-                sequences_match=[]
-                sequences_match.append((entry['bin_id'],entry['sequence']))
-                maxscore=0
-                lenentry=len(entry['sequence'])
-                db_path = self.SCG_FASTA_DB_PATH(entry['gene_name'])
-                db=f.ReadFasta(db_path)
+                sequences_match=self.align_hit_sequence(entry,hits_per_gene)
+            if len(sequences_match)>3:
+                self.align_with_muscle(entry,sequences_match,bin_name)
+            else:
+                print("for "+str(bin_name)+" the protein: "+str(entry['gene_name'])+"\t match "+hits_per_gene[entry['gene_name']][0]['taxonomy']['t_species'])
+
+
+    def creat_dico_position(self,hits_per_gene):
+        dico_position_entry={}
+        dico_position_ribosomal={}
+        new_dico_position_entry={}
+        k=0
+        for hit in hits_per_gene:
+            dico_position_ribosomal[hit]=k
+            k+=1
+            for entry in hits_per_gene[hit]:
                 i=0
-                for hit in hits_per_gene[entry['gene_name']]:
-                    index=db.ids.index(hit['accession'])
-                    species_name=hit['taxonomy']['t_species'].split(" ")
-                    species_name=species_name[1]
-                    if float(hit['bitscore']) > float(maxscore):
-                        maxscore = hit['bitscore']
-                        sequences_match.append((species_name,db.sequences[index]))
-                        i+=1
-                    if float(hit['bitscore']) < (float(maxscore)*float(self.bestpercent)):
-                        continue
-                    sequences_match.append((species_name,db.sequences[index]))
+                while i < 3:
+                    if entry['accession'] not in dico_position_entry:
+                        dico_position_entry[entry['accession']]=1
+                    else:
+                        dico_position_entry[entry['accession']]=int(dico_position_entry[entry['accession']])+1
                     i+=1
+        j=0
+        for key ,value in dico_position_entry.items():
+            if int(value) >= (k*0.5) and j <= 4:
+                new_dico_position_entry[key]=j
+                j+=1
+        maxvalue=j
+        return(new_dico_position_entry,dico_position_ribosomal,maxvalue)
+
+    def emptylistmaker(self,numbr_genes,maxvalue):
+        listofempty = ['*'] * numbr_genes
+        return listofempty
+
+    def make_emptymatrix(self,hits_per_gene,dico_position_entry,maxvalue):
+        matrix=[]
+        numbr_genes=len(hits_per_gene)
+        maxposition=len(dico_position_entry)
+        i=0
+        while i < maxposition:
+            emptylist=self.emptylistmaker(numbr_genes,maxvalue)
+            matrix.append(emptylist)
+            i+=1
+        return(matrix)
+
+    def creatmatrix(self,hits_per_gene):
+        dico_position_entry,dico_position_ribosomal,maxvalue=self.creat_dico_position(hits_per_gene)
+        matrix=self.make_emptymatrix(hits_per_gene,dico_position_entry,maxvalue)
+        for hit in hits_per_gene:
+            j=1
+            bestscore=0
+            for entry in hits_per_gene[hit]:
+                if entry['accession'] in dico_position_entry:
+                    if bestscore<entry['bitscore']:
+                        bestscore=entry['bitscore']
+                        matrix[dico_position_entry[entry['accession']]][dico_position_ribosomal[hit]]=j
+                    if float(entry['bitscore'])>=(bestscore*0.98):
+                        matrix[dico_position_entry[entry['accession']]][dico_position_ribosomal[hit]]=j
+                        continue
+                    matrix[dico_position_entry[entry['accession']]][dico_position_ribosomal[hit]]=j
+                    j+=1
+        for liste in matrix:
+            for n, i in enumerate(liste):
+                if i == '*':
+                    liste[n] = j
+        return(matrix)
 
 
-                if i>3:
-                    alignments = aligner(run=r).run_stdin(sequences_match)
-                    temp_file_path_muscle = filesnpaths.get_temp_file_path(prefix='ANVIO_muscle_%s' % str(bin_name)+str(entry['gene_name'])+".fa")
-                    with open(temp_file_path_muscle, 'w') as muscle:
-                        for id, sequence in alignments.items():
-                            muscle.write('>%s\n%s\n' % (id,sequence))
-                    output_file_path=str(bin_name)+"_"+str(entry['gene_name'])+".tree"
-
-                    filesnpaths.is_output_file_writable(output_file_path)
-
-                    print(temp_file_path_muscle)
-                    program().run_command(temp_file_path_muscle,output_file_path )
-                else:
-                    print("for "+str(bin_name)+" the protein: "+str(entry['gene_name'])+"\t match "+hit['taxonomy']['t_species'])
-                    sys.exit(status=None)
-
-
+    def friedman_test(self,hits_per_gene):
+        #print (hits_per_gene)
+        matrix=self.creatmatrix(hits_per_gene)
+        print(matrix)
+        friedmanchisquare=ss.friedmanchisquare(*matrix)
+        print(friedmanchisquare)
+        posthoc_conover=sp.posthoc_conover(matrix)
+        print(posthoc_conover)
+        posthoc_nemenyi_friedman=sp.posthoc_nemenyi_friedman(matrix)
+        print(posthoc_nemenyi_friedman)
 
 
 
 
     def get_consensus_taxonomy(self,hits_per_gene,bin_name,hmm_sequences_dict_per_bin):
 
-        #matching_genes=get_matching_gene(hits_per_gene)
-
-
-
+        if self.methode=="Friedman":
+            self.friedman_test(hits_per_gene)
         if self.methode=="tree":
             self.make_tree_with_hit(hits_per_gene,hmm_sequences_dict_per_bin,bin_name)
 
