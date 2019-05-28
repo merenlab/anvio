@@ -2477,7 +2477,7 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         self.init_commons()
 
 
-class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
+class VariabilityFixationIndex():
     """
     Metric adapted from 'Genomic variation landscape of the human gut microbiome'
     (https://media.nature.com/original/nature-assets/nature/journal/v493/n7430/extref/nature11711-s1.pdf)
@@ -2491,10 +2491,10 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
         self.args = args
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         self.engine = A('engine', str)
+        self.variability_table_path = A('variability_profile', None)
 
-        variability_engines[self.engine].__init__(self, self.args, p=self.progress, r=self.run)
+        self.v = variability_engines[A('engine', str)](self.args, p=self.progress, r=self.run)
 
-        # FIXME
         self.items_dict = {
             'NT': [nt for nt in constants.nucleotides if nt != 'N'],
             'CDN': constants.codons,
@@ -2522,7 +2522,7 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
         positions_missing_from_sample_2 = set([pos for pos in positions_sample_1 if pos not in positions_sample_2])
 
         def correct_frequencies(row):
-            row[self.items] = np.zeros(len(self.items))
+            row[self.v.items] = np.zeros(len(self.v.items))
             row[row['reference']] = 1.0
             return row
 
@@ -2537,44 +2537,46 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
     def set_normalization(self):
         f = 1 if self.engine == 'NT' else 3
 
-        if self.genes_of_interest:
-            normalization = sum([length for gene, length in self.gene_lengths.items() if gene in self.genes_of_interest])
+        if self.v.genes_of_interest:
+            normalization = sum([length for gene, length in self.v.gene_lengths.items() if gene in self.v.genes_of_interest])
         else:
-            normalization = sum([self.splits_basic_info[split]['length'] for split in self.splits_of_interest])
+            normalization = sum([self.v.splits_basic_info[split]['length'] for split in self.v.splits_of_interest])
 
         self.normalization = normalization / f
 
 
     def report(self):
+        output_file_path = self.v.output_file_path
+
         self.progress.new('Saving output')
-        self.progress.update('...'.format(self.output_file_path))
-        utils.store_dataframe_as_TAB_delimited_file(self.fst_matrix, self.output_file_path, include_index=True, index_label='')
-        self.run.info('Output', self.output_file_path, progress = self.progress)
+        self.progress.update('...'.format(output_file_path))
+        utils.store_dataframe_as_TAB_delimited_file(self.fst_matrix, output_file_path, include_index=True, index_label='')
+        self.run.info('Output', output_file_path, progress = self.progress)
         self.progress.end()
 
 
     def process(self):
-        self.init_commons()
-        self.items = self.items_dict[self.engine]
-        self.load_variability_data()
-        self.apply_preliminary_filters()
-        self.set_unique_pos_identification_numbers()
-        self.data = self.data[self.columns_of_interest]
-        self.convert_counts_to_frequencies()
+        self.v.init_commons()
+        self.v.items = self.items_dict[self.engine]
+        self.v.load_variability_data()
+        self.v.apply_preliminary_filters()
+        self.v.set_unique_pos_identification_numbers()
+        self.v.data = self.v.data[self.columns_of_interest]
+        self.v.convert_counts_to_frequencies()
         self.compute_FST_matrix()
 
 
     def get_pairwise_data_and_shape(self, sample_1, sample_2):
-        pairwise_data = self.data[(self.data['sample_id'] == sample_1) | (self.data['sample_id'] == sample_2)]
+        pairwise_data = self.v.data[(self.v.data['sample_id'] == sample_1) | (self.v.data['sample_id'] == sample_2)]
         pairwise_data = self.fill_missing_entries(pairwise_data, sample_1, sample_2)
 
         # calculate the shape of the data
-        num_items = len(self.items)
+        num_items = len(self.v.items)
         num_samples = len(pairwise_data['sample_id'].unique())
         num_positions = pairwise_data.shape[0] // num_samples
 
         pairwise_data = pairwise_data.sort_values(by=["unique_pos_identifier", "sample_id"])
-        pairwise_data = pairwise_data[self.items_dict[self.engine]]
+        pairwise_data = pairwise_data[self.v.items]
 
         return pairwise_data, (num_positions, num_samples, num_items)
 
@@ -2585,10 +2587,10 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
         =============
 
         pairwise_data = pd.DataFrame({
-            'A': [0.5, 0.25, 1, 1, 1, 0],
-            'C': [0] * 6,
-            'T': [0.5, 0.75, 0, 0, 0, 0],
-            'G': [0] * 5 + [1],
+            'A': [0.5 , 0.25 , 1 , 1 , 1 , 0],
+            'C': [0   , 0    , 0 , 0 , 0 , 0],
+            'T': [0.5 , 0.75 , 0 , 0 , 0 , 0],
+            'G': [0   , 0    , 0 , 0 , 0 , 5],
         })
         num_items = 4
         num_samples = 2
@@ -2611,19 +2613,21 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
 
 
     def compute_FST_matrix(self):
+        sample_ids = self.v.available_sample_ids
         self.progress.new('Calculating pairwise fixation indices')
         self.set_normalization()
-        dimension = len(self.available_sample_ids)
+        dimension = len(sample_ids)
         self.fst_matrix = np.zeros((dimension, dimension))
 
-        for i, sample_1 in enumerate(self.available_sample_ids):
-            for j, sample_2 in enumerate(self.available_sample_ids):
+        for i, sample_1 in enumerate(sample_ids):
+            for j, sample_2 in enumerate(sample_ids):
                 if i > j:
                     self.fst_matrix[i, j] = self.fst_matrix[j, i]
                 else:
                     self.progress.update('{} with {}'.format(sample_1, sample_2))
                     self.fst_matrix[i, j] = self.get_pairwise_FST(sample_1, sample_2)
-        self.fst_matrix = pd.DataFrame(self.fst_matrix, index = self.available_sample_ids, columns = self.available_sample_ids)
+        self.fst_matrix = pd.DataFrame(self.fst_matrix, index = sample_ids, columns = sample_ids)
         self.progress.end()
+
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}
