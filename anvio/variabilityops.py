@@ -2478,6 +2478,12 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
 
 
 class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
+    """
+    Metric adapted from 'Genomic variation landscape of the human gut microbiome'
+    (https://media.nature.com/original/nature-assets/nature/journal/v493/n7430/extref/nature11711-s1.pdf)
+    which extends the traditional metric to allow for multiple alleles in one site. We further
+    extend to allow for code on an amino acid alleles.
+    """
     def __init__(self, args={}, p=progress, r=run):
         self.progress = p
         self.run = r
@@ -2531,6 +2537,17 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
         return pd.concat([pairwise_data, data_missing_from_sample_1, data_missing_from_sample_2], sort = True).reset_index(drop = True)
 
 
+    def set_normalization(self):
+        f = 1 if self.engine == 'NT' else 3
+
+        if self.genes_of_interest:
+            normalization = sum([length for gene, length in self.gene_lengths.items() if gene in self.genes_of_interest])
+        else:
+            normalization = sum([self.splits_basic_info[split]['length'] for split in self.splits_of_interest])
+
+        self.normalization = normalization / f
+
+
     def process(self):
         self.init_commons()
         self.load_variability_data()
@@ -2557,12 +2574,10 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
 
 
     def get_pairwise_FST(self, sample_1, sample_2):
-        if sample_1 == sample_2:
-            return 0
-
-        pairwise_data, tensor_shape = self.get_pairwise_data_and_shape(sample_1, sample_2)
-
         """
+        Test Dataset:
+        =============
+
         pairwise_data = pd.DataFrame({
             'A': [0.5, 0.25, 1, 1, 1, 0],
             'C': [0] * 6,
@@ -2575,19 +2590,23 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
         tensor_shape = (num_positions, num_samples, num_items)
         normalization = 1
         """
+        if sample_1 == sample_2:
+            return 0
 
+        pairwise_data, tensor_shape = self.get_pairwise_data_and_shape(sample_1, sample_2)
 
         # V/\
         tensor = pairwise_data.values.reshape(*tensor_shape)
-        outer_product = tensor[:,0,:][:,:,np.newaxis] * tensor[:,1,:][:,np.newaxis,:]
+        outer_product = tensor[:,0,:][:,:,None] * tensor[:,1,:][:,None,:]
         diagonals = outer_product * np.broadcast_to(np.identity(outer_product.shape[1])[None, ...], outer_product.shape)
-        fixation_index = np.sum(outer_product - diagonals, axis=(0,1,2)) / normalization
+        fixation_index = np.sum(outer_product - diagonals, axis=(0,1,2)) / self.normalization
 
         return fixation_index
 
 
     def get_FST_matrix(self):
         self.progress.new('Calculating pairwise fixation indices')
+        self.set_normalization()
         dimension = len(self.available_sample_ids)
         self.fst_matrix = np.zeros((dimension, dimension))
 
