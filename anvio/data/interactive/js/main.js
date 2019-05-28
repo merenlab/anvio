@@ -20,6 +20,7 @@
 
 
 var VERSION = '3';
+var ANVIO_VERSION; // release version
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
 
@@ -186,6 +187,7 @@ function initData() {
         cache: false,
         url: '/data/init',
         success: function(response) {
+            ANVIO_VERSION = response.version;
             mode = response.mode;
             server_mode = response.server_mode;
             switchUserInterfaceMode(response.project, response.title);
@@ -1555,9 +1557,21 @@ function drawTree() {
                 defer.resolve(); 
             },
             onShow: function() {
-                drawer = new Drawer(settings);
-                drawer.draw();
+                try {
+                    drawer = new Drawer(settings);
+                    drawer.draw();
+                }
+                catch (error) {
+                    let issue_title = encodeURIComponent("Interactive interface, " + error);
+                    let issue_body = encodeURIComponent("Anvi'o version: `" + ANVIO_VERSION + "`\n```\n" + error.stack + "```");
 
+                    showDraggableDialog('An exception occured', 
+                        '<textarea style="width: 100%; height: 360px;">' + error.stack + '</textarea>\
+                        <a target="_blank" href="https://github.com/merenlab/anvio/issues/new?title='+issue_title+'&body='+issue_body+'&labels=bug,interface">\
+                            <button type="button" class="btn btn-success btn-sm">Report this on GitHub</button> * Requires GitHub account.\
+                        </a>');
+                }
+                
                 // last_settings used in export svg for layer information,
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
                 last_settings = serializeSettings();
