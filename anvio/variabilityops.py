@@ -2496,19 +2496,16 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
 
         # FIXME
         self.items_dict = {
-            'NT': constants.nucleotides,
+            'NT': [nt for nt in constants.nucleotides if nt != 'N'],
             'CDN': constants.codons,
             'AA': constants.amino_acids
         }
 
         self.columns_of_interest = self.items_dict[self.engine] + [
-            'entry_id',
             'sample_id',
-            'corresponding_gene_call',
             'coverage',
             'reference',
             'unique_pos_identifier',
-            'gene_length'
         ]
 
 
@@ -2548,14 +2545,23 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
         self.normalization = normalization / f
 
 
+    def report(self):
+        self.progress.new('Saving output')
+        self.progress.update('...'.format(self.output_file_path))
+        utils.store_dataframe_as_TAB_delimited_file(self.fst_matrix, self.output_file_path, include_index=True, index_label='')
+        self.run.info('Output', self.output_file_path, progress = self.progress)
+        self.progress.end()
+
+
     def process(self):
         self.init_commons()
+        self.items = self.items_dict[self.engine]
         self.load_variability_data()
         self.apply_preliminary_filters()
         self.set_unique_pos_identification_numbers()
         self.data = self.data[self.columns_of_interest]
         self.convert_counts_to_frequencies()
-        self.get_FST_matrix()
+        self.compute_FST_matrix()
 
 
     def get_pairwise_data_and_shape(self, sample_1, sample_2):
@@ -2604,7 +2610,7 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
         return fixation_index
 
 
-    def get_FST_matrix(self):
+    def compute_FST_matrix(self):
         self.progress.new('Calculating pairwise fixation indices')
         self.set_normalization()
         dimension = len(self.available_sample_ids)
@@ -2617,7 +2623,7 @@ class VariabilityFixationIndex(NucleotidesEngine, CodonsEngine, AminoAcidsEngine
                 else:
                     self.progress.update('{} with {}'.format(sample_1, sample_2))
                     self.fst_matrix[i, j] = self.get_pairwise_FST(sample_1, sample_2)
-
+        self.fst_matrix = pd.DataFrame(self.fst_matrix, index = self.available_sample_ids, columns = self.available_sample_ids)
         self.progress.end()
 
 variability_engines = {'NT': NucleotidesEngine, 'CDN': CodonsEngine, 'AA': AminoAcidsEngine}

@@ -70,6 +70,7 @@ if __name__ == '__main__':
 
         FST = VariabilityFixationIndex(args)
         FST.process()
+        FST.report()
 
     except ConfigError as e:
         print(e)
