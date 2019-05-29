@@ -135,7 +135,15 @@ if __name__ == '__main__':
 
         input_files = prepare_input_files(merged_profile_db, contigs_db)
 
+        if anvio.DEBUG:
+            for name, path in input_files.__dict__.items():
+                run.info('Input file [%s]' % name, path)
+
         clusters = binning_module.cluster(input_files, sub_args)
+
+        if not anvio.DEBUG:
+            for name, path in input_files.__dict__.items():
+                os.remove(path)
 
         # if args.output_file:
         #     c.store_clusters_as_TAB_delimited_text(args.output_file)
