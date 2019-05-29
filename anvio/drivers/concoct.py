@@ -85,7 +85,7 @@ class CONCOCT:
             '--threads', threads]
 
         self.progress.new(self.program_name)
-        self.progress.update('Running...')
+        self.progress.update('Running using %d threads...' % threads)
         utils.run_command(cmd_line, log_path)
         self.progress.end()
 
