@@ -28,9 +28,10 @@ if __name__ == '__main__':
 
     groupA = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first. Some\
                                                      are mandatory, some are optional.")
-    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {"required": False}))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {"required": False}))
     groupA.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db', {"required": False}))
+    groupA.add_argument(*anvio.A('variability-profile'), **anvio.K('variability-profile', {"required": False}))
 
     groupB = parser.add_argument_group('FOCUS :: BIN', "You need to pick someting to focus. You can ask anvi'o\
                                                              to work with a bin in a collection.")

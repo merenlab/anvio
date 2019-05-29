@@ -2419,7 +2419,7 @@ class VariabilityNetwork:
 
 
 class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
-    def __init__(self, args={}, p=progress, r=run, dont_process=False):
+    def __init__(self, args={}, p=progress, r=run, dont_process=False, skip_init_commons=False):
         self.progress = p
         self.run = r
 
@@ -2429,13 +2429,17 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         self.variability_table_path = A('variability_profile', str)
         self.engine = A('engine', str)
 
+        self.dont_process = dont_process
+        self.skip_init_commons = skip_init_commons
+
         if not self.variability_table_path:
             raise ConfigError("VariabilityData :: You must declare a variability table filepath.")
 
         # determine the engine type of the variability table
         inferred_engine = utils.get_variability_table_engine_type(self.variability_table_path)
         if self.engine and self.engine != inferred_engine:
-            raise ConfigError("The engine you requested is {}, but the engine inferred from {} is {}.".\
+            raise ConfigError("The engine you requested is {0}, but the engine inferred from {1} is {2}.\
+                               Explicitly declare the inferred engine type (--engine {2})".\
                                format(self.engine, self.variability_table_path, inferred_engine))
         self.engine = inferred_engine
 
@@ -2451,8 +2455,10 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         else:
             pass
 
-        if not dont_process:
+        if not self.dont_process:
             self.process_external_table()
+        if not self.skip_init_commons:
+            self.init_commons()
 
 
     def load_data(self):
@@ -2474,8 +2480,6 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         if self.append_structure_residue_info:
             self.load_structure_data()
 
-        self.init_commons()
-
 
 class VariabilityFixationIndex():
     """
@@ -2490,10 +2494,23 @@ class VariabilityFixationIndex():
 
         self.args = args
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
         self.engine = A('engine', str)
-        self.variability_table_path = A('variability_profile', None)
+        self.profile_db_path = A('profile_db', null)
+        self.contigs_db_path = A('contigs_db', null)
+        self.variability_table_path = A('variability_profile', null)
 
-        self.v = variability_engines[A('engine', str)](self.args, p=self.progress, r=self.run)
+        if self.variability_table_path:
+            if self.contigs_db_path:
+                delattr(args, 'contigs_db')
+            if self.profile_db_path:
+                delattr(args, 'profile_db')
+                self.run.warning('You supplied a variability table, but also a profile database.\
+                                  Any variability data used by anvi\'o will be drawn from the variability\
+                                  table, and not from this database.')
+            self.v = VariabilityData(self.args, p=self.progress, r=self.run)
+        else:
+            self.v = variability_engines[A('engine', str)](self.args, p=self.progress, r=self.run)
 
         self.items_dict = {
             'NT': [nt for nt in constants.nucleotides if nt != 'N'],
@@ -2541,12 +2558,18 @@ class VariabilityFixationIndex():
     def set_normalization(self):
         f = 1 if self.engine == 'NT' else 3
 
-        if self.v.genes_of_interest:
-            normalization = sum([length for gene, length in self.v.gene_lengths.items() if gene in self.v.genes_of_interest])
+        if self.v.table_provided:
+            normalization = 1
+            self.run.warning('You provided an already existing variability table. That means anvi\'o\
+                              doesn\'t know the range of the sequence that variability was calculated for,\
+                              and therefore cannot reasonably normalize the fixation indices. So read\
+                              this loud and clear: the fixation indices calculated are unnormalized.')
+        elif self.v.genes_of_interest:
+            normalization = 1/f * sum([length for gene, length in self.v.gene_lengths.items() if gene in self.v.genes_of_interest])
         else:
-            normalization = sum([self.v.splits_basic_info[split]['length'] for split in self.v.splits_of_interest])
+            normalization = 1/f * sum([self.v.splits_basic_info[split]['length'] for split in self.v.splits_of_interest])
 
-        self.normalization = normalization / f
+        self.normalization = normalization
 
 
     def report(self):
@@ -2560,14 +2583,20 @@ class VariabilityFixationIndex():
 
 
     def process(self):
-        self.v.init_commons()
-        self.v.items = self.items_dict[self.engine]
-        self.v.load_variability_data()
-        self.v.apply_preliminary_filters()
-        self.v.set_unique_pos_identification_numbers()
-        self.v.data = self.v.data[self.columns_of_interest]
-        self.v.convert_counts_to_frequencies()
-        self.compute_FST_matrix()
+        if self.v.table_provided:
+            self.v.items = self.items_dict[self.engine]
+            self.v.data = self.v.data[self.columns_of_interest]
+            self.v.convert_counts_to_frequencies()
+            self.compute_FST_matrix()
+        else:
+            self.v.init_commons()
+            self.v.items = self.items_dict[self.engine]
+            self.v.load_variability_data()
+            self.v.apply_preliminary_filters()
+            self.v.set_unique_pos_identification_numbers()
+            self.v.data = self.v.data[self.columns_of_interest]
+            self.v.convert_counts_to_frequencies()
+            self.compute_FST_matrix()
 
 
     def get_pairwise_data_and_shape(self, sample_1, sample_2):
