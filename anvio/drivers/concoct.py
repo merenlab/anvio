@@ -19,18 +19,7 @@
    The other class `CONCOCT_INTERFACE`, handles more low-level access
    to the vbgmm module.
 """
-
-try:
-    import vbgmm
-    __CONCOCT_AVAILABLE__ = True
-except ImportError:
-    __CONCOCT_AVAILABLE__ = False
-
-import random
-import collections
-import numpy as np
-
-from sklearn.decomposition import PCA
+import os
 
 import anvio
 import anvio.utils as utils
@@ -38,7 +27,6 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.tables.collections import TablesForCollections
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -71,66 +59,54 @@ class CONCOCT:
                     ),
     }
 
-    def __init__(self, args, r=run, p=progress):
-        self.run = r
-        self.progress = p
+    def __init__(self, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
 
-        if not __CONCOCT_AVAILABLE__:
-            raise ConfigError("CONCOCT is not installed on your system, please install CONCOCT to be \
-                               able to use this driver. See https://concoct.readthedocs.io/en/latest/ \
-                               for details.")
+        self.program_name = 'concoct'
 
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.profile_db_path = A('profile_db')
-        self.contigs_db_path = A('contigs_db')
-        self.num_clusters_requested = A('num_clusters_requested') or 80
+        utils.is_program_exists(self.program_name)
+        self.temp_path = filesnpaths.get_temp_directory_path()
 
-        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
-        self.clusters = {}
 
-        self.lengths = {}
-        self.kmers = {}
-        self.coverages = {}
+    def cluster(self, input_files, args, threads=1):
+        cwd_backup = os.getcwd()
+        os.chdir(self.temp_path)
+        log_path = os.path.join(self.temp_path, 'logs.txt')
+        
+        if anvio.DEBUG:
+            self.run.info('Working directory', self.temp_path)
 
-        self.debug = anvio.DEBUG
 
-        self.progress.new('Init')
+        cmd_line = [self.program_name,
+            '--coverage_file', input_files.coverage, 
+            '--composition_file', input_files.fasta,
+            '--threads', threads]
 
-        import anvio.dbops as dbops
-
-        self.progress.update('accessing the profile database ...')
-        profile_db = dbops.ProfileDatabase(args.profile_db)
-
-        if not int(profile_db.meta['merged']):
-            self.progress.end()
-            raise ConfigError('CONCOCT can only be used to cluster merged runs...')
-
-        self.coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs', columns_of_interest=profile_db.samples)
-        profile_db.disconnect()
-
-        self.progress.update('accessing the profile database ...')
-        contigs_db = dbops.ContigsDatabase(args.contigs_db, quiet=True)
-        self.kmers = contigs_db.db.get_table_as_dict('kmer_contigs', keys_of_interest=list(self.coverages.keys()))
-        splits_basic_info = contigs_db.db.get_table_as_dict('splits_basic_info', keys_of_interest=list(self.coverages.keys()))
-        contigs_db.disconnect()
-
-        self.progress.update('computing split lengths ...')
-        for split_name in splits_basic_info:
-            self.lengths[split_name] = splits_basic_info[split_name]['length']
-
+        self.progress.new(self.program_name)
+        self.progress.update('Running...')
+        utils.run_command(cmd_line, log_path)
         self.progress.end()
 
+        clusters = {}
+        with open(os.path.join(self.temp_path, 'clustering_gt1000.csv'), 'r') as f:
+            lines = f.readlines()[1:]
 
-    def cluster(self):
-        try:
-            self.clusters = CONCOCT_INTERFACE(self.kmers, self.coverages, self.lengths, self.debug, NClusters=self.num_clusters_requested).cluster()
-        except Exception as e:
-            self.run.warning("CONCOCT is upset :/ There will be no CONCOCT binning results for you. Before\
-                              anvi'o continues with whatever it was doing before this, here is why CONCOCT\
-                              failed in case you want to go after this: '%s'" % e)
-            return {}
+            for entry in lines:
+                contig, bin_name = map(str.strip, entry.split(','))
 
-        # be nice.
-        return self.clusters
+                pretty_bin_name = 'Bin_' + bin_name
+
+                if pretty_bin_name not in clusters:
+                    clusters[pretty_bin_name] = []
+
+                clusters[pretty_bin_name].append(contig)
+
+        # restore cwd
+        os.chdir(cwd_backup)
+
+        return clusters
+
+
 
