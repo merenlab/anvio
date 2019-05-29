@@ -2518,6 +2518,10 @@ class VariabilityFixationIndex():
         positions_sample_1 = set(data_sample_1.index)
         positions_sample_2 = set(data_sample_2.index)
 
+        if positions_sample_1 == positions_sample_2:
+            # we are done here
+            return pairwise_data
+
         positions_missing_from_sample_1 = set([pos for pos in positions_sample_2 if pos not in positions_sample_1])
         positions_missing_from_sample_2 = set([pos for pos in positions_sample_1 if pos not in positions_sample_2])
 
