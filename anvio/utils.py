@@ -172,13 +172,16 @@ def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence):
     return reverse_complemented_gene_calls, gene_caller_id_conversion_dict
 
 
-def serialize_args(args):
+def serialize_args(args, single_dash=False, use_underscore=False):
     cmdline = []
     for param, value in args.__dict__.items():
+        
+        dash = '-' if single_dash else '--'
+
         if value is True:
-            cmdline.append('--%s' % param)
+            cmdline.append('%s%s' % (dash, param))
         elif value is not False:
-            cmdline.append('--%s' % param)
+            cmdline.append('%s%s' % (dash, param))
             cmdline.append(str(value))
 
     return cmdline
