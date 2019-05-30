@@ -172,6 +172,18 @@ def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence):
     return reverse_complemented_gene_calls, gene_caller_id_conversion_dict
 
 
+def serialize_args(args):
+    cmdline = []
+    for param, value in args.__dict__.items():
+        if value is True:
+            cmdline.append('--%s' % param)
+        elif value is not False:
+            cmdline.append('--%s' % param)
+            cmdline.append(str(value))
+
+    return cmdline
+
+
 def get_predicted_type_of_items_in_a_dict(d, key):
     """Gets a dictionary `d` and a `key` in it, and returns a type function.
 
