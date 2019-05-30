@@ -203,7 +203,7 @@ class SCGTaxonomy:
                     self.show_hits(bin_name, gene_name, hits)
 
             if j==len(hits_per_gene):
-                self.run.info(bin_name, "diamond didn't return any match")
+                self.run.info(bin_name, "diamond didn't return any match \n")
                 continue
 
             consensus_taxonomy=self.get_consensus_taxonomy(hits_per_gene,bin_name,hmm_sequences_dict_per_bin)
@@ -301,7 +301,8 @@ class SCGTaxonomy:
         program = driver_modules['phylogeny']['default']
         aligner = aligners.select("muscle", quiet=True)
         alignments = aligner(run=r).run_stdin(sequences_match)
-        temp_file_path_muscle = filesnpaths.get_temp_file_path(prefix='ANVIO_muscle_%s' % str(bin_name)+str(entry['gene_name'])+".fa")
+        temp_file_path_muscle = filesnpaths.get_temp_file_path(prefix='ANVIO_muscle_%s'\
+         % str(bin_name)+str(entry['gene_name'])+".fa")
         with open(temp_file_path_muscle, 'w') as muscle:
             for id, sequence in alignments.items():
                 muscle.write('>%s\n%s\n' % (id,sequence))
@@ -317,40 +318,52 @@ class SCGTaxonomy:
             if len(sequences_match)>3:
                 self.align_with_muscle(entry,sequences_match,bin_name)
             else:
-                print("for "+str(bin_name)+" the protein: "+str(entry['gene_name'])+"\t match "+hits_per_gene[entry['gene_name']][0]['taxonomy']['t_species'])
+                print("for "+str(bin_name)+" the protein: "+str(entry['gene_name'])+"\t match "+\
+                hits_per_gene[entry['gene_name']][0]['taxonomy']['t_species'])
 
 
-    def creat_list_position(self,hits_per_gene):
+    def creat_list_position(self,hits_per_gene,matchinggenes):
         dico_position_entry={}
         list_position_ribosomal=[]
         new_list_position_entry=[]
-        k=0
-        for hit in hits_per_gene:
-            list_position_ribosomal.append(hit)
-            k+=1
+        taxonomy=[]
+        for hit in matchinggenes:
             for entry in hits_per_gene[hit]:
                 i=0
+                #parameter
                 while i < 3:
                     if entry['accession'] not in dico_position_entry:
                         dico_position_entry[entry['accession']]=1
                     else:
                         dico_position_entry[entry['accession']]=int(dico_position_entry[entry['accession']])+1
                     i+=1
+
         j=0
         for key ,value in dico_position_entry.items():
-            if int(value) >= (k*0.5) and j <= 4:
+            #parameters
+            if int(value) >= (len(list_position_ribosomal)*0.5) and j <= 4:
                 new_list_position_entry.append(key)
                 j+=1
         maxvalue=j
+
+        for hit in matchinggenes:
+            k=0
+            for entry in hits_per_gene[hit]:
+                if entry['accession'] in new_list_position_entry:
+                    k+=1
+            #parameter
+            if k>=(len(new_list_position_entry)*0.5):
+                list_position_ribosomal.append(hit)
+
         return(new_list_position_entry,list_position_ribosomal,maxvalue)
 
     def emptylistmaker(self,numbr_genes,maxvalue):
         listofempty = ['NA'] * numbr_genes
         return listofempty
 
-    def make_emptymatrix(self,hits_per_gene,dico_position_entry,maxvalue):
+    def make_emptymatrix(self,dico_position_entry,maxvalue,list_position_ribosomal):
         matrix=[]
-        numbr_genes=len(hits_per_gene)
+        numbr_genes=len(list_position_ribosomal)
         maxposition=len(dico_position_entry)
         i=0
         while i < maxposition:
@@ -359,50 +372,88 @@ class SCGTaxonomy:
             i+=1
         return(matrix)
 
-    def fill_matrix(self,emptymatrix,hits_per_gene,list_position_entry,list_position_ribosomal):
+    def fill_matrix(self,bin_name,emptymatrix,hits_per_gene,list_position_entry,\
+    list_position_ribosomal,matchinggenes):
         maxrank=1
         taxonomy=[]
-        for hit in hits_per_gene:
-            rank=1
-            bestscore=0
-            for entry in hits_per_gene[hit]:
-                if entry['accession'] in list_position_entry:
-                    if len(hits_per_gene[hit])==1 and entry['pident']>0.90:
-                        #print("Only hit is good", entry['taxonomy']['t_species'])
-                        taxonomy.append(list(self.taxonomy_dict[entry['accession']].values()))
-                        break
-                    if rank > maxrank:
-                        maxrank=rank
-                    if bestscore<entry['bitscore']:
-                        bestscore=entry['bitscore']
-                        emptymatrix[list_position_entry.index(entry['accession'])][list_position_ribosomal.index(hit)]=rank
-                        continue
-                    if float(entry['bitscore'])>=(bestscore*self.bestpercent):
-                        emptymatrix[list_position_entry.index(entry['accession'])][list_position_ribosomal.index(hit)]=rank
-                        continue
-                    emptymatrix[list_position_entry.index(entry['accession'])][list_position_ribosomal.index(hit)]=rank
-                    rank+=1
+        for hit in list_position_ribosomal:
+                rank=1
+                bestscore=0
+                for entry in hits_per_gene[hit]:
+                    if entry['accession'] in list_position_entry:
+                        if rank > maxrank:
+                            maxrank=rank
+                        if bestscore<entry['bitscore']:
+                            bestscore=entry['bitscore']
+                            emptymatrix[list_position_entry.index(entry['accession'])]\
+                            [list_position_ribosomal.index(hit)]=rank
+                            continue
+                        if float(entry['bitscore'])>=(bestscore*self.bestpercent):
+                            emptymatrix[list_position_entry.index(entry['accession'])]\
+                            [list_position_ribosomal.index(hit)]=rank
+                            continue
+                        emptymatrix[list_position_entry.index(entry['accession'])]\
+                        [list_position_ribosomal.index(hit)]=rank
+                        rank+=1
+        #if anvio.DEBUG:
+        self.show_matrix_rank( bin_name, emptymatrix, list_position_entry,list_position_ribosomal)
         for liste in emptymatrix:
             for n, i in enumerate(liste):
                 if str(i) == 'NA':
-                    liste[n] = maxrank
+                    liste[n] = maxrank+1
         return(emptymatrix,taxonomy)
 
-    def creatmatrix(self,hits_per_gene):
-        list_position_entry,list_position_ribosomal,maxvalue=self.creat_list_position(hits_per_gene)
-        emptymatrix=self.make_emptymatrix(hits_per_gene,list_position_entry,maxvalue)
-        matrix,taxonomy=self.fill_matrix(emptymatrix,hits_per_gene,list_position_entry,list_position_ribosomal)
+    def creatmatrix(self,bin_name,hits_per_gene):
+
+        matchinggenes=self.get_matching_gene(hits_per_gene)
+        list_position_entry,list_position_ribosomal,maxvalue=self.creat_list_position(hits_per_gene,matchinggenes)
+        emptymatrix=self.make_emptymatrix(list_position_entry,maxvalue,list_position_ribosomal)
+        matrix,taxonomy=self.fill_matrix(bin_name,emptymatrix,hits_per_gene,list_position_entry,\
+        list_position_ribosomal,matchinggenes)
         return(matrix,list_position_entry,list_position_ribosomal,taxonomy)
 
 
-    def friedman_test(self,hits_per_gene):
+
+    def show_matrix_rank(self, bin_name, matrix, list_position_entry,list_position_ribosomal):
+
+        if len(list_position_ribosomal) > 8:
+            newmatrix=[sublist[8:] for sublist in matrix]
+            new_list_position_ribosomal=list_position_ribosomal[8:]
+            self.show_matrix_rank(bin_name, newmatrix,list_position_entry,new_list_position_ribosomal)
+            show_matrix=newmatrix=[sublist[:8] for sublist in matrix]
+            show_list_position_ribosomal=list_position_ribosomal[:8]
+        else:
+            show_matrix=matrix
+            show_list_position_ribosomal=list_position_ribosomal
+
+        self.run.warning(None, header='%s' % (bin_name), lc="blue")
+        header = show_list_position_ribosomal
+        table = []
+        i=0
+        for individue in show_matrix:
+            line=[]
+            line = [self.taxonomy_dict[list_position_entry[i]]['t_species']] + individue
+            table.append(line)
+            i+=1
+        print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+
+
+
+
+
+
+    def friedman_test(self,hits_per_gene,bin_name):
         #print (hits_per_gene)
-        matrix,list_position_entry,list_position_ribosomal,taxonomy=self.creatmatrix(hits_per_gene)
-        try:
-            friedmanchisquare=ss.friedmanchisquare(*matrix)
-            print(friedmanchisquare)
-        except:
-            print("friedmanchisquare fail")
+        matrix,list_position_entry,list_position_ribosomal,taxonomy=self.creatmatrix(bin_name,hits_per_gene)
+        statistic, pvalue=ss.friedmanchisquare(*matrix)
+        self.run.info('pvalue friedman', pvalue)
+        """except:
+            self.run.info('pvalue friedman', 'friedman fail')"""
+
+        self.assign_taxonomie_rank(matrix,list_position_entry)
+
+
+
         """posthoc_conover=sp.posthoc_conover_friedman(matrix)
         print("posthoc_conover")
         print(posthoc_conover)
@@ -419,48 +470,66 @@ class SCGTaxonomy:
         print("posthoc_durbin")
         print(posthoc_durbin)"""
 
+    def assign_taxonomie_solo_hit(self,taxonomy):
+        result=set(taxonomy[0])
+        for s in taxonomy[1:]:
+            result &= set(s)
+        self.run.info('estimate taxonomy lonely hit', '/ '.join(result)+"\n")
+        return True
 
-        if taxonomy:
-            result=set(taxonomy[0])
-            for s in taxonomy[1:]:
-                result &= set(s)
-            #taxonomy=dict(zip(self.taxonomic_levels, result))
-                #result.intersection_update(onlyhit)
-            print ("Solo hit diamond",result)
-        else:
-            taxonomy=[]
-            miniscore=10000
-            i=0
-            for liste in matrix:
-                summist=sum(list(liste))
-                if summist <= miniscore:
-                    taxonomy.append(list(self.taxonomy_dict[list_position_entry[i]].values()))
-                    miniscore=summist
-                    i+=1
-                    continue
+    def assign_taxonomie_rank(self,matrix, list_position_entry):
+        taxonomy=[]
+        miniscore=10000
+        i=0
+        for liste in matrix:
+            summist=sum(list(liste))
+            if summist <= miniscore:
+                taxonomy.append(list(self.taxonomy_dict[list_position_entry[i]].values()))
+                miniscore=summist
                 i+=1
+                continue
+            i+=1
+        if len(taxonomy)==1:
+            self.run.info('estimate taxonomy rank', '/ '.join(taxonomy[0])+"\n")
+        if len(taxonomy)>=2:
+            for possibilities in taxonomy:
+                self.run.info('Good possibilities', '/ '.join(possibilities))
             result=set(taxonomy[0])
             for s in taxonomy[1:]:
                 result &= set(s)
-            print("rank", result)
+            self.run.info('estimate taxonomy rank', '/ '.join(result)+"\n")
+
+
+            #print("rank", result)
         #taxonomy=dict(zip(self.taxonomic_levels, result))
 
+    def solo_hits(self,hits_per_gene):
+        taxonomy=[]
+        for hit in hits_per_gene:
+            for entry in hits_per_gene[hit]:
+                if len(hits_per_gene[hit])==1 and entry['pident']>0.90:
+                    taxonomy.append(list(self.taxonomy_dict[entry['accession']].values()))
 
-
-
+        if taxonomy:
+            self.assign_taxonomie_solo_hit(taxonomy)
+        else:
+            return False
 
     def get_consensus_taxonomy(self,hits_per_gene,bin_name,hmm_sequences_dict_per_bin):
-        if self.methode=="friedman":
-            print(bin_name)
-            self.friedman_test(hits_per_gene)
-        if self.methode=="tree":
-            self.make_tree_with_hit(hits_per_gene,hmm_sequences_dict_per_bin,bin_name)
 
-        if self.methode=="bitscore":
-            score_by_entry= self.get_cumul_hit_per_gene(hits_per_gene)
-            if anvio.DEBUG:
-                self.show_table_score(bin_name, score_by_entry)
-            consensus_taxonomy=self.get_consensus_taxonomy_with_score_by_entry(score_by_entry,bin_name,self.bestpercent)
+        if not self.solo_hits(hits_per_gene):
+
+            if self.methode=="friedman":
+                self.friedman_test(hits_per_gene,bin_name)
+
+            if self.methode=="tree":
+                self.make_tree_with_hit(hits_per_gene,hmm_sequences_dict_per_bin,bin_name)
+
+            if self.methode=="bitscore":
+                score_by_entry= self.get_cumul_hit_per_gene(hits_per_gene)
+                if anvio.DEBUG:
+                    self.show_table_score(bin_name, score_by_entry)
+                consensus_taxonomy=self.get_consensus_taxonomy_with_score_by_entry(score_by_entry,bin_name,self.bestpercent)
 
 
 
