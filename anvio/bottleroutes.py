@@ -341,7 +341,8 @@ class BottleApplication(Bottle):
 
             inspection_available = self.interactive.auxiliary_profile_data_available
 
-            return json.dumps( { "title":                              self.interactive.title,
+            return json.dumps( { "version":                            anvio.anvio_version,
+                                 "title":                              self.interactive.title,
                                  "description":                        self.interactive.p_meta['description'],
                                  "item_orders":                        (default_order, self.interactive.p_meta['item_orders'][default_order], list(self.interactive.p_meta['item_orders'].keys())),
                                  "views":                              (default_view, self.interactive.views[default_view], list(self.interactive.views.keys())),
