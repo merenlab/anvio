@@ -81,6 +81,13 @@ class MetaBAT:
                 ['--minCVSum'],
                 {'metavar': "INT",
                  'required': False,
+                 'default': 1,
+                 'help': "Minimum size of a bin as the output."}
+                    ),
+        'minClsSize': (
+                ['--minClsSize'],
+                {'metavar': "INT",
+                 'required': False,
                  'default': 200000,
                  'help': "Minimum size of a bin as the output."}
                     ),
