@@ -122,7 +122,9 @@ class MetaBAT:
             '-a', input_files.coverage, 
             '-o', bin_prefix,
             '--cvExt',
-            '-l']
+            '-l',
+            *utils.serialize_args(args)]
+
 
         self.progress.new(self.program_name)
         self.progress.update('Running using %d threads...' % threads)
