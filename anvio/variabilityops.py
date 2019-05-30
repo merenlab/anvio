@@ -2654,17 +2654,17 @@ class VariabilityFixationIndex():
         self.fst_matrix = np.zeros((dimension, dimension))
 
         indices_to_calculate = (dimension * (dimension + 1)) / 2
-        self.progress.new('Calculating pairwise fixation indices')
+        self.progress.new('Calculating pairwise fixation indices', progress_total_items=indices_to_calculate)
 
-        indices_calculated, timer = 0, time.time()
+        timer = time.time()
         for i, sample_1 in enumerate(sample_ids):
             for j, sample_2 in enumerate(sample_ids):
                 if i > j:
                     self.fst_matrix[i, j] = self.fst_matrix[j, i]
                 else:
-                    self.progress.update('Progress: {:.1f}%; Time elapsed: {:.0f}s'.format(indices_calculated / indices_to_calculate * 100, time.time() - timer))
+                    self.progress.increment()
+                    self.progress.update('Working on {} with {}; Time elapsed: {:.0f}s'.format(sample_1, sample_2, time.time() - timer))
                     self.fst_matrix[i, j] = self.get_pairwise_FST(sample_1, sample_2)
-                    indices_calculated += 1
         self.fst_matrix = pd.DataFrame(self.fst_matrix, index = sample_ids, columns = sample_ids)
         self.progress.end()
 
