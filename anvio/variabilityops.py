@@ -2500,17 +2500,18 @@ class VariabilityFixationIndex():
         self.contigs_db_path = A('contigs_db', null)
         self.variability_table_path = A('variability_profile', null)
 
+        args_for_variability_class = self.args
         if self.variability_table_path:
             if self.contigs_db_path:
-                delattr(args, 'contigs_db')
+                delattr(args_for_variability_class, 'contigs_db')
             if self.profile_db_path:
-                delattr(args, 'profile_db')
+                delattr(args_for_variability_class, 'profile_db')
                 self.run.warning('You supplied a variability table, but also a profile database.\
                                   Any variability data used by anvi\'o will be drawn from the variability\
                                   table, and not from this database.')
-            self.v = VariabilityData(self.args, p=self.progress, r=self.run)
+            self.v = VariabilityData(args_for_variability_class, p=self.progress, r=self.run)
         else:
-            self.v = variability_engines[A('engine', str)](self.args, p=self.progress, r=self.run)
+            self.v = variability_engines[self.engine](args_for_variability_class, p=self.progress, r=self.run)
 
         self.items_dict = {
             'NT': [nt for nt in constants.nucleotides if nt != 'N'],
