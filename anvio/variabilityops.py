@@ -7,6 +7,7 @@
 import os
 import sys
 import copy
+import time
 import random
 import inspect
 import argparse
@@ -2648,18 +2649,22 @@ class VariabilityFixationIndex():
 
     def compute_FST_matrix(self):
         sample_ids = self.v.available_sample_ids
-        self.progress.new('Calculating pairwise fixation indices')
         self.set_normalization()
         dimension = len(sample_ids)
         self.fst_matrix = np.zeros((dimension, dimension))
 
+        indices_to_calculate = (dimension * (dimension + 1)) / 2
+        self.progress.new('Calculating pairwise fixation indices')
+
+        indices_calculated, timer = 0, time.time()
         for i, sample_1 in enumerate(sample_ids):
             for j, sample_2 in enumerate(sample_ids):
                 if i > j:
                     self.fst_matrix[i, j] = self.fst_matrix[j, i]
                 else:
-                    self.progress.update('{} with {}'.format(sample_1, sample_2))
+                    self.progress.update('Progress: {:.1f}%; Time elapsed: {:.0f}s'.format(indices_calculated / indices_to_calculate * 100, time.time() - timer))
                     self.fst_matrix[i, j] = self.get_pairwise_FST(sample_1, sample_2)
+                    indices_calculated += 1
         self.fst_matrix = pd.DataFrame(self.fst_matrix, index = sample_ids, columns = sample_ids)
         self.progress.end()
 
