@@ -78,8 +78,8 @@ class MaxBin:
             '-contig', input_files.fasta, 
             '-abund', input_files.coverage, 
             '-out', bin_prefix,
-            '-thread', threads
-            *utils.serialize_args(args, single_dash=True)]
+            '-thread', str(threads),
+            *utils.serialize_args(args, single_dash=True, use_underscore=True)]
 
 
         self.progress.new(self.program_name)

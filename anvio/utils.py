@@ -178,6 +178,9 @@ def serialize_args(args, single_dash=False, use_underscore=False):
         
         dash = '-' if single_dash else '--'
 
+        if not use_underscore:
+            param = param.replace('_', '-')
+
         if value is True:
             cmdline.append('%s%s' % (dash, param))
         elif value is not False:
