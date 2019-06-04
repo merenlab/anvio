@@ -100,7 +100,7 @@ class MaxBin:
 
                 for line in f.readlines():
                     if line.startswith('>'):
-                        clusters[bin_name].append(line[1:])
+                        clusters[bin_name].append(line[1:].strip())
 
         self.run.info('Bins formed', bin_count)
 
