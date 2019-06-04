@@ -9,6 +9,7 @@ import argparse
 import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.tables as t
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -33,7 +34,28 @@ __provides__ = ['collection', 'bin']
 
 run = terminal.Run()
 
-def store_clusters_in_db(profile_db_path, clusters, collection_name, source):
+def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_name, source, splits_mode=False):
+    if not splits_mode:
+        contigs_db = dbops.ContigsDatabase(contigs_db_path)
+        splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name, string_the_key = True)
+
+        parent_to_split_map = {}
+        for split in splits_basic_info:
+            parent = splits_basic_info[split]['parent']
+
+            if parent not in parent_to_split_map:
+                parent_to_split_map[parent] = []
+
+            parent_to_split_map[parent].append(split)
+
+        cluster_splits = {}
+        for bin_id in clusters:
+            cluster_splits[bin_id] = []
+            for contig_name in clusters[bin_id]:
+                cluster_splits[bin_id] += parent_to_split_map[contig_name]
+
+        clusters = cluster_splits
+
     bin_info_dict = {}
 
     for bin_id in clusters:
