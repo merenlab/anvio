@@ -155,8 +155,7 @@ if __name__ == '__main__':
             for name, path in input_files.__dict__.items():
                 os.remove(path)
 
-        if not args.skip_store_in_db:
-            store_clusters_in_db(args.profile_db, clusters, collection_name, driver)
+        store_clusters_in_db(args.profile_db, clusters, collection_name, driver)
 
     except ConfigError as e:
         print(e)
