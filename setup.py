@@ -15,16 +15,7 @@ try:
 except Exception:
     sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
-try:
-    import numpy
-except ImportError:
-    print("You need to have numpy installed on your system to run setup.py. Sorry!")
-    sys.exit()
-
 from setuptools import setup, find_packages
-
-if os.environ.get('USER','') == 'vagrant':
-    del os.link
 
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
