@@ -55,6 +55,8 @@ def prepare_input_files(profile_db, contigs_db, splits_mode=False):
     P = lambda x: os.path.join(temp_path, x)
     
     input_files = argparse.Namespace()
+    input_files.contigs_db = contigs_db
+    input_files.profile_db = profile_db
     input_files.coverage = P('coverages.txt')
     input_files.fasta = P('sequence.fa')
     
