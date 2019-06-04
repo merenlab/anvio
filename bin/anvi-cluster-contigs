@@ -77,8 +77,8 @@ def prepare_input_files(profile_db, contigs_db, splits_mode=False):
     P = lambda x: os.path.join(temp_path, x)
     
     input_files = argparse.Namespace()
-    input_files.contigs_db = contigs_db
-    input_files.profile_db = profile_db
+    input_files.contigs_db = os.path.realpath(contigs_db.db.db_path)
+    input_files.profile_db = os.path.realpath(profile_db.db.db_path)
     input_files.coverage = P('coverages.txt')
     input_files.fasta = P('sequence.fa')
     
@@ -179,7 +179,7 @@ if __name__ == '__main__':
             for name, path in input_files.__dict__.items():
                 os.remove(path)
 
-        store_clusters_in_db(args.profile_db, clusters, collection_name, driver)
+        store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver)
 
     except ConfigError as e:
         print(e)
