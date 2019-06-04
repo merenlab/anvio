@@ -48,7 +48,7 @@ def store_clusters_in_db(profile_db_path, clusters, collection_name, source):
     run.info('%s results in db' % source, profile_db_path, display_only=True)
 
 
-def prepare_input_files(profile_db, contigs_db):
+def prepare_input_files(profile_db, contigs_db, splits_mode=False):
     input_files = argparse.Namespace()
     temp_path = filesnpaths.get_temp_directory_path()
     
@@ -57,10 +57,15 @@ def prepare_input_files(profile_db, contigs_db):
     input_files = argparse.Namespace()
     input_files.coverage = P('coverages.txt')
     input_files.fasta = P('sequence.fa')
-        
-    coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs')
+    
+    table_name = 'mean_coverage_splits' if splits_mode else 'mean_coverage_contigs'
+    coverages = profile_db.db.get_table_as_dict(table_name)
 
-    utils.export_sequences_from_contigs_db(contigs_db.db_path, input_files.fasta, seq_names_to_export=sorted(coverages.keys()), splits_mode=True)
+    utils.export_sequences_from_contigs_db(contigs_db.db_path,
+                                           input_files.fasta, 
+                                           seq_names_to_export=sorted(coverages.keys()), 
+                                           splits_mode=splits_mode)
+
     utils.store_dict_as_TAB_delimited_file(coverages, input_files.coverage, ['contig'] + sorted(list(profile_db.samples)))
 
     return input_files
@@ -77,10 +82,8 @@ if __name__ == '__main__':
 
     parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parent_parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    parent_parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
+    parent_parser.add_argument(*anvio.A('splits-mode'), **anvio.K('splits-mode'))
     parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
-    parent_parser.add_argument(*anvio.A('num-clusters-requested'), **anvio.K('num-clusters-requested'))
     parent_parser.add_argument(*anvio.A('driver'), **anvio.K('driver', 
         {'choices': list(driver_modules['binning'].keys()), 'type': str.lower}))
 
@@ -133,7 +136,7 @@ if __name__ == '__main__':
         sub_args, unknown = subparsers[driver].parse_known_args()
         binning_module = modules[driver]()
 
-        input_files = prepare_input_files(merged_profile_db, contigs_db)
+        input_files = prepare_input_files(merged_profile_db, contigs_db, splits_mode=args.splits_mode)
 
         if anvio.DEBUG:
             for name, path in input_files.__dict__.items():
@@ -145,8 +148,6 @@ if __name__ == '__main__':
             for name, path in input_files.__dict__.items():
                 os.remove(path)
 
-        # if args.output_file:
-        #     c.store_clusters_as_TAB_delimited_text(args.output_file)
         if not args.skip_store_in_db:
             store_clusters_in_db(args.profile_db, clusters, collection_name, driver)
 
