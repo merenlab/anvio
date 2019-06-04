@@ -120,10 +120,6 @@ if __name__ == '__main__':
                                 ANY characters but digits, ASCII letters and underscore character(s). There should not be\
                                 any space characters, and the collection name should not start with a digit.' % collection_name)
 
-        # make sure output file is writable before the analysis...
-        if args.output_file:
-            filesnpaths.is_output_file_writable(args.output_file)
-
         utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
         merged_profile_db = dbops.ProfileDatabase(args.profile_db)
