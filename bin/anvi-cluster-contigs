@@ -63,7 +63,6 @@ def prepare_input_files(profile_db, contigs_db, splits_mode=False):
 
     utils.export_sequences_from_contigs_db(contigs_db.db_path,
                                            input_files.fasta, 
-                                           seq_names_to_export=sorted(coverages.keys()), 
                                            splits_mode=splits_mode)
 
     utils.store_dict_as_TAB_delimited_file(coverages, input_files.coverage, ['contig'] + sorted(list(profile_db.samples)))
