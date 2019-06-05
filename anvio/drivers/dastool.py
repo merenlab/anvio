@@ -99,7 +99,7 @@ class DAS_Tool:
             lines = f.readlines()
 
             for entry in lines:
-                contig, bin_name = map(str.strip, entry.split('\t'))
+                contig, bin_name = map(str.strip, entry.split())
 
                 pretty_bin_name = 'Bin_' + bin_name
 
@@ -111,9 +111,4 @@ class DAS_Tool:
         # restore cwd
         os.chdir(cwd_backup)
 
-
-
-        return {}
-
-
-
+        return clusters
