@@ -173,7 +173,7 @@ if __name__ == '__main__':
             for name, path in input_files.__dict__.items():
                 run.info('Input file [%s]' % name, path)
 
-        clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads)
+        clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads, splits_mode=args.splits_mode)
 
         if not anvio.DEBUG:
             os.remove(input_files.fasta)

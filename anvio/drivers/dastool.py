@@ -48,7 +48,10 @@ class DAS_Tool:
 
 
 
-    def cluster(self, input_files, args, threads=1):
+    def cluster(self, input_files, args, threads=1, splits_mode=False):
+        if not splits_mode:
+            raise ConfigError("DAS_Tool can only be run in splits mode. See --help for details.")
+
         P = lambda x: os.path.join(self.temp_path, x)
 
         cwd_backup = os.getcwd()

@@ -110,7 +110,7 @@ class MetaBAT:
         self.temp_path = filesnpaths.get_temp_directory_path()
 
 
-    def cluster(self, input_files, args, threads=1):
+    def cluster(self, input_files, args, threads=1, splits_mode=False):
         if anvio.DEBUG:
             self.run.info('Working directory', self.temp_path)
 
