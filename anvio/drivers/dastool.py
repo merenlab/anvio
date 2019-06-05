@@ -82,7 +82,7 @@ class DAS_Tool:
             c.export_collection(collection_name, output_file_prefix=prefix, include_unbinned=False)
 
         cmd_line = [self.program_name,
-            '-c', input_files.coverage,
+            '-c', input_files.fasta,
             '-i', ','.join(c_files),
             '-l', ','.join(c_names),
             '-o', P('OUTPUT'),
