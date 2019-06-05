@@ -8,6 +8,7 @@ from anvio.drivers.famsa import FAMSA
 from anvio.drivers.concoct import CONCOCT
 from anvio.drivers.metabat import MetaBAT
 from anvio.drivers.maxbin import MaxBin
+from anvio.drivers.dastool import DAS_Tool
 from anvio.errors import ConfigError
 
 run = terminal.Run()
@@ -21,7 +22,8 @@ driver_modules['phylogeny'] = {"default":  FastTree,
 
 driver_modules['binning'] = {"concoct": CONCOCT,
                              "metabat": MetaBAT,
-                             "maxbin": MaxBin}
+                             "maxbin": MaxBin,
+                             "dastool": DAS_Tool}
 
 class Aligners:
     def __init__(self, run=run, progress=progress):
