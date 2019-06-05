@@ -176,8 +176,8 @@ if __name__ == '__main__':
         clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads)
 
         if not anvio.DEBUG:
-            for name, path in input_files.__dict__.items():
-                os.remove(path)
+            os.remove(input_files.fasta)
+            os.remove(input_files.coverage)
 
         store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver)
 
