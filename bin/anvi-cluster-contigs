@@ -179,7 +179,7 @@ if __name__ == '__main__':
             os.remove(input_files.fasta)
             os.remove(input_files.coverage)
 
-        store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver)
+        store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, splits_mode=args.splits_mode)
 
     except ConfigError as e:
         print(e)
