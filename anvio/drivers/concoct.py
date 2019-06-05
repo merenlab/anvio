@@ -70,7 +70,7 @@ class CONCOCT:
 
 
 
-    def cluster(self, input_files, args, threads=1):
+    def cluster(self, input_files, args, threads=1, splits_mode=False):
         cwd_backup = os.getcwd()
         os.chdir(self.temp_path)
         log_path = os.path.join(self.temp_path, 'logs.txt')
