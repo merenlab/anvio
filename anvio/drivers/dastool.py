@@ -101,7 +101,7 @@ class DAS_Tool:
             for entry in lines:
                 contig, bin_name = map(str.strip, entry.split())
 
-                pretty_bin_name = 'Bin_' + bin_name
+                pretty_bin_name = 'Bin_' + bin_name.replace('.', '_')
 
                 if pretty_bin_name not in clusters:
                     clusters[pretty_bin_name] = []
