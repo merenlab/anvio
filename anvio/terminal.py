@@ -394,7 +394,19 @@ class Timer:
         return self.format_time(time_remaining, fmt, zero_padding)
 
 
-    def format_time(self, timedelta, fmt, zero_padding = 2):
+    def time_elapsed(self):
+        return self.format_time(self.timedelta_to_checkpoint(self.timestamp(), checkpoint_key = 0))
+
+
+    def format_time(self, timedelta, fmt = '{hours}:{minutes}:{seconds}', zero_padding = 2):
+        """
+        Examples of `fmt`. Suppose the timedelta is seconds = 1, minutes = 1, hours = 1.
+
+        {hours}h {minutes}m {seconds}s  --> 01h 01m 01s
+        {seconds} seconds               --> 3661 seconds
+        {weeks} weeks {minutes} minutes --> 0 weeks 61 minutes
+        {hours}h {seconds}s             --> 1h 61s
+        """
         unit_hierarchy = ['seconds', 'minutes', 'hours', 'days', 'weeks']
         unit_denominations = {'weeks': 7, 'days': 24, 'hours': 60, 'minutes': 60, 'seconds': 1}
 
