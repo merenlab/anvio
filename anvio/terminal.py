@@ -75,7 +75,7 @@ class Progress:
 
         self.progress_total_items = None
         self.progress_current_item = 0
-        self.t = Timer(progress_total_items)
+        self.t = Timer(self.progress_total_items)
 
         self.LEN = lambda s: len(s.encode('utf-16-le')) // 2
 
@@ -112,6 +112,8 @@ class Progress:
         else:
             self.progress_current_item += 1
 
+        self.t.make_checkpoint(increment_to = increment_to)
+
 
     def write(self, c, dont_update_current=False):
         surpass = self.terminal_width - self.LEN(c)
@@ -126,7 +128,7 @@ class Progress:
 
         if self.verbose:
             if self.progress_total_items and self.is_tty:
-                p_text = ' %d%% ⚙  ' % (self.progress_current_item * 100 / self.progress_total_items)
+                p_text = ' %s ' % (self.t.eta())
                 p_length = self.LEN(p_text)
 
                 msg_length = self.LEN(c)
