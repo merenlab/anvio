@@ -103,7 +103,7 @@ class Progress:
         self.step = None
         self.progress_total_items = progress_total_items
         self.progress_current_item = 0
-        self.t = Timer(progress_total_items)
+        self.t = Timer(self.progress_total_items)
 
 
     def increment(self, increment_to=None):
