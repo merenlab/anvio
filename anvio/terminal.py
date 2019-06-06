@@ -358,7 +358,7 @@ class Timer:
         return timedelta
 
 
-    def make_checkpoint(self, checkpoint_key = None, increment_to = 1):
+    def make_checkpoint(self, checkpoint_key = None, increment_to = None):
         if not checkpoint_key:
             checkpoint_key = self.num_checkpoints + 1
 
@@ -372,7 +372,12 @@ class Timer:
         self.last_checkpoint_key = checkpoint_key
 
         self.num_checkpoints += 1
-        self.completion_score += increment_to
+
+        if increment_to:
+            self.completion_score = increment_to
+        else:
+            self.completion_score += 1
+
         if self.completion_score >= self.required_completion_score:
             self.complete = True
 
