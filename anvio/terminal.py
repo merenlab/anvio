@@ -336,9 +336,35 @@ class Run:
 
 class Timer:
     """
-        required_completion_score is equal to the total number of checkpoints that will be made
-        assuming make_checkpoint is called with increment_to = 1. otherwise increment_to can be
-        used to weight certain checkpoints with higher completion scores
+        The premise of the class is to build an ordered dictionary, where each key is a checkpoint
+        name and value is a timestamp.
+
+        Examples
+        ========
+
+            from anvio.terminal import Timer
+            import time
+            t = Timer(); time.sleep(1)
+            t.make_checkpoint('checkpoint_name'); time.sleep(1)
+            timedelta = t.timedelta_to_checkpoint(timestamp=t.timestamp(), checkpoint_key='checkpoint_name')
+            print(t.format_time(timedelta, fmt = '{days} days, {hours} hours, {seconds} seconds', zero_padding=0))
+            print(t.time_elapsed())
+
+            >>> 0 days, 0 hours, 1 seconds
+            >>> 00:00:02
+
+            t = Timer(3) # 3 checkpoints expected until completion
+            for _ in range(3):
+                time.sleep(1); t.make_checkpoint()
+                print('complete: %s' % t.complete)
+                print(t.eta(fmt='ETA: {seconds} seconds'))
+
+            >>> complete: False
+            >>> ETA: 02 seconds
+            >>> complete: False
+            >>> ETA: 01 seconds
+            >>> complete: True
+            >>> ETA: 00 seconds
     """
     def __init__(self, required_completion_score = None):
         self.timer_start = self.timestamp()
@@ -380,7 +406,7 @@ class Timer:
         else:
             self.completion_score += 1
 
-        if self.completion_score >= self.required_completion_score:
+        if self.required_completion_score and self.completion_score >= self.required_completion_score:
             self.complete = True
 
         return checkpoint
