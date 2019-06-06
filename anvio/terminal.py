@@ -75,6 +75,7 @@ class Progress:
 
         self.progress_total_items = None
         self.progress_current_item = 0
+        self.t = Timer(progress_total_items)
 
         self.LEN = lambda s: len(s.encode('utf-16-le')) // 2
 
@@ -102,6 +103,7 @@ class Progress:
         self.step = None
         self.progress_total_items = progress_total_items
         self.progress_current_item = 0
+        self.t = Timer(progress_total_items)
 
 
     def increment(self, increment_to=None):
@@ -331,13 +333,19 @@ class Run:
 
 
 class Timer:
-    def __init__(self, total_num_checkpoints = None):
+    """
+        required_completion_score is equal to the total number of checkpoints that will be made
+        assuming make_checkpoint is called with increment_to = 1. otherwise increment_to can be
+        used to weight certain checkpoints with higher completion scores
+    """
+    def __init__(self, required_completion_score = None):
         self.timer_start = self.timestamp()
         self.last_checkpoint_key = 0
         self.checkpoints = OrderedDict([(self.last_checkpoint_key, self.timer_start)])
         self.num_checkpoints = 0
 
-        self.total_num_checkpoints = total_num_checkpoints
+        self.required_completion_score = required_completion_score
+        self.completion_score = 0
         self.complete = False
 
 
@@ -350,7 +358,7 @@ class Timer:
         return timedelta
 
 
-    def make_checkpoint(self, checkpoint_key = None):
+    def make_checkpoint(self, checkpoint_key = None, increment_to = 1):
         if not checkpoint_key:
             checkpoint_key = self.num_checkpoints + 1
 
@@ -364,7 +372,8 @@ class Timer:
         self.last_checkpoint_key = checkpoint_key
 
         self.num_checkpoints += 1
-        if self.num_checkpoints >= self.total_num_checkpoints:
+        self.completion_score += increment_to
+        if self.completion_score >= self.required_completion_score:
             self.complete = True
 
         return checkpoint
@@ -373,13 +382,13 @@ class Timer:
     def calculate_time_remaining(self, infinite_default = None):
         if self.complete:
             return datetime.timedelta(seconds = 0)
-        if not self.total_num_checkpoints:
+        if not self.required_completion_score:
             return None
-        if not self.num_checkpoints:
+        if not self.completion_score:
             return infinite_default
 
         time_elapsed = self.checkpoints[self.last_checkpoint_key] - self.checkpoints[0]
-        fraction_completed = self.num_checkpoints / self.total_num_checkpoints
+        fraction_completed = self.completion_score / self.required_completion_score
         time_remaining_estimate = time_elapsed / fraction_completed - time_elapsed
 
         return time_remaining_estimate
@@ -400,12 +409,12 @@ class Timer:
 
     def format_time(self, timedelta, fmt = '{hours}:{minutes}:{seconds}', zero_padding = 2):
         """
-        Examples of `fmt`. Suppose the timedelta is seconds = 1, minutes = 1, hours = 1.
+            Examples of `fmt`. Suppose the timedelta is seconds = 1, minutes = 1, hours = 1.
 
-        {hours}h {minutes}m {seconds}s  --> 01h 01m 01s
-        {seconds} seconds               --> 3661 seconds
-        {weeks} weeks {minutes} minutes --> 0 weeks 61 minutes
-        {hours}h {seconds}s             --> 1h 61s
+            {hours}h {minutes}m {seconds}s  --> 01h 01m 01s
+            {seconds} seconds               --> 3661 seconds
+            {weeks} weeks {minutes} minutes --> 0 weeks 61 minutes
+            {hours}h {seconds}s             --> 1h 61s
         """
         unit_hierarchy = ['seconds', 'minutes', 'hours', 'days', 'weeks']
         unit_denominations = {'weeks': 7, 'days': 24, 'hours': 60, 'minutes': 60, 'seconds': 1}
