@@ -112,7 +112,7 @@ if __name__ == '__main__':
     parent_parser = argparse.ArgumentParser(description="A program to cluster items in a merged anvi'o profile using CONCOCT, and optionally\
                                                   creating a collection in the profile database. This is especially useful if you need to\
                                                   have more control over the number of clusters to work with if you are planning to refine\
-                                                  them manually later.", add_help=False)
+                                                  them manually later.")
 
     parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
@@ -127,16 +127,23 @@ if __name__ == '__main__':
 
     subparsers = {}
     for name, module in modules.items():
-        subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS)
-        subparser._optionals.title = '%s options' % name.upper()
+        subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, add_help=False)
 
-        for arg_name, definiton in module.arguments.items():
-            subparser.add_argument(*definiton[0], **definiton[1])
+        try:
+            # test if __init__() will raise ConfigError with is_program_exists
+            module()
 
-        if show_help:
-            subparser.print_help()
+            subparser._optionals.title = '%s options' % name.upper()
+            for arg_name, definiton in module.arguments.items():
+                subparser.add_argument(*definiton[0], **definiton[1])
 
-        subparsers[name] = subparser
+            if show_help:
+                subparser.print_help()
+        except ConfigError:
+            print("%s [ Not installed ]" % name.upper())
+            continue
+        finally:
+            subparsers[name] = subparser
 
     if show_help:
         sys.exit()
