@@ -9,9 +9,11 @@ import time
 import fcntl
 import struct
 import termios
+import datetime
 import textwrap
 
 from colored import fore, back, style
+from collections import OrderedDict
 
 import anvio.constants as constants
 import anvio.dictio as dictio
@@ -326,6 +328,120 @@ class Run:
     def quit(self):
         if self.log_file_path:
             self.log('Bye.')
+
+
+class Timer:
+    def __init__(self, total_num_checkpoints = None):
+        self.timer_start = self.timestamp()
+        self.last_checkpoint_key = 0
+        self.checkpoints = OrderedDict([(self.last_checkpoint_key, self.timer_start)])
+        self.num_checkpoints = 0
+
+        self.total_num_checkpoints = total_num_checkpoints
+        self.complete = False
+
+
+    def timestamp(self):
+        return datetime.datetime.fromtimestamp(time.time())
+
+
+    def timedelta_to_checkpoint(self, timestamp, checkpoint_key=0):
+        timedelta = timestamp - self.checkpoints[checkpoint_key]
+        return timedelta
+
+
+    def make_checkpoint(self, checkpoint_key = None):
+        if not checkpoint_key:
+            checkpoint_key = self.num_checkpoints + 1
+
+        if checkpoint_key in self.checkpoints:
+            raise TerminalError('Timer.make_checkpoint :: %s already exists as a checkpoint key.\
+                                 All keys must be unique' % (str(checkpoint_key)))
+
+        checkpoint = self.timestamp()
+
+        self.checkpoints[checkpoint_key] = checkpoint
+        self.last_checkpoint_key = checkpoint_key
+
+        self.num_checkpoints += 1
+        if self.num_checkpoints >= self.total_num_checkpoints:
+            self.complete = True
+
+        return checkpoint
+
+
+    def calculate_time_remaining(self, infinite_default = None):
+        if self.complete:
+            return datetime.timedelta(seconds = 0)
+        if not self.total_num_checkpoints:
+            return None
+        if not self.num_checkpoints:
+            return infinite_default
+
+        time_elapsed = self.checkpoints[self.last_checkpoint_key] - self.checkpoints[0]
+        fraction_completed = self.num_checkpoints / self.total_num_checkpoints
+        time_remaining_estimate = time_elapsed / fraction_completed - time_elapsed
+
+        return time_remaining_estimate
+
+
+    def eta(self, fmt='{hours}:{minutes}:{seconds}', zero_padding=2):
+        time_remaining = self.calculate_time_remaining()
+
+        if not isinstance(time_remaining, datetime.timedelta):
+            return str(time_remaining)
+
+        return self.format_time(time_remaining, fmt, zero_padding)
+
+
+    def format_time(self, timedelta, fmt, zero_padding = 2):
+        unit_hierarchy = ['seconds', 'minutes', 'hours', 'days', 'weeks']
+        unit_denominations = {'weeks': 7, 'days': 24, 'hours': 60, 'minutes': 60, 'seconds': 1}
+
+        # parse units present in fmt
+        format_order = []
+        for i, c in enumerate(fmt):
+            if c == '{':
+                for j, k in enumerate(fmt[i:]):
+                    if k == '}':
+                        unit = fmt[i+1:i+j]
+                        format_order.append(unit)
+                        break
+
+        if not format_order:
+            raise TerminalError('Timer.format_time :: fmt = \'%s\' contains no time units.' % (fmt))
+
+        for unit in format_order:
+            if unit not in unit_hierarchy:
+                raise TerminalError('Timer.format_time :: \'%s\' is not a valid unit. Use any of %s.'\
+                                     % (unit, ', '.join(unit_hierarchy)))
+
+        # calculate the value for each unit (e.g. 'seconds', 'days', etc) found in fmt
+        format_values_dict = {}
+        smallest_unit = unit_hierarchy[[unit in format_order for unit in unit_hierarchy].index(True)]
+        r = int(timedelta.total_seconds()) // unit_denominations[smallest_unit]
+
+        for i, lower_unit in enumerate(unit_hierarchy):
+            if lower_unit in format_order:
+                m = 1
+                for upper_unit in unit_hierarchy[i+1:]:
+                    m *= unit_denominations[upper_unit]
+                    if upper_unit in format_order:
+                        format_values_dict[upper_unit], format_values_dict[lower_unit] = divmod(r, m)
+                        break
+                else:
+                    format_values_dict[lower_unit] = r
+                    break
+                r = format_values_dict[upper_unit]
+
+        format_values = [format_values_dict[unit] for unit in format_order]
+
+        style_str = '0' + str(zero_padding) if zero_padding else ''
+        for unit in format_order:
+            fmt = fmt.replace('{%s}' % unit, '%' + '%s' % (style_str) + 'd')
+        formatted_time = fmt % (*[format_value for format_value in format_values],)
+
+        return formatted_time
 
 
 def pretty_print(n):
