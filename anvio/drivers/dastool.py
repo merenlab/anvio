@@ -72,7 +72,7 @@ class DAS_Tool:
                 ['--db-directory'],
                 {'metavar': "PATH",
                  'required': False,
-                 'default': 'install_dir/db',
+                 'default': None,
                  'help': "Directory of single copy gene database. (default: install_dir/db)"}
                     ),
     }
