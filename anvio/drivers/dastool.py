@@ -35,6 +35,46 @@ class DAS_Tool:
                  'required': True,
                  'help': "Comma-separated list of collections, case sensitive."}
                     ),
+        'search-engine': (
+                ['--search-engine'],
+                {'metavar': "PROGRAM",
+                 'required': False,
+                 'default': 'usearch',
+                 'help': "Engine used for single copy gene identification [blast/diamond/usearch].\
+                              (default: usearch)"}
+                    ),
+        'score-threshold': (
+                ['--score-threshold'],
+                {'metavar': "FLOAT",
+                 'required': False,
+                 'default': 0.5,
+                 'help': "Score threshold until selection algorithm will keep selecting bins [0..1].\
+                              (default: 0.5)"}
+                    ),
+        'duplicate-penalty': (
+                ['--duplicate-penalty'],
+                {'metavar': "FLOAT",
+                 'required': False,
+                 'default': 0.6,
+                 'help': "Penalty for duplicate single copy genes per bin (weight b).\
+                              Only change if you know what you're doing. [0..3]\
+                              (default: 0.6)"}
+                    ),
+        'megabin-penalty': (
+                ['--megabin-penalty'],
+                {'metavar': "FLOAT",
+                 'required': False,
+                 'default': 0.5,
+                 'help': "Penalty for megabins (weight c). Only change if you know what you're doing. [0..3]\
+                              (default: 0.5)"}
+                    ),
+        'db-directory': (
+                ['--db-directory'],
+                {'metavar': "PATH",
+                 'required': False,
+                 'default': 'install_dir/db',
+                 'help': "Directory of single copy gene database. (default: install_dir/db)"}
+                    ),
     }
 
     def __init__(self, run=run, progress=progress):
