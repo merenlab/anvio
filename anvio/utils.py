@@ -186,7 +186,7 @@ def serialize_args(args, single_dash=False, use_underscore=False, skip_keys=None
 
         if value is True:
             cmdline.append('%s%s' % (dash, param))
-        elif value is not False:
+        elif value is not False and value is not None:
             cmdline.append('%s%s' % (dash, param))
             cmdline.append(str(value))
 
