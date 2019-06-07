@@ -376,6 +376,9 @@ class Timer:
         self.completion_score = 0
         self.complete = False
 
+        self.last_eta = None
+        self.last_eta_timestamp = self.timer_start
+
 
     def timestamp(self):
         return datetime.datetime.fromtimestamp(time.time())
@@ -428,12 +431,20 @@ class Timer:
 
 
     def eta(self, fmt='{hours}:{minutes}:{seconds}', zero_padding=2):
-        time_remaining = self.calculate_time_remaining()
+        # Calling format_time hundreds or thousands of times per second is expensive. Therefore if
+        # eta was called within the last half second, the previous ETA is returned without further
+        # calculation.
+        eta_timestamp = self.timestamp()
+        if eta_timestamp - self.last_eta_timestamp < datetime.timedelta(seconds = 0.5):
+            return self.last_eta
 
-        if not isinstance(time_remaining, datetime.timedelta):
-            return str(time_remaining)
+        eta = self.calculate_time_remaining()
+        eta = self.format_time(eta, fmt, zero_padding) if isinstance(eta, datetime.timedelta) else str(eta)
 
-        return self.format_time(time_remaining, fmt, zero_padding)
+        self.last_eta = eta
+        self.last_eta_timestamp = eta_timestamp
+
+        return eta
 
 
     def time_elapsed(self):
