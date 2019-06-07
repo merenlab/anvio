@@ -129,7 +129,10 @@ class DAS_Tool:
             '-i', ','.join(c_files),
             '-l', ','.join(c_names),
             '-o', P('OUTPUT'),
-            '--threads', str(threads)]
+            '--threads', str(threads),
+            *utils.serialize_args(args, 
+                use_underscore=True, 
+                skip_keys=['source_collections'])]
 
         self.progress.new(self.program_name)
         self.progress.update('Running using %d threads...' % threads)
