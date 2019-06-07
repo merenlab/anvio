@@ -115,7 +115,7 @@ if __name__ == '__main__':
 
     parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parent_parser.add_argument(*anvio.A('splits-mode'), **anvio.K('splits-mode'))
+    parent_parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
     parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
     parent_parser.add_argument(*anvio.A('driver'), **anvio.K('driver', 
         {'choices': list(driver_modules['binning'].keys()), 'type': str.lower}))
@@ -151,6 +151,7 @@ if __name__ == '__main__':
 
     try:
         args, unknown = parent_parser.parse_known_args()
+        splits_mode = not args.contigs_mode
 
         collection_name = args.collection_name.strip()
         if not len(collection_name):
@@ -175,19 +176,19 @@ if __name__ == '__main__':
         sub_args, unknown = subparsers[driver].parse_known_args()
         binning_module = modules[driver]()
 
-        input_files = prepare_input_files(merged_profile_db, contigs_db, splits_mode=args.splits_mode)
+        input_files = prepare_input_files(merged_profile_db, contigs_db, splits_mode=splits_mode)
 
         if anvio.DEBUG:
             for name, path in input_files.__dict__.items():
                 run.info('Input file [%s]' % name, path)
 
-        clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads, splits_mode=args.splits_mode)
+        clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads, splits_mode=splits_mode)
 
         if not anvio.DEBUG:
             os.remove(input_files.fasta)
             os.remove(input_files.coverage)
 
-        store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, splits_mode=args.splits_mode)
+        store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, splits_mode=splits_mode)
 
     except ConfigError as e:
         print(e)
