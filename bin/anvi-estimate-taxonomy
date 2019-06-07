@@ -5,6 +5,7 @@ import re
 import os
 import sys
 import argparse
+import time
 
 from collections import Counter
 from tabulate import tabulate
@@ -94,6 +95,19 @@ class SCGTaxonomy:
 
         self.sanity_check()
 
+    def timer(function):
+        import time
+        def timed_function(*args, **kwargs):
+            n=1
+            start = time.time()
+            for i in range(n):
+                x = function(*args, **kwargs)
+            end = time.time()
+            print('Average time per call over {} calls for function \'{}\': {:6f} seconds'.format(n, function.__name__, (end-start)/n))
+            return x
+        return timed_function
+
+
 
     def sanity_check(self):
         filesnpaths.is_file_exists(self.taxonomy_file_path)
@@ -114,11 +128,10 @@ class SCGTaxonomy:
                                with the current genes configuration of this class. Here are the list of\
                                genes for which we are missing databases: '%s'." % (', '.join(missing_databases)))
 
-
+    @timer
     def init(self):
         if self.initialized:
             return
-
         # initialize taxonomy dict. we should do this through a database in the long run.
         with open(self.taxonomy_file_path, 'r') as taxonomy_file:
             for accession, taxonomy_text in [l.strip('\n').split('\t') for l in taxonomy_file.readlines() if not l.startswith('#') and l]:
@@ -156,7 +169,7 @@ class SCGTaxonomy:
 
         print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
 
-
+    @timer
     def get_hmm_sequences_dict_into_bins(self, hmm_sequences_dict):
         hmm_sequences_dict_per_bin = {}
         for entry_id in hmm_sequences_dict:
@@ -170,7 +183,7 @@ class SCGTaxonomy:
 
         return hmm_sequences_dict_per_bin
 
-
+    @timer
     def predict_from_SCGs_dict(self, hmm_sequences_dict):
         """Takes an HMMs dictionary, and yields predictions"""
 
@@ -181,6 +194,7 @@ class SCGTaxonomy:
         hmm_sequences_dict_per_bin = self.get_hmm_sequences_dict_into_bins(hmm_sequences_dict)
 
         for bin_name in hmm_sequences_dict_per_bin:
+            start_predict_from_SCGs_dict = time.perf_counter()
             hits_per_gene = {}
 
             self.run.info('Bin name', bin_name)
@@ -189,7 +203,7 @@ class SCGTaxonomy:
             j=0
             for entry in hmm_sequences_dict_per_bin[bin_name].values():
                 gene_name = entry['gene_name']
-                hits = self.get_raw_blast_hits(entry)
+                hits = self.get_raw_blast_hits(entry,max_target_seqs=30)
                 if not hits:
                     j+=1
 
@@ -202,11 +216,14 @@ class SCGTaxonomy:
                 if anvio.DEBUG:
                     self.show_hits(bin_name, gene_name, hits)
 
+
             if j==len(hits_per_gene):
                 self.run.info(bin_name, "diamond didn't return any match \n")
                 continue
 
             consensus_taxonomy=self.get_consensus_taxonomy(hits_per_gene,bin_name,hmm_sequences_dict_per_bin)
+            end_predict_from_SCGs_dict = time.perf_counter()
+            print("\n time predict_from_SCGs_dict for a bin : ", end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)
 
 
 
@@ -318,6 +335,8 @@ class SCGTaxonomy:
                 print("for "+str(bin_name)+" the protein: "+str(entry['gene_name'])+"\t match "+\
                 hits_per_gene[entry['gene_name']][0]['taxonomy']['t_species'])
 
+
+
     def make_dico_position_entry(self,hits_per_gene,matchinggenes):
         dico_position_entry={}
         for hit in matchinggenes:
@@ -337,13 +356,12 @@ class SCGTaxonomy:
         len_position=len(list_position_ribosomal)
         key_value = sorted(dico_position_entry, key=lambda x: dico_position_entry[x], reverse=True)
         for key in key_value:
-            #parameter number of individue in the first matrix "j <= 5 and"
+            #parameter number of individue in the first matrix "j <= 5 " and appear in minimun 50% of blast
             if j <= 5 and dico_position_entry[key] > (len_position*0.5):
                 list_position_entry.append(key)
                 j+=1
                 print(self.taxonomy_dict[key]['t_species'] ,key,dico_position_entry[key])
 
-        #sys.exit(status=None)
         list_position_ribosomal=self.make_list_position_ribosomal(matchinggenes,hits_per_gene,list_position_entry)
         return(list_position_entry,list_position_ribosomal)
 
@@ -385,7 +403,7 @@ class SCGTaxonomy:
         maxposition=len(list_position_entry)
         i=0
         # do 'matrix=[(['NA'] *len(list_position_ribosomal))]*(len(dico_position_entry))' don't work.\
-        # subsitution will impact the items on the index in lists
+        # subsitution will impact all items on the index in lists
         while i < maxposition:
             emptylist=self.emptylistmaker(numbr_genes)
             matrix.append(emptylist)
@@ -395,6 +413,7 @@ class SCGTaxonomy:
     def fill_matrix(self,bin_name,emptymatrix,hits_per_gene,list_position_entry,\
     list_position_ribosomal,matchinggenes):
         maxrank=1
+        bestident=0
         for hit in list_position_ribosomal:
                 rank=1
                 bestscore=0
@@ -403,8 +422,14 @@ class SCGTaxonomy:
                     if entry['accession'] in list_position_entry:
                         if rank > maxrank:
                             maxrank=rank
+                        #parameter
+                        if entry['pident'] > bestident:
+                            bestident=entry['pident']
                         if perfectident and entry['pident'] != 100:
                             rank+=1
+                            emptymatrix[list_position_entry.index(entry['accession'])]\
+                            [list_position_ribosomal.index(hit)]=rank
+                            continue
                         if bestscore<entry['bitscore']:
                             bestscore=entry['bitscore']
                             if entry['pident']==100:
@@ -412,15 +437,16 @@ class SCGTaxonomy:
                             emptymatrix[list_position_entry.index(entry['accession'])]\
                             [list_position_ribosomal.index(hit)]=rank
                             continue
-                        #parameter for considere 2 bitscore have identical rank
+                        #parameter for considere 2 hit have same rank rank
                         if entry['pident'] == 100 or float(entry['bitscore'])>=(bestscore*1):
                             emptymatrix[list_position_entry.index(entry['accession'])]\
                             [list_position_ribosomal.index(hit)]=rank
                             continue
+                        rank+=1
                         emptymatrix[list_position_entry.index(entry['accession'])]\
                         [list_position_ribosomal.index(hit)]=rank
-                        rank+=1
-        return(emptymatrix,maxrank)
+
+        return(emptymatrix,maxrank,bestident)
 
     def fill_NA_matrix(self,matrix,penality,max_target_seqs=20):
         for liste in matrix:
@@ -429,15 +455,16 @@ class SCGTaxonomy:
                     liste[n] = (int(penality)+int(max_target_seqs))
         return(matrix)
 
+    @timer
     def make_rank_matrix(self,bin_name,hits_per_gene):
         matchinggenes=self.get_matching_gene(hits_per_gene)
         list_position_entry,list_position_ribosomal=self.creat_list_position(hits_per_gene,matchinggenes)
         emptymatrix=self.make_emptymatrix(list_position_entry,list_position_ribosomal)
-        matrix,maxrank=self.fill_matrix(bin_name,emptymatrix,hits_per_gene,list_position_entry,\
+        matrix,maxrank,bestident=self.fill_matrix(bin_name,emptymatrix,hits_per_gene,list_position_entry,\
         list_position_ribosomal,matchinggenes)
         final_matrix=self.fill_NA_matrix(matrix, maxrank)
 
-        return(final_matrix,list_position_entry,list_position_ribosomal)
+        return(final_matrix,list_position_entry,list_position_ribosomal,bestident)
 
 
 
@@ -481,13 +508,18 @@ class SCGTaxonomy:
 
     def rank_assignement(self,hits_per_gene,bin_name):
 
-        matrix,matrixlist_position_entry,list_position_ribosomal=self.make_rank_matrix(bin_name,hits_per_gene)
+        matrix,matrixlist_position_entry,list_position_ribosomal,bestident=self.make_rank_matrix(bin_name,hits_per_gene)
+
+        #self.show_matrix_rank( bin_name, matrix, matrixlist_position_entry,list_position_ribosomal)
+        #newmatrix,new_matrixlist_position_entry=self.statistic_test_friedman(bin_name,matrix,matrixlist_position_entry\
+        #                                                                     ,list_position_ribosomal)
 
         self.show_matrix_rank( bin_name, matrix, matrixlist_position_entry,list_position_ribosomal)
-        newmatrix,new_matrixlist_position_entry=self.statistic_test_friedman(bin_name,matrix,matrixlist_position_entry,list_position_ribosomal)
+        start_assign_taxonomie_rank = time.perf_counter()
+        self.assign_taxonomie_rank(matrix,matrixlist_position_entry,bestident)
+        end_assign_taxonomie_rank = time.perf_counter()
+        print("\n time assign_taxonomie_rank : ", end_assign_taxonomie_rank - start_assign_taxonomie_rank)
 
-        self.show_matrix_rank( bin_name, newmatrix, new_matrixlist_position_entry,list_position_ribosomal)
-        self.assign_taxonomie_rank(newmatrix,new_matrixlist_position_entry)
 
         #parameters
 
@@ -529,15 +561,23 @@ class SCGTaxonomy:
 
 
     def assign_taxonomie_solo_hit(self,taxonomy):
-        result=taxonomy[0].items()
+        assignation=taxonomy[0]
         for s in taxonomy[1:]:
-            result &= s.items()
-        self.run.info('estimate taxonomy', result)
-        return True
+            for key in s:
+                if s[key] not in assignation.values():
+                    assignation.pop(key, None)
+        self.run.info('estimate taxonomy', assignation)
 
 
+    def make_dicoidentitielevel(self):
+        dicoidentitielevel={}
+        dicoidentitielevel[95]='t_species'
+        dicoidentitielevel[90]='t_genus'
+        dicoidentitielevel[85]='t_family'
+        dicoidentitielevel[80]='t_order'
+        return(dicoidentitielevel)
 
-    def assign_taxonomie_rank(self,matrix, list_position_entry):
+    def assign_taxonomie_rank(self,matrix, list_position_entry,bestident):
         taxonomy=[]
         miniscore=10000
         i=0
@@ -550,11 +590,20 @@ class SCGTaxonomy:
                 taxonomy.append(self.taxonomy_dict[list_position_entry[i]])
                 miniscore = summist
             i+=1
+        dicoidentitielevel=self.make_dicoidentitielevel()
+        for key , value in dicoidentitielevel.items():
+            if bestident < int(key):
+                for possibilitie in taxonomy:
+                    possibilitie.pop(value, None)
+
+
+        #if bestident:
+
         if len(taxonomy)==1:
             self.run.info('estimate taxonomy rank', taxonomy[0])
         if len(taxonomy)>=2:
             for possibilities in taxonomy:
-                self.run.info('Relevant match', possibilities.values())
+                self.run.info('Relevant match', possibilities)
             self.assign_taxonomie_solo_hit(taxonomy)
             """result=set(taxonomy[0])
             for s in taxonomy[1:]:
@@ -573,13 +622,15 @@ class SCGTaxonomy:
                     taxonomy.append(self.taxonomy_dict[entry['accession']])
         if taxonomy:
             self.assign_taxonomie_solo_hit(taxonomy)
+            return True
         else:
             return False
 
+
+    @timer
     def get_consensus_taxonomy(self,hits_per_gene,bin_name,hmm_sequences_dict_per_bin):
 
         if not self.solo_hits(hits_per_gene):
-            print(bin_name)
             if self.methode=="friedman":
                 self.rank_assignement(hits_per_gene,bin_name)
 
@@ -597,8 +648,7 @@ class SCGTaxonomy:
 
 
 
-
-
+    @timer
     def get_raw_blast_hits(self, d, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
         """Takes a dictionary that contains `gene_name` and `sequence`, and returns
            filtered BLAST hits against the corresopnding database. I.e.,
@@ -860,7 +910,10 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
+        start = time.perf_counter()
         main(args)
+        end = time.perf_counter()
+        print("total time : ", end - start)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
