@@ -7,7 +7,6 @@
 import os
 import sys
 import copy
-import time
 import random
 import inspect
 import argparse
@@ -2656,14 +2655,13 @@ class VariabilityFixationIndex():
         indices_to_calculate = (dimension * (dimension + 1)) / 2
         self.progress.new('Calculating pairwise fixation indices', progress_total_items=indices_to_calculate)
 
-        timer = time.time()
         for i, sample_1 in enumerate(sample_ids):
             for j, sample_2 in enumerate(sample_ids):
                 if i > j:
                     self.fst_matrix[i, j] = self.fst_matrix[j, i]
                 else:
                     self.progress.increment()
-                    self.progress.update('Working on {} with {}; Time elapsed: {:.0f}s'.format(sample_1, sample_2, time.time() - timer))
+                    self.progress.update('Working on {} with {}; Time elapsed: {}'.format(sample_1, sample_2, self.progress.t.time_elapsed()))
                     self.fst_matrix[i, j] = self.get_pairwise_FST(sample_1, sample_2)
         self.fst_matrix = pd.DataFrame(self.fst_matrix, index = sample_ids, columns = sample_ids)
         self.progress.end()

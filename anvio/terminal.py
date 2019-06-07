@@ -9,9 +9,11 @@ import time
 import fcntl
 import struct
 import termios
+import datetime
 import textwrap
 
 from colored import fore, back, style
+from collections import OrderedDict
 
 import anvio.constants as constants
 import anvio.dictio as dictio
@@ -73,6 +75,7 @@ class Progress:
 
         self.progress_total_items = None
         self.progress_current_item = 0
+        self.t = Timer(self.progress_total_items)
 
         self.LEN = lambda s: len(s.encode('utf-16-le')) // 2
 
@@ -100,6 +103,7 @@ class Progress:
         self.step = None
         self.progress_total_items = progress_total_items
         self.progress_current_item = 0
+        self.t = Timer(self.progress_total_items)
 
 
     def increment(self, increment_to=None):
@@ -107,6 +111,8 @@ class Progress:
             self.progress_current_item = increment_to
         else:
             self.progress_current_item += 1
+
+        self.t.make_checkpoint(increment_to = increment_to)
 
 
     def write(self, c, dont_update_current=False):
@@ -122,7 +128,7 @@ class Progress:
 
         if self.verbose:
             if self.progress_total_items and self.is_tty:
-                p_text = ' %d%% ⚙  ' % (self.progress_current_item * 100 / self.progress_total_items)
+                p_text = ' %s ' % (self.t.eta())
                 p_length = self.LEN(p_text)
 
                 msg_length = self.LEN(c)
@@ -326,6 +332,181 @@ class Run:
     def quit(self):
         if self.log_file_path:
             self.log('Bye.')
+
+
+class Timer:
+    """
+        The premise of the class is to build an ordered dictionary, where each key is a checkpoint
+        name and value is a timestamp.
+
+        Examples
+        ========
+
+            from anvio.terminal import Timer
+            import time
+            t = Timer(); time.sleep(1)
+            t.make_checkpoint('checkpoint_name'); time.sleep(1)
+            timedelta = t.timedelta_to_checkpoint(timestamp=t.timestamp(), checkpoint_key='checkpoint_name')
+            print(t.format_time(timedelta, fmt = '{days} days, {hours} hours, {seconds} seconds', zero_padding=0))
+            print(t.time_elapsed())
+
+            >>> 0 days, 0 hours, 1 seconds
+            >>> 00:00:02
+
+            t = Timer(3) # 3 checkpoints expected until completion
+            for _ in range(3):
+                time.sleep(1); t.make_checkpoint()
+                print('complete: %s' % t.complete)
+                print(t.eta(fmt='ETA: {seconds} seconds'))
+
+            >>> complete: False
+            >>> ETA: 02 seconds
+            >>> complete: False
+            >>> ETA: 01 seconds
+            >>> complete: True
+            >>> ETA: 00 seconds
+    """
+    def __init__(self, required_completion_score = None):
+        self.timer_start = self.timestamp()
+        self.last_checkpoint_key = 0
+        self.checkpoints = OrderedDict([(self.last_checkpoint_key, self.timer_start)])
+        self.num_checkpoints = 0
+
+        self.required_completion_score = required_completion_score
+        self.completion_score = 0
+        self.complete = False
+
+        self.last_eta = None
+        self.last_eta_timestamp = self.timer_start
+
+
+    def timestamp(self):
+        return datetime.datetime.fromtimestamp(time.time())
+
+
+    def timedelta_to_checkpoint(self, timestamp, checkpoint_key=0):
+        timedelta = timestamp - self.checkpoints[checkpoint_key]
+        return timedelta
+
+
+    def make_checkpoint(self, checkpoint_key = None, increment_to = None):
+        if not checkpoint_key:
+            checkpoint_key = self.num_checkpoints + 1
+
+        if checkpoint_key in self.checkpoints:
+            raise TerminalError('Timer.make_checkpoint :: %s already exists as a checkpoint key.\
+                                 All keys must be unique' % (str(checkpoint_key)))
+
+        checkpoint = self.timestamp()
+
+        self.checkpoints[checkpoint_key] = checkpoint
+        self.last_checkpoint_key = checkpoint_key
+
+        self.num_checkpoints += 1
+
+        if increment_to:
+            self.completion_score = increment_to
+        else:
+            self.completion_score += 1
+
+        if self.required_completion_score and self.completion_score >= self.required_completion_score:
+            self.complete = True
+
+        return checkpoint
+
+
+    def calculate_time_remaining(self, infinite_default = None):
+        if self.complete:
+            return datetime.timedelta(seconds = 0)
+        if not self.required_completion_score:
+            return None
+        if not self.completion_score:
+            return infinite_default
+
+        time_elapsed = self.checkpoints[self.last_checkpoint_key] - self.checkpoints[0]
+        fraction_completed = self.completion_score / self.required_completion_score
+        time_remaining_estimate = time_elapsed / fraction_completed - time_elapsed
+
+        return time_remaining_estimate
+
+
+    def eta(self, fmt='{hours}:{minutes}:{seconds}', zero_padding=2):
+        # Calling format_time hundreds or thousands of times per second is expensive. Therefore if
+        # eta was called within the last half second, the previous ETA is returned without further
+        # calculation.
+        eta_timestamp = self.timestamp()
+        if eta_timestamp - self.last_eta_timestamp < datetime.timedelta(seconds = 0.5):
+            return self.last_eta
+
+        eta = self.calculate_time_remaining()
+        eta = self.format_time(eta, fmt, zero_padding) if isinstance(eta, datetime.timedelta) else str(eta)
+
+        self.last_eta = eta
+        self.last_eta_timestamp = eta_timestamp
+
+        return eta
+
+
+    def time_elapsed(self):
+        return self.format_time(self.timedelta_to_checkpoint(self.timestamp(), checkpoint_key = 0))
+
+
+    def format_time(self, timedelta, fmt = '{hours}:{minutes}:{seconds}', zero_padding = 2):
+        """
+            Examples of `fmt`. Suppose the timedelta is seconds = 1, minutes = 1, hours = 1.
+
+            {hours}h {minutes}m {seconds}s  --> 01h 01m 01s
+            {seconds} seconds               --> 3661 seconds
+            {weeks} weeks {minutes} minutes --> 0 weeks 61 minutes
+            {hours}h {seconds}s             --> 1h 61s
+        """
+        unit_hierarchy = ['seconds', 'minutes', 'hours', 'days', 'weeks']
+        unit_denominations = {'weeks': 7, 'days': 24, 'hours': 60, 'minutes': 60, 'seconds': 1}
+
+        # parse units present in fmt
+        format_order = []
+        for i, c in enumerate(fmt):
+            if c == '{':
+                for j, k in enumerate(fmt[i:]):
+                    if k == '}':
+                        unit = fmt[i+1:i+j]
+                        format_order.append(unit)
+                        break
+
+        if not format_order:
+            raise TerminalError('Timer.format_time :: fmt = \'%s\' contains no time units.' % (fmt))
+
+        for unit in format_order:
+            if unit not in unit_hierarchy:
+                raise TerminalError('Timer.format_time :: \'%s\' is not a valid unit. Use any of %s.'\
+                                     % (unit, ', '.join(unit_hierarchy)))
+
+        # calculate the value for each unit (e.g. 'seconds', 'days', etc) found in fmt
+        format_values_dict = {}
+        smallest_unit = unit_hierarchy[[unit in format_order for unit in unit_hierarchy].index(True)]
+        r = int(timedelta.total_seconds()) // unit_denominations[smallest_unit]
+
+        for i, lower_unit in enumerate(unit_hierarchy):
+            if lower_unit in format_order:
+                m = 1
+                for upper_unit in unit_hierarchy[i+1:]:
+                    m *= unit_denominations[upper_unit]
+                    if upper_unit in format_order:
+                        format_values_dict[upper_unit], format_values_dict[lower_unit] = divmod(r, m)
+                        break
+                else:
+                    format_values_dict[lower_unit] = r
+                    break
+                r = format_values_dict[upper_unit]
+
+        format_values = [format_values_dict[unit] for unit in format_order]
+
+        style_str = '0' + str(zero_padding) if zero_padding else ''
+        for unit in format_order:
+            fmt = fmt.replace('{%s}' % unit, '%' + '%s' % (style_str) + 'd')
+        formatted_time = fmt % (*[format_value for format_value in format_values],)
+
+        return formatted_time
 
 
 def pretty_print(n):
