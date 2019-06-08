@@ -461,7 +461,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             for c in categories:
                 enrichment_dict[f]['r_' + c] = relative_statistic_vector[c_dict[c]]
 
-            associated_groups = [c for c in categories if enrichment_dict[f]['r_' + c] >= 0]
+            associated_groups = [c for c in categories if enrichment_dict[f]['r_' + c] > 0]
             enrichment_dict[f]['associated_groups'] = associated_groups
 
         if not groups_below_threshold:
