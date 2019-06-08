@@ -430,7 +430,7 @@ class Timer:
         return time_remaining_estimate
 
 
-    def eta(self, fmt='{hours}:{minutes}:{seconds}', zero_padding=2):
+    def eta(self, fmt=None, zero_padding=0):
         # Calling format_time hundreds or thousands of times per second is expensive. Therefore if
         # eta was called within the last half second, the previous ETA is returned without further
         # calculation.
@@ -462,6 +462,30 @@ class Timer:
         """
         unit_hierarchy = ['seconds', 'minutes', 'hours', 'days', 'weeks']
         unit_denominations = {'weeks': 7, 'days': 24, 'hours': 60, 'minutes': 60, 'seconds': 1}
+
+        if not fmt:
+            # use the highest two non-zero units, e.g. if it is 7200s, use {hours}h{minutes}m
+            zero_padding = 0
+            seconds = int(timedelta.total_seconds())
+            if seconds < 60:
+                fmt = '{seconds}s'
+            else:
+                m = 1
+                previous = 'seconds'
+                for i, unit in enumerate(unit_hierarchy):
+                    if not seconds // (m * unit_denominations[unit]) >= 1:
+                        fmt = '{%s}%s{%s}%s' % (unit_hierarchy[i-1],
+                                                unit_hierarchy[i-1][0],
+                                                unit_hierarchy[i-2],
+                                                unit_hierarchy[i-2][0])
+                    elif unit == unit_hierarchy[-1]:
+                        fmt = '{%s}%s{%s}%s' % (unit_hierarchy[i],
+                                                unit_hierarchy[i][0],
+                                                unit_hierarchy[i-1],
+                                                unit_hierarchy[i-1][0])
+                    else:
+                        previous = unit
+                        m *= unit_denominations[unit]
 
         # parse units present in fmt
         format_order = []
