@@ -494,7 +494,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             enrichment_data_frame.sort_values(by=['enrichment_score'], axis=0, ascending=False, inplace=True)
 
             # Sort the columns the way we want them
-            columns = ['COG_FUNCTION', 'enrichment_score', 'q_value', \
+            columns = [functional_annotation_source, 'enrichment_score', 'q_value', \
                        'corrected_q_value', 'associated_groups', 'function_accession', \
                        'gene_clusters_ids']
             columns.extend([s + c for s in ['p_', 'N_', 'r_'] for c in categories])
