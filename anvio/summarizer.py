@@ -440,7 +440,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             for c in categories:
                 function_occurrence_table[c]['p'] = functions_in_categories.loc[c, f] / function_occurrence_table[c]['N']
             function_occurrence_table_df = pd.DataFrame.from_dict(function_occurrence_table, orient='index')
-            test_statistic, q_value = utils.get_enriched_functions_statistics(function_occurrence_table_df['p'].values,
+            c_dict = dict(zip(function_occurrence_table_df['p'].index, range(len(function_occurrence_table_df['p'].index))))
+            test_statistic, q_value, relative_statistic_vector = utils.get_enriched_functions_statistics(function_occurrence_table_df['p'].values,
                                                                               function_occurrence_table_df['N'].values)
             if groups_below_threshold:
                 # if there were groups with less than 5 members than we discard the q-value
@@ -457,6 +458,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 enrichment_dict[f]['p_' + c] = function_occurrence_table[c]['p']
             for c in categories:
                 enrichment_dict[f]['N_' + c] = function_occurrence_table[c]['N']
+            for c in categories:
+                enrichment_dict[f]['r_' + c] = relative_statistic_vector[c_dict[c]]
+
+            associated_groups = [c for c in categories if enrichment_dict[f]['r_' + c] >= 0]
+            enrichment_dict[f]['associated_groups'] = associated_groups
 
         if not groups_below_threshold:
             import statsmodels.stats.multitest as multitest
@@ -487,7 +493,12 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             # sort according to enrichment
             enrichment_data_frame.sort_values(by=['enrichment_score'], axis=0, ascending=False, inplace=True)
 
-            enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f')
+            # Sort the columns the way we want them
+            columns = ['COG_FUNCTION', 'enrichment_score', 'q_value', \
+                       'corrected_q_value', 'associated_groups', 'function_accession', \
+                       'gene_clusters_ids']
+            columns.extend([s + c for s in ['p_', 'N_', 'r_'] for c in categories])
+            enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f', columns=columns)
 
         self.progress.end()
 
