@@ -2327,20 +2327,35 @@ def get_enriched_functions_statistics(props, reps):
     import numpy as np
     # if the function doesn't occur at all then test_statistic is zero and p-value is 1
     if not np.count_nonzero(props):
-        return (0, 1)
+        return (0, 1, np.zeros(len(props)))
 
-    # changing zero occurrences to 1
+    # zero correction: changing zero occurrences to 1
     props = np.maximum(props, 1/reps)
 
     # changing occurrences of 1 to 1-1/ni (ni is the size of the i'th group)
     props = np.minimum(props, 1 - 1/reps)
 
     overall_portion = np.sum(np.multiply(props, reps)) / np.sum(reps)
-    occurrences_per_group = np.multiply(props, reps)    ## or just the number of genomes with the gene as a vector
+    occurrences_per_group = np.multiply(props, reps)    ## just the number of genomes with the gene as a vector
     expected_occurrences_for_uniformal_dist = np.multiply(overall_portion, reps)
-    chisq = np.sum(np.divide(np.square(occurrences_per_group - expected_occurrences_for_uniformal_dist), expected_occurrences_for_uniformal_dist))
+
+    # What I call the chi square vector is the value that appears in the sum for a chi-squared test
+    # (i.e. the contribution of each group to the chi-squared test statistic)
+    chisq_vector = np.divide(np.square(occurrences_per_group - expected_occurrences_for_uniformal_dist), expected_occurrences_for_uniformal_dist)
+
+    # We sum over the contributions of each group to get the chi-squared test-statistic
+    chisq = np.sum(chisq_vector)
+
+    # multiplying each score with either -1 or 1, depending if the group has more or less than the expected occurrence.
+    chisq_vector_signed = np.multiply(chisq_vector, np.sign(occurrences_per_group - expected_occurrences_for_uniformal_dist))
+
+    # if a group with zero occurrence has a positive score due to the zero correction from above then we manually adjust the value to zero.
+    # In other words, here we make sure that the maximum score for a group with zero occurrence is zero.
+    chisq_vector_signed_lower_bound = np.minimum(np.multiply(chisq_vector_signed, props > 0), chisq_vector_signed)
+
     p_value = get_p_value_for_chisq_test(chisq, len(reps)-1)
-    return (chisq, p_value)
+
+    return (chisq, p_value, chisq_vector_signed_lower_bound)
 
 
 def get_two_sample_z_test_statistic(p1, p2, n1, n2):
