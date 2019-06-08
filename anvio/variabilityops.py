@@ -2486,7 +2486,7 @@ class VariabilityFixationIndex():
     Metric adapted from 'Genomic variation landscape of the human gut microbiome'
     (https://media.nature.com/original/nature-assets/nature/journal/v493/n7430/extref/nature11711-s1.pdf)
     which extends the traditional metric to allow for multiple alleles in one site. We further
-    extend to allow for code on an amino acid alleles.
+    extend to allow for codon and amino acid alleles.
     """
     def __init__(self, args={}, p=progress, r=run):
         self.progress = p
@@ -2499,6 +2499,7 @@ class VariabilityFixationIndex():
         self.profile_db_path = A('profile_db', null)
         self.contigs_db_path = A('contigs_db', null)
         self.variability_table_path = A('variability_profile', null)
+        self.keep_negatives = A('keep_negatives', null)
 
         args_for_variability_class = self.args
         if self.variability_table_path:
@@ -2556,23 +2557,6 @@ class VariabilityFixationIndex():
         return pd.concat([pairwise_data, data_missing_from_sample_1, data_missing_from_sample_2], sort = True).reset_index(drop = True)
 
 
-    def set_normalization(self):
-        f = 1 if self.engine == 'NT' else 3
-
-        if self.v.table_provided:
-            normalization = 1
-            self.run.warning('You provided an already existing variability table. That means anvi\'o\
-                              doesn\'t know the range of the sequence that variability was calculated for,\
-                              and therefore cannot reasonably normalize the fixation indices. So read\
-                              this loud and clear: the fixation indices calculated are unnormalized.')
-        elif self.v.genes_of_interest:
-            normalization = 1/f * sum([length for gene, length in self.v.gene_lengths.items() if gene in self.v.genes_of_interest])
-        else:
-            normalization = 1/f * sum([self.v.splits_basic_info[split]['length'] for split in self.v.splits_of_interest])
-
-        self.normalization = normalization
-
-
     def report(self):
         output_file_path = self.v.output_file_path
 
@@ -2602,11 +2586,13 @@ class VariabilityFixationIndex():
 
     def get_pairwise_data_and_shape(self, sample_1, sample_2):
         pairwise_data = self.v.data[(self.v.data['sample_id'] == sample_1) | (self.v.data['sample_id'] == sample_2)]
+        if sample_1 == sample_2:
+            pairwise_data = pd.concat([pairwise_data, pairwise_data])
         pairwise_data = self.fill_missing_entries(pairwise_data, sample_1, sample_2)
 
         # calculate the shape of the data
         num_items = len(self.v.items)
-        num_samples = len(pairwise_data['sample_id'].unique())
+        num_samples = 2
         num_positions = pairwise_data.shape[0] // num_samples
 
         pairwise_data = pairwise_data.sort_values(by=["unique_pos_identifier", "sample_id"])
@@ -2615,40 +2601,45 @@ class VariabilityFixationIndex():
         return pairwise_data, (num_positions, num_samples, num_items)
 
 
-    def get_pairwise_FST(self, sample_1, sample_2):
-        """
-        Test Dataset:
-        =============
+    def get_FST(self, sample_1, sample_2):
+        pi_S1 = self.get_intra_sample_diversity(sample_1)
+        pi_S2 = self.get_intra_sample_diversity(sample_2)
+        pi_S1_S2 = self.get_inter_sample_diversity(sample_1, sample_2)
+        try:
+            return 1 - (pi_S1 + pi_S2) / 2 / pi_S1_S2
+        except ZeroDivisionError:
+            # The inter-sample diversity 0, so fixation index is undefined
+            return np.nan
 
-        pairwise_data = pd.DataFrame({
-            'A': [0.5 , 0.25 , 1 , 1 , 1 , 0],
-            'C': [0   , 0    , 0 , 0 , 0 , 0],
-            'T': [0.5 , 0.75 , 0 , 0 , 0 , 0],
-            'G': [0   , 0    , 0 , 0 , 0 , 5],
-        })
-        num_items = 4
-        num_samples = 2
-        num_positions = 3
-        tensor_shape = (num_positions, num_samples, num_items)
-        normalization = 1
-        """
-        if sample_1 == sample_2:
-            return 0
 
+    def get_intra_sample_diversity(self, sample):
+        """Note: This measure is unnormalized"""
+        sample_data = self.v.data[self.v.data['sample_id'] == sample]
+        coverages = sample_data['coverage'].values
+        matrix = sample_data[self.v.items].values
+
+        outer_product = matrix[:,:,None] * matrix[:,None,:]
+        diagonals = outer_product * np.broadcast_to(np.identity(outer_product.shape[1])[None, ...], outer_product.shape)
+        intra_sample_diversity = np.sum((outer_product - diagonals) * (coverages / (coverages - 1))[:,None,None], axis=(0,1,2))
+
+        return intra_sample_diversity
+
+
+    def get_inter_sample_diversity(self, sample_1, sample_2):
+        """Note: This measure is unnormalized"""
         pairwise_data, tensor_shape = self.get_pairwise_data_and_shape(sample_1, sample_2)
 
         # V/\
         tensor = pairwise_data.values.reshape(*tensor_shape)
         outer_product = tensor[:,0,:][:,:,None] * tensor[:,1,:][:,None,:]
         diagonals = outer_product * np.broadcast_to(np.identity(outer_product.shape[1])[None, ...], outer_product.shape)
-        fixation_index = np.sum(outer_product - diagonals, axis=(0,1,2)) / self.normalization
+        inter_sample_diversity = np.sum(outer_product - diagonals, axis=(0,1,2))
 
-        return fixation_index
+        return inter_sample_diversity
 
 
     def compute_FST_matrix(self):
         sample_ids = self.v.available_sample_ids
-        self.set_normalization()
         dimension = len(sample_ids)
         self.fst_matrix = np.zeros((dimension, dimension))
 
@@ -2661,8 +2652,12 @@ class VariabilityFixationIndex():
                     self.fst_matrix[i, j] = self.fst_matrix[j, i]
                 else:
                     self.progress.increment()
-                    self.progress.update('Working on {} with {}; Time elapsed: {}'.format(sample_1, sample_2, self.progress.t.time_elapsed()))
-                    self.fst_matrix[i, j] = self.get_pairwise_FST(sample_1, sample_2)
+                    self.progress.update('{} with {}; Time elapsed: {}'.format(sample_1, sample_2, self.progress.t.time_elapsed()))
+                    self.fst_matrix[i, j] = self.get_FST(sample_1, sample_2)
+
+        if not self.keep_negatives:
+            self.fst_matrix[self.fst_matrix < 0] = 0
+
         self.fst_matrix = pd.DataFrame(self.fst_matrix, index = sample_ids, columns = sample_ids)
         self.progress.end()
 
