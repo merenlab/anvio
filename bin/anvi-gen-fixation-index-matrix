@@ -63,6 +63,13 @@ if __name__ == '__main__':
     groupH = parser.add_argument_group('OUTPUT', 'Output file and style')
     groupH.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'fixation_indices.txt', 'metavar': 'FIXATION_INDICES'}))
 
+    groupI = parser.add_argument_group('EXTRAS', 'Because why not be extra?')
+    groupI.add_argument('--keep-negatives', action='store_true',
+                        help = 'Negative numbers are theoretically possible, and are sometimes \
+                                interpreted as out-breeding. By default, we set negative numbers to \
+                                0 so the results are reflective of a standard distance metric. \
+                                Provide this flag if you would prefer otherwise.')
+
     args = anvio.get_args(parser)
 
     try:
