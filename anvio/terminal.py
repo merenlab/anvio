@@ -116,33 +116,39 @@ class Progress:
 
 
     def write(self, c, dont_update_current=False):
-        surpass = self.terminal_width - self.LEN(c)
+        eta_c = ' ETA: %s' % str(self.t.eta()) if self.progress_total_items else ''
+        surpass = self.terminal_width - self.LEN(c) - self.LEN(eta_c)
 
         if surpass < 0:
-            c = c[0:-(-surpass + 5)] + ' (...)'
+            c = c[0:-(-surpass + 6)] + ' (...)'
         else:
             if not dont_update_current:
                 self.current = c
 
-            c = c + ' ' * surpass
+            c += ' ' * surpass
+
+        c += eta_c
 
         if self.verbose:
             if self.progress_total_items and self.is_tty:
-                p_text = ' %s ' % (self.t.eta())
+                p_text = ''
                 p_length = self.LEN(p_text)
 
-                msg_length = self.LEN(c)
-                break_point = round(msg_length * self.progress_current_item / self.progress_total_items)
+                end_point = self.LEN(c) - self.LEN(eta_c)
+                break_point = round(end_point * self.progress_current_item / self.progress_total_items)
 
                 # see a full list of color codes: https://gitlab.com/dslackw/colored
                 if p_length >= break_point:
                     sys.stderr.write(back.CYAN + fore.BLACK + c[:break_point] + \
-                                     back.GREY_30 + fore.WHITE + c[break_point:] + \
+                                     back.GREY_30 + fore.WHITE + c[break_point:end_point] + \
+                                     back.CYAN + fore.CYAN + c[end_point] + \
+                                     back.GREY_50 + fore.LIGHT_CYAN + c[end_point:] + \
                                      style.RESET)
                 else:
                     sys.stderr.write(back.CYAN + fore.BLACK + c[:break_point - p_length] + \
                                      back.SALMON_1 + fore.BLACK + p_text + \
-                                     back.GREY_30 + fore.WHITE + c[break_point:] + \
+                                     back.GREY_30 + fore.WHITE + c[break_point:end_point] + \
+                                     back.GREY_50 + fore.LIGHT_CYAN + c[end_point:] + \
                                      style.RESET)
                 sys.stderr.flush()
             else:
@@ -465,7 +471,6 @@ class Timer:
 
         if not fmt:
             # use the highest two non-zero units, e.g. if it is 7200s, use {hours}h{minutes}m
-            zero_padding = 0
             seconds = int(timedelta.total_seconds())
             if seconds < 60:
                 fmt = '{seconds}s'
@@ -478,11 +483,13 @@ class Timer:
                                                 unit_hierarchy[i-1][0],
                                                 unit_hierarchy[i-2],
                                                 unit_hierarchy[i-2][0])
+                        break
                     elif unit == unit_hierarchy[-1]:
                         fmt = '{%s}%s{%s}%s' % (unit_hierarchy[i],
                                                 unit_hierarchy[i][0],
                                                 unit_hierarchy[i-1],
                                                 unit_hierarchy[i-1][0])
+                        break
                     else:
                         previous = unit
                         m *= unit_denominations[unit]
