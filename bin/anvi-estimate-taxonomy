@@ -183,6 +183,19 @@ class SCGTaxonomy:
 
         return hmm_sequences_dict_per_bin
 
+    def get_hmm_sequences_dict_into_ribosomal(self, hmm_sequences_dict):
+        hmm_sequences_dict_per_bin = {}
+        for entry_id in hmm_sequences_dict:
+            entry = hmm_sequences_dict[entry_id]
+            bin_name = entry['gene_name']
+
+            if bin_name in hmm_sequences_dict_per_bin:
+                hmm_sequences_dict_per_bin[bin_name][entry_id] = entry
+            else:
+                hmm_sequences_dict_per_bin[bin_name] = {entry_id: entry}
+
+        return hmm_sequences_dict_per_bin
+
     @timer
     def predict_from_SCGs_dict(self, hmm_sequences_dict):
         """Takes an HMMs dictionary, and yields predictions"""
@@ -191,7 +204,14 @@ class SCGTaxonomy:
 
 
         # split hmm_sequences_dict
-        hmm_sequences_dict_per_bin = self.get_hmm_sequences_dict_into_bins(hmm_sequences_dict)
+
+        if args.profile_db:
+            hmm_sequences_dict_per_bin = self.get_hmm_sequences_dict_into_bins(hmm_sequences_dict)
+        else:
+            hmm_sequences_dict_per_bin = self.get_hmm_sequences_dict_into_ribosomal(hmm_sequences_dict)
+            consensus_taxonomy=[]
+
+
 
         for bin_name in hmm_sequences_dict_per_bin:
             start_predict_from_SCGs_dict = time.perf_counter()
@@ -199,13 +219,18 @@ class SCGTaxonomy:
 
             self.run.info('Bin name', bin_name)
             self.run.info('Num SCGs', len(hmm_sequences_dict_per_bin[bin_name]))
-            self.run.info('SCGs', ', '.join([e['gene_name'] for e in hmm_sequences_dict_per_bin[bin_name].values()]))
+            if args.profile_db:
+                self.run.info('SCGs', ', '.join([e['gene_name'] for e in hmm_sequences_dict_per_bin[bin_name].values()]))
+            else:
+                self.run.info('SCGs', ', '.join([e['contig'] for e in hmm_sequences_dict_per_bin[bin_name].values()]))
+
             j=0
             for entry in hmm_sequences_dict_per_bin[bin_name].values():
                 gene_name = entry['gene_name']
-                hits = self.get_raw_blast_hits(entry,max_target_seqs=30)
+                hits = self.get_raw_blast_hits(entry)
                 if not hits:
                     j+=1
+
 
                 # replace accessions with taxonomy
                 for hit in hits:
@@ -216,19 +241,25 @@ class SCGTaxonomy:
                 if anvio.DEBUG:
                     self.show_hits(bin_name, gene_name, hits)
 
+                if not args.profile_db and hits:
+                    taxonomy=self.get_consensus_taxonomy(hits_per_gene,bin_name,hmm_sequences_dict_per_bin)
+                    entry['taxonomy']=taxonomy
+                    print(entry)
+
 
             if j==len(hits_per_gene):
                 self.run.info(bin_name, "diamond didn't return any match \n")
                 continue
-
-            consensus_taxonomy=self.get_consensus_taxonomy(hits_per_gene,bin_name,hmm_sequences_dict_per_bin)
+            if args.profile_db:
+                taxonomy=self.get_consensus_taxonomy(hits_per_gene,bin_name,hmm_sequences_dict_per_bin)
+            if not args.profile_db and taxonomy:
+                #consensus_taxonomy=consensus_taxonomy+taxonomy
+                print(consensus_taxonomy)
             end_predict_from_SCGs_dict = time.perf_counter()
             print("\n time predict_from_SCGs_dict for a bin : ", end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)
 
-
-
-
-
+        if not args.profile_db:
+            print(hmm_sequences_dict_per_bin)
 
 
 
@@ -360,7 +391,7 @@ class SCGTaxonomy:
             if j <= 5 and dico_position_entry[key] > (len_position*0.5):
                 list_position_entry.append(key)
                 j+=1
-                print(self.taxonomy_dict[key]['t_species'] ,key,dico_position_entry[key])
+                #print(self.taxonomy_dict[key]['t_species'] ,key,dico_position_entry[key])
 
         list_position_ribosomal=self.make_list_position_ribosomal(matchinggenes,hits_per_gene,list_position_entry)
         return(list_position_entry,list_position_ribosomal)
@@ -515,10 +546,14 @@ class SCGTaxonomy:
         #                                                                     ,list_position_ribosomal)
 
         self.show_matrix_rank( bin_name, matrix, matrixlist_position_entry,list_position_ribosomal)
-        start_assign_taxonomie_rank = time.perf_counter()
-        self.assign_taxonomie_rank(matrix,matrixlist_position_entry,bestident)
-        end_assign_taxonomie_rank = time.perf_counter()
-        print("\n time assign_taxonomie_rank : ", end_assign_taxonomie_rank - start_assign_taxonomie_rank)
+        start_make_list_taxonomy = time.perf_counter()
+
+        taxonomy=self.make_list_taxonomy(matrix,matrixlist_position_entry,bestident)
+        taxonomy=self.reduce_assignation_level(taxonomy,bestident)
+        assignation=self.assign_taxonomie_solo_hit(taxonomy)
+        return(assignation)
+        end_make_list_taxonomy = time.perf_counter()
+        print("\n time make_list_taxonomy : ", end_make_list_taxonomy - start_make_list_taxonomy)
 
 
         #parameters
@@ -561,12 +596,14 @@ class SCGTaxonomy:
 
 
     def assign_taxonomie_solo_hit(self,taxonomy):
+        print(taxonomy)
         assignation=taxonomy[0]
         for s in taxonomy[1:]:
             for key in s:
                 if s[key] not in assignation.values():
                     assignation.pop(key, None)
         self.run.info('estimate taxonomy', assignation)
+        return(assignation)
 
 
     def make_dicoidentitielevel(self):
@@ -577,7 +614,7 @@ class SCGTaxonomy:
         dicoidentitielevel[80]='t_order'
         return(dicoidentitielevel)
 
-    def assign_taxonomie_rank(self,matrix, list_position_entry,bestident):
+    def make_list_taxonomy(self,matrix, list_position_entry,bestident):
         taxonomy=[]
         miniscore=10000
         i=0
@@ -590,26 +627,27 @@ class SCGTaxonomy:
                 taxonomy.append(self.taxonomy_dict[list_position_entry[i]])
                 miniscore = summist
             i+=1
+        return(taxonomy)
+
+    def reduce_assignation_level(self,taxonomy,bestident):
         dicoidentitielevel=self.make_dicoidentitielevel()
         for key , value in dicoidentitielevel.items():
             if bestident < int(key):
                 for possibilitie in taxonomy:
                     possibilitie.pop(value, None)
+        return(taxonomy)
 
 
-        #if bestident:
 
+    def assignation_list(self,taxonomy):
         if len(taxonomy)==1:
             self.run.info('estimate taxonomy rank', taxonomy[0])
         if len(taxonomy)>=2:
             for possibilities in taxonomy:
                 self.run.info('Relevant match', possibilities)
+
             self.assign_taxonomie_solo_hit(taxonomy)
-            """result=set(taxonomy[0])
-            for s in taxonomy[1:]:
-                result &= set(s)
-            self.run.info('estimate taxonomy rank', '/ '.join(result)+"\n")
-            """
+
 
             #print("rank", result)
         #taxonomy=dict(zip(self.taxonomic_levels, result))
@@ -632,7 +670,7 @@ class SCGTaxonomy:
 
         if not self.solo_hits(hits_per_gene):
             if self.methode=="friedman":
-                self.rank_assignement(hits_per_gene,bin_name)
+                taxonomy=self.rank_assignement(hits_per_gene,bin_name)
 
             if self.methode=="tree":
                 self.make_tree_with_hit(hits_per_gene,hmm_sequences_dict_per_bin,bin_name)
@@ -642,7 +680,9 @@ class SCGTaxonomy:
                 if anvio.DEBUG:
                     self.show_table_score(bin_name, score_by_entry)
                 consensus_taxonomy=self.get_consensus_taxonomy_with_score_by_entry(score_by_entry,bin_name,self.bestpercent)
-            print("\n")
+
+            if not args.profile_db:
+                return(taxonomy)
 
 
 
@@ -897,7 +937,7 @@ if __name__ == '__main__':
                                   acid sequences, and "NNN" for DNA sequences'}))
 
     groupG = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
-    groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit', {'default': True}))
+    groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))#, {'default': True}
 
     parser.add_argument("-t", "--taxonomy-file", help="taxo file", nargs='?')
 
