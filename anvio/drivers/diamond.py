@@ -140,6 +140,7 @@ class Diamond:
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
+
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
@@ -148,6 +149,42 @@ class Diamond:
         self.check_output(expected_output, 'blastp')
 
         self.run.info('Diamond blastp results', expected_output)
+
+    def blastp_stdout(self):
+        self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
+
+        cmd_line = ['diamond',
+                    'blastp',
+                    '-q', self.query_fasta,
+                    '-d', self.target_fasta,
+                    '-p', self.num_threads]
+
+        cmd_line.append('--sensitive') if self.sensitive else None
+
+        if self.max_target_seqs:
+            cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
+
+        if self.min_pct_id:
+            cmd_line.extend(['--id', self.min_pct_id])
+
+        if self.evalue:
+            cmd_line.extend(['--evalue', self.evalue])
+
+        self.run.info('DIAMOND blastp cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+
+        self.progress.new('DIAMOND')
+        self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
+
+
+        output = utils.run_command(cmd_line, self.run.log_file_path)
+
+        self.run.info('Diamond blastp stdout results', '%d lines were returned from STDIN call' % len(output))
+
+        self.progress.end()
+
+        return(output)
+
+
 
 
     def blastp_stdin(self, sequence):
@@ -169,6 +206,8 @@ class Diamond:
         if self.evalue:
             cmd_line.extend(['--evalue', self.evalue])
 
+
+
         self.run.info('DIAMOND blastp stdin cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 
         self.progress.new('DIAMOND')
@@ -182,6 +221,26 @@ class Diamond:
 
         return(output)
 
+    def makedb_stdin(self, sequence, output_file_path=None):
+        self.progress.new('DIAMOND')
+        self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
+
+        cmd_line = ['diamond',
+                    'makedb',
+                    '-d', output_file_path or self.target_fasta,
+                    '-p', self.num_threads]
+
+        utils.run_command_STDIN(cmd_line, self.run.log_file_path)
+
+        self.progress.end()
+
+        expected_output = utils.run_command_STDIN(cmd_line, self.run.log_file_path,sequence)
+
+        expected_output = (output_file_path or self.target_fasta) + '.dmnd'
+        self.check_output(expected_output, 'makedb')
+
+        self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
+        self.run.info('Diamond search db', expected_output)
 
     def view(self):
         self.progress.new('DIAMOND')

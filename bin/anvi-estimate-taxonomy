@@ -1,36 +1,32 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import re
-import os
-import sys
 import argparse
+import os
+import re
+import sys
 import time
-
 from collections import Counter
-from tabulate import tabulate
 
 import anvio
-import anvio.utils as utils
-import anvio.hmmops as hmmops
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
-import anvio.hmmopswrapper as hmmopswrapper
-from anvio.drivers import driver_modules
 import anvio.fastalib as f
-from anvio.drivers import Aligners
-#from sklearn.datasets as sd
-#from scipy.stats import friedmanchisquare
+import anvio.filesnpaths as filesnpaths
+import anvio.hmmops as hmmops
+import anvio.hmmopswrapper as hmmopswrapper
+import anvio.taxoestimation as taxoestimation
+import anvio.terminal as terminal
+import anvio.utils as utils
+# from sklearn.datasets as sd
+# from scipy.stats import friedmanchisquare
 import scipy.stats as ss
-
+from anvio.dbops import ContigsSuperclass
+from anvio.drivers import Aligners, driver_modules
+from anvio.drivers.diamond import Diamond
+from anvio.errors import ConfigError, FilesNPathsError
+from tabulate import tabulate
 
 import scikit_posthocs as sp
-
-from anvio.drivers.diamond import Diamond
-from anvio.dbops import ContigsSuperclass
-from anvio.errors import ConfigError, FilesNPathsError
-
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -39,7 +35,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['contigs-db', 'profile-db', 'external-genomes', 'internal-genomes', 'hmm-profile']
+__requires__ = ['contigs-db', 'profile-db',
+                'external-genomes', 'internal-genomes', 'hmm-profile']
 __provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
 
 
@@ -51,695 +48,21 @@ progress_quiet = terminal.Progress(verbose=False)
 aligners = Aligners()
 
 
-class SCGTaxonomy:
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
-        self.args = args
-        self.run = run
-        self.progress = progress
-
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.taxonomy_file_path = A('taxonomy_file')
-        self.taxonomy_database_path = A('taxonomy_database')
-
-        self.initialized = False
-
-
-        self.taxonomy_database_path
-
-        self.bestpercent = args.bestpercent
-
-        self.methode = args.methode
-
-        self.SCGs = ["Ribosomal_L1", "Ribosomal_L13", "Ribosomal_L16", "Ribosomal_L17",
-                     "Ribosomal_L2", "Ribosomal_L20", "Ribosomal_L21p", "Ribosomal_L22",
-                     "Ribosomal_L27A", "Ribosomal_L3", "Ribosomal_L4", "Ribosomal_L6",
-                     "Ribosomal_L9_C", "Ribosomal_S11", "Ribosomal_S2", "Ribosomal_S20p",
-                     "Ribosomal_S3_C", "Ribosomal_S6", "Ribosomal_S7", "Ribosomal_S9",
-                     "ribosomal_L24"]
-
-        self.taxonomic_levels_parser = {'d': 't_domain',
-                                        'p': "t_phylum",
-                                        'c': "t_class",
-                                        'o': "t_order",
-                                        'f': "t_family",
-                                        'g': "t_genus",
-                                        's': "t_species"}
-
-        self.taxonomic_levels = ['t_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-
-        self.SCG_DB_PATH = lambda SCG: os.path.join(self.taxonomy_database_path, "%s.dmnd" % SCG)
-
-        self.SCG_FASTA_DB_PATH = lambda SCG: os.path.join(self.taxonomy_database_path,SCG)
-
-        self.taxonomy_dict = {}
-
-        self.sanity_check()
-
-    def timer(function):
-        import time
-        def timed_function(*args, **kwargs):
-            n=1
-            start = time.time()
-            for i in range(n):
-                x = function(*args, **kwargs)
-            end = time.time()
-            print('Average time per call over {} calls for function \'{}\': {:6f} seconds'.format(n, function.__name__, (end-start)/n))
-            return x
-        return timed_function
-
-
-
-    def sanity_check(self):
-        filesnpaths.is_file_exists(self.taxonomy_file_path)
-        filesnpaths.is_file_exists(self.taxonomy_database_path)
-
-        if not len(self.SCGs):
-            raise ConfigError("This class can't be used with out a list of single-copy core genes.")
-
-        if not len(self.SCGs) == len(set(self.SCGs)):
-            raise ConfigError("Each member of the list of SCGs you wish to use with this class must\
-                               be unique and yes, you guessed right. You have some repeated gene\
-                               names.")
-
-        SCGs_missing_databases = [SCG for SCG in self.SCGs if not filesnpaths.is_file_exists(self.SCG_DB_PATH(SCG))]
-        if len(SCGs_missing_databases):
-            raise ConfigError("Even though anvi'o found the directory for databases for taxonomy stuff,\
-                               your setup seems to be missing %d databases required for everything to work\
-                               with the current genes configuration of this class. Here are the list of\
-                               genes for which we are missing databases: '%s'." % (', '.join(missing_databases)))
-
-    @timer
-    def init(self):
-        if self.initialized:
-            return
-        # initialize taxonomy dict. we should do this through a database in the long run.
-        with open(self.taxonomy_file_path, 'r') as taxonomy_file:
-            for accession, taxonomy_text in [l.strip('\n').split('\t') for l in taxonomy_file.readlines() if not l.startswith('#') and l]:
-                # taxonomy_text kinda looks like this:
-                #
-                #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
-                #
-                d = {}
-                for token, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
-                    if token in self.taxonomic_levels_parser:
-                        d[self.taxonomic_levels_parser[token]] = taxon
-
-                self.taxonomy_dict[accession] = d
-
-        self.initialized = True
-
-
-    def show_hits(self, bin_name, gene_name, hits):
-        self.run.warning(None, header='%s / %s' % (bin_name, gene_name), lc="green")
-        header = ['%id', 'bitscore', 'taxonomy']
-        table = []
-
-        for hit in hits:
-            table.append([hit['pident'], hit['bitscore'], ' / '.join(self.taxonomy_dict[hit['accession']].values())])
-
-        print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
-
-    def show_table_score(self, bin_name, selected_entrys_by_score):
-        self.run.warning(None, header='%s' % (bin_name), lc="yellow")
-        header = [ 'Average bitscore', 'taxonomy']
-        table = []
-
-        for code, score in sorted(selected_entrys_by_score.items(), key=lambda x: (-x[1], x[0])):
-            table.append([score, ' / '.join(self.taxonomy_dict[code].values())])
-
-        print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
-
-    @timer
-    def get_hmm_sequences_dict_into_bins(self, hmm_sequences_dict):
-        hmm_sequences_dict_per_bin = {}
-        for entry_id in hmm_sequences_dict:
-            entry = hmm_sequences_dict[entry_id]
-            bin_name = entry['bin_id']
-
-            if bin_name in hmm_sequences_dict_per_bin:
-                hmm_sequences_dict_per_bin[bin_name][entry_id] = entry
-            else:
-                hmm_sequences_dict_per_bin[bin_name] = {entry_id: entry}
-
-        return hmm_sequences_dict_per_bin
-
-    def get_hmm_sequences_dict_into_ribosomal(self, hmm_sequences_dict):
-        hmm_sequences_dict_per_bin = {}
-        for entry_id in hmm_sequences_dict:
-            entry = hmm_sequences_dict[entry_id]
-            bin_name = entry['gene_name']
-
-            if bin_name in hmm_sequences_dict_per_bin:
-                hmm_sequences_dict_per_bin[bin_name][entry_id] = entry
-            else:
-                hmm_sequences_dict_per_bin[bin_name] = {entry_id: entry}
-
-        return hmm_sequences_dict_per_bin
-
-    @timer
-    def predict_from_SCGs_dict(self, hmm_sequences_dict):
-        """Takes an HMMs dictionary, and yields predictions"""
-
-        self.init()
-
-
-        # split hmm_sequences_dict
-
-        if args.profile_db:
-            hmm_sequences_dict_per_bin = self.get_hmm_sequences_dict_into_bins(hmm_sequences_dict)
-        else:
-            hmm_sequences_dict_per_bin = self.get_hmm_sequences_dict_into_ribosomal(hmm_sequences_dict)
-            consensus_taxonomy=[]
-
-
-
-        for bin_name in hmm_sequences_dict_per_bin:
-            start_predict_from_SCGs_dict = time.perf_counter()
-            hits_per_gene = {}
-
-            self.run.info('Bin name', bin_name)
-            self.run.info('Num SCGs', len(hmm_sequences_dict_per_bin[bin_name]))
-            if args.profile_db:
-                self.run.info('SCGs', ', '.join([e['gene_name'] for e in hmm_sequences_dict_per_bin[bin_name].values()]))
-            else:
-                self.run.info('SCGs', ', '.join([e['contig'] for e in hmm_sequences_dict_per_bin[bin_name].values()]))
-
-            j=0
-            for entry in hmm_sequences_dict_per_bin[bin_name].values():
-                gene_name = entry['gene_name']
-                hits = self.get_raw_blast_hits(entry)
-                if not hits:
-                    j+=1
-
-
-                # replace accessions with taxonomy
-                for hit in hits:
-                    hit['taxonomy'] = self.taxonomy_dict[hit['accession']]
-
-                hits_per_gene[gene_name] = hits
-
-                if anvio.DEBUG:
-                    self.show_hits(bin_name, gene_name, hits)
-
-                if not args.profile_db and hits:
-                    taxonomy=self.get_consensus_taxonomy(hits_per_gene,bin_name,hmm_sequences_dict_per_bin)
-                    entry['taxonomy']=taxonomy
-                    print(entry)
-
-
-            if j==len(hits_per_gene):
-                self.run.info(bin_name, "diamond didn't return any match \n")
-                continue
-            if args.profile_db:
-                taxonomy=self.get_consensus_taxonomy(hits_per_gene,bin_name,hmm_sequences_dict_per_bin)
-            if not args.profile_db and taxonomy:
-                #consensus_taxonomy=consensus_taxonomy+taxonomy
-                print(consensus_taxonomy)
-            end_predict_from_SCGs_dict = time.perf_counter()
-            print("\n time predict_from_SCGs_dict for a bin : ", end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)
-
-        if not args.profile_db:
-            print(hmm_sequences_dict_per_bin)
-
-
-
-
-    def get_consensus_taxonomy_with_score_by_entry(self, score_by_entry, bin_name,bestpercent):
-        try:
-            maxscore=max(score_by_entry.values())
-        except:
-            self.run.info("Estimate Taxonomy of "+str(bin_name), "N/A")
-            return
-        selected_entrys_by_score={\
-         code:score for code, score in score_by_entry.items() if score>(float(maxscore)*float(bestpercent)) }
-
-        self.run.info("Number of taxonomy use for the consensus", len(selected_entrys_by_score))
-
-        if anvio.DEBUG:
-            self.show_table_score(bin_name, selected_entrys_by_score)
-
-        taxonomy=[]
-        for code, score in sorted(selected_entrys_by_score.items()):
-                taxonomy.append(self.taxonomy_dict[code])
-
-        self.assign_taxonomie_solo_hit(taxonomy)
-
-    def get_cumul_hit_per_gene(self,hits_per_gene):
-        """add bitscore of eatch blast per query"""
-        matching_genes=[gene for gene in hits_per_gene if len(hits_per_gene[gene])]
-        cumul_hit_per_gene={}
-        number_of_matching_genes=len(matching_genes)
-
-        self.run.info('Num SCGs with match(s)', number_of_matching_genes)
-        self.run.info('SCGs with match(s)', ', '.join(matching_genes))
-
-        for matching_gene in matching_genes:
-            for entry in hits_per_gene[matching_gene]:
-                    if entry["accession"] not in cumul_hit_per_gene:
-                        cumul_hit_per_gene[entry['accession']]=(float(entry['bitscore'])/number_of_matching_genes)
-                    else:
-                        cumul_hit_per_gene[entry['accession']]=\
-                        float(cumul_hit_per_gene[entry['accession']])\
-                        +(float(entry['bitscore'])/number_of_matching_genes)
-        return cumul_hit_per_gene
-
-    def get_matching_gene(self,hits_per_gene):
-        matching_genes=[gene for gene in hits_per_gene if len(hits_per_gene[gene])]
-        number_of_matching_genes=len(matching_genes)
-        self.run.info('Num SCGs with match(s)', number_of_matching_genes)
-        self.run.info('SCGs with match(s)', ', '.join(matching_genes))
-        return matching_genes
-
-
-
-
-    def align_hit_sequence(self,entry,hits_per_gene):
-
-        sequences_match=[]
-        sequences_match.append((entry['bin_id'],entry['sequence']))
-        db_path = self.SCG_FASTA_DB_PATH(entry['gene_name'])
-        fasta_db=f.ReadFasta(db_path)
-        maxscore=0
-
-        for hit in hits_per_gene[entry['gene_name']]:
-            index=fasta_db.ids.index(hit['accession'])
-            species_name=hit['taxonomy']['t_species'].split(" ")
-            species_name=species_name[1]
-            if float(hit['bitscore']) > float(maxscore):
-                maxscore = hit['bitscore']
-                sequences_match.append((species_name,fasta_db.sequences[index]))
-            if float(hit['bitscore']) < (float(maxscore)*float(self.bestpercent)):
-                continue
-            sequences_match.append((species_name,fasta_db.sequences[index]))
-        return(sequences_match)
-
-
-    def align_with_muscle(self,entry,sequences_match,bin_name):
-
-        self.align_with="muscle"
-        aligners.select(self.align_with)
-        r = terminal.Run()
-        program = driver_modules['phylogeny']['default']
-        aligner = aligners.select("muscle", quiet=True)
-        alignments = aligner(run=r).run_stdin(sequences_match)
-
-        temp_file_path_muscle = filesnpaths.get_temp_file_path(prefix='ANVIO_muscle_%s'\
-         % str(bin_name)+str(entry['gene_name'])+".fa")
-
-        with open(temp_file_path_muscle, 'w') as muscle:
-            for id, sequence in alignments.items():
-                muscle.write('>%s\n%s\n' % (id,sequence))
-        output_file_path=str(bin_name)+"_"+str(entry['gene_name'])+".tree"
-
-        filesnpaths.is_output_file_writable(output_file_path)
-
-        program().run_command(temp_file_path_muscle,output_file_path)
-
-    def make_tree_with_hit(self,hits_per_gene,hmm_sequences_dict_per_bin,bin_name):
-        matching_genes=self.get_matching_gene(hits_per_gene)
-        for entry in hmm_sequences_dict_per_bin[bin_name].values():
-            if entry['gene_name'] in matching_genes:
-                sequences_match=self.align_hit_sequence(entry,hits_per_gene)
-            if len(sequences_match)>3:
-                self.align_with_muscle(entry,sequences_match,bin_name)
-            else:
-                print("for "+str(bin_name)+" the protein: "+str(entry['gene_name'])+"\t match "+\
-                hits_per_gene[entry['gene_name']][0]['taxonomy']['t_species'])
-
-
-
-    def make_dico_position_entry(self,hits_per_gene,matchinggenes):
-        dico_position_entry={}
-        for hit in matchinggenes:
-            i=0
-            for entry in hits_per_gene[hit]:
-                if entry['accession'] not in dico_position_entry:
-                    dico_position_entry[entry['accession']]=1
-                else:
-                    dico_position_entry[entry['accession']]+=1
-                i+=1
-        return(dico_position_entry)
-
-
-    def make_list_position_entry(self,hits_per_gene,dico_position_entry,list_position_ribosomal,matchinggenes):
-        list_position_entry=[]
-        j=0
-        len_position=len(list_position_ribosomal)
-        key_value = sorted(dico_position_entry, key=lambda x: dico_position_entry[x], reverse=True)
-        for key in key_value:
-            #parameter number of individue in the first matrix "j <= 5 " and appear in minimun 50% of blast
-            if j <= 5 and dico_position_entry[key] > (len_position*0.5):
-                list_position_entry.append(key)
-                j+=1
-                #print(self.taxonomy_dict[key]['t_species'] ,key,dico_position_entry[key])
-
-        list_position_ribosomal=self.make_list_position_ribosomal(matchinggenes,hits_per_gene,list_position_entry)
-        return(list_position_entry,list_position_ribosomal)
-
-    def make_list_position_ribosomal(self,matchinggenes,hits_per_gene,list_position_entry):
-        list_position_ribosomal=[]
-        for hit in matchinggenes:
-            k=0
-            if not list_position_entry:
-                list_position_ribosomal.append(hit)
-            else:
-                for entry in hits_per_gene[hit]:
-                    if entry['accession'] in list_position_entry:
-                        k+=1
-                #parameter, k number of
-                if k>=len(list_position_entry):
-                    list_position_ribosomal.append(hit)
-
-
-        return(list_position_ribosomal)
-
-
-    def creat_list_position(self,hits_per_gene,matchinggenes):
-        dico_position_entry=self.make_dico_position_entry(hits_per_gene,matchinggenes)
-        list_position_entry=[]
-        list_position_ribosomal=self.make_list_position_ribosomal(matchinggenes,hits_per_gene,list_position_entry)
-        list_position_entry,last_list_position_ribosomal=self.make_list_position_entry(hits_per_gene,dico_position_entry,list_position_ribosomal,matchinggenes)
-
-
-        return(list_position_entry,last_list_position_ribosomal)
-
-
-    def emptylistmaker(self,numbr_genes):
-        listofempty = ['NA'] * numbr_genes
-        return listofempty
-
-    def make_emptymatrix(self,list_position_entry,list_position_ribosomal):
-        matrix=[]
-        numbr_genes=len(list_position_ribosomal)
-        maxposition=len(list_position_entry)
-        i=0
-        # do 'matrix=[(['NA'] *len(list_position_ribosomal))]*(len(dico_position_entry))' don't work.\
-        # subsitution will impact all items on the index in lists
-        while i < maxposition:
-            emptylist=self.emptylistmaker(numbr_genes)
-            matrix.append(emptylist)
-            i+=1
-        return(matrix)
-
-    def fill_matrix(self,bin_name,emptymatrix,hits_per_gene,list_position_entry,\
-    list_position_ribosomal,matchinggenes):
-        maxrank=1
-        bestident=0
-        for hit in list_position_ribosomal:
-                rank=1
-                bestscore=0
-                perfectident=False
-                for entry in hits_per_gene[hit]:
-                    if entry['accession'] in list_position_entry:
-                        if rank > maxrank:
-                            maxrank=rank
-                        #parameter
-                        if entry['pident'] > bestident:
-                            bestident=entry['pident']
-                        if perfectident and entry['pident'] != 100:
-                            rank+=1
-                            emptymatrix[list_position_entry.index(entry['accession'])]\
-                            [list_position_ribosomal.index(hit)]=rank
-                            continue
-                        if bestscore<entry['bitscore']:
-                            bestscore=entry['bitscore']
-                            if entry['pident']==100:
-                                perfectident=True
-                            emptymatrix[list_position_entry.index(entry['accession'])]\
-                            [list_position_ribosomal.index(hit)]=rank
-                            continue
-                        #parameter for considere 2 hit have same rank rank
-                        if entry['pident'] == 100 or float(entry['bitscore'])>=(bestscore*1):
-                            emptymatrix[list_position_entry.index(entry['accession'])]\
-                            [list_position_ribosomal.index(hit)]=rank
-                            continue
-                        rank+=1
-                        emptymatrix[list_position_entry.index(entry['accession'])]\
-                        [list_position_ribosomal.index(hit)]=rank
-
-        return(emptymatrix,maxrank,bestident)
-
-    def fill_NA_matrix(self,matrix,penality,max_target_seqs=20):
-        for liste in matrix:
-            for n, i in enumerate(liste):
-                if str(i) == 'NA':
-                    liste[n] = (int(penality)+int(max_target_seqs))
-        return(matrix)
-
-    @timer
-    def make_rank_matrix(self,bin_name,hits_per_gene):
-        matchinggenes=self.get_matching_gene(hits_per_gene)
-        list_position_entry,list_position_ribosomal=self.creat_list_position(hits_per_gene,matchinggenes)
-        emptymatrix=self.make_emptymatrix(list_position_entry,list_position_ribosomal)
-        matrix,maxrank,bestident=self.fill_matrix(bin_name,emptymatrix,hits_per_gene,list_position_entry,\
-        list_position_ribosomal,matchinggenes)
-        final_matrix=self.fill_NA_matrix(matrix, maxrank)
-
-        return(final_matrix,list_position_entry,list_position_ribosomal,bestident)
-
-
-
-    def show_matrix_rank(self, bin_name, matrix, list_position_entry,list_position_ribosomal):
-        """print(len(matrix), len(list_position_entry))
-        print(len(matrix[0]),len(list_position_ribosomal))
-        exit.syst()"""
-        show_list_position_ribosomal=list_position_ribosomal
-        while len(show_list_position_ribosomal) > 6:
-            show_matrix=[sublist[:6] for sublist in matrix]
-            show_list_position_ribosomal=list_position_ribosomal[:6]
-            header = show_list_position_ribosomal
-            table = []
-            i=0
-            for individue in show_matrix:
-                line = [self.taxonomy_dict[list_position_entry[i]]['t_species']] + individue
-                table.append(line)
-                i+=1
-            self.run.warning(None, header='%s' % (bin_name), lc="blue")
-            print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
-            show_matrix=[sublist[6:] for sublist in show_matrix]
-            show_list_position_ribosomal=show_list_position_ribosomal[6:]
-
-
-
-
-    def statistic_test_friedman(self,bin_name,matrix,matrixlist_position_entry,list_position_ribosomal):
-        pvalue=0
-        newmatrix=matrix
-        new_matrixlist_position_entry=matrixlist_position_entry
-        while len(newmatrix) > 2:
-            statistic, pvalue=ss.friedmanchisquare(*newmatrix)
-            print("statistic:%s pvalue:%f" %(statistic, pvalue))
-            if pvalue >= 0.05 or pvalue=="nan":
-                return(newmatrix,new_matrixlist_position_entry)
-                break
-            new_matrixlist_position_entry,newmatrix=self.del_higher_ranked_individu_matrix(newmatrix,new_matrixlist_position_entry)
-        return(newmatrix,new_matrixlist_position_entry)
-
-
-
-    def rank_assignement(self,hits_per_gene,bin_name):
-
-        matrix,matrixlist_position_entry,list_position_ribosomal,bestident=self.make_rank_matrix(bin_name,hits_per_gene)
-
-        #self.show_matrix_rank( bin_name, matrix, matrixlist_position_entry,list_position_ribosomal)
-        #newmatrix,new_matrixlist_position_entry=self.statistic_test_friedman(bin_name,matrix,matrixlist_position_entry\
-        #                                                                     ,list_position_ribosomal)
-
-        self.show_matrix_rank( bin_name, matrix, matrixlist_position_entry,list_position_ribosomal)
-        start_make_list_taxonomy = time.perf_counter()
-
-        taxonomy=self.make_list_taxonomy(matrix,matrixlist_position_entry,bestident)
-        taxonomy=self.reduce_assignation_level(taxonomy,bestident)
-        assignation=self.assign_taxonomie_solo_hit(taxonomy)
-        return(assignation)
-        end_make_list_taxonomy = time.perf_counter()
-        print("\n time make_list_taxonomy : ", end_make_list_taxonomy - start_make_list_taxonomy)
-
-
-        #parameters
-
-
-
-
-
-
-        """posthoc_conover=sp.posthoc_conover_friedman(matrix)
-        print("posthoc_conover")
-        print(posthoc_conover)
-        posthoc_miller_friedman=sp.posthoc_miller_friedman(matrix)
-        print("posthoc_miller_friedman")
-        print(posthoc_miller_friedman)
-        posthoc_siegel_friedman=sp.posthoc_siegel_friedman(matrix)
-        print("posthoc_siegel_friedman")
-        print(posthoc_siegel_friedman)
-        posthoc_durbin=sp.posthoc_durbin(matrix)
-        print("posthoc_durbin")
-        print(posthoc_durbin)
-
-        posthoc_nemenyi_friedman=sp.posthoc_nemenyi_friedman(matrix)
-        print("posthoc_nemenyi_friedman")
-        print(posthoc_nemenyi_friedman)"""
-
-    def del_higher_ranked_individu_matrix(self,matrix,matrixlist_position_entry):
-        maxrank=0
-        i=0
-        for liste in matrix:
-            summist=sum(list(liste))
-            if summist > maxrank:
-                maxrank=summist
-                dellist=i
-            i+=1
-        del matrix[dellist]
-        del matrixlist_position_entry[dellist]
-        return matrixlist_position_entry, matrix
-
-
-
-    def assign_taxonomie_solo_hit(self,taxonomy):
-        print(taxonomy)
-        assignation=taxonomy[0]
-        for s in taxonomy[1:]:
-            for key in s:
-                if s[key] not in assignation.values():
-                    assignation.pop(key, None)
-        self.run.info('estimate taxonomy', assignation)
-        return(assignation)
-
-
-    def make_dicoidentitielevel(self):
-        dicoidentitielevel={}
-        dicoidentitielevel[95]='t_species'
-        dicoidentitielevel[90]='t_genus'
-        dicoidentitielevel[85]='t_family'
-        dicoidentitielevel[80]='t_order'
-        return(dicoidentitielevel)
-
-    def make_list_taxonomy(self,matrix, list_position_entry,bestident):
-        taxonomy=[]
-        miniscore=10000
-        i=0
-        for liste in matrix:
-            summist=sum(list(liste))
-            if summist == miniscore:
-                taxonomy.append(self.taxonomy_dict[list_position_entry[i]])
-            if summist < miniscore:
-                taxonomy = []
-                taxonomy.append(self.taxonomy_dict[list_position_entry[i]])
-                miniscore = summist
-            i+=1
-        return(taxonomy)
-
-    def reduce_assignation_level(self,taxonomy,bestident):
-        dicoidentitielevel=self.make_dicoidentitielevel()
-        for key , value in dicoidentitielevel.items():
-            if bestident < int(key):
-                for possibilitie in taxonomy:
-                    possibilitie.pop(value, None)
-        return(taxonomy)
-
-
-
-    def assignation_list(self,taxonomy):
-        if len(taxonomy)==1:
-            self.run.info('estimate taxonomy rank', taxonomy[0])
-        if len(taxonomy)>=2:
-            for possibilities in taxonomy:
-                self.run.info('Relevant match', possibilities)
-
-            self.assign_taxonomie_solo_hit(taxonomy)
-
-
-            #print("rank", result)
-        #taxonomy=dict(zip(self.taxonomic_levels, result))
-
-    def solo_hits(self,hits_per_gene):
-        taxonomy=[]
-        for hit in hits_per_gene:
-            for entry in hits_per_gene[hit]:
-                if len(hits_per_gene[hit])==1 and entry['pident']>0.90:
-                    taxonomy.append(self.taxonomy_dict[entry['accession']])
-        if taxonomy:
-            self.assign_taxonomie_solo_hit(taxonomy)
-            return True
-        else:
-            return False
-
-
-    @timer
-    def get_consensus_taxonomy(self,hits_per_gene,bin_name,hmm_sequences_dict_per_bin):
-
-        if not self.solo_hits(hits_per_gene):
-            if self.methode=="friedman":
-                taxonomy=self.rank_assignement(hits_per_gene,bin_name)
-
-            if self.methode=="tree":
-                self.make_tree_with_hit(hits_per_gene,hmm_sequences_dict_per_bin,bin_name)
-
-            if self.methode=="bitscore":
-                score_by_entry= self.get_cumul_hit_per_gene(hits_per_gene)
-                if anvio.DEBUG:
-                    self.show_table_score(bin_name, score_by_entry)
-                consensus_taxonomy=self.get_consensus_taxonomy_with_score_by_entry(score_by_entry,bin_name,self.bestpercent)
-
-            if not args.profile_db:
-                return(taxonomy)
-
-
-
-
-
-    @timer
-    def get_raw_blast_hits(self, d, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
-        """Takes a dictionary that contains `gene_name` and `sequence`, and returns
-           filtered BLAST hits against the corresopnding database. I.e.,
-
-            >>> d = {'sequence': 'MVRVKKGVNALKTRRNILKQAKGFRGPRKSKEKLAYEQLVHSYTSAFAHRRDKKGDFRRLWNVRINAALRPLGHTYSKFIGAMNKKGMEVDRKTLSDLAQNAPESFERLVKQVTA',
-                     'gene_name': 'Ribosomal_L20'}
-            >>> self.get_raw_blast_hits(d)
-        """
-
-        if 'sequence' not in d or 'gene_name' not in d:
-            raise ConfigError("The `get_filtered_dict` function got a parameter that\
-                               does not look like the way we expected it. This function\
-                               expects a dictionary that contains keys `gene_name` and `sequence`.")
-
-        db_path = self.SCG_DB_PATH(d['gene_name'])
-        sequence = d['sequence']
-
-        diamond = Diamond(db_path, run=run_quiet, progress=progress_quiet)
-        diamond.max_target_seqs = max_target_seqs
-        diamond.evalue = evalue
-        diamond.min_pct_id = min_pct_id
-
-        diamond_output = diamond.blastp_stdin(sequence)
-
-        hits = []
-        for entry in [line.split('\t') for line in diamond_output.split('\n') if line.startswith('seq')]:
-            accession = entry[1]
-
-            # dict(zip(['accession', 'pident', 'length', 'mismatch', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'], [float(entry[i]) if i > 1 else entry[i] for i in range(1, 12)]))
-            hit = dict(zip(['accession', 'pident', 'bitscore'], [float(entry[i]) if i > 1 else entry[i] for i in [1, 2, 11]]))
-
-            hits.append(hit)
-
-        return hits
-
-
 def main(args):
 
     if not args.methode:
-        args.methode="tree"
+        args.methode = "tree"
 
     if not args.bestpercent:
-        args.bestpercent=0.98
-
+        args.bestpercent = 0.98
 
     if args.external_genomes and (args.contigs_db or args.profile_db):
         raise ConfigError("If you are interested in using a list of external genomes, you shouldn't be using a contigs db or\
                            profile db prameters.")
 
     if not (args.internal_genomes or args.external_genomes or args.contigs_db or args.profile_db):
-        raise ConfigError("You gotta give this program some input files :/ Come on.")
+        raise ConfigError(
+            "You gotta give this program some input files :/ Come on.")
 
     if args.concatenate_genes:
         if not args.return_best_hit:
@@ -764,9 +87,11 @@ def main(args):
                 value = int(value)
                 assert(value >= 0)
             except:
-                raise ConfigError("For obvious reasons, anvi'o expects the parameter %s to be a non-negative integer :/" % param)
+                raise ConfigError(
+                    "For obvious reasons, anvi'o expects the parameter %s to be a non-negative integer :/" % param)
 
-    hmm_sources = set([s.strip() for s in args.hmm_sources.split(',')]) if args.hmm_sources else set([])
+    hmm_sources = set([s.strip() for s in args.hmm_sources.split(
+        ',')]) if args.hmm_sources else set([])
 
     if not len(hmm_sources):
         hmm_sources = set(["Bacteria_71"])
@@ -782,7 +107,8 @@ def main(args):
     # to get sequences, and construct `splits_dict` depending on the input files. it is
     # shitty code, and can be improved.
     if args.external_genomes or args.internal_genomes:
-        s = hmmopswrapper.SequencesForHMMHitsWrapperForMultipleContigs(args, hmm_sources)
+        s = hmmopswrapper.SequencesForHMMHitsWrapperForMultipleContigs(
+            args, hmm_sources)
         splits_dict = s.splits_dict
     else:
         info_table = hmmops.SequencesForHMMHits(args.contigs_db).hmm_hits_info
@@ -790,67 +116,83 @@ def main(args):
         # let's quickly check whether we have all the hmm_sources the user may have
         # requested has anything to do with the ones we have in the database
         if hmm_sources:
-            missing_hmm_sources = [s for s in hmm_sources if s not in info_table]
+            missing_hmm_sources = [
+                s for s in hmm_sources if s not in info_table]
             if(missing_hmm_sources):
                 raise ConfigError("At least one of the HMM sources you requested are missing form the HMMs the contigs database\
                                    knows about :/ Here they are: '%s'" % (', '.join(missing_hmm_sources)))
 
         if args.list_hmm_sources:
-            hmmops.SequencesForHMMHits(args.contigs_db).list_available_hmm_sources()
+            hmmops.SequencesForHMMHits(
+                args.contigs_db).list_available_hmm_sources()
 
         if args.list_available_gene_names:
-            hmmops.SequencesForHMMHits(args.contigs_db).list_available_gene_names(sources=list(hmm_sources))
+            hmmops.SequencesForHMMHits(args.contigs_db).list_available_gene_names(
+                sources=list(hmm_sources))
 
         if (args.profile_db and not args.collection_name) or (args.collection_name and not args.profile_db):
             raise ConfigError("You can't use this program with a profile database but without a collection name,\
                                and vice versa, you also can't use a collection if you didn't provide a profile database. Yes. Because.")
 
         if args.profile_db:
-            utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+            utils.is_profile_db_and_contigs_db_compatible(
+                args.profile_db, args.contigs_db)
             splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
-            run.info('Init', '%d splits in %d bin(s)' % (sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
+            run.info('Init', '%d splits in %d bin(s)' % (
+                sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
         else:
-            contigs_db = ContigsSuperclass(args, r = run, p = progress)
+            contigs_db = ContigsSuperclass(args, r=run, p=progress)
             contigs_db_name = os.path.basename(args.contigs_db[:-3])
-            splits_dict = {contigs_db_name: list(contigs_db.splits_basic_info.keys())}
+            splits_dict = {contigs_db_name: list(
+                contigs_db.splits_basic_info.keys())}
 
-        s = hmmops.SequencesForHMMHits(args.contigs_db, sources = hmm_sources)
+        s = hmmops.SequencesForHMMHits(args.contigs_db, sources=hmm_sources)
 
-    CHK = lambda: exec('raise ConfigError("Your selections returned an empty list of genes to work with :/")') if not len(hmm_sequences_dict) else None
+    def CHK(): return exec('raise ConfigError("Your selections returned an empty list of genes to work with :/")') if not len(hmm_sequences_dict) else None
 
-    hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
+    hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(
+        splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
     CHK()
 
-    run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
+    run.info('Hits', '%d hits for %d source(s)' %
+             (len(hmm_sequences_dict), len(s.sources)))
 
     # figure out gene names.. if the user provided a file, use that, otherwhise parse gene names out of the comma-separated text
     if args.gene_names and filesnpaths.is_file_exists(args.gene_names, dont_raise=True):
-        gene_names = [g.strip() for g in open(args.gene_names, 'rU').readlines()] if args.gene_names else []
+        gene_names = [g.strip() for g in open(
+            args.gene_names, 'rU').readlines()] if args.gene_names else []
     else:
-        gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
+        gene_names = [g.strip() for g in args.gene_names.split(',')
+                      ] if args.gene_names else []
 
     if len(gene_names):
-        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
-        run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
+        hmm_sequences_dict = utils.get_filtered_dict(
+            hmm_sequences_dict, 'gene_name', set(gene_names))
+        run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (
+            len(hmm_sequences_dict), len(gene_names)))
         CHK()
 
     if args.max_num_genes_missing_from_bin is not None:
-        hmm_sequences_dict, bins_removed = s.filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(hmm_sequences_dict, gene_names, int(args.max_num_genes_missing_from_bin))
+        hmm_sequences_dict, bins_removed = s.filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(
+            hmm_sequences_dict, gene_names, int(args.max_num_genes_missing_from_bin))
         CHK()
 
         if len(bins_removed):
-            run.info('Filtered hits', '%d hits remain after filtering for `--max-num-genes-missing-from-bin` flag' % (len(hmm_sequences_dict)))
+            run.info('Filtered hits', '%d hits remain after filtering for `--max-num-genes-missing-from-bin` flag' %
+                     (len(hmm_sequences_dict)))
 
             run.warning('The `--max-num-genes-missing-from-bin` flag caused the removal of %d bins (or genomes, whatever)\
-                         from your analysis. This is the list of bins that will live in our memories: %s' % \
-                                                (len(bins_removed), ', '.join(bins_removed)))
+                         from your analysis. This is the list of bins that will live in our memories: %s' %
+                        (len(bins_removed), ', '.join(bins_removed)))
 
     if args.min_num_bins_gene_occurs is not None:
-        hmm_sequences_dict, genes_removed = s.filter_hmm_sequences_dict_from_genes_that_occur_in_less_than_N_bins(hmm_sequences_dict, int(args.min_num_bins_gene_occurs))
+        hmm_sequences_dict, genes_removed = s.filter_hmm_sequences_dict_from_genes_that_occur_in_less_than_N_bins(
+            hmm_sequences_dict, int(args.min_num_bins_gene_occurs))
         CHK()
 
         if len(genes_removed):
-            run.info('Filtered hits', '%d hits remain after filtering for `--min-num-bins-gene-occurs` flag' % (len(hmm_sequences_dict)))
+            run.info('Filtered hits', '%d hits remain after filtering for `--min-num-bins-gene-occurs` flag' %
+                     (len(hmm_sequences_dict)))
 
             run.warning("The `--min-num-bins-gene-occurs` parameter caused the removal of %d genes from your analysis because \
                          they occurred in less than %d bins/genomes in your analysis. This is the list of genes that gon'\
@@ -872,29 +214,35 @@ def main(args):
                          anvi'o just hopes you know what you are doing. Since this is like the zone of 'potentially a terrible\
                          idea but it may be quite relevant when done right'.")
 
-        hmm_sequences_dict = s.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(hmm_sequences_dict)
+        hmm_sequences_dict = s.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(
+            hmm_sequences_dict)
         CHK()
 
-        run.info('Filtered hits', '%d hits remain after removing weak hits for multiple hits' % (len(hmm_sequences_dict)))
+        run.info('Filtered hits', '%d hits remain after removing weak hits for multiple hits' % (
+            len(hmm_sequences_dict)))
 
-    t = SCGTaxonomy(args)
+    t = taxoestimation.SCGTaxonomy(args)
     t.predict_from_SCGs_dict(hmm_sequences_dict)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Get sequences for HMM hits from many inputs.")
+    parser = argparse.ArgumentParser(
+        description="Get estimation taxonomy from many inputs.")
 
     groupA = parser.add_argument_group('INPUT OPTION #1: CONTIGS DB', "There are multiple ways to access to sequences. Your first option is to\
                                         provide a contigs database, and call it a day. In this case the program will return you\
                                         everything from it.")
-    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    groupA.add_argument(*anvio.A('contigs-db'), **
+                        anvio.K('contigs-db', {'required': False}))
 
     groupB = parser.add_argument_group('INPUT OPTION #2: CONTIGS DB + PROFLIE DB', "You can also work with anvi'o profile databases and collections\
                                         stored in them. If you go this way, you still will need to provide a contigs database. If you\
                                         just specify a collection name, you will get hits from every bin in it. You can also use\
                                         the bin name or bin ids file parameters to specify your interest more precisely.")
-    groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupB.add_argument(*anvio.A('profile-db'), **anvio
+                        .K('profile-db', {'required': False}))
+    groupB.add_argument(*anvio.A('collection-name'),
+                        **anvio.K('collection-name'))
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
 
@@ -904,15 +252,19 @@ if __name__ == '__main__':
                                         this is what you need. In contrast, if you want to access to genes in bins described in collections\
                                         stored in anvi'o profile databases, then you can use internal genomes file route. Or you can mix the two,\
                                         because why not. There is not much room for excuses here.")
-    groupC.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
-    groupC.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+    groupC.add_argument(*anvio.A('external-genomes'),
+                        **anvio.K('external-genomes'))
+    groupC.add_argument(*anvio.A('internal-genomes'),
+                        **anvio.K('internal-genomes'))
 
     groupD = parser.add_argument_group('HMM STUFF', "This is where you can specify an HMM source, and/or a list of genes to filter\
                                         your results.")
     groupD.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
     groupD.add_argument(*anvio.A('gene-names'), **anvio.K('gene-names'))
-    groupD.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-    groupD.add_argument(*anvio.A('list-available-gene-names'), **anvio.K('list-available-gene-names'))
+    groupD.add_argument(*anvio.A('list-hmm-sources'),
+                        **anvio.K('list-hmm-sources'))
+    groupD.add_argument(*anvio.A('list-available-gene-names'),
+                        **anvio.K('list-available-gene-names'))
 
     groupE = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be a FASTA file, and you better give it\
                                         a nice name..")
@@ -921,31 +273,44 @@ if __name__ == '__main__':
 
     groupF = parser.add_argument_group('THE ALPHABET', "The sequences are reported in DNA alphabet, but you can also get them\
                                         translated just like all the other cool kids.")
-    groupF.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences', {'default': True}))
+    groupF.add_argument(*anvio.A('get-aa-sequences'), **
+                        anvio.K('get-aa-sequences', {'default': True}))
 
     groupG = parser.add_argument_group('PHYLOGENOMICS? K!', "If you want, you can get your sequences concatanated. In this case\
                                        anwi'o will use muscle to align every homolog, and concatenate them the order you specified\
                                        using the `gene-names` argument. Each concatenated sequence will be separated from the other\
                                        ones by the `separator`.")
-    groupG.add_argument(*anvio.A('concatenate-genes'), **anvio.K('concatenate-genes'))
-    groupG.add_argument(*anvio.A('max-num-genes-missing-from-bin'), **anvio.K('max-num-genes-missing-from-bin'))
-    groupG.add_argument(*anvio.A('min-num-bins-gene-occurs'), **anvio.K('min-num-bins-gene-occurs'))
+    groupG.add_argument(*anvio.A('concatenate-genes'),
+                        **anvio.K('concatenate-genes'))
+    groupG.add_argument(*anvio.A('max-num-genes-missing-from-bin'),
+                        **anvio.K('max-num-genes-missing-from-bin'))
+    groupG.add_argument(*anvio.A('min-num-bins-gene-occurs'),
+                        **anvio.K('min-num-bins-gene-occurs'))
     groupG.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
     groupG.add_argument(*anvio.A('separator'), **anvio.K('separator', {'help': 'A word that will be used to\
                                   sepaate concatenated gene sequences from each other (IF you are using this\
                                   program with `--concatenate-genes` flag). The default is "XXX" for amino\
                                   acid sequences, and "NNN" for DNA sequences'}))
 
-    groupG = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
-    groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))#, {'default': True}
+    groupG = parser.add_argument_group(
+        'OPTIONAL', "Everything is optional, but some options are more optional than others.")
+    groupG.add_argument(*anvio.A('return-best-hit'), **
+                        anvio.K('return-best-hit'))  # , {'default': True}
 
-    parser.add_argument("-t", "--taxonomy-file", help="taxo file", nargs='?')
-
-    parser.add_argument("-r", "--taxonomy-database", help="db ribosomal prot", nargs='?')
-
-    parser.add_argument("-bpc", "--bestpercent", help="cutoff for consider taxonomie to the best taxonomie score . Default value 0.98")
-
-    parser.add_argument("-m", "--methode", help="method chosen for estimation of taxonomy ")
+    groupH = parser.add_argument_group('Taxonomy', "Taxomy assignation Argument\
+                                        /!\.")
+    # , help="taxo file", nargs='?')
+    groupH.add_argument(*anvio.A('taxonomy-file'))
+    # , **anvio.K('concatenate-genes'))
+    # , help="db ribosomal prot", nargs='?')
+    groupH.add_argument(*anvio.A('taxonomy-database'))
+    # ,** anvio.K('concatenate-genes'))
+    # , help="cutoff for consider taxonomie to the best taxonomie score . Default value 0.98")
+    groupH.add_argument(*anvio.A('bestpercent'))
+    # , **anvio.K('concatenate-genes'))
+    # , help="method chosen for estimation of taxonomy ")
+    groupH.add_argument(*anvio.A('methode'))
+    # , **anvio.K('concatenate-genes'))
 
     args = anvio.get_args(parser)
 
