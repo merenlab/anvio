@@ -1,76 +1,409 @@
 #!/usr/bin/env Rscript
 
+## Use packages.  Will exit if missing the package.  Supress messages
+## about overwritten methods.
+suppressMessages(library(ggplot2))
+suppressMessages(library(optparse))
+
+#### Utility functions ####
+
 ## Write a `msg` to stderr then exit with code 1.
 abort <- function(msg) {
-    write(msg, file = stderr())
+    write(paste0("ERROR -- ", msg), file = stderr())
     quit(save = "no", status = 1, runLast = FALSE)
 }
 
-## Set up usage banners.
-usage <- "  usage: ./anvi-script-visualize-split-coverages </path/to/infile.txt> </path/to/coverage_graphs.pdf>"
+warn <- function(msg) {
+    write(paste0("WARNING -- ", msg), file = stderr())
+}
 
-info <- "
+is_hex_color <- function(color) {
+    grepl("#[0-9a-fA-F]{6}", color)
+}
+
+
+"%nin%" <- Negate("%in%")
+
+#### Functions to handle user input ####
+
+check_required_args <- function(opts) {
+    ## Make sure the required args are given.
+    required_args = c("infile", "outfile")
+    for (arg in required_args) {
+        if (is.null(opts[[arg]])) {
+            msg <- paste0("'",
+                          arg,
+                          "' is a required argument.")
+            abort(msg)
+        }
+    }
+}
+
+check_infile <- function(opts) {
+    ## Make sure the infile exists.
+    if (!file.exists(opts$infile)) {
+        abort(paste0("Input file '",
+                     opts$infile,
+                     "' does not exist!"))
+    }
+}
+
+check_outfile <- function(opts) {
+    ## Make sure the directory of the outfile exists.
+    outdir <- dirname(opts$outfile)
+    if (!dir.exists(outdir)) {
+        abort(paste0("Directory '",
+                     outdir,
+                     "' for the outfile '",
+                     opts$outfile,
+                     "' does not exist!"))
+    }
+}
+
+check_sample_data_file <- function(opts) {
+    ## Check that the additional data file exists if it is given.
+    if (!is.null(opts$sample_data) && !file.exists(opts$sample_data)) {
+        abort(paste0("Additional data file '",
+                     opts$sample_data,
+                     "' does not exist!"))
+    }
+}
+
+## Check that double type options are actually doubles.
+check_typeof_double_opts <- function(opts) {
+    double_type_opts <- c("whole_chart_width",
+                          "individual_chart_height",
+                          "max_coverage")
+    for (arg in double_type_opts) {
+        if (typeof(opts[[arg]]) != "double") {
+            abort(paste0("the type of '",
+                         arg,
+                         "' should be double, but got '",
+                         typeof(opts[[arg]])))
+        }
+    }
+}
+
+## Some options control sizes of things.  In general these should be
+## at least 1.
+check_size_opts <- function(opts) {
+    ## Any of these options are sizes and should be >= 1.
+    size_opts <- c("whole_chart_width",
+                   "individual_chart_height",
+                   "max_coverage")
+    for (arg in size_opts) {
+        if (opts[[arg]] < 1) {
+            abort(paste0("'",
+                         arg,
+                         "' should be >= 1.  Got '",
+                         opts[[arg]],
+                         "'."))
+        }
+    }
+}
+
+## Only certain charting types have been implemented.  Make sure user
+## selects one of these.
+check_chart_type <- function(opts) {
+    ## Make sure chart type is available.
+    available_chart_types = c("area", "line")
+    ## Chart type has a default so we don't need to check for its
+    ## existance.
+    if (opts$chart_type %nin% available_chart_types) {
+        abort(paste0("bad chart type.  Chart type must be one of: ",
+                     paste(available_chart_types, collapse = ", "),
+                     ". Got '",
+                     opts$chart_type,
+                     "'."))
+    }
+}
+
+
+## `opts` is the output of parse_args function
+check_opts <- function(opts) {
+    check_required_args(opts)
+    check_infile(opts)
+    check_outfile(opts)
+    check_sample_data_file(opts)
+    check_typeof_double_opts(opts)
+    check_size_opts(opts)
+    check_chart_type(opts)
+}
+
+## Parse the split coverages file
+parse_split_coverages <- function(opts) {
+    ## Sanity check: split coverages should always be given.
+    ## check_opts ensures this.
+    if (is.null(opts$infile)) {
+        abort("missing '$infile' from opts list")
+    }
+
+    split_coverages <- read.table(opts$infile,
+                                  header = TRUE,
+                                  sep = "\t")
+
+    ## Check split coverage header rows
+    expected_split_cov_header <- c(
+        "unique_entry_id",
+        "nt_position",
+        "split_name",
+        "sample_name",
+        "coverage"
+    )
+    if (any(names(split_coverages) != expected_split_cov_header)) {
+        abort("bad header row in split coverages file")
+    }
+
+    ## Cap the coverage at the max coverage value.
+    split_coverages$coverage <- ifelse(split_coverages$coverage > opts$max_coverage,
+                                       opts$max_coverage,
+                                       split_coverages$coverage)
+
+    split_coverages
+}
+
+## Check sample_data headers
+check_sample_data_headers <- function(sample_data) {
+    if (any(names(sample_data) != c("sample_name", "sample_color"))) {
+        abort("bad header row in additional data file")
+    }
+}
+
+## Check that all color names are either named R colors or
+## hexcodes.  If not, just make them black.
+fix_colors <- function(sample_data) {
+    sapply(
+        sample_data$sample_color,
+        function(color) {
+            ifelse(color == "" || (color %nin% colors() && !is_hex_color(color)),
+                   "black",
+                   as.character(color))
+        }
+    )
+}
+
+parse_sample_data <- function(opts) {
+    if (is.null(opts$sample_data)) {
+        sample_data = NULL
+    } else {
+        sample_data = read.table(opts$sample_data,
+                                 header = TRUE,
+                                 sep = "\t",
+                                 comment.char = "")
+
+        check_sample_data_headers(sample_data)
+        sample_data$sample_color <- fix_colors(sample_data)
+    }
+
+    sample_data
+}
+
+
+check_sample_names <- function(sample_data, sample_names) {
+    ## Make sure all sample names in additional data are present
+    ## in original data.
+    if (any(sample_data$sample_name %nin% sample_names)) {
+        abort("There were sample names in the additional data file not present in the split coverages file")
+    }
+}
+
+subset_split_coverages <- function(split_coverages, sample_data) {
+    ## If additional data is here, we need to subset the split
+    ## coverages data.  Only samples listed in the additional data
+    ## file are to be drawn.
+    split_coverages_subset <- subset(split_coverages,
+                                     sample_name %in% sample_data$sample_name)
+
+    if (nrow(split_coverages) != nrow(split_coverages_subset)) {
+        warn("Not all samples in the split coverages file were present in the additional data file.")
+    }
+
+    split_coverages_subset
+}
+
+sort_split_coverages <- function(split_coverages, sample_data) {
+    ## We also want to sort the dataframe by the order of sample
+    ## names in the additional data file.  So set the factor
+    ## levels by the order they appear in additional data file.
+    split_coverages$sample_name <- factor(split_coverages$sample_name,
+                                          levels = sample_data$sample_name)
+
+    ## First order by sample name, then by nt pos.
+    split_coverages[order(split_coverages$sample_name,
+                          split_coverages$nt_position), ]
+}
+
+add_sample_data <- function(split_coverages, sample_data) {
+    ## Add sample data to split_coverages df.  Left outer join to
+    ## ensure all data points are there.  Though the additional
+    ## data should have every sample that is in split coverages.
+    merge(x = split_coverages,
+          y = sample_data,
+          by = "sample_name",
+          all.x = TRUE)
+}
+
+parse_input_data <- function(opts) {
+    split_coverages <- parse_split_coverages(opts)
+    sample_data <- parse_sample_data(opts)
+
+    ## Get the sample names.
+    sample_names <- split_coverages$sample_name
+
+    ## If sample_data file is given, we need to adjust the split
+    ## coverages data frame.
+    if (!is.null(sample_data)) {
+        ## Make sure the names in sample_data df are okay.
+        check_sample_names(sample_data, sample_names)
+
+        split_coverages <- subset_split_coverages(split_coverages, sample_data)
+        split_coverages <- sort_split_coverages(split_coverages, sample_data)
+        split_coverages <- add_sample_data(split_coverages, sample_data)
+    }
+
+
+    list(split_coverages = split_coverages,
+         sample_data = sample_data,
+         sample_names = sample_names)
+}
+
+
+#### Plotting functions ####
+
+area_plot <- function(dat, opts) {
+    ## Set up the coverage chart.
+    cov_plot <- ggplot(dat$split_coverages,
+                       aes(x = nt_position,
+                           y = coverage,
+                           group = sample_name))
+
+    if (is.null(dat$split_coverages$sample_color)) {
+        cov_plot <- cov_plot + geom_area()
+    } else {
+        cov_plot <- cov_plot + geom_area(fill = dat$split_coverages$sample_color)
+    }
+
+
+    cov_plot <- cov_plot + theme_bw()
+    cov_plot <- cov_plot + theme(legend.position = "none")
+    cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
+    cov_plot
+}
+
+line_plot <- function(dat, opts) {
+    ## Set up the coverage chart.
+    cov_plot <- ggplot(dat$split_coverages,
+                       aes(x = nt_position,
+                           y = coverage,
+                           group = sample_name))
+
+    if (is.null(dat$split_coverages$sample_color)) {
+        cov_plot <- cov_plot + geom_line()
+    } else {
+        cov_plot <- cov_plot + geom_line(color = dat$split_coverages$sample_color)
+    }
+
+    cov_plot <- cov_plot + theme_bw()
+    cov_plot <- cov_plot + theme(legend.position = "none")
+    cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
+    cov_plot
+}
+
+## Wrapper fn to handle plot drawing.
+draw_plot <- function(...) {
+    if (opts$chart_type == "area") {
+        area_plot(...)
+    } else if (opts$chart_type == "line") {
+        line_plot(...)
+    } else {
+        ## Sanity check: check_opts should prevent this from happening.
+        abort("bad chart type")
+    }
+}
+
+
+## Fn to write plot to disk.
+write_plot <- function(gg_plot, dat, opts) {
+    pdf(opts$outfile,
+        width = opts$whole_chart_width,
+        height = opts$individual_chart_height * length(levels(dat$sample_names)))
+    print(gg_plot)
+    suppressMessages(invisible(dev.off()))
+}
+
+#### Optparse ####
+set_up_opts <- function() {
+    option_list <- list(
+        ## Infile options
+        make_option(opt_str = c("-i", "--infile"),
+                    action = "store",
+                    type = "character",
+                    help = "Path to infile (i.e., output of anvi-get-split-coverages)"),
+        make_option(opt_str = c("-s", "--sample-data"),
+                    action = "store",
+                    type = "character",
+                    help = "Path to additional data file"),
+
+        ## Outfile options
+        make_option(opt_str = c("-o", "--outfile"),
+                    action = "store",
+                    type = "character",
+                    help = "Path to outfile"),
+
+        ## Chart options
+        make_option(opt_str = c("-w", "--whole-chart-width"),
+                    action = "store",
+                    type = "double",
+                    default = 10.0,
+                    help = "Width of the whole chart [default %default]"),
+        make_option(opt_str = c("-c", "--individual-chart-height"),
+                    action = "store",
+                    type = "double",
+                    default = 2.0,
+                    help = "Height of each individual coverage chart [default %default]"),
+        make_option(opt_str = c("-t", "--chart-type"),
+                    action = "store",
+                    type = "character",
+                    default = "area",
+                    help = "What type of chart do you want? [default %default]"),
+        make_option(opt_str = c("-m", "--max-coverage"),
+                    action = "store",
+                    type = "double",
+                    default = 1000,
+                    help = "Max coverage.  Any value g.t. this will be capped at this value. [default %default]")
+
+    )
+
+    usage <- "%prog -i infile.txt -o coverage_graphs.pdf [-s sample_data.txt] [-w chart_width] [-c chart_height] [-t chart_type] [-m max_coverage]"
+    description <- "
+Description:
   Generate PDF image of coverage for splits across multiple samples.
 
-  The input file required for this script is the output of the program anvi-get-split-coverages.
-"
+  - The input file required for this script is the output of the program anvi-get-split-coverages.
 
-help_banner<- paste(info, usage, sep = "\n")
+  - Any color that is not included in `colors()` or a valid hex code #00FF00 will be changed to 'black'.
 
-## Get command line args.
-args = commandArgs(trailingOnly = TRUE)
+  - Current options for --chart-type include: 'area', 'line'"
 
-## Check if user wants help or passes in wrong number of CLI args.
-if ("--help" %in% args || "-h" %in% args) {
-    abort(help_banner)
-} else if (length(args) != 2) {
-    abort(paste("ERROR -- wrong number of command line arguments.",
-                usage,
-                sep = "\n\n"))
+    opts <- parse_args(OptionParser(usage = usage,
+                                    option_list = option_list,
+                                    description = description),
+                       convert_hyphens_to_underscores = TRUE)
+
+    opts
 }
 
-## Parse the infile.
-infile <- args[1]
-if (!file.exists(infile)) {
-    abort(paste0("ERROR -- Input file '",
-                 infile,
-                 "' does not exist!"))
-}
 
-## Parse the outfile, checking that specified outdirectory exists.
-outfile <- args[2]
-outdir <- dirname(outfile)
-if (!dir.exists(outdir)) {
-    abort(paste0("ERROR -- Directory '",
-                 outdir,
-                 "' for the outfile '",
-                 outfile,
-                 "' does not exist!"))
-}
+#### Actual program starts here ####
 
-## Use ggplot2.  Will exit if missing the package.  Supress messages
-## about overwritten methods.
-suppressMessages(library(ggplot2))
+opts <- set_up_opts()
 
-## Read the input table.
-dat <- read.table(infile,
-                  header = TRUE,
-                  sep = "\t")
+check_opts(opts)
 
-## Set up the coverage chart.
-cov_plot <- ggplot(dat,
-                   aes(x = nt_position,
-                       y = coverage,
-                       group = sample_name))
-cov_plot <- cov_plot + geom_area()
-cov_plot <- cov_plot + theme_bw()
-cov_plot <- cov_plot + theme(legend.position = "none")
-cov_plot <- cov_plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+dat <- parse_input_data(opts)
 
-## Write chart to outfile.
-pdf(outfile,
-    width=10,
-    height = 2 * length(levels(dat$sample_name)))
-cov_plot
-suppressMessages(invisible(dev.off()))
+cov_plot <- draw_plot(dat, opts)
+
+write_plot(cov_plot, dat, opts)
