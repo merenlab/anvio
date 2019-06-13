@@ -1,0 +1,76 @@
+#!/usr/bin/env Rscript
+
+## Write a `msg` to stderr then exit with code 1.
+abort <- function(msg) {
+    write(msg, file = stderr())
+    quit(save = "no", status = 1, runLast = FALSE)
+}
+
+## Set up usage banners.
+usage <- "  usage: ./anvi-script-visualize-split-coverages </path/to/infile.txt> </path/to/coverage_graphs.pdf>"
+
+info <- "
+  Generate PDF image of coverage for splits across multiple samples.
+
+  The input file required for this script is the output of the program anvi-get-split-coverages.
+"
+
+help_banner<- paste(info, usage, sep = "\n")
+
+## Get command line args.
+args = commandArgs(trailingOnly = TRUE)
+
+## Check if user wants help or passes in wrong number of CLI args.
+if ("--help" %in% args || "-h" %in% args) {
+    abort(help_banner)
+} else if (length(args) != 2) {
+    abort(paste("ERROR -- wrong number of command line arguments.",
+                usage,
+                sep = "\n\n"))
+}
+
+## Parse the infile.
+infile <- args[1]
+if (!file.exists(infile)) {
+    abort(paste0("ERROR -- Input file '",
+                 infile,
+                 "' does not exist!"))
+}
+
+## Parse the outfile, checking that specified outdirectory exists.
+outfile <- args[2]
+outdir <- dirname(outfile)
+if (!dir.exists(outdir)) {
+    abort(paste0("ERROR -- Directory '",
+                 outdir,
+                 "' for the outfile '",
+                 outfile,
+                 "' does not exist!"))
+}
+
+## Use ggplot2.  Will exit if missing the package.  Supress messages
+## about overwritten methods.
+suppressMessages(library(ggplot2))
+
+## Read the input table.
+dat <- read.table(infile,
+                  header = TRUE,
+                  sep = "\t")
+
+## Set up the coverage chart.
+cov_plot <- ggplot(dat,
+                   aes(x = nt_position,
+                       y = coverage,
+                       group = sample_name))
+cov_plot <- cov_plot + geom_area()
+cov_plot <- cov_plot + theme_bw()
+cov_plot <- cov_plot + theme(legend.position = "none")
+cov_plot <- cov_plot + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
+## Write chart to outfile.
+pdf(outfile,
+    width=10,
+    height = 2 * length(levels(dat$sample_name)))
+cov_plot
+suppressMessages(invisible(dev.off()))
