@@ -1,5 +1,24 @@
 #!/usr/bin/env Rscript
 
+## Last update: 2019-06-14 (mooreryan)
+
+## To add a new chart type:
+##
+## - Pick a name for your new chart type, e.g., 'box', then add that
+##   to the `available_chart_types` variable in the `check_chart_type`
+##   function.
+##
+## - Add any other opts that your program needs to the `set_up_opts`
+##   function, and add to the description banner if necessary.
+##
+## - Add a new plot function that takes `dat` and `opts`.  E.g.,
+##   box_plot <- function(dat, opts) { ... }.  Make sure this function
+##   returns a ggplot2 object ready to be plotted by the wrapper
+##   functions.
+##
+## - Add this function to the option list of the `draw_plot` wrapper
+##   function.
+
 ## Use packages.  Will exit if missing the package.  Supress messages
 ## about overwritten methods.
 suppressMessages(library(ggplot2))
@@ -8,21 +27,102 @@ suppressMessages(library(optparse))
 #### Utility functions ####
 
 ## Write a `msg` to stderr then exit with code 1.
-abort <- function(msg) {
+abort <- function(msg, ...) {
     write(paste0("ERROR -- ", msg), file = stderr())
     quit(save = "no", status = 1, runLast = FALSE)
 }
 
-warn <- function(msg) {
-    write(paste0("WARNING -- ", msg), file = stderr())
+log_helper <- function(level, msg, ...) {
+    write(paste0(sprintf("%s -- ", level),
+                 sprintf(msg, ...)),
+          file = stderr())
 }
+
+logger <- list(
+    warn = function(msg, ...) {
+        log_helper("WARNING", msg, ...)
+    },
+
+    info = function(msg, ...) {
+        log_helper("INFO", msg, ...)
+    }
+)
 
 is_hex_color <- function(color) {
     grepl("#[0-9a-fA-F]{6}", color)
 }
 
+## `formula` should refer to variable names in the `df`.  First thing
+## in the formula is the data, and the second thing is the
+## variable/group that you want to group the first thing by.
+sapply_by_group <- function(formula, df, fn, ...) {
+    agg <- aggregate(formula, df, fn, ...)
+    vec <- as.vector(t(agg[2]))
+}
 
+#### These functions are used for compression ####
+get_points_per_sample <- function(split_coverages) {
+    aggregate(
+        coverage ~ sample_name,
+        split_coverages,
+        length
+    )$coverage
+}
+
+get_window_size <- function(sample_size) {
+    window_size <- floor(sample_size / 1000 * 3)
+
+    ifelse(window_size %% 2 == 0,
+           window_size + 1,
+           window_size)
+}
+
+## Smooths the coverage using running medians of size `window_size`, group-by-group.
+smooth_coverage <- function(split_coverages, window_size) {
+    sapply_by_group(
+        coverage ~ sample_name,
+        split_coverages,
+        runmed,
+        k = window_size
+    )
+}
+
+## Takes each point whose nt_position mod `window_size` is zero.  Also
+## take the last point in each sample to get the whole contig.
+shrink_data <- function(split_coverages, window_size) {
+    ## Get max nt_position in each sample.
+    agg <- aggregate(
+        nt_position ~ sample_name,
+        split_coverages,
+        max
+    )
+
+    ## Merge in the max nt_position with the rest of split_coverages data.
+    merged <- merge(
+        split_coverages,
+        agg,
+        by = "sample_name",
+        all.x = TRUE,
+        suffixes = c("", ".max")
+    )
+
+    ## Take only rows whose nt_position divides the window size, plus
+    ## the last row for each sample.
+    subset(merged,
+           nt_position %% window_size == 0 | nt_position == nt_position.max)
+}
+
+## Applies a hard cap to coverage values.  Replaces any above the cap
+## with `max_coverage`.
+cap_coverage <- function(coverage, max_coverage) {
+    ifelse(coverage > max_coverage,
+           max_coverage,
+           coverage)
+}
+
+## Opposite of %in%
 "%nin%" <- Negate("%in%")
+
 
 #### Functions to handle user input ####
 
@@ -73,7 +173,9 @@ check_sample_data_file <- function(opts) {
 check_typeof_double_opts <- function(opts) {
     double_type_opts <- c("whole_chart_width",
                           "individual_chart_height",
-                          "max_coverage")
+                          "max_coverage",
+                          "compress_threshold",
+                          "window_size")
     for (arg in double_type_opts) {
         if (typeof(opts[[arg]]) != "double") {
             abort(paste0("the type of '",
@@ -90,7 +192,8 @@ check_size_opts <- function(opts) {
     ## Any of these options are sizes and should be >= 1.
     size_opts <- c("whole_chart_width",
                    "individual_chart_height",
-                   "max_coverage")
+                   "max_coverage",
+                   "compress_threshold")
     for (arg in size_opts) {
         if (opts[[arg]] < 1) {
             abort(paste0("'",
@@ -101,6 +204,20 @@ check_size_opts <- function(opts) {
         }
     }
 }
+
+## Window size must be odd.  If it is even, bump it up to the next odd
+## number.
+check_window_size <- function(opts) {
+    ## Anything less than 1 means auto, so only bump things > 1.
+    if (opts$window_size >= 1 && opts$window_size %% 2 == 0) {
+        logger$warn("--window-size must be odd.  Got '%f', using '%f' instead.",
+                    opts$window_size,
+                    opts$window_size + 1)
+
+        opts$window_size <- opts$window_size + 1
+    }
+}
+
 
 ## Only certain charting types have been implemented.  Make sure user
 ## selects one of these.
@@ -119,6 +236,7 @@ check_chart_type <- function(opts) {
 }
 
 
+## This function is called in the main part of the script.
 ## `opts` is the output of parse_args function
 check_opts <- function(opts) {
     check_required_args(opts)
@@ -127,6 +245,7 @@ check_opts <- function(opts) {
     check_sample_data_file(opts)
     check_typeof_double_opts(opts)
     check_size_opts(opts)
+    check_window_size(opts)
     check_chart_type(opts)
 }
 
@@ -154,13 +273,51 @@ parse_split_coverages <- function(opts) {
         abort("bad header row in split coverages file")
     }
 
+    if (!opts$no_compression) {
+        ## Check if the samples are big enough for compression
+
+        ## Number of data points per sample.
+        points_per_sample <- get_points_per_sample(split_coverages)
+
+
+        ## Check if we need to compress.
+        if (any(points_per_sample > opts$compress_threshold)) {
+
+            ## If window_size is set to auto, then we need to calculate it now.
+            if (opts$window_size < 1) {
+                logger$info("Automatically setting the window size.")
+
+                ## Warn if not all points per sample are equal
+                if (length(unique(points_per_sample)) > 1) {
+                    logger$warn("Not all samples have the same number of points!  Setting compression to the largest sample.")
+                }
+
+                sample_size<- max(points_per_sample)
+                logger$info("Largest sample is %d", sample_size)
+
+                opts$window_size <- get_window_size(sample_size)
+            }
+
+            logger$info("Compressing samples.  Window size is %d", opts$window_size)
+            logger$info("Total data points before compression: %d", nrow(split_coverages))
+
+
+            ## Replace orig. coverage with smoothed cov.
+            split_coverages$coverage <- smooth_coverage(split_coverages, opts$window_size)
+
+            split_coverages <- shrink_data(split_coverages, opts$window_size)
+
+            logger$info("Total data points after compression: %d", nrow(split_coverages))
+        }
+    }
+
     ## Cap the coverage at the max coverage value.
-    split_coverages$coverage <- ifelse(split_coverages$coverage > opts$max_coverage,
-                                       opts$max_coverage,
-                                       split_coverages$coverage)
+    logger$info("Coverage will be capped at %d", opts$max_coverage)
+    split_coverages$coverage <- cap_coverage(split_coverages$coverage, opts$max_coverage)
 
     split_coverages
 }
+
 
 ## Check sample_data headers
 check_sample_data_headers <- function(sample_data) {
@@ -176,7 +333,7 @@ fix_colors <- function(sample_data) {
         sample_data$sample_color,
         function(color) {
             ifelse(color == "" || (color %nin% colors() && !is_hex_color(color)),
-                   "black",
+                   "#333333",
                    as.character(color))
         }
     )
@@ -215,7 +372,7 @@ subset_split_coverages <- function(split_coverages, sample_data) {
                                      sample_name %in% sample_data$sample_name)
 
     if (nrow(split_coverages) != nrow(split_coverages_subset)) {
-        warn("Not all samples in the split coverages file were present in the additional data file.")
+        logger$warn("Not all samples in the split coverages file were present in the additional data file.")
     }
 
     split_coverages_subset
@@ -243,6 +400,7 @@ add_sample_data <- function(split_coverages, sample_data) {
           all.x = TRUE)
 }
 
+## This function is called in the main part of the script.
 parse_input_data <- function(opts) {
     split_coverages <- parse_split_coverages(opts)
     sample_data <- parse_sample_data(opts)
@@ -311,6 +469,7 @@ line_plot <- function(dat, opts) {
     cov_plot
 }
 
+## This function is called in the main part of the script.
 ## Wrapper fn to handle plot drawing.
 draw_plot <- function(...) {
     if (opts$chart_type == "area") {
@@ -323,7 +482,7 @@ draw_plot <- function(...) {
     }
 }
 
-
+## This function is called in the main part of the script.
 ## Fn to write plot to disk.
 write_plot <- function(gg_plot, dat, opts) {
     pdf(opts$outfile,
@@ -368,24 +527,59 @@ set_up_opts <- function() {
                     type = "character",
                     default = "area",
                     help = "What type of chart do you want? [default %default]"),
+
+        ## Data "compression"
         make_option(opt_str = c("-m", "--max-coverage"),
                     action = "store",
                     type = "double",
                     default = 1000,
-                    help = "Max coverage.  Any value g.t. this will be capped at this value. [default %default]")
+                    help = "Max coverage.  Any value g.t. this will be capped at this value. [default %default]"),
+        make_option(opt_str = c("-p", "--compress-threshold"),
+                    action = "store",
+                    type = "double",
+                    default = 1000,
+                    help = "If samples have more data points than this, they will be compressed. [default %default]"),
+        make_option(opt_str = c("-n", "--window-size"),
+                    action = "store",
+                    type = "double",
+                    default = 0,
+                    help = "Window size for compression.  Higher number = more compression. Pass 0 for auto. [default %default]"),
+        make_option(opt_str = c("-r", "--no-compression"),
+                    action = "store-true",
+                    type = "logical",
+                    default = FALSE,
+                    help = "Pass this flag if you want no compression.  Overrides other compression opts.")
 
     )
 
-    usage <- "%prog -i infile.txt -o coverage_graphs.pdf [-s sample_data.txt] [-w chart_width] [-c chart_height] [-t chart_type] [-m max_coverage]"
+    usage <- "%prog -i infile.txt -o coverage_graphs.pdf [-s sample_data.txt] [-w chart_width] [-c chart_height] [-t chart_type] [-m max_coverage] [-p compress-threshold] [-n window-size] [--no-compression]"
+
     description <- "
 Description:
   Generate PDF image of coverage for splits across multiple samples.
 
-  - The input file required for this script is the output of the program anvi-get-split-coverages.
+  - The input file required for this script is the output of the
+    program anvi-get-split-coverages.
 
-  - Any color that is not included in `colors()` or a valid hex code #00FF00 will be changed to 'black'.
+  - Any color that is not included in `colors()` or a valid hex code
+    (e.g., #00FF00) will be changed to '#333333'.
 
-  - Current options for --chart-type include: 'area', 'line'"
+  - Current options for --chart-type include: 'area', 'line'
+
+  Compression: ggplot2 can take a long time to plot lots of data
+  points.  Even a smallish data (a couple of samples, ~30,000 data
+  points per samples) can take a few minutes to plot.
+
+    --compress-threshold ...if samples have more data points than this,
+      then they will be compressed.
+
+    --window-size ...Sets the window size for the compression.  The
+      higher this number is, the more compression.  Setting the
+      window size < 1 will let the program automatically determine a
+      reasonable window size depending on your data.
+
+    --no-compression ...Pass this flag if you want to completely
+      bypass compression regardless of any other compression options."
 
     opts <- parse_args(OptionParser(usage = usage,
                                     option_list = option_list,
@@ -395,15 +589,18 @@ Description:
     opts
 }
 
-
 #### Actual program starts here ####
 
 opts <- set_up_opts()
 
+logger$info("Checking options")
 check_opts(opts)
 
+logger$info("Parsing input data")
 dat <- parse_input_data(opts)
 
+logger$info("Making coverage plots")
 cov_plot <- draw_plot(dat, opts)
 
+logger$info("Writing coverage plots")
 write_plot(cov_plot, dat, opts)
