@@ -708,7 +708,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     sample_to_id_dict = {}
 
     input_matrix = open(file_path, 'rU')
-    columns = input_matrix.readline().strip().split('\t')[1:]
+    columns = input_matrix.readline().strip('\n').split('\t')[1:]
 
     fields_of_interest = []
     if cols_to_return:
