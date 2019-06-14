@@ -22,6 +22,7 @@ Daniel Blankenberg         Genomic Medicine Institute         United States
 John Eppley                University of Hawaiʻi at Mānoa     United States
 S. Çağlar Onur             DigitalOcean, Inc.                 United States
 Xabier Vázquez-Campos      University of New South Wales      Australia
+Ryan Moore                 University of Delaware             United States
 Srinidhi Varadharajan      University of Oslo                 Norway
 Bryan Merill               Stanford University                United States
 C. Titus Brown             University of California Davis     United States
