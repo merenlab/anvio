@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-## Last update: 2019-06-14 (mooreryan)
+## Last update: 2019-06-20 (mooreryan)
 
 ## To add a new chart type:
 ##
@@ -87,17 +87,17 @@ smooth_coverage <- function(split_coverages, window_size) {
     )
 }
 
-## Takes each point whose nt_position mod `window_size` is zero.  Also
+## Takes each point whose x_values mod `window_size` is zero.  Also
 ## take the last point in each sample to get the whole contig.
 shrink_data <- function(split_coverages, window_size) {
-    ## Get max nt_position in each sample.
+    ## Get max x_values in each sample.
     agg <- aggregate(
-        nt_position ~ sample_name,
+        x_values ~ sample_name,
         split_coverages,
         max
     )
 
-    ## Merge in the max nt_position with the rest of split_coverages data.
+    ## Merge in the max x_values with the rest of split_coverages data.
     merged <- merge(
         split_coverages,
         agg,
@@ -106,10 +106,10 @@ shrink_data <- function(split_coverages, window_size) {
         suffixes = c("", ".max")
     )
 
-    ## Take only rows whose nt_position divides the window size, plus
+    ## Take only rows whose x_values divides the window size, plus
     ## the last row for each sample.
     subset(merged,
-           nt_position %% window_size == 0 | nt_position == nt_position.max)
+           x_values %% window_size == 0 | x_values == x_values.max)
 }
 
 ## Applies a hard cap to coverage values.  Replaces any above the cap
@@ -249,7 +249,7 @@ check_opts <- function(opts) {
     check_chart_type(opts)
 }
 
-## Parse the split coverages file
+## Parse the split coverages file.
 parse_split_coverages <- function(opts) {
     ## Sanity check: split coverages should always be given.
     ## check_opts ensures this.
@@ -271,6 +271,35 @@ parse_split_coverages <- function(opts) {
     )
     if (any(names(split_coverages) != expected_split_cov_header)) {
         abort("bad header row in split coverages file")
+    }
+
+    ## If there are multiple split_names in the split coverages file,
+    ## we need to make sure they are all sorted properly, then we need
+    ## to treat all split_names within a single contig as one big
+    ## super-contig.
+    if (length(unique(split_coverages$split_name)) > 1) {
+        ## Sort the data based on sample name, then by split name.
+        split_coverages <- split_coverages[order(split_coverages$sample_name,
+                                                 split_coverages$split_name), ]
+
+        ## Get number of positions (rows) for all splits per sample.
+        sample_counts <- table(split_coverages$sample_name)
+
+        ## Make sample-wide nucleotide positions.  Each sample has
+        ## nucleotide positions running from 0 to count - 1.
+
+        ## This will be a list if the samples have different total
+        ## numbers of nucleotides (e.g., different numbers of splits)
+        ## or a matrix if all samples have exactly the same number of
+        ## nucleotides.
+        nt_posns_by_sample <- sapply(sample_counts, function(count) { 0:(count - 1) })
+
+        ## unlist() followed by as.vector() handles both of the above
+        ## cases.
+        split_coverages$x_values <- as.vector(unlist(nt_posns_by_sample))
+    } else {
+        ## Use the regular nt_position as the x_values.
+        split_coverages$x_values <- split_coverages$nt_position
     }
 
     if (!opts$no_compression) {
@@ -387,7 +416,7 @@ sort_split_coverages <- function(split_coverages, sample_data) {
 
     ## First order by sample name, then by nt pos.
     split_coverages[order(split_coverages$sample_name,
-                          split_coverages$nt_position), ]
+                          split_coverages$x_values), ]
 }
 
 add_sample_data <- function(split_coverages, sample_data) {
@@ -405,24 +434,22 @@ parse_input_data <- function(opts) {
     split_coverages <- parse_split_coverages(opts)
     sample_data <- parse_sample_data(opts)
 
-    ## Get the sample names.
-    sample_names <- split_coverages$sample_name
-
     ## If sample_data file is given, we need to adjust the split
     ## coverages data frame.
     if (!is.null(sample_data)) {
         ## Make sure the names in sample_data df are okay.
-        check_sample_names(sample_data, sample_names)
+        check_sample_names(sample_data, split_coverages$sample_name)
 
         split_coverages <- subset_split_coverages(split_coverages, sample_data)
         split_coverages <- sort_split_coverages(split_coverages, sample_data)
         split_coverages <- add_sample_data(split_coverages, sample_data)
     }
 
-
     list(split_coverages = split_coverages,
          sample_data = sample_data,
-         sample_names = sample_names)
+         ## Take sample names here in case any samples were removed
+         ## above.
+         sample_names = split_coverages$sample_name)
 }
 
 
@@ -431,7 +458,7 @@ parse_input_data <- function(opts) {
 area_plot <- function(dat, opts) {
     ## Set up the coverage chart.
     cov_plot <- ggplot(dat$split_coverages,
-                       aes(x = nt_position,
+                       aes(x = x_values,
                            y = coverage,
                            group = sample_name))
 
@@ -445,6 +472,7 @@ area_plot <- function(dat, opts) {
     cov_plot <- cov_plot + theme_bw()
     cov_plot <- cov_plot + theme(legend.position = "none")
     cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+    cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
 
     cov_plot
 }
@@ -452,7 +480,7 @@ area_plot <- function(dat, opts) {
 line_plot <- function(dat, opts) {
     ## Set up the coverage chart.
     cov_plot <- ggplot(dat$split_coverages,
-                       aes(x = nt_position,
+                       aes(x = x_values,
                            y = coverage,
                            group = sample_name))
 
@@ -465,6 +493,7 @@ line_plot <- function(dat, opts) {
     cov_plot <- cov_plot + theme_bw()
     cov_plot <- cov_plot + theme(legend.position = "none")
     cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+    cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
 
     cov_plot
 }
