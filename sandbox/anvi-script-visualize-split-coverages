@@ -41,7 +41,7 @@ abort <- function(msg, ...) {
 }
 
 log_helper <- function(level, msg, ...) {
-    write(paste0(sprintf("%s -- ", level),
+    write(paste0(sprintf("%s [%s] -- ", level, format(Sys.time(), "%m/%d/%y %H:%M:%S")),
                  sprintf(msg, ...)),
           file = stderr())
 }
@@ -498,7 +498,12 @@ area_plot <- function(dat, opts) {
 
     cov_plot <- cov_plot + theme_bw()
     cov_plot <- cov_plot + theme(legend.position = "none")
-    cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
+    if (opts$free_y_scale)
+        cov_plot <- cov_plot + facet_grid(sample_name ~ ., scales="free_y")
+    else
+        cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
     cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
 
     cov_plot
@@ -519,7 +524,12 @@ line_plot <- function(dat, opts) {
 
     cov_plot <- cov_plot + theme_bw()
     cov_plot <- cov_plot + theme(legend.position = "none")
-    cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
+    if (opts$free_y_scale)
+        cov_plot <- cov_plot + facet_grid(sample_name ~ ., scales="free_y")
+    else
+        cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
     cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
 
     cov_plot
@@ -595,13 +605,20 @@ set_up_opts <- function() {
                     type = "double",
                     default = 1000,
                     help = "If samples have more data points than this, they will be compressed. [default %default]"),
+        make_option(opt_str = c("-f", "--free-y-scale"),
+                    action = "store_true",
+                    type = "logical",
+                    default = FALSE,
+                    help = "Depending on the visualization strategy, the y-axis of the plot may be scaled to the common max.\
+                        Use this flag to let them go free so every single plot has its own maximum \
+                        value. [default %default]"),
         make_option(opt_str = c("-n", "--window-size"),
                     action = "store",
                     type = "double",
                     default = 0,
                     help = "Window size for compression.  Higher number = more compression. Pass 0 for auto. [default %default]"),
         make_option(opt_str = c("-r", "--no-compression"),
-                    action = "store-true",
+                    action = "store_true",
                     type = "logical",
                     default = FALSE,
                     help = "Pass this flag if you want no compression.  Overrides other compression opts.")
