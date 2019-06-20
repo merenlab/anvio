@@ -574,7 +574,7 @@ set_up_opts <- function() {
                     default = 0,
                     help = "Window size for compression.  Higher number = more compression. Pass 0 for auto. [default %default]"),
         make_option(opt_str = c("-r", "--no-compression"),
-                    action = "store-true",
+                    action = "store_true",
                     type = "logical",
                     default = FALSE,
                     help = "Pass this flag if you want no compression.  Overrides other compression opts.")
