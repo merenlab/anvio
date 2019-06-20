@@ -520,6 +520,31 @@ D = {
              'help': "The taxonomic level to use. The default is '%(default)s'. Only relevant if the\
                       anvi'o ontigs database contains taxonomic annotations."}
                 ),
+    'taxonomy-file': (
+            ['-t', '--taxonomy-file'],
+            {'default': None,
+             'type': str,
+             'help': "Path to The taxonomy file format tsv containe:\
+              ID\td__domaine;p__phylum;[..];s__genus species"}
+                ),
+    'taxonomy-database': (
+            ['-r', '--taxonomy-database'],
+            {'default': None,
+             'type': str,
+             'help': "Path to The directory containe Diamond database for SCGs."}
+                ),
+    'methode': (
+            ['-m', '--methode'],
+            {'default': 'friedman',
+             'type': str,
+             'help': "Methode chose for taxonomy estimation.friedman,tree,bitscore"}
+                ),
+    'cut_off_methode': (
+            ['--cut_off_methode'],
+            {'default': 0.98,
+             'type': float,
+             'help':  "cut off for the methode. Default '%(default)s'."}
+                ),
     'cog-data-dir': (
             ['--cog-data-dir'],
             {'default': None,

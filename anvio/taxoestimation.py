@@ -47,18 +47,20 @@ class SCGTaxonomy:
 
         self.taxonomy_database_path
 
-        self.bestpercent = args.bestpercent
+        self.cut_off_methode = args.cut_off_methode
 
         self.methode = args.methode
 
         self.profile_db = args.profile_db
 
-        self.SCGs = ["Ribosomal_L1", "Ribosomal_L13", "Ribosomal_L16", "Ribosomal_L17",
+        """self.SCGs = ["Ribosomal_L1", "Ribosomal_L13", "Ribosomal_L16", "Ribosomal_L17",
                      "Ribosomal_L2", "Ribosomal_L20", "Ribosomal_L21p", "Ribosomal_L22",
                      "Ribosomal_L27A", "Ribosomal_L3", "Ribosomal_L4", "Ribosomal_L6",
                      "Ribosomal_L9_C", "Ribosomal_S11", "Ribosomal_S2", "Ribosomal_S20p",
                      "Ribosomal_S3_C", "Ribosomal_S6", "Ribosomal_S7", "Ribosomal_S9",
-                     "ribosomal_L24"]
+                     "ribosomal_L24"]"""
+
+        self.SCGs = [db for db in os.listdir(self.taxonomy_database_path) if db.endswith(".dmnd")]
 
         self.taxonomic_levels_parser = {'d': 't_domain',
                                         'p': "t_phylum",
@@ -72,10 +74,21 @@ class SCGTaxonomy:
             't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 
         self.SCG_DB_PATH = lambda SCG: os.path.join(
+            self.taxonomy_database_path, SCG)
+
+        print(self.SCG_DB_PATH)
+
+        """self.SCG_DB_PATH = lambda db: os.path.join(
+            self.taxonomy_database_path, [db for db in os.listdir(self.taxonomy_database_path) if db.endswith(".dmnd")])
+
+        self.SCG_DB_PATH = lambda SCG: os.path.join(
             self.taxonomy_database_path, "%s.dmnd" % SCG)
 
         self.SCG_FASTA_DB_PATH = lambda SCG: os.path.join(
-            self.taxonomy_database_path, SCG)
+            self.taxonomy_database_path, SCG)"""
+
+        self.SCG_FASTA_DB_PATH =lambda SCG: os.path.join(self.taxonomy_database_path,\
+                                                         [db for db in os.listdir(self.taxonomy_database_path) if db.endwith(".dmnd")])
 
         self.taxonomy_dict = {}
 
@@ -167,26 +180,31 @@ class SCGTaxonomy:
         header = show_list_position_ribosomal
         table = []
         i = 0
+
         for individue in show_matrix:
-            line = [
-                list(self.taxonomy_dict[list_position_entry[i]].values())[-1]] + individue
+            print(list_position_entry[i])
+            taxonomyindividue=list(self.taxonomy_dict[list_position_entry[i]].values())
+            print(taxonomyindividue)
+            line = [taxonomyindividue[-1]] + individue
             table.append(line)
             i += 1
 
         self.run.warning(None, header='%s' % (name), lc="blue")
         print(tabulate(table, headers=header,
                        tablefmt="fancy_grid", numalign="right"))
-        if len(show_list_position_ribosomal):
+        if len(show_list_position_ribosomal[6:]):
             show_matrix = [sublist[6:] for sublist in show_matrix]
             show_list_position_ribosomal = show_list_position_ribosomal[6:]
-            show_matrix_rank(name, matrix, show_matrix,
+            self.show_matrix_rank(name, matrix, show_matrix,
                              show_list_position_ribosomal)
 
     @timer
     def get_hmm_sequences_dict_into_type(self, hmm_sequences_dict):
         hmm_sequences_dict_per_type = {}
+
         for entry_id in hmm_sequences_dict:
             entry = hmm_sequences_dict[entry_id]
+
             if self.profile_db:
                 name = entry['bin_id']
             else:
@@ -199,6 +217,7 @@ class SCGTaxonomy:
 
         return hmm_sequences_dict_per_type
 
+
     @timer
     def predict_from_SCGs_dict(self, hmm_sequences_dict):
         """Takes an HMMs dictionary, and yields predictions"""
@@ -206,7 +225,6 @@ class SCGTaxonomy:
         self.init()
 
         # split hmm_sequences_dict
-
         hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type(
             hmm_sequences_dict)
 
@@ -220,10 +238,11 @@ class SCGTaxonomy:
                 self.run.info('SCGs', ', '.join(
                     [e['gene_name'] for e in hmm_sequences_dict_per_type[name].values()]))
             else:
-                self.run.info('SCGs', ', '.join(
+                self.run.info('contigs with SCGs', ', '.join(
                     [e['contig'] for e in hmm_sequences_dict_per_type[name].values()]))
 
             j = 0
+
             for entry in hmm_sequences_dict_per_type[name].values():
                 gene_name = entry['gene_name']
 
@@ -231,11 +250,14 @@ class SCGTaxonomy:
 
                 hits = self.get_raw_blast_hits(entry)
 
+
                 end_get_raw_blast_hits = time.perf_counter()
                 print("\n time predict_from_SCGs_dict for a bin : ",
                       end_get_raw_blast_hits - start_get_raw_blast_hits)
+
                 if not hits:
                     j += 1
+                    continue
 
                 # replace accessions with taxonomy
                 for hit in hits:
@@ -263,6 +285,7 @@ class SCGTaxonomy:
             print("\n time predict_from_SCGs_dict for a bin : ",
                   end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)
 
+
     @timer
     def get_raw_blast_hits(self, d, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
         """Takes a dictionary that contains `gene_name` and `sequence`, and returns
@@ -278,35 +301,41 @@ class SCGTaxonomy:
                                does not look like the way we expected it. This function\
                                expects a dictionary that contains keys `gene_name` and `sequence`.")
 
+
         db_path = self.SCG_DB_PATH(d['gene_name'])
-        sequence = d['sequence']
+        if db_path:
+            sequence = d['sequence']
 
-        diamond = Diamond(db_path, run=run_quiet, progress=progress_quiet)
-        diamond.max_target_seqs = max_target_seqs
-        diamond.evalue = evalue
-        diamond.min_pct_id = min_pct_id
+            diamond = Diamond(db_path, run=run_quiet, progress=progress_quiet)
+            diamond.max_target_seqs = max_target_seqs
+            diamond.evalue = evalue
+            diamond.min_pct_id = min_pct_id
 
-        diamond_output = diamond.blastp_stdin(sequence)
+            diamond_output = diamond.blastp_stdin(sequence)
 
-        hits = []
-        for entry in [line.split('\t') for line in diamond_output.split('\n') if line.startswith('seq')]:
-            accession = entry[1]
+            hits = []
+            for entry in [line.split('\t') for line in diamond_output.split('\n') if line.startswith('seq')]:
+                accession = entry[1]
 
-            # dict(zip(['accession', 'pident', 'length', 'mismatch', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'], [float(entry[i]) if i > 1 else entry[i] for i in range(1, 12)]))
-            hit = dict(zip(['accession', 'pident', 'bitscore'], [
-                       float(entry[i]) if i > 1 else entry[i] for i in [1, 2, 11]]))
+                # dict(zip(['accession', 'pident', 'length', 'mismatch', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'], [float(entry[i]) if i > 1 else entry[i] for i in range(1, 12)]))
+                hit = dict(zip(['accession', 'pident', 'bitscore'], [
+                           float(entry[i]) if i > 1 else entry[i] for i in [1, 2, 11]]))
 
-            hits.append(hit)
+                hits.append(hit)
 
             return hits
+        else:
+            raise ConfigError("No matching database for"+d['gene_name'])
+
 
     @timer
     def get_consensus_taxonomy(self, hits_per_gene, name, hmm_sequences_dict_per_type):
         """Different methode for assignation"""
 
+
         if not self.solo_hits(hits_per_gene):
 
-            self.run.info("Assignation methode", methode)
+            self.run.info("Assignation methode : ", self.methode)
 
             if self.methode == "friedman":
                 consensus_taxonomy = self.rank_assignement(hits_per_gene, name)
@@ -314,25 +343,29 @@ class SCGTaxonomy:
             if self.methode == "tree":
                 self.make_tree_with_hit(
                     hits_per_gene, hmm_sequences_dict_per_type, name)
+                consensus_taxonomy="tree"
+                return(consensus_taxonomy)
+
 
             if self.methode == "bitscore":
                 score_by_entry = self.get_cumul_hit_per_gene(hits_per_gene)
                 if anvio.DEBUG:
                     self.show_table_score(name, score_by_entry)
                 consensus_taxonomy = self.get_consensus_taxonomy_with_score_by_entry(
-                    score_by_entry, name, self.bestpercent)
+                    score_by_entry, name, self.cut_off_methode)
 
             if not self.profile_db:
                 return(consensus_taxonomy)
 
-    def get_consensus_taxonomy_with_score_by_entry(self, score_by_entry, name, bestpercent):
+
+    def get_consensus_taxonomy_with_score_by_entry(self, score_by_entry, name, cut_off_methode):
         try:
             maxscore = max(score_by_entry.values())
         except:
             self.run.info("Estimate Taxonomy of " + str(name), "N/A")
             return
         selected_entrys_by_score = {
-            code: score for code, score in score_by_entry.items() if score > (float(maxscore) * float(bestpercent))}
+            code: score for code, score in score_by_entry.items() if score > (float(maxscore) * float(cut_off_methode))}
 
         self.run.info("Number of taxonomy use for the consensus",
                       len(selected_entrys_by_score))
@@ -345,6 +378,7 @@ class SCGTaxonomy:
             taxonomy.append(self.taxonomy_dict[code])
 
         self.assign_taxonomie_solo_hit(taxonomy)
+
 
     def get_cumul_hit_per_gene(self, hits_per_gene):
         """add bitscore of eatch blast per query"""
@@ -366,6 +400,7 @@ class SCGTaxonomy:
                         float(cumul_hit_per_gene[entry['accession']])\
                         + (float(entry['bitscore']) / number_of_matching_genes)
         return cumul_hit_per_gene
+
 
     def get_matching_gene(self, hits_per_gene):
         matching_genes = [
@@ -391,7 +426,7 @@ class SCGTaxonomy:
                 maxscore = hit['bitscore']
                 sequences_match.append(
                     (species_name, fasta_db.sequences[index]))
-            if float(hit['bitscore']) < (float(maxscore) * float(self.bestpercent)):
+            if float(hit['bitscore']) < (float(maxscore) * float(self.cut_off_methode)):
                 continue
             sequences_match.append((species_name, fasta_db.sequences[index]))
         return(sequences_match)
@@ -519,27 +554,27 @@ class SCGTaxonomy:
                     if perfectident and entry['pident'] != 100:
                         rank += 1
                         emptymatrix = self.fill_position_matrix(
-                            emptymatrix, list_position_entry, list_position_ribosomal, rank)
+                            emptymatrix, list_position_entry, list_position_ribosomal, rank, entry, hit)
                         continue
                     if bestscore < entry['bitscore']:
                         bestscore = entry['bitscore']
                         if entry['pident'] == 100:
                             perfectident = True
                         emptymatrix = self.fill_position_matrix(
-                            emptymatrix, list_position_entry, list_position_ribosomal, rank)
+                            emptymatrix, list_position_entry, list_position_ribosomal, rank, entry, hit)
                         continue
                     # parameter for considere 2 hit have same rank rank
                     if entry['pident'] == 100 or float(entry['bitscore']) >= (bestscore * 1):
                         emptymatrix = self.fill_position_matrix(
-                            emptymatrix, list_position_entry, list_position_ribosomal, rank)
+                            emptymatrix, list_position_entry, list_position_ribosomal, rank, entry, hit)
                         continue
                     rank += 1
                     emptymatrix = self.fill_position_matrix(
-                        emptymatrix, list_position_entry, list_position_ribosomal, rank)
+                        emptymatrix, list_position_entry, list_position_ribosomal, rank, entry, hit)
 
         return(emptymatrix, maxrank, bestident)
 
-    def fill_position_matrix(self, emptymatrix, list_position_entry, list_position_ribosomal, rank):
+    def fill_position_matrix(self, emptymatrix, list_position_entry, list_position_ribosomal, rank, entry,hit):
         emptymatrix[list_position_entry.index(
             entry['accession'])][list_position_ribosomal.index(hit)] = rank
         return(emptymatrix)
