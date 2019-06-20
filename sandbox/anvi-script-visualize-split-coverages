@@ -471,7 +471,12 @@ area_plot <- function(dat, opts) {
 
     cov_plot <- cov_plot + theme_bw()
     cov_plot <- cov_plot + theme(legend.position = "none")
-    cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
+    if (opts$free_y_scale)
+        cov_plot <- cov_plot + facet_grid(sample_name ~ ., scales="free_y")
+    else
+        cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
     cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
 
     cov_plot
@@ -492,7 +497,12 @@ line_plot <- function(dat, opts) {
 
     cov_plot <- cov_plot + theme_bw()
     cov_plot <- cov_plot + theme(legend.position = "none")
-    cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
+    if (opts$free_y_scale)
+        cov_plot <- cov_plot + facet_grid(sample_name ~ ., scales="free_y")
+    else
+        cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+
     cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
 
     cov_plot
@@ -568,6 +578,13 @@ set_up_opts <- function() {
                     type = "double",
                     default = 1000,
                     help = "If samples have more data points than this, they will be compressed. [default %default]"),
+        make_option(opt_str = c("-f", "--free-y-scale"),
+                    action = "store_true",
+                    type = "logical",
+                    default = FALSE,
+                    help = "Depending on the visualization strategy, the y-axis of the plot may be scaled to the common max.\
+                        Use this flag to let them go free so every single plot has its own maximum \
+                        value. [default %default]"),
         make_option(opt_str = c("-n", "--window-size"),
                     action = "store",
                     type = "double",
