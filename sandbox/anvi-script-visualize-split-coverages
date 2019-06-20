@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-## Last update: 2019-06-14 (mooreryan)
+## Last update: 2019-06-20 (mooreryan)
 
 ## To add a new chart type:
 ##
@@ -434,24 +434,22 @@ parse_input_data <- function(opts) {
     split_coverages <- parse_split_coverages(opts)
     sample_data <- parse_sample_data(opts)
 
-    ## Get the sample names.
-    sample_names <- split_coverages$sample_name
-
     ## If sample_data file is given, we need to adjust the split
     ## coverages data frame.
     if (!is.null(sample_data)) {
         ## Make sure the names in sample_data df are okay.
-        check_sample_names(sample_data, sample_names)
+        check_sample_names(sample_data, split_coverages$sample_name)
 
         split_coverages <- subset_split_coverages(split_coverages, sample_data)
         split_coverages <- sort_split_coverages(split_coverages, sample_data)
         split_coverages <- add_sample_data(split_coverages, sample_data)
     }
 
-
     list(split_coverages = split_coverages,
          sample_data = sample_data,
-         sample_names = sample_names)
+         ## Take sample names here in case any samples were removed
+         ## above.
+         sample_names = split_coverages$sample_name)
 }
 
 
