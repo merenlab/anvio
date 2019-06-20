@@ -53,8 +53,8 @@ def main(args):
     if not args.methode:
         args.methode = "tree"
 
-    if not args.bestpercent:
-        args.bestpercent = 0.98
+    if not args.cut_off_methode:
+        args.cut_off_methode = 0.98
 
     if args.external_genomes and (args.contigs_db or args.profile_db):
         raise ConfigError("If you are interested in using a list of external genomes, you shouldn't be using a contigs db or\
@@ -99,8 +99,8 @@ def main(args):
     if not args.gene_names:
         args.gene_names = "Ribosomal_L1,Ribosomal_L13,Ribosomal_L16,Ribosomal_L17,Ribosomal_L2,Ribosomal_L20,Ribosomal_L21p,Ribosomal_L22,Ribosomal_L27A,Ribosomal_L3,Ribosomal_L4,Ribosomal_L6,Ribosomal_L9_C,Ribosomal_S11,Ribosomal_S2,Ribosomal_S20p,Ribosomal_S3_C,Ribosomal_S6,Ribosomal_S7,Ribosomal_S9,ribosomal_L24"
 
-    if not args.bestpercent:
-        args.bestpercent = 0.98
+    if not args.cut_off_methode:
+        args.cut_off_methode = 0.98
 
     # the following if/else block either uses SequencesForHMMHits or the wrapper class
     # SequencesForHMMHitsWrapperForMultipleContigs (if there are multiple contigs files)
@@ -300,17 +300,13 @@ if __name__ == '__main__':
     groupH = parser.add_argument_group('Taxonomy', "Taxomy assignation Argument\
                                         /!\.")
     # , help="taxo file", nargs='?')
-    groupH.add_argument(*anvio.A('taxonomy-file'))
-    # , **anvio.K('concatenate-genes'))
+    groupH.add_argument(*anvio.A('taxonomy-file'), **anvio.K('taxonomy-file'))
     # , help="db ribosomal prot", nargs='?')
-    groupH.add_argument(*anvio.A('taxonomy-database'))
-    # ,** anvio.K('concatenate-genes'))
+    groupH.add_argument(*anvio.A('taxonomy-database'),** anvio.K('taxonomy-database'))
     # , help="cutoff for consider taxonomie to the best taxonomie score . Default value 0.98")
-    groupH.add_argument(*anvio.A('bestpercent'))
-    # , **anvio.K('concatenate-genes'))
+    groupH.add_argument(*anvio.A('cut_off_methode'), **anvio.K('cut_off_methode'))
     # , help="method chosen for estimation of taxonomy ")
-    groupH.add_argument(*anvio.A('methode'))
-    # , **anvio.K('concatenate-genes'))
+    groupH.add_argument(*anvio.A('methode'), **anvio.K('methode'))
 
     args = anvio.get_args(parser)
 
