@@ -2,6 +2,14 @@
 
 ## Last update: 2019-06-20 (mooreryan)
 
+## To run unit tests:
+##
+## - Install the `testthat` package.
+##
+## - The test runner is located ${anvio_source_dir}/anvio/tests/sandbox/test_visualize_split_coverages/test_visualize_split_coverages.R
+##
+## - Run the test runner with Rscript at the terminal.
+
 ## To add a new chart type:
 ##
 ## - Pick a name for your new chart type, e.g., 'box', then add that
@@ -70,14 +78,21 @@ get_points_per_sample <- function(split_coverages) {
 }
 
 get_window_size <- function(sample_size) {
+    ## This size was chosen because it reduces the size, but still
+    ## looks nice over a large range of values.
     window_size <- floor(sample_size / 1000 * 3)
 
+    ## Window size must be odd.
     ifelse(window_size %% 2 == 0,
            window_size + 1,
            window_size)
 }
 
-## Smooths the coverage using running medians of size `window_size`, group-by-group.
+## Smooths the coverage using running medians of size `window_size`,
+## group-by-group.  Output is sorted by sample_name (according to
+## their factor levels), so the result may NOT be in the same order as
+## the input data frame if the input data frame is NOT sorted by
+## sample_name first.
 smooth_coverage <- function(split_coverages, window_size) {
     sapply_by_group(
         coverage ~ sample_name,
@@ -123,6 +138,7 @@ cap_coverage <- function(coverage, max_coverage) {
 ## Opposite of %in%
 "%nin%" <- Negate("%in%")
 
+#### End utility functions ####
 
 #### Functions to handle user input ####
 
@@ -249,6 +265,10 @@ check_opts <- function(opts) {
     check_chart_type(opts)
 }
 
+#### End user input checking functions ####
+
+#### Parsing functions
+
 ## Parse the split coverages file.
 parse_split_coverages <- function(opts) {
     ## Sanity check: split coverages should always be given.
@@ -273,15 +293,17 @@ parse_split_coverages <- function(opts) {
         abort("bad header row in split coverages file")
     }
 
+    ## Lots of steps expected nicely sorted data frame, so sort it by
+    ## sample_name, then split_name, then nt_position.
+    split_coverages <- split_coverages[order(split_coverages$sample_name,
+                                             split_coverages$split_name,
+                                             split_coverages$nt_position), ]
+
     ## If there are multiple split_names in the split coverages file,
     ## we need to make sure they are all sorted properly, then we need
     ## to treat all split_names within a single contig as one big
     ## super-contig.
     if (length(unique(split_coverages$split_name)) > 1) {
-        ## Sort the data based on sample name, then by split name.
-        split_coverages <- split_coverages[order(split_coverages$sample_name,
-                                                 split_coverages$split_name), ]
-
         ## Get number of positions (rows) for all splits per sample.
         sample_counts <- table(split_coverages$sample_name)
 
@@ -414,7 +436,10 @@ sort_split_coverages <- function(split_coverages, sample_data) {
     split_coverages$sample_name <- factor(split_coverages$sample_name,
                                           levels = sample_data$sample_name)
 
-    ## First order by sample name, then by nt pos.
+    ## First order by sample name, then by x_values.  Sort by x_values
+    ## rather than first by split_name as the x_values will have
+    ## already been set up to be in the correct order regardless of
+    ## whether there are multiple split names in the file.
     split_coverages[order(split_coverages$sample_name,
                           split_coverages$x_values), ]
 }
@@ -451,6 +476,8 @@ parse_input_data <- function(opts) {
          ## above.
          sample_names = split_coverages$sample_name)
 }
+
+#### End parsing functions and helpers ####
 
 
 #### Plotting functions ####
@@ -635,7 +662,8 @@ Description:
     opts
 }
 
-#### Actual program starts here ####
+## Do not edit the comment on the next line, or you will break the unit tests!!
+#### End of function definitions ####
 
 opts <- set_up_opts()
 
