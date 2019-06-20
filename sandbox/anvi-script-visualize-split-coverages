@@ -33,7 +33,7 @@ abort <- function(msg, ...) {
 }
 
 log_helper <- function(level, msg, ...) {
-    write(paste0(sprintf("%s -- ", level),
+    write(paste0(sprintf("%s [%s] -- ", level, format(Sys.time(), "%m/%d/%y %H:%M:%S")),
                  sprintf(msg, ...)),
           file = stderr())
 }
