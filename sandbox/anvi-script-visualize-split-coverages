@@ -32,29 +32,88 @@
 suppressMessages(library(ggplot2))
 suppressMessages(library(optparse))
 
+#### Logging functions ####
+
+## Generate a logging function with the given `verbosity`.  Only
+## prints messages that are higher in priority than the given
+## `verbosity` level.
+make_logger <- function(verbosity = 2) {
+    ## Lower verbosity means less verbose.  So only messages less than
+    ## verbosity level will get printed.  This is a lookup function
+    ## for verbosity levels.
+    log_level <- function(msg_type) {
+        switch(
+            msg_type,
+            "UNKNOWN" = 1,
+            "FATAL" = 1,
+            "ERROR" = 1,
+            "WARN" = 2,
+            "INFO" = 2,
+            "DEBUG" = 3,
+            3 # default
+        )
+    }
+
+    ## Expects a valid msg_type.  `msg` can be a format string as it
+    ## is passed to sprintf.`...` can be used to pass sprintf style
+    ## format string opts.
+    log_msg <- function(msg_type, msg, ...) {
+        ## Messages look like this:
+        ## E, [2019-06-20 18:21:28.150640 #18632] ERROR -- Hi error
+        now <- strftime(Sys.time(), format = "%Y-%m-%d %H:%M:%OS6")
+        pid <- Sys.getpid()
+        msg_code <- substr(msg_type, start = 1, stop = 1)
+        msg_prefix <- sprintf(
+            "%s, [%s #%d] %s -- ",
+            msg_code,
+            now,
+            pid,
+            msg_type
+        )
+
+        if (log_level(msg_type) <= verbosity) {
+            write(
+                paste0(
+                    msg_prefix,
+                    sprintf(msg, ...)),
+                file = stderr())
+        }
+    }
+
+    structure(
+        list(
+            unknown = function(msg, ...) {
+                log_msg("UNKNOWN", msg, ...)
+            },
+            fatal = function(msg, ...) {
+                log_msg("FATAL", msg, ...)
+            },
+            error = function(msg, ...) {
+                log_msg("ERROR", msg, ...)
+            },
+            warn = function(msg, ...) {
+                log_msg("WARN", msg, ...)
+            },
+            info = function(msg, ...) {
+                log_msg("INFO", msg, ...)
+            },
+            debug = function(msg, ...) {
+                log_msg("DEBUG", msg, ...)
+            }
+        ),
+        class = "logger"
+    )
+}
+
+#### End logging functions ####
+
 #### Utility functions ####
 
 ## Write a `msg` to stderr then exit with code 1.
 abort <- function(msg, ...) {
-    write(paste0("ERROR -- ", msg), file = stderr())
+    logger$fatal(msg, ...)
     quit(save = "no", status = 1, runLast = FALSE)
 }
-
-log_helper <- function(level, msg, ...) {
-    write(paste0(sprintf("%s [%s] -- ", level, format(Sys.time(), "%m/%d/%y %H:%M:%S")),
-                 sprintf(msg, ...)),
-          file = stderr())
-}
-
-logger <- list(
-    warn = function(msg, ...) {
-        log_helper("WARNING", msg, ...)
-    },
-
-    info = function(msg, ...) {
-        log_helper("INFO", msg, ...)
-    }
-)
 
 is_hex_color <- function(color) {
     grepl("#[0-9a-fA-F]{6}", color)
@@ -251,6 +310,17 @@ check_chart_type <- function(opts) {
     }
 }
 
+## Only 1, 2, and 3 are valid args.
+check_verbosity <- function(opts) {
+    verbose_opts <- 1:3
+    if (opts$verbose %nin% verbose_opts) {
+        abort(paste0("bad argument to --verbose.  Must be one of: ",
+                     paste(verbose_opts, collapse = ", "),
+                     ". Got '",
+                     opts$verbose,
+                     "'."))
+    }
+}
 
 ## This function is called in the main part of the script.
 ## `opts` is the output of parse_args function
@@ -263,6 +333,7 @@ check_opts <- function(opts) {
     check_size_opts(opts)
     check_window_size(opts)
     check_chart_type(opts)
+    check_verbosity(opts)
 }
 
 #### End user input checking functions ####
@@ -304,6 +375,7 @@ parse_split_coverages <- function(opts) {
     ## to treat all split_names within a single contig as one big
     ## super-contig.
     if (length(unique(split_coverages$split_name)) > 1) {
+        logger$debug("Multiple split_names found")
         ## Get number of positions (rows) for all splits per sample.
         sample_counts <- table(split_coverages$sample_name)
 
@@ -325,6 +397,7 @@ parse_split_coverages <- function(opts) {
     }
 
     if (!opts$no_compression) {
+        logger$debug("Compression is on")
         ## Check if the samples are big enough for compression
 
         ## Number of data points per sample.
@@ -336,7 +409,7 @@ parse_split_coverages <- function(opts) {
 
             ## If window_size is set to auto, then we need to calculate it now.
             if (opts$window_size < 1) {
-                logger$info("Automatically setting the window size.")
+                logger$debug("Automatically setting the window size.")
 
                 ## Warn if not all points per sample are equal
                 if (length(unique(points_per_sample)) > 1) {
@@ -344,7 +417,7 @@ parse_split_coverages <- function(opts) {
                 }
 
                 sample_size<- max(points_per_sample)
-                logger$info("Largest sample is %d", sample_size)
+                logger$info("Largest sample has %d points", sample_size)
 
                 opts$window_size <- get_window_size(sample_size)
             }
@@ -423,7 +496,7 @@ subset_split_coverages <- function(split_coverages, sample_data) {
                                      sample_name %in% sample_data$sample_name)
 
     if (nrow(split_coverages) != nrow(split_coverages_subset)) {
-        logger$warn("Not all samples in the split coverages file were present in the additional data file.")
+        logger$info("Not all samples in the split coverages file were present in the sample data file.")
     }
 
     split_coverages_subset
@@ -462,12 +535,19 @@ parse_input_data <- function(opts) {
     ## If sample_data file is given, we need to adjust the split
     ## coverages data frame.
     if (!is.null(sample_data)) {
+        logger$info("Sample_data given.  Adjusting split_coverages.")
         ## Make sure the names in sample_data df are okay.
         check_sample_names(sample_data, split_coverages$sample_name)
+
+        logger$debug("Before reading sample_data, there were %d samples.",
+                     length(unique(split_coverages$sample_name)))
 
         split_coverages <- subset_split_coverages(split_coverages, sample_data)
         split_coverages <- sort_split_coverages(split_coverages, sample_data)
         split_coverages <- add_sample_data(split_coverages, sample_data)
+
+        logger$debug("After reading sample_data, %d samples were kept.",
+                     length(unique(split_coverages$sample_name)))
     }
 
     list(split_coverages = split_coverages,
@@ -621,11 +701,18 @@ set_up_opts <- function() {
                     action = "store_true",
                     type = "logical",
                     default = FALSE,
-                    help = "Pass this flag if you want no compression.  Overrides other compression opts.")
+                    help = "Pass this flag if you want no compression.  Overrides other compression opts."),
+
+        ## Verbosity
+        make_option(opt_str = c("-v", "--verbose"),
+                    action = "store",
+                    type = "numeric",
+                    default = 2,
+                    help = "Set the verbosity level (1, 2, or 3).  Higher number = more log messages.  [default %default]")
 
     )
 
-    usage <- "%prog -i infile.txt -o coverage_graphs.pdf [-s sample_data.txt] [-w chart_width] [-c chart_height] [-t chart_type] [-m max_coverage] [-p compress-threshold] [-n window-size] [--no-compression]"
+    usage <- "%prog -i infile.txt -o coverage_graphs.pdf [-s sample_data.txt] [-w chart_width] [-c chart_height] [-t chart_type] [-m max_coverage] [-p compress-threshold] [-n window-size] [--no-compression] [--free-y-scale] [--verbose level]"
 
     description <- "
 Description:
@@ -667,6 +754,17 @@ Description:
 
 opts <- set_up_opts()
 
+## Set up logger
+logger <- make_logger(opts$verbose)
+
+## Nicely print options
+logger$debug("Opts %s",
+             apply(rbind(names(opts),
+                         as.vector(unlist(opts))),
+                   2,
+                   paste,
+                   collapse = ": "))
+
 logger$info("Checking options")
 check_opts(opts)
 
@@ -678,3 +776,5 @@ cov_plot <- draw_plot(dat, opts)
 
 logger$info("Writing coverage plots")
 write_plot(cov_plot, dat, opts)
+
+logger$info("Done!")
