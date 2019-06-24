@@ -10,6 +10,8 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+
+from anvio.errors import ConfigError
 import os
 import pickle
 import re
@@ -37,6 +39,8 @@ __email__ = "quentin.clayssen@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+run_quiet = terminal.Run(verbose=False)
+progress_quiet = terminal.Progress(verbose=False)
 
 
 
@@ -48,66 +52,95 @@ class scgsdatabase():
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
-        self.taxofiles=args.taxofiles
-
-        self.hmms=args.hmms
-
-
-        if not args.genesfilesdirectory:
-            self.genesfilesdirectory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG')
-        else:
-            self.genesfilesdirectory=args.genesfilesdirectory
-
-        if not args.outputdirectory:
-            self.outputdirectory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb')
-        else:
-            self.genesfilesdirectory=args.genesfilesdirectory
+        self.genesfilesdirectory=args.genesfilesdirectory
 
         self.scgsdirectory=args.scgsdirectory
 
-        self.genesfiles=os.listdir(self.genesfilesdirectory)
+        #self.num_threads=args.num_threads
+
+
 
         self.dicolevel=self.diconlevel()
+
+
+
+        if not args.taxofiles:
+            self.taxofiles = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/merge_taxonomy.tsv')
+
+        #if not args.outtsv:
+        self.outtsv = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb/matching_taxonomy.tsv')
+
+        #if not args.num_threads:
+        self.num_threads=1
+
+
+        self.hmms=args.hmms
+
+        if not args.genesfilesdirectory:
+            self.genesfilesdirectory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/test_msa_individual_genes')
+
+        self.genesfiles=os.listdir(self.genesfilesdirectory)
+
+
+        if not args.outputdirectory:
+            outputdirectory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb')
+            if not os.path.exists(outputdirectory):
+                os.mkdir(os.path.dirname(anvio.__file__)+'/data/misc/SCG/mergedb')
+            self.outputdirectory = outputdirectory
+
+
 
         self.scgsfasa = [files for files in os.listdir(
             self.scgsdirectory) if not files.endswith(".dmnd")]
 
 
-        def is_database_exists(self):
-            if not os.path.exists(os.path.join(self.pfam_data_dir, 'bac120_msa_individual_genes.tar.gz')):
-                raise ConfigError("It seems you do not have SCGS database installed, please run 'anvi-setup-scgs' to download it.")
 
 
-        def get_version(self):
-            with open(os.path.join(self.pfam_data_dir, 'Pfam.version')) as f:
-                content = f.read()
-
-
-        for genes in self.genesfiles:
+        dicocorres={}
+        for gene in self.genesfiles:
             #for dbdiamond
-            name=genes.replace('.faa','')
+            name=gene.replace('.faa','')
             outpathdb=os.path.join(self.outputdirectory, "diamonddb")
-            pathdb=os.path.join(str(outpathdb), str(name))
-            pathgenes=os.path.join(self.genesfilesdirectory, genes)
+            pathdb=os.path.join(self.genesfilesdirectory, name)
+            pathgenes=os.path.join(self.genesfilesdirectory, gene)
+            outpath=os.path.join(self.outputdirectory, "diamondblast")
+            pathrefundgenes=os.path.join(outpathdb, gene)
+            pathblast=os.path.join(outpath,name)
             if not os.path.exists(outpathdb):
                 os.mkdir(outpathdb)
+                #pathdb=self.diamonddb(pathdb,pathgenes)
+                #self.diamondblast(pathdb,pathblast)
 
             #for diamond sequences
-            outpath=os.path.join(self.outputdirectory, "diamondblast")
-            pathblast=os.path.join(outpath,genes)
+
             if not os.path.exists(outpath):
                 os.mkdir(outpath)
+                outpath=os.path.join(self.outputdirectory, "diamondblast")
+
             #print(pathrefundgenes)
 
-            #sequencetoblast=refundgenes(pathrefundgenes,pathdb)
-            pathdb=self.diamonddb(genes,pathdb,pathgenes)
-            tabular_output_path=self.diamondblast(pathdb,genes,self.hmms,pathblast)
+            sequencetoblast=self.refundgenes(pathgenes,pathrefundgenes,pathdb)
+
+
+            self.diamonddb_stdin(sequencetoblast,pathrefundgenes)
+            diamond_output=self.diamondblast_stdou(pathdb,pathblast)
+
+            """ or len(sequencetoblast)<1 or sequencetoblast==None"""
+            if not diamond_output:
+                run.info("no match", gene, quiet=False, display_only=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow', progress=None)
+                continue
+
+            #self.trie_blast(diamond_output,dicocorres)
+
+            hmmgene, bacgene=self.make_dico_correspondance(diamond_output)
+            dicocorres[bacgene]=hmmgene
             #diamondblast(pathdb,genes,hmms,self.outputdirectory)
 
             #outpath, outpathdb=db_blast(genesfiles,hmms,self.outputdirectory,pathdb,pathgenes)
-            outpath=os.path.join(self.outputdirectory, "diamondblast")
-            dicocorres=self.trie_blast(outpath)
-            taxomatrix=self.domatrix(self.taxofiles)
+
+
+            taxomatrix=self.domatrix(self.outtsv)
+            print(taxomatrix)
             keylevel="species"
             for keycorres in dicocorres:
                 outputsub=os.path.join(self.outputdirectory, keylevel)
@@ -120,7 +153,7 @@ class scgsdatabase():
         #self.cleandir(outpath)
         #self.cleandir(outpathdb)
 
-        if True:
+        """if True:
             pathpickle_dico_taxo = os.path.join(
                 self.outputdirectory, 'dico_taxo_code_species.pickle')
 
@@ -133,15 +166,23 @@ class scgsdatabase():
                     dicolevel = pickle.load(handle)
 
             dico_low_ident = {}
-            for scgsfasta in os.listdir(pathfile):
-                pathfa = os.path.join(genesfilesdir, scgsfasta )
+            for scgsfasta in os.listdir(outputsub):
+                pathfa = os.path.join(self.genesfilesdirectory, scgsfasta )
                 self.creatsubfa_ident(dicolevel, pathfa, self.outputdirectory, scgsfasta )
 
             pathpickle_dico_ident = os.path.join(
                 self.outputdirectory, 'dico_low_ident.pickle')
             with open(pathpickle_dico_ident, 'wb') as handle:
-                pickle.dump(dico_low_ident, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(dico_low_ident, handle, protocol=pickle.HIGHEST_PROTOCOL)"""
 
+
+    def is_database_exists(self):
+        if os.path.exists(os.path.join(self.SCG_data_dir, 'SCG-A.hmm.gz')):
+            raise ConfigError("It seems you already have SCG database installed in '%s', please use --reset flag if you want to re-download it." % self.SCG_data_dir)
+
+
+    def get_remote_version(self):
+        content = read_remote_file(self.database_url + '/VERSION')
 
 
     def getfasta(self,pathfa):
@@ -170,17 +211,22 @@ class scgsdatabase():
         fasta=self.getfasta(pathfa)
         listtaxo=[]
         unmatch=[]
-        with open(pathfile,'a') as file:
-            for code, taxonomy in taxomatrix.items():
-                index,name=self.match(fasta,keylevel,taxonomy,code,listtaxo)
-                if not index:
-                    unmatch.append(name)
-                    continue
-                else:
-                    listtaxo.append(name)
-                    file.write(">"+fasta.ids[index]+"\n"+fasta.sequences[index]+"\n")
-        cmddb = "diamond makedb --in "+pathfile+" -d "+pathfile
-        os.system(cmddb)
+        newfasta=""
+        with open(self.outtsv,'a') as tsv:
+            with open(pathfile,'a') as file:
+                for code, taxonomy in taxomatrix.items():
+                    index,name=self.match(fasta,keylevel,taxonomy,code,listtaxo)
+                    if not index:
+                        unmatch.append(name)
+                        continue
+                    else:
+                        listtaxo.append(name)
+                        #file.write(">"+fasta.ids[index]+"\n"+fasta.sequences[index]+"\n")
+                        newfasta=newfasta+">"+fasta.ids[index]+"\n"+fasta.sequences[index]+"\n"
+                        tsv.write(fasta.ids[index]+"\t"+taxomatrix[fasta.ids[index]]+"\n")
+
+                file.write(newfasta)
+        self.diamondblast_stdin(newfasta,pathfile)
         return(pathfile)
 
     def match(self,fasta,keylevel,taxonomy,code,listtaxo,dicolevel=False):
@@ -196,35 +242,26 @@ class scgsdatabase():
             name=(name+"\t"+taxonomy[0]+"\n")
             return(index,name)
 
-    def db_blast(self,genesfiles,hmms,outputdirectory,pathdb,pathgenes):
+    """def db_blast(self,genesfiles,outputdirectory,pathdb,pathgenes):
         for genes in genesfiles:
             pathrefundgenes=self.refundgenes(genes)
             pathdb, outpathdb=self.diamonddb(genes,pathdb,pathgenes)
             outpath=self.diamondblast(pathdb,genes,self.hmms,self.outputdirectory)
         return(outpath,outpathdb)
 
-    def diamonddb(self,genes,pathdb,pathgenes):
+    def diamonddb(self,pathdb,pathgenes):
         cmddb = "diamond makedb --in "+pathgenes+" -d "+pathdb
         os.system(cmddb)
         return(pathdb)
 
-    def diamondblast(self,pathdb,genes,hmms,pathblast):
+    def diamondblast(self,pathdb,pathblast):
+        #with open(self.hmms,'r') as hmmfile:
+        #print(pathdb, self.hmms)
         cmdblast = "diamond blastp -d "+pathdb+".dmnd"+" -q "+self.hmms+" -o "+pathblast
+        print(cmdblast)
         os.system(cmdblast)
-        #return(outpath)
-
-
-    def diamonddb_stdin(self,sequences, db_path,  max_target_seqs=20, evalue=1e-05, min_pct_id=90):
-
-        diamond = Diamond(db_path, run=run_quiet, progress=progress_quiet)
-        diamond.max_target_seqs = max_target_seqs
-        diamond.evalue = evalue
-        diamond.min_pct_id = min_pct_id
-
-        expected_output = diamond.makedb_stdin(sequence)
-        return expected_output
-
-    def get_hit_diamond(self,sequence,pathdb, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
+        #return(outpath)"""
+    """def get_hit_diamond(self,sequence,pathdb, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
         pathdb=pathdb+".dmnd"
         #diamond = Diamond(pathdb)#, run=run_quiet, progress=progress_quiet
         diamond.max_target_seqs = max_target_seqs
@@ -244,54 +281,80 @@ class scgsdatabase():
         diamond.blastp()
         diamond_output = diamond.view()
         #sys.exit(status=None)
-        return diamond_output
-
-    def corre(self,pathblast):
-            with open(pathblast, mode='r') as file:
-                lines=file.readlines()
-                for line in lines:
-                    listeline=line.split("\t")
-                    bestscore = 0
-                    i=0
-                    for line in lines:
-                        listeline=line.split("\t")
-                        score = listeline[11].rstrip()
-                        if i==3:
-                            bacgene=os.path.basename(pathblast)
-                            hmmgene=listeline[0]
-                            return(hmmgene,bacgene)
-                            break
-                        if float(score) > float(bestscore):
-                            bestscore=score
-                            bestname=listeline[0]
-                        if bestname==listeline[0]:
-                            i+=1
+        return diamond_output"""
 
 
-    def refundgenes(self,pathgenes,pathdb):
-        fasta=getfasta(pathgenes)
+    def diamonddb_stdin(self,sequencetoblast, pathgene):
+
+        diamond = Diamond()
+        diamond.target_fasta = pathgene
+
+        diamond.makedb_stdin(sequencetoblast)
+
+    def diamondblast_stdin(self,sequencetoblast, pathgene):
+
+        diamond = Diamond()
+        diamond.target_fasta = pathrefundgenes
+
+        diamond.makedb_stdin(sequencetoblast)
+
+
+
+    def diamondblast_stdou(self,sequence,pathdb, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
+        pathdb=pathdb+".dmnd"
+        diamond = Diamond(pathdb,run=self.run, progress=self.progress, num_threads=self.num_threads)
+        #diamond = Diamond(pathdb)#, run=run_quiet, progress=progress_quiet
+        diamond.max_target_seqs = max_target_seqs
+        diamond.query_fasta=self.hmms
+
+        diamond_output = diamond.blastp_stdout()
+
+
+
+    def make_dico_correspondance(self,diamond_output):
+        listeline=lines.split("\n").split("\t")
+        bestscore = 0
+        i=0
+        print(listeline)
+        for line in listeline:
+            score = line[11].rstrip()
+            if i==3:
+                bacgene=os.path.basename(pathblast)
+                hmmgene=line[0]
+                return(hmmgene,bacgene)
+                break
+            if float(score) > float(bestscore):
+                bestscore=score
+                bestname=line[0]
+            if bestname==line[0]:
+                i+=1
+
+
+
+    def refundgenes(self,pathgenes,pathrefundgenes,outpathdb):
+        print(pathgenes)
+        fasta=u.ReadFasta(pathgenes)
         i=0
         sequencetoblast=""
         while i < len(fasta.ids):
             if fasta.sequences[i].count('-') < len(fasta.sequences[i])*0.5:
-                self.diamonddb_stdin(sequencetoblast+">"+fasta.ids[i]+"\n"+fasta.sequences[i],pathdb)
-
                 sequencetoblast=sequencetoblast+">"+fasta.ids[i]+"\n"+fasta.sequences[i]+"\n"
             i+=1
+        with open(pathrefundgenes,'w') as newfastadb:
+            newfastadb.write(sequencetoblast)
         return(sequencetoblast)
 
 
-    def trie_blast(self,outpath):
+
+
+    def trie_blast(self,outpath,dicocorres):
         """ return dictonnary with the name of Genes from given sequence corresponding with the one from anvi'o"""
-        blastfiles=os.listdir(outpath)
-        dicocorres= {}
-        for blastfile in blastfiles:
-            pathblastfile=os.path.join(outpath,blastfile)
-            if os.stat(pathblastfile).st_size == 0:
-                os.remove(pathblastfile)
-                continue
-            hmmgene, bacgene=self.corre(pathblastfile)
-            dicocorres[bacgene]=hmmgene
+
+        pathblastfile=os.path.join(outpath,blastfile)
+        if os.stat(pathblastfile).st_size == 0:
+            os.remove(pathblastfile)
+        hmmgene, bacgene=self.corre(pathblastfile)
+        dicocorres[bacgene]=hmmgene
         return dicocorres;
 
 
@@ -347,7 +410,7 @@ class scgsdatabase():
 
 
     def creatsubfa_ident(self,dicolevel, pathfa, outputdirectory, genes):
-        fasta = lvl.getfasta(pathfa)
+        fasta = self.getfasta(pathfa)
 
         unmatch = []
 
@@ -447,12 +510,13 @@ class SCGsSetup(object):
     def download(self):
         self.run.info("Database URL", self.database_url)
 
-        for file_name in self.files:
+        """for file_name in self.files:
             utils.download_file(self.database_url + '/' + file_name,
-                os.path.join(self.SCG_data_dir, file_name), progress=self.progress, run=self.run)
+                os.path.join(self.SCG_data_dir, file_name), progress=self.progress, run=self.run)"""
 
-        self.confirm_downloaded_files()
-        self.decompress_files()
+        #self.confirm_downloaded_files()
+        #self.decompress_files()
+        self.merge_tsv_files()
 
 
     def confirm_downloaded_files(self):
@@ -477,3 +541,13 @@ class SCGsSetup(object):
             tar.extractall(path=extractpaht)
             tar.close()
             #os.remove(full_path)
+
+    def merge_tsv_files(self):
+        file_to_dextract=[file_name for file_name in self.files if file_name.endswith(".tsv")]
+        full_path = os.path.join(self.SCG_data_dir, "merge_taxonomy.tsv")
+        self.run.info("Mergin tsv file ", ','.join(file_to_dextract))
+        with open(full_path, 'w') as outfile:
+            for fname in file_to_dextract:
+                with open(self.SCG_data_dir+"/"+fname) as infile:
+                    for line in infile:
+                        outfile.write(line)

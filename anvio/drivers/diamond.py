@@ -26,7 +26,7 @@ pp = terminal.pretty_print
 
 
 class Diamond:
-    def __init__(self, query_fasta, target_fasta=None, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
+    def __init__(self, query_fasta=None, target_fasta=None, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
         self.run = run
         self.progress = progress
 
@@ -178,7 +178,7 @@ class Diamond:
 
         output = utils.run_command(cmd_line, self.run.log_file_path)
 
-        self.run.info('Diamond blastp stdout results', '%d lines were returned from STDIN call' % len(output))
+        print(output)
 
         self.progress.end()
 
@@ -230,7 +230,7 @@ class Diamond:
                     '-d', output_file_path or self.target_fasta,
                     '-p', self.num_threads]
 
-        utils.run_command_STDIN(cmd_line, self.run.log_file_path)
+        utils.run_command_STDIN(cmd_line, self.run.log_file_path,sequence)
 
         self.progress.end()
 
