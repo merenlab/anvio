@@ -1101,9 +1101,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                               this step. Another way to do it is the good ol' way of ignoring these warnings as you usually\
                               do. If you do the latter, you will probably be fine. But we wanted to keep you in the loop\
                               just in case you are not fine and the code does not realize that yet. The sources for gene\
-                              calls that will not be included in your gene view include these ones: '%s'." % \
-                                             (len(gene_caller_ids_missing_in_gene_level_cov_stats_dict)),\
-                                              ', '.join(gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict))
+                              calls that will not be included in your gene view include these ones: '%s'." %
+                             (len(gene_caller_ids_missing_in_gene_level_cov_stats_dict),
+                                              ', '.join(gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict)))
 
         # this is a bit tricky. we already populated the collections dict above, but it was to find out
         # genes caller ids of interest. we are now resetting the collections dict, and populating it
