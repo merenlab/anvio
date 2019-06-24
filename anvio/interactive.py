@@ -1070,18 +1070,40 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.init_split_sequences(self.p_meta['min_contig_length'], split_names_of_interest=split_names_of_interest)
 
+        gene_caller_ids_missing_in_gene_level_cov_stats_dict = set([])
+        gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict = set([])
         for split_name in split_names_of_interest:
             genes_in_splits_entries = self.split_name_to_genes_in_splits_entry_ids[split_name]
 
             for genes_in_splits_entry in genes_in_splits_entries:
                 e = self.genes_in_splits[genes_in_splits_entry]
                 gene_callers_id = e['gene_callers_id']
+                gene_caller_source = self.genes_in_contigs_dict[gene_callers_id]['source']
+
+                if gene_callers_id not in self.gene_level_coverage_stats_dict:
+                    gene_caller_ids_missing_in_gene_level_cov_stats_dict.add(gene_callers_id)
+                    gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict.add(gene_caller_source)
+                    continue
+
                 all_gene_callers_ids.append(gene_callers_id)
 
                 for view in views_of_interest:
                     self.views[view]['dict'][str(gene_callers_id)] = {}
                     for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
                         self.views[view]['dict'][str(gene_callers_id)][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
+
+        if len(gene_caller_ids_missing_in_gene_level_cov_stats_dict):
+            self.run.warning("Anvi'o observed something weird while it was processing gene level coverage statistics.\
+                              Some of the gene calls stored in your contigs database (%d of them, precisely) did not\
+                              have any information in gene level coverage stats dictionary. It is likely they were added\
+                              to the contigs database *after* these gene level coverage stats were computed and stored.\
+                              One way to address this is to remove the database file for gene coverage stats and re-run\
+                              this step. Another way to do it is the good ol' way of ignoring these warnings as you usually\
+                              do. If you do the latter, you will probably be fine. But we wanted to keep you in the loop\
+                              just in case you are not fine and the code does not realize that yet. The sources for gene\
+                              calls that will not be included in your gene view include these ones: '%s'." % \
+                                             (len(gene_caller_ids_missing_in_gene_level_cov_stats_dict)),\
+                                              ', '.join(gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict))
 
         # this is a bit tricky. we already populated the collections dict above, but it was to find out
         # genes caller ids of interest. we are now resetting the collections dict, and populating it
