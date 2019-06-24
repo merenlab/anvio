@@ -19,8 +19,8 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Quentin Clayssen"
+__email__ = "quentin.clayssen@gmail.com"
 
 
 run = terminal.Run()
@@ -47,23 +47,14 @@ if __name__ == '__main__':
                         help = "tsv file with taxonomy")
     parser.add_argument('-s', '--scgsdirectory', default = None,
                         help = "scgsdirectory")
+    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     #parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
-
-    parser.add_argument('--scgs-data-dir', default=None, type=str, help="The directory for SCGs data to be stored. If you leave it\
-                        as is without specifying anything, the default destination for the data directory will be used to set things\
-                        up. The advantage of it is that everyone will be using a single data directory, but then you may need\
-                        superuser privileges to do it. Using this parameter you can choose the location of the data directory somewhere\
-                        you like. However, when it is time to run SCGs, you will need to remember that path and provide it to the program.")
-    parser.add_argument('--reset', default=False, action="store_true", help="This program by default attempts to use previously\
-                        downloaded files in your COGs data directory if there are any. If something is wrong for some reason you\
-                        can use this to tell anvi'o to remove everything, and start over.")
-
 
     args = anvio.get_args(parser)
 
     try:
         scgsdatabase = scgsdatabase.scgsdatabase(args)
-        scgsdatabase.process()
+        #scgsdatabase.process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
