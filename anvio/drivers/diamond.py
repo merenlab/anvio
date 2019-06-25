@@ -176,9 +176,12 @@ class Diamond:
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
 
-        output = utils.run_command(cmd_line, self.run.log_file_path)
-
+        new_commande_line=' '.join(str(x) for x in cmd_line)
+        out_bytes, ret_code = utils.get_command_output_from_shell(new_commande_line)
+        #output = utils.run_command(cmd_line, self.run.log_file_path)
+        output=out_bytes
         print(output)
+
 
         self.progress.end()
 
