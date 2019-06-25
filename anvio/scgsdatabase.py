@@ -77,7 +77,7 @@ class scgsdatabase():
         self.hmms=args.hmms
 
         if not args.genesfilesdirectory:
-            self.genesfilesdirectory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/test_msa_individual_genes')
+            self.genesfilesdirectory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/msa_individual_genes')
 
         self.genesfiles=os.listdir(self.genesfilesdirectory)
 
@@ -97,6 +97,8 @@ class scgsdatabase():
 
 
         dicocorres={}
+        taxomatrix=self.domatrix(self.taxofiles)
+        dico_pickel_taxo={}
         for gene in self.genesfiles:
             #for dbdiamond
             name=gene.replace('.faa','')
@@ -111,49 +113,49 @@ class scgsdatabase():
                 #pathdb=self.diamonddb(pathdb,pathgenes)
                 #self.diamondblast(pathdb,pathblast)
 
-            #for diamond sequences
 
             if not os.path.exists(outpath):
                 os.mkdir(outpath)
                 outpath=os.path.join(self.outputdirectory, "diamondblast")
 
-            #print(pathrefundgenes)
 
             sequencetoblast=self.refundgenes(pathgenes,pathrefundgenes,pathdb)
-
-
             self.diamonddb_stdin(sequencetoblast,pathrefundgenes)
-            diamond_output=self.diamondblast_stdou(pathdb,pathblast)
-
-            """ or len(sequencetoblast)<1 or sequencetoblast==None"""
+            diamond_output=self.diamondblast_stdou(self.hmms,pathrefundgenes)
+            #print(diamond_output)
             if not diamond_output:
-                run.info("no match", gene, quiet=False, display_only=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow', progress=None)
+                run.info("no match", gene)
+                os.remove(pathrefundgenes)
+                os.remove(pathrefundgenes+'.dmnd')
                 continue
 
             #self.trie_blast(diamond_output,dicocorres)
+            hmmgene=str(diamond_output).split('\n')[0].split('\t')[0]
+            #hmmgene, bacgene=self.make_dico_correspondance(diamond_output)
+            if hmmgene not in dicocorres:
+                dicocorres[hmmgene]=[name]
 
-            hmmgene, bacgene=self.make_dico_correspondance(diamond_output)
-            dicocorres[bacgene]=hmmgene
-            #diamondblast(pathdb,genes,hmms,self.outputdirectory)
-
-            #outpath, outpathdb=db_blast(genesfiles,hmms,self.outputdirectory,pathdb,pathgenes)
+            else:
+                dicocorres[hmmgene]=dicocorres[hmmgene]+[name]
 
 
-            taxomatrix=self.domatrix(self.outtsv)
-            print(taxomatrix)
-            keylevel="species"
-            for keycorres in dicocorres:
-                outputsub=os.path.join(self.outputdirectory, keylevel)
-                pathfile=os.path.join(outputsub, dicocorres[keycorres])
-                pathfa=os.path.join(self.genesfilesdirectory, str(keycorres))
-                if not os.path.exists(outputsub):
-                    os.mkdir(outputsub)
-                self.creatsubfa(taxomatrix,pathfa,pathfile,keylevel,dicocorres[keycorres])
+
+
+
+        keylevel="species"
+        print(dicocorres)
+        for keycorres in dicocorres.keys():
+            outputsub=os.path.join(self.outputdirectory, keylevel)
+            pathfile=os.path.join(outputsub, keycorres)
+            pathfa=os.path.join(self.genesfilesdirectory, str(keycorres))
+            if not os.path.exists(outputsub):
+                os.mkdir(outputsub)
+            dico_pickel_taxo=self.creatsubfa(taxomatrix,dicocorres[keycorres],pathfile,keylevel,dico_pickel_taxo)
 
         #self.cleandir(outpath)
         #self.cleandir(outpathdb)
-
-        """if True:
+        sys.exit()
+        if True:
             pathpickle_dico_taxo = os.path.join(
                 self.outputdirectory, 'dico_taxo_code_species.pickle')
 
@@ -173,7 +175,7 @@ class scgsdatabase():
             pathpickle_dico_ident = os.path.join(
                 self.outputdirectory, 'dico_low_ident.pickle')
             with open(pathpickle_dico_ident, 'wb') as handle:
-                pickle.dump(dico_low_ident, handle, protocol=pickle.HIGHEST_PROTOCOL)"""
+                pickle.dump(dico_low_ident, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
     def is_database_exists(self):
@@ -198,36 +200,58 @@ class scgsdatabase():
             for line in linestaxo:
                 names=line.split("\t")
                 code=str(names[0])
-                taxo=names[1].split(";")
-                taxo[-1]=taxo[-1].rstrip().replace(" ","_")
-
-                for name in names:
-                    name = re.sub(r'_[A-Z]*$', '', name)
-                matrix[code]=taxo
+                taxos=names[1].split(";")
+                for name in taxos:
+                    taxo= re.sub(r'_[A-Z]*$', '', name).rstrip()
+                    leveltaxo1 = re.sub(r'sp[1-9]*', '', taxo)
+                    leveltaxo3 = re.sub(r'(\\*[a-z])\_[A-Z]', r'\1', leveltaxo1)
+                    leveltaxo2 = leveltaxo3.rstrip()
+                    leveltaxo = re.sub(r'\s+', r'_', leveltaxo2)
+                    last_taxo=leveltaxo.rstrip().replace(" ","_")
+                matrix[code]=last_taxo
             return(matrix)
 
 
-    def creatsubfa(self,taxomatrix,pathfa,pathfile,keylevel,dicolevel=None):
-        fasta=self.getfasta(pathfa)
+    def creatsubfa(self,taxomatrix,listerefence,pathfile,keylevel,dico_pickel_taxo,dicolevel=None):
+
         listtaxo=[]
         unmatch=[]
         newfasta=""
         with open(self.outtsv,'a') as tsv:
             with open(pathfile,'a') as file:
-                for code, taxonomy in taxomatrix.items():
-                    index,name=self.match(fasta,keylevel,taxonomy,code,listtaxo)
-                    if not index:
-                        unmatch.append(name)
-                        continue
+                print(listerefence)
+                for refence in listerefence:
+                    print(refence)
+                    pathfa=os.path.join(self.outputdirectory, "diamonddb",refence+".faa")
+                    run.info("pathfa",pathfa)
+                    fasta=u.ReadFasta(pathfa)
+                    if dicolevel!=None:
+                        for code, taxonomy in taxomatrix.items():
+                            index,name=self.match(fasta,keylevel,taxonomy,code,listtaxo)
+                            if not index:
+                                unmatch.append(name)
+                                continue
+                            else:
+                                listtaxo.append(name)
+                                newfasta=newfasta+">"+fasta.ids[index]+"\n"+fasta.sequences[index]+"\n"
+                                tsv.write(fasta.ids[index]+"\t"+';'.join(taxomatrix[fasta.ids[index]])+"\n")
+                                dico_pickel_taxo[fasta.ids[index]]=taxomatrix[fasta.ids[index]]
                     else:
-                        listtaxo.append(name)
-                        #file.write(">"+fasta.ids[index]+"\n"+fasta.sequences[index]+"\n")
-                        newfasta=newfasta+">"+fasta.ids[index]+"\n"+fasta.sequences[index]+"\n"
-                        tsv.write(fasta.ids[index]+"\t"+taxomatrix[fasta.ids[index]]+"\n")
+                        i=0
+                        while i<len(fasta.ids):
+                            """some fasta id are not relate to any taxonomy ?!"""
+                            try:
+                                tsv.write(fasta.ids[i]+"\t"+';'.join(taxomatrix[fasta.ids[i]])+"\n")
+                                dico_pickel_taxo[fasta.ids[i]]=taxomatrix[fasta.ids[i]]
+                                newfasta=newfasta+">"+fasta.ids[i]+"\n"+fasta.sequences[i]+"\n"
+                            except:
+                                unmatch.append(fasta.ids[i])
 
+                            i+=1
                 file.write(newfasta)
-        self.diamondblast_stdin(newfasta,pathfile)
-        return(pathfile)
+                self.diamonddb_stdin(newfasta,pathfile)
+                #print(unmatch)
+        return(dico_pickel_taxo)
 
     def match(self,fasta,keylevel,taxonomy,code,listtaxo,dicolevel=False):
         if dicolevel:
@@ -288,39 +312,40 @@ class scgsdatabase():
 
         diamond = Diamond()
         diamond.target_fasta = pathgene
-
+        run.info("diamonddb_stdin", pathgene)
         diamond.makedb_stdin(sequencetoblast)
 
     def diamondblast_stdin(self,sequencetoblast, pathgene):
 
         diamond = Diamond()
-        diamond.target_fasta = pathrefundgenes
-
+        diamond.target_fasta = pathgene
+        run.info("diamonddb_stdin", pathgene)
         diamond.makedb_stdin(sequencetoblast)
 
 
 
-    def diamondblast_stdou(self,sequence,pathdb, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
+    def diamondblast_stdou(self,pathquery,pathdb, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
         pathdb=pathdb+".dmnd"
         diamond = Diamond(pathdb,run=self.run, progress=self.progress, num_threads=self.num_threads)
         #diamond = Diamond(pathdb)#, run=run_quiet, progress=progress_quiet
         diamond.max_target_seqs = max_target_seqs
-        diamond.query_fasta=self.hmms
-
+        diamond.query_fasta=pathquery
+        run.info("diamondblast_stdou", pathdb)
         diamond_output = diamond.blastp_stdout()
+        str_diamond_output=diamond_output.decode("utf-8")
+        return(str_diamond_output)
 
 
 
     def make_dico_correspondance(self,diamond_output):
-        listeline=lines.split("\n").split("\t")
+        listeline=str(diamond_output).split('\n')[0].split('\t')[0]
         bestscore = 0
         i=0
-        print(listeline)
         for line in listeline:
             score = line[11].rstrip()
             if i==3:
                 bacgene=os.path.basename(pathblast)
-                hmmgene=line[0]
+                hmmgene=line
                 return(hmmgene,bacgene)
                 break
             if float(score) > float(bestscore):
@@ -382,7 +407,7 @@ class scgsdatabase():
                 code = names[0]
                 leveltaxos = names[1].split(';')
                 for leveltaxo in leveltaxos[::-1]:
-                    leveltaxo1 = re.sub(r'sp[1-9]', '', leveltaxo)
+                    leveltaxo1 = re.sub(r'sp[1-9]*', '', leveltaxo)
                     leveltaxo3 = re.sub(r'(\\*[a-z])\_[A-Z]', r'\1', leveltaxo1)
                     leveltaxo2 = leveltaxo3.rstrip()
                     leveltaxo = re.sub(r'\s+', r'_', leveltaxo2)
@@ -486,7 +511,7 @@ class SCGsSetup(object):
         filesnpaths.gen_output_directory(self.SCG_data_dir, delete_if_exists=args.reset)
 
         self.database_url = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
-        self.files = ['VERSION', 'ar122_msa_individual_genes.tar.gz', 'ar122_msa_marker_info.tsv','bac120_msa_individual_genes.tar.gz','bac120_msa_marker_info.tsv', 'VERSION']
+        self.files = ['VERSION', 'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv','bac120_msa_individual_genes.tar.gz','bac120_taxonomy.tsv']
 
 
     def is_database_exists(self):
@@ -510,12 +535,12 @@ class SCGsSetup(object):
     def download(self):
         self.run.info("Database URL", self.database_url)
 
-        """for file_name in self.files:
+        for file_name in self.files:
             utils.download_file(self.database_url + '/' + file_name,
-                os.path.join(self.SCG_data_dir, file_name), progress=self.progress, run=self.run)"""
+                os.path.join(self.SCG_data_dir, file_name), progress=self.progress, run=self.run)
 
-        #self.confirm_downloaded_files()
-        #self.decompress_files()
+        self.confirm_downloaded_files()
+        self.decompress_files()
         self.merge_tsv_files()
 
 
