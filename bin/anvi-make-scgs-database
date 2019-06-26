@@ -39,14 +39,14 @@ if __name__ == '__main__':
 
     parser.add_argument('-hm', '--hmms', default = None,
                         help = "fasta file of hmm from anvi'o")
-    parser.add_argument('-g', '--genesfilesdirectory', default = None,
+    parser.add_argument('-g', '--genes_files_directory', default = None,
                         help = "directory with fasta file for import SCGs")
     parser.add_argument('-o', '--outputdirectory', default = None,
                         help = "out put directory")
     parser.add_argument('-t', '--taxofiles', default = None,
                         help = "tsv file with taxonomy")
-    parser.add_argument('-s', '--scgsdirectory', default = None,
-                        help = "scgsdirectory")
+    parser.add_argument('-s', '--scgs_directory', default = None,
+                        help = "scgs_directory")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     #parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
 
