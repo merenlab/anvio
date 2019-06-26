@@ -2,29 +2,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8
 
-import re
-import os
-import sys
 import argparse
+import os
+import re
+import sys
 import time
-
 from collections import Counter
-from tabulate import tabulate
 
 import anvio
-import anvio.utils as utils
-import anvio.hmmops as hmmops
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
-import anvio.hmmopswrapper as hmmopswrapper
-from anvio.drivers import driver_modules
 import anvio.fastalib as f
-from anvio.drivers import Aligners
-from anvio.drivers.diamond import Diamond
+import anvio.filesnpaths as filesnpaths
+import anvio.hmmops as hmmops
+import anvio.hmmopswrapper as hmmopswrapper
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbops import ContigsSuperclass
+from anvio.drivers import Aligners, driver_modules
+from anvio.drivers.diamond import Diamond
 from anvio.errors import ConfigError, FilesNPathsError
-
+from tabulate import tabulate
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -43,9 +40,20 @@ class SCGTaxonomy:
         self.taxonomy_file_path = A('taxonomy_file')
         self.taxonomy_database_path = A('taxonomy_database')
 
+        self.num_threads=args.num_threads
+
+        if not args.num_threads:
+            self.num_threads="2"
+
         self.initialized = False
 
-        self.taxonomy_database_path
+        if not self.taxonomy_file_path:
+            self.taxonomy_file_path = os.path.join(os.path.dirname(
+                anvio.__file__), 'data/misc/SCG/mergedb/matching_taxonomy.tsv')
+
+        if not self.taxonomy_database_path:
+            self.taxonomy_database_path = os.path.join(os.path.dirname(
+                anvio.__file__), 'data/misc/SCG/mergedb/species/')
 
         self.cut_off_methode = args.cut_off_methode
 
@@ -60,7 +68,8 @@ class SCGTaxonomy:
                      "Ribosomal_S3_C", "Ribosomal_S6", "Ribosomal_S7", "Ribosomal_S9",
                      "ribosomal_L24"]"""
 
-        self.SCGs = [db for db in os.listdir(self.taxonomy_database_path) if db.endswith(".dmnd")]
+        self.SCGs = [db for db in os.listdir(
+            self.taxonomy_database_path) if db.endswith(".dmnd")]
 
         self.taxonomic_levels_parser = {'d': 't_domain',
                                         'p': "t_phylum",
@@ -87,8 +96,8 @@ class SCGTaxonomy:
         self.SCG_FASTA_DB_PATH = lambda SCG: os.path.join(
             self.taxonomy_database_path, SCG)"""
 
-        self.SCG_FASTA_DB_PATH =lambda SCG: os.path.join(self.taxonomy_database_path,\
-                                                         [db for db in os.listdir(self.taxonomy_database_path) if db.endwith(".dmnd")])
+        self.SCG_FASTA_DB_PATH = lambda SCG: os.path.join(self.taxonomy_database_path,
+                                                          [db for db in os.listdir(self.taxonomy_database_path) if db.endwith(".dmnd")])
 
         self.taxonomy_dict = {}
 
@@ -183,7 +192,8 @@ class SCGTaxonomy:
 
         for individue in show_matrix:
             print(list_position_entry[i])
-            taxonomyindividue=list(self.taxonomy_dict[list_position_entry[i]].values())
+            taxonomyindividue = list(
+                self.taxonomy_dict[list_position_entry[i]].values())
             print(taxonomyindividue)
             line = [taxonomyindividue[-1]] + individue
             table.append(line)
@@ -196,7 +206,7 @@ class SCGTaxonomy:
             show_matrix = [sublist[6:] for sublist in show_matrix]
             show_list_position_ribosomal = show_list_position_ribosomal[6:]
             self.show_matrix_rank(name, matrix, show_matrix,
-                             show_list_position_ribosomal)
+                                  show_list_position_ribosomal)
 
     @timer
     def get_hmm_sequences_dict_into_type(self, hmm_sequences_dict):
@@ -205,10 +215,10 @@ class SCGTaxonomy:
         for entry_id in hmm_sequences_dict:
             entry = hmm_sequences_dict[entry_id]
 
-            if self.profile_db:
+            """if self.profile_db:
                 name = entry['bin_id']
-            else:
-                name = entry['gene_name']
+            else:"""
+            name = entry['gene_name']
 
             if name in hmm_sequences_dict_per_type:
                 hmm_sequences_dict_per_type[name][entry_id] = entry
@@ -216,7 +226,6 @@ class SCGTaxonomy:
                 hmm_sequences_dict_per_type[name] = {entry_id: entry}
 
         return hmm_sequences_dict_per_type
-
 
     @timer
     def predict_from_SCGs_dict(self, hmm_sequences_dict):
@@ -250,10 +259,10 @@ class SCGTaxonomy:
 
                 hits = self.get_raw_blast_hits(entry)
 
-
                 end_get_raw_blast_hits = time.perf_counter()
                 print("\n time predict_from_SCGs_dict for a bin : ",
                       end_get_raw_blast_hits - start_get_raw_blast_hits)
+                continue
 
                 if not hits:
                     j += 1
@@ -284,6 +293,61 @@ class SCGTaxonomy:
             end_predict_from_SCGs_dict = time.perf_counter()
             print("\n time predict_from_SCGs_dict for a bin : ",
                   end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)
+    @timer
+    def predict_from_SCGs_dict_multiseq(self, hmm_sequences_dict):
+        """Takes an HMMs dictionary, and yields predictions"""
+
+        self.init()
+
+        # split hmm_sequences_dict
+        hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type(
+            hmm_sequences_dict)
+        j=0
+        for name in hmm_sequences_dict_per_type:
+            start_predict_from_SCGs_dict = time.perf_counter()
+            hits_per_gene = {}
+
+            self.run.info('SCGs', name)
+            self.run.info('Num SCGs', len(hmm_sequences_dict_per_type[name]))
+
+            """self.run.info('SCGs', ', '.join(
+                [e['gene_name'] for e in hmm_sequences_dict_per_type[name].values()]))"""
+
+            start_get_raw_blast_hits = time.perf_counter()
+
+            hmm_sequences_dict_per_type[name] = self.get_raw_blast_hits_multi(hmm_sequences_dict_per_type[name])
+
+            end_get_raw_blast_hits = time.perf_counter()
+            print("\n time predict_from_SCGs_dict for a bin : ",
+                  end_get_raw_blast_hits - start_get_raw_blast_hits)
+
+            continue
+            # replace accessions with taxonomy
+            for hit in hmm_sequences_dict_per_type[name]['hits']:
+                hit['taxonomy'] = self.taxonomy_dict[hit['accession']]
+
+            ###
+            hits_per_gene[gene_name] = hmm_sequences_dict_per_type[name]['hits']
+
+            if anvio.DEBUG:
+                self.show_hits(name, gene_name, hmm_sequences_dict_per_type[name]['hits'])
+
+            taxonomy = self.get_consensus_taxonomy(
+                hits_per_gene, name, hmm_sequences_dict_per_type)
+            entry['taxonomy'] = taxonomy
+                # print(entry)
+
+            if j >= len(hits_per_gene):
+                self.run.info(name, "diamond didn't return any match \n")
+                continue
+            if self.profile_db:
+                taxonomy = self.get_consensus_taxonomy(
+                    hits_per_gene, name, hmm_sequences_dict_per_type)
+
+                end_predict_from_SCGs_dict = time.perf_counter()
+                print("\n time predict_from_SCGs_dict for a bin : ",
+                      end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)
+
 
 
     @timer
@@ -301,15 +365,15 @@ class SCGTaxonomy:
                                does not look like the way we expected it. This function\
                                expects a dictionary that contains keys `gene_name` and `sequence`.")
 
-
         db_path = self.SCG_DB_PATH(d['gene_name'])
         if db_path:
             sequence = d['sequence']
 
-            diamond = Diamond(db_path, run=run_quiet, progress=progress_quiet)
+            diamond = Diamond(db_path)
             diamond.max_target_seqs = max_target_seqs
             diamond.evalue = evalue
             diamond.min_pct_id = min_pct_id
+            diamond.num_threads=self.num_threads
 
             diamond_output = diamond.blastp_stdin(sequence)
 
@@ -325,13 +389,51 @@ class SCGTaxonomy:
 
             return hits
         else:
-            raise ConfigError("No matching database for"+d['gene_name'])
+            raise ConfigError("No matching database for" + d['gene_name'])
+
+
+
+    @timer
+    def get_raw_blast_hits_multi(self, d, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
+
+        sequence=""
+        for id, entry in d.items():
+            if 'sequence' not in entry or 'gene_name' not in entry:
+                raise ConfigError("The `get_filtered_dict` function got a parameter that\
+                                   does not look like the way we expected it. This function\
+                                   expects a dictionary that contains keys `gene_name` and `sequence`.")
+
+                #sequence = sequence+">%s\n%s\n"% (id,entry['sequence'])
+            sequence = sequence+">"+id+"\n"+entry['sequence']+"\n"
+            entry['hits']=[]
+
+        db_path = self.SCG_DB_PATH(entry['gene_name'])
+        diamond = Diamond(db_path)
+        diamond.max_target_seqs = 999
+        diamond.evalue = evalue
+        diamond.min_pct_id = min_pct_id
+
+        diamond_output = diamond.blastp_stdin_multi(sequence)
+
+
+        for entry in [line.split('\t') for line in diamond_output.split('\n') if line.startswith('Bacteria')]:
+            accession = entry[1]
+
+
+            # dict(zip(['accession', 'pident', 'length', 'mismatch', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'], [float(entry[i]) if i > 1 else entry[i] for i in range(1, 12)]))
+            hit=dict(zip(['accession', 'pident', 'bitscore'], [
+                       float(entry[i]) if i > 1 else entry[i] for i in [1, 2, 11]]))
+            d[entry[0]]['hits']=d[entry[0]]['hits']+[hit]
+
+        return d
+
+
+
 
 
     @timer
     def get_consensus_taxonomy(self, hits_per_gene, name, hmm_sequences_dict_per_type):
         """Different methode for assignation"""
-
 
         if not self.solo_hits(hits_per_gene):
 
@@ -343,9 +445,8 @@ class SCGTaxonomy:
             if self.methode == "tree":
                 self.make_tree_with_hit(
                     hits_per_gene, hmm_sequences_dict_per_type, name)
-                consensus_taxonomy="tree"
+                consensus_taxonomy = "tree"
                 return(consensus_taxonomy)
-
 
             if self.methode == "bitscore":
                 score_by_entry = self.get_cumul_hit_per_gene(hits_per_gene)
@@ -356,7 +457,6 @@ class SCGTaxonomy:
 
             if not self.profile_db:
                 return(consensus_taxonomy)
-
 
     def get_consensus_taxonomy_with_score_by_entry(self, score_by_entry, name, cut_off_methode):
         try:
@@ -379,7 +479,6 @@ class SCGTaxonomy:
 
         self.assign_taxonomie_solo_hit(taxonomy)
 
-
     def get_cumul_hit_per_gene(self, hits_per_gene):
         """add bitscore of eatch blast per query"""
         matching_genes = [
@@ -400,7 +499,6 @@ class SCGTaxonomy:
                         float(cumul_hit_per_gene[entry['accession']])\
                         + (float(entry['bitscore']) / number_of_matching_genes)
         return cumul_hit_per_gene
-
 
     def get_matching_gene(self, hits_per_gene):
         matching_genes = [
@@ -574,7 +672,7 @@ class SCGTaxonomy:
 
         return(emptymatrix, maxrank, bestident)
 
-    def fill_position_matrix(self, emptymatrix, list_position_entry, list_position_ribosomal, rank, entry,hit):
+    def fill_position_matrix(self, emptymatrix, list_position_entry, list_position_ribosomal, rank, entry, hit):
         emptymatrix[list_position_entry.index(
             entry['accession'])][list_position_ribosomal.index(hit)] = rank
         return(emptymatrix)
