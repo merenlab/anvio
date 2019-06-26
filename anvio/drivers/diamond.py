@@ -224,6 +224,39 @@ class Diamond:
 
         return(output)
 
+    def blastp_stdin_multi(self, multisequence):
+        self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
+
+        cmd_line = ['diamond',
+                    'blastp',
+                    '-d', self.target_fasta,
+                    '-p', self.num_threads]
+
+        cmd_line.append('--sensitive') if self.sensitive else None
+
+        if self.max_target_seqs:
+            cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
+
+        if self.min_pct_id:
+            cmd_line.extend(['--id', self.min_pct_id])
+
+        if self.evalue:
+            cmd_line.extend(['--evalue', self.evalue])
+
+
+
+        self.run.info('DIAMOND blastp stdin cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+
+        self.progress.new('DIAMOND')
+        self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
+
+        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, multisequence)
+
+        self.progress.end()
+
+        self.run.info('Diamond blastp results', '%d lines were returned from STDIN call' % len(output))
+        return(output)
+
     def makedb_stdin(self, sequence, output_file_path=None):
         self.progress.new('DIAMOND')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
