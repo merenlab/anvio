@@ -307,6 +307,7 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('cut_off_methode'), **anvio.K('cut_off_methode'))
     # , help="method chosen for estimation of taxonomy ")
     groupH.add_argument(*anvio.A('methode'), **anvio.K('methode'))
+    groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     args = anvio.get_args(parser)
 
