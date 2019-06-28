@@ -137,7 +137,6 @@ class scgsdatabase():
                     continue
 
                 hmm_gene=str(diamond_output).split('\n')[0].split('\t')[0]
-                hmm_gene, bacgene=self.make_dictionnary__correspondance(diamond_output)
                 if hmm_gene not in dictionnary_corres:
                     dictionnary_corres[hmm_gene]=[name]
 
@@ -292,47 +291,6 @@ class scgsdatabase():
             name=(name+"\t"+taxonomy[0]+"\n")
             return(index,name)
 
-    """def db_blast(self,genesfiles,outputdirectory,pathdb,pathgenes):
-        for genes in genesfiles:
-            pathrefundgenes=self.refundgenes(genes)
-            pathdb, path_diamondb=self.diamonddb(genes,pathdb,pathgenes)
-            outpath=self.diamondblast(pathdb,genes,self.hmms,self.outputdirectory)
-        return(outpath,path_diamondb)
-
-    def diamonddb(self,pathdb,pathgenes):
-        cmddb = "diamond makedb --in "+pathgenes+" -d "+pathdb
-        os.system(cmddb)
-        return(pathdb)
-
-    def diamondblast(self,pathdb,pathblast):
-        #with open(self.hmms,'r') as hmmfile:
-        #print(pathdb, self.hmms)
-        cmdblast = "diamond blastp -d "+pathdb+".dmnd"+" -q "+self.hmms+" -o "+pathblast
-        print(cmdblast)
-        os.system(cmdblast)
-        #return(outpath)"""
-    """def get_hit_diamond(self,sequence,pathdb, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
-        pathdb=pathdb+".dmnd"
-        #diamond = Diamond(pathdb)#, run=run_quiet, progress=progress_quiet
-        diamond.max_target_seqs = max_target_seqs
-        diamond.evalue = evalue
-        diamond.min_pct_id = min_pct_id
-
-        diamond_output = diamond.blastp_stdin(sequence,pathdb)
-
-    def run_diamond(self,query_fasta, target_fasta,name):
-        target_fasta=target_fasta+".dmnd"
-        diamond = Diamond(query_fasta, target_fasta)
-
-        diamond.max_target_seqs=20
-        diamond.search_output_path = ("search_"+name)
-        diamond.tabular_output_path = ("tabular_"+name)
-
-        diamond.blastp()
-        diamond_output = diamond.view()
-        #sys.exit(status=None)
-        return diamond_output"""
-
 
     def diamonddb_stdin(self,sequencetoblast, pathgene):
 
@@ -362,23 +320,6 @@ class scgsdatabase():
         return(str_diamond_output)
 
 
-
-    def make_dictionnary__correspondance(self,diamond_output):
-        listeline=str(diamond_output).split('\n')[0].split('\t')[0]
-        bestscore = 0
-        i=0
-        for line in listeline:
-            score = line[11].rstrip()
-            if i==3:
-                bacgene=os.path.basename(pathblast)
-                hmm_gene=line
-                return(hmm_gene,bacgene)
-                break
-            if float(score) > float(bestscore):
-                bestscore=score
-                bestname=line[0]
-            if bestname==line[0]:
-                i+=1
 
 
 
